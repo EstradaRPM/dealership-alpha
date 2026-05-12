@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "clock": {
+    "minutesPerTick": 15,
+    "ticksPerDay": 64
+  },
+  "economy": {
+    "startingCash": 50000,
+    "dailyOverheadBase": 350
+  }
+}
