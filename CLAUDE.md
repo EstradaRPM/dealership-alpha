@@ -15,6 +15,7 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 - Deep modules, narrow interfaces.
 - Game logic is fully separable from UI. UI renders state and dispatches actions — it never reaches into game-logic internals.
 - Cross-module communication goes through the `EventBus`. No module calls another's internals.
+- **Module boundary convention:** every module lives in its own directory under `src/game/<ModuleName>/` and exposes its public surface only through `index.ts` (a barrel). Consumers import from `'@/game/<ModuleName>'` (or the relative path to the directory), never from a file inside it. Anything not re-exported from `index.ts` is private. No lint rule enforces this in v1 — it is a review-time convention.
 - All tunables (OEM tables, customer archetypes, F&I products, tier definitions, balance numbers) live in versioned data files under `data/`. No magic numbers in code.
 - Subsystems whose v1 implementation is intentionally simple (static OEMs, static competitors, regulatory meter) are exposed via interfaces so v2 replacements drop in without changing consumers.
 - Small commits, each verifiable. No multi-day branches without intermediate landings.
