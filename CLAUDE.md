@@ -47,8 +47,9 @@ See issue #1 for module responsibilities.
 - `npm run ios` / `npm run android` / `npm run web` — launch on a specific target
 - `npm test` — Jest (jest-expo preset). Test files live in `tests/` or co-located as `*.test.ts(x)` under `src/`
 - `npm run typecheck` — `tsc --noEmit`, strict mode
+- `npm run build -- --profile <development|preview|production> --platform <ios|android>` — EAS Build. First run requires `npx eas-cli login` and `npx eas-cli init` to bind a project ID.
 
-`build` is wired through EAS (`eas build`) and will be added in the CI/EAS slice.
+CI runs `typecheck` + `test` on every push (`.github/workflows/ci.yml`).
 
 ## v1 scope reminder
 
