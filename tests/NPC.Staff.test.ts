@@ -1,12 +1,6 @@
-import {
-  loadStaffTaxonomy,
-  validateRoleDag,
-  StaffRoleDagError,
-} from '../src/game/NPC';
-import type {
-  StaffRoleCatalog,
-  StaffSkillCatalog,
-} from '../src/game/NPC';
+import { loadStaffTaxonomy } from '../src/game/NPC';
+import { validateRoleDag, StaffRoleDagError } from '../src/game/NPC/Staff';
+import type { StaffRoleCatalog, StaffSkillCatalog } from '../src/game/NPC/schemas/staff';
 
 const skills: StaffSkillCatalog = {
   productivity: { tier: 'worker', growth_rate: 0.5, cap: 100 },

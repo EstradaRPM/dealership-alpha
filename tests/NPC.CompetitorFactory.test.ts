@@ -5,8 +5,8 @@ import {
   loadTraitTaxonomy,
   resolveEffects,
   TraitAppliesError,
-  CompetitorSchema,
 } from '../src/game/NPC';
+import { CompetitorSchema } from '../src/game/NPC/schemas/competitor';
 
 const archetypes = loadCompetitorArchetypes();
 const brandMarketShare = loadBrandMarketShare();

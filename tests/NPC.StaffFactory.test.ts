@@ -4,8 +4,8 @@ import {
   loadStaffTaxonomy,
   loadTraitTaxonomy,
   promoteStaff,
-  validateArchetypes,
 } from '../src/game/NPC';
+import { validateArchetypes } from '../src/game/NPC/StaffArchetypes';
 import { StaffSchema } from '../src/game/NPC/schemas/staff';
 
 const taxonomy = loadStaffTaxonomy();

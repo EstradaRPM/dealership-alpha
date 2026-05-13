@@ -1,0 +1,198 @@
+import {
+  createCustomer,
+  hotButtons,
+  loadPersonArchetypes,
+  loadVisitArchetypes,
+  loadTraitTaxonomy,
+  resolveEffects,
+} from '../src/game/NPC';
+import { PersonSchema, VisitSchema } from '../src/game/NPC/schemas/customer';
+
+const personArchetypes = loadPersonArchetypes();
+const visitArchetypes = loadVisitArchetypes();
+const traits = loadTraitTaxonomy();
+
+const deps = { masterSeed: 99999, personArchetypes, visitArchetypes, traits };
+
+const salesCtx = {
+  personArchetypeId: 'young_family',
+  visitArchetypeId: 'family_vehicle_search',
+  day: 1,
+  slot: 0,
+};
+
+// ── Schema validity ───────────────────────────────────────────────────────────
+
+describe('CustomerFactory.createCustomer — schema validity', () => {
+  it('rolled customer passes Person + Visit Zod schemas', () => {
+    const { person, visit } = createCustomer(salesCtx, deps);
+    expect(PersonSchema.safeParse(person).success).toBe(true);
+    expect(VisitSchema.safeParse(visit).success).toBe(true);
+  });
+
+  it('visit.person_id matches person.id', () => {
+    const { person, visit } = createCustomer(salesCtx, deps);
+    expect(visit.person_id).toBe(person.id);
+  });
+
+  it('counters initialize at zero', () => {
+    const { person } = createCustomer(salesCtx, deps);
+    expect(person.counters).toEqual({ prior_visits: 0, prior_deals: 0, days_since_last_visit: 0 });
+  });
+
+  it('produces valid customers for service visit archetypes', () => {
+    const ctx = { personArchetypeId: 'commuter', visitArchetypeId: 'routine_maintenance', day: 3, slot: 2 };
+    const { person, visit } = createCustomer(ctx, deps);
+    expect(visit.kind).toBe('service');
+    expect(PersonSchema.safeParse(person).success).toBe(true);
+    expect(VisitSchema.safeParse(visit).success).toBe(true);
+  });
+
+  it('produces valid customers for body visit archetypes', () => {
+    const bodyId = Object.keys(visitArchetypes).find((k) => visitArchetypes[k]?.kind === 'body')!;
+    const ctx = { personArchetypeId: 'young_family', visitArchetypeId: bodyId, day: 5, slot: 0 };
+    const { person, visit } = createCustomer(ctx, deps);
+    expect(visit.kind).toBe('body');
+    expect(PersonSchema.safeParse(person).success).toBe(true);
+    expect(VisitSchema.safeParse(visit).success).toBe(true);
+  });
+});
+
+// ── Determinism ───────────────────────────────────────────────────────────────
+
+describe('CustomerFactory.createCustomer — determinism', () => {
+  it('same (saveSeed, day, slot) → byte-identical customer', () => {
+    const a = createCustomer(salesCtx, deps);
+    const b = createCustomer(salesCtx, deps);
+    expect(a.person).toEqual(b.person);
+    expect(a.visit).toEqual(b.visit);
+  });
+
+  it('different slot produces a distinct customer from the same archetype', () => {
+    const a = createCustomer(salesCtx, deps);
+    const b = createCustomer({ ...salesCtx, slot: 1 }, deps);
+    expect(a.person.id).not.toBe(b.person.id);
+    const identical =
+      a.person.wealth === b.person.wealth &&
+      a.person.credit === b.person.credit &&
+      JSON.stringify(a.person.trait_ids) === JSON.stringify(b.person.trait_ids);
+    expect(identical).toBe(false);
+  });
+});
+
+// ── Trait application ─────────────────────────────────────────────────────────
+
+describe('CustomerFactory.createCustomer — trait application', () => {
+  it('never rolls a customer trait whose applies_to excludes "customer"', () => {
+    for (const archetypeId of Object.keys(personArchetypes)) {
+      const archetype = personArchetypes[archetypeId]!;
+      for (const traitId of archetype.trait_pool) {
+        const trait = traits[traitId];
+        expect(trait).toBeDefined();
+        expect(trait!.applies_to).toContain('customer');
+      }
+    }
+  });
+
+  it('visit composition is order-independent: resolveEffects([A, B]) === resolveEffects([B, A])', () => {
+    const traitA = traits['price-sensitive']!;
+    const traitB = traits['shops-around']!;
+    const ab = resolveEffects([traitA, traitB], {}, 'customer');
+    const ba = resolveEffects([traitB, traitA], {}, 'customer');
+    expect(ab).toEqual(ba);
+  });
+
+  it('order-independence holds for three traits in all orderings', () => {
+    const traitA = traits['price-sensitive']!;
+    const traitB = traits['brand-loyal']!;
+    const traitC = traits['impatient']!;
+    const abc = resolveEffects([traitA, traitB, traitC], {}, 'customer');
+    const bca = resolveEffects([traitB, traitC, traitA], {}, 'customer');
+    const cab = resolveEffects([traitC, traitA, traitB], {}, 'customer');
+    const allKeys = Array.from(new Set([...Object.keys(abc), ...Object.keys(bca), ...Object.keys(cab)]));
+    for (const key of allKeys) {
+      const v = (abc as Record<string, number>)[key] ?? 0;
+      expect((bca as Record<string, number>)[key] ?? 0).toBeCloseTo(v, 10);
+      expect((cab as Record<string, number>)[key] ?? 0).toBeCloseTo(v, 10);
+    }
+  });
+
+  it('price-sensitive trait raises economy preference relative to no-trait baseline', () => {
+    // Build a no-trait version by using a deps with empty trait pools
+    const noTraitArchetypes = {
+      blank: {
+        ...personArchetypes['young_family']!,
+        trait_pool: [] as string[],
+        trait_count: { min: 0, max: 0 },
+      },
+    };
+    const noTraitDeps = { ...deps, personArchetypes: noTraitArchetypes };
+
+    const priceSensitiveTraitArchetypes = {
+      blank: {
+        ...personArchetypes['young_family']!,
+        trait_pool: ['price-sensitive'],
+        trait_count: { min: 1, max: 1 },
+      },
+    };
+    const withTraitDeps = { ...deps, personArchetypes: priceSensitiveTraitArchetypes };
+
+    const ctx = { personArchetypeId: 'blank', visitArchetypeId: 'family_vehicle_search', day: 10, slot: 0 };
+
+    // Run many times to average out RNG variance
+    let economyDelta = 0;
+    const TRIALS = 20;
+    for (let slot = 0; slot < TRIALS; slot++) {
+      const c = { ...ctx, slot };
+      const baseline = createCustomer(c, noTraitDeps);
+      const withTrait = createCustomer(c, withTraitDeps);
+      if (baseline.visit.kind === 'sales' && withTrait.visit.kind === 'sales') {
+        economyDelta += withTrait.visit.preferences.economy - baseline.visit.preferences.economy;
+      }
+    }
+    // price-sensitive has spaced_weight.economy: 0.3, so average delta should be ~0.3
+    expect(economyDelta / TRIALS).toBeCloseTo(0.3, 1);
+  });
+});
+
+// ── Emergent hot-buttons ──────────────────────────────────────────────────────
+
+describe('CustomerFactory — emergent hot-buttons', () => {
+  it('hotButtons top-N correctly identifies the highest-weighted preferences', () => {
+    const { visit } = createCustomer(salesCtx, deps);
+    expect(visit.kind).toBe('sales');
+    if (visit.kind === 'sales') {
+      const top2 = hotButtons(visit, 2);
+      expect(top2).toHaveLength(2);
+      const allValues = Object.values(visit.preferences).sort((a, b) => b - a);
+      const topValues = top2.map((k) => (visit.preferences as Record<string, number>)[k]!);
+      expect(topValues[0]).toBe(allValues[0]);
+      expect(topValues[1]).toBe(allValues[1]);
+    }
+  });
+
+  it('hotButtons top-1 is the single highest preference for a work_truck_purchase visit', () => {
+    const ctx = { personArchetypeId: 'tradesperson', visitArchetypeId: 'work_truck_purchase', day: 2, slot: 0 };
+    const { visit } = createCustomer(ctx, deps);
+    expect(visit.kind).toBe('sales');
+    if (visit.kind === 'sales') {
+      const [top] = hotButtons(visit, 1);
+      const max = Math.max(...Object.values(visit.preferences));
+      expect((visit.preferences as Record<string, number>)[top!]).toBe(max);
+    }
+  });
+
+  it('hotButtons on a service visit returns PSQTC keys', () => {
+    const ctx = { personArchetypeId: 'retiree', visitArchetypeId: 'routine_maintenance', day: 4, slot: 1 };
+    const { visit } = createCustomer(ctx, deps);
+    expect(visit.kind).toBe('service');
+    if (visit.kind === 'service') {
+      const top2 = hotButtons(visit, 2);
+      expect(top2).toHaveLength(2);
+      const psqtcKeys = ['price', 'speed', 'quality', 'trust_in_shop', 'convenience'];
+      for (const k of top2) {
+        expect(psqtcKeys).toContain(k);
+      }
+    }
+  });
+});
