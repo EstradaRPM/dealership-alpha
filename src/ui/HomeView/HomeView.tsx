@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, PanResponder } from 'react-native';
+import { View, Text, StyleSheet, PanResponder, TouchableOpacity } from 'react-native';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import type { DeptKey } from '../../game/DepartmentQueue';
 
@@ -17,6 +17,7 @@ interface Props {
   profile: CharacterProfile;
   badges?: DeptBadges;
   onSwipeResolve?: (dept: DeptKey) => void;
+  onDeptPress?: (dept: DeptKey) => void;
 }
 
 const DEFAULT_BADGES: DeptBadges = { sales: 0, service: 0, bdc: 0, office: 0, lot: 0 };
@@ -26,11 +27,13 @@ function DeptItem({
   label,
   count,
   onSwipe,
+  onPress,
 }: {
   deptKey: DeptKey;
   label: string;
   count: number;
   onSwipe?: (dept: DeptKey) => void;
+  onPress?: (dept: DeptKey) => void;
 }) {
   const panResponder = React.useRef(
     PanResponder.create({
@@ -45,18 +48,23 @@ function DeptItem({
   ).current;
 
   return (
-    <View style={styles.deptItem} {...panResponder.panHandlers}>
+    <TouchableOpacity
+      style={styles.deptItem}
+      onPress={() => count > 0 && onPress?.(deptKey)}
+      disabled={count === 0 || !onPress}
+      {...panResponder.panHandlers}
+    >
       {count > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{count}</Text>
         </View>
       )}
       <Text style={styles.deptLabel}>{label}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
-export function HomeView({ profile, badges = DEFAULT_BADGES, onSwipeResolve }: Props) {
+export function HomeView({ profile, badges = DEFAULT_BADGES, onSwipeResolve, onDeptPress }: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -77,6 +85,7 @@ export function HomeView({ profile, badges = DEFAULT_BADGES, onSwipeResolve }: P
             label={label}
             count={badges[key]}
             onSwipe={onSwipeResolve}
+            onPress={onDeptPress}
           />
         ))}
       </View>

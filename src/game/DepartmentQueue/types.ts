@@ -7,4 +7,5 @@ export interface QueueItem {
   readonly dept: DeptKey;
   readonly label: string;
   readonly createdDay: number;
+  readonly customerId?: string;
 }

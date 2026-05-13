@@ -33,6 +33,17 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
     });
   });
 
+  bus.subscribe('customer:arrived', ({ day, customerId, label }) => {
+    queues.sales.push({
+      id: makeId(),
+      type: 'workspace',
+      dept: 'sales',
+      label,
+      createdDay: day,
+      customerId,
+    });
+  });
+
   return {
     getQueue(dept) { return queues[dept]; },
     getBadgeCount(dept) { return queues[dept].length; },

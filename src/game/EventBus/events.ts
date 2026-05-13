@@ -27,6 +27,12 @@ export interface EventMap {
     day: number;
     competitors: ReadonlyArray<Competitor>;
   };
+
+  // CustomerPool lifecycle — published in this order per customer per day:
+  //   customer:arrived → customer:state_changed (0-n times) → customer:resolved
+  'customer:arrived': { day: number; customerId: string; label: string };
+  'customer:state_changed': { customerId: string; from: string; to: string };
+  'customer:resolved': { customerId: string; outcome: 'closed' | 'walk' };
 }
 
 export type EventName = keyof EventMap;
