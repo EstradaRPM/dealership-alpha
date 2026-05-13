@@ -1,0 +1,50 @@
+{
+  "ford": {
+    "segment_affinity": { "truck": 0.90, "midline": 0.50, "economy": 0.30, "luxury": 0.10 },
+    "market_draw": 0.18
+  },
+  "chevrolet": {
+    "segment_affinity": { "truck": 0.85, "midline": 0.55, "economy": 0.35, "luxury": 0.10 },
+    "market_draw": 0.16
+  },
+  "toyota": {
+    "segment_affinity": { "truck": 0.60, "midline": 0.85, "economy": 0.50, "luxury": 0.20 },
+    "market_draw": 0.15
+  },
+  "honda": {
+    "segment_affinity": { "truck": 0.25, "midline": 0.85, "economy": 0.60, "luxury": 0.15 },
+    "market_draw": 0.12
+  },
+  "ram": {
+    "segment_affinity": { "truck": 0.95, "midline": 0.30, "economy": 0.20, "luxury": 0.05 },
+    "market_draw": 0.10
+  },
+  "hyundai": {
+    "segment_affinity": { "truck": 0.15, "midline": 0.60, "economy": 0.80, "luxury": 0.10 },
+    "market_draw": 0.09
+  },
+  "kia": {
+    "segment_affinity": { "truck": 0.10, "midline": 0.55, "economy": 0.85, "luxury": 0.10 },
+    "market_draw": 0.08
+  },
+  "nissan": {
+    "segment_affinity": { "truck": 0.40, "midline": 0.70, "economy": 0.55, "luxury": 0.15 },
+    "market_draw": 0.08
+  },
+  "gmc": {
+    "segment_affinity": { "truck": 0.80, "midline": 0.50, "economy": 0.20, "luxury": 0.25 },
+    "market_draw": 0.07
+  },
+  "subaru": {
+    "segment_affinity": { "truck": 0.25, "midline": 0.80, "economy": 0.40, "luxury": 0.20 },
+    "market_draw": 0.06
+  },
+  "cadillac": {
+    "segment_affinity": { "truck": 0.10, "midline": 0.30, "economy": 0.05, "luxury": 0.95 },
+    "market_draw": 0.04
+  },
+  "lincoln": {
+    "segment_affinity": { "truck": 0.10, "midline": 0.25, "economy": 0.05, "luxury": 0.90 },
+    "market_draw": 0.03
+  }
+}
