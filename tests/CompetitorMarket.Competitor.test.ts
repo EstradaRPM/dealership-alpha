@@ -82,7 +82,7 @@ describe('loadCompetitors', () => {
     const raw = [
       { id: 'ghost', name: 'Ghost Motors', brand: 'not-a-brand', rep: 0.5, inventory: 0.5, pricing: 0.5 },
     ];
-    const catalog = parseData(raw, CompetitorCatalogSchema, 'test');
+    const catalog = parseData(raw, CompetitorCatalogSchema, 'test') as import('../src/game/CompetitorMarket').CompetitorCatalog;
     const knownBrands = new Set(['ford', 'toyota']);
     const missing = catalog.find((c) => !knownBrands.has(c.brand));
     expect(missing).toBeDefined();
