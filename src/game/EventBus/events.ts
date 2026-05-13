@@ -36,6 +36,10 @@ export interface EventMap {
 
   // Inventory — vehicle purchased from auction, moved to lot
   'inventory:vehicle_purchased': { day: number; vehicleId: string; cost: number };
+
+  // Economy — money flows posted to the ledger
+  'economy:revenue_posted': { day: number; amount: number; label: string };
+  'economy:expense_posted': { day: number; amount: number; label: string };
 }
 
 export type EventName = keyof EventMap;

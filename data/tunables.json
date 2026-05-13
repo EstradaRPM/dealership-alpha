@@ -6,6 +6,10 @@
   },
   "economy": {
     "startingCash": 50000,
-    "dailyOverheadBase": 350
+    "dailyOverheadBase": 350,
+    "tier1": {
+      "weeklyRent": 1200,
+      "weeklyPayrollStub": 800
+    }
   }
 }

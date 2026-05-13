@@ -1,5 +1,6 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createGameClock } from '../src/game/GameClock';
+import { createEconomy } from '../src/game/Economy';
 import { createInventory, loadVehicleData } from '../src/game/Inventory';
 import { generateAuctionListings } from '../src/game/Inventory/auctionGenerator';
 
@@ -7,11 +8,14 @@ const MASTER_SEED = 99;
 const STARTING_CASH = 50000;
 const vehicleData = loadVehicleData();
 
-function makeSetup(initialDay = 0) {
+const NO_OVERNIGHT_CONFIG = { weeklyRent: 0, weeklyPayrollStub: 0 };
+
+function makeSetup(initialDay = 0, startingCash = STARTING_CASH) {
   const bus = createEventBus();
   const clock = createGameClock({ bus, initialDay });
-  const inventory = createInventory({ bus, masterSeed: MASTER_SEED, startingCash: STARTING_CASH, vehicleData });
-  return { bus, clock, inventory };
+  const economy = createEconomy({ bus, startingCash, config: NO_OVERNIGHT_CONFIG });
+  const inventory = createInventory({ bus, masterSeed: MASTER_SEED, economy, vehicleData });
+  return { bus, clock, economy, inventory };
 }
 
 // ── Auction listing generation ────────────────────────────────────────────────
@@ -90,12 +94,12 @@ describe('Inventory — purchase flow', () => {
     expect(inventory.getAuctionListings()).toHaveLength(listings.length - 1);
   });
 
-  it('cash is deducted by asking price', () => {
-    const { clock, inventory } = makeSetup();
+  it('cash is deducted from Economy by asking price', () => {
+    const { clock, economy, inventory } = makeSetup();
     clock.advanceDay();
     const [listing] = inventory.getAuctionListings();
     inventory.buyFromAuction(listing.id);
-    expect(inventory.getCash()).toBe(STARTING_CASH - listing.askingPrice);
+    expect(economy.cash).toBe(STARTING_CASH - listing.askingPrice);
   });
 
   it('getLotVehicle returns the purchased vehicle by id', () => {
@@ -117,12 +121,10 @@ describe('Inventory — purchase flow', () => {
   });
 
   it('throws when insufficient cash', () => {
-    const bus = createEventBus();
-    const clock = createGameClock({ bus });
-    const broke = createInventory({ bus, masterSeed: MASTER_SEED, startingCash: 0, vehicleData });
+    const { clock, inventory } = makeSetup(0, 0);
     clock.advanceDay();
-    const [listing] = broke.getAuctionListings();
-    expect(() => broke.buyFromAuction(listing.id)).toThrow(/[Ii]nsufficient/);
+    const [listing] = inventory.getAuctionListings();
+    expect(() => inventory.buyFromAuction(listing.id)).toThrow(/[Ii]nsufficient/);
   });
 
   it('publishes inventory:vehicle_purchased with cost and vehicleId', () => {
