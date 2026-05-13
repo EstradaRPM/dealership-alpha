@@ -1,28 +1,46 @@
 {
-  "budget_buyer": {
-    "trait_pool": ["price-sensitive", "shops-around", "impatient"],
+  "young_family": {
+    "trait_pool": ["price-sensitive", "shops-around", "skeptical"],
     "trait_count": { "min": 1, "max": 2 },
-    "wealth": { "mu": 35000, "sigma": 8000 },
-    "credit": { "mu": 620, "sigma": 40 },
-    "int": { "mu": 55, "sigma": 12 },
-    "agreeableness": { "mu": 50, "sigma": 15 }
+    "wealth":        { "mu": 55000, "sigma": 14000 },
+    "credit":        { "mu": 658,   "sigma": 48 },
+    "int":           { "mu": 60,    "sigma": 12 },
+    "agreeableness": { "mu": 65,    "sigma": 12 }
   },
 
-  "loyal_repeat": {
-    "trait_pool": ["brand-loyal", "easy-to-sell"],
+  "enthusiast": {
+    "trait_pool": ["easy-to-sell", "luxury-seeker", "impatient"],
     "trait_count": { "min": 1, "max": 2 },
-    "wealth": { "mu": 65000, "sigma": 12000 },
-    "credit": { "mu": 710, "sigma": 30 },
-    "int": { "mu": 58, "sigma": 10 },
-    "agreeableness": { "mu": 70, "sigma": 12 }
+    "wealth":        { "mu": 82000, "sigma": 22000 },
+    "credit":        { "mu": 718,   "sigma": 36 },
+    "int":           { "mu": 72,    "sigma": 10 },
+    "agreeableness": { "mu": 50,    "sigma": 16 }
   },
 
-  "skeptical_researcher": {
-    "trait_pool": ["skeptical", "shops-around", "price-sensitive"],
-    "trait_count": { "min": 2, "max": 3 },
-    "wealth": { "mu": 72000, "sigma": 15000 },
-    "credit": { "mu": 690, "sigma": 35 },
-    "int": { "mu": 72, "sigma": 10 },
-    "agreeableness": { "mu": 38, "sigma": 12 }
+  "commuter": {
+    "trait_pool": ["price-sensitive", "brand-loyal", "easy-to-sell"],
+    "trait_count": { "min": 1, "max": 2 },
+    "wealth":        { "mu": 48000, "sigma": 10000 },
+    "credit":        { "mu": 674,   "sigma": 44 },
+    "int":           { "mu": 58,    "sigma": 12 },
+    "agreeableness": { "mu": 68,    "sigma": 10 }
+  },
+
+  "retiree": {
+    "trait_pool": ["brand-loyal", "easy-to-sell", "impatient"],
+    "trait_count": { "min": 1, "max": 2 },
+    "wealth":        { "mu": 95000, "sigma": 28000 },
+    "credit":        { "mu": 754,   "sigma": 26 },
+    "int":           { "mu": 60,    "sigma": 10 },
+    "agreeableness": { "mu": 72,    "sigma": 10 }
+  },
+
+  "tradesperson": {
+    "trait_pool": ["truck-buyer", "price-sensitive", "skeptical", "impatient"],
+    "trait_count": { "min": 1, "max": 2 },
+    "wealth":        { "mu": 70000, "sigma": 20000 },
+    "credit":        { "mu": 648,   "sigma": 56 },
+    "int":           { "mu": 57,    "sigma": 12 },
+    "agreeableness": { "mu": 45,    "sigma": 16 }
   }
 }

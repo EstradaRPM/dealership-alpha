@@ -158,8 +158,8 @@ describe('loadPersonArchetypes', () => {
   it('loads and validates the stub file', () => {
     const catalog = loadPersonArchetypes();
     expect(Object.keys(catalog).length).toBeGreaterThan(0);
-    expect(catalog['budget_buyer']).toBeDefined();
-    expect(catalog['budget_buyer'].wealth).toMatchObject({ mu: expect.any(Number), sigma: expect.any(Number) });
+    expect(catalog['young_family']).toBeDefined();
+    expect(catalog['young_family'].wealth).toMatchObject({ mu: expect.any(Number), sigma: expect.any(Number) });
   });
 });
 
@@ -167,9 +167,9 @@ describe('loadVisitArchetypes', () => {
   it('loads and validates the stub file', () => {
     const catalog = loadVisitArchetypes();
     expect(Object.keys(catalog).length).toBeGreaterThan(0);
-    expect(catalog['price_led_sales']?.kind).toBe('sales');
-    expect(catalog['routine_service']?.kind).toBe('service');
-    expect(catalog['insurance_body_claim']?.kind).toBe('body');
+    expect(catalog['family_vehicle_search']?.kind).toBe('sales');
+    expect(catalog['routine_maintenance']?.kind).toBe('service');
+    expect(catalog['insurance_collision_claim']?.kind).toBe('body');
   });
 
   it('all archetypes have correct kind-matched preference vector shape', () => {
