@@ -1,0 +1,30 @@
+{
+  "lot-porter": {
+    "tier": "worker",
+    "department": null,
+    "grants_skills": ["productivity"],
+    "promotes_to": ["salesperson"],
+    "promotion_gates": { "productivity": 40 }
+  },
+  "salesperson": {
+    "tier": "customer-facing",
+    "department": "sales",
+    "grants_skills": ["product_knowledge", "communication"],
+    "promotes_to": ["sales-manager"],
+    "promotion_gates": { "trustworthiness": 0.65 }
+  },
+  "sales-manager": {
+    "tier": "manager",
+    "department": "sales",
+    "grants_skills": ["pricing"],
+    "promotes_to": ["gm"],
+    "promotion_gates": { "effectiveness": 0.75 }
+  },
+  "gm": {
+    "tier": "gm",
+    "department": null,
+    "grants_skills": [],
+    "promotes_to": [],
+    "promotion_gates": {}
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "productivity": {
+    "tier": "worker",
+    "growth_rate": 0.5,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 1.0 }
+  },
+  "product_knowledge": {
+    "tier": "customer-facing",
+    "growth_rate": 0.3,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.6, "trustworthiness": 0.4 }
+  },
+  "communication": {
+    "tier": "customer-facing",
+    "growth_rate": 0.4,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.5, "trustworthiness": 0.5 }
+  },
+  "pricing": {
+    "tier": "manager",
+    "growth_rate": 0.2,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.7 }
+  }
+}
