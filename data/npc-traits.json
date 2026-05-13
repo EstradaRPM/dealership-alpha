@@ -3,6 +3,8 @@
     "applies_to": ["customer"],
     "effects": {
       "spaced_weight.economy": 0.3,
+      "price_sensitivity": 0.25,
+      "patience": 0.15,
       "trust_build_rate": -0.1
     }
   },
@@ -10,13 +12,91 @@
     "applies_to": ["customer"],
     "effects": {
       "spaced_weight.luxury": 0.4,
+      "spaced_weight.economy": -0.2,
       "price_sensitivity": -0.2
+    }
+  },
+  "truck-buyer": {
+    "applies_to": ["customer"],
+    "effects": {
+      "spaced_weight.truck": 0.4,
+      "spaced_weight.luxury": -0.1
+    }
+  },
+  "brand-loyal": {
+    "applies_to": ["customer"],
+    "effects": {
+      "trust_build_rate": 0.2,
+      "price_sensitivity": -0.1,
+      "patience": 0.1
+    }
+  },
+  "shops-around": {
+    "applies_to": ["customer"],
+    "effects": {
+      "price_sensitivity": 0.3,
+      "patience": 0.2,
+      "trust_build_rate": -0.15
+    }
+  },
+  "easy-to-sell": {
+    "applies_to": ["customer"],
+    "effects": {
+      "price_sensitivity": -0.25,
+      "trust_build_rate": 0.2,
+      "patience": -0.15
+    }
+  },
+  "impatient": {
+    "applies_to": ["customer"],
+    "effects": {
+      "patience": -0.3,
+      "trust_build_rate": -0.05
+    }
+  },
+  "skeptical": {
+    "applies_to": ["customer"],
+    "effects": {
+      "trust_build_rate": -0.25,
+      "patience": 0.15,
+      "price_sensitivity": 0.1
+    }
+  },
+  "charisma": {
+    "applies_to": ["staff"],
+    "effects": {
+      "trust_build_rate": 0.25,
+      "closing_skill": 0.15
+    }
+  },
+  "ego": {
+    "applies_to": ["staff"],
+    "effects": {
+      "desking_skill": 0.2,
+      "closing_skill": -0.1,
+      "trust_build_rate": -0.15
+    }
+  },
+  "aggressiveness": {
+    "applies_to": ["staff"],
+    "effects": {
+      "closing_skill": 0.25,
+      "desking_skill": 0.2,
+      "trust_build_rate": -0.2
+    }
+  },
+  "transparency": {
+    "applies_to": ["staff"],
+    "effects": {
+      "trust_build_rate": 0.3,
+      "desking_skill": -0.15
     }
   },
   "closer": {
     "applies_to": ["staff"],
     "effects": {
-      "closing_skill": 0.25
+      "closing_skill": 0.3,
+      "desking_skill": 0.1
     }
   }
 }
