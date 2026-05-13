@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const APPLIES_TO_VALUES = ['customer', 'staff'] as const;
+export const APPLIES_TO_VALUES = ['customer', 'staff', 'competitor'] as const;
 export const AppliesToSchema = z.enum(APPLIES_TO_VALUES);
 export type AppliesTo = z.infer<typeof AppliesToSchema>;
 
@@ -13,6 +13,10 @@ export const EFFECT_KEYS = [
   'patience',
   'closing_skill',
   'desking_skill',
+  'competitor.csi',
+  'competitor.inventory_size',
+  'competitor.pricing',
+  'competitor.reputation_drift',
 ] as const;
 export const EffectKeySchema = z.enum(EFFECT_KEYS);
 export type EffectKey = z.infer<typeof EffectKeySchema>;

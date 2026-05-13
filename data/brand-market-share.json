@@ -1,0 +1,32 @@
+{
+  "ford": {
+    "share": 0.15,
+    "tier": 2,
+    "segment": "truck"
+  },
+  "chevrolet": {
+    "share": 0.13,
+    "tier": 2,
+    "segment": "truck"
+  },
+  "toyota": {
+    "share": 0.11,
+    "tier": 2,
+    "segment": "midline"
+  },
+  "honda": {
+    "share": 0.09,
+    "tier": 2,
+    "segment": "midline"
+  },
+  "cadillac": {
+    "share": 0.03,
+    "tier": 3,
+    "segment": "luxury"
+  },
+  "hyundai": {
+    "share": 0.06,
+    "tier": 1,
+    "segment": "economy"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "volume_dealer": {
+    "brand_id": "ford",
+    "trait_pool": [],
+    "trait_count": { "min": 0, "max": 0 },
+    "attributes": {
+      "csi": { "mu": 0.55, "sigma": 0.1 },
+      "inventory_size": { "mu": 0.75, "sigma": 0.1 },
+      "pricing": { "mu": -0.1, "sigma": 0.05 },
+      "reputation_drift": { "mu": 0.0, "sigma": 0.02 }
+    }
+  },
+  "boutique_dealer": {
+    "brand_id": "cadillac",
+    "trait_pool": [],
+    "trait_count": { "min": 0, "max": 0 },
+    "attributes": {
+      "csi": { "mu": 0.85, "sigma": 0.08 },
+      "inventory_size": { "mu": 0.3, "sigma": 0.08 },
+      "pricing": { "mu": 0.2, "sigma": 0.05 },
+      "reputation_drift": { "mu": 0.02, "sigma": 0.01 }
+    }
+  }
+}

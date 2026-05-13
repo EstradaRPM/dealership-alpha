@@ -31,6 +31,13 @@ export type {
   StaffWithComposites,
 } from './factories/StaffFactory';
 
+export { createCustomer } from './factories/CustomerFactory';
+export type {
+  CreateCustomerContext,
+  CreateCustomerDeps,
+  CustomerBundle,
+} from './factories/CustomerFactory';
+
 export { hotButtons } from './Customer';
 export type {
   SPACEDVector,
@@ -51,3 +58,20 @@ export type {
   VisitArchetype,
   VisitArchetypeCatalog,
 } from './CustomerArchetypes';
+
+export { CompetitorSchema } from './Competitor';
+export type { Competitor, CompetitorClassification } from './Competitor';
+
+export { loadCompetitorArchetypes, loadBrandMarketShare } from './CompetitorArchetypes';
+export type {
+  CompetitorArchetype,
+  CompetitorArchetypeCatalog,
+  BrandMarketShareEntry,
+  BrandMarketShareCatalog,
+} from './CompetitorArchetypes';
+
+export { createCompetitor } from './factories/CompetitorFactory';
+export type {
+  CreateCompetitorContext,
+  CreateCompetitorDeps,
+} from './factories/CompetitorFactory';
