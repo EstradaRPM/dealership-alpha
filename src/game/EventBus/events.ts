@@ -9,17 +9,20 @@
 import type { Competitor } from '../CompetitorMarket/Competitor';
 
 export interface EventMap {
-  // Placeholder. Real events land as their owning modules are built
-  // (GameClock, DealEngine, etc.). Kept non-empty so `keyof EventMap`
-  // is never `never`, which would make the EventBus generics useless.
   'bus:ready': { at: number };
 
-  // GameClock day boundary. Owning module not yet built; the typed
-  // contract lives here so subscribers can wire against it today.
-  'clock:day_tick': { day: number };
+  // GameClock overnight sequence — published in this order by advanceDay():
+  //   clock:day_ended → clock:overnight_payroll →
+  //   clock:overnight_inventory_arrival → clock:overnight_reputation_drift →
+  //   clock:day_started
+  'clock:day_ended': { day: number };
+  'clock:overnight_payroll': { day: number };
+  'clock:overnight_inventory_arrival': { day: number };
+  'clock:overnight_reputation_drift': { day: number };
+  'clock:day_started': { day: number };
 
   // CompetitorMarket → CustomerPool (ADR-0001 §10). Published each
-  // day-tick; consumed when rolling today's customers.
+  // clock:day_started; consumed when rolling today's customers.
   'market:competitive_pressure': {
     day: number;
     competitors: ReadonlyArray<Competitor>;

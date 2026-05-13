@@ -8,7 +8,7 @@ const competitors: CompetitorCatalog = [
 ];
 
 describe('CompetitorMarket EventBus wiring', () => {
-  it('publishes market:competitive_pressure each clock:day_tick', () => {
+  it('publishes market:competitive_pressure on each clock:day_started', () => {
     const bus = createEventBus();
     createCompetitorMarket({ bus, competitors });
 
@@ -17,8 +17,8 @@ describe('CompetitorMarket EventBus wiring', () => {
       received.push({ day: p.day, ids: p.competitors.map((c) => c.id) });
     });
 
-    bus.publish('clock:day_tick', { day: 1 });
-    bus.publish('clock:day_tick', { day: 2 });
+    bus.publish('clock:day_started', { day: 1 });
+    bus.publish('clock:day_started', { day: 2 });
 
     expect(received).toEqual([
       { day: 1, ids: ['a', 'b'] },
@@ -33,9 +33,9 @@ describe('CompetitorMarket EventBus wiring', () => {
     const received: number[] = [];
     bus.subscribe('market:competitive_pressure', (p) => received.push(p.day));
 
-    bus.publish('clock:day_tick', { day: 1 });
+    bus.publish('clock:day_started', { day: 1 });
     market.dispose();
-    bus.publish('clock:day_tick', { day: 2 });
+    bus.publish('clock:day_started', { day: 2 });
 
     expect(received).toEqual([1]);
   });
@@ -49,7 +49,7 @@ describe('CompetitorMarket EventBus wiring', () => {
       payload = p;
     });
 
-    bus.publish('clock:day_tick', { day: 42 });
+    bus.publish('clock:day_started', { day: 42 });
 
     expect(payload).not.toBeNull();
     expect(payload!.day).toBe(42);
