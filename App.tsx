@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { createSaveStore, createSqliteDriver } from './src/game/SaveStore';
 import { CharacterCreation } from './src/ui/CharacterCreation';
+import { HomeView } from './src/ui/HomeView';
 import type { CharacterProfile } from './src/game/CareerProgression';
 import type { SaveStore } from './src/game/SaveStore';
 
@@ -12,10 +13,12 @@ type AppScreen = 'loading' | 'character-creation' | 'game';
 
 export default function App() {
   const [screen, setScreen] = useState<AppScreen>('loading');
+  const [profile, setProfile] = useState<CharacterProfile | null>(null);
 
   useEffect(() => {
     saveStore.load().then((state) => {
       if (state?.character) {
+        setProfile(state.character as CharacterProfile);
         setScreen('game');
       } else {
         setScreen('character-creation');
@@ -33,8 +36,17 @@ export default function App() {
         <StatusBar style="light" />
         <CharacterCreation
           saveStore={saveStore}
-          onComplete={(_profile: CharacterProfile) => setScreen('game')}
+          onComplete={(p: CharacterProfile) => { setProfile(p); setScreen('game'); }}
         />
+      </>
+    );
+  }
+
+  if (screen === 'game' && profile) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <HomeView profile={profile} />
       </>
     );
   }
