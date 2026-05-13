@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, PanResponder, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, PanResponder, TouchableOpacity, ScrollView } from 'react-native';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import type { DeptKey } from '../../game/DepartmentQueue';
+import type { LotVehicle } from '../../game/Inventory';
 
 const DEPARTMENTS: { key: DeptKey; label: string }[] = [
   { key: 'sales', label: 'Sales' },
@@ -18,6 +19,8 @@ interface Props {
   badges?: DeptBadges;
   onSwipeResolve?: (dept: DeptKey) => void;
   onDeptPress?: (dept: DeptKey) => void;
+  lotVehicles?: readonly LotVehicle[];
+  onOpenAuction?: () => void;
 }
 
 const DEFAULT_BADGES: DeptBadges = { sales: 0, service: 0, bdc: 0, office: 0, lot: 0 };
@@ -64,7 +67,49 @@ function DeptItem({
   );
 }
 
-export function HomeView({ profile, badges = DEFAULT_BADGES, onSwipeResolve, onDeptPress }: Props) {
+function LotPanel({
+  vehicles,
+  onOpenAuction,
+}: {
+  vehicles: readonly LotVehicle[];
+  onOpenAuction?: () => void;
+}) {
+  return (
+    <View style={styles.lotPanel}>
+      <View style={styles.lotPanelHeader}>
+        <Text style={styles.lotPanelTitle}>On the Lot ({vehicles.length})</Text>
+        <TouchableOpacity onPress={onOpenAuction} style={styles.auctionBtn}>
+          <Text style={styles.auctionBtnText}>Auction →</Text>
+        </TouchableOpacity>
+      </View>
+      {vehicles.length === 0 ? (
+        <Text style={styles.lotEmptyText}>No vehicles. Head to the auction.</Text>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {vehicles.map((v) => (
+            <View key={v.id} style={styles.vehicleCard}>
+              <Text style={styles.vehicleCardTitle}>{v.year} {v.make}</Text>
+              <Text style={styles.vehicleCardModel}>{v.model}</Text>
+              <View style={styles.diiPill}>
+                <Text style={styles.diiPillText}>{v.daysInInventory}d</Text>
+              </View>
+              <Text style={styles.reconLine}>Recon ${v.reconCost.toLocaleString()}</Text>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+export function HomeView({
+  profile,
+  badges = DEFAULT_BADGES,
+  onSwipeResolve,
+  onDeptPress,
+  lotVehicles = [],
+  onOpenAuction,
+}: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -72,10 +117,21 @@ export function HomeView({ profile, badges = DEFAULT_BADGES, onSwipeResolve, onD
         <Text style={styles.tierLabel}>Tier 1 — Gravel Yard</Text>
       </View>
 
-      <View style={styles.illustration} accessibilityLabel="Tier 1 gravel yard lot">
-        <Text style={styles.illustrationPlaceholder}>🏚</Text>
-        <Text style={styles.illustrationCaption}>Your gravel yard awaits.</Text>
-      </View>
+      {lotVehicles.length === 0 ? (
+        <View style={styles.illustration} accessibilityLabel="Tier 1 gravel yard lot">
+          <Text style={styles.illustrationPlaceholder}>🏚</Text>
+          <Text style={styles.illustrationCaption}>Your gravel yard awaits.</Text>
+          {onOpenAuction && (
+            <TouchableOpacity onPress={onOpenAuction} style={styles.auctionBtnCenter}>
+              <Text style={styles.auctionBtnCenterText}>Visit Auction →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
+        <View style={styles.lotPanelWrapper}>
+          <LotPanel vehicles={lotVehicles} onOpenAuction={onOpenAuction} />
+        </View>
+      )}
 
       <View style={styles.statusBar}>
         {DEPARTMENTS.map(({ key, label }) => (
@@ -161,5 +217,88 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#111',
+  },
+  lotPanelWrapper: {
+    flex: 1,
+  },
+  lotPanel: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  lotPanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  lotPanelTitle: {
+    color: '#aaa',
+    fontSize: 13,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  auctionBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#1e3a5f',
+  },
+  auctionBtnText: {
+    color: '#4a9eff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  vehicleCard: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    padding: 14,
+    marginRight: 10,
+    width: 130,
+  },
+  vehicleCardTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  vehicleCardModel: {
+    color: '#888',
+    fontSize: 12,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  diiPill: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  diiPillText: {
+    color: '#c8a96e',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  reconLine: {
+    color: '#666',
+    fontSize: 11,
+  },
+  auctionBtnCenter: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: '#1e3a5f',
+  },
+  auctionBtnCenterText: {
+    color: '#4a9eff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  lotEmptyText: {
+    color: '#555',
+    fontSize: 13,
+    fontStyle: 'italic',
   },
 });

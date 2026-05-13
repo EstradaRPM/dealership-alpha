@@ -33,6 +33,9 @@ export interface EventMap {
   'customer:arrived': { day: number; customerId: string; label: string };
   'customer:state_changed': { customerId: string; from: string; to: string };
   'customer:resolved': { customerId: string; outcome: 'closed' | 'walk' };
+
+  // Inventory — vehicle purchased from auction, moved to lot
+  'inventory:vehicle_purchased': { day: number; vehicleId: string; cost: number };
 }
 
 export type EventName = keyof EventMap;
