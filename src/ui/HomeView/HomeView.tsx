@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, PanResponder } from 'react-native';
 import type { CharacterProfile } from '../../game/CareerProgression';
+import type { DeptKey } from '../../game/DepartmentQueue';
 
-const DEPARTMENTS: { key: string; label: string }[] = [
+const DEPARTMENTS: { key: DeptKey; label: string }[] = [
   { key: 'sales', label: 'Sales' },
   { key: 'service', label: 'Service' },
   { key: 'bdc', label: 'BDC' },
@@ -10,22 +11,52 @@ const DEPARTMENTS: { key: string; label: string }[] = [
   { key: 'lot', label: 'Lot' },
 ];
 
-interface DeptBadges {
-  sales: number;
-  service: number;
-  bdc: number;
-  office: number;
-  lot: number;
-}
+type DeptBadges = Record<DeptKey, number>;
 
 interface Props {
   profile: CharacterProfile;
   badges?: DeptBadges;
+  onSwipeResolve?: (dept: DeptKey) => void;
 }
 
 const DEFAULT_BADGES: DeptBadges = { sales: 0, service: 0, bdc: 0, office: 0, lot: 0 };
 
-export function HomeView({ profile, badges = DEFAULT_BADGES }: Props) {
+function DeptItem({
+  deptKey,
+  label,
+  count,
+  onSwipe,
+}: {
+  deptKey: DeptKey;
+  label: string;
+  count: number;
+  onSwipe?: (dept: DeptKey) => void;
+}) {
+  const panResponder = React.useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
+        Math.abs(dx) > 10 && Math.abs(dy) < 20,
+      onPanResponderRelease: (_, { dx }) => {
+        if (Math.abs(dx) > 50 && count > 0 && onSwipe) {
+          onSwipe(deptKey);
+        }
+      },
+    })
+  ).current;
+
+  return (
+    <View style={styles.deptItem} {...panResponder.panHandlers}>
+      {count > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{count}</Text>
+        </View>
+      )}
+      <Text style={styles.deptLabel}>{label}</Text>
+    </View>
+  );
+}
+
+export function HomeView({ profile, badges = DEFAULT_BADGES, onSwipeResolve }: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -39,19 +70,15 @@ export function HomeView({ profile, badges = DEFAULT_BADGES }: Props) {
       </View>
 
       <View style={styles.statusBar}>
-        {DEPARTMENTS.map(({ key, label }) => {
-          const count = badges[key as keyof DeptBadges];
-          return (
-            <View key={key} style={styles.deptItem}>
-              {count > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{count}</Text>
-                </View>
-              )}
-              <Text style={styles.deptLabel}>{label}</Text>
-            </View>
-          );
-        })}
+        {DEPARTMENTS.map(({ key, label }) => (
+          <DeptItem
+            key={key}
+            deptKey={key}
+            label={label}
+            count={badges[key]}
+            onSwipe={onSwipeResolve}
+          />
+        ))}
       </View>
     </View>
   );
