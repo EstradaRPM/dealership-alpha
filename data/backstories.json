@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "backstories": [
+    {
+      "id": "ex-mechanic",
+      "label": "Ex-Mechanic",
+      "flavor": "Years in the shop taught you what corners get cut. You spot a blown head gasket before anyone else does.",
+      "modifier": {
+        "reconJudgmentBonus": 0.15,
+        "startingCreditLine": 0,
+        "startingCapitalBonus": 0,
+        "grudgesFlag": false
+      }
+    },
+    {
+      "id": "ex-banker",
+      "label": "Ex-Banker",
+      "flavor": "You know how money moves. Your former employer extended a personal line of credit as a parting gift.",
+      "modifier": {
+        "reconJudgmentBonus": 0,
+        "startingCreditLine": 50000,
+        "startingCapitalBonus": 0,
+        "grudgesFlag": false
+      }
+    },
+    {
+      "id": "inheritor",
+      "label": "Inheritor",
+      "flavor": "You got the keys — and the debts, the grudges, and the regulars who remember your father.",
+      "modifier": {
+        "reconJudgmentBonus": 0,
+        "startingCreditLine": 0,
+        "startingCapitalBonus": 25000,
+        "grudgesFlag": true
+      }
+    }
+  ]
+}
