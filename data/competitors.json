@@ -1,0 +1,66 @@
+[
+  {
+    "id": "valley-ford",
+    "name": "Valley Ford",
+    "brand": "ford",
+    "rep": 0.72,
+    "inventory": 0.80,
+    "pricing": 0.60
+  },
+  {
+    "id": "sunrise-toyota",
+    "name": "Sunrise Toyota",
+    "brand": "toyota",
+    "rep": 0.85,
+    "inventory": 0.70,
+    "pricing": 0.55
+  },
+  {
+    "id": "metro-honda",
+    "name": "Metro Honda",
+    "brand": "honda",
+    "rep": 0.78,
+    "inventory": 0.65,
+    "pricing": 0.50
+  },
+  {
+    "id": "desert-ram",
+    "name": "Desert Ram",
+    "brand": "ram",
+    "rep": 0.55,
+    "inventory": 0.75,
+    "pricing": 0.70
+  },
+  {
+    "id": "lakeview-chevrolet",
+    "name": "Lakeview Chevrolet",
+    "brand": "chevrolet",
+    "rep": 0.65,
+    "inventory": 0.85,
+    "pricing": 0.65
+  },
+  {
+    "id": "southside-hyundai",
+    "name": "Southside Hyundai",
+    "brand": "hyundai",
+    "rep": 0.60,
+    "inventory": 0.55,
+    "pricing": 0.40
+  },
+  {
+    "id": "eastside-kia",
+    "name": "Eastside Kia",
+    "brand": "kia",
+    "rep": 0.58,
+    "inventory": 0.50,
+    "pricing": 0.38
+  },
+  {
+    "id": "riverside-nissan",
+    "name": "Riverside Nissan",
+    "brand": "nissan",
+    "rep": 0.62,
+    "inventory": 0.60,
+    "pricing": 0.48
+  }
+]
