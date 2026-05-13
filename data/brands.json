@@ -1,50 +1,58 @@
 {
-  "ford": {
+  "corden": {
     "segment_affinity": { "truck": 0.90, "midline": 0.50, "economy": 0.30, "luxury": 0.10 },
     "market_draw": 0.18
   },
-  "chevrolet": {
+  "chevreau": {
     "segment_affinity": { "truck": 0.85, "midline": 0.55, "economy": 0.35, "luxury": 0.10 },
     "market_draw": 0.16
   },
-  "toyota": {
+  "toraya": {
     "segment_affinity": { "truck": 0.60, "midline": 0.85, "economy": 0.50, "luxury": 0.20 },
     "market_draw": 0.15
   },
-  "honda": {
+  "vanda": {
     "segment_affinity": { "truck": 0.25, "midline": 0.85, "economy": 0.60, "luxury": 0.15 },
     "market_draw": 0.12
   },
-  "ram": {
+  "ravon": {
     "segment_affinity": { "truck": 0.95, "midline": 0.30, "economy": 0.20, "luxury": 0.05 },
     "market_draw": 0.10
   },
-  "hyundai": {
+  "vyndai": {
     "segment_affinity": { "truck": 0.15, "midline": 0.60, "economy": 0.80, "luxury": 0.10 },
     "market_draw": 0.09
   },
-  "kia": {
+  "kaivo": {
     "segment_affinity": { "truck": 0.10, "midline": 0.55, "economy": 0.85, "luxury": 0.10 },
     "market_draw": 0.08
   },
-  "nissan": {
+  "messan": {
     "segment_affinity": { "truck": 0.40, "midline": 0.70, "economy": 0.55, "luxury": 0.15 },
     "market_draw": 0.08
   },
-  "gmc": {
+  "kemco": {
     "segment_affinity": { "truck": 0.80, "midline": 0.50, "economy": 0.20, "luxury": 0.25 },
     "market_draw": 0.07
   },
-  "subaru": {
+  "sabaro": {
     "segment_affinity": { "truck": 0.25, "midline": 0.80, "economy": 0.40, "luxury": 0.20 },
     "market_draw": 0.06
   },
-  "cadillac": {
+  "castillac": {
     "segment_affinity": { "truck": 0.10, "midline": 0.30, "economy": 0.05, "luxury": 0.95 },
     "market_draw": 0.04
   },
-  "lincoln": {
+  "lancroft": {
     "segment_affinity": { "truck": 0.10, "midline": 0.25, "economy": 0.05, "luxury": 0.90 },
     "market_draw": 0.03
+  },
+  "bavron": {
+    "segment_affinity": { "truck": 0.05, "midline": 0.70, "economy": 0.15, "luxury": 0.85 },
+    "market_draw": 0.04
+  },
+  "meridas": {
+    "segment_affinity": { "truck": 0.08, "midline": 0.60, "economy": 0.10, "luxury": 0.95 },
+    "market_draw": 0.04
   }
 }

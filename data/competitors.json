@@ -1,64 +1,64 @@
 [
   {
-    "id": "valley-ford",
-    "name": "Valley Ford",
-    "brand": "ford",
+    "id": "valley-corden",
+    "name": "Valley Corden",
+    "brand": "corden",
     "rep": 0.72,
     "inventory": 0.80,
     "pricing": 0.60
   },
   {
-    "id": "sunrise-toyota",
-    "name": "Sunrise Toyota",
-    "brand": "toyota",
+    "id": "sunrise-toraya",
+    "name": "Sunrise Toraya",
+    "brand": "toraya",
     "rep": 0.85,
     "inventory": 0.70,
     "pricing": 0.55
   },
   {
-    "id": "metro-honda",
-    "name": "Metro Honda",
-    "brand": "honda",
+    "id": "metro-vanda",
+    "name": "Metro Vanda",
+    "brand": "vanda",
     "rep": 0.78,
     "inventory": 0.65,
     "pricing": 0.50
   },
   {
-    "id": "desert-ram",
-    "name": "Desert Ram",
-    "brand": "ram",
+    "id": "desert-ravon",
+    "name": "Desert Ravon",
+    "brand": "ravon",
     "rep": 0.55,
     "inventory": 0.75,
     "pricing": 0.70
   },
   {
-    "id": "lakeview-chevrolet",
-    "name": "Lakeview Chevrolet",
-    "brand": "chevrolet",
+    "id": "lakeview-chevreau",
+    "name": "Lakeview Chevreau",
+    "brand": "chevreau",
     "rep": 0.65,
     "inventory": 0.85,
     "pricing": 0.65
   },
   {
-    "id": "southside-hyundai",
-    "name": "Southside Hyundai",
-    "brand": "hyundai",
+    "id": "southside-vyndai",
+    "name": "Southside Vyndai",
+    "brand": "vyndai",
     "rep": 0.60,
     "inventory": 0.55,
     "pricing": 0.40
   },
   {
-    "id": "eastside-kia",
-    "name": "Eastside Kia",
-    "brand": "kia",
+    "id": "eastside-kaivo",
+    "name": "Eastside Kaivo",
+    "brand": "kaivo",
     "rep": 0.58,
     "inventory": 0.50,
     "pricing": 0.38
   },
   {
-    "id": "riverside-nissan",
-    "name": "Riverside Nissan",
-    "brand": "nissan",
+    "id": "riverside-messan",
+    "name": "Riverside Messan",
+    "brand": "messan",
     "rep": 0.62,
     "inventory": 0.60,
     "pricing": 0.48

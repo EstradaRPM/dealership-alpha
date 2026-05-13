@@ -1,6 +1,6 @@
 {
   "volume_dealer": {
-    "brand_id": "ford",
+    "brand_id": "corden",
     "trait_pool": [],
     "trait_count": { "min": 0, "max": 0 },
     "attributes": {
@@ -11,7 +11,7 @@
     }
   },
   "boutique_dealer": {
-    "brand_id": "cadillac",
+    "brand_id": "castillac",
     "trait_pool": [],
     "trait_count": { "min": 0, "max": 0 },
     "attributes": {
@@ -22,7 +22,7 @@
     }
   },
   "aggressive_discounter": {
-    "brand_id": "chevrolet",
+    "brand_id": "chevreau",
     "trait_pool": ["discount_culture", "market_aggression"],
     "trait_count": { "min": 1, "max": 2 },
     "attributes": {
@@ -33,7 +33,7 @@
     }
   },
   "premium_csi_dealer": {
-    "brand_id": "toyota",
+    "brand_id": "toraya",
     "trait_pool": ["service_excellence", "reputation_focus"],
     "trait_count": { "min": 1, "max": 2 },
     "attributes": {
@@ -44,7 +44,7 @@
     }
   },
   "volume_leader": {
-    "brand_id": "ram",
+    "brand_id": "ravon",
     "trait_pool": ["market_aggression"],
     "trait_count": { "min": 0, "max": 1 },
     "attributes": {
@@ -55,7 +55,7 @@
     }
   },
   "marginal_survivor": {
-    "brand_id": "hyundai",
+    "brand_id": "vyndai",
     "trait_pool": ["lean_ops"],
     "trait_count": { "min": 0, "max": 1 },
     "attributes": {

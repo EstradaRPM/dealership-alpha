@@ -2,7 +2,7 @@ import { loadCompetitors, CompetitorSchema, CompetitorCatalogSchema } from '../s
 import { DataValidationError } from '../src/game/data';
 
 describe('CompetitorSchema', () => {
-  const valid = { id: 'foo', name: 'Foo Motors', brand: 'ford', rep: 0.7, inventory: 0.6, pricing: 0.5 };
+  const valid = { id: 'foo', name: 'Foo Motors', brand: 'corden', rep: 0.7, inventory: 0.6, pricing: 0.5 };
 
   it('accepts a valid competitor', () => {
     expect(() => CompetitorSchema.parse(valid)).not.toThrow();

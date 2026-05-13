@@ -46,7 +46,7 @@ describe('BrandCatalogSchema', () => {
 
   it('throws DataValidationError via catalog schema on invalid input', () => {
     expect(() =>
-      BrandCatalogSchema.parse({ ford: { segment_affinity: { truck: 2 }, market_draw: 0.1 } }),
+      BrandCatalogSchema.parse({ corden: { segment_affinity: { truck: 2 }, market_draw: 0.1 } }),
     ).toThrow();
   });
 });
@@ -81,7 +81,7 @@ describe('loadBrands', () => {
     const { parseData } = require('../src/game/data');
     const { BrandCatalogSchema: schema } = require('../src/game/CompetitorMarket/schemas/brand');
     expect(() =>
-      parseData({ ford: { segment_affinity: { truck: 99 }, market_draw: 0.1 } }, schema, 'test'),
+      parseData({ corden: { segment_affinity: { truck: 99 }, market_draw: 0.1 } }, schema, 'test'),
     ).toThrow(DataValidationError);
   });
 });

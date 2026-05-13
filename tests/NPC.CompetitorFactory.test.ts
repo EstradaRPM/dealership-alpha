@@ -16,7 +16,7 @@ const deps = { masterSeed: 42, archetypes, brandMarketShare, traits };
 
 const baseCtx = {
   archetypeId: 'volume_dealer',
-  playerBrandId: 'toyota',
+  playerBrandId: 'toraya',
   day: 1,
   slot: 0,
 };
@@ -86,28 +86,28 @@ describe('CompetitorFactory.createCompetitor — determinism', () => {
 
 describe('CompetitorFactory.createCompetitor — direct/indirect classification', () => {
   it('classification is "indirect" when player brand differs from competitor brand', () => {
-    const competitor = createCompetitor({ ...baseCtx, playerBrandId: 'toyota' }, deps);
-    expect(competitor.brand_id).toBe('ford');
+    const competitor = createCompetitor({ ...baseCtx, playerBrandId: 'toraya' }, deps);
+    expect(competitor.brand_id).toBe('corden');
     expect(competitor.classification).toBe('indirect');
   });
 
   it('classification is "direct" when player brand matches competitor brand', () => {
-    const competitor = createCompetitor({ ...baseCtx, playerBrandId: 'ford' }, deps);
+    const competitor = createCompetitor({ ...baseCtx, playerBrandId: 'corden' }, deps);
     expect(competitor.classification).toBe('direct');
   });
 
-  it('boutique_dealer is indirect when player brand is ford', () => {
+  it('boutique_dealer is indirect when player brand is corden', () => {
     const competitor = createCompetitor(
-      { archetypeId: 'boutique_dealer', playerBrandId: 'ford', day: 1, slot: 0 },
+      { archetypeId: 'boutique_dealer', playerBrandId: 'corden', day: 1, slot: 0 },
       deps,
     );
-    expect(competitor.brand_id).toBe('cadillac');
+    expect(competitor.brand_id).toBe('castillac');
     expect(competitor.classification).toBe('indirect');
   });
 
-  it('boutique_dealer is direct when player brand is cadillac', () => {
+  it('boutique_dealer is direct when player brand is castillac', () => {
     const competitor = createCompetitor(
-      { archetypeId: 'boutique_dealer', playerBrandId: 'cadillac', day: 1, slot: 0 },
+      { archetypeId: 'boutique_dealer', playerBrandId: 'castillac', day: 1, slot: 0 },
       deps,
     );
     expect(competitor.classification).toBe('direct');

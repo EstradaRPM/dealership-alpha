@@ -15,7 +15,7 @@ describe('SaveStore', () => {
         { vin: 'A1', model: 'civic', cost: 18_000 },
         { vin: 'A2', model: 'cr-v', cost: 26_500 },
       ],
-      reputation: { local: 0.42, oem: { honda: 0.61 } },
+      reputation: { local: 0.42, oem: { vanda: 0.61 } },
       flags: { tutorialDone: true, firstSale: false },
     };
 

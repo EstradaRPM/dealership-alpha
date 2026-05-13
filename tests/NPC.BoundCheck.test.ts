@@ -240,7 +240,7 @@ describe('BoundCheck — competitor archetypes (attributes)', () => {
       runBoundCheck(
         (slot) =>
           createCompetitor(
-            { archetypeId: archId, playerBrandId: 'toyota', day: 1, slot },
+            { archetypeId: archId, playerBrandId: 'toraya', day: 1, slot },
             competitorDeps,
           ),
         [
@@ -292,7 +292,7 @@ describe('factory smoke tests — schema validity', () => {
     const deps = { masterSeed: 3, archetypes: competitorArchetypes, brandMarketShare, traits };
     for (const archetypeId of Object.keys(competitorArchetypes)) {
       const competitor = createCompetitor(
-        { archetypeId, playerBrandId: 'toyota', day: 1, slot: 0 },
+        { archetypeId, playerBrandId: 'toraya', day: 1, slot: 0 },
         deps,
       );
       expect(CompetitorSchema.safeParse(competitor).success).toBe(true);
