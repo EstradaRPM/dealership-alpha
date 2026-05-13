@@ -6,11 +6,24 @@
  *
  * Keep event names namespaced ("domain:verb") and payloads plain data.
  */
+import type { Competitor } from '../CompetitorMarket/Competitor';
+
 export interface EventMap {
   // Placeholder. Real events land as their owning modules are built
   // (GameClock, DealEngine, etc.). Kept non-empty so `keyof EventMap`
   // is never `never`, which would make the EventBus generics useless.
   'bus:ready': { at: number };
+
+  // GameClock day boundary. Owning module not yet built; the typed
+  // contract lives here so subscribers can wire against it today.
+  'clock:day_tick': { day: number };
+
+  // CompetitorMarket → CustomerPool (ADR-0001 §10). Published each
+  // day-tick; consumed when rolling today's customers.
+  'market:competitive_pressure': {
+    day: number;
+    competitors: ReadonlyArray<Competitor>;
+  };
 }
 
 export type EventName = keyof EventMap;
