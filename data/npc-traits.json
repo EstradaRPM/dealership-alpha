@@ -1,0 +1,22 @@
+{
+  "price-sensitive": {
+    "applies_to": ["customer"],
+    "effects": {
+      "spaced_weight.economy": 0.3,
+      "trust_build_rate": -0.1
+    }
+  },
+  "luxury-seeker": {
+    "applies_to": ["customer"],
+    "effects": {
+      "spaced_weight.luxury": 0.4,
+      "price_sensitivity": -0.2
+    }
+  },
+  "closer": {
+    "applies_to": ["staff"],
+    "effects": {
+      "closing_skill": 0.25
+    }
+  }
+}
