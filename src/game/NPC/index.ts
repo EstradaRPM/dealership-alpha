@@ -16,3 +16,17 @@ export type {
 } from './Staff';
 export { loadStaffTaxonomy } from './StaffTaxonomy';
 export type { StaffTaxonomy } from './StaffTaxonomy';
+
+export {
+  loadStaffArchetypes,
+  validateArchetypes,
+  StaffArchetypeValidationError,
+} from './StaffArchetypes';
+export type { StaffArchetype, StaffArchetypeCatalog } from './StaffArchetypes';
+
+export { createStaff, promoteStaff } from './factories/StaffFactory';
+export type {
+  CreateStaffContext,
+  CreateStaffDeps,
+  StaffWithComposites,
+} from './factories/StaffFactory';
