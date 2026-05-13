@@ -1,0 +1,100 @@
+import { z } from 'zod';
+
+// ── Preference vectors ────────────────────────────────────────────────────────
+
+export const SPACEDVectorSchema = z
+  .object({
+    safety: z.number(),
+    performance: z.number(),
+    appearance: z.number(),
+    comfort: z.number(),
+    economy: z.number(),
+    dependability: z.number(),
+  })
+  .strict();
+export type SPACEDVector = z.infer<typeof SPACEDVectorSchema>;
+
+export const PSQTCVectorSchema = z
+  .object({
+    price: z.number(),
+    speed: z.number(),
+    quality: z.number(),
+    trust_in_shop: z.number(),
+    convenience: z.number(),
+  })
+  .strict();
+export type PSQTCVector = z.infer<typeof PSQTCVectorSchema>;
+
+// ── Person ────────────────────────────────────────────────────────────────────
+
+export const PersonCountersSchema = z
+  .object({
+    prior_visits: z.number().int().min(0),
+    prior_deals: z.number().int().min(0),
+    days_since_last_visit: z.number().int().min(0),
+  })
+  .strict();
+export type PersonCounters = z.infer<typeof PersonCountersSchema>;
+
+export const PersonSchema = z
+  .object({
+    id: z.string().min(1),
+    trait_ids: z.array(z.string().min(1)),
+    wealth: z.number(),
+    credit: z.number(),
+    int: z.number(),
+    agreeableness: z.number(),
+    brand_affinity: z.record(z.string().min(1), z.number()),
+    counters: PersonCountersSchema,
+  })
+  .strict();
+export type Person = z.infer<typeof PersonSchema>;
+
+// ── Visit resources ───────────────────────────────────────────────────────────
+
+export const VisitResourcesSchema = z
+  .object({
+    trust: z.number(),
+    patience: z.number(),
+  })
+  .strict();
+export type VisitResources = z.infer<typeof VisitResourcesSchema>;
+
+// ── Visit (discriminated union) ───────────────────────────────────────────────
+
+export const SalesVisitSchema = z
+  .object({
+    kind: z.literal('sales'),
+    person_id: z.string().min(1),
+    preferences: SPACEDVectorSchema,
+    resources: VisitResourcesSchema,
+  })
+  .strict();
+export type SalesVisit = z.infer<typeof SalesVisitSchema>;
+
+export const ServiceVisitSchema = z
+  .object({
+    kind: z.literal('service'),
+    person_id: z.string().min(1),
+    preferences: PSQTCVectorSchema,
+    resources: VisitResourcesSchema,
+  })
+  .strict();
+export type ServiceVisit = z.infer<typeof ServiceVisitSchema>;
+
+export const BodyVisitSchema = z
+  .object({
+    kind: z.literal('body'),
+    person_id: z.string().min(1),
+    preferences: PSQTCVectorSchema,
+    resources: VisitResourcesSchema,
+  })
+  .strict();
+export type BodyVisit = z.infer<typeof BodyVisitSchema>;
+
+export const VisitSchema = z.discriminatedUnion('kind', [
+  SalesVisitSchema,
+  ServiceVisitSchema,
+  BodyVisitSchema,
+]);
+export type Visit = z.infer<typeof VisitSchema>;

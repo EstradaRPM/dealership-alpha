@@ -30,3 +30,24 @@ export type {
   CreateStaffDeps,
   StaffWithComposites,
 } from './factories/StaffFactory';
+
+export { hotButtons } from './Customer';
+export type {
+  SPACEDVector,
+  PSQTCVector,
+  Person,
+  PersonCounters,
+  VisitResources,
+  SalesVisit,
+  ServiceVisit,
+  BodyVisit,
+  Visit,
+} from './Customer';
+
+export { loadPersonArchetypes, loadVisitArchetypes } from './CustomerArchetypes';
+export type {
+  PersonArchetype,
+  PersonArchetypeCatalog,
+  VisitArchetype,
+  VisitArchetypeCatalog,
+} from './CustomerArchetypes';

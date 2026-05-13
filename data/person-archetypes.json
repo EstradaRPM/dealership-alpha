@@ -1,0 +1,28 @@
+{
+  "budget_buyer": {
+    "trait_pool": ["price-sensitive", "shops-around", "impatient"],
+    "trait_count": { "min": 1, "max": 2 },
+    "wealth": { "mu": 35000, "sigma": 8000 },
+    "credit": { "mu": 620, "sigma": 40 },
+    "int": { "mu": 55, "sigma": 12 },
+    "agreeableness": { "mu": 50, "sigma": 15 }
+  },
+
+  "loyal_repeat": {
+    "trait_pool": ["brand-loyal", "easy-to-sell"],
+    "trait_count": { "min": 1, "max": 2 },
+    "wealth": { "mu": 65000, "sigma": 12000 },
+    "credit": { "mu": 710, "sigma": 30 },
+    "int": { "mu": 58, "sigma": 10 },
+    "agreeableness": { "mu": 70, "sigma": 12 }
+  },
+
+  "skeptical_researcher": {
+    "trait_pool": ["skeptical", "shops-around", "price-sensitive"],
+    "trait_count": { "min": 2, "max": 3 },
+    "wealth": { "mu": 72000, "sigma": 15000 },
+    "credit": { "mu": 690, "sigma": 35 },
+    "int": { "mu": 72, "sigma": 10 },
+    "agreeableness": { "mu": 38, "sigma": 12 }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "price_led_sales": {
+    "kind": "sales",
+    "preferences": {
+      "safety":       { "mu": 0.30, "sigma": 0.08 },
+      "performance":  { "mu": 0.25, "sigma": 0.08 },
+      "appearance":   { "mu": 0.20, "sigma": 0.08 },
+      "comfort":      { "mu": 0.15, "sigma": 0.06 },
+      "economy":      { "mu": 0.60, "sigma": 0.12 },
+      "dependability":{ "mu": 0.45, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.40, "sigma": 0.10 },
+      "patience": { "mu": 0.55, "sigma": 0.12 }
+    }
+  },
+
+  "comfort_driven_sales": {
+    "kind": "sales",
+    "preferences": {
+      "safety":       { "mu": 0.45, "sigma": 0.10 },
+      "performance":  { "mu": 0.35, "sigma": 0.10 },
+      "appearance":   { "mu": 0.50, "sigma": 0.10 },
+      "comfort":      { "mu": 0.70, "sigma": 0.10 },
+      "economy":      { "mu": 0.25, "sigma": 0.08 },
+      "dependability":{ "mu": 0.40, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.55, "sigma": 0.10 },
+      "patience": { "mu": 0.65, "sigma": 0.10 }
+    }
+  },
+
+  "routine_service": {
+    "kind": "service",
+    "preferences": {
+      "price":       { "mu": 0.50, "sigma": 0.12 },
+      "speed":       { "mu": 0.65, "sigma": 0.12 },
+      "quality":     { "mu": 0.55, "sigma": 0.10 },
+      "trust_in_shop":{ "mu": 0.60, "sigma": 0.12 },
+      "convenience": { "mu": 0.45, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.50, "sigma": 0.12 },
+      "patience": { "mu": 0.60, "sigma": 0.12 }
+    }
+  },
+
+  "insurance_body_claim": {
+    "kind": "body",
+    "preferences": {
+      "price":       { "mu": 0.30, "sigma": 0.08 },
+      "speed":       { "mu": 0.55, "sigma": 0.12 },
+      "quality":     { "mu": 0.70, "sigma": 0.10 },
+      "trust_in_shop":{ "mu": 0.60, "sigma": 0.12 },
+      "convenience": { "mu": 0.75, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.45, "sigma": 0.12 },
+      "patience": { "mu": 0.50, "sigma": 0.12 }
+    }
+  }
+}
