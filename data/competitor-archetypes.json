@@ -20,5 +20,49 @@
       "pricing": { "mu": 0.2, "sigma": 0.05 },
       "reputation_drift": { "mu": 0.02, "sigma": 0.01 }
     }
+  },
+  "aggressive_discounter": {
+    "brand_id": "chevrolet",
+    "trait_pool": ["discount_culture", "market_aggression"],
+    "trait_count": { "min": 1, "max": 2 },
+    "attributes": {
+      "csi": { "mu": 0.5, "sigma": 0.1 },
+      "inventory_size": { "mu": 0.8, "sigma": 0.08 },
+      "pricing": { "mu": -0.2, "sigma": 0.05 },
+      "reputation_drift": { "mu": -0.01, "sigma": 0.02 }
+    }
+  },
+  "premium_csi_dealer": {
+    "brand_id": "toyota",
+    "trait_pool": ["service_excellence", "reputation_focus"],
+    "trait_count": { "min": 1, "max": 2 },
+    "attributes": {
+      "csi": { "mu": 0.88, "sigma": 0.06 },
+      "inventory_size": { "mu": 0.35, "sigma": 0.08 },
+      "pricing": { "mu": 0.18, "sigma": 0.05 },
+      "reputation_drift": { "mu": 0.03, "sigma": 0.01 }
+    }
+  },
+  "volume_leader": {
+    "brand_id": "ram",
+    "trait_pool": ["market_aggression"],
+    "trait_count": { "min": 0, "max": 1 },
+    "attributes": {
+      "csi": { "mu": 0.6, "sigma": 0.1 },
+      "inventory_size": { "mu": 0.9, "sigma": 0.07 },
+      "pricing": { "mu": -0.05, "sigma": 0.05 },
+      "reputation_drift": { "mu": 0.0, "sigma": 0.02 }
+    }
+  },
+  "marginal_survivor": {
+    "brand_id": "hyundai",
+    "trait_pool": ["lean_ops"],
+    "trait_count": { "min": 0, "max": 1 },
+    "attributes": {
+      "csi": { "mu": 0.45, "sigma": 0.12 },
+      "inventory_size": { "mu": 0.25, "sigma": 0.08 },
+      "pricing": { "mu": -0.05, "sigma": 0.08 },
+      "reputation_drift": { "mu": -0.02, "sigma": 0.03 }
+    }
   }
 }

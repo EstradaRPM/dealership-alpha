@@ -98,5 +98,40 @@
       "closing_skill": 0.3,
       "desking_skill": 0.1
     }
+  },
+  "discount_culture": {
+    "applies_to": ["competitor"],
+    "effects": {
+      "competitor.pricing": -0.15,
+      "competitor.csi": -0.1
+    }
+  },
+  "service_excellence": {
+    "applies_to": ["competitor"],
+    "effects": {
+      "competitor.csi": 0.2,
+      "competitor.reputation_drift": 0.02
+    }
+  },
+  "market_aggression": {
+    "applies_to": ["competitor"],
+    "effects": {
+      "competitor.inventory_size": 0.2,
+      "competitor.pricing": -0.1
+    }
+  },
+  "reputation_focus": {
+    "applies_to": ["competitor"],
+    "effects": {
+      "competitor.reputation_drift": 0.03,
+      "competitor.csi": 0.1
+    }
+  },
+  "lean_ops": {
+    "applies_to": ["competitor"],
+    "effects": {
+      "competitor.inventory_size": -0.15,
+      "competitor.pricing": -0.05
+    }
   }
 }

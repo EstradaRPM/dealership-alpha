@@ -1,21 +1,51 @@
 {
   "ford": {
-    "share": 0.15,
+    "share": 0.16,
     "tier": 2,
     "segment": "truck"
   },
   "chevrolet": {
-    "share": 0.13,
+    "share": 0.14,
     "tier": 2,
     "segment": "truck"
   },
   "toyota": {
-    "share": 0.11,
+    "share": 0.14,
     "tier": 2,
     "segment": "midline"
   },
   "honda": {
-    "share": 0.09,
+    "share": 0.10,
+    "tier": 2,
+    "segment": "midline"
+  },
+  "ram": {
+    "share": 0.08,
+    "tier": 2,
+    "segment": "truck"
+  },
+  "hyundai": {
+    "share": 0.08,
+    "tier": 1,
+    "segment": "economy"
+  },
+  "kia": {
+    "share": 0.07,
+    "tier": 1,
+    "segment": "economy"
+  },
+  "nissan": {
+    "share": 0.07,
+    "tier": 1,
+    "segment": "midline"
+  },
+  "gmc": {
+    "share": 0.06,
+    "tier": 2,
+    "segment": "truck"
+  },
+  "subaru": {
+    "share": 0.05,
     "tier": 2,
     "segment": "midline"
   },
@@ -24,9 +54,9 @@
     "tier": 3,
     "segment": "luxury"
   },
-  "hyundai": {
-    "share": 0.06,
-    "tier": 1,
-    "segment": "economy"
+  "lincoln": {
+    "share": 0.02,
+    "tier": 3,
+    "segment": "luxury"
   }
 }
