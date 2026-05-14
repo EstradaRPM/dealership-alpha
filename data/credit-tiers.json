@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "tiers": {
+    "A": { "minScore": 720, "apr": 0.059 },
+    "B": { "minScore": 680, "apr": 0.089 },
+    "C": { "minScore": 620, "apr": 0.129 },
+    "D": { "minScore":   0, "apr": 0.189 }
+  }
+}

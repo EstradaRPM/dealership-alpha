@@ -6,6 +6,7 @@ import { createEventBus } from './src/game/EventBus';
 import { createGameClock } from './src/game/GameClock';
 import { createDepartmentQueue } from './src/game/DepartmentQueue';
 import { createCustomerPool } from './src/game/CustomerPool';
+import { createDealEngine } from './src/game/DealEngine';
 import {
   loadPersonArchetypes,
   loadVisitArchetypes,
@@ -33,6 +34,7 @@ const customerPool = createCustomerPool({
     traits: loadTraitTaxonomy(),
   },
 });
+const dealEngine = createDealEngine();
 
 type AppScreen = 'loading' | 'character-creation' | 'game' | 'sales-workspace';
 
@@ -124,6 +126,7 @@ export default function App() {
           session={activeSession}
           onDispatch={handleDispatch}
           onClose={() => setScreen('game')}
+          dealEngine={dealEngine}
         />
       </>
     );

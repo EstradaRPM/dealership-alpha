@@ -2,6 +2,7 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import { SalesWorkspace } from '../src/ui/SalesWorkspace';
 import type { CustomerSession } from '../src/game/CustomerPool';
+import { createDealEngine } from '../src/game/DealEngine';
 
 const mockSession: CustomerSession = {
   customerId: 'test-customer',
@@ -28,6 +29,8 @@ const mockSession: CustomerSession = {
   },
 };
 
+const mockDealEngine = createDealEngine();
+
 describe('SalesWorkspace — smoke', () => {
   it('renders without crashing', () => {
     expect(() =>
@@ -36,22 +39,25 @@ describe('SalesWorkspace — smoke', () => {
           session={mockSession}
           onDispatch={jest.fn()}
           onClose={jest.fn()}
+          dealEngine={mockDealEngine}
         />,
       ),
     ).not.toThrow();
   });
 
-  it('renders three tabs: Show Vehicle, Negotiate, Walk', () => {
+  it('renders four tabs: Show Vehicle, Negotiate, Structure, Walk', () => {
     const { getAllByText, getByText } = render(
       <SalesWorkspace
         session={mockSession}
         onDispatch={jest.fn()}
         onClose={jest.fn()}
+        dealEngine={mockDealEngine}
       />,
     );
     // "Show Vehicle" appears in both the tab bar and the action button
     expect(getAllByText('Show Vehicle').length).toBeGreaterThanOrEqual(1);
     expect(getByText('Negotiate')).toBeTruthy();
+    expect(getByText('Structure')).toBeTruthy();
     expect(getByText('Walk')).toBeTruthy();
   });
 
@@ -61,6 +67,7 @@ describe('SalesWorkspace — smoke', () => {
         session={mockSession}
         onDispatch={jest.fn()}
         onClose={jest.fn()}
+        dealEngine={mockDealEngine}
       />,
     );
     expect(getByText('Greet Customer')).toBeTruthy();
@@ -72,6 +79,7 @@ describe('SalesWorkspace — smoke', () => {
         session={mockSession}
         onDispatch={jest.fn()}
         onClose={jest.fn()}
+        dealEngine={mockDealEngine}
       />,
     );
     expect(getByText('UNGREETED')).toBeTruthy();

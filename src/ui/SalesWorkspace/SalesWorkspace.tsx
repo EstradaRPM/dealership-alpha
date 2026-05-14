@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
 import type { CustomerSession, CustomerAction } from '../../game/CustomerPool';
+import type { DealEngine } from '../../game/DealEngine';
 
-type Tab = 'show-vehicle' | 'negotiate' | 'walk';
+type Tab = 'show-vehicle' | 'negotiate' | 'structure' | 'walk';
 
 const TERMINAL_STAGES = new Set(['CLOSED', 'WALK']);
 
@@ -110,18 +111,100 @@ function WalkTab({ session, onDispatch }: TabProps) {
   );
 }
 
+const TERM_OPTIONS = [24, 36, 48, 60, 72] as const;
+type TermMonths = (typeof TERM_OPTIONS)[number];
+
+interface StructurePaymentTabProps {
+  session: CustomerSession;
+  dealEngine: DealEngine;
+}
+
+function StructurePaymentTab({ session, dealEngine }: StructurePaymentTabProps) {
+  const creditScore = session.bundle.person.credit;
+  const tier = dealEngine.classifyCredit(creditScore);
+
+  const [priceText, setPriceText] = useState('');
+  const [downText, setDownText] = useState('');
+  const [term, setTerm] = useState<TermMonths>(60);
+
+  const price = parseFloat(priceText) || 0;
+  const down = parseFloat(downText) || 0;
+  const result = dealEngine.structure({ price, down, termMonths: term, tier });
+
+  const fmt = (n: number) =>
+    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  const fmtPmt = (n: number) =>
+    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  return (
+    <View>
+      <View style={styles.structureTierRow}>
+        <Text style={styles.structureLabel}>Credit Tier</Text>
+        <Text style={styles.structureTierBadge}>{tier}</Text>
+        <Text style={styles.structureApr}>  {(result.apr * 100).toFixed(1)}% APR</Text>
+      </View>
+
+      <Text style={styles.structureLabel}>Vehicle Price</Text>
+      <TextInput
+        style={styles.structureInput}
+        value={priceText}
+        onChangeText={setPriceText}
+        placeholder="0"
+        placeholderTextColor="#444"
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.structureLabel}>Down Payment</Text>
+      <TextInput
+        style={styles.structureInput}
+        value={downText}
+        onChangeText={setDownText}
+        placeholder="0"
+        placeholderTextColor="#444"
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.structureLabel}>Term</Text>
+      <View style={styles.termRow}>
+        {TERM_OPTIONS.map((t) => (
+          <TouchableOpacity
+            key={t}
+            style={[styles.termBtn, term === t && styles.termBtnActive]}
+            onPress={() => setTerm(t)}
+          >
+            <Text style={[styles.termBtnText, term === t && styles.termBtnTextActive]}>
+              {t}mo
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.structureResultRow}>
+        <Text style={styles.structureResultLabel}>Principal</Text>
+        <Text style={styles.structureResultValue}>{fmt(result.principal)}</Text>
+      </View>
+      <View style={styles.structureResultRow}>
+        <Text style={styles.structureMonthlyLabel}>Monthly Payment</Text>
+        <Text style={styles.structureMonthlyValue}>{fmtPmt(result.monthlyPayment)}</Text>
+      </View>
+    </View>
+  );
+}
+
 interface Props {
   session: CustomerSession;
   onDispatch: (action: CustomerAction) => void;
   onClose: () => void;
+  dealEngine: DealEngine;
 }
 
-export function SalesWorkspace({ session, onDispatch, onClose }: Props) {
+export function SalesWorkspace({ session, onDispatch, onClose, dealEngine }: Props) {
   const [tab, setTab] = useState<Tab>('show-vehicle');
 
   const tabDefs: Array<{ id: Tab; label: string }> = [
     { id: 'show-vehicle', label: 'Show Vehicle' },
     { id: 'negotiate',    label: 'Negotiate'    },
+    { id: 'structure',    label: 'Structure'    },
     { id: 'walk',         label: 'Walk'         },
   ];
 
@@ -154,6 +237,7 @@ export function SalesWorkspace({ session, onDispatch, onClose }: Props) {
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
         {tab === 'show-vehicle' && <ShowVehicleTab session={session} onDispatch={onDispatch} />}
         {tab === 'negotiate'    && <NegotiateTab   session={session} onDispatch={onDispatch} />}
+        {tab === 'structure'    && <StructurePaymentTab session={session} dealEngine={dealEngine} />}
         {tab === 'walk'         && <WalkTab         session={session} onDispatch={onDispatch} />}
       </ScrollView>
     </View>
@@ -249,5 +333,90 @@ const styles = StyleSheet.create({
   },
   actionBtnTextDisabled: {
     color: '#444',
+  },
+  structureTierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  structureLabel: {
+    color: '#aaa',
+    fontSize: 13,
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  structureTierBadge: {
+    color: '#4a9eff',
+    fontSize: 22,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  structureApr: {
+    color: '#888',
+    fontSize: 14,
+    marginLeft: 4,
+  },
+  structureInput: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#333',
+    color: '#fff',
+    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 4,
+  },
+  termRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 4,
+  },
+  termBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#333',
+    alignItems: 'center',
+  },
+  termBtnActive: {
+    backgroundColor: '#1e3a5f',
+    borderColor: '#4a9eff',
+  },
+  termBtnText: {
+    color: '#666',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  termBtnTextActive: {
+    color: '#4a9eff',
+  },
+  structureResultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#222',
+  },
+  structureResultLabel: {
+    color: '#888',
+    fontSize: 14,
+  },
+  structureResultValue: {
+    color: '#ccc',
+    fontSize: 14,
+  },
+  structureMonthlyLabel: {
+    color: '#ccc',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  structureMonthlyValue: {
+    color: '#4a9eff',
+    fontSize: 20,
+    fontWeight: '700',
   },
 });
