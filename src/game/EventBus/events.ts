@@ -7,6 +7,7 @@
  * Keep event names namespaced ("domain:verb") and payloads plain data.
  */
 import type { Competitor } from '../CompetitorMarket/Competitor';
+import type { EndCardData } from '../EndCard/types';
 
 export interface EventMap {
   'bus:ready': { at: number };
@@ -175,6 +176,9 @@ export interface EventMap {
       baseRevenue: number;
     }>;
   };
+
+  // EndCard — all terminal paths converge here; UI subscribes to show the end-card screen
+  'career:game_over': { day: number; data: EndCardData };
 
   // ServiceDispatch — a service ticket was auto-resolved by a service advisor
   'service:ticket_closed': {

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "flavors": [
+    {
+      "reason": "bankruptcy",
+      "backstoryId": "ex-mechanic",
+      "text": "You knew every bolt and gasket, but the books never added up. The lot went quiet one Tuesday, and it stayed that way."
+    },
+    {
+      "reason": "bankruptcy",
+      "backstoryId": "ex-banker",
+      "text": "You structured deals for Fortune 500s. In the end, your own ledger was the one that buried you."
+    },
+    {
+      "reason": "bankruptcy",
+      "backstoryId": "inheritor",
+      "text": "Your father built this from nothing. You returned it to nothing."
+    },
+    {
+      "reason": "ag_complaint",
+      "backstoryId": "ex-mechanic",
+      "text": "They said you knew what was wrong before you sold it. The AG's office agreed."
+    },
+    {
+      "reason": "ag_complaint",
+      "backstoryId": "ex-banker",
+      "text": "Regulatory proceedings. The kind you used to advise clients to settle fast. You didn't."
+    },
+    {
+      "reason": "ag_complaint",
+      "backstoryId": "inheritor",
+      "text": "The regulars who remembered your father remember something else now."
+    },
+    {
+      "reason": "indictment",
+      "backstoryId": "ex-mechanic",
+      "text": "Twenty years in the shop, and it ends in a courtroom. The DA had the VINs memorized."
+    },
+    {
+      "reason": "indictment",
+      "backstoryId": "ex-banker",
+      "text": "Wire fraud. The irony was not lost on anyone, least of all your former employer."
+    },
+    {
+      "reason": "indictment",
+      "backstoryId": "inheritor",
+      "text": "The family name made the headline. Your father would have understood — it was in the blood."
+    }
+  ]
+}
