@@ -1,6 +1,6 @@
 import { loadCreditTiers, classifyCredit } from './creditTier';
 import { computeMonthlyPayment } from './loanMath';
-import { loadFniProducts, getFniProductById } from './fniProducts';
+import { loadFniProducts, getFniProductById, loadFniAutoAttachConfig } from './fniProducts';
 import type {
   CreditTier,
   CreditTierCatalog,
@@ -10,6 +10,8 @@ import type {
   ClosedDealResult,
   FniProduct,
   FniProductCatalog,
+  FniAutoAttachConfig,
+  AttachedFniProduct,
 } from './types';
 import type { EventBus } from '../EventBus';
 import type { Inventory } from '../Inventory';
@@ -19,12 +21,14 @@ export interface DealEngine {
   classifyCredit(score: number): CreditTier;
   structure(params: LoanParams): LoanResult;
   closeDeal(params: CloseDealParams): ClosedDealResult;
-  getFniProducts(): FniProduct[];
+  getFniProducts(unlockedRoles?: string[]): FniProduct[];
+  computeAutoFni(skill: number, unlockedRoles?: string[], rng?: () => number): AttachedFniProduct[];
 }
 
 export interface DealEngineDeps {
   catalog?: CreditTierCatalog;
   fniCatalog?: FniProductCatalog;
+  fniAutoAttachConfig?: FniAutoAttachConfig;
   bus?: EventBus;
   inventory?: Pick<Inventory, 'getLotVehicle' | 'sellVehicle'>;
   economy?: Pick<Economy, 'postRevenue'>;
@@ -33,6 +37,7 @@ export interface DealEngineDeps {
 export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
   const catalog = deps.catalog ?? loadCreditTiers();
   const fniCatalog = deps.fniCatalog ?? loadFniProducts();
+  const autoAttachConfig = deps.fniAutoAttachConfig ?? loadFniAutoAttachConfig();
   const { bus, inventory, economy } = deps;
 
   return {
@@ -45,8 +50,27 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       return computeMonthlyPayment(params, tierDef);
     },
 
-    getFniProducts() {
-      return fniCatalog.products;
+    getFniProducts(unlockedRoles?: string[]) {
+      if (!unlockedRoles) return fniCatalog.products;
+      return fniCatalog.products.filter(
+        (p) => !p.requiredRole || unlockedRoles.includes(p.requiredRole),
+      );
+    },
+
+    computeAutoFni(skill: number, unlockedRoles?: string[], rng: () => number = Math.random): AttachedFniProduct[] {
+      const available = this.getFniProducts(unlockedRoles);
+      const [minMult, maxMult] = autoAttachConfig.skillMultiplierRange;
+      const skillFactor = skill / 100;
+      const multiplier = minMult + (maxMult - minMult) * skillFactor;
+      const attached: AttachedFniProduct[] = [];
+      for (const product of available) {
+        const baseRate = autoAttachConfig.baseAttachRates[product.id] ?? 0;
+        const actualRate = Math.min(1, baseRate * multiplier);
+        if (rng() < actualRate) {
+          attached.push({ productId: product.id, price: product.defaultPrice });
+        }
+      }
+      return attached;
     },
 
     closeDeal({ customerId, vehicleId, agreedPrice, fniProducts = [] }) {

@@ -26,6 +26,7 @@ export const StaffRoleSchema = z
     grants_skills: z.array(z.string().min(1)),
     promotes_to: z.array(z.string().min(1)),
     promotion_gates: z.record(z.string().min(1), z.number()),
+    hireTier: z.number().int().min(1).optional(),
   })
   .strict();
 

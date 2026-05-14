@@ -25,7 +25,8 @@
     "department": "sales",
     "grants_skills": ["finance_structuring", "product_presentation"],
     "promotes_to": ["gm"],
-    "promotion_gates": { "effectiveness": 0.7, "trustworthiness": 0.8 }
+    "promotion_gates": { "effectiveness": 0.7, "trustworthiness": 0.8 },
+    "hireTier": 2
   },
   "technician": {
     "tier": "worker",

@@ -14,6 +14,38 @@
       "shortLabel": "GAP",
       "defaultPrice": 695,
       "cost": 195
+    },
+    {
+      "id": "tireWheel",
+      "label": "Tire & Wheel Protection",
+      "shortLabel": "T&W",
+      "defaultPrice": 795,
+      "cost": 250,
+      "requiredRole": "f&i-manager"
+    },
+    {
+      "id": "etch",
+      "label": "Vehicle Etching",
+      "shortLabel": "ETCH",
+      "defaultPrice": 299,
+      "cost": 50,
+      "requiredRole": "f&i-manager"
+    },
+    {
+      "id": "prepaidMaintenance",
+      "label": "Prepaid Maintenance",
+      "shortLabel": "PPM",
+      "defaultPrice": 895,
+      "cost": 300,
+      "requiredRole": "f&i-manager"
+    },
+    {
+      "id": "keyReplacement",
+      "label": "Key Replacement",
+      "shortLabel": "KEY",
+      "defaultPrice": 395,
+      "cost": 95,
+      "requiredRole": "f&i-manager"
     }
   ]
 }

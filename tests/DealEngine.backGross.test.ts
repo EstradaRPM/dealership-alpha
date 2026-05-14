@@ -53,13 +53,13 @@ function setupNegotiating() {
 // ── getFniProducts ─────────────────────────────────────────────────────────────
 
 describe('DealEngine.getFniProducts', () => {
-  it('returns VSC and GAP products', () => {
+  it('returns all 6 products when no role filter is provided', () => {
     const { dealEngine } = makeSetup();
     const products = dealEngine.getFniProducts();
     const ids = products.map((p) => p.id);
     expect(ids).toContain('vsc');
     expect(ids).toContain('gap');
-    expect(products).toHaveLength(2);
+    expect(products).toHaveLength(6);
   });
 
   it('each product has id, label, shortLabel, defaultPrice, cost', () => {

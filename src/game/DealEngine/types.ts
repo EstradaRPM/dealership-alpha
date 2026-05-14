@@ -29,6 +29,12 @@ export interface FniProduct {
   shortLabel: string;
   defaultPrice: number;
   cost: number;
+  requiredRole?: string;
+}
+
+export interface FniAutoAttachConfig {
+  baseAttachRates: Record<string, number>;
+  skillMultiplierRange: [number, number];
 }
 
 export interface FniProductCatalog {

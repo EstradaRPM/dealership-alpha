@@ -13,6 +13,7 @@ export interface StaffOrgDeps {
   taxonomy: StaffTaxonomy;
   archetypes: StaffArchetypeCatalog;
   config?: StaffOrgConfig;
+  getTier?: () => number;
 }
 
 export interface StaffOrg {
@@ -32,6 +33,7 @@ export class StaffOrgError extends Error {
 export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   const { bus, economy, masterSeed, taxonomy, archetypes } = deps;
   const config = deps.config ?? loadStaffOrgConfig();
+  const getTier = deps.getTier;
 
   const roster: StaffWithComposites[] = [];
   // candidateId → CandidateListing; cleared on day advance
@@ -94,6 +96,16 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
     },
 
     getCandidates(roleId: string): readonly CandidateListing[] {
+      const role = taxonomy.roles[roleId];
+      if (!role) throw new StaffOrgError(`Unknown role "${roleId}"`);
+      if (role.hireTier !== undefined && getTier !== undefined) {
+        const current = getTier();
+        if (current < role.hireTier) {
+          throw new StaffOrgError(
+            `Role "${roleId}" requires dealership tier ${role.hireTier} (current: ${current})`,
+          );
+        }
+      }
       if (!rolePool.has(roleId)) {
         buildCandidatesForRole(roleId);
       }

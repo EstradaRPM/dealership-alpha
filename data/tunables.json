@@ -86,6 +86,17 @@
     "minRevenueMultiplier": 0.80,
     "maxRevenueMultiplier": 1.30
   },
+  "fniAutoAttach": {
+    "baseAttachRates": {
+      "vsc": 0.55,
+      "gap": 0.45,
+      "tireWheel": 0.30,
+      "etch": 0.25,
+      "prepaidMaintenance": 0.35,
+      "keyReplacement": 0.40
+    },
+    "skillMultiplierRange": [0.4, 1.1]
+  },
   "staffDispatch": {
     "exceptionFlagRates": {
       "vip_customer": 0.05,

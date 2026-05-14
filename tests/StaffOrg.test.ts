@@ -232,3 +232,78 @@ describe('StaffOrg — config', () => {
     expect(typeof config.hiringCostByTier['customer-facing']).toBe('number');
   });
 });
+
+// ── F&I Manager hire-tier gating ────────────────────────────────────────────
+
+describe('StaffOrg — F&I Manager hire-tier gating', () => {
+  function makeSetupWithTier(tier: number, startingCash = STARTING_CASH) {
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const staffOrg = createStaffOrg({
+      bus,
+      economy,
+      masterSeed: MASTER_SEED,
+      taxonomy,
+      archetypes,
+      config: CHEAP_CONFIG,
+      getTier: () => tier,
+    });
+    return { bus, clock, staffOrg };
+  }
+
+  it('getCandidates for f&i-manager throws at Tier 1', () => {
+    const { clock, staffOrg } = makeSetupWithTier(1);
+    clock.advanceDay();
+    expect(() => staffOrg.getCandidates('f&i-manager')).toThrow(StaffOrgError);
+  });
+
+  it('getCandidates for f&i-manager throws with message mentioning tier 2', () => {
+    const { clock, staffOrg } = makeSetupWithTier(1);
+    clock.advanceDay();
+    expect(() => staffOrg.getCandidates('f&i-manager')).toThrow(/tier 2/i);
+  });
+
+  it('getCandidates for f&i-manager succeeds at Tier 2', () => {
+    const { clock, staffOrg } = makeSetupWithTier(2);
+    clock.advanceDay();
+    const candidates = staffOrg.getCandidates('f&i-manager');
+    expect(candidates.length).toBeGreaterThan(0);
+  });
+
+  it('getCandidates for f&i-manager succeeds at Tier 3', () => {
+    const { clock, staffOrg } = makeSetupWithTier(3);
+    clock.advanceDay();
+    const candidates = staffOrg.getCandidates('f&i-manager');
+    expect(candidates.length).toBeGreaterThan(0);
+  });
+
+  it('getCandidates for salesperson is unaffected by tier gating (no hireTier)', () => {
+    const { clock, staffOrg } = makeSetupWithTier(1);
+    clock.advanceDay();
+    expect(() => staffOrg.getCandidates('salesperson')).not.toThrow();
+  });
+
+  it('getCandidates skips tier check when getTier dep is not provided', () => {
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const staffOrg = createStaffOrg({
+      bus, economy, masterSeed: MASTER_SEED, taxonomy, archetypes, config: CHEAP_CONFIG,
+      // no getTier dep
+    });
+    clock.advanceDay();
+    // Should not throw even though f&i-manager has hireTier: 2
+    expect(() => staffOrg.getCandidates('f&i-manager')).not.toThrow();
+  });
+
+  it('all f&i-manager candidates have product_presentation and finance_structuring skills', () => {
+    const { clock, staffOrg } = makeSetupWithTier(2);
+    clock.advanceDay();
+    const candidates = staffOrg.getCandidates('f&i-manager');
+    for (const c of candidates) {
+      expect(c.staff.skills).toHaveProperty('product_presentation');
+      expect(c.staff.skills).toHaveProperty('finance_structuring');
+    }
+  });
+});
