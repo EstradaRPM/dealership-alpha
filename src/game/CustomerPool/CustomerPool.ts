@@ -86,6 +86,14 @@ export function createCustomerPool(deps: {
     doDispatch(customerId, 'CLOSE');
   });
 
+  bus.subscribe('bdc:callback_succeeded', ({ customerId }) => {
+    const session = sessions.get(customerId);
+    if (!session) return;
+    const from = session.stage;
+    session.stage = 'UNGREETED';
+    bus.publish('customer:state_changed', { customerId, from, to: 'UNGREETED' });
+  });
+
   return {
     getSessions() { return [...sessions.values()]; },
     getSession(customerId) { return sessions.get(customerId); },

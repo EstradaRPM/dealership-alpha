@@ -44,6 +44,30 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
     });
   });
 
+  bus.subscribe('followup:bdc_tasks_ready', ({ day, entries }) => {
+    for (const entry of entries) {
+      queues.bdc.push({
+        id: makeId(),
+        type: 'callback',
+        dept: 'bdc',
+        label: `BDC callback: ${entry.archetypeLabel} (heat ${entry.heat})`,
+        createdDay: day,
+        customerId: entry.customerId,
+      });
+    }
+  });
+
+  bus.subscribe('bdc:callback_succeeded', ({ customerId, day, archetypeLabel }) => {
+    queues.sales.push({
+      id: makeId(),
+      type: 'workspace',
+      dept: 'sales',
+      label: archetypeLabel,
+      createdDay: day,
+      customerId,
+    });
+  });
+
   return {
     getQueue(dept) { return queues[dept]; },
     getBadgeCount(dept) { return queues[dept].length; },

@@ -1,5 +1,5 @@
 export type DeptKey = 'sales' | 'service' | 'bdc' | 'office' | 'lot';
-export type ItemType = 'routine' | 'workspace';
+export type ItemType = 'routine' | 'workspace' | 'callback';
 
 export interface QueueItem {
   readonly id: string;

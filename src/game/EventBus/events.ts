@@ -48,6 +48,15 @@ export interface EventMap {
   // FollowUpPool — a walked customer's heat decayed to zero; no longer actionable
   'followup:customer_archived': { customerId: string; day: number };
 
+  // FollowUpPool → DepartmentQueue — hottest follow-up customer(s) ready for morning callback
+  'followup:bdc_tasks_ready': {
+    day: number;
+    entries: ReadonlyArray<{ customerId: string; heat: number; archetypeLabel: string }>;
+  };
+
+  // FollowUpPool — a BDC callback attempt succeeded; customer returns to Sales
+  'bdc:callback_succeeded': { customerId: string; day: number; archetypeLabel: string };
+
   // DealEngine — a deal has been fully closed (vehicle sold, revenue posted)
   'deal:closed': {
     customerId: string;
