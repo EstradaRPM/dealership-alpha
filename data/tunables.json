@@ -6,6 +6,99 @@
   },
   "economy": {
     "startingCash": 50000,
-    "dailyOverheadBase": 350
+    "dailyOverheadBase": 350,
+    "tier1": {
+      "weeklyRent": 1200,
+      "weeklyPayrollStub": 800
+    }
+  },
+  "staffOrg": {
+    "hiringCostByTier": {
+      "worker": 500,
+      "customer-facing": 1000,
+      "manager": 2500,
+      "gm": 5000
+    },
+    "candidatesPerRole": 3
+  },
+  "staffMorale": {
+    "defaultMorale": 70,
+    "moraleCeiling": 95,
+    "moraleFloor": 5,
+    "quitRiskThreshold": 30,
+    "quitRiskRate": 0.15,
+    "workloadCapacityPerStaff": 4,
+    "workloadOverloadPenalty": -5,
+    "workloadIdleBonus": 1,
+    "recognitionBonus": 3,
+    "payVsMarketBonus": 2,
+    "moraleMultiplierMin": 0.6,
+    "moraleMultiplierMax": 1.2
+  },
+  "capacity": {
+    "facilityTierBaseCapacity": {
+      "1": 2,
+      "2": 4,
+      "3": 8
+    },
+    "staffContributionByTier": {
+      "worker": 0,
+      "customer-facing": 1,
+      "manager": 1,
+      "gm": 0
+    },
+    "missedOpportunitySatisfactionHit": -5
+  },
+  "reputation": {
+    "startingSatisfaction": 70,
+    "startingReviewScore": 60,
+    "satisfactionMin": 0,
+    "satisfactionMax": 100,
+    "closedDealSatisfactionBonus": 3,
+    "closedDealReviewBonus": 1,
+    "walkSatisfactionPenalty": -1,
+    "reviewDriftRate": 0.10,
+    "satisfactionEquilibrium": 50,
+    "satisfactionDriftRate": 0.02,
+    "baseDailyDemand": 2,
+    "demandReviewSlope": 0.015,
+    "marketingSaturation": 1000,
+    "marketingMaxBoost": 0.6,
+    "seasonDemandMultiplier": {
+      "spring": 1.0,
+      "summer": 1.15,
+      "fall": 1.05,
+      "winter": 0.85
+    },
+    "dayOfWeekDemandMultiplier": {
+      "0": 0.9,
+      "1": 1.0,
+      "2": 1.0,
+      "3": 1.05,
+      "4": 1.15,
+      "5": 1.4,
+      "6": 0.7
+    }
+  },
+  "serviceDispatch": {
+    "minAutoResolveRate": 0.40,
+    "maxAutoResolveRate": 0.92,
+    "minRevenueMultiplier": 0.80,
+    "maxRevenueMultiplier": 1.30
+  },
+  "staffDispatch": {
+    "exceptionFlagRates": {
+      "vip_customer": 0.05,
+      "high_dollar_deal": 0.10,
+      "irate_customer": 0.08,
+      "lemon_law_threat": 0.02,
+      "audit_trigger": 0.01
+    },
+    "minAutoResolveRate": 0.30,
+    "maxAutoResolveRate": 0.95,
+    "minCloseRate": 0.20,
+    "maxCloseRate": 0.65,
+    "baseAutoGross": 2500,
+    "minGrossModifier": 0.50
   }
 }

@@ -1,0 +1,131 @@
+# Spec — Condensed (load-bearing facts only)
+
+> **This doc is for fast lookup. GitHub issue #1 is still the source of truth.** When #1 changes, update this doc in the same commit. If you're answering a "why was this designed this way" question, go to #1 — the rationale is there. This doc captures *what is true*, not *why*.
+
+## What this is
+
+Premium, one-time-purchase, single-player mobile dealership-business simulation for iOS + Android. Day-cycle, decision-driven, sim-medium realism (real F&I products, real loan mechanics, real industry KPIs, A/B/C/D credit tiers, fictional OEM analogues). DMS-realism work UI + noir-illustrated narrative beats. Solo dev, niche audience.
+
+## v1 scope
+
+Tier 1 → 3 vertical slice: **gravel yard → paved lot → small showroom**. Tier 4 (franchise) and Tier 5 (multi-store) are post-launch updates. Single active career save + legacy wall of completed careers.
+
+## Tier-aware failure paths
+
+- **Tier 1:** bankruptcy / AG complaint / indictment are **terminal** game-over.
+- **Tier 2:** bankruptcy **contracts** the business back to one yard with debt overhang (not game-over).
+- **Tier 3+:** most regulatory hits become **recoverable consent-decrees / compliance investments**.
+
+Surviving lower-tier failure modes is itself the progression reward. Failure outcomes produce noir-styled end-cards (name, backstory, year, tier, reason).
+
+## Stack
+
+- React Native + Expo, TypeScript (strict).
+- Local SQLite via `expo-sqlite` (only `SaveStore` touches it).
+- No backend in v1; save layer designed for future cloud-sync bolt-on.
+- GitHub Actions CI: typecheck + tests on every push.
+- EAS Build for iOS/Android binaries. TestFlight + Google Internal Testing for dev distribution.
+
+## Module map (game-logic, communicate via EventBus)
+
+Original 12 from issue #1:
+
+| Module | One-line responsibility |
+|---|---|
+| `GameClock` | Day/week/season/year + overnight resolution sequence |
+| `CustomerPool` | Generate customers, advance state machine, manage follow-up heat |
+| `DepartmentQueue` | Per-department queue, routine-vs-workspace classification |
+| `StaffOrg` | Org hierarchy, exception-filtering threshold, hire/fire, morale |
+| `Inventory` | Vehicles, days-in-inventory, recon, auction buying |
+| `DealEngine` | Sales workspace logic: pricing, F&I, loan structuring, gross |
+| `Economy` | Money flows, payroll, rent, marketing, capex, P&L |
+| `Reputation` | Satisfaction, reviews, regulatory pressure → demand |
+| `CompetitorMarket` | 4-6 named competitors per metro, static-with-drift, poach |
+| `CareerProgression` | Tier tracking, failure detection, end-cards, backstory Day-1 mods |
+| `SaveStore` | SQLite persistence, weekly rolling snapshots |
+| `EventBus` | Typed pub/sub (the only cross-module channel) |
+
+Added during v1 slice (see each module's `CLAUDE.md`): `CapacityManager`, `FollowUpPool`, `NPC`, `ServiceQueue`, `ServiceDispatch`, `StaffDispatch`, `StaffMorale`, plus `data/` loader.
+
+Read the per-module `src/game/<Name>/CLAUDE.md` for public API, events, and data files. The canonical event catalog is `src/game/EventBus/events.ts`.
+
+## UI layer (planned, separate from game logic)
+
+`HomeView`, `DepartmentScreens` (Sales/Service/BDC/Office/Lot), `SalesWorkspace`, `FollowupView`, `KPIDashboard`, `NarrativeBeat` (chapter cards), `CharacterCreation`, `EndCard`. UI **renders state and dispatches actions** — it never reaches into game-logic internals.
+
+## Customer state machine
+
+`UNGREETED → GREETED → QUALIFIED → DEMOED → NEGOTIATING → F&I → DELIVERY → CLOSED`. Walks at any state move the customer to the follow-up pool with a `heat` value. Heat decays nightly; archived when zero. Morning BDC task surfaces hottest. Some archetypes ("I know what I want") skip earlier states.
+
+## Day-cycle anatomy
+
+Queue volume **emerges** from sim state (marketing, reputation, season, day-of-week). Player can "close early" — unresolved customers walk (reputation hit). Overnight resolves:
+
+1. `clock:day_ended`
+2. `clock:overnight_payroll`
+3. `clock:overnight_inventory_arrival`
+4. `clock:overnight_reputation_drift`
+5. `clock:overnight_followup_decay`
+6. `clock:day_started`
+
+Order matters. New overnight steps slot deliberately.
+
+## Staff & exception filtering
+
+Solo at start (player + default receptionist NPC). Hired staff **auto-resolve routine queue items in their domain** and only escalate **exceptions** to the player. Exception threshold = function of staff skill + role tier. Exception types: VIP, high-dollar, irate, lemon-law threat, audit trigger.
+
+Roles use real industry titles (Salesperson, Service Advisor, F&I Manager, Sales Manager, GSM, Fixed Ops Director, GM, etc.) with role-specific skill stats. Morale responds to workload, pay, recognition, competitor pressure.
+
+## F&I & financing
+
+v1 starts trimmed: **VSC + GAP** only. More products (T&W, ETCH, prepaid maintenance, key replacement) unlock with the F&I Manager hire. Loans model APR, term, monthly payment. Credit tiers simplified to **A / B / C / D**. PVR, F&I PPRU and similar advanced KPIs surface in UI only after GM hire.
+
+## Department unlocks
+
+- Sales — from start.
+- BDC follow-up — from start (morning callback task).
+- Service — unlocks at Tier 2.
+- Full F&I — unlocks with F&I Manager hire.
+- Bodyshop — **deferred to v2+** (out of scope).
+
+## Capacity vs demand
+
+Capacity ceiling = function of facility tier + staff count. Demand emergent. When demand > capacity, missed opportunities flag in queue (greyed/red), reduce satisfaction, hit reputation, reduce future demand. Self-correcting (painfully) if player doesn't hire.
+
+## Competitors
+
+4-6 named competitors per metro, each with personality + price-point identity. Stats drift week-to-week (cheap RNG, no agent simulation). Customer `shop-around propensity` may route them to a hotter competitor pre-purchase. ADR-0001 §10 documents the `market:competitive_pressure` publish contract.
+
+## Persistence & rollback
+
+- Single career save.
+- Weekly rolling snapshots **4-6 weeks deep**, managed by `SaveStore`.
+- Save layer is the **only** module that touches `expo-sqlite`. No game-logic module reads/writes storage directly.
+- Bump `CURRENT_SAVE_VERSION` and append a `Migration` whenever `SaveState` shape changes.
+
+## Engineering rules (non-negotiable)
+
+- **Deep modules, narrow interfaces.** One public surface per module via `index.ts` barrel. Consumers import from `'@/game/<Module>'`, never from a file inside.
+- **All cross-module communication goes through `EventBus`.** No module imports another's internals.
+- **All tunables in `data/*.json`.** No magic numbers in code. Loaded via `parseData` (typed schema).
+- **Static-now subsystems exposed via interfaces** (`OEMSource`, `CompetitorSource`, etc.) so v2 procedural replacements drop in without changing consumers.
+- **Small commits, each verifiable.** No multi-day branches without intermediate landings.
+- **UI is fully separable from game logic.** Logic never imports UI; UI never reaches into logic internals.
+
+## Testing rules
+
+- Every game-logic module has isolation tests on its **public interface**. Test external behavior, never implementation details. Refactor-safe.
+- UI gets **smoke tests only** (renders without crashing on a representative fixture). **No snapshot tests in v1.**
+
+## Out of scope for v1 (do NOT add without checking issue #1)
+
+Bodyshop · service-to-sales conversion · lease retention · equity mining · leases as financing product · state-by-state regulatory variation · holdback / factory incentives / allocation politics · real-time market pricing · reactive competitor simulation · procedural OEM generator · player-character RPG skill layer · cloud save · multi-save slots · Lottie/sprite animation pipeline · multiplayer / social · period-piece content · Tier 4-5 gameplay.
+
+## When to re-read issue #1
+
+- A design question isn't answered by this doc or the per-module `CLAUDE.md`.
+- Issue #1 has just been edited (check `gh issue view 1 --json updatedAt`).
+- You're proposing a change to the engineering rules, tier system, or module map.
+- The user explicitly says "check #1".
+
+Otherwise — work from this doc + per-module docs + `events.ts`.

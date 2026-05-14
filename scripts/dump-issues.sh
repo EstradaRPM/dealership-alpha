@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Regenerate ISSUES.md — a local, gitignored snapshot of open GitHub issues
 # for offline reading / note-taking. GitHub remains the source of truth.
+#
+# NOTE FOR AGENTS: do NOT Read this file whole — it is ~1.3k lines / ~15-20K
+# tokens. For a single issue, prefer `gh issue view <N>`. For the open list,
+# `gh issue list --state open --limit 200`. Read ISSUES.md only when the user
+# explicitly asks for offline notes or scratch content.
 set -euo pipefail
 
 OUT="ISSUES.md"

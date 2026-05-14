@@ -1,0 +1,11 @@
+{
+  "intakeItems": [
+    { "id": "oil_change", "label": "Oil change", "baseRevenue": 75 },
+    { "id": "brake_job", "label": "Brake job", "baseRevenue": 280 },
+    { "id": "recall", "label": "Recall inspection", "baseRevenue": 0 },
+    { "id": "diagnostic", "label": "Diagnostic check", "baseRevenue": 125 }
+  ],
+  "dailyIntakeMin": 1,
+  "dailyIntakeMax": 3,
+  "minTierRequired": 2
+}

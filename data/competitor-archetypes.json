@@ -1,0 +1,68 @@
+{
+  "volume_dealer": {
+    "brand_id": "corden",
+    "trait_pool": [],
+    "trait_count": { "min": 0, "max": 0 },
+    "attributes": {
+      "csi": { "mu": 0.55, "sigma": 0.1 },
+      "inventory_size": { "mu": 0.75, "sigma": 0.1 },
+      "pricing": { "mu": -0.1, "sigma": 0.05 },
+      "reputation_drift": { "mu": 0.0, "sigma": 0.02 }
+    }
+  },
+  "boutique_dealer": {
+    "brand_id": "castillac",
+    "trait_pool": [],
+    "trait_count": { "min": 0, "max": 0 },
+    "attributes": {
+      "csi": { "mu": 0.85, "sigma": 0.08 },
+      "inventory_size": { "mu": 0.3, "sigma": 0.08 },
+      "pricing": { "mu": 0.2, "sigma": 0.05 },
+      "reputation_drift": { "mu": 0.02, "sigma": 0.01 }
+    }
+  },
+  "aggressive_discounter": {
+    "brand_id": "chevreau",
+    "trait_pool": ["discount_culture", "market_aggression"],
+    "trait_count": { "min": 1, "max": 2 },
+    "attributes": {
+      "csi": { "mu": 0.5, "sigma": 0.1 },
+      "inventory_size": { "mu": 0.8, "sigma": 0.08 },
+      "pricing": { "mu": -0.2, "sigma": 0.05 },
+      "reputation_drift": { "mu": -0.01, "sigma": 0.02 }
+    }
+  },
+  "premium_csi_dealer": {
+    "brand_id": "toraya",
+    "trait_pool": ["service_excellence", "reputation_focus"],
+    "trait_count": { "min": 1, "max": 2 },
+    "attributes": {
+      "csi": { "mu": 0.88, "sigma": 0.06 },
+      "inventory_size": { "mu": 0.35, "sigma": 0.08 },
+      "pricing": { "mu": 0.18, "sigma": 0.05 },
+      "reputation_drift": { "mu": 0.03, "sigma": 0.01 }
+    }
+  },
+  "volume_leader": {
+    "brand_id": "ravon",
+    "trait_pool": ["market_aggression"],
+    "trait_count": { "min": 0, "max": 1 },
+    "attributes": {
+      "csi": { "mu": 0.6, "sigma": 0.1 },
+      "inventory_size": { "mu": 0.9, "sigma": 0.07 },
+      "pricing": { "mu": -0.05, "sigma": 0.05 },
+      "reputation_drift": { "mu": 0.0, "sigma": 0.02 }
+    }
+  },
+  "marginal_survivor": {
+    "brand_id": "vyndai",
+    "trait_pool": ["lean_ops"],
+    "trait_count": { "min": 0, "max": 1 },
+    "attributes": {
+      "csi": { "mu": 0.45, "sigma": 0.12 },
+      "inventory_size": { "mu": 0.25, "sigma": 0.08 },
+      "pricing": { "mu": -0.05, "sigma": 0.08 },
+      "reputation_drift": { "mu": -0.02, "sigma": 0.03 }
+    }
+  }
+}

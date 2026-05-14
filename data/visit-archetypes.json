@@ -1,0 +1,156 @@
+{
+  "family_vehicle_search": {
+    "kind": "sales",
+    "preferences": {
+      "safety":        { "mu": 0.78, "sigma": 0.10 },
+      "performance":   { "mu": 0.28, "sigma": 0.08 },
+      "appearance":    { "mu": 0.30, "sigma": 0.08 },
+      "comfort":       { "mu": 0.55, "sigma": 0.10 },
+      "economy":       { "mu": 0.72, "sigma": 0.10 },
+      "dependability": { "mu": 0.65, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.38, "sigma": 0.10 },
+      "patience": { "mu": 0.62, "sigma": 0.10 }
+    }
+  },
+
+  "performance_test_drive": {
+    "kind": "sales",
+    "preferences": {
+      "safety":        { "mu": 0.30, "sigma": 0.08 },
+      "performance":   { "mu": 0.88, "sigma": 0.08 },
+      "appearance":    { "mu": 0.75, "sigma": 0.10 },
+      "comfort":       { "mu": 0.40, "sigma": 0.10 },
+      "economy":       { "mu": 0.18, "sigma": 0.06 },
+      "dependability": { "mu": 0.35, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.55, "sigma": 0.10 },
+      "patience": { "mu": 0.50, "sigma": 0.12 }
+    }
+  },
+
+  "commuter_replacement": {
+    "kind": "sales",
+    "preferences": {
+      "safety":        { "mu": 0.48, "sigma": 0.10 },
+      "performance":   { "mu": 0.22, "sigma": 0.08 },
+      "appearance":    { "mu": 0.20, "sigma": 0.06 },
+      "comfort":       { "mu": 0.35, "sigma": 0.08 },
+      "economy":       { "mu": 0.82, "sigma": 0.08 },
+      "dependability": { "mu": 0.78, "sigma": 0.08 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.42, "sigma": 0.10 },
+      "patience": { "mu": 0.68, "sigma": 0.10 }
+    }
+  },
+
+  "retirement_upgrade": {
+    "kind": "sales",
+    "preferences": {
+      "safety":        { "mu": 0.72, "sigma": 0.08 },
+      "performance":   { "mu": 0.30, "sigma": 0.08 },
+      "appearance":    { "mu": 0.45, "sigma": 0.10 },
+      "comfort":       { "mu": 0.85, "sigma": 0.08 },
+      "economy":       { "mu": 0.30, "sigma": 0.08 },
+      "dependability": { "mu": 0.60, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.60, "sigma": 0.10 },
+      "patience": { "mu": 0.72, "sigma": 0.08 }
+    }
+  },
+
+  "work_truck_purchase": {
+    "kind": "sales",
+    "preferences": {
+      "safety":        { "mu": 0.35, "sigma": 0.08 },
+      "performance":   { "mu": 0.50, "sigma": 0.10 },
+      "appearance":    { "mu": 0.18, "sigma": 0.06 },
+      "comfort":       { "mu": 0.28, "sigma": 0.08 },
+      "economy":       { "mu": 0.55, "sigma": 0.12 },
+      "dependability": { "mu": 0.88, "sigma": 0.08 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.32, "sigma": 0.10 },
+      "patience": { "mu": 0.45, "sigma": 0.12 }
+    }
+  },
+
+  "routine_maintenance": {
+    "kind": "service",
+    "preferences": {
+      "price":        { "mu": 0.55, "sigma": 0.12 },
+      "speed":        { "mu": 0.72, "sigma": 0.10 },
+      "quality":      { "mu": 0.52, "sigma": 0.10 },
+      "trust_in_shop":{ "mu": 0.55, "sigma": 0.12 },
+      "convenience":  { "mu": 0.60, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.48, "sigma": 0.12 },
+      "patience": { "mu": 0.62, "sigma": 0.10 }
+    }
+  },
+
+  "diagnostic_concern": {
+    "kind": "service",
+    "preferences": {
+      "price":        { "mu": 0.48, "sigma": 0.12 },
+      "speed":        { "mu": 0.42, "sigma": 0.10 },
+      "quality":      { "mu": 0.82, "sigma": 0.08 },
+      "trust_in_shop":{ "mu": 0.85, "sigma": 0.08 },
+      "convenience":  { "mu": 0.35, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.35, "sigma": 0.12 },
+      "patience": { "mu": 0.55, "sigma": 0.12 }
+    }
+  },
+
+  "warranty_claim": {
+    "kind": "service",
+    "preferences": {
+      "price":        { "mu": 0.20, "sigma": 0.06 },
+      "speed":        { "mu": 0.55, "sigma": 0.12 },
+      "quality":      { "mu": 0.80, "sigma": 0.08 },
+      "trust_in_shop":{ "mu": 0.75, "sigma": 0.10 },
+      "convenience":  { "mu": 0.50, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.42, "sigma": 0.12 },
+      "patience": { "mu": 0.58, "sigma": 0.10 }
+    }
+  },
+
+  "insurance_collision_claim": {
+    "kind": "body",
+    "preferences": {
+      "price":        { "mu": 0.22, "sigma": 0.06 },
+      "speed":        { "mu": 0.58, "sigma": 0.12 },
+      "quality":      { "mu": 0.75, "sigma": 0.08 },
+      "trust_in_shop":{ "mu": 0.65, "sigma": 0.10 },
+      "convenience":  { "mu": 0.88, "sigma": 0.08 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.40, "sigma": 0.12 },
+      "patience": { "mu": 0.52, "sigma": 0.12 }
+    }
+  },
+
+  "out_of_pocket_cosmetic": {
+    "kind": "body",
+    "preferences": {
+      "price":        { "mu": 0.78, "sigma": 0.10 },
+      "speed":        { "mu": 0.42, "sigma": 0.10 },
+      "quality":      { "mu": 0.65, "sigma": 0.10 },
+      "trust_in_shop":{ "mu": 0.55, "sigma": 0.12 },
+      "convenience":  { "mu": 0.45, "sigma": 0.10 }
+    },
+    "resources": {
+      "trust":    { "mu": 0.38, "sigma": 0.12 },
+      "patience": { "mu": 0.60, "sigma": 0.10 }
+    }
+  }
+}

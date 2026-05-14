@@ -1,0 +1,86 @@
+{
+  "productivity": {
+    "tier": "worker",
+    "growth_rate": 0.5,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 1.0 }
+  },
+  "mechanical_aptitude": {
+    "tier": "worker",
+    "growth_rate": 0.4,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.8, "trustworthiness": 0.2 }
+  },
+  "product_knowledge": {
+    "tier": "customer-facing",
+    "growth_rate": 0.3,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.6, "trustworthiness": 0.4 }
+  },
+  "communication": {
+    "tier": "customer-facing",
+    "growth_rate": 0.4,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.5, "trustworthiness": 0.5 }
+  },
+  "rapport_building": {
+    "tier": "customer-facing",
+    "growth_rate": 0.35,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.4, "trustworthiness": 0.6 }
+  },
+  "diagnostic_clarity": {
+    "tier": "customer-facing",
+    "growth_rate": 0.3,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.4, "trustworthiness": 0.6 }
+  },
+  "pricing": {
+    "tier": "manager",
+    "growth_rate": 0.2,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.7, "trustworthiness": 0.3 }
+  },
+  "t_o_closing": {
+    "tier": "manager",
+    "growth_rate": 0.2,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.8, "trustworthiness": 0.2 }
+  },
+  "finance_structuring": {
+    "tier": "manager",
+    "growth_rate": 0.2,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.7, "trustworthiness": 0.3 }
+  },
+  "product_presentation": {
+    "tier": "manager",
+    "growth_rate": 0.25,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.5, "trustworthiness": 0.5 }
+  },
+  "shop_throughput": {
+    "tier": "manager",
+    "growth_rate": 0.2,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.9, "trustworthiness": 0.1 }
+  },
+  "warranty_handling": {
+    "tier": "manager",
+    "growth_rate": 0.2,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.4, "trustworthiness": 0.6 }
+  },
+  "write_up_accuracy": {
+    "tier": "customer-facing",
+    "growth_rate": 0.35,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.7, "trustworthiness": 0.3 }
+  },
+  "upsell": {
+    "tier": "customer-facing",
+    "growth_rate": 0.3,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.8, "trustworthiness": 0.2 }
+  }
+}

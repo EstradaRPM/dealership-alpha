@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A premium, single-player, mobile dealership-business simulation. Day-cycle, decision-driven, sim-medium realism (real F&I products, real loan mechanics, real industry KPIs). Solo dev, time-constrained. Niche audience over big revenue.
 
-**Authoritative spec:** GitHub issue #1 (`gh issue view 1`). Read it before any non-trivial work — it captures every macro design decision and is the source of truth.
+**Authoritative spec:** GitHub issue #1 (`gh issue view 1`) is the source of truth. For day-to-day work, prefer `docs/spec-condensed.md` — it distills the load-bearing facts. Re-read issue #1 only when a question isn't answered by the condensed doc or when #1 has just changed.
+
+**Issue lookups:** use `gh issue view <N>` for a single issue and `gh issue list --state open` for the queue. The gitignored `ISSUES.md` dump is ~1.3k lines and should NOT be Read whole.
 
 ## Non-negotiable engineering principle
 
@@ -30,15 +32,19 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 
 ## Module map (deep modules, communicating via EventBus)
 
-Game logic: `GameClock`, `CustomerPool`, `DepartmentQueue`, `StaffOrg`, `Inventory`, `DealEngine`, `Economy`, `Reputation`, `CompetitorMarket`, `CareerProgression`, `SaveStore`, `EventBus`.
+Game logic lives under `src/game/<Module>/`. Each module directory contains a `CLAUDE.md` describing its public surface, events emitted/consumed, and tunable data files — **read the per-module doc before touching that module** rather than re-deriving from `index.ts`.
 
-UI: `HomeView`, `DepartmentScreens`, `SalesWorkspace`, `FollowupView`, `KPIDashboard`, `NarrativeBeat`, `CharacterCreation`, `EndCard`.
+Original 12 (issue #1): `GameClock`, `CustomerPool`, `DepartmentQueue`, `StaffOrg`, `Inventory`, `DealEngine`, `Economy`, `Reputation`, `CompetitorMarket`, `CareerProgression`, `SaveStore`, `EventBus`.
 
-See issue #1 for module responsibilities.
+Added during v1 slice: `CapacityManager`, `FollowUpPool`, `NPC`, `ServiceQueue`, `ServiceDispatch`, `StaffDispatch`, `StaffMorale`. Plus `data/` (JSON loader + tunables schema; not an EventBus participant).
+
+UI (planned, not yet implemented): `HomeView`, `DepartmentScreens`, `SalesWorkspace`, `FollowupView`, `KPIDashboard`, `NarrativeBeat`, `CharacterCreation`, `EndCard`.
+
+The canonical event catalog is `src/game/EventBus/events.ts` — every event name, payload, and ordering note lives there. See issue #1 for the macro-design rationale.
 
 ## Testing
 
-- All 12 game-logic modules get isolation tests on their public interface. Test external behavior, never implementation details.
+- Every game-logic module gets isolation tests on its public interface. Test external behavior, never implementation details.
 - UI gets smoke tests only (renders without crashing).
 - No snapshot tests in v1.
 

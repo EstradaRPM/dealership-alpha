@@ -1,0 +1,122 @@
+[
+  {
+    "id": "valley-corden",
+    "name": "Valley Corden",
+    "brand": "corden",
+    "personality": "volume_dealer",
+    "price_point": "value",
+    "rep": 0.72,
+    "inventory": 0.80,
+    "pricing": 0.60,
+    "clamp": {
+      "rep":       { "lo": 0.57, "hi": 0.87 },
+      "inventory": { "lo": 0.65, "hi": 0.95 },
+      "pricing":   { "lo": 0.45, "hi": 0.75 }
+    }
+  },
+  {
+    "id": "sunrise-toraya",
+    "name": "Sunrise Toraya",
+    "brand": "toraya",
+    "personality": "premium_csi",
+    "price_point": "premium",
+    "rep": 0.85,
+    "inventory": 0.70,
+    "pricing": 0.55,
+    "clamp": {
+      "rep":       { "lo": 0.70, "hi": 1.00 },
+      "inventory": { "lo": 0.55, "hi": 0.85 },
+      "pricing":   { "lo": 0.40, "hi": 0.70 }
+    }
+  },
+  {
+    "id": "metro-vanda",
+    "name": "Metro Vanda",
+    "brand": "vanda",
+    "personality": "value_leader",
+    "price_point": "budget",
+    "rep": 0.78,
+    "inventory": 0.65,
+    "pricing": 0.50,
+    "clamp": {
+      "rep":       { "lo": 0.63, "hi": 0.93 },
+      "inventory": { "lo": 0.50, "hi": 0.80 },
+      "pricing":   { "lo": 0.35, "hi": 0.65 }
+    }
+  },
+  {
+    "id": "desert-ravon",
+    "name": "Desert Ravon",
+    "brand": "ravon",
+    "personality": "volume_leader",
+    "price_point": "value",
+    "rep": 0.55,
+    "inventory": 0.75,
+    "pricing": 0.70,
+    "clamp": {
+      "rep":       { "lo": 0.40, "hi": 0.70 },
+      "inventory": { "lo": 0.60, "hi": 0.90 },
+      "pricing":   { "lo": 0.55, "hi": 0.85 }
+    }
+  },
+  {
+    "id": "lakeview-chevreau",
+    "name": "Lakeview Chevreau",
+    "brand": "chevreau",
+    "personality": "aggressive_discounter",
+    "price_point": "budget",
+    "rep": 0.65,
+    "inventory": 0.85,
+    "pricing": 0.65,
+    "clamp": {
+      "rep":       { "lo": 0.50, "hi": 0.80 },
+      "inventory": { "lo": 0.70, "hi": 1.00 },
+      "pricing":   { "lo": 0.50, "hi": 0.80 }
+    }
+  },
+  {
+    "id": "southside-vyndai",
+    "name": "Southside Vyndai",
+    "brand": "vyndai",
+    "personality": "marginal_survivor",
+    "price_point": "budget",
+    "rep": 0.60,
+    "inventory": 0.55,
+    "pricing": 0.40,
+    "clamp": {
+      "rep":       { "lo": 0.45, "hi": 0.75 },
+      "inventory": { "lo": 0.40, "hi": 0.70 },
+      "pricing":   { "lo": 0.25, "hi": 0.55 }
+    }
+  },
+  {
+    "id": "eastside-kaivo",
+    "name": "Eastside Kaivo",
+    "brand": "kaivo",
+    "personality": "budget_discounter",
+    "price_point": "budget",
+    "rep": 0.58,
+    "inventory": 0.50,
+    "pricing": 0.38,
+    "clamp": {
+      "rep":       { "lo": 0.43, "hi": 0.73 },
+      "inventory": { "lo": 0.35, "hi": 0.65 },
+      "pricing":   { "lo": 0.23, "hi": 0.53 }
+    }
+  },
+  {
+    "id": "riverside-messan",
+    "name": "Riverside Messan",
+    "brand": "messan",
+    "personality": "value_dealer",
+    "price_point": "value",
+    "rep": 0.62,
+    "inventory": 0.60,
+    "pricing": 0.48,
+    "clamp": {
+      "rep":       { "lo": 0.47, "hi": 0.77 },
+      "inventory": { "lo": 0.45, "hi": 0.75 },
+      "pricing":   { "lo": 0.33, "hi": 0.63 }
+    }
+  }
+]

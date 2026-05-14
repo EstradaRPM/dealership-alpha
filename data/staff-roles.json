@@ -1,0 +1,58 @@
+{
+  "lot-porter": {
+    "tier": "worker",
+    "department": null,
+    "grants_skills": ["productivity"],
+    "promotes_to": ["salesperson", "technician"],
+    "promotion_gates": { "productivity": 40 }
+  },
+  "salesperson": {
+    "tier": "customer-facing",
+    "department": "sales",
+    "grants_skills": ["product_knowledge", "communication", "rapport_building"],
+    "promotes_to": ["sales-manager", "f&i-manager"],
+    "promotion_gates": { "effectiveness": 0.6, "trustworthiness": 0.65 }
+  },
+  "sales-manager": {
+    "tier": "manager",
+    "department": "sales",
+    "grants_skills": ["pricing", "t_o_closing"],
+    "promotes_to": ["gm"],
+    "promotion_gates": { "effectiveness": 0.75, "trustworthiness": 0.7 }
+  },
+  "f&i-manager": {
+    "tier": "manager",
+    "department": "sales",
+    "grants_skills": ["finance_structuring", "product_presentation"],
+    "promotes_to": ["gm"],
+    "promotion_gates": { "effectiveness": 0.7, "trustworthiness": 0.8 }
+  },
+  "technician": {
+    "tier": "worker",
+    "department": "service",
+    "grants_skills": ["mechanical_aptitude"],
+    "promotes_to": ["service-advisor"],
+    "promotion_gates": { "mechanical_aptitude": 45 }
+  },
+  "service-advisor": {
+    "tier": "customer-facing",
+    "department": "service",
+    "grants_skills": ["communication", "diagnostic_clarity", "write_up_accuracy", "upsell"],
+    "promotes_to": ["service-manager"],
+    "promotion_gates": { "effectiveness": 0.6, "trustworthiness": 0.7 }
+  },
+  "service-manager": {
+    "tier": "manager",
+    "department": "service",
+    "grants_skills": ["shop_throughput", "warranty_handling"],
+    "promotes_to": ["gm"],
+    "promotion_gates": { "effectiveness": 0.75, "trustworthiness": 0.7 }
+  },
+  "gm": {
+    "tier": "gm",
+    "department": null,
+    "grants_skills": [],
+    "promotes_to": [],
+    "promotion_gates": {}
+  }
+}

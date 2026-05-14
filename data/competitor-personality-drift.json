@@ -1,0 +1,10 @@
+{
+  "volume_dealer":         { "rep": 0.020, "inventory": 0.030, "pricing": 0.020 },
+  "premium_csi":           { "rep": 0.015, "inventory": 0.020, "pricing": 0.010 },
+  "value_leader":          { "rep": 0.020, "inventory": 0.025, "pricing": 0.025 },
+  "volume_leader":         { "rep": 0.025, "inventory": 0.035, "pricing": 0.020 },
+  "aggressive_discounter": { "rep": 0.030, "inventory": 0.030, "pricing": 0.040 },
+  "marginal_survivor":     { "rep": 0.040, "inventory": 0.040, "pricing": 0.035 },
+  "budget_discounter":     { "rep": 0.040, "inventory": 0.030, "pricing": 0.040 },
+  "value_dealer":          { "rep": 0.025, "inventory": 0.025, "pricing": 0.025 }
+}

@@ -1,0 +1,184 @@
+{
+  "young_porter": {
+    "role_id": "lot-porter",
+    "trait_pool": ["charisma", "aggressiveness", "transparency", "ego"],
+    "trait_count": { "min": 1, "max": 2 },
+    "skills": {
+      "productivity": { "mu": 22, "sigma": 6 }
+    },
+    "resources": {
+      "stamina": { "mu": 92, "sigma": 4 }
+    }
+  },
+
+  "career_porter": {
+    "role_id": "lot-porter",
+    "trait_pool": ["transparency", "charisma", "ego"],
+    "trait_count": { "min": 1, "max": 2 },
+    "skills": {
+      "productivity": { "mu": 48, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 78, "sigma": 8 }
+    }
+  },
+
+  "fresh_grad_salesperson": {
+    "role_id": "salesperson",
+    "trait_pool": ["charisma", "ego", "aggressiveness", "transparency"],
+    "trait_count": { "min": 1, "max": 2 },
+    "skills": {
+      "product_knowledge": { "mu": 18, "sigma": 6 },
+      "communication": { "mu": 42, "sigma": 10 },
+      "rapport_building": { "mu": 38, "sigma": 10 }
+    },
+    "resources": {
+      "stamina": { "mu": 88, "sigma": 6 }
+    }
+  },
+
+  "career_salesperson": {
+    "role_id": "salesperson",
+    "trait_pool": ["charisma", "closer", "aggressiveness", "ego", "transparency"],
+    "trait_count": { "min": 1, "max": 3 },
+    "skills": {
+      "product_knowledge": { "mu": 55, "sigma": 10 },
+      "communication": { "mu": 58, "sigma": 9 },
+      "rapport_building": { "mu": 50, "sigma": 12 }
+    },
+    "resources": {
+      "stamina": { "mu": 80, "sigma": 8 }
+    }
+  },
+
+  "grinder_salesperson": {
+    "role_id": "salesperson",
+    "trait_pool": ["aggressiveness", "ego", "closer", "charisma"],
+    "trait_count": { "min": 2, "max": 3 },
+    "skills": {
+      "product_knowledge": { "mu": 48, "sigma": 10 },
+      "communication": { "mu": 52, "sigma": 10 },
+      "rapport_building": { "mu": 40, "sigma": 12 }
+    },
+    "resources": {
+      "stamina": { "mu": 82, "sigma": 8 }
+    }
+  },
+
+  "relationship_salesperson": {
+    "role_id": "salesperson",
+    "trait_pool": ["charisma", "transparency", "closer"],
+    "trait_count": { "min": 2, "max": 3 },
+    "skills": {
+      "product_knowledge": { "mu": 60, "sigma": 9 },
+      "communication": { "mu": 65, "sigma": 8 },
+      "rapport_building": { "mu": 68, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 78, "sigma": 8 }
+    }
+  },
+
+  "junior_technician": {
+    "role_id": "technician",
+    "trait_pool": ["transparency", "ego", "aggressiveness"],
+    "trait_count": { "min": 1, "max": 2 },
+    "skills": {
+      "mechanical_aptitude": { "mu": 30, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 86, "sigma": 6 }
+    }
+  },
+
+  "lead_technician": {
+    "role_id": "technician",
+    "trait_pool": ["transparency", "ego", "aggressiveness", "charisma"],
+    "trait_count": { "min": 1, "max": 3 },
+    "skills": {
+      "mechanical_aptitude": { "mu": 72, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 78, "sigma": 8 }
+    }
+  },
+
+  "entry_service_advisor": {
+    "role_id": "service-advisor",
+    "trait_pool": ["transparency", "charisma", "ego"],
+    "trait_count": { "min": 1, "max": 2 },
+    "skills": {
+      "communication": { "mu": 35, "sigma": 10 },
+      "diagnostic_clarity": { "mu": 28, "sigma": 8 },
+      "write_up_accuracy": { "mu": 32, "sigma": 9 },
+      "upsell": { "mu": 22, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 86, "sigma": 6 }
+    }
+  },
+
+  "veteran_service_advisor": {
+    "role_id": "service-advisor",
+    "trait_pool": ["transparency", "charisma", "closer", "ego"],
+    "trait_count": { "min": 2, "max": 3 },
+    "skills": {
+      "mechanical_aptitude": { "mu": 55, "sigma": 10 },
+      "communication": { "mu": 65, "sigma": 9 },
+      "diagnostic_clarity": { "mu": 62, "sigma": 9 },
+      "write_up_accuracy": { "mu": 60, "sigma": 9 },
+      "upsell": { "mu": 55, "sigma": 10 }
+    },
+    "resources": {
+      "stamina": { "mu": 76, "sigma": 8 }
+    }
+  },
+
+  "poached_sales_manager": {
+    "role_id": "sales-manager",
+    "trait_pool": ["closer", "aggressiveness", "charisma", "ego", "transparency"],
+    "trait_count": { "min": 3, "max": 4 },
+    "skills": {
+      "product_knowledge": { "mu": 78, "sigma": 7 },
+      "communication": { "mu": 75, "sigma": 7 },
+      "rapport_building": { "mu": 70, "sigma": 8 },
+      "pricing": { "mu": 72, "sigma": 8 },
+      "t_o_closing": { "mu": 74, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 74, "sigma": 8 }
+    }
+  },
+
+  "poached_finance_manager": {
+    "role_id": "f&i-manager",
+    "trait_pool": ["closer", "transparency", "charisma", "ego", "aggressiveness"],
+    "trait_count": { "min": 3, "max": 4 },
+    "skills": {
+      "product_knowledge": { "mu": 72, "sigma": 8 },
+      "communication": { "mu": 76, "sigma": 7 },
+      "rapport_building": { "mu": 68, "sigma": 9 },
+      "finance_structuring": { "mu": 78, "sigma": 7 },
+      "product_presentation": { "mu": 75, "sigma": 7 }
+    },
+    "resources": {
+      "stamina": { "mu": 74, "sigma": 8 }
+    }
+  },
+
+  "poached_service_manager": {
+    "role_id": "service-manager",
+    "trait_pool": ["transparency", "charisma", "ego", "aggressiveness", "closer"],
+    "trait_count": { "min": 3, "max": 4 },
+    "skills": {
+      "mechanical_aptitude": { "mu": 68, "sigma": 9 },
+      "communication": { "mu": 70, "sigma": 8 },
+      "diagnostic_clarity": { "mu": 72, "sigma": 8 },
+      "shop_throughput": { "mu": 75, "sigma": 7 },
+      "warranty_handling": { "mu": 70, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 72, "sigma": 8 }
+    }
+  }
+}

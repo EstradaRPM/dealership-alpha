@@ -1,0 +1,72 @@
+{
+  "corden": {
+    "share": 0.16,
+    "tier": 2,
+    "segment": "truck"
+  },
+  "chevreau": {
+    "share": 0.14,
+    "tier": 2,
+    "segment": "truck"
+  },
+  "toraya": {
+    "share": 0.14,
+    "tier": 2,
+    "segment": "midline"
+  },
+  "vanda": {
+    "share": 0.10,
+    "tier": 2,
+    "segment": "midline"
+  },
+  "ravon": {
+    "share": 0.08,
+    "tier": 2,
+    "segment": "truck"
+  },
+  "vyndai": {
+    "share": 0.08,
+    "tier": 1,
+    "segment": "economy"
+  },
+  "kaivo": {
+    "share": 0.07,
+    "tier": 1,
+    "segment": "economy"
+  },
+  "messan": {
+    "share": 0.07,
+    "tier": 1,
+    "segment": "midline"
+  },
+  "kemco": {
+    "share": 0.06,
+    "tier": 2,
+    "segment": "truck"
+  },
+  "sabaro": {
+    "share": 0.05,
+    "tier": 2,
+    "segment": "midline"
+  },
+  "castillac": {
+    "share": 0.03,
+    "tier": 3,
+    "segment": "luxury"
+  },
+  "lancroft": {
+    "share": 0.02,
+    "tier": 3,
+    "segment": "luxury"
+  },
+  "bavron": {
+    "share": 0.04,
+    "tier": 3,
+    "segment": "luxury"
+  },
+  "meridas": {
+    "share": 0.04,
+    "tier": 3,
+    "segment": "luxury"
+  }
+}

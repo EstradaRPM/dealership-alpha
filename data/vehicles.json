@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "templates": [
+    {
+      "id": "honda_civic",
+      "make": "Honda",
+      "model": "Civic",
+      "trim": "LX",
+      "yearRange": [2018, 2023],
+      "basePriceRange": [9000, 16000],
+      "mileageRange": [20000, 85000],
+      "category": "sedan"
+    },
+    {
+      "id": "toyota_camry",
+      "make": "Toyota",
+      "model": "Camry",
+      "trim": "LE",
+      "yearRange": [2017, 2022],
+      "basePriceRange": [11000, 19000],
+      "mileageRange": [25000, 90000],
+      "category": "sedan"
+    },
+    {
+      "id": "ford_f150",
+      "make": "Ford",
+      "model": "F-150",
+      "trim": "XL",
+      "yearRange": [2016, 2022],
+      "basePriceRange": [15000, 28000],
+      "mileageRange": [30000, 110000],
+      "category": "truck"
+    },
+    {
+      "id": "chevy_silverado",
+      "make": "Chevrolet",
+      "model": "Silverado 1500",
+      "trim": "WT",
+      "yearRange": [2017, 2022],
+      "basePriceRange": [14000, 26000],
+      "mileageRange": [35000, 120000],
+      "category": "truck"
+    },
+    {
+      "id": "toyota_rav4",
+      "make": "Toyota",
+      "model": "RAV4",
+      "trim": "LE",
+      "yearRange": [2018, 2023],
+      "basePriceRange": [14000, 24000],
+      "mileageRange": [20000, 75000],
+      "category": "suv"
+    },
+    {
+      "id": "honda_crv",
+      "make": "Honda",
+      "model": "CR-V",
+      "trim": "LX",
+      "yearRange": [2017, 2022],
+      "basePriceRange": [12000, 21000],
+      "mileageRange": [25000, 80000],
+      "category": "suv"
+    },
+    {
+      "id": "ford_escape",
+      "make": "Ford",
+      "model": "Escape",
+      "trim": "S",
+      "yearRange": [2017, 2022],
+      "basePriceRange": [9000, 17000],
+      "mileageRange": [30000, 90000],
+      "category": "suv"
+    },
+    {
+      "id": "chevy_equinox",
+      "make": "Chevrolet",
+      "model": "Equinox",
+      "trim": "LS",
+      "yearRange": [2018, 2023],
+      "basePriceRange": [10000, 18000],
+      "mileageRange": [25000, 85000],
+      "category": "suv"
+    },
+    {
+      "id": "nissan_altima",
+      "make": "Nissan",
+      "model": "Altima",
+      "trim": "S",
+      "yearRange": [2017, 2022],
+      "basePriceRange": [8500, 15000],
+      "mileageRange": [30000, 95000],
+      "category": "sedan"
+    },
+    {
+      "id": "jeep_cherokee",
+      "make": "Jeep",
+      "model": "Cherokee",
+      "trim": "Sport",
+      "yearRange": [2017, 2022],
+      "basePriceRange": [11000, 20000],
+      "mileageRange": [30000, 95000],
+      "category": "suv"
+    }
+  ],
+  "conditionTiers": {
+    "clean": {
+      "priceMultiplier": 1.15,
+      "reconCost": 500,
+      "label": "Clean",
+      "report": "No major defects. Passes safety inspection. Recent oil change."
+    },
+    "average": {
+      "priceMultiplier": 1.0,
+      "reconCost": 1200,
+      "label": "Average",
+      "report": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon."
+    },
+    "rough": {
+      "priceMultiplier": 0.82,
+      "reconCost": 2800,
+      "label": "Rough",
+      "report": "Visible wear. Paint chips and interior wear. Needs mechanical inspection."
+    }
+  },
+  "auctionConfig": {
+    "minListings": 3,
+    "maxListings": 6
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "products": [
+    {
+      "id": "vsc",
+      "label": "Vehicle Service Contract",
+      "shortLabel": "VSC",
+      "defaultPrice": 1495,
+      "cost": 495
+    },
+    {
+      "id": "gap",
+      "label": "GAP Insurance",
+      "shortLabel": "GAP",
+      "defaultPrice": 695,
+      "cost": 195
+    }
+  ]
+}
