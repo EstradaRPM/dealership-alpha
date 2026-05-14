@@ -45,6 +45,51 @@
       "reason": "indictment",
       "backstoryId": "inheritor",
       "text": "The family name made the headline. Your father would have understood — it was in the blood."
+    },
+    {
+      "reason": "retire",
+      "backstoryId": "ex-mechanic",
+      "text": "You closed the bay door for the last time. The wrenches went to your nephew. The cash went to a cabin upstate."
+    },
+    {
+      "reason": "retire",
+      "backstoryId": "ex-banker",
+      "text": "A second retirement, this one earned slower and felt sweeter. The numbers, for once, were yours alone."
+    },
+    {
+      "reason": "retire",
+      "backstoryId": "inheritor",
+      "text": "Your father retired into a bottle. You retired into a quiet boat. The name on the door comes down Friday."
+    },
+    {
+      "reason": "sellout",
+      "backstoryId": "ex-mechanic",
+      "text": "The PE folks wired the money before the ink dried. You don't recognize the new signage. You don't drive past."
+    },
+    {
+      "reason": "sellout",
+      "backstoryId": "ex-banker",
+      "text": "You knew the playbook from the other side of the table. The buyer paid full freight and called it a steal."
+    },
+    {
+      "reason": "sellout",
+      "backstoryId": "inheritor",
+      "text": "The family name comes off the marquee Monday. The check is enough that you stopped reading the news about it."
+    },
+    {
+      "reason": "family_handoff",
+      "backstoryId": "ex-mechanic",
+      "text": "You handed your kid the keys with a callused palm. They'll do it differently. That's the point."
+    },
+    {
+      "reason": "family_handoff",
+      "backstoryId": "ex-banker",
+      "text": "Two generations now. The legacy you never had at the bank, built brick by brick on a paved lot."
+    },
+    {
+      "reason": "family_handoff",
+      "backstoryId": "inheritor",
+      "text": "Three generations. Your father would have called it a miracle. You call it a Tuesday."
     }
   ]
 }

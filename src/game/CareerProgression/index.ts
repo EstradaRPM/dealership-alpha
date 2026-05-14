@@ -22,3 +22,13 @@ export type {
   IndictmentMonitorDeps,
   IndictmentMonitorState,
 } from './IndictmentMonitor';
+
+export { createCareerEndingsMonitor } from './CareerEndingsMonitor';
+export type {
+  CareerEndingsMonitor,
+  CareerEndingsMonitorDeps,
+  CareerEndingsMonitorState,
+  PESelloutOffer,
+} from './CareerEndingsMonitor';
+export { loadEndingsTunables } from './endingsData';
+export type { EndingsTunables } from './endingsData';

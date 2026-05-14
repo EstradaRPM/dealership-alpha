@@ -124,7 +124,14 @@ describe('EndCardManager — state serialization', () => {
 });
 
 describe('EndCardManager — flavor text per backstory', () => {
-  const reasons = ['bankruptcy', 'ag_complaint', 'indictment'] as const;
+  const reasons = [
+    'bankruptcy',
+    'ag_complaint',
+    'indictment',
+    'retire',
+    'sellout',
+    'family_handoff',
+  ] as const;
   const backstories = ['ex-mechanic', 'ex-banker', 'inheritor'] as const;
 
   for (const backstoryId of backstories) {
@@ -137,9 +144,36 @@ describe('EndCardManager — flavor text per backstory', () => {
         if (reason === 'bankruptcy') bus.publish('career:bankruptcy_terminal', { day: 100, tier: 1 });
         if (reason === 'ag_complaint') bus.publish('regulatory:ag_complaint_terminal', { day: 100, tier: 1, pressure: 50 });
         if (reason === 'indictment') bus.publish('career:indictment_terminal', { day: 100, tier: 1, pressure: 50 });
+        if (reason === 'retire') bus.publish('career:retired', { day: 100, tier: 1, cashOnHand: 1_000_000, careerYear: 9 });
+        if (reason === 'sellout') bus.publish('career:pe_sellout', { day: 100, tier: 3, offerAmount: 2_000_000 });
+        if (reason === 'family_handoff') bus.publish('career:family_handoff', { day: 100, tier: 2, careerYear: 16 });
 
         expect(manager.data!.flavorText.length).toBeGreaterThan(0);
       });
     }
   }
+});
+
+describe('EndCardManager — success endings', () => {
+  it('routes career:retired to a retire end-card', () => {
+    const bus = createEventBus();
+    const manager = createEndCardManager({ bus, characterProfile: makeProfile(), tierManager: makeTierManager(2) });
+    bus.publish('career:retired', { day: 9 * 364, tier: 2, cashOnHand: 1_000_000, careerYear: 9 });
+    expect(manager.data!.reason).toBe('retire');
+    expect(manager.data!.tierReached).toBe(2);
+  });
+
+  it('routes career:pe_sellout to a sellout end-card', () => {
+    const bus = createEventBus();
+    const manager = createEndCardManager({ bus, characterProfile: makeProfile(), tierManager: makeTierManager(3) });
+    bus.publish('career:pe_sellout', { day: 1000, tier: 3, offerAmount: 2_500_000 });
+    expect(manager.data!.reason).toBe('sellout');
+  });
+
+  it('routes career:family_handoff to a family_handoff end-card', () => {
+    const bus = createEventBus();
+    const manager = createEndCardManager({ bus, characterProfile: makeProfile(), tierManager: makeTierManager(2) });
+    bus.publish('career:family_handoff', { day: 16 * 364, tier: 2, careerYear: 16 });
+    expect(manager.data!.reason).toBe('family_handoff');
+  });
 });

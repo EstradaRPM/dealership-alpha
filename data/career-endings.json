@@ -1,0 +1,16 @@
+{
+  "retire": {
+    "minCashOnHand": 750000,
+    "minCareerYears": 8
+  },
+  "sellout": {
+    "minTier": 3,
+    "offerIntervalDays": 90,
+    "baseValuation": 1500000,
+    "valuationPerCustomer": 5000
+  },
+  "familyHandoff": {
+    "minCareerYears": 15,
+    "minTier": 2
+  }
+}

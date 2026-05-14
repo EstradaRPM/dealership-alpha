@@ -8,17 +8,29 @@ import {
   ScrollView,
 } from 'react-native';
 import type { EndCardData, EndCardReason } from '../../game/EndCard';
+import { END_CARD_OUTCOME } from '../../game/EndCard';
 
 const REASON_LABELS: Record<EndCardReason, string> = {
   bankruptcy: 'Bankruptcy',
   ag_complaint: 'AG Complaint',
   indictment: 'Indictment',
+  retire: 'Retired',
+  sellout: 'Sold to PE',
+  family_handoff: 'Family Handoff',
 };
 
 const REASON_ILLUSTRATION: Record<EndCardReason, string> = {
   bankruptcy: '🪦',
   ag_complaint: '📋',
   indictment: '⚖️',
+  retire: '🌅',
+  sellout: '💼',
+  family_handoff: '🔑',
+};
+
+const HEADER_LABEL: Record<'failure' | 'success', string> = {
+  failure: 'GAME OVER',
+  success: 'CAREER COMPLETE',
 };
 
 interface Props {
@@ -30,12 +42,13 @@ interface Props {
 export function EndCard({ visible, data, onDismiss }: Props) {
   const reasonLabel = REASON_LABELS[data.reason];
   const illustration = REASON_ILLUSTRATION[data.reason];
+  const headerLabel = HEADER_LABEL[END_CARD_OUTCOME[data.reason]];
 
   return (
     <Modal visible={visible} animationType="fade" transparent>
       <View style={styles.overlay}>
         <ScrollView contentContainerStyle={styles.card}>
-          <Text style={styles.gameOver}>GAME OVER</Text>
+          <Text style={styles.gameOver}>{headerLabel}</Text>
 
           <Text style={styles.illustration}>{illustration}</Text>
 

@@ -4,7 +4,14 @@ import { EndCard } from '../src/ui/EndCard';
 import type { EndCardData, EndCardReason } from '../src/game/EndCard';
 import type { BackstoryId } from '../src/game/CareerProgression';
 
-const REASONS: EndCardReason[] = ['bankruptcy', 'ag_complaint', 'indictment'];
+const REASONS: EndCardReason[] = [
+  'bankruptcy',
+  'ag_complaint',
+  'indictment',
+  'retire',
+  'sellout',
+  'family_handoff',
+];
 const BACKSTORIES: BackstoryId[] = ['ex-mechanic', 'ex-banker', 'inheritor'];
 const TIERS = [1, 2, 3];
 

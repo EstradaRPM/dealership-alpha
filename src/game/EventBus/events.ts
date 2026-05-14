@@ -182,6 +182,17 @@ export interface EventMap {
   // EndCard — all terminal paths converge here; UI subscribes to show the end-card screen
   'career:game_over': { day: number; data: EndCardData };
 
+  // CareerEndings — successful career endings (issue #35).
+  // Each routes through EndCardManager to produce a success end-card.
+  'career:retired': { day: number; tier: number; cashOnHand: number; careerYear: number };
+  'career:pe_offer_made': {
+    day: number;
+    tier: number;
+    offerAmount: number;
+  };
+  'career:pe_sellout': { day: number; tier: number; offerAmount: number };
+  'career:family_handoff': { day: number; tier: number; careerYear: number };
+
   // ServiceDispatch — a service ticket was auto-resolved by a service advisor
   'service:ticket_closed': {
     serviceItemId: string;

@@ -42,6 +42,9 @@ export function createEndCardManager(deps: EndCardManagerDeps): EndCardManager {
   bus.subscribe('career:bankruptcy_terminal', ({ day }) => settle(day, 'bankruptcy'));
   bus.subscribe('regulatory:ag_complaint_terminal', ({ day }) => settle(day, 'ag_complaint'));
   bus.subscribe('career:indictment_terminal', ({ day }) => settle(day, 'indictment'));
+  bus.subscribe('career:retired', ({ day }) => settle(day, 'retire'));
+  bus.subscribe('career:pe_sellout', ({ day }) => settle(day, 'sellout'));
+  bus.subscribe('career:family_handoff', ({ day }) => settle(day, 'family_handoff'));
 
   return {
     get data() { return data; },
