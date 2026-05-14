@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A premium, single-player, mobile dealership-business simulation. Day-cycle, decision-driven, sim-medium realism (real F&I products, real loan mechanics, real industry KPIs). Solo dev, time-constrained. Niche audience over big revenue.
 
-**Authoritative spec:** GitHub issue #1 (`gh issue view 1`). Read it before any non-trivial work — it captures every macro design decision and is the source of truth.
+**Authoritative spec:** GitHub issue #1 (`gh issue view 1`) is the source of truth. For day-to-day work, prefer `docs/spec-condensed.md` — it distills the load-bearing facts. Re-read issue #1 only when a question isn't answered by the condensed doc or when #1 has just changed.
+
+**Issue lookups:** use `gh issue view <N>` for a single issue and `gh issue list --state open` for the queue. The gitignored `ISSUES.md` dump is ~1.3k lines and should NOT be Read whole.
 
 ## Non-negotiable engineering principle
 
