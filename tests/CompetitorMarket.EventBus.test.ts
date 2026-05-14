@@ -1,16 +1,22 @@
 import { createEventBus } from '../src/game/EventBus';
-import { createCompetitorMarket } from '../src/game/CompetitorMarket';
+import { createCompetitorMarket, loadPersonalityDrift } from '../src/game/CompetitorMarket';
 import type { CompetitorCatalog } from '../src/game/CompetitorMarket';
 
+const baseClamp = {
+  rep:       { lo: 0.5, hi: 0.9 },
+  inventory: { lo: 0.4, hi: 0.8 },
+  pricing:   { lo: 0.3, hi: 0.7 },
+};
+
 const competitors: CompetitorCatalog = [
-  { id: 'a', name: 'A', brand: 'corden', rep: 0.7, inventory: 0.6, pricing: 0.5 },
-  { id: 'b', name: 'B', brand: 'castillac', rep: 0.6, inventory: 0.5, pricing: 0.7 },
+  { id: 'a', name: 'A', brand: 'corden',   personality: 'volume_dealer', price_point: 'value',   rep: 0.7, inventory: 0.6, pricing: 0.5, clamp: baseClamp },
+  { id: 'b', name: 'B', brand: 'castillac', personality: 'premium_csi',  price_point: 'premium', rep: 0.6, inventory: 0.5, pricing: 0.7, clamp: baseClamp },
 ];
 
 describe('CompetitorMarket EventBus wiring', () => {
   it('publishes market:competitive_pressure on each clock:day_started', () => {
     const bus = createEventBus();
-    createCompetitorMarket({ bus, competitors });
+    createCompetitorMarket({ bus, competitors, personalityDrift: loadPersonalityDrift(), seed: 1 });
 
     const received: { day: number; ids: string[] }[] = [];
     bus.subscribe('market:competitive_pressure', (p) => {
@@ -28,7 +34,7 @@ describe('CompetitorMarket EventBus wiring', () => {
 
   it('dispose stops further publishes', () => {
     const bus = createEventBus();
-    const market = createCompetitorMarket({ bus, competitors });
+    const market = createCompetitorMarket({ bus, competitors, personalityDrift: loadPersonalityDrift(), seed: 1 });
 
     const received: number[] = [];
     bus.subscribe('market:competitive_pressure', (p) => received.push(p.day));
@@ -42,7 +48,7 @@ describe('CompetitorMarket EventBus wiring', () => {
 
   it('payload carries the same competitor set the market was constructed with', () => {
     const bus = createEventBus();
-    createCompetitorMarket({ bus, competitors });
+    createCompetitorMarket({ bus, competitors, personalityDrift: loadPersonalityDrift(), seed: 1 });
 
     let payload: { day: number; competitors: ReadonlyArray<unknown> } | null = null;
     bus.subscribe('market:competitive_pressure', (p) => {

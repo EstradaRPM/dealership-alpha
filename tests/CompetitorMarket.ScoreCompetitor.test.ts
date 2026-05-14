@@ -48,17 +48,23 @@ const priceFocused = makeVisit({
   comfort: 0.4, economy: 0.9, dependability: 0.2,
 });
 
-const dealerA: Competitor = { id: 'a', name: 'A Motors', brand: 'corden', rep: 0.9, inventory: 0.5, pricing: 0.8 };
-const dealerB: Competitor = { id: 'b', name: 'B Motors', brand: 'corden', rep: 0.2, inventory: 0.5, pricing: 0.2 };
+const baseClamp = {
+  rep:       { lo: 0.1, hi: 1.0 },
+  inventory: { lo: 0.1, hi: 1.0 },
+  pricing:   { lo: 0.1, hi: 1.0 },
+};
 
-const castillacDealer: Competitor = { id: 'c', name: 'C Luxury', brand: 'castillac', rep: 0.7, inventory: 0.6, pricing: 0.6 };
-const cordenDealer:    Competitor = { id: 'd', name: 'D Truck',  brand: 'corden',    rep: 0.7, inventory: 0.6, pricing: 0.6 };
+const dealerA: Competitor = { id: 'a', name: 'A Motors', brand: 'corden',    personality: 'volume_dealer', price_point: 'value',   rep: 0.9, inventory: 0.5, pricing: 0.8, clamp: baseClamp };
+const dealerB: Competitor = { id: 'b', name: 'B Motors', brand: 'corden',    personality: 'volume_dealer', price_point: 'budget',  rep: 0.2, inventory: 0.5, pricing: 0.2, clamp: baseClamp };
+
+const castillacDealer: Competitor = { id: 'c', name: 'C Luxury', brand: 'castillac', personality: 'premium_csi',  price_point: 'premium', rep: 0.7, inventory: 0.6, pricing: 0.6, clamp: baseClamp };
+const cordenDealer:    Competitor = { id: 'd', name: 'D Truck',  brand: 'corden',    personality: 'volume_dealer', price_point: 'value',   rep: 0.7, inventory: 0.6, pricing: 0.6, clamp: baseClamp };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('scoreCompetitor', () => {
   it('returns 0 when brand not found in catalog', () => {
-    const unknown: Competitor = { id: 'x', name: 'X', brand: 'ghost', rep: 0.5, inventory: 0.5, pricing: 0.5 };
+    const unknown: Competitor = { id: 'x', name: 'X', brand: 'ghost', personality: 'value_dealer', price_point: 'value', rep: 0.5, inventory: 0.5, pricing: 0.5, clamp: baseClamp };
     expect(scoreCompetitor(unknown, luxurySeeker, brands)).toBe(0);
   });
 

@@ -5,5 +5,7 @@ export { CompetitorSchema, CompetitorCatalogSchema } from './Competitor';
 export type { Competitor, CompetitorCatalog } from './Competitor';
 export { scoreCompetitor } from './ScoreCompetitor';
 export { aggregateShare } from './AggregateShare';
+export { loadPersonalityDrift } from './PersonalityDrift';
+export type { DriftSigma, PersonalityDriftCatalog } from './PersonalityDrift';
 export { createCompetitorMarket } from './CompetitorMarket';
 export type { CompetitorMarket } from './CompetitorMarket';

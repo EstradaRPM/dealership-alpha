@@ -47,10 +47,16 @@ const economyShopper = visit('econ', {
   comfort: 0.4, economy: 0.95, dependability: 0.6,
 });
 
+const baseClamp = {
+  rep:       { lo: 0.4, hi: 0.9 },
+  inventory: { lo: 0.3, hi: 0.9 },
+  pricing:   { lo: 0.2, hi: 0.9 },
+};
+
 const competitors: CompetitorCatalog = [
-  { id: 'lux1', name: 'Lux1', brand: 'castillac', rep: 0.7, inventory: 0.6, pricing: 0.6 },
-  { id: 'truck1', name: 'Truck1', brand: 'corden', rep: 0.7, inventory: 0.6, pricing: 0.6 },
-  { id: 'econ1', name: 'Econ1', brand: 'kaivo', rep: 0.6, inventory: 0.5, pricing: 0.4 },
+  { id: 'lux1',   name: 'Lux1',   brand: 'castillac', personality: 'premium_csi',       price_point: 'premium', rep: 0.7, inventory: 0.6, pricing: 0.6, clamp: baseClamp },
+  { id: 'truck1', name: 'Truck1', brand: 'corden',    personality: 'volume_dealer',      price_point: 'value',   rep: 0.7, inventory: 0.6, pricing: 0.6, clamp: baseClamp },
+  { id: 'econ1',  name: 'Econ1',  brand: 'kaivo',     personality: 'budget_discounter',  price_point: 'budget',  rep: 0.6, inventory: 0.5, pricing: 0.4, clamp: baseClamp },
 ];
 
 describe('aggregateShare', () => {
@@ -112,7 +118,11 @@ describe('aggregateShare', () => {
   });
 
   it('competitor with unknown brand gets zero share', () => {
-    const ghost: Competitor = { id: 'ghost', name: 'Ghost', brand: 'no_such_brand', rep: 0.9, inventory: 0.9, pricing: 0.5 };
+    const ghost: Competitor = {
+      id: 'ghost', name: 'Ghost', brand: 'no_such_brand',
+      personality: 'volume_dealer', price_point: 'value',
+      rep: 0.9, inventory: 0.9, pricing: 0.5, clamp: baseClamp,
+    };
     const shares = aggregateShare([...competitors, ghost], [luxurySeeker, truckBuyer], brands);
     expect(shares.get('ghost')).toBe(0);
   });
