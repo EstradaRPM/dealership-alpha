@@ -23,6 +23,7 @@ import type { SaveStore } from './src/game/SaveStore';
 import type { DeptKey } from './src/game/DepartmentQueue';
 import type { CustomerSession, CustomerAction } from './src/game/CustomerPool';
 import type { LotVehicle } from './src/game/Inventory';
+import { AdminConsole } from './src/ui/AdminConsole';
 
 // Game modules — created once at module level, outside React lifecycle.
 const saveStore: SaveStore = createSaveStore(createSqliteDriver());
@@ -123,12 +124,16 @@ export default function App() {
     customerPool.dispatch(activeSession.customerId, action);
   };
 
-  if (screen === 'loading') {
-    return <View style={styles.container} />;
-  }
+  const handleSaveCleared = () => {
+    setProfile(null);
+    setScreen('character-creation');
+    dayStarted.current = false;
+  };
+
+  let content: React.ReactNode = <View style={styles.container} />;
 
   if (screen === 'character-creation') {
-    return (
+    content = (
       <>
         <StatusBar style="light" />
         <CharacterCreation
@@ -137,10 +142,8 @@ export default function App() {
         />
       </>
     );
-  }
-
-  if (screen === 'auction') {
-    return (
+  } else if (screen === 'auction') {
+    content = (
       <>
         <StatusBar style="light" />
         <AuctionMenu
@@ -152,10 +155,8 @@ export default function App() {
         />
       </>
     );
-  }
-
-  if (screen === 'sales-workspace' && activeSession) {
-    return (
+  } else if (screen === 'sales-workspace' && activeSession) {
+    content = (
       <>
         <StatusBar style="light" />
         <SalesWorkspace
@@ -167,10 +168,8 @@ export default function App() {
         />
       </>
     );
-  }
-
-  if (screen === 'game' && profile) {
-    return (
+  } else if (screen === 'game' && profile) {
+    content = (
       <>
         <StatusBar style="light" />
         <HomeView
@@ -182,11 +181,23 @@ export default function App() {
         />
       </>
     );
+  } else if (screen !== 'loading') {
+    content = <View style={styles.container}><StatusBar style="auto" /></View>;
   }
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
+      {content}
+      {__DEV__ && (
+        <AdminConsole
+          bus={bus}
+          clock={clock}
+          economy={economy}
+          inventory={inventory}
+          saveStore={saveStore}
+          onSaveCleared={handleSaveCleared}
+        />
+      )}
     </View>
   );
 }
