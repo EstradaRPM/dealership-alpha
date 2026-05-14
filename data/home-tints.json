@@ -1,0 +1,38 @@
+{
+  "tints": {
+    "morning": {
+      "clear": { "color": "#FFD580", "opacity": 0.12 },
+      "rain":  { "color": "#7B9CB5", "opacity": 0.18 },
+      "snow":  { "color": "#C8D8E8", "opacity": 0.15 }
+    },
+    "midday": {
+      "clear": { "color": "#FFFFFF", "opacity": 0.04 },
+      "rain":  { "color": "#6B8FA8", "opacity": 0.20 },
+      "snow":  { "color": "#D0E0F0", "opacity": 0.18 }
+    },
+    "dusk": {
+      "clear": { "color": "#FF7040", "opacity": 0.18 },
+      "rain":  { "color": "#6B5060", "opacity": 0.20 },
+      "snow":  { "color": "#C8A8B8", "opacity": 0.15 }
+    },
+    "night": {
+      "clear": { "color": "#1A1A3A", "opacity": 0.45 },
+      "rain":  { "color": "#0A1020", "opacity": 0.50 },
+      "snow":  { "color": "#1E2840", "opacity": 0.40 }
+    }
+  },
+  "pulseZones": {
+    "sales":   { "top": 0.38, "left": 0.22 },
+    "service": { "top": 0.58, "left": 0.68 },
+    "bdc":     { "top": 0.22, "left": 0.68 },
+    "office":  { "top": 0.18, "left": 0.44 },
+    "lot":     { "top": 0.70, "left": 0.44 }
+  },
+  "pulseDot": {
+    "size": 10,
+    "color": "#c8a96e",
+    "minOpacity": 0.25,
+    "maxOpacity": 0.90,
+    "durationMs": 1400
+  }
+}
