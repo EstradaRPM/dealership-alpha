@@ -4,6 +4,12 @@ import type { CharacterProfile } from '../../game/CareerProgression';
 import { loadTierConfig } from '../../game/CareerProgression';
 import type { DeptKey } from '../../game/DepartmentQueue';
 import type { LotVehicle } from '../../game/Inventory';
+import type { EventBus } from '../../game/EventBus';
+import { loadHomeTints, getTint } from './tintConfig';
+import type { TimeOfDay, Weather } from './tintConfig';
+import { TintOverlay } from './TintOverlay';
+import { PulseDots } from './PulseDot';
+import { ActivityMarquee } from './ActivityMarquee';
 
 const DEPARTMENTS: { key: DeptKey; label: string }[] = [
   { key: 'sales', label: 'Sales' },
@@ -25,10 +31,14 @@ interface Props {
   tier?: number;
   businessName?: string;
   accentColor?: string;
+  timeOfDay?: TimeOfDay;
+  weather?: Weather;
+  eventBus?: EventBus;
 }
 
 const DEFAULT_BADGES: DeptBadges = { sales: 0, service: 0, bdc: 0, office: 0, lot: 0 };
 const TIER_CONFIG = loadTierConfig();
+const TINTS_CONFIG = loadHomeTints();
 
 function DeptItem({
   deptKey,
@@ -117,10 +127,14 @@ export function HomeView({
   tier = 1,
   businessName,
   accentColor,
+  timeOfDay = 'midday',
+  weather = 'clear',
+  eventBus,
 }: Props) {
   const tierEntry = TIER_CONFIG.tiers[tier - 1] ?? TIER_CONFIG.tiers[0];
   const displayName = businessName || `${profile.name}'s Lot`;
   const displayAccent = accentColor ?? '#c8a96e';
+  const tint = getTint(TINTS_CONFIG, timeOfDay, weather);
 
   return (
     <View style={styles.root}>
@@ -138,12 +152,18 @@ export function HomeView({
               <Text style={styles.auctionBtnCenterText}>Visit Auction →</Text>
             </TouchableOpacity>
           )}
+          <TintOverlay color={tint.color} opacity={tint.opacity} />
+          <PulseDots config={TINTS_CONFIG} badges={badges} />
         </View>
       ) : (
         <View style={styles.lotPanelWrapper}>
           <LotPanel vehicles={lotVehicles} onOpenAuction={onOpenAuction} />
+          <TintOverlay color={tint.color} opacity={tint.opacity} />
+          <PulseDots config={TINTS_CONFIG} badges={badges} />
         </View>
       )}
+
+      <ActivityMarquee eventBus={eventBus} />
 
       <View style={styles.statusBar}>
         {DEPARTMENTS.map(({ key, label }) => (
