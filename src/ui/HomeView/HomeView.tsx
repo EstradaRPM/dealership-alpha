@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, PanResponder, TouchableOpacity, ScrollView } from 'react-native';
 import type { CharacterProfile } from '../../game/CareerProgression';
+import { loadTierConfig } from '../../game/CareerProgression';
 import type { DeptKey } from '../../game/DepartmentQueue';
 import type { LotVehicle } from '../../game/Inventory';
 
@@ -21,9 +22,13 @@ interface Props {
   onDeptPress?: (dept: DeptKey) => void;
   lotVehicles?: readonly LotVehicle[];
   onOpenAuction?: () => void;
+  tier?: number;
+  businessName?: string;
+  accentColor?: string;
 }
 
 const DEFAULT_BADGES: DeptBadges = { sales: 0, service: 0, bdc: 0, office: 0, lot: 0 };
+const TIER_CONFIG = loadTierConfig();
 
 function DeptItem({
   deptKey,
@@ -109,18 +114,25 @@ export function HomeView({
   onDeptPress,
   lotVehicles = [],
   onOpenAuction,
+  tier = 1,
+  businessName,
+  accentColor,
 }: Props) {
+  const tierEntry = TIER_CONFIG.tiers[tier - 1] ?? TIER_CONFIG.tiers[0];
+  const displayName = businessName || `${profile.name}'s Lot`;
+  const displayAccent = accentColor ?? '#c8a96e';
+
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.dealershipName}>{profile.name}'s Lot</Text>
-        <Text style={styles.tierLabel}>Tier 1 — Gravel Yard</Text>
+        <Text style={[styles.dealershipName, { color: displayAccent }]}>{displayName}</Text>
+        <Text style={styles.tierLabel}>Tier {tier} — {tierEntry.label}</Text>
       </View>
 
       {lotVehicles.length === 0 ? (
-        <View style={styles.illustration} accessibilityLabel="Tier 1 gravel yard lot">
-          <Text style={styles.illustrationPlaceholder}>🏚</Text>
-          <Text style={styles.illustrationCaption}>Your gravel yard awaits.</Text>
+        <View style={styles.illustration} accessibilityLabel={`Tier ${tier} ${tierEntry.label} lot`}>
+          <Text style={styles.illustrationPlaceholder}>{tierEntry.illustration}</Text>
+          <Text style={styles.illustrationCaption}>{tierEntry.caption}</Text>
           {onOpenAuction && (
             <TouchableOpacity onPress={onOpenAuction} style={styles.auctionBtnCenter}>
               <Text style={styles.auctionBtnCenterText}>Visit Auction →</Text>

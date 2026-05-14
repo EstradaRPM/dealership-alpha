@@ -97,6 +97,9 @@ export interface EventMap {
 
   // Reputation — customer satisfaction penalty (stub; Reputation module consumes this in v2)
   'reputation:satisfaction_hit': { day: number; amount: number; reason: string };
+
+  // CareerProgression — player's dealership advanced to the next tier
+  'career:tier_up': { fromTier: number; toTier: number; day: number };
 }
 
 export type EventName = keyof EventMap;

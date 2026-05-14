@@ -1,0 +1,44 @@
+{
+  "checkIntervalDays": 28,
+  "tiers": [
+    {
+      "tier": 1,
+      "label": "Gravel Yard",
+      "illustration": "🏚",
+      "caption": "Your gravel yard awaits."
+    },
+    {
+      "tier": 2,
+      "label": "Paved Lot",
+      "illustration": "🏗",
+      "caption": "A real operation takes shape.",
+      "triggerThreshold": {
+        "minCashOnHand": 125000,
+        "minCustomersServed": 100,
+        "minReputationScore": 62
+      }
+    },
+    {
+      "tier": 3,
+      "label": "Small Showroom",
+      "illustration": "🏢",
+      "caption": "You've built something worth protecting.",
+      "triggerThreshold": {
+        "minCashOnHand": 400000,
+        "minCustomersServed": 300,
+        "minReputationScore": 75
+      }
+    }
+  ],
+  "accentOptions": [
+    { "id": "gold",    "label": "Gold",    "color": "#c8a96e" },
+    { "id": "cobalt",  "label": "Cobalt",  "color": "#4a9eff" },
+    { "id": "crimson", "label": "Crimson", "color": "#c0392b" },
+    { "id": "slate",   "label": "Slate",   "color": "#7f8c8d" }
+  ],
+  "fontOptions": [
+    { "id": "classic",    "label": "Classic" },
+    { "id": "prestige",   "label": "Prestige" },
+    { "id": "industrial", "label": "Industrial" }
+  ]
+}
