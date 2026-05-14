@@ -37,7 +37,7 @@
   "service-advisor": {
     "tier": "customer-facing",
     "department": "service",
-    "grants_skills": ["communication", "diagnostic_clarity"],
+    "grants_skills": ["communication", "diagnostic_clarity", "write_up_accuracy", "upsell"],
     "promotes_to": ["service-manager"],
     "promotion_gates": { "effectiveness": 0.6, "trustworthiness": 0.7 }
   },

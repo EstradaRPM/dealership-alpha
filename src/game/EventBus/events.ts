@@ -100,6 +100,25 @@ export interface EventMap {
 
   // CareerProgression — player's dealership advanced to the next tier
   'career:tier_up': { fromTier: number; toTier: number; day: number };
+
+  // ServiceQueue — daily service intake items generated at Tier 2+
+  'service:intake_ready': {
+    day: number;
+    items: ReadonlyArray<{
+      serviceItemId: string;
+      type: string;
+      label: string;
+      baseRevenue: number;
+    }>;
+  };
+
+  // ServiceDispatch — a service ticket was auto-resolved by a service advisor
+  'service:ticket_closed': {
+    serviceItemId: string;
+    day: number;
+    revenue: number;
+    advisorId: string;
+  };
 }
 
 export type EventName = keyof EventMap;

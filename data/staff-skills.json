@@ -70,5 +70,17 @@
     "growth_rate": 0.2,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.4, "trustworthiness": 0.6 }
+  },
+  "write_up_accuracy": {
+    "tier": "customer-facing",
+    "growth_rate": 0.35,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.7, "trustworthiness": 0.3 }
+  },
+  "upsell": {
+    "tier": "customer-facing",
+    "growth_rate": 0.3,
+    "cap": 100,
+    "composite_mapping": { "effectiveness": 0.8, "trustworthiness": 0.2 }
   }
 }

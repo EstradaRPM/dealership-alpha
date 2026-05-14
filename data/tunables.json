@@ -80,6 +80,12 @@
       "6": 0.7
     }
   },
+  "serviceDispatch": {
+    "minAutoResolveRate": 0.40,
+    "maxAutoResolveRate": 0.92,
+    "minRevenueMultiplier": 0.80,
+    "maxRevenueMultiplier": 1.30
+  },
   "staffDispatch": {
     "exceptionFlagRates": {
       "vip_customer": 0.05,

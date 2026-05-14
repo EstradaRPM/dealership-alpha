@@ -103,6 +103,21 @@
     }
   },
 
+  "entry_service_advisor": {
+    "role_id": "service-advisor",
+    "trait_pool": ["transparency", "charisma", "ego"],
+    "trait_count": { "min": 1, "max": 2 },
+    "skills": {
+      "communication": { "mu": 35, "sigma": 10 },
+      "diagnostic_clarity": { "mu": 28, "sigma": 8 },
+      "write_up_accuracy": { "mu": 32, "sigma": 9 },
+      "upsell": { "mu": 22, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 86, "sigma": 6 }
+    }
+  },
+
   "veteran_service_advisor": {
     "role_id": "service-advisor",
     "trait_pool": ["transparency", "charisma", "closer", "ego"],
@@ -110,7 +125,9 @@
     "skills": {
       "mechanical_aptitude": { "mu": 55, "sigma": 10 },
       "communication": { "mu": 65, "sigma": 9 },
-      "diagnostic_clarity": { "mu": 62, "sigma": 9 }
+      "diagnostic_clarity": { "mu": 62, "sigma": 9 },
+      "write_up_accuracy": { "mu": 60, "sigma": 9 },
+      "upsell": { "mu": 55, "sigma": 10 }
     },
     "resources": {
       "stamina": { "mu": 76, "sigma": 8 }

@@ -80,6 +80,18 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
     });
   });
 
+  bus.subscribe('service:intake_ready', ({ day, items }) => {
+    for (const item of items) {
+      queues.service.push({
+        id: item.serviceItemId,
+        type: 'routine',
+        dept: 'service',
+        label: item.label,
+        createdDay: day,
+      });
+    }
+  });
+
   return {
     getQueue(dept) { return queues[dept]; },
     getBadgeCount(dept) { return queues[dept].length; },
