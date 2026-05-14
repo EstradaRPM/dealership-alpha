@@ -81,6 +81,15 @@ export interface EventMap {
 
   // StaffMorale — staff member quit due to low morale
   'staff:quit': { staffId: string; roleId: string; day: number; morale: number };
+
+  // CapacityManager — customer admitted (within daily capacity)
+  'capacity:customer_admitted': { day: number; customerId: string; label: string };
+
+  // CapacityManager — customer turned away (demand exceeded capacity)
+  'capacity:missed_opportunity': { day: number; customerId: string; label: string };
+
+  // Reputation — customer satisfaction penalty (stub; Reputation module consumes this in v2)
+  'reputation:satisfaction_hit': { day: number; amount: number; reason: string };
 }
 
 export type EventName = keyof EventMap;

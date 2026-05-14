@@ -34,10 +34,21 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
     });
   });
 
-  bus.subscribe('customer:arrived', ({ day, customerId, label }) => {
+  bus.subscribe('capacity:customer_admitted', ({ day, customerId, label }) => {
     queues.sales.push({
       id: makeId(),
       type: 'workspace',
+      dept: 'sales',
+      label,
+      createdDay: day,
+      customerId,
+    });
+  });
+
+  bus.subscribe('capacity:missed_opportunity', ({ day, customerId, label }) => {
+    queues.sales.push({
+      id: makeId(),
+      type: 'missed_opportunity',
       dept: 'sales',
       label,
       createdDay: day,

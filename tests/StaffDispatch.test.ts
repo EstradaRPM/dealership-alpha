@@ -98,7 +98,7 @@ function makeSetup(roster: StaffWithComposites[], config: StaffDispatchConfig = 
 describe('StaffDispatch — no staff on roster', () => {
   it('leaves all sales items in queue when roster is empty', () => {
     const { bus, queue } = makeSetup([], ALWAYS_AUTO_CONFIG);
-    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:1', label: 'Test' });
     expect(queue.getBadgeCount('sales')).toBe(1);
   });
 
@@ -106,7 +106,7 @@ describe('StaffDispatch — no staff on roster', () => {
     const { bus, queue } = makeSetup([], ALWAYS_AUTO_CONFIG);
     const events: unknown[] = [];
     bus.subscribe('staff:auto_resolved', (e) => events.push(e));
-    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:1', label: 'Test' });
     void queue;
     expect(events).toHaveLength(0);
   });
@@ -118,7 +118,7 @@ describe('StaffDispatch — exception flags', () => {
   it('flagged customer stays in queue regardless of staff skill', () => {
     const roster = [makeStaff(1.0)]; // perfect skill
     const { bus, queue } = makeSetup(roster, ALL_EXCEPTION_CONFIG);
-    bus.publish('customer:arrived', { day: 1, customerId: 'cust:vip', label: 'VIP' });
+    bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:vip', label: 'VIP' });
     expect(queue.getBadgeCount('sales')).toBe(1);
   });
 
@@ -127,7 +127,7 @@ describe('StaffDispatch — exception flags', () => {
     const { bus, queue } = makeSetup(roster, ALL_EXCEPTION_CONFIG);
     const events: unknown[] = [];
     bus.subscribe('staff:auto_resolved', (e) => events.push(e));
-    bus.publish('customer:arrived', { day: 1, customerId: 'cust:vip', label: 'VIP' });
+    bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:vip', label: 'VIP' });
     void queue;
     expect(events).toHaveLength(0);
   });
@@ -139,7 +139,7 @@ describe('StaffDispatch — auto-resolve basic flow', () => {
   it('removes item from sales queue on auto-resolve', () => {
     const roster = [makeStaff(0.8)];
     const { bus, queue } = makeSetup(roster, ALWAYS_AUTO_CONFIG);
-    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:1', label: 'Test' });
     expect(queue.getBadgeCount('sales')).toBe(0);
   });
 
@@ -148,7 +148,7 @@ describe('StaffDispatch — auto-resolve basic flow', () => {
     const { bus } = makeSetup(roster, ALWAYS_AUTO_CONFIG);
     const events: Array<{ customerId: string; staffId: string; outcome: string }> = [];
     bus.subscribe('staff:auto_resolved', (e) => events.push(e));
-    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:1', label: 'Test' });
     expect(events).toHaveLength(1);
     expect(events[0].customerId).toBe('cust:1');
     expect(events[0].staffId).toBe('staff:mock:0.8');
@@ -160,7 +160,7 @@ describe('StaffDispatch — auto-resolve basic flow', () => {
     const cashBefore = economy.cash;
     const events: Array<{ outcome: string; grossImpact: number }> = [];
     bus.subscribe('staff:auto_resolved', (e) => events.push(e));
-    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:1', label: 'Test' });
     expect(events[0].outcome).toBe('closed');
     expect(events[0].grossImpact).toBeGreaterThan(0);
     expect(economy.cash).toBeGreaterThan(cashBefore);
@@ -172,7 +172,7 @@ describe('StaffDispatch — auto-resolve basic flow', () => {
     const cashBefore = economy.cash;
     const events: Array<{ outcome: string; grossImpact: number }> = [];
     bus.subscribe('staff:auto_resolved', (e) => events.push(e));
-    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:1', label: 'Test' });
     expect(events[0].outcome).toBe('no_sale');
     expect(events[0].grossImpact).toBe(0);
     expect(economy.cash).toBe(cashBefore);
@@ -183,7 +183,7 @@ describe('StaffDispatch — auto-resolve basic flow', () => {
     const { bus } = makeSetup(roster, ALWAYS_AUTO_CONFIG);
     const events: Array<{ day: number }> = [];
     bus.subscribe('staff:auto_resolved', (e) => events.push(e));
-    bus.publish('customer:arrived', { day: 5, customerId: 'cust:5', label: 'Test' });
+    bus.publish('capacity:customer_admitted',{ day: 5, customerId: 'cust:5', label: 'Test' });
     expect(events[0].day).toBe(5);
   });
 });
@@ -201,7 +201,7 @@ describe('StaffDispatch — skill affects escalation rate', () => {
       const staffOrg = makeStaffOrg(roster);
       createStaffDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config: NO_EXCEPTION_CONFIG });
       bus.subscribe('staff:auto_resolved', () => { resolved++; });
-      bus.publish('customer:arrived', { day: i + 1, customerId: `cust:${i}`, label: 'Test' });
+      bus.publish('capacity:customer_admitted',{ day: i + 1, customerId: `cust:${i}`, label: 'Test' });
     }
     return resolved;
   }
@@ -234,7 +234,7 @@ describe('StaffDispatch — gross degrades with low skill', () => {
       const staffOrg = makeStaffOrg([makeStaff(effectiveness)]);
       createStaffDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config: ALWAYS_CLOSE_CONFIG });
       bus.subscribe('staff:auto_resolved', ({ grossImpact }) => { total += grossImpact; });
-      bus.publish('customer:arrived', { day: i + 1, customerId: `cust:${i}`, label: 'Test' });
+      bus.publish('capacity:customer_admitted',{ day: i + 1, customerId: `cust:${i}`, label: 'Test' });
     }
     return total;
   }

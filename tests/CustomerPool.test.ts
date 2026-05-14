@@ -2,11 +2,13 @@ import { createEventBus } from '../src/game/EventBus';
 import { createGameClock } from '../src/game/GameClock';
 import { createDepartmentQueue } from '../src/game/DepartmentQueue';
 import { createCustomerPool, IllegalTransitionError } from '../src/game/CustomerPool';
+import { createCapacityManager, type CapacityConfig } from '../src/game/CapacityManager';
 import {
   loadPersonArchetypes,
   loadVisitArchetypes,
   loadTraitTaxonomy,
 } from '../src/game/NPC';
+import type { StaffOrg } from '../src/game/StaffOrg';
 
 const npcDeps = {
   masterSeed: 42,
@@ -15,11 +17,26 @@ const npcDeps = {
   traits: loadTraitTaxonomy(),
 };
 
+// High capacity so no customers are ever missed in these tests.
+const OPEN_CAPACITY_CONFIG: CapacityConfig = {
+  facilityTierBaseCapacity: { '1': 999 },
+  staffContributionByTier: {},
+  missedOpportunitySatisfactionHit: -5,
+};
+
+const emptyStaffOrg: StaffOrg = {
+  get currentRoster() { return []; },
+  getCandidates: () => [],
+  hire: () => {},
+  fire: () => {},
+};
+
 function makeSetup(initialDay = 0) {
   const bus = createEventBus();
   const clock = createGameClock({ bus, initialDay });
   const queue = createDepartmentQueue({ bus });
   const pool = createCustomerPool({ bus, npcDeps });
+  createCapacityManager({ bus, staffOrg: emptyStaffOrg, config: OPEN_CAPACITY_CONFIG });
   return { bus, clock, queue, pool };
 }
 

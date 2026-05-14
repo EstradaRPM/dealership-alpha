@@ -29,7 +29,7 @@ export function createStaffDispatch(deps: StaffDispatchDeps): StaffDispatch {
   const { bus, staffOrg, queue, economy, masterSeed, staffMorale } = deps;
   const config = deps.config ?? loadStaffDispatchConfig();
 
-  bus.subscribe('customer:arrived', ({ customerId, day }) => {
+  bus.subscribe('capacity:customer_admitted', ({ customerId, day }) => {
     const salespeople = staffOrg.currentRoster.filter(s => s.role_id === 'salesperson');
     if (salespeople.length === 0) return;
 

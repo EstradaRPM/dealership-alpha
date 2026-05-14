@@ -35,6 +35,20 @@
     "moraleMultiplierMin": 0.6,
     "moraleMultiplierMax": 1.2
   },
+  "capacity": {
+    "facilityTierBaseCapacity": {
+      "1": 2,
+      "2": 4,
+      "3": 8
+    },
+    "staffContributionByTier": {
+      "worker": 0,
+      "customer-facing": 1,
+      "manager": 1,
+      "gm": 0
+    },
+    "missedOpportunitySatisfactionHit": -5
+  },
   "staffDispatch": {
     "exceptionFlagRates": {
       "vip_customer": 0.05,

@@ -133,7 +133,7 @@ describe('StaffMorale — workload drift', () => {
     bus.publish('staff:hired', { staffId: 's6', roleId: 'salesperson', day: 1, hiringCost: 0 });
     // Flood the queue: 5 customers (capacity = 1 × 4 = 4)
     for (let i = 0; i < 5; i++) {
-      bus.publish('customer:arrived', { day: 1, customerId: `cust:${i}`, label: `C${i}` });
+      bus.publish('capacity:customer_admitted', { day: 1, customerId: `cust:${i}`, label: `C${i}` });
     }
     void queue;
     const before = morale.getMorale('s6');
@@ -174,7 +174,7 @@ describe('StaffMorale — clamping', () => {
     bus.publish('staff:hired', { staffId: 's9', roleId: 'salesperson', day: 1, hiringCost: 0 });
     // Flood queue beyond capacity (1 staff × 4 = 4) to trigger overload penalty
     for (let i = 0; i < 5; i++) {
-      bus.publish('customer:arrived', { day: 1, customerId: `oc:${i}`, label: `C${i}` });
+      bus.publish('capacity:customer_admitted', { day: 1, customerId: `oc:${i}`, label: `C${i}` });
     }
     void queue;
     bus.publish('clock:day_ended', { day: 1 });
