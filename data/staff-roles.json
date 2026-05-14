@@ -54,6 +54,7 @@
     "department": null,
     "grants_skills": [],
     "promotes_to": [],
-    "promotion_gates": {}
+    "promotion_gates": {},
+    "hireTier": 3
   }
 }

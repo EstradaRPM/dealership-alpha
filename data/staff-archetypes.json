@@ -180,5 +180,37 @@
     "resources": {
       "stamina": { "mu": 72, "sigma": 8 }
     }
+  },
+
+  "dealmaker_gm": {
+    "role_id": "gm",
+    "trait_pool": ["closer", "charisma", "aggressiveness", "ego", "transparency"],
+    "trait_count": { "min": 3, "max": 4 },
+    "skills": {
+      "communication":        { "mu": 80, "sigma": 6 },
+      "pricing":              { "mu": 82, "sigma": 6 },
+      "t_o_closing":          { "mu": 80, "sigma": 7 },
+      "finance_structuring":  { "mu": 72, "sigma": 8 },
+      "product_presentation": { "mu": 70, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 70, "sigma": 8 }
+    }
+  },
+
+  "operations_gm": {
+    "role_id": "gm",
+    "trait_pool": ["transparency", "charisma", "ego", "aggressiveness", "closer"],
+    "trait_count": { "min": 3, "max": 4 },
+    "skills": {
+      "communication":     { "mu": 76, "sigma": 7 },
+      "pricing":           { "mu": 74, "sigma": 7 },
+      "shop_throughput":   { "mu": 80, "sigma": 6 },
+      "warranty_handling": { "mu": 76, "sigma": 7 },
+      "product_knowledge": { "mu": 72, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 72, "sigma": 7 }
+    }
   }
 }

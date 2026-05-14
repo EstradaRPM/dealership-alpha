@@ -15,6 +15,7 @@ export interface StaffDispatchDeps {
   masterSeed: number;
   staffMorale?: StaffMorale;
   config?: StaffDispatchConfig;
+  getHasGm?: () => boolean;
 }
 
 // Intentionally empty — dispatch is fully autonomous.
@@ -28,6 +29,7 @@ function lerp(a: number, b: number, t: number): number {
 export function createStaffDispatch(deps: StaffDispatchDeps): StaffDispatch {
   const { bus, staffOrg, queue, economy, masterSeed, staffMorale } = deps;
   const config = deps.config ?? loadStaffDispatchConfig();
+  const getHasGm = deps.getHasGm;
 
   bus.subscribe('capacity:customer_admitted', ({ customerId, day }) => {
     const salespeople = staffOrg.currentRoster.filter(s => s.role_id === 'salesperson');
@@ -35,9 +37,11 @@ export function createStaffDispatch(deps: StaffDispatchDeps): StaffDispatch {
 
     const rng = createRng(deriveSeed(masterSeed, 'staff_dispatch', { customerId, day }));
 
+    const flagRates = getHasGm?.() ? config.gmExceptionFlagRates : config.exceptionFlagRates;
+
     // Roll exception flags; any match forces player escalation.
     for (const flag of EXCEPTION_FLAGS) {
-      const rate = config.exceptionFlagRates[flag] ?? 0;
+      const rate = flagRates[flag] ?? 0;
       if (rng() < rate) return;
     }
 

@@ -3,6 +3,7 @@ import { parseData } from '../data/loadJson';
 
 const StaffDispatchConfigSchema = z.object({
   exceptionFlagRates: z.record(z.string().min(1), z.number().min(0).max(1)),
+  gmExceptionFlagRates: z.record(z.string().min(1), z.number().min(0).max(1)),
   minAutoResolveRate: z.number().min(0).max(1),
   maxAutoResolveRate: z.number().min(0).max(1),
   minCloseRate: z.number().min(0).max(1),

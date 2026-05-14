@@ -34,15 +34,26 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
   };
 }
 
+const ZERO_FLAGS = {
+  vip_customer: 0,
+  high_dollar_deal: 0,
+  irate_customer: 0,
+  lemon_law_threat: 0,
+  audit_trigger: 0,
+};
+
+const ALL_FLAGS = {
+  vip_customer: 1,
+  high_dollar_deal: 1,
+  irate_customer: 1,
+  lemon_law_threat: 1,
+  audit_trigger: 1,
+};
+
 // All flags set to 0 so exception rolls never fire.
 const NO_EXCEPTION_CONFIG: StaffDispatchConfig = {
-  exceptionFlagRates: {
-    vip_customer: 0,
-    high_dollar_deal: 0,
-    irate_customer: 0,
-    lemon_law_threat: 0,
-    audit_trigger: 0,
-  },
+  exceptionFlagRates: ZERO_FLAGS,
+  gmExceptionFlagRates: ZERO_FLAGS,
   minAutoResolveRate: 0.30,
   maxAutoResolveRate: 0.95,
   minCloseRate: 0.20,
@@ -54,13 +65,7 @@ const NO_EXCEPTION_CONFIG: StaffDispatchConfig = {
 // All flags set to 1 so every customer gets flagged.
 const ALL_EXCEPTION_CONFIG: StaffDispatchConfig = {
   ...NO_EXCEPTION_CONFIG,
-  exceptionFlagRates: {
-    vip_customer: 1,
-    high_dollar_deal: 1,
-    irate_customer: 1,
-    lemon_law_threat: 1,
-    audit_trigger: 1,
-  },
+  exceptionFlagRates: ALL_FLAGS,
 };
 
 // Force auto-resolve on every customer for any skill level.
@@ -82,14 +87,18 @@ const NEVER_CLOSE_CONFIG: StaffDispatchConfig = {
   maxCloseRate: 0.0,
 };
 
-function makeSetup(roster: StaffWithComposites[], config: StaffDispatchConfig = NO_EXCEPTION_CONFIG) {
+function makeSetup(
+  roster: StaffWithComposites[],
+  config: StaffDispatchConfig = NO_EXCEPTION_CONFIG,
+  getHasGm?: () => boolean,
+) {
   const bus = createEventBus();
   const clock = createGameClock({ bus });
   const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
   // DepartmentQueue must subscribe first so workspace items are added before StaffDispatch removes them.
   const queue = createDepartmentQueue({ bus });
   const staffOrg = makeStaffOrg(roster);
-  createStaffDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config });
+  createStaffDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config, getHasGm });
   return { bus, clock, economy, queue };
 }
 
@@ -256,5 +265,59 @@ describe('StaffDispatch — config', () => {
     expect(config.minAutoResolveRate).toBeGreaterThanOrEqual(0);
     expect(config.maxAutoResolveRate).toBeLessThanOrEqual(1);
     expect(Object.keys(config.exceptionFlagRates).length).toBeGreaterThan(0);
+    expect(Object.keys(config.gmExceptionFlagRates).length).toBeGreaterThan(0);
+  });
+});
+
+// ── GM exception thresholds ───────────────────────────────────────────────────
+
+describe('StaffDispatch — GM exception thresholds', () => {
+  // Config with all non-legal flags at 1 for non-GM, but 0 for GM (only legal/compliance remain).
+  const GM_EXCEPTION_CONFIG: StaffDispatchConfig = {
+    ...NO_EXCEPTION_CONFIG,
+    exceptionFlagRates: { ...ALL_FLAGS },
+    gmExceptionFlagRates: {
+      vip_customer: 0,
+      high_dollar_deal: 0,
+      irate_customer: 0,
+      lemon_law_threat: 1,
+      audit_trigger: 1,
+    },
+    minAutoResolveRate: 1.0,
+    maxAutoResolveRate: 1.0,
+  };
+
+  it('without GM: all-flag config blocks auto-resolve', () => {
+    const roster = [makeStaff(1.0)];
+    const { bus, queue } = makeSetup(roster, GM_EXCEPTION_CONFIG, () => false);
+    bus.publish('capacity:customer_admitted', { day: 1, customerId: 'cust:1', label: 'Test' });
+    // All flags at 1 → no auto-resolve → item stays in queue
+    expect(queue.getBadgeCount('sales')).toBe(1);
+  });
+
+  it('with GM: non-legal flags drop to 0, customer is auto-resolved', () => {
+    const configNoLegal: StaffDispatchConfig = {
+      ...GM_EXCEPTION_CONFIG,
+      gmExceptionFlagRates: {
+        vip_customer: 0,
+        high_dollar_deal: 0,
+        irate_customer: 0,
+        lemon_law_threat: 0,
+        audit_trigger: 0,
+      },
+    };
+    const roster = [makeStaff(1.0)];
+    const { bus, queue } = makeSetup(roster, configNoLegal, () => true);
+    bus.publish('capacity:customer_admitted', { day: 1, customerId: 'cust:1', label: 'Test' });
+    // All GM flags at 0 → no exception fires → auto-resolves
+    expect(queue.getBadgeCount('sales')).toBe(0);
+  });
+
+  it('with GM: lemon_law_threat at 1 still blocks auto-resolve', () => {
+    const roster = [makeStaff(1.0)];
+    const { bus, queue } = makeSetup(roster, GM_EXCEPTION_CONFIG, () => true);
+    bus.publish('capacity:customer_admitted', { day: 1, customerId: 'cust:1', label: 'Test' });
+    // lemon_law_threat and audit_trigger are 1 in gmExceptionFlagRates → escalates
+    expect(queue.getBadgeCount('sales')).toBe(1);
   });
 });

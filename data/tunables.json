@@ -105,6 +105,13 @@
       "lemon_law_threat": 0.02,
       "audit_trigger": 0.01
     },
+    "gmExceptionFlagRates": {
+      "vip_customer": 0,
+      "high_dollar_deal": 0,
+      "irate_customer": 0,
+      "lemon_law_threat": 0.02,
+      "audit_trigger": 0.01
+    },
     "minAutoResolveRate": 0.30,
     "maxAutoResolveRate": 0.95,
     "minCloseRate": 0.20,

@@ -91,10 +91,10 @@ describe('StaffOrg — getCandidates', () => {
     expect(a.map((c) => c.candidateId)).toEqual(b.map((c) => c.candidateId));
   });
 
-  it('throws when no archetypes exist for a role', () => {
+  it('throws for an unknown role id', () => {
     const { clock, staffOrg } = makeSetup();
     clock.advanceDay();
-    expect(() => staffOrg.getCandidates('gm')).toThrow(StaffOrgError);
+    expect(() => staffOrg.getCandidates('nonexistent-role')).toThrow(StaffOrgError);
   });
 
   it('refreshes pool on new day', () => {
@@ -304,6 +304,60 @@ describe('StaffOrg — F&I Manager hire-tier gating', () => {
     for (const c of candidates) {
       expect(c.staff.skills).toHaveProperty('product_presentation');
       expect(c.staff.skills).toHaveProperty('finance_structuring');
+    }
+  });
+});
+
+// ── GM hire-tier gating ──────────────────────────────────────────────────────
+
+describe('StaffOrg — GM hire-tier gating', () => {
+  function makeSetupWithTier(tier: number, startingCash = STARTING_CASH) {
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const staffOrg = createStaffOrg({
+      bus,
+      economy,
+      masterSeed: MASTER_SEED,
+      taxonomy,
+      archetypes,
+      config: CHEAP_CONFIG,
+      getTier: () => tier,
+    });
+    return { bus, clock, staffOrg };
+  }
+
+  it('getCandidates for gm throws at Tier 1', () => {
+    const { clock, staffOrg } = makeSetupWithTier(1);
+    clock.advanceDay();
+    expect(() => staffOrg.getCandidates('gm')).toThrow(StaffOrgError);
+  });
+
+  it('getCandidates for gm throws at Tier 2', () => {
+    const { clock, staffOrg } = makeSetupWithTier(2);
+    clock.advanceDay();
+    expect(() => staffOrg.getCandidates('gm')).toThrow(StaffOrgError);
+  });
+
+  it('getCandidates for gm throws with message mentioning tier 3', () => {
+    const { clock, staffOrg } = makeSetupWithTier(2);
+    clock.advanceDay();
+    expect(() => staffOrg.getCandidates('gm')).toThrow(/tier 3/i);
+  });
+
+  it('getCandidates for gm succeeds at Tier 3', () => {
+    const { clock, staffOrg } = makeSetupWithTier(3);
+    clock.advanceDay();
+    const candidates = staffOrg.getCandidates('gm');
+    expect(candidates.length).toBeGreaterThan(0);
+  });
+
+  it('all gm candidates have role_id gm', () => {
+    const { clock, staffOrg } = makeSetupWithTier(3);
+    clock.advanceDay();
+    const candidates = staffOrg.getCandidates('gm');
+    for (const c of candidates) {
+      expect(c.staff.role_id).toBe('gm');
     }
   });
 });
