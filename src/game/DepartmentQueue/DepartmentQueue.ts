@@ -8,6 +8,7 @@ export interface DepartmentQueue {
   resolveItem(id: string): void;
   resolveTop(dept: DeptKey): void;
   resolveByCustomerId(customerId: string): boolean;
+  drainQueues(): readonly QueueItem[];
 }
 
 const DEPT_KEYS: DeptKey[] = ['sales', 'service', 'bdc', 'office', 'lot'];
@@ -123,6 +124,14 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
         }
       }
       return false;
+    },
+    drainQueues() {
+      const all: QueueItem[] = [];
+      for (const dept of DEPT_KEYS) {
+        all.push(...queues[dept]);
+        queues[dept] = [];
+      }
+      return all;
     },
   };
 }

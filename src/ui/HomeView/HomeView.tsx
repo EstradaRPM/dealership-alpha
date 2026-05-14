@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, PanResponder, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, PanResponder, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import { loadTierConfig } from '../../game/CareerProgression';
 import type { DeptKey } from '../../game/DepartmentQueue';
@@ -21,6 +21,11 @@ const DEPARTMENTS: { key: DeptKey; label: string }[] = [
 
 type DeptBadges = Record<DeptKey, number>;
 
+interface CloseEarlyCost {
+  walkCount: number;
+  reputationHit: number;
+}
+
 interface Props {
   profile: CharacterProfile;
   badges?: DeptBadges;
@@ -34,6 +39,8 @@ interface Props {
   timeOfDay?: TimeOfDay;
   weather?: Weather;
   eventBus?: EventBus;
+  closeEarlyCost?: CloseEarlyCost;
+  onCloseEarly?: () => void;
 }
 
 const DEFAULT_BADGES: DeptBadges = { sales: 0, service: 0, bdc: 0, office: 0, lot: 0 };
@@ -130,18 +137,66 @@ export function HomeView({
   timeOfDay = 'midday',
   weather = 'clear',
   eventBus,
+  closeEarlyCost,
+  onCloseEarly,
 }: Props) {
   const tierEntry = TIER_CONFIG.tiers[tier - 1] ?? TIER_CONFIG.tiers[0];
   const displayName = businessName || `${profile.name}'s Lot`;
   const displayAccent = accentColor ?? '#c8a96e';
   const tint = getTint(TINTS_CONFIG, timeOfDay, weather);
+  const [showCloseEarlyModal, setShowCloseEarlyModal] = React.useState(false);
+
+  function handleCloseEarlyConfirm() {
+    setShowCloseEarlyModal(false);
+    onCloseEarly?.();
+  }
 
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={[styles.dealershipName, { color: displayAccent }]}>{displayName}</Text>
-        <Text style={styles.tierLabel}>Tier {tier} — {tierEntry.label}</Text>
+        <View style={styles.headerLeft}>
+          <Text style={[styles.dealershipName, { color: displayAccent }]}>{displayName}</Text>
+          <Text style={styles.tierLabel}>Tier {tier} — {tierEntry.label}</Text>
+        </View>
+        {onCloseEarly && (
+          <TouchableOpacity
+            style={styles.closeEarlyBtn}
+            onPress={() => setShowCloseEarlyModal(true)}
+            accessibilityLabel="Close early"
+          >
+            <Text style={styles.closeEarlyBtnText}>Close Early</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      <Modal
+        visible={showCloseEarlyModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCloseEarlyModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Close Early?</Text>
+            {closeEarlyCost && closeEarlyCost.walkCount > 0 ? (
+              <Text style={styles.modalBody}>
+                {closeEarlyCost.walkCount} customer{closeEarlyCost.walkCount !== 1 ? 's' : ''} will walk.{'\n'}
+                Reputation hit: −{closeEarlyCost.reputationHit} pts
+              </Text>
+            ) : (
+              <Text style={styles.modalBody}>No customers currently waiting. Day will advance to overnight.</Text>
+            )}
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowCloseEarlyModal(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalConfirm} onPress={handleCloseEarlyConfirm}>
+                <Text style={styles.modalConfirmText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {lotVehicles.length === 0 ? (
         <View style={styles.illustration} accessibilityLabel={`Tier ${tier} ${tierEntry.label} lot`}>
@@ -187,9 +242,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#111',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 8,
+  },
+  headerLeft: {
+    flex: 1,
   },
   dealershipName: {
     fontSize: 22,
@@ -202,6 +263,75 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
+  },
+  closeEarlyBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#444',
+    marginTop: 2,
+  },
+  closeEarlyBtnText: {
+    color: '#888',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBox: {
+    backgroundColor: '#1c1c1c',
+    borderRadius: 12,
+    padding: 24,
+    width: 300,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 12,
+  },
+  modalBody: {
+    fontSize: 14,
+    color: '#aaa',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalCancel: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  modalCancelText: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalConfirm: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    backgroundColor: '#8b2222',
+  },
+  modalConfirmText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   illustration: {
     flex: 1,
