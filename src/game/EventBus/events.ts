@@ -40,6 +40,18 @@ export interface EventMap {
   // Economy — money flows posted to the ledger
   'economy:revenue_posted': { day: number; amount: number; label: string };
   'economy:expense_posted': { day: number; amount: number; label: string };
+
+  // Inventory — vehicle sold off lot
+  'inventory:vehicle_sold': { day: number; vehicleId: string };
+
+  // DealEngine — a deal has been fully closed (vehicle sold, revenue posted)
+  'deal:closed': {
+    customerId: string;
+    vehicleId: string;
+    agreedPrice: number;
+    frontGross: number;
+    backGross: number;
+  };
 }
 
 export type EventName = keyof EventMap;

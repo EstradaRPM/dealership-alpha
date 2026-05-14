@@ -7,6 +7,8 @@ import { createGameClock } from './src/game/GameClock';
 import { createDepartmentQueue } from './src/game/DepartmentQueue';
 import { createCustomerPool } from './src/game/CustomerPool';
 import { createDealEngine } from './src/game/DealEngine';
+import { createEconomy } from './src/game/Economy';
+import { createInventory } from './src/game/Inventory';
 import {
   loadPersonArchetypes,
   loadVisitArchetypes,
@@ -15,10 +17,12 @@ import {
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { HomeView } from './src/ui/HomeView';
 import { SalesWorkspace } from './src/ui/SalesWorkspace';
+import { AuctionMenu } from './src/ui/AuctionMenu';
 import type { CharacterProfile } from './src/game/CareerProgression';
 import type { SaveStore } from './src/game/SaveStore';
 import type { DeptKey } from './src/game/DepartmentQueue';
 import type { CustomerSession, CustomerAction } from './src/game/CustomerPool';
+import type { LotVehicle } from './src/game/Inventory';
 
 // Game modules — created once at module level, outside React lifecycle.
 const saveStore: SaveStore = createSaveStore(createSqliteDriver());
@@ -34,15 +38,19 @@ const customerPool = createCustomerPool({
     traits: loadTraitTaxonomy(),
   },
 });
-const dealEngine = createDealEngine();
+const economy = createEconomy({ bus, startingCash: 50_000 });
+const inventory = createInventory({ bus, masterSeed: 42, economy });
+const dealEngine = createDealEngine({ bus, inventory, economy });
 
-type AppScreen = 'loading' | 'character-creation' | 'game' | 'sales-workspace';
+type AppScreen = 'loading' | 'character-creation' | 'game' | 'sales-workspace' | 'auction';
 
 export default function App() {
   const [screen, setScreen] = useState<AppScreen>('loading');
   const [profile, setProfile] = useState<CharacterProfile | null>(null);
   const [badges, setBadges] = useState(departmentQueue.getBadges());
   const [activeSession, setActiveSession] = useState<CustomerSession | null>(null);
+  const [lotVehicles, setLotVehicles] = useState<readonly LotVehicle[]>([]);
+  const [cash, setCash] = useState(economy.cash);
   const dayStarted = useRef(false);
 
   useEffect(() => {
@@ -62,9 +70,10 @@ export default function App() {
     dayStarted.current = true;
     clock.advanceDay();
     setBadges(departmentQueue.getBadges());
+    setLotVehicles(inventory.getLotVehicles());
   }, [screen]);
 
-  // Keep badges and active session in sync with EventBus.
+  // Keep badges, session, inventory, and cash in sync with EventBus.
   useEffect(() => {
     const onArrived = () => setBadges(departmentQueue.getBadges());
     const onChanged = ({ customerId }: { customerId: string }) => {
@@ -72,14 +81,26 @@ export default function App() {
       if (s) setActiveSession({ ...s });
     };
     const onResolved = () => setBadges(departmentQueue.getBadges());
+    const onVehiclePurchased = () => {
+      setLotVehicles(inventory.getLotVehicles());
+      setCash(economy.cash);
+    };
+    const onVehicleSold = () => setLotVehicles(inventory.getLotVehicles());
+    const onRevenue = () => setCash(economy.cash);
 
     bus.subscribe('customer:arrived', onArrived);
     bus.subscribe('customer:state_changed', onChanged);
     bus.subscribe('customer:resolved', onResolved);
+    bus.subscribe('inventory:vehicle_purchased', onVehiclePurchased);
+    bus.subscribe('inventory:vehicle_sold', onVehicleSold);
+    bus.subscribe('economy:revenue_posted', onRevenue);
     return () => {
       bus.unsubscribe('customer:arrived', onArrived);
       bus.unsubscribe('customer:state_changed', onChanged);
       bus.unsubscribe('customer:resolved', onResolved);
+      bus.unsubscribe('inventory:vehicle_purchased', onVehiclePurchased);
+      bus.unsubscribe('inventory:vehicle_sold', onVehicleSold);
+      bus.unsubscribe('economy:revenue_posted', onRevenue);
     };
   }, []);
 
@@ -118,6 +139,21 @@ export default function App() {
     );
   }
 
+  if (screen === 'auction') {
+    return (
+      <>
+        <StatusBar style="light" />
+        <AuctionMenu
+          listings={inventory.getAuctionListings()}
+          lotVehicles={lotVehicles}
+          cash={cash}
+          onBuy={(listingId) => inventory.buyFromAuction(listingId)}
+          onClose={() => setScreen('game')}
+        />
+      </>
+    );
+  }
+
   if (screen === 'sales-workspace' && activeSession) {
     return (
       <>
@@ -127,6 +163,7 @@ export default function App() {
           onDispatch={handleDispatch}
           onClose={() => setScreen('game')}
           dealEngine={dealEngine}
+          lotVehicles={lotVehicles}
         />
       </>
     );
@@ -140,6 +177,8 @@ export default function App() {
           profile={profile}
           badges={badges}
           onDeptPress={handleDeptPress}
+          lotVehicles={lotVehicles}
+          onOpenAuction={() => setScreen('auction')}
         />
       </>
     );

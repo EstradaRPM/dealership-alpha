@@ -22,3 +22,22 @@ export interface LoanResult {
   apr: number;
   monthlyPayment: number;
 }
+
+export interface CloseDealParams {
+  customerId: string;
+  vehicleId: string;
+  agreedPrice: number;
+}
+
+export interface ClosedDealResult {
+  customerId: string;
+  vehicleId: string;
+  year: number;
+  make: string;
+  model: string;
+  agreedPrice: number;
+  purchasePrice: number;
+  reconCost: number;
+  frontGross: number;
+  readonly backGross: 0;
+}

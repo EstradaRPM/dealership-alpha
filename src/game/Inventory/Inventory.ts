@@ -10,6 +10,7 @@ export interface Inventory {
   getLotVehicles(): readonly LotVehicle[];
   getLotVehicle(vehicleId: string): LotVehicle | undefined;
   buyFromAuction(listingId: string): void;
+  sellVehicle(vehicleId: string): LotVehicle;
 }
 
 export interface InventoryDeps {
@@ -78,6 +79,14 @@ export function createInventory(deps: InventoryDeps): Inventory {
         vehicleId: lotVehicle.id,
         cost: listing.askingPrice,
       });
+    },
+
+    sellVehicle(vehicleId) {
+      const vehicle = lotVehicles.get(vehicleId);
+      if (!vehicle) throw new Error(`No lot vehicle "${vehicleId}"`);
+      lotVehicles.delete(vehicleId);
+      bus.publish('inventory:vehicle_sold', { day: currentDay, vehicleId });
+      return vehicle;
     },
   };
 }

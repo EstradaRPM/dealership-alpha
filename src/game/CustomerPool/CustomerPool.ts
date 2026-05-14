@@ -44,6 +44,21 @@ export function createCustomerPool(deps: {
   const { bus, npcDeps } = deps;
   const sessions = new Map<string, MutableSession>();
 
+  function doDispatch(customerId: string, action: CustomerAction): void {
+    const session = sessions.get(customerId);
+    if (!session) throw new Error(`No session for customer "${customerId}"`);
+    const from = session.stage;
+    const to = transition(from, action);
+    session.stage = to;
+    bus.publish('customer:state_changed', { customerId, from, to });
+    if (to === 'CLOSED' || to === 'WALK') {
+      bus.publish('customer:resolved', {
+        customerId,
+        outcome: to === 'CLOSED' ? 'closed' : 'walk',
+      });
+    }
+  }
+
   bus.subscribe('clock:day_started', ({ day }) => {
     const rng = createRng(
       deriveSeed(npcDeps.masterSeed, 'customer_pool.archetype_pick', { day }),
@@ -67,22 +82,13 @@ export function createCustomerPool(deps: {
     bus.publish('customer:arrived', { day, customerId, label: pick.label });
   });
 
+  bus.subscribe('deal:closed', ({ customerId }) => {
+    doDispatch(customerId, 'CLOSE');
+  });
+
   return {
     getSessions() { return [...sessions.values()]; },
     getSession(customerId) { return sessions.get(customerId); },
-    dispatch(customerId, action) {
-      const session = sessions.get(customerId);
-      if (!session) throw new Error(`No session for customer "${customerId}"`);
-      const from = session.stage;
-      const to = transition(from, action);
-      session.stage = to;
-      bus.publish('customer:state_changed', { customerId, from, to });
-      if (to === 'CLOSED' || to === 'WALK') {
-        bus.publish('customer:resolved', {
-          customerId,
-          outcome: to === 'CLOSED' ? 'closed' : 'walk',
-        });
-      }
-    },
+    dispatch: doDispatch,
   };
 }

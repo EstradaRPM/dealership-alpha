@@ -31,29 +31,21 @@ const mockSession: CustomerSession = {
 
 const mockDealEngine = createDealEngine();
 
+const baseProps = {
+  session: mockSession,
+  onDispatch: jest.fn(),
+  onClose: jest.fn(),
+  dealEngine: mockDealEngine,
+  lotVehicles: [] as const,
+};
+
 describe('SalesWorkspace — smoke', () => {
   it('renders without crashing', () => {
-    expect(() =>
-      render(
-        <SalesWorkspace
-          session={mockSession}
-          onDispatch={jest.fn()}
-          onClose={jest.fn()}
-          dealEngine={mockDealEngine}
-        />,
-      ),
-    ).not.toThrow();
+    expect(() => render(<SalesWorkspace {...baseProps} />)).not.toThrow();
   });
 
   it('renders four tabs: Show Vehicle, Negotiate, Structure, Walk', () => {
-    const { getAllByText, getByText } = render(
-      <SalesWorkspace
-        session={mockSession}
-        onDispatch={jest.fn()}
-        onClose={jest.fn()}
-        dealEngine={mockDealEngine}
-      />,
-    );
+    const { getAllByText, getByText } = render(<SalesWorkspace {...baseProps} />);
     // "Show Vehicle" appears in both the tab bar and the action button
     expect(getAllByText('Show Vehicle').length).toBeGreaterThanOrEqual(1);
     expect(getByText('Negotiate')).toBeTruthy();
@@ -62,26 +54,12 @@ describe('SalesWorkspace — smoke', () => {
   });
 
   it('shows Greet Customer button when UNGREETED', () => {
-    const { getByText } = render(
-      <SalesWorkspace
-        session={mockSession}
-        onDispatch={jest.fn()}
-        onClose={jest.fn()}
-        dealEngine={mockDealEngine}
-      />,
-    );
+    const { getByText } = render(<SalesWorkspace {...baseProps} />);
     expect(getByText('Greet Customer')).toBeTruthy();
   });
 
   it('shows stage label in header', () => {
-    const { getByText } = render(
-      <SalesWorkspace
-        session={mockSession}
-        onDispatch={jest.fn()}
-        onClose={jest.fn()}
-        dealEngine={mockDealEngine}
-      />,
-    );
+    const { getByText } = render(<SalesWorkspace {...baseProps} />);
     expect(getByText('UNGREETED')).toBeTruthy();
   });
 });

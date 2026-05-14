@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
 import type { CustomerSession, CustomerAction } from '../../game/CustomerPool';
-import type { DealEngine } from '../../game/DealEngine';
+import type { DealEngine, ClosedDealResult } from '../../game/DealEngine';
+import type { LotVehicle } from '../../game/Inventory';
 
 type Tab = 'show-vehicle' | 'negotiate' | 'structure' | 'walk';
 
@@ -49,41 +50,133 @@ function ShowVehicleTab({ session, onDispatch }: TabProps) {
   );
 }
 
-function NegotiateTab({ session, onDispatch }: TabProps) {
-  const { stage } = session;
-  if (TERMINAL_STAGES.has(stage)) {
-    return (
-      <Text style={styles.status}>
-        {stage === 'CLOSED' ? 'Deal closed.' : 'Customer walked.'}
+interface NegotiateTabProps {
+  session: CustomerSession;
+  onDispatch: (action: CustomerAction) => void;
+  lotVehicles: readonly LotVehicle[];
+  onCloseDeal: (vehicleId: string, agreedPrice: number) => ClosedDealResult;
+}
+
+function DealJacket({ deal }: { deal: ClosedDealResult }) {
+  const fmt = (n: number) =>
+    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  const grossColor = deal.frontGross >= 0 ? styles.grossPositive : styles.grossNegative;
+
+  return (
+    <View style={styles.dealJacket}>
+      <Text style={styles.dealJacketTitle}>Deal Closed</Text>
+      <Text style={styles.dealJacketVehicle}>
+        {deal.year} {deal.make} {deal.model}
       </Text>
-    );
+
+      <View style={styles.dealJacketRow}>
+        <Text style={styles.dealJacketLabel}>Agreed Price</Text>
+        <Text style={styles.dealJacketValue}>{fmt(deal.agreedPrice)}</Text>
+      </View>
+      <View style={styles.dealJacketRow}>
+        <Text style={styles.dealJacketLabel}>Vehicle Cost</Text>
+        <Text style={styles.dealJacketValue}>({fmt(deal.purchasePrice)})</Text>
+      </View>
+      <View style={styles.dealJacketRow}>
+        <Text style={styles.dealJacketLabel}>Recon</Text>
+        <Text style={styles.dealJacketValue}>({fmt(deal.reconCost)})</Text>
+      </View>
+      <View style={[styles.dealJacketRow, styles.dealJacketDivider]}>
+        <Text style={styles.dealJacketGrossLabel}>Front Gross</Text>
+        <Text style={[styles.dealJacketGrossValue, grossColor]}>{fmt(deal.frontGross)}</Text>
+      </View>
+      <View style={styles.dealJacketRow}>
+        <Text style={styles.dealJacketLabel}>Back Gross</Text>
+        <Text style={styles.dealJacketValue}>{fmt(deal.backGross)}</Text>
+      </View>
+    </View>
+  );
+}
+
+function NegotiateTab({ session, onDispatch, lotVehicles, onCloseDeal }: NegotiateTabProps) {
+  const { stage } = session;
+  const [agreedPriceText, setAgreedPriceText] = useState('');
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [closedDeal, setClosedDeal] = useState<ClosedDealResult | null>(null);
+
+  if (stage === 'WALK') {
+    return <Text style={styles.status}>Customer walked.</Text>;
   }
+
+  if (stage === 'CLOSED') {
+    if (closedDeal) return <DealJacket deal={closedDeal} />;
+    return <Text style={styles.status}>Deal closed.</Text>;
+  }
+
   if (!['DEMOED', 'NEGOTIATING'].includes(stage)) {
     return <Text style={styles.status}>Show the vehicle first before negotiating.</Text>;
   }
+
+  if (stage === 'DEMOED') {
+    return (
+      <TouchableOpacity
+        style={styles.actionBtn}
+        onPress={() => onDispatch('NEGOTIATE')}
+        accessibilityRole="button"
+      >
+        <Text style={styles.actionBtnText}>Open Negotiation</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  // NEGOTIATING
+  const agreedPrice = parseFloat(agreedPriceText) || 0;
+  const canClose = agreedPrice > 0 && selectedVehicleId !== null;
+
   return (
     <View>
+      <Text style={styles.structureLabel}>Agreed Price</Text>
+      <TextInput
+        style={styles.structureInput}
+        value={agreedPriceText}
+        onChangeText={setAgreedPriceText}
+        placeholder="0"
+        placeholderTextColor="#444"
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.structureLabel}>Select Vehicle</Text>
+      {lotVehicles.length === 0 ? (
+        <Text style={styles.status}>No vehicles on lot.</Text>
+      ) : (
+        lotVehicles.map((v) => {
+          const isSelected = v.id === selectedVehicleId;
+          return (
+            <TouchableOpacity
+              key={v.id}
+              style={[styles.vehicleOption, isSelected && styles.vehicleOptionSelected]}
+              onPress={() => setSelectedVehicleId(v.id)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+            >
+              <Text style={styles.vehicleOptionTitle}>
+                {v.year} {v.make} {v.model}
+              </Text>
+              <Text style={styles.vehicleOptionSub}>
+                Cost: ${v.purchasePrice.toLocaleString()} · Recon: ${v.reconCost.toLocaleString()}
+              </Text>
+            </TouchableOpacity>
+          );
+        })
+      )}
+
       <TouchableOpacity
-        style={[styles.actionBtn, stage !== 'DEMOED' && styles.actionBtnDisabled]}
-        onPress={() => stage === 'DEMOED' && onDispatch('NEGOTIATE')}
-        disabled={stage !== 'DEMOED'}
+        style={[styles.actionBtn, styles.closeDealBtn, !canClose && styles.actionBtnDisabled]}
+        onPress={() => {
+          if (!canClose || !selectedVehicleId) return;
+          const result = onCloseDeal(selectedVehicleId, agreedPrice);
+          setClosedDeal(result);
+        }}
+        disabled={!canClose}
         accessibilityRole="button"
-        accessibilityState={{ disabled: stage !== 'DEMOED' }}
+        accessibilityState={{ disabled: !canClose }}
       >
-        <Text style={[styles.actionBtnText, stage !== 'DEMOED' && styles.actionBtnTextDisabled]}>
-          Open Negotiation
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionBtn, stage !== 'NEGOTIATING' && styles.actionBtnDisabled]}
-        onPress={() => stage === 'NEGOTIATING' && onDispatch('CLOSE')}
-        disabled={stage !== 'NEGOTIATING'}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: stage !== 'NEGOTIATING' }}
-      >
-        <Text
-          style={[styles.actionBtnText, stage !== 'NEGOTIATING' && styles.actionBtnTextDisabled]}
-        >
+        <Text style={[styles.actionBtnText, !canClose && styles.actionBtnTextDisabled]}>
           Close Deal
         </Text>
       </TouchableOpacity>
@@ -196,9 +289,10 @@ interface Props {
   onDispatch: (action: CustomerAction) => void;
   onClose: () => void;
   dealEngine: DealEngine;
+  lotVehicles: readonly LotVehicle[];
 }
 
-export function SalesWorkspace({ session, onDispatch, onClose, dealEngine }: Props) {
+export function SalesWorkspace({ session, onDispatch, onClose, dealEngine, lotVehicles }: Props) {
   const [tab, setTab] = useState<Tab>('show-vehicle');
 
   const tabDefs: Array<{ id: Tab; label: string }> = [
@@ -207,6 +301,10 @@ export function SalesWorkspace({ session, onDispatch, onClose, dealEngine }: Pro
     { id: 'structure',    label: 'Structure'    },
     { id: 'walk',         label: 'Walk'         },
   ];
+
+  const handleCloseDeal = (vehicleId: string, agreedPrice: number): ClosedDealResult => {
+    return dealEngine.closeDeal({ customerId: session.customerId, vehicleId, agreedPrice });
+  };
 
   return (
     <View style={styles.root}>
@@ -236,7 +334,14 @@ export function SalesWorkspace({ session, onDispatch, onClose, dealEngine }: Pro
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
         {tab === 'show-vehicle' && <ShowVehicleTab session={session} onDispatch={onDispatch} />}
-        {tab === 'negotiate'    && <NegotiateTab   session={session} onDispatch={onDispatch} />}
+        {tab === 'negotiate'    && (
+          <NegotiateTab
+            session={session}
+            onDispatch={onDispatch}
+            lotVehicles={lotVehicles}
+            onCloseDeal={handleCloseDeal}
+          />
+        )}
         {tab === 'structure'    && <StructurePaymentTab session={session} dealEngine={dealEngine} />}
         {tab === 'walk'         && <WalkTab         session={session} onDispatch={onDispatch} />}
       </ScrollView>
@@ -418,5 +523,87 @@ const styles = StyleSheet.create({
     color: '#4a9eff',
     fontSize: 20,
     fontWeight: '700',
+  },
+  closeDealBtn: {
+    marginTop: 20,
+    backgroundColor: '#1e5f1e',
+  },
+  vehicleOption: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+  },
+  vehicleOptionSelected: {
+    borderColor: '#4a9eff',
+    backgroundColor: '#0d1f33',
+  },
+  vehicleOptionTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  vehicleOptionSub: {
+    color: '#666',
+    fontSize: 12,
+    marginTop: 3,
+  },
+  dealJacket: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    padding: 20,
+    marginTop: 8,
+  },
+  dealJacketTitle: {
+    color: '#4caf50',
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  dealJacketVehicle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  dealJacketRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+  },
+  dealJacketDivider: {
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+    borderBottomColor: '#222',
+  },
+  dealJacketLabel: {
+    color: '#888',
+    fontSize: 14,
+  },
+  dealJacketValue: {
+    color: '#ccc',
+    fontSize: 14,
+  },
+  dealJacketGrossLabel: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  dealJacketGrossValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  grossPositive: {
+    color: '#4caf50',
+  },
+  grossNegative: {
+    color: '#ef5350',
   },
 });
