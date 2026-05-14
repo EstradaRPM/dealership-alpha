@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
 import type { CustomerSession, CustomerAction } from '../../game/CustomerPool';
-import type { DealEngine, ClosedDealResult } from '../../game/DealEngine';
+import type { DealEngine, ClosedDealResult, AttachedFniProduct } from '../../game/DealEngine';
 import type { LotVehicle } from '../../game/Inventory';
 
-type Tab = 'show-vehicle' | 'negotiate' | 'structure' | 'walk';
+type Tab = 'show-vehicle' | 'negotiate' | 'structure' | 'fni' | 'walk';
 
 const TERMINAL_STAGES = new Set(['CLOSED', 'WALK']);
 
@@ -50,17 +50,85 @@ function ShowVehicleTab({ session, onDispatch }: TabProps) {
   );
 }
 
-interface NegotiateTabProps {
-  session: CustomerSession;
-  onDispatch: (action: CustomerAction) => void;
-  lotVehicles: readonly LotVehicle[];
-  onCloseDeal: (vehicleId: string, agreedPrice: number) => ClosedDealResult;
+interface FniTabProps {
+  dealEngine: DealEngine;
+  attached: AttachedFniProduct[];
+  onToggle: (productId: string, price: number) => void;
+  disabled: boolean;
 }
 
-function DealJacket({ deal }: { deal: ClosedDealResult }) {
+function FniTab({ dealEngine, attached, onToggle, disabled }: FniTabProps) {
+  const products = dealEngine.getFniProducts();
+  const attachedIds = new Set(attached.map((a) => a.productId));
+
   const fmt = (n: number) =>
     n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-  const grossColor = deal.frontGross >= 0 ? styles.grossPositive : styles.grossNegative;
+
+  if (disabled) {
+    return <Text style={styles.status}>F&I products are attached after deal is closed.</Text>;
+  }
+
+  return (
+    <View>
+      <Text style={styles.fniHeading}>F&I Products</Text>
+      {products.map((product) => {
+        const isAttached = attachedIds.has(product.id);
+        const backContrib = product.defaultPrice - product.cost;
+        return (
+          <TouchableOpacity
+            key={product.id}
+            style={[styles.fniCard, isAttached && styles.fniCardAttached]}
+            onPress={() => onToggle(product.id, product.defaultPrice)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: isAttached }}
+          >
+            <View style={styles.fniCardHeader}>
+              <View style={styles.fniCardLeft}>
+                <Text style={[styles.fniCardShortLabel, isAttached && styles.fniCardShortLabelAttached]}>
+                  {product.shortLabel}
+                </Text>
+                <Text style={styles.fniCardLabel}>{product.label}</Text>
+              </View>
+              <View style={styles.fniCardRight}>
+                <Text style={styles.fniCardPrice}>{fmt(product.defaultPrice)}</Text>
+                <Text style={styles.fniCardBack}>+{fmt(backContrib)} back</Text>
+              </View>
+            </View>
+            <View style={[styles.fniCardIndicator, isAttached && styles.fniCardIndicatorOn]}>
+              <Text style={styles.fniCardIndicatorText}>{isAttached ? 'ATTACHED' : 'TAP TO ATTACH'}</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+
+      {attached.length > 0 && (
+        <View style={styles.fniSummary}>
+          <Text style={styles.fniSummaryLabel}>Back Gross Preview</Text>
+          <Text style={styles.fniSummaryValue}>
+            {fmt(
+              attached.reduce((acc, a) => {
+                const p = products.find((x) => x.id === a.productId);
+                return acc + (p ? a.price - p.cost : 0);
+              }, 0)
+            )}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+interface DealJacketProps {
+  deal: ClosedDealResult;
+  dealEngine: DealEngine;
+}
+
+function DealJacket({ deal, dealEngine }: DealJacketProps) {
+  const fmt = (n: number) =>
+    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  const frontColor = deal.frontGross >= 0 ? styles.grossPositive : styles.grossNegative;
+  const backColor = deal.backGross >= 0 ? styles.grossPositive : styles.grossNegative;
+  const products = dealEngine.getFniProducts();
 
   return (
     <View style={styles.dealJacket}>
@@ -83,17 +151,43 @@ function DealJacket({ deal }: { deal: ClosedDealResult }) {
       </View>
       <View style={[styles.dealJacketRow, styles.dealJacketDivider]}>
         <Text style={styles.dealJacketGrossLabel}>Front Gross</Text>
-        <Text style={[styles.dealJacketGrossValue, grossColor]}>{fmt(deal.frontGross)}</Text>
+        <Text style={[styles.dealJacketGrossValue, frontColor]}>{fmt(deal.frontGross)}</Text>
       </View>
+
+      {deal.fniProducts.length > 0 && (
+        <>
+          {deal.fniProducts.map((attached) => {
+            const product = products.find((p) => p.id === attached.productId);
+            const contrib = product ? attached.price - product.cost : 0;
+            return (
+              <View key={attached.productId} style={styles.dealJacketRow}>
+                <Text style={styles.dealJacketLabel}>
+                  {product?.shortLabel ?? attached.productId}
+                </Text>
+                <Text style={styles.dealJacketValue}>+{fmt(contrib)}</Text>
+              </View>
+            );
+          })}
+        </>
+      )}
+
       <View style={styles.dealJacketRow}>
-        <Text style={styles.dealJacketLabel}>Back Gross</Text>
-        <Text style={styles.dealJacketValue}>{fmt(deal.backGross)}</Text>
+        <Text style={styles.dealJacketGrossLabel}>Back Gross</Text>
+        <Text style={[styles.dealJacketGrossValue, backColor]}>{fmt(deal.backGross)}</Text>
       </View>
     </View>
   );
 }
 
-function NegotiateTab({ session, onDispatch, lotVehicles, onCloseDeal }: NegotiateTabProps) {
+interface NegotiateTabProps {
+  session: CustomerSession;
+  onDispatch: (action: CustomerAction) => void;
+  lotVehicles: readonly LotVehicle[];
+  onCloseDeal: (vehicleId: string, agreedPrice: number) => ClosedDealResult;
+  dealEngine: DealEngine;
+}
+
+function NegotiateTab({ session, onDispatch, lotVehicles, onCloseDeal, dealEngine }: NegotiateTabProps) {
   const { stage } = session;
   const [agreedPriceText, setAgreedPriceText] = useState('');
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
@@ -104,7 +198,7 @@ function NegotiateTab({ session, onDispatch, lotVehicles, onCloseDeal }: Negotia
   }
 
   if (stage === 'CLOSED') {
-    if (closedDeal) return <DealJacket deal={closedDeal} />;
+    if (closedDeal) return <DealJacket deal={closedDeal} dealEngine={dealEngine} />;
     return <Text style={styles.status}>Deal closed.</Text>;
   }
 
@@ -294,16 +388,34 @@ interface Props {
 
 export function SalesWorkspace({ session, onDispatch, onClose, dealEngine, lotVehicles }: Props) {
   const [tab, setTab] = useState<Tab>('show-vehicle');
+  const [attachedFni, setAttachedFni] = useState<AttachedFniProduct[]>([]);
+
+  const isTerminal = TERMINAL_STAGES.has(session.stage);
 
   const tabDefs: Array<{ id: Tab; label: string }> = [
     { id: 'show-vehicle', label: 'Show Vehicle' },
     { id: 'negotiate',    label: 'Negotiate'    },
     { id: 'structure',    label: 'Structure'    },
+    { id: 'fni',          label: 'F&I'          },
     { id: 'walk',         label: 'Walk'         },
   ];
 
+  const handleToggleFni = (productId: string, price: number) => {
+    setAttachedFni((prev) => {
+      const exists = prev.some((a) => a.productId === productId);
+      return exists
+        ? prev.filter((a) => a.productId !== productId)
+        : [...prev, { productId, price }];
+    });
+  };
+
   const handleCloseDeal = (vehicleId: string, agreedPrice: number): ClosedDealResult => {
-    return dealEngine.closeDeal({ customerId: session.customerId, vehicleId, agreedPrice });
+    return dealEngine.closeDeal({
+      customerId: session.customerId,
+      vehicleId,
+      agreedPrice,
+      fniProducts: attachedFni,
+    });
   };
 
   return (
@@ -340,9 +452,18 @@ export function SalesWorkspace({ session, onDispatch, onClose, dealEngine, lotVe
             onDispatch={onDispatch}
             lotVehicles={lotVehicles}
             onCloseDeal={handleCloseDeal}
+            dealEngine={dealEngine}
           />
         )}
         {tab === 'structure'    && <StructurePaymentTab session={session} dealEngine={dealEngine} />}
+        {tab === 'fni'          && (
+          <FniTab
+            dealEngine={dealEngine}
+            attached={attachedFni}
+            onToggle={handleToggleFni}
+            disabled={isTerminal}
+          />
+        )}
         {tab === 'walk'         && <WalkTab         session={session} onDispatch={onDispatch} />}
       </ScrollView>
     </View>
@@ -399,7 +520,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     color: '#666',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   tabLabelActive: {
@@ -605,5 +726,95 @@ const styles = StyleSheet.create({
   },
   grossNegative: {
     color: '#ef5350',
+  },
+  fniHeading: {
+    color: '#ccc',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  fniCard: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+  },
+  fniCardAttached: {
+    borderColor: '#4caf50',
+    backgroundColor: '#0d1f0d',
+  },
+  fniCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  fniCardLeft: {
+    flex: 1,
+  },
+  fniCardRight: {
+    alignItems: 'flex-end',
+  },
+  fniCardShortLabel: {
+    color: '#888',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  fniCardShortLabelAttached: {
+    color: '#4caf50',
+  },
+  fniCardLabel: {
+    color: '#ccc',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  fniCardPrice: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  fniCardBack: {
+    color: '#4caf50',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  fniCardIndicator: {
+    borderRadius: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#222',
+    alignSelf: 'flex-start',
+  },
+  fniCardIndicatorOn: {
+    backgroundColor: '#1a3320',
+  },
+  fniCardIndicatorText: {
+    color: '#555',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  fniSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#2a2a2a',
+  },
+  fniSummaryLabel: {
+    color: '#aaa',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  fniSummaryValue: {
+    color: '#4caf50',
+    fontSize: 20,
+    fontWeight: '700',
   },
 });

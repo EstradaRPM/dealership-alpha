@@ -1,6 +1,16 @@
 import { loadCreditTiers, classifyCredit } from './creditTier';
 import { computeMonthlyPayment } from './loanMath';
-import type { CreditTier, CreditTierCatalog, LoanParams, LoanResult, CloseDealParams, ClosedDealResult } from './types';
+import { loadFniProducts, getFniProductById } from './fniProducts';
+import type {
+  CreditTier,
+  CreditTierCatalog,
+  LoanParams,
+  LoanResult,
+  CloseDealParams,
+  ClosedDealResult,
+  FniProduct,
+  FniProductCatalog,
+} from './types';
 import type { EventBus } from '../EventBus';
 import type { Inventory } from '../Inventory';
 import type { Economy } from '../Economy';
@@ -9,10 +19,12 @@ export interface DealEngine {
   classifyCredit(score: number): CreditTier;
   structure(params: LoanParams): LoanResult;
   closeDeal(params: CloseDealParams): ClosedDealResult;
+  getFniProducts(): FniProduct[];
 }
 
 export interface DealEngineDeps {
   catalog?: CreditTierCatalog;
+  fniCatalog?: FniProductCatalog;
   bus?: EventBus;
   inventory?: Pick<Inventory, 'getLotVehicle' | 'sellVehicle'>;
   economy?: Pick<Economy, 'postRevenue'>;
@@ -20,6 +32,7 @@ export interface DealEngineDeps {
 
 export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
   const catalog = deps.catalog ?? loadCreditTiers();
+  const fniCatalog = deps.fniCatalog ?? loadFniProducts();
   const { bus, inventory, economy } = deps;
 
   return {
@@ -32,7 +45,11 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       return computeMonthlyPayment(params, tierDef);
     },
 
-    closeDeal({ customerId, vehicleId, agreedPrice }) {
+    getFniProducts() {
+      return fniCatalog.products;
+    },
+
+    closeDeal({ customerId, vehicleId, agreedPrice, fniProducts = [] }) {
       if (!bus || !inventory || !economy) {
         throw new Error('closeDeal requires bus, inventory, and economy deps');
       }
@@ -41,6 +58,15 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
 
       inventory.sellVehicle(vehicleId);
       economy.postRevenue(agreedPrice, `Vehicle sale: ${vehicleId}`);
+
+      let backGross = 0;
+      for (const attached of fniProducts) {
+        const product = getFniProductById(fniCatalog, attached.productId);
+        if (product) {
+          backGross += attached.price - product.cost;
+          economy.postRevenue(attached.price, `F&I: ${attached.productId}`);
+        }
+      }
 
       const frontGross = agreedPrice - vehicle.purchasePrice - vehicle.reconCost;
       const result: ClosedDealResult = {
@@ -53,10 +79,11 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
         purchasePrice: vehicle.purchasePrice,
         reconCost: vehicle.reconCost,
         frontGross,
-        backGross: 0,
+        backGross,
+        fniProducts,
       };
 
-      bus.publish('deal:closed', { customerId, vehicleId, agreedPrice, frontGross, backGross: 0 });
+      bus.publish('deal:closed', { customerId, vehicleId, agreedPrice, frontGross, backGross });
       return result;
     },
   };

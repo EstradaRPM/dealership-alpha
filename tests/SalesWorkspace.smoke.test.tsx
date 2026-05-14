@@ -44,12 +44,13 @@ describe('SalesWorkspace — smoke', () => {
     expect(() => render(<SalesWorkspace {...baseProps} />)).not.toThrow();
   });
 
-  it('renders four tabs: Show Vehicle, Negotiate, Structure, Walk', () => {
+  it('renders five tabs: Show Vehicle, Negotiate, Structure, F&I, Walk', () => {
     const { getAllByText, getByText } = render(<SalesWorkspace {...baseProps} />);
     // "Show Vehicle" appears in both the tab bar and the action button
     expect(getAllByText('Show Vehicle').length).toBeGreaterThanOrEqual(1);
     expect(getByText('Negotiate')).toBeTruthy();
     expect(getByText('Structure')).toBeTruthy();
+    expect(getByText('F&I')).toBeTruthy();
     expect(getByText('Walk')).toBeTruthy();
   });
 

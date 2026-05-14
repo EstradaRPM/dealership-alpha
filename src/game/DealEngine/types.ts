@@ -23,10 +23,29 @@ export interface LoanResult {
   monthlyPayment: number;
 }
 
+export interface FniProduct {
+  id: string;
+  label: string;
+  shortLabel: string;
+  defaultPrice: number;
+  cost: number;
+}
+
+export interface FniProductCatalog {
+  schemaVersion: number;
+  products: FniProduct[];
+}
+
+export interface AttachedFniProduct {
+  productId: string;
+  price: number;
+}
+
 export interface CloseDealParams {
   customerId: string;
   vehicleId: string;
   agreedPrice: number;
+  fniProducts?: AttachedFniProduct[];
 }
 
 export interface ClosedDealResult {
@@ -39,5 +58,6 @@ export interface ClosedDealResult {
   purchasePrice: number;
   reconCost: number;
   frontGross: number;
-  readonly backGross: 0;
+  backGross: number;
+  fniProducts: AttachedFniProduct[];
 }
