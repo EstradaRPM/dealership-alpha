@@ -32,15 +32,19 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 
 ## Module map (deep modules, communicating via EventBus)
 
-Game logic: `GameClock`, `CustomerPool`, `DepartmentQueue`, `StaffOrg`, `Inventory`, `DealEngine`, `Economy`, `Reputation`, `CompetitorMarket`, `CareerProgression`, `SaveStore`, `EventBus`.
+Game logic lives under `src/game/<Module>/`. Each module directory contains a `CLAUDE.md` describing its public surface, events emitted/consumed, and tunable data files — **read the per-module doc before touching that module** rather than re-deriving from `index.ts`.
 
-UI: `HomeView`, `DepartmentScreens`, `SalesWorkspace`, `FollowupView`, `KPIDashboard`, `NarrativeBeat`, `CharacterCreation`, `EndCard`.
+Original 12 (issue #1): `GameClock`, `CustomerPool`, `DepartmentQueue`, `StaffOrg`, `Inventory`, `DealEngine`, `Economy`, `Reputation`, `CompetitorMarket`, `CareerProgression`, `SaveStore`, `EventBus`.
 
-See issue #1 for module responsibilities.
+Added during v1 slice: `CapacityManager`, `FollowUpPool`, `NPC`, `ServiceQueue`, `ServiceDispatch`, `StaffDispatch`, `StaffMorale`. Plus `data/` (JSON loader + tunables schema; not an EventBus participant).
+
+UI (planned, not yet implemented): `HomeView`, `DepartmentScreens`, `SalesWorkspace`, `FollowupView`, `KPIDashboard`, `NarrativeBeat`, `CharacterCreation`, `EndCard`.
+
+The canonical event catalog is `src/game/EventBus/events.ts` — every event name, payload, and ordering note lives there. See issue #1 for the macro-design rationale.
 
 ## Testing
 
-- All 12 game-logic modules get isolation tests on their public interface. Test external behavior, never implementation details.
+- Every game-logic module gets isolation tests on its public interface. Test external behavior, never implementation details.
 - UI gets smoke tests only (renders without crashing).
 - No snapshot tests in v1.
 
