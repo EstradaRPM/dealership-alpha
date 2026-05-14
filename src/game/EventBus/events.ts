@@ -102,6 +102,28 @@ export interface EventMap {
   // CareerProgression — player's dealership advanced to the next tier
   'career:tier_up': { fromTier: number; toTier: number; day: number };
 
+  // CareerProgression — bankruptcy outcomes (tier-aware per issue #30).
+  //   terminal: Tier 1 game-over; routes to end-card flow.
+  //   contraction: Tier 2 forced back to Tier 1 with debt overhang.
+  //   compliance: Tier 3+ auto-applied cash drain + rep hit; tier preserved.
+  'career:bankruptcy_terminal': { day: number; tier: number };
+  'career:bankruptcy_contraction': {
+    day: number;
+    fromTier: number;
+    debtPrincipal: number;
+  };
+  'career:bankruptcy_compliance': {
+    day: number;
+    tier: number;
+    cashCost: number;
+    reputationHit: number;
+  };
+  'career:debt_payment_made': {
+    day: number;
+    amount: number;
+    remainingBalance: number;
+  };
+
   // ServiceQueue — daily service intake items generated at Tier 2+
   'service:intake_ready': {
     day: number;

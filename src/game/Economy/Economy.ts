@@ -8,6 +8,9 @@ export interface Economy {
   readonly cash: number;
   postRevenue(amount: number, label: string): void;
   postExpense(amount: number, label: string): void;
+  // Bypass the solvency check. Used by failure paths (bankruptcy debt service,
+  // compliance fees) where cash legitimately goes negative.
+  forceDebit(amount: number, label: string): void;
   getPnL(fromDay: number, toDay: number): PnLSummary;
 }
 
@@ -57,6 +60,10 @@ export function createEconomy(deps: EconomyDeps): Economy {
       if (cash < amount) {
         throw new Error(`Insufficient cash (have ${cash}, need ${amount})`);
       }
+      postExpenseInternal(currentDay, amount, label);
+    },
+
+    forceDebit(amount, label) {
       postExpenseInternal(currentDay, amount, label);
     },
 

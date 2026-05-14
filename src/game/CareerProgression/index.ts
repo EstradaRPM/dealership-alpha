@@ -6,3 +6,12 @@ export type { TierManager, TierManagerDeps, TierManagerState } from './TierManag
 
 export { loadTierConfig } from './tierData';
 export type { TierConfig, TierEntry, TierThreshold, AccentOption, FontOption } from './tierData';
+
+export { createBankruptcyMonitor } from './BankruptcyMonitor';
+export type {
+  BankruptcyMonitor,
+  BankruptcyMonitorDeps,
+  BankruptcyMonitorState,
+} from './BankruptcyMonitor';
+export { loadFailureTunables } from './failureData';
+export type { FailureTunables } from './failureData';

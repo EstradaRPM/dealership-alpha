@@ -25,6 +25,9 @@ export interface TierManager {
   readonly fontId: string;
   readonly customersServed: number;
   applyTierUp(opts: { businessName: string; accentColor: string; fontId: string }): void;
+  // Forced downgrade used by failure paths (e.g., Tier 2 bankruptcy contraction
+  // back to Tier 1). Does not publish career:tier_up.
+  applyContraction(toTier: number): void;
   getSerializableState(): TierManagerState;
   restoreState(state: TierManagerState): void;
 }
@@ -75,6 +78,15 @@ export function createTierManager(deps: TierManagerDeps): TierManager {
       businessName = name;
       accentColor = color;
       fontId = font;
+    },
+
+    applyContraction(toTier) {
+      if (toTier < 1 || toTier >= currentTier) {
+        throw new Error(
+          `applyContraction(${toTier}) invalid from tier ${currentTier}`,
+        );
+      }
+      currentTier = toTier;
     },
 
     getSerializableState() {

@@ -1,0 +1,12 @@
+{
+  "cashFloor": 0,
+  "consecutiveDaysToTrigger": 7,
+  "tier2": {
+    "debtPrincipal": 50000,
+    "weeklyDebtPayment": 2000
+  },
+  "tier3Plus": {
+    "complianceCost": 30000,
+    "reputationHit": -15
+  }
+}

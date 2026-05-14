@@ -38,6 +38,7 @@ function makeEconomy(cash: number): Economy {
     get cash() { return cash; },
     postRevenue: jest.fn(),
     postExpense: jest.fn(),
+    forceDebit: jest.fn(),
     getPnL: jest.fn().mockReturnValue({ totalRevenue: 0, totalExpenses: 0, netIncome: 0, entries: [] }),
   };
 }
