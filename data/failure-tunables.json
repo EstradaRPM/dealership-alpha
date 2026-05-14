@@ -9,6 +9,20 @@
     "complianceCost": 30000,
     "reputationHit": -15
   },
+  "indictment": {
+    "pressureMax": 100,
+    "pressureThreshold": 50,
+    "lemonLawPressure": 15,
+    "auditFailurePressure": 20,
+    "fraudFlagPressure": 25,
+    "tier2": {
+      "stakePenalty": 100000
+    },
+    "tier3Plus": {
+      "legalDefenseCost": 250000,
+      "reputationHit": -40
+    }
+  },
   "regulatory": {
     "pressureMax": 100,
     "pressureThreshold": 80,

@@ -142,6 +142,29 @@ export interface EventMap {
   };
   'regulatory:suspension_lifted': { day: number };
 
+  // Severe-event signals that accumulate indictment pressure (issue #32).
+  // Published by domain modules when a severe regulatory violation occurs.
+  'regulatory:lemon_law_incident': { day: number; customerId: string };
+  'regulatory:audit_failure': { day: number };
+  'deal:fraud_flag': { day: number; customerId: string; vehicleId: string };
+
+  // CareerProgression — indictment outcomes (tier-aware per issue #32).
+  //   terminal: Tier 1 game-over with prison-sentence flavor.
+  //   contraction: Tier 2 player loses personal stake + business contracts.
+  //   legal_defense: Tier 3+ legal-defense investment + reputation crater; tier preserved.
+  'career:indictment_terminal': { day: number; tier: number; pressure: number };
+  'career:indictment_contraction': {
+    day: number;
+    fromTier: number;
+    stakePenalty: number;
+  };
+  'career:indictment_legal_defense': {
+    day: number;
+    tier: number;
+    cashCost: number;
+    reputationHit: number;
+  };
+
   // ServiceQueue — daily service intake items generated at Tier 2+
   'service:intake_ready': {
     day: number;

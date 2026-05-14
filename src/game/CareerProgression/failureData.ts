@@ -16,3 +16,22 @@ export interface FailureTunables {
 export function loadFailureTunables(): FailureTunables {
   return rawConfig as FailureTunables;
 }
+
+export interface IndictmentTunables {
+  pressureMax: number;
+  pressureThreshold: number;
+  lemonLawPressure: number;
+  auditFailurePressure: number;
+  fraudFlagPressure: number;
+  tier2: {
+    stakePenalty: number;
+  };
+  tier3Plus: {
+    legalDefenseCost: number;
+    reputationHit: number;
+  };
+}
+
+export function loadIndictmentTunables(): IndictmentTunables {
+  return (rawConfig as { indictment: IndictmentTunables }).indictment;
+}

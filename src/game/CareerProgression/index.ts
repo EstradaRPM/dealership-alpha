@@ -13,5 +13,12 @@ export type {
   BankruptcyMonitorDeps,
   BankruptcyMonitorState,
 } from './BankruptcyMonitor';
-export { loadFailureTunables } from './failureData';
-export type { FailureTunables } from './failureData';
+export { loadFailureTunables, loadIndictmentTunables } from './failureData';
+export type { FailureTunables, IndictmentTunables } from './failureData';
+
+export { createIndictmentMonitor } from './IndictmentMonitor';
+export type {
+  IndictmentMonitor,
+  IndictmentMonitorDeps,
+  IndictmentMonitorState,
+} from './IndictmentMonitor';
