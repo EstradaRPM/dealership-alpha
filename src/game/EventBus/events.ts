@@ -65,6 +65,10 @@ export interface EventMap {
     frontGross: number;
     backGross: number;
   };
+
+  // StaffOrg — roster changes
+  'staff:hired': { staffId: string; roleId: string; day: number; hiringCost: number };
+  'staff:fired': { staffId: string; roleId: string; day: number };
 }
 
 export type EventName = keyof EventMap;

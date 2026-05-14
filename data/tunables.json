@@ -11,5 +11,14 @@
       "weeklyRent": 1200,
       "weeklyPayrollStub": 800
     }
+  },
+  "staffOrg": {
+    "hiringCostByTier": {
+      "worker": 500,
+      "customer-facing": 1000,
+      "manager": 2500,
+      "gm": 5000
+    },
+    "candidatesPerRole": 3
   }
 }
