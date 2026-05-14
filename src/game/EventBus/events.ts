@@ -31,9 +31,16 @@ export interface EventMap {
 
   // CustomerPool lifecycle — published in this order per customer per day:
   //   customer:arrived → customer:state_changed (0-n times) → customer:resolved
+  //   OR customer:poached (removes from pool before any state changes)
   'customer:arrived': { day: number; customerId: string; label: string };
   'customer:state_changed': { customerId: string; from: string; to: string };
   'customer:resolved': { customerId: string; outcome: 'closed' | 'walk' };
+  'customer:poached': {
+    customerId: string;
+    day: number;
+    competitorId: string;
+    competitorName: string;
+  };
 
   // Inventory — vehicle purchased from auction, moved to lot
   'inventory:vehicle_purchased': { day: number; vehicleId: string; cost: number };

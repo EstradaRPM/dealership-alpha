@@ -2,8 +2,12 @@ import { createCustomer } from '../NPC';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import type { CreateCustomerDeps, CustomerBundle } from '../NPC';
 import type { EventBus } from '../EventBus';
+import type { BrandCatalog } from '../CompetitorMarket/schemas/brand';
+import type { Competitor } from '../CompetitorMarket/Competitor';
 import { transition, IllegalTransitionError } from './CustomerStateMachine';
 import type { CustomerStage, CustomerAction } from './types';
+import { checkPoach } from './PoachEngine';
+import { loadPoachConfig, type PoachConfig } from './poachData';
 
 export type { IllegalTransitionError };
 
@@ -40,9 +44,19 @@ const SALES_ARCHETYPES: ReadonlyArray<{
 export function createCustomerPool(deps: {
   bus: EventBus;
   npcDeps: CreateCustomerDeps;
+  brands?: BrandCatalog;
+  getPlayerStrength?: () => number;
+  poachConfig?: PoachConfig;
 }): CustomerPool {
   const { bus, npcDeps } = deps;
   const sessions = new Map<string, MutableSession>();
+
+  let latestCompetitors: ReadonlyArray<Competitor> = [];
+  let resolvedPoachConfig: PoachConfig | undefined;
+
+  bus.subscribe('market:competitive_pressure', ({ competitors }) => {
+    latestCompetitors = competitors;
+  });
 
   function doDispatch(customerId: string, action: CustomerAction): void {
     const session = sessions.get(customerId);
@@ -55,6 +69,56 @@ export function createCustomerPool(deps: {
       bus.publish('customer:resolved', {
         customerId,
         outcome: to === 'CLOSED' ? 'closed' : 'walk',
+      });
+    }
+  }
+
+  function runPoachChecks(day: number): void {
+    if (!deps.brands || !deps.getPlayerStrength) return;
+
+    resolvedPoachConfig ??= deps.poachConfig ?? loadPoachConfig();
+    const config = resolvedPoachConfig;
+    const playerStrength = deps.getPlayerStrength();
+
+    const toPoach: Array<{ session: MutableSession; competitor: Competitor }> = [];
+
+    for (const session of sessions.values()) {
+      if (session.stage === 'CLOSED' || session.stage === 'WALK') continue;
+
+      const visit = session.bundle.visit;
+      if (visit.kind !== 'sales') continue;
+
+      const rng = createRng(
+        deriveSeed(npcDeps.masterSeed, 'customer_pool.poach', {
+          day,
+          customerId: session.customerId,
+        }),
+      );
+
+      const result = checkPoach({
+        traitIds: session.bundle.person.trait_ids,
+        visit,
+        competitors: latestCompetitors,
+        brands: deps.brands,
+        playerStrength,
+        shopAroundBaseRate: config.shopAroundBaseRate,
+        shopAroundHighRate: config.shopAroundHighRate,
+        shopAroundTraitId: config.shopAroundTraitId,
+        rng,
+      });
+
+      if (result.poached) {
+        toPoach.push({ session, competitor: result.competitor });
+      }
+    }
+
+    for (const { session, competitor } of toPoach) {
+      sessions.delete(session.customerId);
+      bus.publish('customer:poached', {
+        customerId: session.customerId,
+        day,
+        competitorId: competitor.id,
+        competitorName: competitor.name,
       });
     }
   }
@@ -80,6 +144,8 @@ export function createCustomerPool(deps: {
     });
 
     bus.publish('customer:arrived', { day, customerId, label: pick.label });
+
+    runPoachChecks(day);
   });
 
   bus.subscribe('deal:closed', ({ customerId }) => {
