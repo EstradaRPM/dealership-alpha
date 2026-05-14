@@ -69,6 +69,15 @@ export interface EventMap {
   // StaffOrg — roster changes
   'staff:hired': { staffId: string; roleId: string; day: number; hiringCost: number };
   'staff:fired': { staffId: string; roleId: string; day: number };
+
+  // StaffDispatch — salesperson auto-resolved a sales queue item
+  'staff:auto_resolved': {
+    customerId: string;
+    staffId: string;
+    day: number;
+    outcome: 'closed' | 'no_sale';
+    grossImpact: number;
+  };
 }
 
 export type EventName = keyof EventMap;

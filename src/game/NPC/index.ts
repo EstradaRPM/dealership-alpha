@@ -11,6 +11,7 @@ export { createStaff, promoteStaff } from './factories/StaffFactory';
 export type {
   CreateStaffContext,
   CreateStaffDeps,
+  StaffWithComposites,
 } from './factories/StaffFactory';
 
 export { createCustomer } from './factories/CustomerFactory';

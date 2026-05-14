@@ -1,0 +1,260 @@
+import { createEventBus } from '../src/game/EventBus';
+import { createGameClock } from '../src/game/GameClock';
+import { createEconomy } from '../src/game/Economy';
+import { createDepartmentQueue } from '../src/game/DepartmentQueue';
+import { createStaffDispatch, loadStaffDispatchConfig } from '../src/game/StaffDispatch';
+import type { StaffDispatchConfig } from '../src/game/StaffDispatch';
+import type { StaffOrg } from '../src/game/StaffOrg';
+import type { StaffWithComposites, Staff } from '../src/game/NPC';
+
+const MASTER_SEED = 42;
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function makeStaff(effectiveness: number, id = `staff:mock:${effectiveness}`): StaffWithComposites {
+  const plain: Staff = {
+    id,
+    role_id: 'salesperson',
+    trait_ids: [],
+    skills: {},
+    resources: { stamina: 80 },
+    counters: { experience: 0, deals_closed: 0, days_employed: 0 },
+  };
+  Object.defineProperty(plain, 'effectiveness', { get: () => effectiveness, enumerable: false, configurable: true });
+  Object.defineProperty(plain, 'trustworthiness', { get: () => 0, enumerable: false, configurable: true });
+  return plain as StaffWithComposites;
+}
+
+function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
+  return {
+    get currentRoster() { return roster; },
+    getCandidates: () => [],
+    hire: () => {},
+    fire: () => {},
+  };
+}
+
+// All flags set to 0 so exception rolls never fire.
+const NO_EXCEPTION_CONFIG: StaffDispatchConfig = {
+  exceptionFlagRates: {
+    vip_customer: 0,
+    high_dollar_deal: 0,
+    irate_customer: 0,
+    lemon_law_threat: 0,
+    audit_trigger: 0,
+  },
+  minAutoResolveRate: 0.30,
+  maxAutoResolveRate: 0.95,
+  minCloseRate: 0.20,
+  maxCloseRate: 0.65,
+  baseAutoGross: 2500,
+  minGrossModifier: 0.50,
+};
+
+// All flags set to 1 so every customer gets flagged.
+const ALL_EXCEPTION_CONFIG: StaffDispatchConfig = {
+  ...NO_EXCEPTION_CONFIG,
+  exceptionFlagRates: {
+    vip_customer: 1,
+    high_dollar_deal: 1,
+    irate_customer: 1,
+    lemon_law_threat: 1,
+    audit_trigger: 1,
+  },
+};
+
+// Force auto-resolve on every customer for any skill level.
+const ALWAYS_AUTO_CONFIG: StaffDispatchConfig = {
+  ...NO_EXCEPTION_CONFIG,
+  minAutoResolveRate: 1.0,
+  maxAutoResolveRate: 1.0,
+};
+
+const ALWAYS_CLOSE_CONFIG: StaffDispatchConfig = {
+  ...ALWAYS_AUTO_CONFIG,
+  minCloseRate: 1.0,
+  maxCloseRate: 1.0,
+};
+
+const NEVER_CLOSE_CONFIG: StaffDispatchConfig = {
+  ...ALWAYS_AUTO_CONFIG,
+  minCloseRate: 0.0,
+  maxCloseRate: 0.0,
+};
+
+function makeSetup(roster: StaffWithComposites[], config: StaffDispatchConfig = NO_EXCEPTION_CONFIG) {
+  const bus = createEventBus();
+  const clock = createGameClock({ bus });
+  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+  // DepartmentQueue must subscribe first so workspace items are added before StaffDispatch removes them.
+  const queue = createDepartmentQueue({ bus });
+  const staffOrg = makeStaffOrg(roster);
+  createStaffDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config });
+  return { bus, clock, economy, queue };
+}
+
+// ── No staff → no auto-resolve ───────────────────────────────────────────────
+
+describe('StaffDispatch — no staff on roster', () => {
+  it('leaves all sales items in queue when roster is empty', () => {
+    const { bus, queue } = makeSetup([], ALWAYS_AUTO_CONFIG);
+    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    expect(queue.getBadgeCount('sales')).toBe(1);
+  });
+
+  it('emits no staff:auto_resolved events when roster is empty', () => {
+    const { bus, queue } = makeSetup([], ALWAYS_AUTO_CONFIG);
+    const events: unknown[] = [];
+    bus.subscribe('staff:auto_resolved', (e) => events.push(e));
+    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    void queue;
+    expect(events).toHaveLength(0);
+  });
+});
+
+// ── Exception flags force escalation ────────────────────────────────────────
+
+describe('StaffDispatch — exception flags', () => {
+  it('flagged customer stays in queue regardless of staff skill', () => {
+    const roster = [makeStaff(1.0)]; // perfect skill
+    const { bus, queue } = makeSetup(roster, ALL_EXCEPTION_CONFIG);
+    bus.publish('customer:arrived', { day: 1, customerId: 'cust:vip', label: 'VIP' });
+    expect(queue.getBadgeCount('sales')).toBe(1);
+  });
+
+  it('emits no auto_resolved event for flagged customer', () => {
+    const roster = [makeStaff(1.0)];
+    const { bus, queue } = makeSetup(roster, ALL_EXCEPTION_CONFIG);
+    const events: unknown[] = [];
+    bus.subscribe('staff:auto_resolved', (e) => events.push(e));
+    bus.publish('customer:arrived', { day: 1, customerId: 'cust:vip', label: 'VIP' });
+    void queue;
+    expect(events).toHaveLength(0);
+  });
+});
+
+// ── Auto-resolve removes item from queue ─────────────────────────────────────
+
+describe('StaffDispatch — auto-resolve basic flow', () => {
+  it('removes item from sales queue on auto-resolve', () => {
+    const roster = [makeStaff(0.8)];
+    const { bus, queue } = makeSetup(roster, ALWAYS_AUTO_CONFIG);
+    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    expect(queue.getBadgeCount('sales')).toBe(0);
+  });
+
+  it('emits staff:auto_resolved event', () => {
+    const roster = [makeStaff(0.8)];
+    const { bus } = makeSetup(roster, ALWAYS_AUTO_CONFIG);
+    const events: Array<{ customerId: string; staffId: string; outcome: string }> = [];
+    bus.subscribe('staff:auto_resolved', (e) => events.push(e));
+    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    expect(events).toHaveLength(1);
+    expect(events[0].customerId).toBe('cust:1');
+    expect(events[0].staffId).toBe('staff:mock:0.8');
+  });
+
+  it('closed outcome posts revenue and sets grossImpact > 0', () => {
+    const roster = [makeStaff(0.8)];
+    const { bus, economy } = makeSetup(roster, ALWAYS_CLOSE_CONFIG);
+    const cashBefore = economy.cash;
+    const events: Array<{ outcome: string; grossImpact: number }> = [];
+    bus.subscribe('staff:auto_resolved', (e) => events.push(e));
+    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    expect(events[0].outcome).toBe('closed');
+    expect(events[0].grossImpact).toBeGreaterThan(0);
+    expect(economy.cash).toBeGreaterThan(cashBefore);
+  });
+
+  it('no_sale outcome posts no revenue and grossImpact is 0', () => {
+    const roster = [makeStaff(0.8)];
+    const { bus, economy } = makeSetup(roster, NEVER_CLOSE_CONFIG);
+    const cashBefore = economy.cash;
+    const events: Array<{ outcome: string; grossImpact: number }> = [];
+    bus.subscribe('staff:auto_resolved', (e) => events.push(e));
+    bus.publish('customer:arrived', { day: 1, customerId: 'cust:1', label: 'Test' });
+    expect(events[0].outcome).toBe('no_sale');
+    expect(events[0].grossImpact).toBe(0);
+    expect(economy.cash).toBe(cashBefore);
+  });
+
+  it('auto-resolved event carries correct day', () => {
+    const roster = [makeStaff(0.8)];
+    const { bus } = makeSetup(roster, ALWAYS_AUTO_CONFIG);
+    const events: Array<{ day: number }> = [];
+    bus.subscribe('staff:auto_resolved', (e) => events.push(e));
+    bus.publish('customer:arrived', { day: 5, customerId: 'cust:5', label: 'Test' });
+    expect(events[0].day).toBe(5);
+  });
+});
+
+// ── Skill-based escalation rate ──────────────────────────────────────────────
+
+describe('StaffDispatch — skill affects escalation rate', () => {
+  function countAutoResolved(effectiveness: number, n: number): number {
+    const roster = [makeStaff(effectiveness)];
+    let resolved = 0;
+    for (let i = 0; i < n; i++) {
+      const bus = createEventBus();
+      const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+      const queue = createDepartmentQueue({ bus });
+      const staffOrg = makeStaffOrg(roster);
+      createStaffDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config: NO_EXCEPTION_CONFIG });
+      bus.subscribe('staff:auto_resolved', () => { resolved++; });
+      bus.publish('customer:arrived', { day: i + 1, customerId: `cust:${i}`, label: 'Test' });
+    }
+    return resolved;
+  }
+
+  it('high-skill staff auto-resolve more customers than low-skill', () => {
+    const n = 200;
+    const lowResolved = countAutoResolved(0.05, n);
+    const highResolved = countAutoResolved(0.95, n);
+    expect(highResolved).toBeGreaterThan(lowResolved);
+  });
+
+  it('low-skill auto-resolve rate is below high-skill by a meaningful margin', () => {
+    const n = 200;
+    const lowRate = countAutoResolved(0.05, n) / n;
+    const highRate = countAutoResolved(0.95, n) / n;
+    // Expect at least a 30% gap between high and low skill rates.
+    expect(highRate - lowRate).toBeGreaterThan(0.30);
+  });
+});
+
+// ── Gross degrades with lower skill ──────────────────────────────────────────
+
+describe('StaffDispatch — gross degrades with low skill', () => {
+  function sumGross(effectiveness: number, n: number): number {
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+      const bus = createEventBus();
+      const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+      const queue = createDepartmentQueue({ bus });
+      const staffOrg = makeStaffOrg([makeStaff(effectiveness)]);
+      createStaffDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config: ALWAYS_CLOSE_CONFIG });
+      bus.subscribe('staff:auto_resolved', ({ grossImpact }) => { total += grossImpact; });
+      bus.publish('customer:arrived', { day: i + 1, customerId: `cust:${i}`, label: 'Test' });
+    }
+    return total;
+  }
+
+  it('high-skill closures produce more total gross than low-skill closures', () => {
+    const n = 50;
+    const lowGross = sumGross(0.05, n);
+    const highGross = sumGross(0.95, n);
+    expect(highGross).toBeGreaterThan(lowGross);
+  });
+});
+
+// ── Config loading ────────────────────────────────────────────────────────────
+
+describe('StaffDispatch — config', () => {
+  it('loadStaffDispatchConfig returns valid tunables', () => {
+    const config = loadStaffDispatchConfig();
+    expect(config.baseAutoGross).toBeGreaterThan(0);
+    expect(config.minAutoResolveRate).toBeGreaterThanOrEqual(0);
+    expect(config.maxAutoResolveRate).toBeLessThanOrEqual(1);
+    expect(Object.keys(config.exceptionFlagRates).length).toBeGreaterThan(0);
+  });
+});

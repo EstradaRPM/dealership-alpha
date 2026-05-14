@@ -7,6 +7,7 @@ export interface DepartmentQueue {
   getBadges(): Record<DeptKey, number>;
   resolveItem(id: string): void;
   resolveTop(dept: DeptKey): void;
+  resolveByCustomerId(customerId: string): boolean;
 }
 
 const DEPT_KEYS: DeptKey[] = ['sales', 'service', 'bdc', 'office', 'lot'];
@@ -89,6 +90,16 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
       if (queues[dept].length > 0) {
         queues[dept].shift();
       }
+    },
+    resolveByCustomerId(customerId) {
+      for (const dept of DEPT_KEYS) {
+        const idx = queues[dept].findIndex(item => item.customerId === customerId);
+        if (idx !== -1) {
+          queues[dept].splice(idx, 1);
+          return true;
+        }
+      }
+      return false;
     },
   };
 }
