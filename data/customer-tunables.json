@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "followUp": {
+    "initialHeatBase": 5,
+    "decayPerNight": 1
+  }
+}

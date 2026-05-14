@@ -11,11 +11,12 @@ export interface GameClock {
 
 // Overnight phase event order — consumed by subscribers in deterministic sequence:
 //   clock:day_ended → clock:overnight_payroll → clock:overnight_inventory_arrival
-//   → clock:overnight_reputation_drift → clock:day_started
+//   → clock:overnight_reputation_drift → clock:overnight_followup_decay → clock:day_started
 const OVERNIGHT_PHASES = [
   'clock:overnight_payroll',
   'clock:overnight_inventory_arrival',
   'clock:overnight_reputation_drift',
+  'clock:overnight_followup_decay',
 ] as const;
 
 const DAYS_PER_WEEK = 7;

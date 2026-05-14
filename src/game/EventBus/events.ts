@@ -14,11 +14,12 @@ export interface EventMap {
   // GameClock overnight sequence — published in this order by advanceDay():
   //   clock:day_ended → clock:overnight_payroll →
   //   clock:overnight_inventory_arrival → clock:overnight_reputation_drift →
-  //   clock:day_started
+  //   clock:overnight_followup_decay → clock:day_started
   'clock:day_ended': { day: number };
   'clock:overnight_payroll': { day: number };
   'clock:overnight_inventory_arrival': { day: number };
   'clock:overnight_reputation_drift': { day: number };
+  'clock:overnight_followup_decay': { day: number };
   'clock:day_started': { day: number };
 
   // CompetitorMarket → CustomerPool (ADR-0001 §10). Published each
@@ -43,6 +44,9 @@ export interface EventMap {
 
   // Inventory — vehicle sold off lot
   'inventory:vehicle_sold': { day: number; vehicleId: string };
+
+  // FollowUpPool — a walked customer's heat decayed to zero; no longer actionable
+  'followup:customer_archived': { customerId: string; day: number };
 
   // DealEngine — a deal has been fully closed (vehicle sold, revenue posted)
   'deal:closed': {
