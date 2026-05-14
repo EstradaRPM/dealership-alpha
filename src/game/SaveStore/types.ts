@@ -23,3 +23,16 @@ export interface StorageDriver {
   write(payload: string): Promise<void>;
   clear(): Promise<void>;
 }
+
+export interface WeeklySnapshot {
+  day: number;
+  tier: number;
+  state: SaveState;
+}
+
+export interface SnapshotStore {
+  saveSnapshot(state: SaveState, meta: { day: number; tier: number }): Promise<void>;
+  listSnapshots(): Promise<readonly WeeklySnapshot[]>;
+  rollbackToSnapshot(index: number): Promise<SaveState | null>;
+  clear(): Promise<void>;
+}

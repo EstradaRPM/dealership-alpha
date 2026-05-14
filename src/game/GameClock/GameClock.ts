@@ -55,6 +55,9 @@ export function createGameClock(deps: {
       }
       day += 1;
       bus.publish('clock:day_started', { day });
+      if (endingDay % DAYS_PER_WEEK === 0) {
+        bus.publish('clock:week_ended', { day: endingDay });
+      }
     },
   };
 }

@@ -22,6 +22,8 @@ export interface EventMap {
   'clock:overnight_reputation_drift': { day: number };
   'clock:overnight_followup_decay': { day: number };
   'clock:day_started': { day: number };
+  // Fired after clock:day_started when that day was the last day of a week (day % 7 === 0).
+  'clock:week_ended': { day: number };
 
   // CompetitorMarket → CustomerPool (ADR-0001 §10). Published each
   // clock:day_started; consumed when rolling today's customers.

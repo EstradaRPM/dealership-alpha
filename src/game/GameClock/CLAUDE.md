@@ -14,6 +14,7 @@ Day-cycle driver. Owns the current day index, season, and the overnight sequence
 4. `clock:overnight_reputation_drift`
 5. `clock:overnight_followup_decay`
 6. `clock:day_started`
+7. `clock:week_ended` *(only when `endingDay % 7 === 0`; payload `{ day: endingDay }`)*
 
 Other modules hook into this sequence — order matters. If you add a new overnight step, slot it deliberately and update `events.ts` + this doc.
 
