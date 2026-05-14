@@ -124,6 +124,24 @@ export interface EventMap {
     remainingBalance: number;
   };
 
+  // Reputation/RegulatoryMeter — AG complaint outcomes (tier-aware per issue #31).
+  //   terminal: Tier 1 game-over.
+  //   contraction: Tier 2 forced back to Tier 1 + license suspension window.
+  //   consent_decree: Tier 3+ auto-applied cash drain + rep hit; tier preserved.
+  'regulatory:ag_complaint_terminal': { day: number; tier: number; pressure: number };
+  'regulatory:ag_complaint_contraction': {
+    day: number;
+    fromTier: number;
+    suspensionDays: number;
+  };
+  'regulatory:ag_complaint_consent_decree': {
+    day: number;
+    tier: number;
+    cashCost: number;
+    reputationHit: number;
+  };
+  'regulatory:suspension_lifted': { day: number };
+
   // ServiceQueue — daily service intake items generated at Tier 2+
   'service:intake_ready': {
     day: number;

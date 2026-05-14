@@ -8,5 +8,20 @@
   "tier3Plus": {
     "complianceCost": 30000,
     "reputationHit": -15
+  },
+  "regulatory": {
+    "pressureMax": 100,
+    "pressureThreshold": 80,
+    "dailyDecay": 1.5,
+    "walkPressure": 0.5,
+    "missedOppPressure": 1.0,
+    "angerPressure": 2.0,
+    "tier2": {
+      "suspensionDays": 14
+    },
+    "tier3Plus": {
+      "complianceCost": 75000,
+      "reputationHit": -25
+    }
   }
 }
