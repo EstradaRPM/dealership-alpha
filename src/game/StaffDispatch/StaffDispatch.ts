@@ -2,6 +2,7 @@ import type { EventBus } from '../EventBus';
 import type { Economy } from '../Economy';
 import type { StaffOrg } from '../StaffOrg';
 import type { DepartmentQueue } from '../DepartmentQueue';
+import type { StaffMorale } from '../StaffMorale';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import { EXCEPTION_FLAGS } from './types';
 import { loadStaffDispatchConfig, type StaffDispatchConfig } from './staffDispatchData';
@@ -12,6 +13,7 @@ export interface StaffDispatchDeps {
   queue: DepartmentQueue;
   economy: Economy;
   masterSeed: number;
+  staffMorale?: StaffMorale;
   config?: StaffDispatchConfig;
 }
 
@@ -24,7 +26,7 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 export function createStaffDispatch(deps: StaffDispatchDeps): StaffDispatch {
-  const { bus, staffOrg, queue, economy, masterSeed } = deps;
+  const { bus, staffOrg, queue, economy, masterSeed, staffMorale } = deps;
   const config = deps.config ?? loadStaffDispatchConfig();
 
   bus.subscribe('customer:arrived', ({ customerId, day }) => {
@@ -55,16 +57,18 @@ export function createStaffDispatch(deps: StaffDispatchDeps): StaffDispatch {
     // Auto-resolve: remove workspace item the queue just added.
     queue.resolveByCustomerId(customerId);
 
-    // Outcome quality scales with effectiveness.
-    const closeChance = lerp(
+    const moraleMult = staffMorale?.getMoraleMultiplier(salesperson.id) ?? 1.0;
+
+    // Outcome quality scales with effectiveness and morale.
+    const closeChance = Math.min(1, lerp(
       config.minCloseRate,
       config.maxCloseRate,
       salesperson.effectiveness,
-    );
+    ) * moraleMult);
     const isClosed = rng() < closeChance;
 
     if (isClosed) {
-      const grossMod = lerp(config.minGrossModifier, 1.0, salesperson.effectiveness);
+      const grossMod = Math.min(1, lerp(config.minGrossModifier, 1.0, salesperson.effectiveness) * moraleMult);
       const gross = Math.round(config.baseAutoGross * grossMod);
       economy.postRevenue(gross, 'Auto-sale — salesperson');
       bus.publish('staff:auto_resolved', {

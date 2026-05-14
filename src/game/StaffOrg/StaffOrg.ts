@@ -47,6 +47,11 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
     rolePool.clear();
   });
 
+  bus.subscribe('staff:quit', ({ staffId }) => {
+    const idx = roster.findIndex((s) => s.id === staffId);
+    if (idx !== -1) roster.splice(idx, 1);
+  });
+
   function hiringCostFor(roleId: string): number {
     const role = taxonomy.roles[roleId];
     if (!role) throw new StaffOrgError(`Unknown role "${roleId}"`);

@@ -78,6 +78,9 @@ export interface EventMap {
     outcome: 'closed' | 'no_sale';
     grossImpact: number;
   };
+
+  // StaffMorale — staff member quit due to low morale
+  'staff:quit': { staffId: string; roleId: string; day: number; morale: number };
 }
 
 export type EventName = keyof EventMap;

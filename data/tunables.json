@@ -21,6 +21,20 @@
     },
     "candidatesPerRole": 3
   },
+  "staffMorale": {
+    "defaultMorale": 70,
+    "moraleCeiling": 95,
+    "moraleFloor": 5,
+    "quitRiskThreshold": 30,
+    "quitRiskRate": 0.15,
+    "workloadCapacityPerStaff": 4,
+    "workloadOverloadPenalty": -5,
+    "workloadIdleBonus": 1,
+    "recognitionBonus": 3,
+    "payVsMarketBonus": 2,
+    "moraleMultiplierMin": 0.6,
+    "moraleMultiplierMax": 1.2
+  },
   "staffDispatch": {
     "exceptionFlagRates": {
       "vip_customer": 0.05,
