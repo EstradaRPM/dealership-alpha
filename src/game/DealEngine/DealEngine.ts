@@ -93,6 +93,7 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       }
 
       const frontGross = agreedPrice - vehicle.purchasePrice - vehicle.reconCost;
+      const daysInInventory = vehicle.daysInInventory;
       const result: ClosedDealResult = {
         customerId,
         vehicleId,
@@ -104,10 +105,11 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
         reconCost: vehicle.reconCost,
         frontGross,
         backGross,
+        daysInInventory,
         fniProducts,
       };
 
-      bus.publish('deal:closed', { customerId, vehicleId, agreedPrice, frontGross, backGross });
+      bus.publish('deal:closed', { customerId, vehicleId, agreedPrice, frontGross, backGross, daysInInventory });
       return result;
     },
   };

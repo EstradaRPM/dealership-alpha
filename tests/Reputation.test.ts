@@ -47,6 +47,7 @@ function publishDealClosed(bus: ReturnType<typeof createEventBus>, customerId = 
     agreedPrice: 25_000,
     frontGross: 2000,
     backGross: 800,
+    daysInInventory: 0,
   });
 }
 

@@ -71,6 +71,7 @@ export interface EventMap {
     agreedPrice: number;
     frontGross: number;
     backGross: number;
+    daysInInventory: number;
   };
 
   // StaffOrg — roster changes

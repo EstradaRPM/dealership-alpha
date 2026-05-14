@@ -65,5 +65,6 @@ export interface ClosedDealResult {
   reconCost: number;
   frontGross: number;
   backGross: number;
+  daysInInventory: number;
   fniProducts: AttachedFniProduct[];
 }
