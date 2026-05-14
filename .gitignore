@@ -33,8 +33,10 @@ yarn-error.*
 # local env files
 .env*.local
 
-# Claude Code local settings
-.claude/
+# Claude Code: ignore everything personal/local, but share settings.json
+# (the project-level allowlist) so the team gets the same defaults.
+.claude/*
+!.claude/settings.json
 
 # Local-only issue snapshot (regenerate via scripts/dump-issues.sh)
 ISSUES.md
