@@ -1,0 +1,1 @@
+export { LegacyWallView } from './LegacyWallView';

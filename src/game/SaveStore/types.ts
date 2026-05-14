@@ -36,3 +36,19 @@ export interface SnapshotStore {
   rollbackToSnapshot(index: number): Promise<SaveState | null>;
   clear(): Promise<void>;
 }
+
+export interface LegacyEntry {
+  playerName: string;
+  backstoryId: string;
+  careerYear: number;
+  tierReached: number;
+  reason: string;
+  flavorText: string;
+  completedAt: string;
+}
+
+export interface LegacyStore {
+  appendLegacy(entry: LegacyEntry): Promise<void>;
+  listLegacies(): Promise<readonly LegacyEntry[]>;
+  clear(): Promise<void>;
+}
