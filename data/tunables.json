@@ -49,6 +49,37 @@
     },
     "missedOpportunitySatisfactionHit": -5
   },
+  "reputation": {
+    "startingSatisfaction": 70,
+    "startingReviewScore": 60,
+    "satisfactionMin": 0,
+    "satisfactionMax": 100,
+    "closedDealSatisfactionBonus": 3,
+    "closedDealReviewBonus": 1,
+    "walkSatisfactionPenalty": -1,
+    "reviewDriftRate": 0.10,
+    "satisfactionEquilibrium": 50,
+    "satisfactionDriftRate": 0.02,
+    "baseDailyDemand": 2,
+    "demandReviewSlope": 0.015,
+    "marketingSaturation": 1000,
+    "marketingMaxBoost": 0.6,
+    "seasonDemandMultiplier": {
+      "spring": 1.0,
+      "summer": 1.15,
+      "fall": 1.05,
+      "winter": 0.85
+    },
+    "dayOfWeekDemandMultiplier": {
+      "0": 0.9,
+      "1": 1.0,
+      "2": 1.0,
+      "3": 1.05,
+      "4": 1.15,
+      "5": 1.4,
+      "6": 0.7
+    }
+  },
   "staffDispatch": {
     "exceptionFlagRates": {
       "vip_customer": 0.05,
