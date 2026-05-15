@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,8 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { EventBus } from '../../game/EventBus';
+import type { EventBus, TapListener } from '../../game/EventBus';
+import type { EventName } from '../../game/EventBus';
 import type { GameClock } from '../../game/GameClock';
 import type { Economy } from '../../game/Economy';
 import type { Inventory } from '../../game/Inventory';
@@ -43,6 +44,29 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
   const [cashInput, setCashInput] = useState('');
   const [daysInput, setDaysInput] = useState('');
   const [selectedArchetypeIdx, setSelectedArchetypeIdx] = useState(0);
+  const [busLogEnabled, setBusLogEnabled] = useState(false);
+  const [busLog, setBusLog] = useState<Array<{ id: number; event: string; preview: string }>>([]);
+  const busLogIdRef = useRef(0);
+  const logScrollRef = useRef<ScrollView>(null);
+
+  const BUS_LOG_CAP = 100;
+
+  const tapListener = useCallback<TapListener>((event: EventName, payload) => {
+    const preview = JSON.stringify(payload);
+    setBusLog(prev => {
+      const next = [...prev, { id: busLogIdRef.current++, event, preview }];
+      return next.length > BUS_LOG_CAP ? next.slice(next.length - BUS_LOG_CAP) : next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (busLogEnabled) {
+      bus.tap(tapListener);
+    } else {
+      bus.untap(tapListener);
+    }
+    return () => { bus.untap(tapListener); };
+  }, [busLogEnabled, bus, tapListener]);
 
   // Auto-enable telemetry in dev so the Export button always has something
   // to return. This whole component is __DEV__-gated upstream.
@@ -234,6 +258,40 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
                 <Text style={styles.primaryBtnLabel}>Spawn Customer</Text>
               </TouchableOpacity>
 
+              <Text style={styles.sectionLabel}>EVENT LOG</Text>
+              <View style={styles.cashRow}>
+                <TouchableOpacity
+                  style={[styles.primaryBtn, styles.halfBtn, busLogEnabled && styles.activeBtn]}
+                  onPress={() => {
+                    if (!busLogEnabled) setBusLog([]);
+                    setBusLogEnabled(v => !v);
+                  }}
+                >
+                  <Text style={styles.primaryBtnLabel}>{busLogEnabled ? 'Stop' : 'Start'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.primaryBtn, styles.halfBtn]}
+                  onPress={() => setBusLog([])}
+                >
+                  <Text style={styles.primaryBtnLabel}>Clear</Text>
+                </TouchableOpacity>
+              </View>
+              {busLog.length > 0 && (
+                <ScrollView
+                  ref={logScrollRef}
+                  style={styles.logPanel}
+                  onContentSizeChange={() => logScrollRef.current?.scrollToEnd({ animated: false })}
+                  nestedScrollEnabled
+                >
+                  {busLog.map(entry => (
+                    <Text key={entry.id} style={styles.logEntry}>
+                      <Text style={styles.logEventName}>{entry.event}</Text>
+                      {'  '}{entry.preview}
+                    </Text>
+                  ))}
+                </ScrollView>
+              )}
+
               <Text style={styles.sectionLabel}>TELEMETRY</Text>
               <TouchableOpacity style={styles.primaryBtn} onPress={exportTelemetry}>
                 <Text style={styles.primaryBtnLabel}>Export Session Log</Text>
@@ -376,6 +434,31 @@ const styles = StyleSheet.create({
   },
   scrollPad: {
     height: 32,
+  },
+  activeBtn: {
+    backgroundColor: '#1a5c3a',
+    borderWidth: 1,
+    borderColor: '#27ae60',
+  },
+  logPanel: {
+    marginTop: 10,
+    backgroundColor: '#0d0d1a',
+    borderWidth: 1,
+    borderColor: '#2c2c4a',
+    borderRadius: 6,
+    maxHeight: 220,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  logEntry: {
+    color: '#7f8c8d',
+    fontSize: 10,
+    fontFamily: 'monospace',
+    marginBottom: 4,
+    lineHeight: 14,
+  },
+  logEventName: {
+    color: '#e74c3c',
   },
   dangerBtn: {
     marginTop: 0,
