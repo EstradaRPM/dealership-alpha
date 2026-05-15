@@ -70,6 +70,7 @@ function Dot({
   );
 }
 
+// TODO: restore illustration-layer ambient dots when real lot art lands
 export function PulseDots({ config, badges }: Props) {
   const { pulseZones, pulseDot } = config;
 

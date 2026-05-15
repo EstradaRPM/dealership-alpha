@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, PanResponder, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, PanResponder, TouchableOpacity, ScrollView, Modal, Animated } from 'react-native';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import { loadTierConfig } from '../../game/CareerProgression';
 import type { DeptKey } from '../../game/DepartmentQueue';
@@ -8,7 +8,6 @@ import type { EventBus } from '../../game/EventBus';
 import { loadHomeTints, getTint } from './tintConfig';
 import type { TimeOfDay, Weather } from './tintConfig';
 import { TintOverlay } from './TintOverlay';
-import { PulseDots } from './PulseDot';
 import { ActivityMarquee } from './ActivityMarquee';
 
 const DEPARTMENTS: { key: DeptKey; label: string }[] = [
@@ -47,6 +46,28 @@ const DEFAULT_BADGES: DeptBadges = { sales: 0, service: 0, bdc: 0, office: 0, lo
 const TIER_CONFIG = loadTierConfig();
 const TINTS_CONFIG = loadHomeTints();
 
+function BadgePulseHalo() {
+  const anim = React.useRef(new Animated.Value(0.2)).current;
+
+  React.useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 0.85, duration: 900, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.2, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.pulseHalo, { opacity: anim }]}
+    />
+  );
+}
+
 function DeptItem({
   deptKey,
   label,
@@ -80,8 +101,11 @@ function DeptItem({
       {...panResponder.panHandlers}
     >
       {count > 0 && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{count}</Text>
+        <View style={styles.badgeWrapper}>
+          <BadgePulseHalo />
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{count}</Text>
+          </View>
         </View>
       )}
       <Text style={styles.deptLabel}>{label}</Text>
@@ -208,13 +232,11 @@ export function HomeView({
             </TouchableOpacity>
           )}
           <TintOverlay color={tint.color} opacity={tint.opacity} />
-          <PulseDots config={TINTS_CONFIG} badges={badges} />
         </View>
       ) : (
         <View style={styles.lotPanelWrapper}>
           <LotPanel vehicles={lotVehicles} onOpenAuction={onOpenAuction} />
           <TintOverlay color={tint.color} opacity={tint.opacity} />
-          <PulseDots config={TINTS_CONFIG} badges={badges} />
         </View>
       )}
 
@@ -365,6 +387,21 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  badgeWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+    minWidth: 22,
+    height: 22,
+  },
+  pulseHalo: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#c8a96e',
+  },
   badge: {
     backgroundColor: '#c8a96e',
     borderRadius: 8,
@@ -373,7 +410,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
-    marginBottom: 2,
   },
   badgeText: {
     fontSize: 10,
