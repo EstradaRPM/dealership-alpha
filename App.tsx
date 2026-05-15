@@ -24,6 +24,7 @@ import type { DeptKey } from './src/game/DepartmentQueue';
 import type { CustomerSession, CustomerAction } from './src/game/CustomerPool';
 import type { LotVehicle } from './src/game/Inventory';
 import { AdminConsole } from './src/ui/AdminConsole';
+import { createTelemetry } from './src/game/Telemetry';
 
 // Game modules — created once at module level, outside React lifecycle.
 const saveStore: SaveStore = createSaveStore(createSqliteDriver());
@@ -42,6 +43,7 @@ const customerPool = createCustomerPool({
 const economy = createEconomy({ bus, startingCash: 50_000 });
 const inventory = createInventory({ bus, masterSeed: 42, economy });
 const dealEngine = createDealEngine({ bus, inventory, economy });
+const telemetry = createTelemetry({ bus });
 
 type AppScreen = 'loading' | 'character-creation' | 'game' | 'sales-workspace' | 'auction';
 
@@ -195,6 +197,7 @@ export default function App() {
           economy={economy}
           inventory={inventory}
           saveStore={saveStore}
+          telemetry={telemetry}
           onSaveCleared={handleSaveCleared}
         />
       )}

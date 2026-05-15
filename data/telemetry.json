@@ -1,0 +1,5 @@
+{
+  "schemaVersion": 1,
+  "cashCurveBucketDays": 1,
+  "maxBufferedEvents": 100000
+}

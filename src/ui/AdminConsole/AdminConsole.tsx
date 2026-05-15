@@ -7,12 +7,14 @@ import {
   Modal,
   StyleSheet,
   SafeAreaView,
+  Share,
 } from 'react-native';
 import type { EventBus } from '../../game/EventBus';
 import type { GameClock } from '../../game/GameClock';
 import type { Economy } from '../../game/Economy';
 import type { Inventory } from '../../game/Inventory';
 import type { SaveStore } from '../../game/SaveStore';
+import type { Telemetry } from '../../game/Telemetry';
 
 interface Props {
   bus: EventBus;
@@ -20,12 +22,15 @@ interface Props {
   economy: Economy;
   inventory: Inventory;
   saveStore: SaveStore;
+  telemetry: Telemetry;
   onSaveCleared: () => void;
 }
 
-export function AdminConsole({ bus, clock, economy, inventory, saveStore, onSaveCleared }: Props) {
+export function AdminConsole({ bus, clock, economy, inventory, saveStore, telemetry, onSaveCleared }: Props) {
   const [open, setOpen] = useState(false);
   const [log, setLog] = useState<string[]>([]);
+  const [telemetryOn, setTelemetryOn] = useState(telemetry.isEnabled());
+  const [eventCount, setEventCount] = useState(telemetry.getEventCount());
 
   const stamp = (label: string) =>
     setLog(prev => [`[D${clock.currentDay}] ${label}`, ...prev.slice(0, 11)]);
@@ -141,6 +146,37 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, onSave
     }
   };
 
+  const toggleTelemetry = () => {
+    const next = !telemetry.isEnabled();
+    telemetry.setEnabled(next);
+    setTelemetryOn(next);
+    stamp(next ? 'telemetry ON' : 'telemetry OFF');
+  };
+
+  const clearTelemetry = () => {
+    telemetry.clear();
+    setEventCount(telemetry.getEventCount());
+    stamp('telemetry buffer cleared');
+  };
+
+  const exportTelemetry = async () => {
+    const json = telemetry.exportSessionLog();
+    const count = telemetry.getEventCount();
+    setEventCount(count);
+    if (count === 0) { stamp('no telemetry to export'); return; }
+    try {
+      await Share.share({
+        message: json,
+        title: `dealership-session-D${clock.currentDay}.json`,
+      });
+      stamp(`exported ${count} events`);
+    } catch {
+      stamp('export share dismissed');
+    }
+  };
+
+  const refreshTelemetryCount = () => setEventCount(telemetry.getEventCount());
+
   const clearSave = async () => {
     await saveStore.clear();
     stamp('save cleared');
@@ -225,6 +261,20 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, onSave
                   <Btn label="AG T3" color="#e67e22" onPress={() => triggerAG(3)} />
                   <Btn label="Indict T1" color="#c0392b" onPress={() => triggerIndictment(1)} />
                   <Btn label="Indict T3" color="#e67e22" onPress={() => triggerIndictment(3)} />
+                </Row>
+              </Section>
+
+              {/* TELEMETRY */}
+              <Section title={`TELEMETRY — ${telemetryOn ? 'ON' : 'OFF'} | ${eventCount} events`}>
+                <Row>
+                  <Btn
+                    label={telemetryOn ? 'Stop Recording' : 'Start Recording'}
+                    color={telemetryOn ? '#27ae60' : '#2c3e50'}
+                    onPress={toggleTelemetry}
+                  />
+                  <Btn label="Refresh Count" onPress={refreshTelemetryCount} />
+                  <Btn label="Export Session Log" onPress={exportTelemetry} />
+                  <Btn label="Clear Buffer" color="#7f8c8d" onPress={clearTelemetry} />
                 </Row>
               </Section>
 
