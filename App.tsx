@@ -202,6 +202,7 @@ export default function App() {
             inventory={inventory}
             saveStore={saveStore}
             telemetry={telemetry}
+            customerPool={customerPool}
             onSaveCleared={handleSaveCleared}
           />
         )}

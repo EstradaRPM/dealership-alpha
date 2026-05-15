@@ -27,9 +27,10 @@ export interface CustomerPool {
   getSessions(): readonly CustomerSession[];
   getSession(customerId: string): CustomerSession | undefined;
   dispatch(customerId: string, action: CustomerAction): void;
+  spawnCustomer(personArchetypeId: string, visitArchetypeId: string, label: string): string;
 }
 
-const SALES_ARCHETYPES: ReadonlyArray<{
+export const SALES_ARCHETYPES: ReadonlyArray<{
   personId: string;
   visitId: string;
   label: string;
@@ -50,6 +51,7 @@ export function createCustomerPool(deps: {
 }): CustomerPool {
   const { bus, npcDeps } = deps;
   const sessions = new Map<string, MutableSession>();
+  let adminSpawnSlot = 9000;
 
   let latestCompetitors: ReadonlyArray<Competitor> = [];
   let resolvedPoachConfig: PoachConfig | undefined;
@@ -160,9 +162,22 @@ export function createCustomerPool(deps: {
     bus.publish('customer:state_changed', { customerId, from, to: 'UNGREETED' });
   });
 
+  function doSpawnCustomer(personArchetypeId: string, visitArchetypeId: string, label: string): string {
+    const slot = adminSpawnSlot++;
+    const bundle = createCustomer(
+      { personArchetypeId, visitArchetypeId, day: 0, slot },
+      npcDeps,
+    );
+    const customerId = bundle.person.id;
+    sessions.set(customerId, { customerId, day: 0, bundle, stage: 'UNGREETED', archetypeLabel: label });
+    bus.publish('customer:arrived', { day: 0, customerId, label });
+    return customerId;
+  }
+
   return {
     getSessions() { return [...sessions.values()]; },
     getSession(customerId) { return sessions.get(customerId); },
     dispatch: doDispatch,
+    spawnCustomer: doSpawnCustomer,
   };
 }

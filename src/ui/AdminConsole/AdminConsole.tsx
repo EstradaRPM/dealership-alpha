@@ -8,6 +8,7 @@ import {
   Share,
   TextInput,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +18,8 @@ import type { Economy } from '../../game/Economy';
 import type { Inventory } from '../../game/Inventory';
 import type { SaveStore } from '../../game/SaveStore';
 import type { Telemetry } from '../../game/Telemetry';
+import type { CustomerPool } from '../../game/CustomerPool';
+import { SALES_ARCHETYPES } from '../../game/CustomerPool';
 
 interface Props {
   bus: EventBus;
@@ -25,11 +28,12 @@ interface Props {
   inventory: Inventory;
   saveStore: SaveStore;
   telemetry: Telemetry;
+  customerPool: CustomerPool;
   onSaveCleared: () => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function AdminConsole({ bus, clock, economy, inventory, saveStore, telemetry, onSaveCleared }: Props) {
+export function AdminConsole({ bus, clock, economy, inventory, saveStore, telemetry, customerPool, onSaveCleared }: Props) {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const [eventCount, setEventCount] = useState(telemetry.getEventCount());
@@ -38,6 +42,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
   const [cash, setCash] = useState(economy.cash);
   const [cashInput, setCashInput] = useState('');
   const [daysInput, setDaysInput] = useState('');
+  const [selectedArchetypeIdx, setSelectedArchetypeIdx] = useState(0);
 
   // Auto-enable telemetry in dev so the Export button always has something
   // to return. This whole component is __DEV__-gated upstream.
@@ -53,6 +58,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
       setCash(economy.cash);
       setCashInput('');
       setDaysInput('');
+      setSelectedArchetypeIdx(0);
       setStatus(null);
     }
   }, [open, telemetry, economy]);
@@ -89,6 +95,12 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
     for (let i = 0; i < n; i++) clock.advanceDay();
     setCurrentDay(clock.currentDay);
     setStatus(`advanced ${n} day${n === 1 ? '' : 's'} → now day ${clock.currentDay}`);
+  };
+
+  const spawnCustomer = () => {
+    const arch = SALES_ARCHETYPES[selectedArchetypeIdx];
+    const id = customerPool.spawnCustomer(arch.personId, arch.visitId, arch.label);
+    setStatus(`spawned ${arch.label} → ${id}`);
   };
 
   const exportTelemetry = async () => {
@@ -143,55 +155,74 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
             style={styles.body}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
-            <Text style={styles.statLine}>
-              Day {currentDay} · {clock.currentSeason}
-            </Text>
-            <Text style={styles.statLine}>
-              Cash: ${cash.toLocaleString()}
-            </Text>
-            <Text style={styles.statLine}>
-              Telemetry: {telemetry.isEnabled() ? 'recording' : 'off'} · {eventCount} events buffered
-            </Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.statLine}>
+                Day {currentDay} · {clock.currentSeason}
+              </Text>
+              <Text style={styles.statLine}>
+                Cash: ${cash.toLocaleString()}
+              </Text>
+              <Text style={styles.statLine}>
+                Telemetry: {telemetry.isEnabled() ? 'recording' : 'off'} · {eventCount} events buffered
+              </Text>
 
-            <Text style={styles.sectionLabel}>CASH CONTROL</Text>
-            <TextInput
-              style={styles.input}
-              value={cashInput}
-              onChangeText={setCashInput}
-              placeholder="amount"
-              placeholderTextColor="#555"
-              keyboardType="numeric"
-              returnKeyType="done"
-            />
-            <View style={styles.cashRow}>
-              <TouchableOpacity style={[styles.primaryBtn, styles.halfBtn]} onPress={injectCash}>
-                <Text style={styles.primaryBtnLabel}>Inject</Text>
+              <Text style={styles.sectionLabel}>CASH CONTROL</Text>
+              <TextInput
+                style={styles.input}
+                value={cashInput}
+                onChangeText={setCashInput}
+                placeholder="amount"
+                placeholderTextColor="#555"
+                keyboardType="numeric"
+                returnKeyType="done"
+              />
+              <View style={styles.cashRow}>
+                <TouchableOpacity style={[styles.primaryBtn, styles.halfBtn]} onPress={injectCash}>
+                  <Text style={styles.primaryBtnLabel}>Inject</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.primaryBtn, styles.halfBtn]} onPress={resetCash}>
+                  <Text style={styles.primaryBtnLabel}>Set To</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.sectionLabel}>TIME SKIP</Text>
+              <TextInput
+                style={styles.input}
+                value={daysInput}
+                onChangeText={setDaysInput}
+                placeholder="days (1–365)"
+                placeholderTextColor="#555"
+                keyboardType="number-pad"
+                returnKeyType="done"
+              />
+              <TouchableOpacity style={styles.primaryBtn} onPress={advanceDays}>
+                <Text style={styles.primaryBtnLabel}>Advance Days</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.primaryBtn, styles.halfBtn]} onPress={resetCash}>
-                <Text style={styles.primaryBtnLabel}>Set To</Text>
+
+              <Text style={styles.sectionLabel}>CUSTOMER SPAWN</Text>
+              {SALES_ARCHETYPES.map((arch, idx) => (
+                <TouchableOpacity
+                  key={arch.personId}
+                  style={[styles.archetypeRow, idx === selectedArchetypeIdx && styles.archetypeRowSelected]}
+                  onPress={() => setSelectedArchetypeIdx(idx)}
+                >
+                  <Text style={[styles.archetypeLabel, idx === selectedArchetypeIdx && styles.archetypeLabelSelected]}>
+                    {arch.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={[styles.primaryBtn, styles.spawnBtn]} onPress={spawnCustomer}>
+                <Text style={styles.primaryBtnLabel}>Spawn Customer</Text>
               </TouchableOpacity>
-            </View>
 
-            <Text style={styles.sectionLabel}>TIME SKIP</Text>
-            <TextInput
-              style={styles.input}
-              value={daysInput}
-              onChangeText={setDaysInput}
-              placeholder="days (1–365)"
-              placeholderTextColor="#555"
-              keyboardType="number-pad"
-              returnKeyType="done"
-            />
-            <TouchableOpacity style={styles.primaryBtn} onPress={advanceDays}>
-              <Text style={styles.primaryBtnLabel}>Advance Days</Text>
-            </TouchableOpacity>
+              <Text style={styles.sectionLabel}>TELEMETRY</Text>
+              <TouchableOpacity style={styles.primaryBtn} onPress={exportTelemetry}>
+                <Text style={styles.primaryBtnLabel}>Export Session Log</Text>
+              </TouchableOpacity>
 
-            <Text style={styles.sectionLabel}>TELEMETRY</Text>
-            <TouchableOpacity style={styles.primaryBtn} onPress={exportTelemetry}>
-              <Text style={styles.primaryBtnLabel}>Export Session Log</Text>
-            </TouchableOpacity>
-
-            {status && <Text style={styles.statusLine}>{status}</Text>}
+              {status && <Text style={styles.statusLine}>{status}</Text>}
+              <View style={styles.scrollPad} />
+            </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
@@ -294,5 +325,32 @@ const styles = StyleSheet.create({
     color: '#27ae60',
     fontSize: 12,
     fontFamily: 'monospace',
+  },
+  archetypeRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#2c2c4a',
+    marginBottom: 6,
+    backgroundColor: '#0d0d1a',
+  },
+  archetypeRowSelected: {
+    borderColor: '#e74c3c',
+    backgroundColor: '#1e1030',
+  },
+  archetypeLabel: {
+    color: '#7f8c8d',
+    fontSize: 13,
+    fontFamily: 'monospace',
+  },
+  archetypeLabelSelected: {
+    color: '#ecf0f1',
+  },
+  spawnBtn: {
+    marginTop: 10,
+  },
+  scrollPad: {
+    height: 32,
   },
 });
