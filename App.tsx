@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createSaveStore, createSqliteDriver } from './src/game/SaveStore';
 import { createEventBus } from './src/game/EventBus';
 import { createGameClock } from './src/game/GameClock';
@@ -188,25 +189,33 @@ export default function App() {
   }
 
   return (
-    <View style={styles.container}>
-      {content}
-      {__DEV__ && (
-        <AdminConsole
-          bus={bus}
-          clock={clock}
-          economy={economy}
-          inventory={inventory}
-          saveStore={saveStore}
-          telemetry={telemetry}
-          onSaveCleared={handleSaveCleared}
-        />
-      )}
-    </View>
+    <SafeAreaProvider>
+      <View style={styles.container}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+          {content}
+        </SafeAreaView>
+        {__DEV__ && (
+          <AdminConsole
+            bus={bus}
+            clock={clock}
+            economy={economy}
+            inventory={inventory}
+            saveStore={saveStore}
+            telemetry={telemetry}
+            onSaveCleared={handleSaveCleared}
+          />
+        )}
+      </View>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: '#111',
+  },
+  safeArea: {
     flex: 1,
     backgroundColor: '#111',
   },

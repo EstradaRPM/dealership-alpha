@@ -6,9 +6,9 @@ import {
   ScrollView,
   Modal,
   StyleSheet,
-  SafeAreaView,
   Share,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { EventBus } from '../../game/EventBus';
 import type { GameClock } from '../../game/GameClock';
 import type { Economy } from '../../game/Economy';
