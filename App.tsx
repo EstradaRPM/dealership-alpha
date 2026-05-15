@@ -120,6 +120,7 @@ export default function App() {
         }
       }
     }
+    // finance, service, parts, bdc: screens not yet implemented — tap is a no-op
   };
 
   const handleDispatch = (action: CustomerAction) => {

@@ -75,8 +75,8 @@ function DeptItem({
   return (
     <TouchableOpacity
       style={styles.deptItem}
-      onPress={() => count > 0 && onPress?.(deptKey)}
-      disabled={count === 0 || !onPress}
+      onPress={() => onPress?.(deptKey)}
+      disabled={!onPress}
       {...panResponder.panHandlers}
     >
       {count > 0 && (
