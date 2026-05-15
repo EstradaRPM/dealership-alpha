@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { EventBus } from '../../game/EventBus';
@@ -32,7 +33,6 @@ interface Props {
   onSaveCleared: () => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function AdminConsole({ bus, clock, economy, inventory, saveStore, telemetry, customerPool, onSaveCleared }: Props) {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
@@ -122,6 +122,25 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
     } catch (err) {
       setStatus(`export failed: ${(err as Error).message}`);
     }
+  };
+
+  const resetSave = () => {
+    Alert.alert(
+      'Reset Save',
+      'This will wipe all progress and start a new run. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            await saveStore.clear();
+            setOpen(false);
+            onSaveCleared();
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -218,6 +237,11 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
               <Text style={styles.sectionLabel}>TELEMETRY</Text>
               <TouchableOpacity style={styles.primaryBtn} onPress={exportTelemetry}>
                 <Text style={styles.primaryBtnLabel}>Export Session Log</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.sectionLabel}>DANGER ZONE</Text>
+              <TouchableOpacity style={styles.dangerBtn} onPress={resetSave}>
+                <Text style={styles.dangerBtnLabel}>Reset Save / New Run</Text>
               </TouchableOpacity>
 
               {status && <Text style={styles.statusLine}>{status}</Text>}
@@ -352,5 +376,20 @@ const styles = StyleSheet.create({
   },
   scrollPad: {
     height: 32,
+  },
+  dangerBtn: {
+    marginTop: 0,
+    backgroundColor: '#7b1c1c',
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e74c3c',
+  },
+  dangerBtnLabel: {
+    color: '#e74c3c',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
