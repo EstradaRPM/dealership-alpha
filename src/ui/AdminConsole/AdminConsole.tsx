@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Share,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { EventBus } from '../../game/EventBus';
 import type { GameClock } from '../../game/GameClock';
 import type { Economy } from '../../game/Economy';
@@ -27,6 +27,7 @@ interface Props {
 }
 
 export function AdminConsole({ bus, clock, economy, inventory, saveStore, telemetry, onSaveCleared }: Props) {
+  const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const [telemetryOn, setTelemetryOn] = useState(telemetry.isEnabled());
@@ -190,7 +191,14 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
 
   return (
     <>
-      <TouchableOpacity style={styles.fab} onPress={() => setOpen(true)}>
+      <TouchableOpacity
+        style={[
+          styles.fab,
+          { bottom: insets.bottom + 8, right: insets.right + 8 },
+        ]}
+        hitSlop={4}
+        onPress={() => setOpen(true)}
+      >
         <Text style={styles.fabLabel}>DEV</Text>
       </TouchableOpacity>
 
@@ -326,18 +334,16 @@ function Btn({ label, onPress, color = '#2c3e50' }: { label: string; onPress: ()
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
-    bottom: 40,
-    right: 16,
-    backgroundColor: 'rgba(231,76,60,0.85)',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    backgroundColor: 'rgba(50,50,60,0.55)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
     zIndex: 999,
   },
   fabLabel: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 9,
+    fontWeight: '600',
     letterSpacing: 1,
   },
   backdrop: {
