@@ -1,0 +1,114 @@
+# Session — 2026-05-14
+
+**Persona:** [ ] Min-maxer  [ ] Roleplayer  [X] Tourist
+**Build:** <sha>   **Duration:** ~30m   **Save:** new | continued
+
+---
+
+## Hypotheses (edit numbers, don't start blank)
+
+Pick the persona's set below. Tweak numbers based on what you actually expect for this build. Delete the other two persona blocks before starting.
+
+### Tourist
+- [ ] First deal closes within _5_ minutes of launch
+- [ ] Player can identify what to do next without reading help _50_ % of the time
+- [ ] No screen leaves player asking "what now?" for > _5_ seconds
+- [ ] Tutorial/onboarding load is ≤ _2_ screens before first decision
+- [ ] At least _5_ mechanics are legible without tooltips
+
+---
+
+## Observations (tap quick notes during play)
+
+UI is not working in areas-- expo artifact, or bugs?
+
+Status bar overlaps top elements of UI, back button unclickable etc. 
+
+Floating pulsing icon, alert icon possibly? Literally floating in middle of screen and buttons below are not click able
+
+Doesn't feel like a game yet, feels like a tool from the colors and theming
+
+Admin console literally only says Admin console. No functions or anything visible. Floating button needs moved or docked in a position it can't overlap elements. 
+
+**Confusion / friction**
+-no obvious starting point. Blank screen with unclickable menu buttons at the bottom. 
+
+
+
+**Surprise (good or bad)**
+-
+
+**Felt cheap / shallow**
+-auction function is extremely basic. No market value based on condition to give an idea of profit /risk. No ability to adjust offer. All buy it nows essentially. 
+
+Main display after purchasing vehicle at auction. Zero obvious actionable items and display is extremely shallow. Bold year and make, normal print model. Zero reference to any strengths/weaknesses of car from main page. Only age in inventory and recon cost. 
+
+No ability to sort inventory. 
+
+**Felt premium / deep**
+-
+
+**Wanted to do X but couldn't**
+-could quite literally only buy vehicles at auction. 
+
+**Did X but regretted it (and game didn't signal why)**
+-
+
+---
+
+## Telemetry (paste numbers from exported log)
+
+| Metric | Value | Hypothesis range | Verdict |
+|---|---|---|---|
+| Deals/day |  |  |  |
+| Close rate (Analytical) |  |  |  |
+| Close rate (Impulsive) |  |  |  |
+| Close rate (Skeptical) |  |  |  |
+| F&I attach % (overall) |  |  |  |
+| Avg gross/deal |  |  |  |
+| Cash low-water mark |  |  |  |
+| Staff morale Δ |  |  |  |
+| Days to Tier 2 |  |  |  |
+
+Verdict: **✓ confirmed | ✗ refuted | ~ inconclusive**
+
+---
+
+## Findings (the punch list)
+
+Severity rubric:
+- **P0** — blocks playtesting or breaks the core loop
+- **P1** — visibly damages the premium feel
+- **P2** — noticeable rough edge
+- **P3** — nitpick, log for later
+
+| Sev | Finding | Issue # |
+|---|---|---|
+|  |  |  |
+
+---
+
+## RITE pick (the ONE thing to fix next)
+
+> 
+
+---
+
+## Premium gut-check (answer honestly, one word or one line)
+
+- Would I open this app tomorrow? **no / why: it doesn't work at this stage. Shallow and lacking full ability to test**
+- Did any moment feel worth $___ to me? Not even worth free yet
+- Did any moment feel like a free-to-play game? Nope 
+- Was there a decision I agonized over? **what:**
+- If I showed a 60-sec clip to a target user, what would they ask first? Wtf is this
+
+---
+
+## Embarrass-list additions
+
+Copy to `embarrass-list.md` after session.
+
+-UI not working
+-functionality doesn't feel like a game yet
+-admin console shipped broken. 
+
