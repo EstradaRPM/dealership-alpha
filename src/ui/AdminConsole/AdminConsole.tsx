@@ -34,8 +34,10 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
   const [open, setOpen] = useState(false);
   const [eventCount, setEventCount] = useState(telemetry.getEventCount());
   const [status, setStatus] = useState<string | null>(null);
+  const [currentDay, setCurrentDay] = useState(clock.currentDay);
   const [cash, setCash] = useState(economy.cash);
   const [cashInput, setCashInput] = useState('');
+  const [daysInput, setDaysInput] = useState('');
 
   // Auto-enable telemetry in dev so the Export button always has something
   // to return. This whole component is __DEV__-gated upstream.
@@ -47,8 +49,10 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
   useEffect(() => {
     if (open) {
       setEventCount(telemetry.getEventCount());
+      setCurrentDay(clock.currentDay);
       setCash(economy.cash);
       setCashInput('');
+      setDaysInput('');
       setStatus(null);
     }
   }, [open, telemetry, economy]);
@@ -77,6 +81,14 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
     }
     setCash(economy.cash);
     setStatus(`balance set to $${economy.cash.toLocaleString()}`);
+  };
+
+  const advanceDays = () => {
+    const n = parseInt(daysInput, 10);
+    if (isNaN(n) || n < 1 || n > 365) { setStatus('enter 1–365 days'); return; }
+    for (let i = 0; i < n; i++) clock.advanceDay();
+    setCurrentDay(clock.currentDay);
+    setStatus(`advanced ${n} day${n === 1 ? '' : 's'} → now day ${clock.currentDay}`);
   };
 
   const exportTelemetry = async () => {
@@ -132,7 +144,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             <Text style={styles.statLine}>
-              Day {clock.currentDay} · {clock.currentSeason}
+              Day {currentDay} · {clock.currentSeason}
             </Text>
             <Text style={styles.statLine}>
               Cash: ${cash.toLocaleString()}
@@ -159,6 +171,20 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
                 <Text style={styles.primaryBtnLabel}>Set To</Text>
               </TouchableOpacity>
             </View>
+
+            <Text style={styles.sectionLabel}>TIME SKIP</Text>
+            <TextInput
+              style={styles.input}
+              value={daysInput}
+              onChangeText={setDaysInput}
+              placeholder="days (1–365)"
+              placeholderTextColor="#555"
+              keyboardType="number-pad"
+              returnKeyType="done"
+            />
+            <TouchableOpacity style={styles.primaryBtn} onPress={advanceDays}>
+              <Text style={styles.primaryBtnLabel}>Advance Days</Text>
+            </TouchableOpacity>
 
             <Text style={styles.sectionLabel}>TELEMETRY</Text>
             <TouchableOpacity style={styles.primaryBtn} onPress={exportTelemetry}>
