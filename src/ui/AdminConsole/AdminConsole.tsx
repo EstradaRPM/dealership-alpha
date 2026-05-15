@@ -194,7 +194,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
       <TouchableOpacity
         style={[
           styles.fab,
-          { bottom: insets.bottom + 8, right: insets.right + 8 },
+          { bottom: Math.max(insets.bottom, 16) + 56, right: insets.right + 8 },
         ]}
         hitSlop={4}
         onPress={() => setOpen(true)}
