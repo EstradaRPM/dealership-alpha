@@ -6,6 +6,9 @@ import {
   Modal,
   StyleSheet,
   Share,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { EventBus } from '../../game/EventBus';
@@ -31,6 +34,8 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
   const [open, setOpen] = useState(false);
   const [eventCount, setEventCount] = useState(telemetry.getEventCount());
   const [status, setStatus] = useState<string | null>(null);
+  const [cash, setCash] = useState(economy.cash);
+  const [cashInput, setCashInput] = useState('');
 
   // Auto-enable telemetry in dev so the Export button always has something
   // to return. This whole component is __DEV__-gated upstream.
@@ -38,10 +43,41 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
     if (!telemetry.isEnabled()) telemetry.setEnabled(true);
   }, [telemetry]);
 
-  // Refresh the displayed event count whenever the modal is opened.
+  // Refresh counters whenever the modal is opened.
   useEffect(() => {
-    if (open) setEventCount(telemetry.getEventCount());
-  }, [open, telemetry]);
+    if (open) {
+      setEventCount(telemetry.getEventCount());
+      setCash(economy.cash);
+      setCashInput('');
+      setStatus(null);
+    }
+  }, [open, telemetry, economy]);
+
+  const parsedCashInput = (): number | null => {
+    const v = parseFloat(cashInput.replace(/,/g, ''));
+    return isNaN(v) || v < 0 ? null : v;
+  };
+
+  const injectCash = () => {
+    const amount = parsedCashInput();
+    if (amount === null) { setStatus('enter a valid amount'); return; }
+    economy.postRevenue(amount, 'Admin cash injection');
+    setCash(economy.cash);
+    setStatus(`injected $${amount.toLocaleString()} → balance $${economy.cash.toLocaleString()}`);
+  };
+
+  const resetCash = () => {
+    const target = parsedCashInput();
+    if (target === null) { setStatus('enter a valid amount'); return; }
+    const delta = target - economy.cash;
+    if (delta > 0) {
+      economy.postRevenue(delta, 'Admin cash reset');
+    } else if (delta < 0) {
+      economy.forceDebit(-delta, 'Admin cash reset');
+    }
+    setCash(economy.cash);
+    setStatus(`balance set to $${economy.cash.toLocaleString()}`);
+  };
 
   const exportTelemetry = async () => {
     const count = telemetry.getEventCount();
@@ -91,20 +127,46 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
             </TouchableOpacity>
           </View>
 
-          <View style={styles.body}>
+          <KeyboardAvoidingView
+            style={styles.body}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
             <Text style={styles.statLine}>
               Day {clock.currentDay} · {clock.currentSeason}
+            </Text>
+            <Text style={styles.statLine}>
+              Cash: ${cash.toLocaleString()}
             </Text>
             <Text style={styles.statLine}>
               Telemetry: {telemetry.isEnabled() ? 'recording' : 'off'} · {eventCount} events buffered
             </Text>
 
+            <Text style={styles.sectionLabel}>CASH CONTROL</Text>
+            <TextInput
+              style={styles.input}
+              value={cashInput}
+              onChangeText={setCashInput}
+              placeholder="amount"
+              placeholderTextColor="#555"
+              keyboardType="numeric"
+              returnKeyType="done"
+            />
+            <View style={styles.cashRow}>
+              <TouchableOpacity style={[styles.primaryBtn, styles.halfBtn]} onPress={injectCash}>
+                <Text style={styles.primaryBtnLabel}>Inject</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.primaryBtn, styles.halfBtn]} onPress={resetCash}>
+                <Text style={styles.primaryBtnLabel}>Set To</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.sectionLabel}>TELEMETRY</Text>
             <TouchableOpacity style={styles.primaryBtn} onPress={exportTelemetry}>
               <Text style={styles.primaryBtnLabel}>Export Session Log</Text>
             </TouchableOpacity>
 
             {status && <Text style={styles.statusLine}>{status}</Text>}
-          </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
     </>
@@ -160,8 +222,36 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     marginBottom: 6,
   },
+  sectionLabel: {
+    color: '#e74c3c',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginTop: 24,
+    marginBottom: 10,
+  },
+  input: {
+    backgroundColor: '#0d0d1a',
+    borderWidth: 1,
+    borderColor: '#2c2c4a',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#ecf0f1',
+    fontSize: 15,
+    fontFamily: 'monospace',
+    marginBottom: 10,
+  },
+  cashRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  halfBtn: {
+    flex: 1,
+    marginTop: 0,
+  },
   primaryBtn: {
-    marginTop: 28,
+    marginTop: 0,
     backgroundColor: '#2c3e50',
     paddingVertical: 16,
     borderRadius: 8,
