@@ -10,10 +10,15 @@ import { createCustomerPool } from './src/game/CustomerPool';
 import { createDealEngine } from './src/game/DealEngine';
 import { createEconomy } from './src/game/Economy';
 import { createInventory } from './src/game/Inventory';
+import { createStaffOrg } from './src/game/StaffOrg';
+import { createCapacityManager } from './src/game/CapacityManager';
+import { createCloseEarly } from './src/game/CloseEarly';
 import {
   loadPersonArchetypes,
   loadVisitArchetypes,
   loadTraitTaxonomy,
+  loadStaffTaxonomy,
+  loadStaffArchetypes,
 } from './src/game/NPC';
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { HomeView } from './src/ui/HomeView';
@@ -44,6 +49,17 @@ const customerPool = createCustomerPool({
 const economy = createEconomy({ bus, startingCash: 50_000 });
 const inventory = createInventory({ bus, masterSeed: 42, economy });
 const dealEngine = createDealEngine({ bus, inventory, economy });
+// StaffOrg starts Tier 1 with an empty roster; CapacityManager turns
+// customer:arrived into capacity:customer_admitted → DepartmentQueue Sales item.
+const staffOrg = createStaffOrg({
+  bus,
+  economy,
+  masterSeed: 42,
+  taxonomy: loadStaffTaxonomy(),
+  archetypes: loadStaffArchetypes(),
+});
+createCapacityManager({ bus, staffOrg, facilityTier: 1 });
+const closeEarly = createCloseEarly({ bus, queue: departmentQueue, clock });
 const telemetry = createTelemetry({ bus });
 
 type AppScreen = 'loading' | 'character-creation' | 'game' | 'sales-workspace' | 'auction';
@@ -128,6 +144,22 @@ export default function App() {
     customerPool.dispatch(activeSession.customerId, action);
   };
 
+  const refreshDayState = () => {
+    setBadges(departmentQueue.getBadges());
+    setLotVehicles(inventory.getLotVehicles());
+    setCash(economy.cash);
+  };
+
+  const handleEndDay = () => {
+    clock.advanceDay();
+    refreshDayState();
+  };
+
+  const handleCloseEarly = () => {
+    closeEarly.execute();
+    refreshDayState();
+  };
+
   const handleSaveCleared = () => {
     setProfile(null);
     setScreen('character-creation');
@@ -182,6 +214,9 @@ export default function App() {
           onDeptPress={handleDeptPress}
           lotVehicles={lotVehicles}
           onOpenAuction={() => setScreen('auction')}
+          onEndDay={handleEndDay}
+          onCloseEarly={handleCloseEarly}
+          closeEarlyCost={closeEarly.previewCost()}
         />
       </>
     );

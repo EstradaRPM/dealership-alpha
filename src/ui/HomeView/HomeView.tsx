@@ -40,6 +40,7 @@ interface Props {
   eventBus?: EventBus;
   closeEarlyCost?: CloseEarlyCost;
   onCloseEarly?: () => void;
+  onEndDay?: () => void;
 }
 
 const DEFAULT_BADGES: DeptBadges = { sales: 0, service: 0, bdc: 0, office: 0, lot: 0 };
@@ -163,6 +164,7 @@ export function HomeView({
   eventBus,
   closeEarlyCost,
   onCloseEarly,
+  onEndDay,
 }: Props) {
   const tierEntry = TIER_CONFIG.tiers[tier - 1] ?? TIER_CONFIG.tiers[0];
   const displayName = businessName || `${profile.name}'s Lot`;
@@ -182,15 +184,26 @@ export function HomeView({
           <Text style={[styles.dealershipName, { color: displayAccent }]}>{displayName}</Text>
           <Text style={styles.tierLabel}>Tier {tier} — {tierEntry.label}</Text>
         </View>
-        {onCloseEarly && (
-          <TouchableOpacity
-            style={styles.closeEarlyBtn}
-            onPress={() => setShowCloseEarlyModal(true)}
-            accessibilityLabel="Close early"
-          >
-            <Text style={styles.closeEarlyBtnText}>Close Early</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.dayControls}>
+          {onCloseEarly && (
+            <TouchableOpacity
+              style={styles.closeEarlyBtn}
+              onPress={() => setShowCloseEarlyModal(true)}
+              accessibilityLabel="Close early"
+            >
+              <Text style={styles.closeEarlyBtnText}>Close Early</Text>
+            </TouchableOpacity>
+          )}
+          {onEndDay && (
+            <TouchableOpacity
+              style={styles.endDayBtn}
+              onPress={onEndDay}
+              accessibilityLabel="End day"
+            >
+              <Text style={styles.endDayBtnText}>End Day</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <Modal
@@ -286,18 +299,36 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
+  dayControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
   closeEarlyBtn: {
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#444',
-    marginTop: 2,
   },
   closeEarlyBtnText: {
     color: '#888',
     fontSize: 12,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  endDayBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 6,
+    backgroundColor: '#c8a96e',
+  },
+  endDayBtnText: {
+    color: '#111',
+    fontSize: 12,
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
