@@ -4,7 +4,7 @@ Pure evaluator deep module for skill-driven customer resolution (PRD #85). **No 
 
 ## Status
 
-Slice #86 only: the versioned tunable data files + typed schemas/loaders. **Inert** — files load and validate; no runtime consumers. The evaluator, seam interfaces, and `CustomerPool` rewiring land in later #85 slices.
+Slices #86–#87 landed. #86: versioned tunable data files + typed schemas/loaders. #87: the pure `vehicleSpaced` accessor. Still **inert** — no EventBus, no runtime consumers. The evaluator, seam interfaces, and `CustomerPool` rewiring land in later #85 slices.
 
 ## Public API (`index.ts`)
 
@@ -17,6 +17,10 @@ Data loaders + schemas only (this slice):
 - Matching `*Schema` Zod exports for each.
 
 All loaders use the shared `parseData` typed-schema pattern; no `JSON.parse + as` shortcuts.
+
+Accessor (#87):
+
+- `vehicleSpaced(vehicle, deps?)` → `SpacedVector`. Pure. Resolves SPACED in four layers: category base → per-template override (replace named axes; unknown template inherits the base) → brand-tier additive modifier (make → tier; unknown make = no modifier) → deterministic bounded year modifier (`(year − referenceYear)` × per-axis delta, each clamped to ±`maxAbs`), then every axis clamped to [0,1]. `deps` lets tests inject configs; defaults to the bundled loaders. Input is the narrow structural `SpacedVehicleInput` (`category/templateId/make/year`) — Inventory's `LotVehicle`/`AuctionListing` satisfy it without a module dependency.
 
 ## Data
 

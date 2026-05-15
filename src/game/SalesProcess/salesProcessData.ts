@@ -79,6 +79,13 @@ export const VehicleSpacedConfigSchema = z
     schemaVersion: z.literal(1),
     categoryBase: z.record(z.string().min(1), SpacedVectorSchema),
     templateOverrides: z.record(z.string().min(1), SpacedModifierSchema),
+    yearModifier: z
+      .object({
+        referenceYear: z.number().int(),
+        perYearDelta: SpacedModifierSchema,
+        maxAbs: unit,
+      })
+      .strict(),
   })
   .strict();
 

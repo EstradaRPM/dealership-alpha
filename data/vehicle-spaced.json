@@ -45,5 +45,14 @@
       "comfort": 0.55,
       "dependability": 0.82
     }
+  },
+  "yearModifier": {
+    "referenceYear": 2020,
+    "perYearDelta": {
+      "safety": 0.012,
+      "appearance": 0.009,
+      "comfort": 0.009
+    },
+    "maxAbs": 0.1
   }
 }

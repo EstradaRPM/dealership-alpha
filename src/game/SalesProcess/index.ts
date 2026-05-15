@@ -14,3 +14,10 @@ export type {
   BrandTiersConfig,
   CustomerNonnegotiablesConfig,
 } from './salesProcessData';
+export { vehicleSpaced } from './vehicleSpaced';
+export type {
+  SpacedAxis,
+  SpacedVector,
+  SpacedVehicleInput,
+  VehicleSpacedDeps,
+} from './vehicleSpaced';
