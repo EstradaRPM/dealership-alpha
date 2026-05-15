@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "tiers": {
+    "luxury": {
+      "modifier": {
+        "appearance": 0.1,
+        "comfort": 0.1,
+        "dependability": -0.1
+      }
+    },
+    "mainstream": {
+      "modifier": {}
+    },
+    "economy": {
+      "modifier": {
+        "economy": 0.08,
+        "dependability": 0.05,
+        "appearance": -0.05
+      }
+    }
+  },
+  "makes": {
+    "Honda": "mainstream",
+    "Toyota": "mainstream",
+    "Ford": "mainstream",
+    "Chevrolet": "mainstream",
+    "Nissan": "economy",
+    "Jeep": "mainstream"
+  }
+}

@@ -1,0 +1,157 @@
+import { z } from 'zod';
+import { parseData } from '../data';
+
+const unit = z.number().min(0).max(1);
+
+const SpacedVectorSchema = z
+  .object({
+    safety: unit,
+    performance: unit,
+    appearance: unit,
+    comfort: unit,
+    economy: unit,
+    dependability: unit,
+  })
+  .strict();
+
+const SpacedModifierSchema = z
+  .object({
+    safety: z.number().min(-1).max(1),
+    performance: z.number().min(-1).max(1),
+    appearance: z.number().min(-1).max(1),
+    comfort: z.number().min(-1).max(1),
+    economy: z.number().min(-1).max(1),
+    dependability: z.number().min(-1).max(1),
+  })
+  .partial()
+  .strict();
+
+export const SalesProcessConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    gates: z.array(z.string().min(1)).min(1),
+    rng: z
+      .object({
+        seedNamespace: z.string().min(1),
+        jitterBand: unit,
+      })
+      .strict(),
+    walk: z
+      .object({
+        trustCollapseFloor: unit,
+        patienceFloor: z.number(),
+      })
+      .strict(),
+    close: z
+      .object({
+        buyThreshold: unit,
+        softThreshold: unit,
+        trustFloor: unit,
+      })
+      .strict(),
+    price: z
+      .object({
+        base: z.number(),
+        valueGapWeight: z.number(),
+        sensitivityWeight: z.number(),
+        skillHoldWeight: z.number(),
+        trustHoldWeight: z.number(),
+        minGross: z.number().nonnegative(),
+        overageAllowed: z.number().nonnegative(),
+      })
+      .strict(),
+    calibration: z
+      .object({
+        positiveMin: unit,
+        apatheticMin: unit,
+        apatheticMax: unit,
+        negativeDealMin: unit,
+        negativeDealMax: unit,
+      })
+      .strict(),
+  })
+  .strict();
+
+export type SalesProcessConfig = z.infer<typeof SalesProcessConfigSchema>;
+
+export const VehicleSpacedConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    categoryBase: z.record(z.string().min(1), SpacedVectorSchema),
+    templateOverrides: z.record(z.string().min(1), SpacedModifierSchema),
+  })
+  .strict();
+
+export type VehicleSpacedConfig = z.infer<typeof VehicleSpacedConfigSchema>;
+
+export const BrandTiersConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    tiers: z.record(
+      z.string().min(1),
+      z.object({ modifier: SpacedModifierSchema }).strict(),
+    ),
+    makes: z.record(z.string().min(1), z.string().min(1)),
+  })
+  .strict()
+  .refine(
+    (cfg) => Object.values(cfg.makes).every((tier) => tier in cfg.tiers),
+    { message: 'every make must map to a defined tier' },
+  );
+
+export type BrandTiersConfig = z.infer<typeof BrandTiersConfigSchema>;
+
+export const CustomerNonnegotiablesConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    axes: z.array(z.string().min(1)).length(6),
+    nonnegotiableCountWeights: z.record(
+      z.string().regex(/^[0-9]+$/),
+      z.number().min(0),
+    ),
+    remainingAxisWantProbability: unit,
+    visitArchetypeBias: z.record(
+      z.string().min(1),
+      z
+        .object({
+          nonnegotiableCountWeights: z
+            .record(z.string().regex(/^[0-9]+$/), z.number().min(0))
+            .optional(),
+          remainingAxisWantProbability: unit.optional(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export type CustomerNonnegotiablesConfig = z.infer<
+  typeof CustomerNonnegotiablesConfigSchema
+>;
+
+export function loadSalesProcessConfig(): SalesProcessConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/sales-process.json');
+  return parseData(raw, SalesProcessConfigSchema, 'data/sales-process.json');
+}
+
+export function loadVehicleSpacedConfig(): VehicleSpacedConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/vehicle-spaced.json');
+  return parseData(raw, VehicleSpacedConfigSchema, 'data/vehicle-spaced.json');
+}
+
+export function loadBrandTiersConfig(): BrandTiersConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/brand-tiers.json');
+  return parseData(raw, BrandTiersConfigSchema, 'data/brand-tiers.json');
+}
+
+export function loadCustomerNonnegotiablesConfig(): CustomerNonnegotiablesConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/customer-nonnegotiables.json');
+  return parseData(
+    raw,
+    CustomerNonnegotiablesConfigSchema,
+    'data/customer-nonnegotiables.json',
+  );
+}

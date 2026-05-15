@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "categoryBase": {
+    "sedan": {
+      "safety": 0.55,
+      "performance": 0.35,
+      "appearance": 0.4,
+      "comfort": 0.45,
+      "economy": 0.8,
+      "dependability": 0.7
+    },
+    "suv": {
+      "safety": 0.7,
+      "performance": 0.45,
+      "appearance": 0.55,
+      "comfort": 0.65,
+      "economy": 0.5,
+      "dependability": 0.65
+    },
+    "truck": {
+      "safety": 0.55,
+      "performance": 0.6,
+      "appearance": 0.45,
+      "comfort": 0.45,
+      "economy": 0.35,
+      "dependability": 0.75
+    }
+  },
+  "templateOverrides": {
+    "ford_f150": {
+      "appearance": 0.35,
+      "comfort": 0.35,
+      "dependability": 0.8
+    },
+    "chevy_silverado": {
+      "appearance": 0.35,
+      "comfort": 0.35,
+      "dependability": 0.78
+    },
+    "honda_civic": {
+      "economy": 0.88,
+      "dependability": 0.8
+    },
+    "toyota_camry": {
+      "comfort": 0.55,
+      "dependability": 0.82
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "axes": [
+    "safety",
+    "performance",
+    "appearance",
+    "comfort",
+    "economy",
+    "dependability"
+  ],
+  "nonnegotiableCountWeights": {
+    "1": 0.6,
+    "2": 0.4
+  },
+  "remainingAxisWantProbability": 0.5,
+  "visitArchetypeBias": {}
+}
