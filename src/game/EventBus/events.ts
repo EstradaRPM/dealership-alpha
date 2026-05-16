@@ -33,10 +33,31 @@ export interface EventMap {
   };
 
   // CustomerPool lifecycle — published in this order per customer per day:
-  //   customer:arrived → customer:state_changed (0-n times) → customer:resolved
+  //   customer:arrived → customer:state_changed (0-n times) →
+  //   customer:gate_evaluated (one per gate, in gate order, only on a
+  //   SalesProcess-driven resolution) → customer:resolved
   //   OR customer:poached (removes from pool before any state changes)
   'customer:arrived': { day: number; customerId: string; label: string };
   'customer:state_changed': { customerId: string; from: string; to: string };
+  // Observability only (issue #92): one per gate during SalesProcess-driven
+  // resolution, emitted in gate order before customer:resolved. No consumer
+  // logic — meters/UI render and tests assert per-gate behavior from this.
+  'customer:gate_evaluated': {
+    customerId: string;
+    day: number;
+    /** Gate name in resolution order (GREET/QUALIFY/DEMO/NEGOTIATE/CLOSE). */
+    gate: string;
+    /** Resolved gate quality q ∈ [0,1]. */
+    q: number;
+    /** This gate's marginal contribution to each running meter (post − pre). */
+    meterDelta: { trustIntegrity: number; value: number };
+    /** Set only on the gate the customer walked at; null on every other gate. */
+    walkCause:
+      | 'patience_drain'
+      | 'trust_collapse'
+      | 'demo_nonnegotiable_miss'
+      | null;
+  };
   'customer:resolved': {
     customerId: string;
     outcome: 'closed' | 'walk';

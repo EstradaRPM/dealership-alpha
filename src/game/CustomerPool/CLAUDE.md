@@ -17,7 +17,7 @@ Per-day customer roster + SalesProcess-driven resolution. Rolls today's customer
 - Intermediate actions (GREET, QUALIFY, DEMO, NEGOTIATE) still use FSM.
 
 ## Events
-- **Emits:** `customer:arrived`, `customer:state_changed`, `customer:resolved` (extended — see EventBus events.ts), `customer:poached`. Per-customer ordering: `arrived → state_changed (0..n) → (resolved | poached)`.
+- **Emits:** `customer:arrived`, `customer:state_changed`, `customer:gate_evaluated` (observability only, #92 — one per gate in gate order on a SalesProcess-driven resolution), `customer:resolved` (extended — see EventBus events.ts), `customer:poached`. Per-customer ordering: `arrived → state_changed (0..n) → gate_evaluated (0..n) → (resolved | poached)`.
 - **Consumes:** `clock:day_started` (roll today's customers), `market:competitive_pressure` (poach checks), `deal:closed` (DealEngine-driven close), `bdc:callback_succeeded` (return to sales).
 
 ## Data

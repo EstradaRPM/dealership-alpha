@@ -11,6 +11,7 @@ import { loadPoachConfig, type PoachConfig } from './poachData';
 import {
   resolveSalesProcess,
   closeAndPrice,
+  accumulateMeters,
   GREEN_SALESPERSON,
   vehicleSpaced,
   GATES,
@@ -122,6 +123,32 @@ export function createCustomerPool(deps: {
       customerSpaced,
       vehicleSpaced: vehicleSpaced(STUB_VEHICLE_SPACED),
       visitArchetypeId: session.visitArchetypeId,
+    });
+
+    // Observability only (issue #92): emit one customer:gate_evaluated per gate
+    // in resolution order. Per-gate meter delta = the marginal change to each
+    // running meter from adding this gate, reusing the same exported
+    // accumulateMeters roll-up resolve.ts uses internally (no re-derived logic).
+    let prevTrust = 0;
+    let prevValue = 0;
+    resolution.evaluations.forEach((ev, i) => {
+      const running = accumulateMeters(resolution.evaluations.slice(0, i + 1));
+      const isWalkGate =
+        resolution.outcome === 'walk' &&
+        i === resolution.evaluations.length - 1;
+      bus.publish('customer:gate_evaluated', {
+        customerId: session.customerId,
+        day: currentDay,
+        gate: ev.gate,
+        q: ev.q,
+        meterDelta: {
+          trustIntegrity: running.trustIntegrity - prevTrust,
+          value: running.value - prevValue,
+        },
+        walkCause: isWalkGate ? resolution.cause : null,
+      });
+      prevTrust = running.trustIntegrity;
+      prevValue = running.value;
     });
 
     const receptivity = resolution.meters.trustIntegrity;
