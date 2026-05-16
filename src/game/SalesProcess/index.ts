@@ -73,3 +73,12 @@ export type {
   SalesProcessResolution,
   ResolveDeps,
 } from './resolve';
+
+export { closeAndPrice } from './close';
+export type {
+  CloseInput,
+  CloseDeps,
+  CloseOutcome,
+  CloseResult,
+  PriceFormation,
+} from './close';

@@ -87,6 +87,8 @@ export const SalesProcessConfigSchema = z
         trustHoldWeight: z.number(),
         minGross: z.number().nonnegative(),
         overageAllowed: z.number().nonnegative(),
+        /** Closing-skill boost to objectiveDeal for price-sensitive customers. */
+        framingWeight: z.number().nonnegative(),
       })
       .strict(),
     calibration: z

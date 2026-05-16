@@ -4,7 +4,7 @@ Pure evaluator deep module for skill-driven customer resolution (PRD #85). **No 
 
 ## Status
 
-Slices #86–#89 landed. #86: versioned tunable data files + typed schemas/loaders. #87: the pure `vehicleSpaced` accessor. #88: the seeded gate-quality engine, two-meter roll-up, and the four injected seam interfaces with v1 stubs. #89: nonnegotiable gating — seeded axis classification, skill-gated QUALIFY reveal, and the named walk model (patience-drain / trust-collapse / DEMO hard-fail). Still **inert** — no EventBus, no runtime consumers. Quadrant close + price formation (#90) and `CustomerPool` rewiring (#91) extend this spine in later slices.
+Slices #86–#90 landed. #86: versioned tunable data files + typed schemas/loaders. #87: the pure `vehicleSpaced` accessor. #88: the seeded gate-quality engine, two-meter roll-up, and the four injected seam interfaces with v1 stubs. #89: nonnegotiable gating — seeded axis classification, skill-gated QUALIFY reveal, and the named walk model (patience-drain / trust-collapse / DEMO hard-fail). #90: quadrant close model + price formation (`closeAndPrice`). Still **inert** — no EventBus, no runtime consumers. `CustomerPool` rewiring (#91) extends this spine in the next slice.
 
 ## Public API (`index.ts`)
 
@@ -38,6 +38,15 @@ Nonnegotiable gating (#89) — pure, deterministic:
 - `wantAxisFit` / `nonnegotiablesSatisfied` — graded want-axis Value fit; nonnegotiable satisfied within `nonnegotiables.tolerance` below the customer's required level.
 - `resolveSalesProcess(input, deps?) → SalesProcessResolution` — runs gates in order, drains patience `(1−q)×archetypeImpatience`, rolls running meters, and applies the named walk model in priority order: DEMO nonneg miss (hard, regardless of charisma) → trust-collapse (meter `< walk.trustCollapseFloor`) → patience-drain (`≤ walk.patienceFloor`). Surviving all gates ⇒ `reached_close` (the close/price decision is #90). Reuses `evaluateGate`/`accumulateMeters`.
 - New config block `nonnegotiables { qualifyRevealThreshold, tolerance }` in `data/sales-process.json`.
+
+Quadrant close + price formation (#90):
+
+- `closeAndPrice(input, deps?) → CloseResult` — pure, deterministic (no RNG). Takes `MeterState`, `SalespersonSkill`, `priceSensitivity` (unit-scaled), `vehicle: PricedVehicleInput`, and optional `marketPriceFn`/`vehicleCostFn` seam overrides (defaults to `staticMarketPrice`/`staticVehicleCost`). Computes price formation first, then `objectiveDeal`, then applies the quadrant close rule.
+  - **Price formation (PRD decision 12):** `requiredDiscount = base + (1−Value)·valueGapWeight + sensitivity·sensitivityWeight − closingSkill·skillHoldWeight − trust·trustHoldWeight`. `marginFloorPrice = vehicleCost + minGross`. `realizedPrice = clamp(rawPrice, marginFloorPrice, marketPrice + overageAllowed)`. `closeable = rawPrice ≥ marginFloorPrice`. `frontGross = realizedPrice − vehicleCost`.
+  - **objectiveDeal (PRD decision 11):** `clamp(Value × (1 − sensitivity × (1 − discountFraction)), 0, 1)` where `discountFraction = clamp((marketPrice − realizedPrice) / marketPrice, 0, 1)`.
+  - **Quadrant close rule:** `objectiveDeal ≥ buyThreshold` → buy (trust irrelevant); `objectiveDeal ≥ softThreshold AND trust ≥ trustFloor` → soft buy; otherwise no_close. `closeable=false` blocks all closes.
+  - **Low-trust forced close:** `outcome=buy AND unconditional AND trust < trustFloor` → `badReview=true + highFiResistance=true` (signals downstream).
+  - `closingComposite` = `skill.skillFor('NEGOTIATE')` — the NEGOTIATE gate skill drives price hold.
 
 Accessor (#87):
 

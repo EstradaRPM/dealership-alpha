@@ -36,6 +36,7 @@ const config: SalesProcessConfig = {
     trustHoldWeight: 1500,
     minGross: 800,
     overageAllowed: 1500,
+    framingWeight: 0.15,
   },
   calibration: {
     positiveMin: 0.85,
