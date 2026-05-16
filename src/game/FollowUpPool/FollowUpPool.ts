@@ -3,7 +3,7 @@ import type { CustomerPool } from '../CustomerPool';
 import type { FollowUpEntry, ArchivedEntry, FollowUpPool, CallbackOutcome } from './types';
 
 export interface FollowUpTunables {
-  initialHeatBase: number;
+  /** Heat lost per night. Walk heat ∈ [0,1] arrives from customer:resolved. */
   decayPerNight: number;
   /** Extra heat lost on a failed callback. Defaults to 0. */
   callbackFailurePenalty?: number;
@@ -38,7 +38,8 @@ export function createFollowUpPool(deps: {
     const session = pool.getSession(customerId);
     if (!session) return;
 
-    const initialHeat = Math.max(1, Math.round(tunables.initialHeatBase * heat));
+    if (heat <= 0) return;
+    const initialHeat = heat;
 
     active.set(customerId, {
       customerId,

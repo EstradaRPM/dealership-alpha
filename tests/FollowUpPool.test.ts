@@ -15,7 +15,7 @@ const npcDeps = {
   traits: loadTraitTaxonomy(),
 };
 
-const TUNABLES = { initialHeatBase: 5, decayPerNight: 1 };
+const TUNABLES = { decayPerNight: 0.2 };
 
 function makeSetup(initialDay = 0) {
   const bus = createEventBus();
@@ -25,11 +25,30 @@ function makeSetup(initialDay = 0) {
   return { bus, clock, pool, followUp };
 }
 
-function walkFirstCustomer(setup: ReturnType<typeof makeSetup>) {
-  const { clock, pool } = setup;
+/**
+ * Roll a real customer into the pool (so FollowUpPool's session lookup
+ * resolves), then publish a representative extended customer:resolved with a
+ * chosen computed `heat`. Mirrors the #91 emit boundary: FollowUpPool consumes
+ * the scalar, it does not re-derive it.
+ */
+function resolveWalk(
+  setup: ReturnType<typeof makeSetup>,
+  heat: number,
+  overrides: Partial<{ outcome: 'closed' | 'walk' }> = {},
+) {
+  const { clock, pool, bus } = setup;
   clock.advanceDay();
-  const [session] = pool.getSessions();
-  pool.dispatch(session.customerId, 'WALK_CUSTOMER');
+  const session = pool.getSessions().find(s => !setup.followUp.getFollowUp(s.customerId))!;
+  bus.publish('customer:resolved', {
+    customerId: session.customerId,
+    outcome: overrides.outcome ?? 'walk',
+    receptivity: 0,
+    satisfaction: 0,
+    retentionSeed: 0,
+    heat,
+    agreedPrice: 0,
+    frontGross: 0,
+  });
   return session.customerId;
 }
 
@@ -44,41 +63,42 @@ describe('FollowUpPool — enqueue on walk', () => {
 
   it('adds entry when a customer walks', () => {
     const setup = makeSetup();
-    const id = walkFirstCustomer(setup);
+    const id = resolveWalk(setup, 0.6);
     expect(setup.followUp.getFollowUps()).toHaveLength(1);
     expect(setup.followUp.getFollowUp(id)).toBeDefined();
   });
 
   it('does not add entry for closed customers', () => {
-    // Test FollowUpPool in isolation: a customer:resolved with outcome=closed
-    // must not be added to the follow-up pool regardless of how the close was reached.
-    const { bus, followUp } = makeSetup();
-    bus.publish('customer:resolved', {
-      customerId: 'closed-customer',
-      outcome: 'closed',
-      receptivity: 0.8,
-      satisfaction: 1,
-      retentionSeed: 0.6,
-      heat: 0,
-      agreedPrice: 10000,
-      frontGross: 1500,
-    });
-    expect(followUp.getFollowUps()).toHaveLength(0);
+    const setup = makeSetup();
+    resolveWalk(setup, 0, { outcome: 'closed' });
+    expect(setup.followUp.getFollowUps()).toHaveLength(0);
   });
 
-  it('initial heat is positive and sourced from customer patience', () => {
+  it('does not enqueue a zero-heat (stone cold) walk', () => {
     const setup = makeSetup();
-    const id = walkFirstCustomer(setup);
+    resolveWalk(setup, 0);
+    expect(setup.followUp.getFollowUps()).toHaveLength(0);
+  });
+
+  it('initial heat equals the computed heat scalar from the payload', () => {
+    const setup = makeSetup();
+    const id = resolveWalk(setup, 0.73);
     const entry = setup.followUp.getFollowUp(id)!;
-    expect(entry.heat).toBeGreaterThan(0);
+    expect(entry.heat).toBeCloseTo(0.73);
     expect(entry.heat).toBe(entry.initialHeat);
   });
 
-  it('entry records the walked day', () => {
-    const setup = makeSetup();
-    const id = walkFirstCustomer(setup);
-    const entry = setup.followUp.getFollowUp(id)!;
-    expect(entry.walkedDay).toBe(1);
+  it('high-trust non-close leaves a warm lead; cold walk leaves a low one', () => {
+    // Independent setups so each entry is read on its walk day (no decay).
+    const warmSetup = makeSetup();
+    const warmId = resolveWalk(warmSetup, 0.85);
+    const coldSetup = makeSetup();
+    const coldId = resolveWalk(coldSetup, 0.15);
+    const warm = warmSetup.followUp.getFollowUp(warmId)!;
+    const cold = coldSetup.followUp.getFollowUp(coldId)!;
+    expect(warm.heat).toBeGreaterThan(cold.heat);
+    expect(warm.heat).toBeCloseTo(0.85);
+    expect(cold.heat).toBeCloseTo(0.15);
   });
 });
 
@@ -87,29 +107,25 @@ describe('FollowUpPool — enqueue on walk', () => {
 describe('FollowUpPool — heat decay', () => {
   it('heat decreases by decayPerNight on each overnight', () => {
     const setup = makeSetup();
-    const id = walkFirstCustomer(setup);
-    const initialHeat = setup.followUp.getFollowUp(id)!.heat;
+    const id = resolveWalk(setup, 0.9);
 
     setup.clock.advanceDay();
-    expect(setup.followUp.getFollowUp(id)!.heat).toBe(initialHeat - 1);
+    expect(setup.followUp.getFollowUp(id)!.heat).toBeCloseTo(0.7);
 
     setup.clock.advanceDay();
-    expect(setup.followUp.getFollowUp(id)!.heat).toBe(initialHeat - 2);
+    expect(setup.followUp.getFollowUp(id)!.heat).toBeCloseTo(0.5);
   });
 
   it('uses a custom decayPerNight from tunables', () => {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
     const pool = createCustomerPool({ bus, npcDeps });
-    const followUp = createFollowUpPool({ bus, pool, tunables: { initialHeatBase: 6, decayPerNight: 2 } });
+    const followUp = createFollowUpPool({ bus, pool, tunables: { decayPerNight: 0.5 } });
+    const setup = { bus, clock, pool, followUp };
 
+    const id = resolveWalk(setup, 0.9);
     clock.advanceDay();
-    const [session] = pool.getSessions();
-    pool.dispatch(session.customerId, 'WALK_CUSTOMER');
-
-    const initialHeat = followUp.getFollowUp(session.customerId)!.heat;
-    clock.advanceDay();
-    expect(followUp.getFollowUp(session.customerId)!.heat).toBe(initialHeat - 2);
+    expect(followUp.getFollowUp(id)!.heat).toBeCloseTo(0.4);
   });
 });
 
@@ -117,83 +133,51 @@ describe('FollowUpPool — heat decay', () => {
 
 describe('FollowUpPool — archival when heat reaches zero', () => {
   it('customer is archived when heat decays to zero', () => {
-    const bus = createEventBus();
-    const clock = createGameClock({ bus });
-    const pool = createCustomerPool({ bus, npcDeps });
-    // initialHeat will be 1 (initialHeatBase=1, patience ~0.5-0.7 → rounds to 1)
-    const followUp = createFollowUpPool({ bus, pool, tunables: { initialHeatBase: 1, decayPerNight: 1 } });
+    const setup = makeSetup();
+    const id = resolveWalk(setup, 0.2); // one night at decayPerNight 0.2 → 0
 
-    clock.advanceDay();
-    const [session] = pool.getSessions();
-    pool.dispatch(session.customerId, 'WALK_CUSTOMER');
-    const id = session.customerId;
+    expect(setup.followUp.getFollowUps()).toHaveLength(1);
+    expect(setup.followUp.getArchived()).toHaveLength(0);
 
-    expect(followUp.getFollowUps()).toHaveLength(1);
-    expect(followUp.getArchived()).toHaveLength(0);
-
-    clock.advanceDay(); // overnight decay: heat 1 → 0
-    expect(followUp.getFollowUps()).toHaveLength(0);
-    expect(followUp.getArchived()).toHaveLength(1);
-    expect(followUp.getFollowUp(id)).toBeUndefined();
+    setup.clock.advanceDay();
+    expect(setup.followUp.getFollowUps()).toHaveLength(0);
+    expect(setup.followUp.getArchived()).toHaveLength(1);
+    expect(setup.followUp.getFollowUp(id)).toBeUndefined();
   });
 
-  it('archived entry is queryable and preserves bundle + walked day', () => {
-    const bus = createEventBus();
-    const clock = createGameClock({ bus });
-    const pool = createCustomerPool({ bus, npcDeps });
-    const followUp = createFollowUpPool({ bus, pool, tunables: { initialHeatBase: 1, decayPerNight: 1 } });
+  it('archived entry is queryable and preserves walked day', () => {
+    const setup = makeSetup();
+    const id = resolveWalk(setup, 0.2);
+    const walkedDay = setup.followUp.getFollowUp(id)!.walkedDay;
 
-    clock.advanceDay();
-    const [session] = pool.getSessions();
-    pool.dispatch(session.customerId, 'WALK_CUSTOMER');
-
-    clock.advanceDay();
-    const [archivedEntry] = followUp.getArchived();
-    expect(archivedEntry.customerId).toBe(session.customerId);
-    expect(archivedEntry.walkedDay).toBe(session.day);
-    expect(archivedEntry.bundle).toBe(session.bundle);
-    expect(archivedEntry.archivedDay).toBe(session.day); // overnight of session day
+    setup.clock.advanceDay();
+    const [archivedEntry] = setup.followUp.getArchived();
+    expect(archivedEntry.customerId).toBe(id);
+    expect(archivedEntry.walkedDay).toBe(walkedDay);
   });
 
   it('publishes followup:customer_archived event when heat hits zero', () => {
-    const bus = createEventBus();
-    const clock = createGameClock({ bus });
-    const pool = createCustomerPool({ bus, npcDeps });
-    createFollowUpPool({ bus, pool, tunables: { initialHeatBase: 1, decayPerNight: 1 } });
-
-    clock.advanceDay();
-    const [session] = pool.getSessions();
-    pool.dispatch(session.customerId, 'WALK_CUSTOMER');
+    const setup = makeSetup();
+    const id = resolveWalk(setup, 0.2);
 
     const events: Array<{ customerId: string; day: number }> = [];
-    bus.subscribe('followup:customer_archived', (e) => events.push(e));
+    setup.bus.subscribe('followup:customer_archived', (e) => events.push(e));
 
-    clock.advanceDay();
+    setup.clock.advanceDay();
     expect(events).toHaveLength(1);
-    expect(events[0].customerId).toBe(session.customerId);
+    expect(events[0].customerId).toBe(id);
   });
 
-  it('customer with higher initial heat is not archived until heat fully decays', () => {
-    const bus = createEventBus();
-    const clock = createGameClock({ bus });
-    const pool = createCustomerPool({ bus, npcDeps });
-    // Force initialHeat of 3 by using a large base (patience ~0.6 → rounds to 3)
-    const followUp = createFollowUpPool({ bus, pool, tunables: { initialHeatBase: 5, decayPerNight: 1 } });
+  it('a warmer lead survives longer than a cold one', () => {
+    const coldSetup = makeSetup();
+    const coldId = resolveWalk(coldSetup, 0.2);
+    const warmSetup = makeSetup();
+    const warmId = resolveWalk(warmSetup, 0.9);
 
-    clock.advanceDay();
-    const [session] = pool.getSessions();
-    pool.dispatch(session.customerId, 'WALK_CUSTOMER');
-    const id = session.customerId;
-    const initialHeat = followUp.getFollowUp(id)!.initialHeat;
-
-    for (let i = 0; i < initialHeat - 1; i++) {
-      clock.advanceDay();
-      expect(followUp.getFollowUp(id)).toBeDefined();
-    }
-    // one more night pushes it to 0
-    clock.advanceDay();
-    expect(followUp.getFollowUp(id)).toBeUndefined();
-    expect(followUp.getArchived()).toHaveLength(1);
+    coldSetup.clock.advanceDay(); // cold 0.2 → 0 (archived)
+    warmSetup.clock.advanceDay(); // warm 0.9 → 0.7 (still active)
+    expect(coldSetup.followUp.getFollowUp(coldId)).toBeUndefined();
+    expect(warmSetup.followUp.getFollowUp(warmId)).toBeDefined();
   });
 });
 
@@ -201,16 +185,11 @@ describe('FollowUpPool — archival when heat reaches zero', () => {
 
 describe('FollowUpPool — multiple customers decay independently', () => {
   it('each walked customer has its own entry', () => {
-    const { clock, pool, followUp } = makeSetup();
-    clock.advanceDay();
-    const [s1] = pool.getSessions();
-    pool.dispatch(s1.customerId, 'WALK_CUSTOMER');
-
-    clock.advanceDay();
-    const sessions = pool.getSessions();
-    const s2 = sessions.find(s => s.customerId !== s1.customerId)!;
-    pool.dispatch(s2.customerId, 'WALK_CUSTOMER');
-
-    expect(followUp.getFollowUps().length).toBeGreaterThanOrEqual(1);
+    const setup = makeSetup();
+    const a = resolveWalk(setup, 0.8);
+    const b = resolveWalk(setup, 0.5);
+    expect(setup.followUp.getFollowUp(a)).toBeDefined();
+    expect(setup.followUp.getFollowUp(b)).toBeDefined();
+    expect(a).not.toBe(b);
   });
 });

@@ -16,7 +16,9 @@ const npcDeps = {
   traits: loadTraitTaxonomy(),
 };
 
-const TUNABLES = { initialHeatBase: 5, decayPerNight: 1 };
+// Forced WALK_CUSTOMER emits heat = clampUnit(patience) ∈ [0,1]; a small
+// decayPerNight keeps the lead alive across the morning BDC surface.
+const TUNABLES = { decayPerNight: 0.2 };
 
 function makeSetup(initialDay = 0) {
   const bus = createEventBus();
@@ -118,7 +120,7 @@ describe('BDCCallback — callback probability', () => {
     const clock = createGameClock({ bus });
     const pool = createCustomerPool({ bus, npcDeps });
     // Use decayPerNight=0 so heat stays at initialHeat through the night
-    const followUp = createFollowUpPool({ bus, pool, tunables: { initialHeatBase: 5, decayPerNight: 0 } });
+    const followUp = createFollowUpPool({ bus, pool, tunables: { decayPerNight: 0 } });
     createDepartmentQueue({ bus });
 
     clock.advanceDay();
@@ -134,7 +136,7 @@ describe('BDCCallback — callback probability', () => {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
     const pool = createCustomerPool({ bus, npcDeps });
-    const followUp = createFollowUpPool({ bus, pool, tunables: { initialHeatBase: 5, decayPerNight: 1 } });
+    const followUp = createFollowUpPool({ bus, pool, tunables: { decayPerNight: 0.2 } });
     createDepartmentQueue({ bus });
 
     clock.advanceDay();
@@ -142,14 +144,12 @@ describe('BDCCallback — callback probability', () => {
     pool.dispatch(session.customerId, 'WALK_CUSTOMER');
 
     const id = session.customerId;
-    const initialHeat = followUp.getFollowUp(id)!.initialHeat;
 
-    // Let heat decay partway
-    for (let i = 0; i < Math.floor(initialHeat / 2); i++) clock.advanceDay();
+    // Let heat decay partway, then roll right at the (lowered) boundary
+    clock.advanceDay();
     const entry = followUp.getFollowUp(id)!;
     const threshold = entry.heat / entry.initialHeat;
-
-    // Roll right at the boundary
+    expect(threshold).toBeLessThan(1);
     expect(followUp.attemptCallback(id, threshold - 0.01)).toBe('success');
   });
 
@@ -252,7 +252,7 @@ describe('BDCCallback — failure path', () => {
     const pool = createCustomerPool({ bus, npcDeps });
     const followUp = createFollowUpPool({
       bus, pool,
-      tunables: { initialHeatBase: 5, decayPerNight: 0, callbackFailurePenalty: 2 },
+      tunables: { decayPerNight: 0, callbackFailurePenalty: 0.2 },
     });
     createDepartmentQueue({ bus });
 
@@ -264,7 +264,7 @@ describe('BDCCallback — failure path', () => {
     const id = session.customerId;
     const heatBefore = followUp.getFollowUp(id)!.heat;
     followUp.attemptCallback(id, 1); // guaranteed failure
-    expect(followUp.getFollowUp(id)!.heat).toBe(heatBefore - 2);
+    expect(followUp.getFollowUp(id)!.heat).toBeCloseTo(heatBefore - 0.2);
   });
 
   it('callbackFailurePenalty draining heat to zero archives the customer', () => {
@@ -273,7 +273,7 @@ describe('BDCCallback — failure path', () => {
     const pool = createCustomerPool({ bus, npcDeps });
     const followUp = createFollowUpPool({
       bus, pool,
-      tunables: { initialHeatBase: 1, decayPerNight: 0, callbackFailurePenalty: 5 },
+      tunables: { decayPerNight: 0, callbackFailurePenalty: 5 },
     });
     createDepartmentQueue({ bus });
 
@@ -312,14 +312,25 @@ describe('BDCCallback — pool drain over time', () => {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
     const pool = createCustomerPool({ bus, npcDeps });
-    const followUp = createFollowUpPool({ bus, pool, tunables: { initialHeatBase: 2, decayPerNight: 1 } });
+    const followUp = createFollowUpPool({ bus, pool, tunables: { decayPerNight: 0.2 } });
     const queue = createDepartmentQueue({ bus });
 
     clock.advanceDay(); // day 1: customer arrives
     const [session] = pool.getSessions();
-    pool.dispatch(session.customerId, 'WALK_CUSTOMER');
+    // Publish a controlled computed heat so decay timing is deterministic
+    // (forced-walk patience varies per seeded customer).
+    bus.publish('customer:resolved', {
+      customerId: session.customerId,
+      outcome: 'walk',
+      receptivity: 0,
+      satisfaction: 0,
+      retentionSeed: 0,
+      heat: 0.3,
+      agreedPrice: 0,
+      frontGross: 0,
+    });
 
-    // initialHeat=2 (approx, based on patience). Day 2 morning: BDC task fires (heat=1 after overnight decay)
+    // Day 2 morning: BDC task fires (heat 0.1 after one overnight at decay 0.2)
     clock.advanceDay();
     const bdcDay2 = queue.getQueue('bdc').filter(i => i.customerId === session.customerId).length;
     expect(bdcDay2).toBe(1); // task surfaced on day 2
