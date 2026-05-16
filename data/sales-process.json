@@ -5,6 +5,17 @@
     "seedNamespace": "customer_pool.sales_gate",
     "jitterBand": 0.15
   },
+  "core": {
+    "skillWeight": 0.55,
+    "fitWeight": 0.3,
+    "easeWeight": 0.15
+  },
+  "meters": {
+    "GREET": { "trust": 1, "value": 0 },
+    "QUALIFY": { "trust": 0.6, "value": 0.4 },
+    "DEMO": { "trust": 0.3, "value": 0.7 },
+    "NEGOTIATE": { "trust": 0.5, "value": 0.5 }
+  },
   "walk": {
     "trustCollapseFloor": 0.15,
     "patienceFloor": 0

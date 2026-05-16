@@ -26,16 +26,35 @@ const SpacedModifierSchema = z
   .partial()
   .strict();
 
+export const GATES = ['GREET', 'QUALIFY', 'DEMO', 'NEGOTIATE'] as const;
+const GateEnum = z.enum(GATES);
+
+const MeterWeightsSchema = z
+  .object({ trust: unit, value: unit })
+  .strict();
+
 export const SalesProcessConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
-    gates: z.array(z.string().min(1)).min(1),
+    gates: z.array(GateEnum).nonempty(),
     rng: z
       .object({
         seedNamespace: z.string().min(1),
         jitterBand: unit,
       })
       .strict(),
+    core: z
+      .object({
+        skillWeight: z.number().nonnegative(),
+        fitWeight: z.number().nonnegative(),
+        easeWeight: z.number().nonnegative(),
+      })
+      .strict()
+      .refine(
+        (c) => c.skillWeight + c.fitWeight + c.easeWeight > 0,
+        { message: 'core weights must sum to a positive value' },
+      ),
+    meters: z.record(GateEnum, MeterWeightsSchema),
     walk: z
       .object({
         trustCollapseFloor: unit,
@@ -73,6 +92,7 @@ export const SalesProcessConfigSchema = z
   .strict();
 
 export type SalesProcessConfig = z.infer<typeof SalesProcessConfigSchema>;
+export type Gate = z.infer<typeof GateEnum>;
 
 export const VehicleSpacedConfigSchema = z
   .object({

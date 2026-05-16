@@ -8,8 +8,10 @@ export {
   loadBrandTiersConfig,
   loadCustomerNonnegotiablesConfig,
 } from './salesProcessData';
+export { GATES } from './salesProcessData';
 export type {
   SalesProcessConfig,
+  Gate,
   VehicleSpacedConfig,
   BrandTiersConfig,
   CustomerNonnegotiablesConfig,
@@ -21,3 +23,32 @@ export type {
   SpacedVehicleInput,
   VehicleSpacedDeps,
 } from './vehicleSpaced';
+
+export {
+  GREEN_SALESPERSON,
+  GREEN_SALESPERSON_SKILL,
+  makeSalespersonProfile,
+  staticMarketPrice,
+  staticVehicleCost,
+} from './seams';
+export type {
+  GateSkill,
+  SalespersonSkill,
+  PricedVehicleInput,
+  MarketPriceFn,
+  VehicleCostFn,
+} from './seams';
+
+export {
+  evaluateGate,
+  accumulateMeters,
+  evaluateSalesProcess,
+} from './evaluator';
+export type {
+  GateEvaluation,
+  MeterState,
+  GateInput,
+  EvaluatorDeps,
+  SalesProcessInput,
+  SalesProcessResult,
+} from './evaluator';
