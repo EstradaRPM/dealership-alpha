@@ -29,6 +29,28 @@ export interface EventMap {
   // last in the advanceDay() sequence so week-close consumers settle first.
   'clock:month_ended': { day: number };
 
+  // FloorSim intra-day logical-tick loop. Runs strictly between
+  // clock:day_started and the composition root calling GameClock.advanceDay()
+  // — independent of, and never interleaved with, the clock:* overnight
+  // sequence. Per simulated day FloorSim emits:
+  //   floor:tick (×ticksPerDay, ascending tick = 1..ticksPerDay) →
+  //   floor:day_complete (exactly once, immediately after the final
+  //   floor:tick; control then returns to GameClock).
+  'floor:tick': {
+    day: number;
+    /** 1-based tick index within the day, 1..ticksPerDay. */
+    tick: number;
+    ticksPerDay: number;
+    /** Customers that arrived on this tick (skeleton: 0 or 1). */
+    arrivals: number;
+  };
+  'floor:day_complete': {
+    day: number;
+    /** Total logical ticks simulated (== ticksPerDay). */
+    ticks: number;
+    totalArrivals: number;
+  };
+
   // CompetitorMarket → CustomerPool (ADR-0001 §10). Published each
   // clock:day_started; consumed when rolling today's customers.
   'market:competitive_pressure': {

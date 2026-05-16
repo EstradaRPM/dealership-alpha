@@ -8,6 +8,18 @@ export const TunablesSchema = z.object({
     ticksPerDay: z.number().int().positive(),
     daysPerMonth: z.number().int().positive(),
   }),
+  floorSim: z.object({
+    ticksPerDay: z.number().int().positive(),
+    baseDailyArrivals: z.number().nonnegative(),
+    reputationArrivalCoeff: z.number().nonnegative(),
+    marketShareArrivalCoeff: z.number().nonnegative(),
+    seasonArrivalMultiplier: z.object({
+      spring: z.number().nonnegative(),
+      summer: z.number().nonnegative(),
+      fall: z.number().nonnegative(),
+      winter: z.number().nonnegative(),
+    }),
+  }),
   economy: z.object({
     startingCash: z.number().nonnegative(),
     dailyOverheadBase: z.number().nonnegative(),

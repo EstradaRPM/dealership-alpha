@@ -5,6 +5,18 @@
     "ticksPerDay": 64,
     "daysPerMonth": 30
   },
+  "floorSim": {
+    "ticksPerDay": 180,
+    "baseDailyArrivals": 12,
+    "reputationArrivalCoeff": 0.8,
+    "marketShareArrivalCoeff": 1.5,
+    "seasonArrivalMultiplier": {
+      "spring": 1.0,
+      "summer": 1.15,
+      "fall": 1.05,
+      "winter": 0.85
+    }
+  },
   "economy": {
     "startingCash": 50000,
     "dailyOverheadBase": 350,
