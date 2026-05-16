@@ -80,6 +80,8 @@ const STAFF_CONFIG: StaffDispatchConfig = {
   minGrossModifier: 0.5,
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.6,
+  exceptionSkillExpMin: 1.0,
+  exceptionSkillExpMax: 3.0,
 };
 
 const ALWAYS_AUTO_CONFIG: StaffDispatchConfig = {

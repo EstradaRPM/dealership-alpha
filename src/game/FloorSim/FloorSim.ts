@@ -44,9 +44,10 @@ export interface CapacityGate {
  * resolves its routine queue at a skill-scaled throughput, draining across
  * ticks rather than once-per-day. The department owns its own
  * throughput/threshold (StaffDispatch owns f(skill×tier)); FloorSim only
- * paces the invocation. `escalated` is part of the locked shape — the
- * forced-exception channel (floor:exception_raised) is wired in #103; #101
- * drains only the routine (`resolved`) path. Structurally satisfied by
+ * paces the invocation. `resolved` accrues to the routine queue;
+ * `escalated` count drives the forced-exception channel (#103) — FloorSim
+ * mints one grabbable exception ref + one floor:exception_raised per
+ * escalated case. Structurally satisfied by
  * StaffDispatch/ServiceDispatch createFloorDrain().
  */
 export interface DeptDrain {
@@ -58,14 +59,15 @@ export interface DeptDrain {
 
 /**
  * Locked #99 grab-eligibility ref. Self-describing so the unified grab verb
- * (#104) treats ambient and exception customers uniformly. #102 only mints
- * `source:'ambient'` / `mustHandle:false`; the exception channel (#103) adds
- * `source:'exception'` and tunable `mustHandle` policy. FloorSim is
+ * (#104) treats ambient and exception customers uniformly. #102 mints
+ * `source:'ambient'` / `mustHandle:false`; the forced-exception channel
+ * (#103) mints `source:'exception'` with `mustHandle` from the
+ * `floorSim.exceptionMustHandle` tunable policy. FloorSim is
  * department/tier-agnostic — `department` is opaque routing context.
  */
 export interface CustomerRef {
   readonly id: string;
-  readonly source: 'ambient';
+  readonly source: 'ambient' | 'exception';
   readonly mustHandle: boolean;
   readonly department: string;
 }
@@ -149,6 +151,8 @@ export interface FloorSim {
   readonly totalWalked: number;
   /** Cumulative routine queue items auto-resolved by injected dept drains. */
   readonly totalResolved: number;
+  /** Cumulative dramatic cases forced into the exception channel (#103). */
+  readonly totalEscalated: number;
   /**
    * Advance exactly one logical tick: emits floor:tick, and floor:day_complete
    * on the final tick. No-op once the day is complete. Deterministic given the
@@ -218,6 +222,7 @@ export function createFloorSim(deps: {
   let totalArrivals = 0;
   let totalWalked = 0;
   let totalResolved = 0;
+  let totalEscalated = 0;
   let complete = false;
 
   const roster: CustomerRef[] = [];
@@ -244,8 +249,33 @@ export function createFloorSim(deps: {
       );
     }
     if (drains) {
+      let escalatedThisTick = 0;
       for (const d of drains) {
-        totalResolved += d.drain({ day: ctx.day, tick }).resolved;
+        const out = d.drain({ day: ctx.day, tick });
+        totalResolved += out.resolved;
+        escalatedThisTick += out.escalated;
+      }
+      // Step 4: forced-exception channel. Each dramatic case the drain
+      // refused becomes one grabbable exception ref + one heartbeat, emitted
+      // after the drain and before floor:tick (canonical #99 order). The
+      // department owns the f(skill×tier) threshold behind the seam; FloorSim
+      // is department/tier-agnostic so refs carry the default 'sales' routing
+      // context (unified-grab refinement is #104).
+      for (let i = 0; i < escalatedThisTick; i++) {
+        const ref: CustomerRef = {
+          id: `floor:exc:${ctx.day}:${tick}:${i}`,
+          source: 'exception',
+          mustHandle: cfg.exceptionMustHandle,
+          department: 'sales',
+        };
+        roster.push(ref);
+        totalEscalated += 1;
+        bus.publish('floor:exception_raised', {
+          day: ctx.day,
+          tick,
+          customerId: ref.id,
+          department: ref.department,
+        });
       }
     }
     bus.publish('floor:tick', {
@@ -370,6 +400,9 @@ export function createFloorSim(deps: {
     },
     get totalResolved() {
       return totalResolved;
+    },
+    get totalEscalated() {
+      return totalEscalated;
     },
 
     step() {

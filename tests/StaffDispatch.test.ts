@@ -62,6 +62,8 @@ const NO_EXCEPTION_CONFIG: StaffDispatchConfig = {
   minGrossModifier: 0.50,
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.60,
+  exceptionSkillExpMin: 1.0,
+  exceptionSkillExpMax: 3.0,
 };
 
 // All flags set to 1 so every customer gets flagged.

@@ -19,6 +19,9 @@ export const TunablesSchema = z.object({
       fall: z.number().nonnegative(),
       winter: z.number().nonnegative(),
     }),
+    // Forced-exception channel (#103): whether escalated cases minted into
+    // FloorSim's roster are flagged mustHandle (forced for the player).
+    exceptionMustHandle: z.boolean(),
   }),
   handPlay: z.object({
     tickCostPerGate: z.number().int().positive(),

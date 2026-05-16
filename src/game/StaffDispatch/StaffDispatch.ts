@@ -59,16 +59,26 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       ? config.gmExceptionFlagRates
       : config.exceptionFlagRates;
 
-    // Roll exception flags; any match forces player escalation.
-    for (const flag of EXCEPTION_FLAGS) {
-      const rate = flagRates[flag] ?? 0;
-      if (rng() < rate) return 'escalated';
-    }
-
-    // Pick highest-effectiveness salesperson.
+    // Pick highest-effectiveness salesperson. Selection draws no RNG, so
+    // hoisting it above the exception roll keeps the RNG stream identical to
+    // the legacy order — only the skill-scaled threshold changes outcomes.
     const salesperson = salespeople.reduce((best, s) =>
       s.effectiveness > best.effectiveness ? s : best,
     );
+
+    // Forced-exception threshold = f(staff skill × role tier) (#103). Each
+    // dramatic-case rate is raised to an exponent lerped by the best
+    // salesperson's effectiveness; exponent ≥ 1 ⇒ rate^exp ≤ rate, so a more
+    // skilled floor escalates fewer/rarer cases (rate 1.0 stays guaranteed).
+    const skillExp = lerp(
+      config.exceptionSkillExpMin,
+      config.exceptionSkillExpMax,
+      salesperson.effectiveness,
+    );
+    for (const flag of EXCEPTION_FLAGS) {
+      const rate = flagRates[flag] ?? 0;
+      if (rng() < Math.pow(rate, skillExp)) return 'escalated';
+    }
 
     // Skill-based probability of auto-resolving (vs leaving for player).
     const autoChance = lerp(

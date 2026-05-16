@@ -15,7 +15,8 @@
       "summer": 1.15,
       "fall": 1.05,
       "winter": 0.85
-    }
+    },
+    "exceptionMustHandle": true
   },
   "handPlay": {
     "tickCostPerGate": 6,
@@ -144,6 +145,8 @@
     "baseAutoGross": 2500,
     "minGrossModifier": 0.50,
     "minDrainPerTick": 0.15,
-    "maxDrainPerTick": 0.60
+    "maxDrainPerTick": 0.60,
+    "exceptionSkillExpMin": 1.0,
+    "exceptionSkillExpMax": 3.0
   }
 }

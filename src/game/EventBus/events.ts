@@ -42,8 +42,7 @@ export interface EventMap {
   //   → 5 floor:tick (settled heartbeat, emitted LAST in the tick) →
   //   6 day-end check (floor:day_complete, exactly once).
   // Per simulated day: floor:tick ×ticksPerDay (ascending 1..ticksPerDay),
-  // then floor:day_complete once. (floor:customer_walked #100 lands here;
-  // floor:exception_raised #103 lands with its slice.)
+  // then floor:day_complete once.
   'floor:tick': {
     day: number;
     /** 1-based tick index within the day, 1..ticksPerDay. */
@@ -63,6 +62,22 @@ export interface EventMap {
     day: number;
     /** 1-based tick the walk occurred on, 1..ticksPerDay. */
     tick: number;
+  };
+  // Step 4 of the canonical per-tick sequence: emitted once per dramatic case
+  // (VIP, high-dollar, irate, lemon-law/audit, comeback) the department drain
+  // forced out of its auto-resolved routine queue into FloorSim's forced-
+  // exception channel. Emitted after that tick's drain and before its
+  // floor:tick. Observability only — StaffDispatch owns the f(skill × role
+  // tier) escalation threshold behind the drain seam; FloorSim only mints the
+  // grabbable exception ref + this heartbeat.
+  'floor:exception_raised': {
+    day: number;
+    /** 1-based tick the escalation occurred on, 1..ticksPerDay. */
+    tick: number;
+    /** Synthetic FloorSim ref id, also grabbable via grabbableCustomers(). */
+    customerId: string;
+    /** Opaque routing context for the escalated case (e.g. 'sales'). */
+    department: string;
   };
   'floor:day_complete': {
     day: number;

@@ -11,8 +11,8 @@ Auto-resolves Sales queue items using on-duty salespeople. Reads the queue, pick
   queue and resolves them via the **same resolver** as the legacy path, so
   the queue drains across ticks with identical outcomes — only the cadence
   differs. Composition wires one path or the other per FloorSim day, never
-  both. `escalated` is surfaced per the locked seam shape; the forced-
-  exception channel (`floor:exception_raised`) is wired in #103.
+  both. `escalated` counts dramatic cases the resolver refused; FloorSim
+  turns each into a grabbable exception ref + `floor:exception_raised` (#103).
 - `loadStaffDispatchConfig` — reads dispatch tunables.
 - Types: `StaffDispatch`, `StaffDispatchDeps`, `StaffDispatchConfig`, `ExceptionFlag`.
 
@@ -26,3 +26,13 @@ Auto-resolves Sales queue items using on-duty salespeople. Reads the queue, pick
 
 ## ExceptionFlag
 Used to flag deals that auto-resolution refused to handle (e.g. high-value, low-trust scenarios). Those bubble to the player UI.
+
+## Exception threshold = f(skill × role tier) (#103)
+The dramatic-case escalation threshold is the master scaling dial. Each
+`exceptionFlagRates` entry is raised to an exponent lerped between
+`exceptionSkillExpMin` (at effectiveness 0) and `exceptionSkillExpMax` (at
+effectiveness 1) by the best on-roster salesperson's effectiveness. Exponent
+≥ 1 ⇒ `rate^exp ≤ rate`, so a more skilled floor escalates fewer/rarer
+cases while a guaranteed `1.0` rate stays guaranteed. Selection draws no RNG
+and is hoisted above the roll, so the RNG stream is identical to the legacy
+order — only the skill-scaled threshold changes outcomes.
