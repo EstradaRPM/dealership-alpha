@@ -33,16 +33,12 @@ export function createFollowUpPool(deps: {
     bus.publish('followup:customer_archived', { customerId: entry.customerId, day });
   }
 
-  bus.subscribe('customer:resolved', ({ customerId, outcome }) => {
+  bus.subscribe('customer:resolved', ({ customerId, outcome, heat }) => {
     if (outcome !== 'walk') return;
     const session = pool.getSession(customerId);
     if (!session) return;
 
-    const patience = session.bundle.visit.kind === 'sales'
-      ? session.bundle.visit.resources.patience
-      : 0.5;
-
-    const initialHeat = Math.max(1, Math.round(tunables.initialHeatBase * patience));
+    const initialHeat = Math.max(1, Math.round(tunables.initialHeatBase * heat));
 
     active.set(customerId, {
       customerId,

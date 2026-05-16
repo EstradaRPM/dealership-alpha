@@ -55,7 +55,7 @@ function makeReputation(score: number): Reputation {
 
 function simulateCustomersServed(bus: ReturnType<typeof createEventBus>, count: number) {
   for (let i = 0; i < count; i++) {
-    bus.publish('customer:resolved', { customerId: `c${i}`, outcome: 'closed' });
+    bus.publish('customer:resolved', { customerId: `c${i}`, outcome: 'closed', receptivity: 0.5, satisfaction: 1, retentionSeed: 0.5, heat: 0, agreedPrice: 0, frontGross: 0 });
   }
 }
 

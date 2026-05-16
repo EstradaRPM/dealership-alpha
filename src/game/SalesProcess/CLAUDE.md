@@ -4,7 +4,7 @@ Pure evaluator deep module for skill-driven customer resolution (PRD #85). **No 
 
 ## Status
 
-Slices #86–#90 landed. #86: versioned tunable data files + typed schemas/loaders. #87: the pure `vehicleSpaced` accessor. #88: the seeded gate-quality engine, two-meter roll-up, and the four injected seam interfaces with v1 stubs. #89: nonnegotiable gating — seeded axis classification, skill-gated QUALIFY reveal, and the named walk model (patience-drain / trust-collapse / DEMO hard-fail). #90: quadrant close model + price formation (`closeAndPrice`). Still **inert** — no EventBus, no runtime consumers. `CustomerPool` rewiring (#91) extends this spine in the next slice.
+Slices #86–#90 landed. #86: versioned tunable data files + typed schemas/loaders. #87: the pure `vehicleSpaced` accessor. #88: the seeded gate-quality engine, two-meter roll-up, and the four injected seam interfaces with v1 stubs. #89: nonnegotiable gating — seeded axis classification, skill-gated QUALIFY reveal, and the named walk model (patience-drain / trust-collapse / DEMO hard-fail). #90: quadrant close model + price formation (`closeAndPrice`). **#91 landed** — `CustomerPool` now drives resolution through `resolveSalesProcess` + `closeAndPrice`. Still no EventBus participation from SalesProcess itself (pure library).
 
 ## Public API (`index.ts`)
 

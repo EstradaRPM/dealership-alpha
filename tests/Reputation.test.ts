@@ -52,7 +52,7 @@ function publishDealClosed(bus: ReturnType<typeof createEventBus>, customerId = 
 }
 
 function publishWalk(bus: ReturnType<typeof createEventBus>, customerId = 'c1') {
-  bus.publish('customer:resolved', { customerId, outcome: 'walk' });
+  bus.publish('customer:resolved', { customerId, outcome: 'walk', receptivity: 0, satisfaction: 0, retentionSeed: 0, heat: 0, agreedPrice: 0, frontGross: 0 });
 }
 
 describe('Reputation — initial state', () => {

@@ -37,7 +37,22 @@ export interface EventMap {
   //   OR customer:poached (removes from pool before any state changes)
   'customer:arrived': { day: number; customerId: string; label: string };
   'customer:state_changed': { customerId: string; from: string; to: string };
-  'customer:resolved': { customerId: string; outcome: 'closed' | 'walk' };
+  'customer:resolved': {
+    customerId: string;
+    outcome: 'closed' | 'walk';
+    /** [0,1] Trust/Integrity meter → F&I receptivity input. */
+    receptivity: number;
+    /** -1 bad review | 0 neutral | 1 positive review → Reputation delta. */
+    satisfaction: number;
+    /** [0,1] trust+deal blend → future retention / service-customer state. */
+    retentionSeed: number;
+    /** [0,1] walk warmth for FollowUpPool heat scaling. 0 for closed deals. */
+    heat: number;
+    /** Realized sale price (= agreedPrice). 0 for non-closes. */
+    agreedPrice: number;
+    /** Front-end gross margin. 0 for non-closes. */
+    frontGross: number;
+  };
   'customer:poached': {
     customerId: string;
     day: number;

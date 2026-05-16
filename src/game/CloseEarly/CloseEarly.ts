@@ -50,7 +50,16 @@ export function createCloseEarly(deps: {
       let walkCount = 0;
       for (const item of drained) {
         if (WALK_TYPES.has(item.type) && item.customerId != null) {
-          bus.publish('customer:resolved', { customerId: item.customerId, outcome: 'walk' });
+          bus.publish('customer:resolved', {
+            customerId: item.customerId,
+            outcome: 'walk',
+            receptivity: 0,
+            satisfaction: 0,
+            retentionSeed: 0,
+            heat: 0,
+            agreedPrice: 0,
+            frontGross: 0,
+          });
           walkCount++;
         }
       }

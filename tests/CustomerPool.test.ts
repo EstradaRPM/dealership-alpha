@@ -8,7 +8,11 @@ import {
   loadVisitArchetypes,
   loadTraitTaxonomy,
 } from '../src/game/NPC';
+import { makeSalespersonProfile } from '../src/game/SalesProcess';
 import type { StaffOrg } from '../src/game/StaffOrg';
+
+// Guaranteed-close salesperson: effectiveness=1, trustworthiness=1 across all gates.
+const PERFECT_SKILL = makeSalespersonProfile({}, { effectiveness: 1, trustworthiness: 1 });
 
 const npcDeps = {
   masterSeed: 42,
@@ -31,11 +35,11 @@ const emptyStaffOrg: StaffOrg = {
   fire: () => {},
 };
 
-function makeSetup(initialDay = 0) {
+function makeSetup(initialDay = 0, skill?: Parameters<typeof createCustomerPool>[0]['skill']) {
   const bus = createEventBus();
   const clock = createGameClock({ bus, initialDay });
   const queue = createDepartmentQueue({ bus });
-  const pool = createCustomerPool({ bus, npcDeps });
+  const pool = createCustomerPool({ bus, npcDeps, skill });
   createCapacityManager({ bus, staffOrg: emptyStaffOrg, config: OPEN_CAPACITY_CONFIG });
   return { bus, clock, queue, pool };
 }
@@ -130,8 +134,9 @@ describe('CustomerPool — dispatch publishes events', () => {
     expect(events[0]).toMatchObject({ customerId: session.customerId, from: 'UNGREETED', to: 'GREETED' });
   });
 
-  it('publishes customer:resolved with outcome closed on CLOSE', () => {
-    const { clock, pool, bus } = makeSetup();
+  it('publishes customer:resolved with outcome closed on CLOSE (perfect skill)', () => {
+    // PERFECT_SKILL ensures SalesProcess returns buy so the test outcome is deterministic.
+    const { clock, pool, bus } = makeSetup(0, PERFECT_SKILL);
     clock.advanceDay();
     const [session] = pool.getSessions();
     const resolved: Array<{ outcome: string }> = [];
@@ -175,8 +180,8 @@ describe('CustomerPool — dispatch publishes events', () => {
 // ── Full forward path ─────────────────────────────────────────────────────────
 
 describe('CustomerPool — full forward path', () => {
-  it('stage advances through all states to CLOSED', () => {
-    const { clock, pool } = makeSetup();
+  it('stage advances through all states to CLOSED (perfect skill)', () => {
+    const { clock, pool } = makeSetup(0, PERFECT_SKILL);
     clock.advanceDay();
     const [session] = pool.getSessions();
     const id = session.customerId;
@@ -192,5 +197,95 @@ describe('CustomerPool — full forward path', () => {
     expect(pool.getSession(id)?.stage).toBe('NEGOTIATING');
     pool.dispatch(id, 'CLOSE');
     expect(pool.getSession(id)?.stage).toBe('CLOSED');
+  });
+});
+
+// ── SalesProcess-driven customer:resolved payload ─────────────────────────────
+
+describe('CustomerPool — extended customer:resolved payload (#91)', () => {
+  it('customer:resolved on CLOSE carries all 6 scalar fields', () => {
+    const { clock, pool, bus } = makeSetup(0, PERFECT_SKILL);
+    clock.advanceDay();
+    const [session] = pool.getSessions();
+    const payloads: unknown[] = [];
+    bus.subscribe('customer:resolved', (e) => payloads.push(e));
+
+    pool.dispatch(session.customerId, 'GREET');
+    pool.dispatch(session.customerId, 'QUALIFY');
+    pool.dispatch(session.customerId, 'DEMO');
+    pool.dispatch(session.customerId, 'NEGOTIATE');
+    pool.dispatch(session.customerId, 'CLOSE');
+
+    expect(payloads).toHaveLength(1);
+    const p = payloads[0] as Record<string, unknown>;
+    expect(typeof p['receptivity']).toBe('number');
+    expect(typeof p['satisfaction']).toBe('number');
+    expect(typeof p['retentionSeed']).toBe('number');
+    expect(typeof p['heat']).toBe('number');
+    expect(typeof p['agreedPrice']).toBe('number');
+    expect(typeof p['frontGross']).toBe('number');
+  });
+
+  it('closed outcome: agreedPrice > 0, heat === 0', () => {
+    const { clock, pool, bus } = makeSetup(0, PERFECT_SKILL);
+    clock.advanceDay();
+    const [session] = pool.getSessions();
+    type Payload = { outcome: string; agreedPrice: number; frontGross: number; heat: number };
+    const payloads: Payload[] = [];
+    bus.subscribe('customer:resolved', (e) => payloads.push(e as Payload));
+
+    pool.dispatch(session.customerId, 'GREET');
+    pool.dispatch(session.customerId, 'QUALIFY');
+    pool.dispatch(session.customerId, 'DEMO');
+    pool.dispatch(session.customerId, 'NEGOTIATE');
+    pool.dispatch(session.customerId, 'CLOSE');
+
+    const p = payloads[0];
+    expect(p.outcome).toBe('closed');
+    expect(p.agreedPrice).toBeGreaterThan(0);
+    expect(p.frontGross).toBeGreaterThan(0);
+    expect(p.heat).toBe(0);
+  });
+
+  it('walk outcome (WALK_CUSTOMER): heat > 0, agreedPrice === 0, frontGross === 0', () => {
+    const { clock, pool, bus } = makeSetup();
+    clock.advanceDay();
+    const [session] = pool.getSessions();
+    type Payload = { outcome: string; agreedPrice: number; frontGross: number; heat: number };
+    const payloads: Payload[] = [];
+    bus.subscribe('customer:resolved', (e) => payloads.push(e as Payload));
+
+    pool.dispatch(session.customerId, 'WALK_CUSTOMER');
+
+    const p = payloads[0];
+    expect(p.outcome).toBe('walk');
+    expect(p.heat).toBeGreaterThan(0);
+    expect(p.agreedPrice).toBe(0);
+    expect(p.frontGross).toBe(0);
+  });
+
+  it('scalar values are all unit-scaled or within expected ranges', () => {
+    const { clock, pool, bus } = makeSetup(0, PERFECT_SKILL);
+    clock.advanceDay();
+    const [session] = pool.getSessions();
+    type Payload = { receptivity: number; satisfaction: number; retentionSeed: number; heat: number };
+    const payloads: Payload[] = [];
+    bus.subscribe('customer:resolved', (e) => payloads.push(e as Payload));
+
+    pool.dispatch(session.customerId, 'GREET');
+    pool.dispatch(session.customerId, 'QUALIFY');
+    pool.dispatch(session.customerId, 'DEMO');
+    pool.dispatch(session.customerId, 'NEGOTIATE');
+    pool.dispatch(session.customerId, 'CLOSE');
+
+    const p = payloads[0];
+    expect(p.receptivity).toBeGreaterThanOrEqual(0);
+    expect(p.receptivity).toBeLessThanOrEqual(1);
+    expect(p.satisfaction).toBeGreaterThanOrEqual(-1);
+    expect(p.satisfaction).toBeLessThanOrEqual(1);
+    expect(p.retentionSeed).toBeGreaterThanOrEqual(0);
+    expect(p.retentionSeed).toBeLessThanOrEqual(1);
+    expect(p.heat).toBeGreaterThanOrEqual(0);
+    expect(p.heat).toBeLessThanOrEqual(1);
   });
 });

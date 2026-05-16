@@ -67,8 +67,8 @@ describe('Telemetry — derived metrics', () => {
     bus.publish('customer:arrived', { day: 1, customerId: 'a', label: 'Tire-kicker' });
     bus.publish('customer:arrived', { day: 1, customerId: 'b', label: 'Tire-kicker' });
     bus.publish('customer:arrived', { day: 1, customerId: 'c', label: 'Serious Buyer' });
-    bus.publish('customer:resolved', { customerId: 'a', outcome: 'walk' });
-    bus.publish('customer:resolved', { customerId: 'c', outcome: 'closed' });
+    bus.publish('customer:resolved', { customerId: 'a', outcome: 'walk', receptivity: 0, satisfaction: 0, retentionSeed: 0, heat: 0.3, agreedPrice: 0, frontGross: 0 });
+    bus.publish('customer:resolved', { customerId: 'c', outcome: 'closed', receptivity: 0.6, satisfaction: 1, retentionSeed: 0.6, heat: 0, agreedPrice: 30000, frontGross: 2000 });
     bus.publish('deal:closed', {
       customerId: 'c', vehicleId: 'v1', agreedPrice: 30000,
       frontGross: 2000, backGross: 800, daysInInventory: 5,

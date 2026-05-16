@@ -52,7 +52,7 @@ function makeTierManager(tier: number): TierManager & { setTier(t: number): void
 
 function walk(bus: ReturnType<typeof createEventBus>, n = 1) {
   for (let i = 0; i < n; i++) {
-    bus.publish('customer:resolved', { customerId: `c${i}`, outcome: 'walk' });
+    bus.publish('customer:resolved', { customerId: `c${i}`, outcome: 'walk', receptivity: 0, satisfaction: 0, retentionSeed: 0, heat: 0, agreedPrice: 0, frontGross: 0 });
   }
 }
 

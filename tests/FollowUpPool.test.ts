@@ -50,15 +50,19 @@ describe('FollowUpPool — enqueue on walk', () => {
   });
 
   it('does not add entry for closed customers', () => {
-    const { clock, pool, followUp } = makeSetup();
-    clock.advanceDay();
-    const [session] = pool.getSessions();
-    const id = session.customerId;
-    pool.dispatch(id, 'GREET');
-    pool.dispatch(id, 'QUALIFY');
-    pool.dispatch(id, 'DEMO');
-    pool.dispatch(id, 'NEGOTIATE');
-    pool.dispatch(id, 'CLOSE');
+    // Test FollowUpPool in isolation: a customer:resolved with outcome=closed
+    // must not be added to the follow-up pool regardless of how the close was reached.
+    const { bus, followUp } = makeSetup();
+    bus.publish('customer:resolved', {
+      customerId: 'closed-customer',
+      outcome: 'closed',
+      receptivity: 0.8,
+      satisfaction: 1,
+      retentionSeed: 0.6,
+      heat: 0,
+      agreedPrice: 10000,
+      frontGross: 1500,
+    });
     expect(followUp.getFollowUps()).toHaveLength(0);
   });
 
