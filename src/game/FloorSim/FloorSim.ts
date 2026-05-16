@@ -154,6 +154,12 @@ export interface FloorSim {
   /** Cumulative dramatic cases forced into the exception channel (#103). */
   readonly totalEscalated: number;
   /**
+   * Ticks left in the day available to hand-play (#104). 0 once the day is
+   * complete. A cherry-pick is only allowed while this covers at least one
+   * gate's tick-cost — deep engagement is never a free extra action.
+   */
+  readonly spareTickBudget: number;
+  /**
    * Advance exactly one logical tick: emits floor:tick, and floor:day_complete
    * on the final tick. No-op once the day is complete. Deterministic given the
    * creation seed + DayContext; never reads wall-clock or UI cadence.
@@ -162,13 +168,22 @@ export interface FloorSim {
   /** Run the remaining ticks to day exhaustion. Deterministic. */
   runDay(): void;
   /**
-   * Admitted, not-yet-grabbed ambient customers (unified ref shape; #103 adds
-   * exceptions to this same list, #104 unifies grab over it).
+   * Admitted, not-yet-grabbed customers across every department (unified ref
+   * shape; ambient + #103 exceptions; #104 grab spans all of them via the
+   * department-agnostic verb).
    */
   grabbableCustomers(): readonly CustomerRef[];
-  /** Precondition for grab(): day live, no active session, roster non-empty. */
+  /**
+   * Precondition for grab(): day live, no active session, roster non-empty,
+   * AND spare tick-budget covers at least one gate (#104 — cross-department
+   * cherry-pick is gated by available tick-budget, never a free action).
+   */
   canGrab(): boolean;
-  /** Open a single-use hand-play session for a grabbable customer. */
+  /**
+   * Open a single-use hand-play session for any grabbable customer in any
+   * department (#104). Department-agnostic: the roster ref's `department` is
+   * opaque routing context, so the same verb spans every unlocked department.
+   */
   grab(customerId: string): HandPlaySession;
 }
 
@@ -404,6 +419,9 @@ export function createFloorSim(deps: {
     get totalEscalated() {
       return totalEscalated;
     },
+    get spareTickBudget() {
+      return complete ? 0 : ticksPerDay - tick;
+    },
 
     step() {
       if (complete) return;
@@ -419,7 +437,12 @@ export function createFloorSim(deps: {
     },
 
     canGrab() {
-      return !complete && activeSession === null && roster.length > 0;
+      return (
+        !complete &&
+        activeSession === null &&
+        roster.length > 0 &&
+        ticksPerDay - tick >= hp.tickCostPerGate
+      );
     },
 
     grab(customerId: string): HandPlaySession {
@@ -428,6 +451,9 @@ export function createFloorSim(deps: {
       }
       if (activeSession !== null) {
         throw new Error('cannot grab: a hand-play session is already active');
+      }
+      if (ticksPerDay - tick < hp.tickCostPerGate) {
+        throw new Error('cannot grab: insufficient spare tick-budget');
       }
       const idx = roster.findIndex((c) => c.id === customerId);
       if (idx === -1) {

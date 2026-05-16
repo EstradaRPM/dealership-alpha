@@ -7,7 +7,7 @@ share / season. Day ends exactly at N ticks → control returns to `GameClock`.
 Skeleton (#98): arrivals + day-exhaustion. CapacityManager per-tick
 admittance + felt walk (#100): **landed**. Staff per-tick draining (#101):
 **landed**. Tick-cost hand-play (#102): **landed**. Forced-exception
-channel (#103): **landed**.
+channel (#103): **landed**. Cross-department cherry-pick (#104): **landed**.
 
 ## Capacity seam (#100)
 Optional injected `capacity?: CapacityGate` (`admit(arrivals, {day,tick}) →
@@ -41,6 +41,18 @@ mints one grabbable exception `CustomerRef` (`source:'exception'`,
 since FloorSim is department/tier-agnostic — unified-grab refinement is
 #104) and emits one `floor:exception_raised`. `totalEscalated` exposes the
 cumulative count. Seam omitted ⇒ zero escalations (skeleton behavior).
+
+## Cross-department cherry-pick (#104)
+The grab verb is department-agnostic: `grabbableCustomers()` is one roster of
+ambient + exception refs spanning every unlocked department (the ref's
+`department` is opaque routing context), and `grab()` opens the same #102
+hand-play session for any of them. #104 adds the tick-budget gate so a
+cherry-pick is never a free extra action: `spareTickBudget` (= ticks left in
+the day, 0 once complete) is now a `canGrab()` precondition and a hard
+`grab()` guard — both require `spareTickBudget ≥ handPlay.tickCostPerGate`
+(enough to play at least one gate). No interface rework: `spareTickBudget` is
+an additive read-only observable, `canGrab()`/`grab()` keep their locked #99
+signatures.
 
 ## Hand-play seam (#102)
 Optional injected `customerSource?: CustomerSource`
