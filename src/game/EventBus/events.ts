@@ -42,8 +42,8 @@ export interface EventMap {
   //   → 5 floor:tick (settled heartbeat, emitted LAST in the tick) →
   //   6 day-end check (floor:day_complete, exactly once).
   // Per simulated day: floor:tick ×ticksPerDay (ascending 1..ticksPerDay),
-  // then floor:day_complete once. (floor:customer_walked #100,
-  // floor:exception_raised #103 land with their slices.)
+  // then floor:day_complete once. (floor:customer_walked #100 lands here;
+  // floor:exception_raised #103 lands with its slice.)
   'floor:tick': {
     day: number;
     /** 1-based tick index within the day, 1..ticksPerDay. */
@@ -51,6 +51,18 @@ export interface EventMap {
     ticksPerDay: number;
     /** Count of customers that arrived on this tick (0..n; #98 skeleton emits ≤1). */
     arrivals: number;
+  };
+  // Step 2 of the canonical per-tick sequence: emitted once per customer
+  // turned away because per-tick admittance was exhausted (a felt, in-day
+  // walk — not a daily aggregate). Emitted before floor:tick on the same
+  // tick. Observability only; CapacityManager owns the domain consequence
+  // (capacity:missed_opportunity + reputation:satisfaction_hit) via the
+  // injected capacity seam. customerId individuation lands with the spawn
+  // seam (#101); until then arrivals/walks are count-based.
+  'floor:customer_walked': {
+    day: number;
+    /** 1-based tick the walk occurred on, 1..ticksPerDay. */
+    tick: number;
   };
   'floor:day_complete': {
     day: number;

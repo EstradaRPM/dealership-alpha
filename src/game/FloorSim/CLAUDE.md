@@ -4,9 +4,19 @@ Owns the intra-day **logical-tick** loop (PRD #95). 1 day = N logical ticks;
 customers arrive across ticks via seeded RNG scaled by reputation / market
 share / season. Day ends exactly at N ticks → control returns to `GameClock`.
 
-This slice (#98) is the **skeleton**: arrivals + day-exhaustion only. Staff
-per-tick draining (#101), tick-cost hand-play (#102), forced-exception channel
-(#103), and CapacityManager per-tick admittance (#100) layer on later.
+Skeleton (#98): arrivals + day-exhaustion. CapacityManager per-tick
+admittance + felt walk (#100): **landed**. Staff per-tick draining (#101),
+tick-cost hand-play (#102), forced-exception channel (#103) layer on later.
+
+## Capacity seam (#100)
+Optional injected `capacity?: CapacityGate` (`admit(arrivals, {day,tick}) →
+walkedCount`). Per tick, after spawn: arrivals are handed to the gate; the
+overflow it turns away is emitted as `floor:customer_walked` (once per walked
+customer) **before** `floor:tick`, per the canonical sequence. FloorSim only
+emits the walk heartbeat — the domain consequence (missed-opportunity +
+reputation hit) lives behind the seam (`CapacityManager.createFloorGate()`).
+Seam omitted ⇒ admit-all, zero walks (skeleton behavior). `totalWalked`
+exposes the cumulative felt-walk count.
 
 ## Locked public contract (#99 HITL gate)
 
@@ -55,8 +65,10 @@ multipliers over `step()` in the UI loop — game logic never depends on UI
 cadence (preserves headless testability + UI/logic separability).
 
 ## Events emitted (per simulated day, in order)
-1. `floor:tick` — ×`ticksPerDay`, ascending `tick = 1..ticksPerDay`.
-2. `floor:day_complete` — exactly once, immediately after the final
+1. `floor:customer_walked` — 0..n per tick, one per overflow customer,
+   emitted before that tick's `floor:tick`.
+2. `floor:tick` — ×`ticksPerDay`, ascending `tick = 1..ticksPerDay`.
+3. `floor:day_complete` — exactly once, immediately after the final
    `floor:tick`; control then returns to `GameClock`.
 
 Runs strictly between `clock:day_started` and the composition root calling
