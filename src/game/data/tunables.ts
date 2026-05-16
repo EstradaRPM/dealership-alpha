@@ -20,6 +20,21 @@ export const TunablesSchema = z.object({
       winter: z.number().nonnegative(),
     }),
   }),
+  handPlay: z.object({
+    tickCostPerGate: z.number().int().positive(),
+    defaultCustomerDifficulty: z.number().min(0).max(1),
+    walkQualityFloor: z.number().min(0).max(1),
+    approachChoices: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          label: z.string().min(1),
+          fitModifier: z.number(),
+          difficultyModifier: z.number(),
+        }),
+      )
+      .nonempty(),
+  }),
   economy: z.object({
     startingCash: z.number().nonnegative(),
     dailyOverheadBase: z.number().nonnegative(),

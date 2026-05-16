@@ -17,6 +17,16 @@
       "winter": 0.85
     }
   },
+  "handPlay": {
+    "tickCostPerGate": 6,
+    "defaultCustomerDifficulty": 0.5,
+    "walkQualityFloor": 0.25,
+    "approachChoices": [
+      { "id": "rapport", "label": "Build rapport", "fitModifier": 0.1, "difficultyModifier": -0.05 },
+      { "id": "direct", "label": "Direct pitch", "fitModifier": 0.0, "difficultyModifier": 0.0 },
+      { "id": "pressure", "label": "Apply pressure", "fitModifier": -0.05, "difficultyModifier": 0.1 }
+    ]
+  },
   "economy": {
     "startingCash": 50000,
     "dailyOverheadBase": 350,

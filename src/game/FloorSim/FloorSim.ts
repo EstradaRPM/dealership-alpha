@@ -2,6 +2,16 @@ import type { EventBus } from '../EventBus';
 import type { Season } from '../GameClock';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import { loadTunables } from '../data';
+import {
+  accumulateMeters,
+  evaluateGate,
+  loadSalesProcessConfig,
+  GREEN_SALESPERSON,
+  type Gate,
+  type GateEvaluation,
+  type MeterState,
+  type SalespersonSkill,
+} from '../SalesProcess';
 
 /**
  * Injected per-day state the arrival model scales against. FloorSim never
@@ -46,6 +56,89 @@ export interface DeptDrain {
   };
 }
 
+/**
+ * Locked #99 grab-eligibility ref. Self-describing so the unified grab verb
+ * (#104) treats ambient and exception customers uniformly. #102 only mints
+ * `source:'ambient'` / `mustHandle:false`; the exception channel (#103) adds
+ * `source:'exception'` and tunable `mustHandle` policy. FloorSim is
+ * department/tier-agnostic — `department` is opaque routing context.
+ */
+export interface CustomerRef {
+  readonly id: string;
+  readonly source: 'ambient';
+  readonly mustHandle: boolean;
+  readonly department: string;
+}
+
+/**
+ * Locked #99 arrival-identity seam. FloorSim's own seed still decides which
+ * ticks have arrivals and how many (the arrival RNG is untouched — #100/#101
+ * determinism preserved); the source only mints identities for the admitted
+ * count. Omitted ⇒ deterministic default refs derived from (day,tick,index),
+ * mirroring the capacity/drains omitted-default pattern.
+ */
+export interface CustomerSource {
+  spawn(ctx: {
+    day: number;
+    tick: number;
+    count: number;
+  }): readonly CustomerRef[];
+}
+
+/** A tactical approach the player picks before advancing a gate (#102). */
+export interface ApproachChoice {
+  readonly id: string;
+  readonly label: string;
+}
+
+/**
+ * Discriminated result of `HandPlaySession.advance()` (locked #99 shape).
+ * `continue` echoes the next gate + its choice set; `closed`/`walk` are
+ * terminal and carry the rolled-up outcome.
+ */
+export type AdvanceResult =
+  | {
+      readonly status: 'continue';
+      readonly currentGate: Gate;
+      readonly choices: readonly ApproachChoice[];
+    }
+  | {
+      readonly status: 'closed';
+      readonly outcome: {
+        readonly meters: MeterState;
+        readonly evaluations: readonly GateEvaluation[];
+      };
+    }
+  | {
+      readonly status: 'walk';
+      readonly outcome: {
+        readonly gate: Gate;
+        readonly cause: 'low_quality' | 'day_exhausted';
+        readonly meters: MeterState;
+        readonly evaluations: readonly GateEvaluation[];
+      };
+    };
+
+/**
+ * Single-use hand-play of one customer through the configured gates. Each
+ * `advance()` burns `handPlay.tickCostPerGate` internal ticks of the same
+ * per-tick loop (player marked busy — no concurrent grab), then resolves the
+ * pending gate via the unchanged #85 evaluator with the picked approach + the
+ * injected staff skill. Terminal once it returns `closed`/`walk`.
+ */
+export interface HandPlaySession {
+  readonly customerId: string;
+  /** The gate the next advance() will resolve; undefined once terminal. */
+  readonly currentGate: Gate | undefined;
+  /** Approach choices for the pending gate; empty once terminal. */
+  readonly choices: readonly ApproachChoice[];
+  advance(choiceId: string): AdvanceResult;
+}
+
+function clampUnit(n: number): number {
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
 export interface FloorSim {
   readonly ticksPerDay: number;
   /** 0 before the first step(); rises to ticksPerDay as the day runs. */
@@ -64,10 +157,15 @@ export interface FloorSim {
   step(): void;
   /** Run the remaining ticks to day exhaustion. Deterministic. */
   runDay(): void;
-}
-
-function clampUnit(n: number): number {
-  return n < 0 ? 0 : n > 1 ? 1 : n;
+  /**
+   * Admitted, not-yet-grabbed ambient customers (unified ref shape; #103 adds
+   * exceptions to this same list, #104 unifies grab over it).
+   */
+  grabbableCustomers(): readonly CustomerRef[];
+  /** Precondition for grab(): day live, no active session, roster non-empty. */
+  canGrab(): boolean;
+  /** Open a single-use hand-play session for a grabbable customer. */
+  grab(customerId: string): HandPlaySession;
 }
 
 export function createFloorSim(deps: {
@@ -78,9 +176,17 @@ export function createFloorSim(deps: {
   capacity?: CapacityGate;
   /** Per-dept routine drains (#101). Omitted ⇒ no auto-resolution. */
   drains?: readonly DeptDrain[];
+  /** Arrival-identity seam (#102). Omitted ⇒ deterministic default refs. */
+  customerSource?: CustomerSource;
+  /** Acting staff skill fed to the #85 evaluator. Omitted ⇒ green profile. */
+  skill?: SalespersonSkill;
 }): FloorSim {
-  const { bus, seed, ctx, capacity, drains } = deps;
+  const { bus, seed, ctx, capacity, drains, customerSource } = deps;
   const cfg = loadTunables().floorSim;
+  const hp = loadTunables().handPlay;
+  const spConfig = loadSalesProcessConfig();
+  const gates = spConfig.gates;
+  const skill = deps.skill ?? GREEN_SALESPERSON;
   const ticksPerDay = cfg.ticksPerDay;
 
   const expectedArrivals =
@@ -97,11 +203,156 @@ export function createFloorSim(deps: {
     deriveSeed(seed, 'floor_sim.arrivals', { day: ctx.day }),
   );
 
+  const defaultSource: CustomerSource = {
+    spawn: ({ day, tick, count }) =>
+      Array.from({ length: count }, (_, i) => ({
+        id: `floor:${day}:${tick}:${i}`,
+        source: 'ambient' as const,
+        mustHandle: false,
+        department: 'sales',
+      })),
+  };
+  const source = customerSource ?? defaultSource;
+
   let tick = 0;
   let totalArrivals = 0;
   let totalWalked = 0;
   let totalResolved = 0;
   let complete = false;
+
+  const roster: CustomerRef[] = [];
+  let activeSession: HandPlaySession | null = null;
+
+  // Canonical per-tick sequence (locked #99): spawn → admit/walk → drain →
+  // floor:tick (settled, last) → day-end check. Shared by step() and the
+  // advance() tick-cost burst so the interactive path is the same loop.
+  function runOneTick(): void {
+    tick += 1;
+    const arrivals = rng() < perTickProb ? 1 : 0;
+    totalArrivals += arrivals;
+    const walked = capacity
+      ? capacity.admit(arrivals, { day: ctx.day, tick })
+      : 0;
+    totalWalked += walked;
+    for (let i = 0; i < walked; i++) {
+      bus.publish('floor:customer_walked', { day: ctx.day, tick });
+    }
+    const admitted = arrivals - walked;
+    if (admitted > 0) {
+      roster.push(
+        ...source.spawn({ day: ctx.day, tick, count: admitted }),
+      );
+    }
+    if (drains) {
+      for (const d of drains) {
+        totalResolved += d.drain({ day: ctx.day, tick }).resolved;
+      }
+    }
+    bus.publish('floor:tick', {
+      day: ctx.day,
+      tick,
+      ticksPerDay,
+      arrivals,
+    });
+    if (tick >= ticksPerDay) {
+      complete = true;
+      bus.publish('floor:day_complete', {
+        day: ctx.day,
+        ticks: tick,
+        totalArrivals,
+      });
+    }
+  }
+
+  function choicesView(): ApproachChoice[] {
+    return hp.approachChoices.map((c) => ({ id: c.id, label: c.label }));
+  }
+
+  function makeSession(customer: CustomerRef): HandPlaySession {
+    let gateIdx = 0;
+    let terminal = false;
+    const evaluations: GateEvaluation[] = [];
+
+    const session: HandPlaySession = {
+      customerId: customer.id,
+      get currentGate() {
+        return terminal ? undefined : gates[gateIdx];
+      },
+      get choices() {
+        return terminal ? [] : choicesView();
+      },
+      advance(choiceId: string): AdvanceResult {
+        if (terminal) {
+          throw new Error('hand-play session already terminal');
+        }
+        const choice = hp.approachChoices.find((c) => c.id === choiceId);
+        if (!choice) {
+          throw new Error(`unknown approach choice: ${choiceId}`);
+        }
+
+        // Tick-cost burst: the same per-tick loop, player marked busy
+        // (activeSession blocks concurrent grab). Day may exhaust mid-burst.
+        for (let i = 0; i < hp.tickCostPerGate && !complete; i++) {
+          runOneTick();
+        }
+
+        // The committed gate still resolves even if the day just exhausted
+        // (locked #99 derived invariant).
+        const gate = gates[gateIdx];
+        const ev = evaluateGate(
+          {
+            masterSeed: seed,
+            customerId: customer.id,
+            day: ctx.day,
+            gate,
+            skill,
+            customerDifficulty: clampUnit(
+              hp.defaultCustomerDifficulty + choice.difficultyModifier,
+            ),
+            fit: clampUnit(0.5 + choice.fitModifier),
+          },
+          { config: spConfig },
+        );
+        evaluations.push(ev);
+        gateIdx += 1;
+
+        const meters = accumulateMeters(evaluations, { config: spConfig });
+
+        if (ev.q < hp.walkQualityFloor) {
+          terminal = true;
+          activeSession = null;
+          return {
+            status: 'walk',
+            outcome: { gate, cause: 'low_quality', meters, evaluations },
+          };
+        }
+
+        if (complete && gateIdx < gates.length) {
+          // Day exhausted with gates remaining: committed gate resolved,
+          // floor:day_complete already fired in runOneTick; forfeit the rest.
+          terminal = true;
+          activeSession = null;
+          return {
+            status: 'walk',
+            outcome: { gate, cause: 'day_exhausted', meters, evaluations },
+          };
+        }
+
+        if (gateIdx >= gates.length) {
+          terminal = true;
+          activeSession = null;
+          return { status: 'closed', outcome: { meters, evaluations } };
+        }
+
+        return {
+          status: 'continue',
+          currentGate: gates[gateIdx],
+          choices: choicesView(),
+        };
+      },
+    };
+    return session;
+  }
 
   return {
     ticksPerDay,
@@ -123,43 +374,36 @@ export function createFloorSim(deps: {
 
     step() {
       if (complete) return;
-      tick += 1;
-      // 1 spawn
-      const arrivals = rng() < perTickProb ? 1 : 0;
-      totalArrivals += arrivals;
-      // 2 admit / walk — overflow walks in real in-day time
-      const walked = capacity ? capacity.admit(arrivals, { day: ctx.day, tick }) : 0;
-      totalWalked += walked;
-      for (let i = 0; i < walked; i++) {
-        bus.publish('floor:customer_walked', { day: ctx.day, tick });
-      }
-      // 3 drain — each dept auto-resolves its routine queue at a skill-scaled
-      // throughput. Only `resolved` is consumed here; the escalated exception
-      // channel (floor:exception_raised) is wired in #103.
-      if (drains) {
-        for (const d of drains) {
-          totalResolved += d.drain({ day: ctx.day, tick }).resolved;
-        }
-      }
-      // 5 floor:tick — settled heartbeat, emitted last in the tick
-      bus.publish('floor:tick', {
-        day: ctx.day,
-        tick,
-        ticksPerDay,
-        arrivals,
-      });
-      if (tick >= ticksPerDay) {
-        complete = true;
-        bus.publish('floor:day_complete', {
-          day: ctx.day,
-          ticks: tick,
-          totalArrivals,
-        });
-      }
+      runOneTick();
     },
 
     runDay() {
-      while (!complete) this.step();
+      while (!complete) runOneTick();
+    },
+
+    grabbableCustomers() {
+      return [...roster];
+    },
+
+    canGrab() {
+      return !complete && activeSession === null && roster.length > 0;
+    },
+
+    grab(customerId: string): HandPlaySession {
+      if (complete) {
+        throw new Error('cannot grab: day is complete');
+      }
+      if (activeSession !== null) {
+        throw new Error('cannot grab: a hand-play session is already active');
+      }
+      const idx = roster.findIndex((c) => c.id === customerId);
+      if (idx === -1) {
+        throw new Error(`cannot grab: ${customerId} is not grabbable`);
+      }
+      const [customer] = roster.splice(idx, 1);
+      const session = makeSession(customer);
+      activeSession = session;
+      return session;
     },
   };
 }

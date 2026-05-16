@@ -6,8 +6,8 @@ share / season. Day ends exactly at N ticks → control returns to `GameClock`.
 
 Skeleton (#98): arrivals + day-exhaustion. CapacityManager per-tick
 admittance + felt walk (#100): **landed**. Staff per-tick draining (#101):
-**landed**. Tick-cost hand-play (#102), forced-exception channel (#103)
-layer on later.
+**landed**. Tick-cost hand-play (#102): **landed**. Forced-exception
+channel (#103) layers on later.
 
 ## Capacity seam (#100)
 Optional injected `capacity?: CapacityGate` (`admit(arrivals, {day,tick}) →
@@ -29,6 +29,33 @@ is consumed (accumulated into `totalResolved`); `escalated` is part of the
 locked seam shape but the forced-exception channel (`floor:exception_raised`)
 is wired in #103. Seam omitted ⇒ no auto-resolution (skeleton behavior).
 Structurally satisfied by `createStaffFloorDrain` / `createServiceFloorDrain`.
+
+## Hand-play seam (#102)
+Optional injected `customerSource?: CustomerSource`
+(`spawn({day,tick,count}) → CustomerRef[]`) mints identities for the
+*admitted* count each tick — FloorSim's arrival RNG is untouched (#100/#101
+determinism preserved); the source only names who got in. Omitted ⇒
+deterministic default refs `floor:{day}:{tick}:{i}` (ambient, mustHandle
+false, dept `sales`), same omitted-default pattern as capacity/drains.
+Admitted refs accrue to an in-floor roster (`grabbableCustomers()`).
+`canGrab()` ⇔ day live ∧ no active session ∧ roster non-empty. `grab(id)`
+removes the ref and opens a single-use `HandPlaySession`. `advance(choiceId)`
+burns exactly `handPlay.tickCostPerGate` ticks of the **same** per-tick loop
+(player marked busy — concurrent grab blocked), then resolves the pending
+gate via the unchanged #85 `evaluateGate` seam fed the picked approach
+(`fitModifier`/`difficultyModifier` from tunables) + the injected
+`skill?: SalespersonSkill` (default `GREEN_SALESPERSON`). Returns the locked
+discriminated union: `continue{currentGate,choices}` |
+`closed{meters,evaluations}` | `walk{gate,cause,meters,evaluations}`.
+Terminal close = surviving every configured gate; walk causes: `low_quality`
+(a gate `q < handPlay.walkQualityFloor`) or `day_exhausted` (burst exhausted
+the day with gates remaining — committed gate still resolves, locked #99
+derived invariant). The richer #89 named-walk/patience model stays on the
+auto path; #102's terminal rule is deliberately minimal — its job is the
+tick-cost verb + evaluator wiring, zero evaluator change. **Deferred:**
+`source:'exception'` refs + `mustHandle` policy (#103); unified grab over
+ambient+exception (#104). `handPlay` tunables are calibration starting
+points (see #105 HITL), not final balance.
 
 ## Locked public contract (#99 HITL gate)
 
