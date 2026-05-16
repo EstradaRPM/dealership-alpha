@@ -97,7 +97,9 @@
     "minAutoResolveRate": 0.40,
     "maxAutoResolveRate": 0.92,
     "minRevenueMultiplier": 0.80,
-    "maxRevenueMultiplier": 1.30
+    "maxRevenueMultiplier": 1.30,
+    "minDrainPerTick": 0.15,
+    "maxDrainPerTick": 0.60
   },
   "fniAutoAttach": {
     "baseAttachRates": {
@@ -130,6 +132,8 @@
     "minCloseRate": 0.20,
     "maxCloseRate": 0.65,
     "baseAutoGross": 2500,
-    "minGrossModifier": 0.50
+    "minGrossModifier": 0.50,
+    "minDrainPerTick": 0.15,
+    "maxDrainPerTick": 0.60
   }
 }

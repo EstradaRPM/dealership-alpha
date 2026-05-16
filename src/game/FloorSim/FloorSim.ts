@@ -28,6 +28,24 @@ export interface CapacityGate {
   admit(arrivals: number, ctx: { day: number; tick: number }): number;
 }
 
+/**
+ * Locked #99 per-department `drain` seam. Each tick (after admit/walk, before
+ * floor:tick) FloorSim invokes every injected drain so a department auto-
+ * resolves its routine queue at a skill-scaled throughput, draining across
+ * ticks rather than once-per-day. The department owns its own
+ * throughput/threshold (StaffDispatch owns f(skill×tier)); FloorSim only
+ * paces the invocation. `escalated` is part of the locked shape — the
+ * forced-exception channel (floor:exception_raised) is wired in #103; #101
+ * drains only the routine (`resolved`) path. Structurally satisfied by
+ * StaffDispatch/ServiceDispatch createFloorDrain().
+ */
+export interface DeptDrain {
+  drain(ctx: { day: number; tick: number }): {
+    resolved: number;
+    escalated: number;
+  };
+}
+
 export interface FloorSim {
   readonly ticksPerDay: number;
   /** 0 before the first step(); rises to ticksPerDay as the day runs. */
@@ -36,6 +54,8 @@ export interface FloorSim {
   readonly totalArrivals: number;
   /** Cumulative customers turned away (felt in-day walks) so far. */
   readonly totalWalked: number;
+  /** Cumulative routine queue items auto-resolved by injected dept drains. */
+  readonly totalResolved: number;
   /**
    * Advance exactly one logical tick: emits floor:tick, and floor:day_complete
    * on the final tick. No-op once the day is complete. Deterministic given the
@@ -56,8 +76,10 @@ export function createFloorSim(deps: {
   ctx: DayContext;
   /** Per-tick admittance gate (#100). Omitted ⇒ admit-all (no walks). */
   capacity?: CapacityGate;
+  /** Per-dept routine drains (#101). Omitted ⇒ no auto-resolution. */
+  drains?: readonly DeptDrain[];
 }): FloorSim {
-  const { bus, seed, ctx, capacity } = deps;
+  const { bus, seed, ctx, capacity, drains } = deps;
   const cfg = loadTunables().floorSim;
   const ticksPerDay = cfg.ticksPerDay;
 
@@ -78,6 +100,7 @@ export function createFloorSim(deps: {
   let tick = 0;
   let totalArrivals = 0;
   let totalWalked = 0;
+  let totalResolved = 0;
   let complete = false;
 
   return {
@@ -94,6 +117,9 @@ export function createFloorSim(deps: {
     get totalWalked() {
       return totalWalked;
     },
+    get totalResolved() {
+      return totalResolved;
+    },
 
     step() {
       if (complete) return;
@@ -106,6 +132,14 @@ export function createFloorSim(deps: {
       totalWalked += walked;
       for (let i = 0; i < walked; i++) {
         bus.publish('floor:customer_walked', { day: ctx.day, tick });
+      }
+      // 3 drain — each dept auto-resolves its routine queue at a skill-scaled
+      // throughput. Only `resolved` is consumed here; the escalated exception
+      // channel (floor:exception_raised) is wired in #103.
+      if (drains) {
+        for (const d of drains) {
+          totalResolved += d.drain({ day: ctx.day, tick }).resolved;
+        }
       }
       // 5 floor:tick — settled heartbeat, emitted last in the tick
       bus.publish('floor:tick', {

@@ -47,6 +47,8 @@ const ALWAYS_RESOLVE_CONFIG: ServiceDispatchConfig = {
   maxAutoResolveRate: 1.0,
   minRevenueMultiplier: 1.0,
   maxRevenueMultiplier: 1.0,
+  minDrainPerTick: 0.15,
+  maxDrainPerTick: 0.60,
 };
 
 const NEVER_RESOLVE_CONFIG: ServiceDispatchConfig = {
@@ -54,6 +56,8 @@ const NEVER_RESOLVE_CONFIG: ServiceDispatchConfig = {
   maxAutoResolveRate: 0.0,
   minRevenueMultiplier: 1.0,
   maxRevenueMultiplier: 1.0,
+  minDrainPerTick: 0.15,
+  maxDrainPerTick: 0.60,
 };
 
 const NORMAL_CONFIG: ServiceDispatchConfig = {
@@ -61,6 +65,8 @@ const NORMAL_CONFIG: ServiceDispatchConfig = {
   maxAutoResolveRate: 0.92,
   minRevenueMultiplier: 0.80,
   maxRevenueMultiplier: 1.30,
+  minDrainPerTick: 0.15,
+  maxDrainPerTick: 0.60,
 };
 
 function makeIntakePayload(day: number, count = 2) {

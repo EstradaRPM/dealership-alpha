@@ -60,6 +60,8 @@ const NO_EXCEPTION_CONFIG: StaffDispatchConfig = {
   maxCloseRate: 0.65,
   baseAutoGross: 2500,
   minGrossModifier: 0.50,
+  minDrainPerTick: 0.15,
+  maxDrainPerTick: 0.60,
 };
 
 // All flags set to 1 so every customer gets flagged.

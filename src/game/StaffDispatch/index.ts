@@ -1,4 +1,4 @@
-export { createStaffDispatch } from './StaffDispatch';
+export { createStaffDispatch, createStaffFloorDrain } from './StaffDispatch';
 export type { StaffDispatch, StaffDispatchDeps } from './StaffDispatch';
 export type { ExceptionFlag } from './types';
 export { loadStaffDispatchConfig } from './staffDispatchData';

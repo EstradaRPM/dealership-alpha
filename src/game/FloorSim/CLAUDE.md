@@ -5,8 +5,9 @@ customers arrive across ticks via seeded RNG scaled by reputation / market
 share / season. Day ends exactly at N ticks → control returns to `GameClock`.
 
 Skeleton (#98): arrivals + day-exhaustion. CapacityManager per-tick
-admittance + felt walk (#100): **landed**. Staff per-tick draining (#101),
-tick-cost hand-play (#102), forced-exception channel (#103) layer on later.
+admittance + felt walk (#100): **landed**. Staff per-tick draining (#101):
+**landed**. Tick-cost hand-play (#102), forced-exception channel (#103)
+layer on later.
 
 ## Capacity seam (#100)
 Optional injected `capacity?: CapacityGate` (`admit(arrivals, {day,tick}) →
@@ -17,6 +18,17 @@ emits the walk heartbeat — the domain consequence (missed-opportunity +
 reputation hit) lives behind the seam (`CapacityManager.createFloorGate()`).
 Seam omitted ⇒ admit-all, zero walks (skeleton behavior). `totalWalked`
 exposes the cumulative felt-walk count.
+
+## Drain seam (#101)
+Optional injected `drains?: DeptDrain[]`. Each tick, after admit/walk and
+before `floor:tick`, every drain's `drain({day,tick}) → {resolved,escalated}`
+is invoked so a department auto-resolves its routine queue at a skill-scaled
+throughput, draining across ticks (not once-per-day). FloorSim only paces the
+invocation — the department owns its own throughput/threshold. Only `resolved`
+is consumed (accumulated into `totalResolved`); `escalated` is part of the
+locked seam shape but the forced-exception channel (`floor:exception_raised`)
+is wired in #103. Seam omitted ⇒ no auto-resolution (skeleton behavior).
+Structurally satisfied by `createStaffFloorDrain` / `createServiceFloorDrain`.
 
 ## Locked public contract (#99 HITL gate)
 
