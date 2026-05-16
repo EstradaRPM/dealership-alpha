@@ -181,3 +181,66 @@ describe('GameClock — overnight event ordering', () => {
     }
   });
 });
+
+describe('GameClock — month-close boundary', () => {
+  it('does not emit clock:month_ended on a non-month-boundary day', () => {
+    const { bus, clock } = makeClock(29);
+    let fired = 0;
+    bus.subscribe('clock:month_ended', () => { fired += 1; });
+    clock.advanceDay(); // ends day 29
+    expect(fired).toBe(0);
+  });
+
+  it('emits clock:month_ended only on the 30-day boundary, carrying the ending day', () => {
+    const { bus, clock } = makeClock(30);
+    const endedDays: number[] = [];
+    bus.subscribe('clock:month_ended', (p) => endedDays.push(p.day));
+    clock.advanceDay(); // ends day 30 → boundary
+    clock.advanceDay(); // ends day 31 → not
+    expect(endedDays).toEqual([30]);
+  });
+
+  it('emits once per 30-day cadence across multiple months', () => {
+    const { bus, clock } = makeClock(1);
+    const endedDays: number[] = [];
+    bus.subscribe('clock:month_ended', (p) => endedDays.push(p.day));
+    for (let i = 0; i < 90; i++) clock.advanceDay();
+    expect(endedDays).toEqual([30, 60, 90]);
+  });
+
+  it('clock:month_ended fires after clock:week_ended when both land', () => {
+    // Day 210 ends both a week (210 % 7 === 0) and a month (210 % 30 === 0).
+    const { bus, clock } = makeClock(210);
+    const fired: string[] = [];
+    bus.subscribe('clock:week_ended', () => fired.push('week_ended'));
+    bus.subscribe('clock:month_ended', () => fired.push('month_ended'));
+    clock.advanceDay();
+    expect(fired).toEqual(['week_ended', 'month_ended']);
+  });
+
+  it('regression: existing day/overnight/week ordering is unchanged by month-close', () => {
+    // Day 30 is a month boundary but NOT a week boundary (30 % 7 !== 0).
+    const { bus, clock } = makeClock(30);
+    const fired: string[] = [];
+    bus.subscribe('clock:day_ended', () => fired.push('day_ended'));
+    bus.subscribe('clock:overnight_payroll', () => fired.push('overnight_payroll'));
+    bus.subscribe('clock:overnight_inventory_arrival', () => fired.push('overnight_inventory_arrival'));
+    bus.subscribe('clock:overnight_reputation_drift', () => fired.push('overnight_reputation_drift'));
+    bus.subscribe('clock:overnight_followup_decay', () => fired.push('overnight_followup_decay'));
+    bus.subscribe('clock:day_started', () => fired.push('day_started'));
+    bus.subscribe('clock:week_ended', () => fired.push('week_ended'));
+    bus.subscribe('clock:month_ended', () => fired.push('month_ended'));
+
+    clock.advanceDay();
+
+    expect(fired).toEqual([
+      'day_ended',
+      'overnight_payroll',
+      'overnight_inventory_arrival',
+      'overnight_reputation_drift',
+      'overnight_followup_decay',
+      'day_started',
+      'month_ended',
+    ]);
+  });
+});

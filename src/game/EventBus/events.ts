@@ -24,6 +24,10 @@ export interface EventMap {
   'clock:day_started': { day: number };
   // Fired after clock:day_started when that day was the last day of a week (day % 7 === 0).
   'clock:week_ended': { day: number };
+  // Fired after clock:week_ended when the ending day completes a month
+  // (endingDay % clock.daysPerMonth === 0, ~30-day tunable cadence). Slotted
+  // last in the advanceDay() sequence so week-close consumers settle first.
+  'clock:month_ended': { day: number };
 
   // CompetitorMarket → CustomerPool (ADR-0001 §10). Published each
   // clock:day_started; consumed when rolling today's customers.

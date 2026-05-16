@@ -15,8 +15,9 @@ Day-cycle driver. Owns the current day index, season, and the overnight sequence
 5. `clock:overnight_followup_decay`
 6. `clock:day_started`
 7. `clock:week_ended` *(only when `endingDay % 7 === 0`; payload `{ day: endingDay }`)*
+8. `clock:month_ended` *(only when `endingDay % clock.daysPerMonth === 0`; payload `{ day: endingDay }`; slotted after `week_ended` so week-close consumers settle first)*
 
 Other modules hook into this sequence — order matters. If you add a new overnight step, slot it deliberately and update `events.ts` + this doc.
 
 ## Data
-None. All durations are constants exported from `GameClock.ts`.
+`data/tunables.json` → `clock.daysPerMonth` (~30-day month-close cadence), loaded via `loadTunables()`. All other durations are constants exported from `GameClock.ts`.

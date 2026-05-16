@@ -6,6 +6,7 @@ export const TunablesSchema = z.object({
   clock: z.object({
     minutesPerTick: z.number().int().positive(),
     ticksPerDay: z.number().int().positive(),
+    daysPerMonth: z.number().int().positive(),
   }),
   economy: z.object({
     startingCash: z.number().nonnegative(),

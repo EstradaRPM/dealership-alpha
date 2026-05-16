@@ -2,7 +2,8 @@
   "schemaVersion": 1,
   "clock": {
     "minutesPerTick": 15,
-    "ticksPerDay": 64
+    "ticksPerDay": 64,
+    "daysPerMonth": 30
   },
   "economy": {
     "startingCash": 50000,

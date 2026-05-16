@@ -1,4 +1,5 @@
 import type { EventBus } from '../EventBus';
+import { loadTunables } from '../data';
 
 export type Season = 'spring' | 'summer' | 'fall' | 'winter';
 
@@ -41,6 +42,7 @@ export function createGameClock(deps: {
 }): GameClock {
   const { bus } = deps;
   let day = deps.initialDay ?? 1;
+  const daysPerMonth = loadTunables().clock.daysPerMonth;
 
   return {
     get currentDay() { return day; },
@@ -57,6 +59,9 @@ export function createGameClock(deps: {
       bus.publish('clock:day_started', { day });
       if (endingDay % DAYS_PER_WEEK === 0) {
         bus.publish('clock:week_ended', { day: endingDay });
+      }
+      if (endingDay % daysPerMonth === 0) {
+        bus.publish('clock:month_ended', { day: endingDay });
       }
     },
   };
