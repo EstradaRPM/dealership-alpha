@@ -61,6 +61,16 @@ export const SalesProcessConfigSchema = z
         patienceFloor: z.number(),
       })
       .strict(),
+    nonnegotiables: z
+      .object({
+        // QUALIFY quality at or above this reveals the customer's
+        // nonnegotiables; below it the DEMO pick is blind (PRD decision 5).
+        qualifyRevealThreshold: unit,
+        // A nonnegotiable axis is satisfied when the vehicle's SPACED value
+        // is within this slack below the customer's required level.
+        tolerance: unit,
+      })
+      .strict(),
     close: z
       .object({
         buyThreshold: unit,

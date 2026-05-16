@@ -26,6 +26,7 @@ const config: SalesProcessConfig = {
     NEGOTIATE: { trust: 0.5, value: 0.5 },
   },
   walk: { trustCollapseFloor: 0.15, patienceFloor: 0 },
+  nonnegotiables: { qualifyRevealThreshold: 0.45, tolerance: 0.1 },
   close: { buyThreshold: 0.75, softThreshold: 0.55, trustFloor: 0.45 },
   price: {
     base: 500,

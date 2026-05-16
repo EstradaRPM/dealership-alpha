@@ -20,6 +20,10 @@
     "trustCollapseFloor": 0.15,
     "patienceFloor": 0
   },
+  "nonnegotiables": {
+    "qualifyRevealThreshold": 0.45,
+    "tolerance": 0.1
+  },
   "close": {
     "buyThreshold": 0.75,
     "softThreshold": 0.55,

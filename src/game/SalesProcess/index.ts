@@ -52,3 +52,24 @@ export type {
   SalesProcessInput,
   SalesProcessResult,
 } from './evaluator';
+
+export {
+  classifyAxes,
+  revealsNonnegotiables,
+  wantAxisFit,
+  nonnegotiablesSatisfied,
+} from './nonnegotiables';
+export type {
+  AxisClass,
+  CustomerAxisProfile,
+  ClassifyAxesInput,
+  NonnegotiablesDeps,
+} from './nonnegotiables';
+
+export { resolveSalesProcess } from './resolve';
+export type {
+  WalkCause,
+  SalesProcessVisitInput,
+  SalesProcessResolution,
+  ResolveDeps,
+} from './resolve';

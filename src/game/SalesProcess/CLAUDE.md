@@ -4,7 +4,7 @@ Pure evaluator deep module for skill-driven customer resolution (PRD #85). **No 
 
 ## Status
 
-Slices #86–#88 landed. #86: versioned tunable data files + typed schemas/loaders. #87: the pure `vehicleSpaced` accessor. #88: the seeded gate-quality engine, two-meter roll-up, and the four injected seam interfaces with v1 stubs. Still **inert** — no EventBus, no runtime consumers. Nonnegotiable gating (#89), quadrant close + price formation (#90), and `CustomerPool` rewiring (#91) extend this spine in later slices.
+Slices #86–#89 landed. #86: versioned tunable data files + typed schemas/loaders. #87: the pure `vehicleSpaced` accessor. #88: the seeded gate-quality engine, two-meter roll-up, and the four injected seam interfaces with v1 stubs. #89: nonnegotiable gating — seeded axis classification, skill-gated QUALIFY reveal, and the named walk model (patience-drain / trust-collapse / DEMO hard-fail). Still **inert** — no EventBus, no runtime consumers. Quadrant close + price formation (#90) and `CustomerPool` rewiring (#91) extend this spine in later slices.
 
 ## Public API (`index.ts`)
 
@@ -30,6 +30,14 @@ Evaluator (#88) — pure, input-source-agnostic:
 - `accumulateMeters(evaluations, deps?) → MeterState` — Trust/Integrity + Value weighted-mean roll-up (`data/sales-process.json` `meters` block). Trust additionally scaled by rep trustworthiness. Order-independent, both meters ∈ [0,1].
 - `evaluateSalesProcess(input, deps?) → SalesProcessResult` — runs every configured gate + rolls up meters. No walk model / close / price (later slices).
 - `deps.config` injects a `SalesProcessConfig` for tests; defaults to the bundled loader.
+
+Nonnegotiable gating (#89) — pure, deterministic:
+
+- `classifyAxes(input, deps?) → CustomerAxisProfile` — seeded (`customer_pool.nonnegotiables` / `customerId`) split of the six SPACED axes into 1–2 `nonnegotiable` + `want`/`pass`, honoring `data/customer-nonnegotiables.json` count weights and per-visit-archetype bias (PRD decision 4).
+- `revealsNonnegotiables(qualifyQ, deps?) → boolean` — skill-gated reveal; `qualifyQ ≥ nonnegotiables.qualifyRevealThreshold` (PRD decision 5). Weak QUALIFY ⇒ blind DEMO.
+- `wantAxisFit` / `nonnegotiablesSatisfied` — graded want-axis Value fit; nonnegotiable satisfied within `nonnegotiables.tolerance` below the customer's required level.
+- `resolveSalesProcess(input, deps?) → SalesProcessResolution` — runs gates in order, drains patience `(1−q)×archetypeImpatience`, rolls running meters, and applies the named walk model in priority order: DEMO nonneg miss (hard, regardless of charisma) → trust-collapse (meter `< walk.trustCollapseFloor`) → patience-drain (`≤ walk.patienceFloor`). Surviving all gates ⇒ `reached_close` (the close/price decision is #90). Reuses `evaluateGate`/`accumulateMeters`.
+- New config block `nonnegotiables { qualifyRevealThreshold, tolerance }` in `data/sales-process.json`.
 
 Accessor (#87):
 
