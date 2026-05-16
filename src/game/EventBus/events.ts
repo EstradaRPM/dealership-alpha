@@ -29,19 +29,27 @@ export interface EventMap {
   // last in the advanceDay() sequence so week-close consumers settle first.
   'clock:month_ended': { day: number };
 
-  // FloorSim intra-day logical-tick loop. Runs strictly between
-  // clock:day_started and the composition root calling GameClock.advanceDay()
-  // — independent of, and never interleaved with, the clock:* overnight
-  // sequence. Per simulated day FloorSim emits:
-  //   floor:tick (×ticksPerDay, ascending tick = 1..ticksPerDay) →
-  //   floor:day_complete (exactly once, immediately after the final
-  //   floor:tick; control then returns to GameClock).
+  // FloorSim intra-day logical-tick loop. Public contract LOCKED at the #99
+  // HITL gate (see issue #99 sign-off for the authoritative surface). Runs
+  // strictly between clock:day_started and the player-gated composition-root
+  // call to GameClock.advanceDay() — independent of, never interleaved with,
+  // the clock:* overnight sequence. FloorSim NEVER calls GameClock;
+  // floor:day_complete signals "enter after-hours", not "advance clock".
+  //
+  // Canonical per-tick sequence (authoritative ordering for #100/#101/#103):
+  //   1 spawn arrivals → 2 admit/walk (floor:customer_walked) →
+  //   3 drainDept (resolved + escalated) → 4 escalate (floor:exception_raised)
+  //   → 5 floor:tick (settled heartbeat, emitted LAST in the tick) →
+  //   6 day-end check (floor:day_complete, exactly once).
+  // Per simulated day: floor:tick ×ticksPerDay (ascending 1..ticksPerDay),
+  // then floor:day_complete once. (floor:customer_walked #100,
+  // floor:exception_raised #103 land with their slices.)
   'floor:tick': {
     day: number;
     /** 1-based tick index within the day, 1..ticksPerDay. */
     tick: number;
     ticksPerDay: number;
-    /** Customers that arrived on this tick (skeleton: 0 or 1). */
+    /** Count of customers that arrived on this tick (0..n; #98 skeleton emits ≤1). */
     arrivals: number;
   };
   'floor:day_complete': {
