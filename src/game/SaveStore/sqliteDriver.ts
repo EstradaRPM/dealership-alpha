@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-import type { StorageDriver } from './types';
+import type { DriverFactory, StorageDriver } from './types';
 
 /**
  * expo-sqlite backed StorageDriver. The schema is a single-row table —
@@ -56,5 +56,18 @@ export function createSqliteDriver(options: SqliteDriverOptions = {}): StorageDr
       const db = await getDb();
       await db.runAsync('DELETE FROM save_slot;');
     },
+  };
+}
+
+/**
+ * Per-key sqlite DriverFactory. Each logical key maps to its own database
+ * file, so slots are isolated at the storage-file level and deleting one
+ * cannot corrupt another.
+ */
+export function createSqliteDriverFactory(options: SqliteDriverOptions = {}): DriverFactory {
+  const base = (options.databaseName ?? DEFAULT_DB_NAME).replace(/\.db$/, '');
+  return (key: string) => {
+    const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, '_');
+    return createSqliteDriver({ databaseName: `${base}.${safeKey}.db` });
   };
 }

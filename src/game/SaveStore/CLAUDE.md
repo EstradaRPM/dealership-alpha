@@ -9,9 +9,16 @@ Persistence layer. The **only** module that touches storage drivers (SQLite or i
   - `listSnapshots()` → `readonly WeeklySnapshot[]` — newest first.
   - `rollbackToSnapshot(index)` → `SaveState | null` — returns the state for that slot (caller restores it via `saveStore.save()`).
   - `clear()` — wipe all snapshots.
-- Drivers: `createInMemoryDriver` (tests), `createSqliteDriver` (production via `expo-sqlite`). Options: `SqliteDriverOptions`.
+- `createMultiSlotSaveStore(driverFactory, options?)` → `MultiSlotSaveStore` — 2–3 independent save slots. Options: `{ maxSlots?: number (default 3); now?: () => string }`.
+  - `createSlot(name)` → `SlotMetadata` (auto-activates the first slot; throws at the cap).
+  - `listSlots()` → `readonly SlotMetadata[]` (id/name/day/lastPlayed).
+  - `selectSlot(id)` / `getActiveSlotId()` — active selection persists across cold start.
+  - `deleteSlot(id)` — wipes only that slot's blob; clears active selection iff it was the deleted slot; recreated ids never reuse a deleted blob.
+  - `save(state, { day })` / `load()` — addresses the active slot and refreshes its metadata.
+- Drivers: `createInMemoryDriver` (single-cell, tests), `createSqliteDriver` (production via `expo-sqlite`). Options: `SqliteDriverOptions`.
+- Driver factories (for multi-slot — one isolated cell per key): `createInMemoryDriverFactory` (tests), `createSqliteDriverFactory` (per-key db file).
 - Migration helpers: `CURRENT_SAVE_VERSION`, `migrate`, `wrap`. Types: `Migration`, `SaveEnvelope`.
-- Types: `SaveStore`, `SaveState`, `StorageDriver`, `SnapshotStore`, `WeeklySnapshot`.
+- Types: `SaveStore`, `SaveState`, `StorageDriver`, `DriverFactory`, `MultiSlotSaveStore`, `SlotMetadata`, `SnapshotStore`, `WeeklySnapshot`.
 
 ## Events
 None — SaveStore is invoked imperatively by orchestration code, not via the bus.

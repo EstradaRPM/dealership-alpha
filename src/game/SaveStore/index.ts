@@ -1,13 +1,18 @@
 export { createSaveStore } from './SaveStore';
 export { createSnapshotStore } from './SnapshotStore';
 export { createLegacyStore } from './LegacyStore';
-export { createInMemoryDriver } from './inMemoryDriver';
-export { createSqliteDriver } from './sqliteDriver';
+export { createMultiSlotSaveStore } from './SlotStore';
+export type { MultiSlotOptions } from './SlotStore';
+export { createInMemoryDriver, createInMemoryDriverFactory } from './inMemoryDriver';
+export { createSqliteDriver, createSqliteDriverFactory } from './sqliteDriver';
 export type { SqliteDriverOptions } from './sqliteDriver';
 export type {
   SaveStore,
   SaveState,
   StorageDriver,
+  DriverFactory,
+  MultiSlotSaveStore,
+  SlotMetadata,
   SnapshotStore,
   WeeklySnapshot,
   LegacyStore,
