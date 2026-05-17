@@ -36,6 +36,7 @@ import {
 } from './src/game/NPC';
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { DayLoopShell } from './src/ui/DayLoopShell';
+import type { DayRecapModel } from './src/ui/DayRecap';
 import type {
   FloorDashboardModel,
   FloorEvent,
@@ -359,6 +360,20 @@ export default function App() {
           },
         }
       : undefined;
+    // Just-ended-day recap (#119). In MANAGERIAL the funnel + running gross
+    // still hold the day that just closed (both reset on the next
+    // clock:day_started / handleNextDay). Absent on the night before Day 1.
+    const recap: DayRecapModel | undefined = loopState.hasRecap
+      ? {
+          day: loopState.day,
+          potentialTraffic: funnel.potentialTraffic,
+          walkedIn: funnel.walkedIn,
+          staffEngaged: funnel.staffEngaged,
+          sold: funnel.sold,
+          gross: grossToday,
+          leakCause: funnel.leakCause,
+        }
+      : undefined;
     content = (
       <>
         <StatusBar style="light" />
@@ -368,6 +383,7 @@ export default function App() {
           onNextDay={handleNextDay}
           onOpenAuction={() => setScreen('auction')}
           floorModel={floorModel}
+          recap={recap}
           onExceptionPress={openHandPlay}
           onCherryPick={floor && floor.canGrab() ? cherryPick : undefined}
         />

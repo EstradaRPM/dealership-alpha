@@ -4,6 +4,7 @@ import type { CharacterProfile } from '../../game/CareerProgression';
 import { loadTierConfig } from '../../game/CareerProgression';
 import type { DayLoopState } from '../../game/DayLoopController';
 import { FloorDashboard, type FloorDashboardModel } from '../FloorDashboard';
+import { DayRecap, type DayRecapModel } from '../DayRecap';
 
 const TIER_CONFIG = loadTierConfig();
 
@@ -21,6 +22,11 @@ interface Props {
   onExceptionPress?: (customerId: string) => void;
   /** Voluntary cherry-pick → open the hand-play modal (#118). */
   onCherryPick?: () => void;
+  /**
+   * Just-ended-day recap read-model (#119), assembled by the composition
+   * root from the #110 funnel accessor. Absent on the night before Day 1.
+   */
+  recap?: DayRecapModel;
 }
 
 /**
@@ -40,6 +46,7 @@ export function DayLoopShell({
   floorModel,
   onExceptionPress,
   onCherryPick,
+  recap,
 }: Props) {
   if (state.phase === 'FLOOR_OPEN' && floorModel) {
     return (
@@ -55,9 +62,7 @@ export function DayLoopShell({
   const displayName = businessName || `${profile.name}'s Lot`;
   const displayAccent = accentColor ?? '#c8a96e';
 
-  const recapLine = state.hasRecap
-    ? `Day ${state.day} complete — lot closed.`
-    : 'Night before Day 1.';
+  const showRecap = state.phase === 'MANAGERIAL' && state.hasRecap && !!recap;
 
   return (
     <View style={styles.root}>
@@ -72,7 +77,14 @@ export function DayLoopShell({
 
       <View style={styles.body}>
         <Text style={styles.phase}>{state.phase}</Text>
-        <Text style={styles.recap}>{recapLine}</Text>
+
+        {showRecap && recap ? (
+          <DayRecap model={recap} />
+        ) : (
+          state.phase === 'MANAGERIAL' && (
+            <Text style={styles.recap}>Night before Day 1.</Text>
+          )
+        )}
 
         {state.phase === 'MANAGERIAL' ? (
           <TouchableOpacity
