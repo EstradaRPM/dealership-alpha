@@ -1,6 +1,13 @@
 import type { EventBus } from '../EventBus';
 import type { Season, GameClock } from '../GameClock';
-import { createFloorSim, type FloorSim, type DayContext } from '../FloorSim';
+import {
+  createFloorSim,
+  type FloorSim,
+  type DayContext,
+  type CapacityGate,
+  type DeptDrain,
+  type CustomerSource,
+} from '../FloorSim';
 
 // ── DemandContext: the locked #125 "morning slip" ────────────────────────────
 //
@@ -207,6 +214,22 @@ export interface DayLoopState {
   readonly hasRecap: boolean;
 }
 
+/**
+ * Per-day FloorSim seam set. The composition root (#114) supplies this to
+ * inject CapacityManager / StaffDispatch / CustomerPool *behind* FloorSim's
+ * locked #99 seams. Invoked once per `beginDay` with that day's slip so each
+ * day gets fresh per-day seam instances (the capacity gate snapshots the
+ * day's budget; the staff floor drain is a per-day instance). Omitted ⇒ bare
+ * FloorSim (the #111/#112 default — same omitted-default discipline). FloorSim
+ * / #99 stays untouched: the controller only forwards these into
+ * `createFloorSim`.
+ */
+export type FloorSeamProvider = (slip: DemandContext) => {
+  capacity?: CapacityGate;
+  drains?: readonly DeptDrain[];
+  customerSource?: CustomerSource;
+};
+
 export interface DayLoopControllerDeps {
   bus: EventBus;
   seed: number;
@@ -218,6 +241,9 @@ export interface DayLoopControllerDeps {
   demandSource?: DemandSource;
   /** Omitted ⇒ no-op sink. */
   decisionSink?: DecisionSink;
+  /** Omitted ⇒ bare FloorSim (no injected seams), the #111/#112 default.
+   *  The #114 composition root supplies this to wire the real seams. */
+  floorSeams?: FloorSeamProvider;
 }
 
 export interface DayLoopController {
@@ -296,7 +322,8 @@ export function createDayLoopController(
     department?: string;
   }): FloorSim {
     slip = demandSource.slipFor({ day, department });
-    floor = createFloorSim({ bus, seed, ctx: project(slip) });
+    const seams = deps.floorSeams?.(slip) ?? {};
+    floor = createFloorSim({ bus, seed, ctx: project(slip), ...seams });
     return floor;
   }
 

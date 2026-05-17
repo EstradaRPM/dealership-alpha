@@ -67,15 +67,24 @@ FloorSim's untouched #99 4-scalar `DayContext` (`day`, `reputation`,
 FloorSim — the projection is the hard invariant from #125. `currentSlip()` /
 `currentFloor()` expose the owned pair; `endDay(realizedDraw)` feeds the sink.
 
-Capacity/drain/customer-source wiring is **#114's job** (composition root),
-not here.
+### Floor-seam injection (#114)
+`beginDay` accepts an optional `deps.floorSeams: FloorSeamProvider` —
+`(slip) → { capacity?, drains?, customerSource? }`, invoked once per day with
+that day's slip so each day gets fresh per-day seam instances (the capacity
+gate snapshots the day's budget; the staff floor drain is a per-day
+instance). Whatever it returns is spread straight into `createFloorSim`.
+Omitted ⇒ bare FloorSim (the #111/#112 default — same omitted-default
+discipline as the provider seams). The controller only **forwards** the
+seams; it never builds them and never touches FloorSim/#99. The composition
+root (#114) supplies the provider that wires CapacityManager /
+StaffDispatch / CustomerPool behind the locked #99 seams.
 
 ## Public API (`index.ts`)
 - `createDayLoopController({ bus, seed, clock, demandSource?, decisionSink? })`.
 - `createStubDemandSource()` / `createNullDecisionSink()` — v1 stubs.
 - Types: `DayLoopController`, `DayLoopState`, `LifecyclePhase`,
-  `DemandSource`, `DecisionSink`, `DayDecision`, `DayOutcome`,
-  `DemandContext` (+ its component types).
+  `FloorSeamProvider`, `DemandSource`, `DecisionSink`, `DayDecision`,
+  `DayOutcome`, `DemandContext` (+ its component types).
 
 ## Events
 Emits none of its own. **Consumes** `floor:day_complete` (FLOOR_OPEN→

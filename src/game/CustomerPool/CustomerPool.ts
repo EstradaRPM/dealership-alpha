@@ -80,6 +80,14 @@ export function createCustomerPool(deps: {
   poachConfig?: PoachConfig;
   /** Injected salesperson skill (defaults to GREEN_SALESPERSON). StaffOrg wiring is a follow-on. */
   skill?: SalespersonSkill;
+  /**
+   * Legacy once-per-day arrival generator on `clock:day_started` (the old
+   * live-day path). Default `true` preserves prior behavior + tests. The
+   * #114 composition root passes `false`: FloorSim owns arrivals via the
+   * injected customer-source seam, so this auto-generation must not also
+   * fire. `currentDay` tracking + poach checks still run regardless.
+   */
+  legacyDailyArrivals?: boolean;
 }): CustomerPool {
   const { bus, npcDeps } = deps;
   const sessions = new Map<string, MutableSession>();
@@ -283,30 +291,37 @@ export function createCustomerPool(deps: {
     }
   }
 
+  const legacyDailyArrivals = deps.legacyDailyArrivals ?? true;
+
   bus.subscribe('clock:day_started', ({ day }) => {
     currentDay = day;
 
-    const rng = createRng(
-      deriveSeed(npcDeps.masterSeed, 'customer_pool.archetype_pick', { day }),
-    );
-    const pick = SALES_ARCHETYPES[Math.floor(rng() * SALES_ARCHETYPES.length)];
+    // Old live-day path: FloorSim owns arrivals via the customer-source seam
+    // in the #114 composition, so the legacy auto-generator is opted out
+    // there. currentDay tracking + poach checks always run.
+    if (legacyDailyArrivals) {
+      const rng = createRng(
+        deriveSeed(npcDeps.masterSeed, 'customer_pool.archetype_pick', { day }),
+      );
+      const pick = SALES_ARCHETYPES[Math.floor(rng() * SALES_ARCHETYPES.length)];
 
-    const bundle = createCustomer(
-      { personArchetypeId: pick.personId, visitArchetypeId: pick.visitId, day, slot: 0 },
-      npcDeps,
-    );
+      const bundle = createCustomer(
+        { personArchetypeId: pick.personId, visitArchetypeId: pick.visitId, day, slot: 0 },
+        npcDeps,
+      );
 
-    const customerId = bundle.person.id;
-    sessions.set(customerId, {
-      customerId,
-      day,
-      bundle,
-      stage: 'UNGREETED',
-      archetypeLabel: pick.label,
-      visitArchetypeId: pick.visitId,
-    });
+      const customerId = bundle.person.id;
+      sessions.set(customerId, {
+        customerId,
+        day,
+        bundle,
+        stage: 'UNGREETED',
+        archetypeLabel: pick.label,
+        visitArchetypeId: pick.visitId,
+      });
 
-    bus.publish('customer:arrived', { day, customerId, label: pick.label });
+      bus.publish('customer:arrived', { day, customerId, label: pick.label });
+    }
 
     runPoachChecks(day);
   });

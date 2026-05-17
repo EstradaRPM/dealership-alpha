@@ -3,7 +3,7 @@
 Per-day customer roster + SalesProcess-driven resolution. Rolls today's customers, advances them through Sales stages, runs `SalesProcess.resolveSalesProcess` + `closeAndPrice` at resolution time, and handles poach attempts by competitors.
 
 ## Public API (`index.ts`)
-- `createCustomerPool(deps)` → `CustomerPool`. Optional `deps.skill?: SalespersonSkill` (defaults to `GREEN_SALESPERSON`; StaffOrg wiring is a follow-on).
+- `createCustomerPool(deps)` → `CustomerPool`. Optional `deps.skill?: SalespersonSkill` (defaults to `GREEN_SALESPERSON`; StaffOrg wiring is a follow-on). Optional `deps.legacyDailyArrivals?: boolean` (default `true`) — the old `clock:day_started` once-per-day arrival generator; the #114 composition root passes `false` so FloorSim's customer-source seam is the sole arrival source (`currentDay` + poach still run).
 - Session type: `CustomerSession`.
 - `transition(...)`, `IllegalTransitionError` — FSM validates dispatch legality (intermediate stages).
 - `checkPoach(...)` — competitor poach decision. `PoachParams`, `PoachResult`, `PoachOutcome`.
@@ -18,7 +18,7 @@ Per-day customer roster + SalesProcess-driven resolution. Rolls today's customer
 
 ## Events
 - **Emits:** `customer:arrived`, `customer:state_changed`, `customer:gate_evaluated` (observability only, #92 — one per gate in gate order on a SalesProcess-driven resolution), `customer:resolved` (extended — see EventBus events.ts), `customer:poached`. Per-customer ordering: `arrived → state_changed (0..n) → gate_evaluated (0..n) → (resolved | poached)`.
-- **Consumes:** `clock:day_started` (roll today's customers), `market:competitive_pressure` (poach checks), `deal:closed` (DealEngine-driven close), `bdc:callback_succeeded` (return to sales).
+- **Consumes:** `clock:day_started` (roll today's customers — legacy path only, gated by `legacyDailyArrivals`), `market:competitive_pressure` (poach checks), `deal:closed` (DealEngine-driven close), `bdc:callback_succeeded` (return to sales).
 
 ## Data
 - `data/poach-config.json` — poach probabilities + thresholds.

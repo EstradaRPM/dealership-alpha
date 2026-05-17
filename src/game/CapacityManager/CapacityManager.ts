@@ -7,6 +7,14 @@ export interface CapacityManagerDeps {
   staffOrg: StaffOrg;
   facilityTier?: 1 | 2 | 3;
   config?: CapacityConfig;
+  /**
+   * Legacy `customer:arrived` once-per-day admittance gate (the old live-day
+   * path). Default `true` preserves prior behavior + tests. The #114
+   * composition root passes `false`: the per-tick `createFloorGate()` seam is
+   * the sole admittance path, so the legacy aggregate gate must not also
+   * fire. Funnel/`staff:auto_resolved` read-model wiring is unaffected.
+   */
+  legacyAdmitGate?: boolean;
 }
 
 /**
@@ -104,22 +112,30 @@ export function createCapacityManager(deps: CapacityManagerDeps): CapacityManage
     if (outcome === 'closed') funnelSold++;
   });
 
-  bus.subscribe('customer:arrived', ({ day, customerId, label }) => {
-    dailyArrivals++;
-    funnelPotential++;
-    if (dailyArrivals <= dailyCapacity) {
-      funnelWalkedIn++;
-      bus.publish('capacity:customer_admitted', { day, customerId, label });
-    } else {
-      missedCount++;
-      bus.publish('capacity:missed_opportunity', { day, customerId, label });
-      bus.publish('reputation:satisfaction_hit', {
-        day,
-        amount: config.missedOpportunitySatisfactionHit,
-        reason: 'missed_opportunity',
-      });
-    }
-  });
+  const legacyAdmitGate = deps.legacyAdmitGate ?? true;
+
+  // Old live-day path: the per-tick createFloorGate() seam is the sole
+  // admittance path in the #114 composition, so this legacy aggregate gate
+  // is opted out there. The funnel read-model stays correct either way —
+  // the floor gate updates the same counters independently.
+  if (legacyAdmitGate) {
+    bus.subscribe('customer:arrived', ({ day, customerId, label }) => {
+      dailyArrivals++;
+      funnelPotential++;
+      if (dailyArrivals <= dailyCapacity) {
+        funnelWalkedIn++;
+        bus.publish('capacity:customer_admitted', { day, customerId, label });
+      } else {
+        missedCount++;
+        bus.publish('capacity:missed_opportunity', { day, customerId, label });
+        bus.publish('reputation:satisfaction_hit', {
+          day,
+          amount: config.missedOpportunitySatisfactionHit,
+          reason: 'missed_opportunity',
+        });
+      }
+    });
+  }
 
   function createFloorGate(): CapacityFloorGate {
     let budget = computeCapacity();

@@ -6,6 +6,7 @@ export {
 export type {
   DayLoopController,
   DayLoopControllerDeps,
+  FloorSeamProvider,
   DayLoopState,
   LifecyclePhase,
   DemandSource,

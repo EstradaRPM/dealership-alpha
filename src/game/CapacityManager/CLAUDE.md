@@ -29,10 +29,14 @@ Daily admittance gate. Computes how many customers the dealership can handle tod
 - **Consumes:** customer-arrival flow (called by `CustomerPool` before admit).
 
 ## Two admittance paths
-- **Legacy daily gate** — `customer:arrived` subscription, once-per-day budget
-  (CustomerPool path; unchanged).
+- **Legacy daily gate** — `customer:arrived` subscription, once-per-day
+  budget (CustomerPool path). Gated by `deps.legacyAdmitGate` (default
+  `true`). The #114 composition root passes `false` so only the floor gate
+  is live — composition wires one path, never both.
 - **Per-tick floor gate** (#100) — `createFloorGate()`, driven by FloorSim's
-  per-tick loop. Overflow walks in-day rather than as a daily aggregate.
+  per-tick loop. Overflow walks in-day rather than as a daily aggregate. The
+  sole admittance path in the #114 composition; updates the funnel
+  read-model counters independently of the legacy gate.
 
 ## Data
 - `data/tunables.json` — capacity section (tier base + per-role contribution).
