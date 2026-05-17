@@ -27,6 +27,10 @@ export const TunablesSchema = z.object({
     tickCostPerGate: z.number().int().positive(),
     defaultCustomerDifficulty: z.number().min(0).max(1),
     walkQualityFloor: z.number().min(0).max(1),
+    // Default for the hand-play spotlight modal (#118): false ⇒ opening the
+    // modal auto-pauses the day; true ⇒ the day keeps running live behind it
+    // (the #74/#105 felt-pacing comparison path).
+    playtestLiveDefault: z.boolean(),
     approachChoices: z
       .array(
         z.object({

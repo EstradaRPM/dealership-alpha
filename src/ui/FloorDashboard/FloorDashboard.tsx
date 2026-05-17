@@ -76,10 +76,16 @@ export interface InventoryStats {
 interface Props {
   model: FloorDashboardModel;
   /**
-   * Tapped an exception alert row. Stubbed/wired to the hand-play modal in
-   * the next slice (#118); absent ⇒ rows render but are inert.
+   * Tapped an exception alert row → surface the hand-play modal (#118) for
+   * that forced exception. Absent ⇒ rows render but are inert.
    */
   onExceptionPress?: (customerId: string) => void;
+  /**
+   * Voluntary cherry-pick (#118): open the hand-play modal on a customer the
+   * composition root selects from the grabbable roster. Absent ⇒ no affordance
+   * (e.g. nothing grabbable, or tick-budget exhausted).
+   */
+  onCherryPick?: () => void;
 }
 
 function money(n: number): string {
@@ -102,7 +108,11 @@ function Stat({ label, value }: { label: string; value: string }) {
  * text/number visuals. Secondary panels (#117), recap (#119) and the render
  * loop (#121) are later slices.
  */
-export function FloorDashboard({ model, onExceptionPress }: Props) {
+export function FloorDashboard({
+  model,
+  onExceptionPress,
+  onCherryPick,
+}: Props) {
   const {
     day,
     tick,
@@ -153,6 +163,17 @@ export function FloorDashboard({ model, onExceptionPress }: Props) {
           <Stat label="PENDING-WARM" value={String(pendingWarm)} />
           <Stat label="GROSS" value={money(gross)} />
         </View>
+
+        {onCherryPick && (
+          <TouchableOpacity
+            style={styles.cherryPick}
+            accessibilityRole="button"
+            accessibilityLabel="Cherry-pick a customer to hand-play"
+            onPress={onCherryPick}
+          >
+            <Text style={styles.cherryPickText}>＋ Work a customer</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Impressionistic staff strip */}
         <Text style={styles.sectionLabel}>FLOOR</Text>
@@ -310,6 +331,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginVertical: 4,
+  },
+  cherryPick: {
+    marginTop: 16,
+    paddingVertical: 12,
+    borderRadius: 4,
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#2f2f2f',
+  },
+  cherryPickText: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    color: '#c8a96e',
+    letterSpacing: 1,
   },
   alertPip: { fontSize: 12, color: '#e0a23a' },
   alertText: {

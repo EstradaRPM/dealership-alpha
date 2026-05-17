@@ -17,6 +17,10 @@ interface Props {
   tier?: number;
   /** FLOOR-OPEN read-model (#116), assembled by the composition root. */
   floorModel?: FloorDashboardModel;
+  /** Tapped a forced-exception alert row → open the hand-play modal (#118). */
+  onExceptionPress?: (customerId: string) => void;
+  /** Voluntary cherry-pick → open the hand-play modal (#118). */
+  onCherryPick?: () => void;
 }
 
 /**
@@ -34,9 +38,17 @@ export function DayLoopShell({
   accentColor,
   tier = 1,
   floorModel,
+  onExceptionPress,
+  onCherryPick,
 }: Props) {
   if (state.phase === 'FLOOR_OPEN' && floorModel) {
-    return <FloorDashboard model={floorModel} />;
+    return (
+      <FloorDashboard
+        model={floorModel}
+        onExceptionPress={onExceptionPress}
+        onCherryPick={onCherryPick}
+      />
+    );
   }
 
   const tierEntry = TIER_CONFIG.tiers[tier - 1] ?? TIER_CONFIG.tiers[0];

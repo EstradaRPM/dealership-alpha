@@ -22,6 +22,7 @@
     "tickCostPerGate": 6,
     "defaultCustomerDifficulty": 0.5,
     "walkQualityFloor": 0.25,
+    "playtestLiveDefault": false,
     "approachChoices": [
       { "id": "rapport", "label": "Build rapport", "fitModifier": 0.1, "difficultyModifier": -0.05 },
       { "id": "direct", "label": "Direct pitch", "fitModifier": 0.0, "difficultyModifier": 0.0 },

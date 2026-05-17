@@ -20,7 +20,13 @@ import {
   createDayLoopController,
   type FloorSeamProvider,
 } from './src/game/DayLoopController';
-import type { CustomerSource, CustomerRef } from './src/game/FloorSim';
+import type {
+  CustomerSource,
+  CustomerRef,
+  HandPlaySession,
+  AdvanceResult,
+} from './src/game/FloorSim';
+import { loadTunables } from './src/game/data';
 import {
   loadPersonArchetypes,
   loadVisitArchetypes,
@@ -34,6 +40,7 @@ import type {
   FloorDashboardModel,
   FloorEvent,
 } from './src/ui/FloorDashboard';
+import { HandPlayModal, type HandPlayOutcome } from './src/ui/HandPlayModal';
 import { AuctionMenu } from './src/ui/AuctionMenu';
 import type { CharacterProfile } from './src/game/CareerProgression';
 import type { SaveStore } from './src/game/SaveStore';
@@ -42,6 +49,11 @@ import { AdminConsole } from './src/ui/AdminConsole';
 import { createTelemetry } from './src/game/Telemetry';
 
 const MASTER_SEED = 42;
+
+// Hand-play modal default (#118): sourced from a tunable, never a magic
+// number. false ⇒ opening the modal auto-pauses the day; true ⇒ the day
+// keeps running live behind it (the #74/#105 felt-pacing comparison path).
+const HAND_PLAY_LIVE = loadTunables().handPlay.playtestLiveDefault;
 
 // ── Composition root (#114) ──────────────────────────────────────────────────
 // Game modules created once at module level, outside React lifecycle.
@@ -149,6 +161,40 @@ export default function App() {
   // Re-render trigger for the headless DayLoopController lifecycle.
   const [, setTick] = useState(0);
   const bump = () => setTick((n) => n + 1);
+  // Hand-play spotlight (#118). The composition root owns the grabbed
+  // FloorSim session; the modal is a thin view that renders the pending gate
+  // and dispatches the picked approach back through advance().
+  const [handSession, setHandSession] = useState<HandPlaySession | null>(null);
+  const [handResult, setHandResult] = useState<AdvanceResult | null>(null);
+
+  // Open the modal on a specific grabbable customer (forced-exception row or
+  // a cherry-pick the composition root already selected). When not running
+  // live, the day is already idle here (the render loop is #121) — auto-pause
+  // is the default and holds until the player resumes.
+  const openHandPlay = (customerId: string) => {
+    const f = dayLoop.currentFloor();
+    if (!f || !f.canGrab()) return;
+    setHandSession(f.grab(customerId));
+    setHandResult(null);
+  };
+  const cherryPick = () => {
+    const f = dayLoop.currentFloor();
+    if (!f || !f.canGrab()) return;
+    const next = f.grabbableCustomers()[0];
+    if (next) openHandPlay(next.id);
+  };
+  const chooseApproach = (choiceId: string) => {
+    if (!handSession) return;
+    // advance() burns handPlay.tickCostPerGate deterministic ticks inside
+    // FloorSim regardless of pause state; the clock jumps on resume.
+    const r = handSession.advance(choiceId);
+    setHandResult(r.status === 'continue' ? null : r);
+    bump();
+  };
+  const closeHandPlay = () => {
+    setHandSession(null);
+    setHandResult(null);
+  };
 
   useEffect(() => {
     saveStore.load().then((state) => {
@@ -322,6 +368,8 @@ export default function App() {
           onNextDay={handleNextDay}
           onOpenAuction={() => setScreen('auction')}
           floorModel={floorModel}
+          onExceptionPress={openHandPlay}
+          onCherryPick={floor && floor.canGrab() ? cherryPick : undefined}
         />
       </>
     );
@@ -333,6 +381,23 @@ export default function App() {
     );
   }
 
+  const handOutcome: HandPlayOutcome | null = !handSession
+    ? null
+    : handResult == null
+      ? handSession.currentGate
+        ? {
+            status: 'continue',
+            gate: handSession.currentGate,
+            choices: handSession.choices.map((c) => ({
+              id: c.id,
+              label: c.label,
+            })),
+          }
+        : null
+      : handResult.status === 'walk'
+        ? { status: 'walk', cause: handResult.outcome.cause }
+        : { status: 'closed' };
+
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
@@ -342,6 +407,14 @@ export default function App() {
         >
           {content}
         </SafeAreaView>
+        <HandPlayModal
+          visible={handSession != null}
+          customerId={handSession?.customerId ?? null}
+          playLive={HAND_PLAY_LIVE}
+          outcome={handOutcome}
+          onChoose={chooseApproach}
+          onClose={closeHandPlay}
+        />
         {__DEV__ && (
           <AdminConsole
             bus={bus}
