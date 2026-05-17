@@ -297,9 +297,6 @@ export interface EventMap {
     revenue: number;
     advisorId: string;
   };
-
-  // CloseEarly — player chose to end the day before natural close
-  'player:close_early': { day: number; walkCount: number; reputationHit: number };
 }
 
 export type EventName = keyof EventMap;

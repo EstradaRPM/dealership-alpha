@@ -114,7 +114,6 @@ const TRACKED_EVENTS: ReadonlyArray<EventName> = [
   'followup:customer_archived',
   'bdc:callback_succeeded',
   'career:tier_up',
-  'player:close_early',
 ];
 
 export function createTelemetry(deps: { bus: EventBus }): Telemetry {

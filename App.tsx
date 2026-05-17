@@ -12,7 +12,6 @@ import { createEconomy } from './src/game/Economy';
 import { createInventory } from './src/game/Inventory';
 import { createStaffOrg } from './src/game/StaffOrg';
 import { createCapacityManager } from './src/game/CapacityManager';
-import { createCloseEarly } from './src/game/CloseEarly';
 import {
   loadPersonArchetypes,
   loadVisitArchetypes,
@@ -59,7 +58,6 @@ const staffOrg = createStaffOrg({
   archetypes: loadStaffArchetypes(),
 });
 createCapacityManager({ bus, staffOrg, facilityTier: 1 });
-const closeEarly = createCloseEarly({ bus, queue: departmentQueue, clock });
 const telemetry = createTelemetry({ bus });
 
 type AppScreen = 'loading' | 'character-creation' | 'game' | 'sales-workspace' | 'auction';
@@ -155,11 +153,6 @@ export default function App() {
     refreshDayState();
   };
 
-  const handleCloseEarly = () => {
-    closeEarly.execute();
-    refreshDayState();
-  };
-
   const handleSaveCleared = () => {
     setProfile(null);
     setScreen('character-creation');
@@ -215,8 +208,6 @@ export default function App() {
           lotVehicles={lotVehicles}
           onOpenAuction={() => setScreen('auction')}
           onEndDay={handleEndDay}
-          onCloseEarly={handleCloseEarly}
-          closeEarlyCost={closeEarly.previewCost()}
         />
       </>
     );
