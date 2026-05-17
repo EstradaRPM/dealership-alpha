@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -30,6 +30,10 @@ import {
 } from './src/game/NPC';
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { DayLoopShell } from './src/ui/DayLoopShell';
+import type {
+  FloorDashboardModel,
+  FloorEvent,
+} from './src/ui/FloorDashboard';
 import { AuctionMenu } from './src/ui/AuctionMenu';
 import type { CharacterProfile } from './src/game/CareerProgression';
 import type { SaveStore } from './src/game/SaveStore';
@@ -63,13 +67,23 @@ const customerPool = createCustomerPool({
 const economy = createEconomy({ bus, startingCash: 50_000 });
 const inventory = createInventory({ bus, masterSeed: MASTER_SEED, economy });
 const dealEngine = createDealEngine({ bus, inventory, economy });
+const staffTaxonomy = loadStaffTaxonomy();
 const staffOrg = createStaffOrg({
   bus,
   economy,
   masterSeed: MASTER_SEED,
-  taxonomy: loadStaffTaxonomy(),
+  taxonomy: staffTaxonomy,
   archetypes: loadStaffArchetypes(),
 });
+
+// role_id → humanized label + serving department, for the impressionistic
+// FLOOR-OPEN staff strip (#117). Pure read mapping off the role catalog.
+function humanizeRole(roleId: string): string {
+  return roleId
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
 // Legacy aggregate admit gate OFF: the per-tick floor gate is the sole
 // admittance path under FloorSim.
 const capacityManager = createCapacityManager({
@@ -125,6 +139,13 @@ export default function App() {
   const [profile, setProfile] = useState<CharacterProfile | null>(null);
   const [lotVehicles, setLotVehicles] = useState<readonly LotVehicle[]>([]);
   const [cash, setCash] = useState(economy.cash);
+  // Running today's gross (front + back) summed from closed deals — the
+  // composed-state source for the FLOOR-OPEN HUD / stat grid (#116).
+  const [grossToday, setGrossToday] = useState(0);
+  // Per-day FLOOR-OPEN event log (#117): walk heartbeats as transient lines,
+  // forced exceptions as tappable alert rows. Reset each "Next Day".
+  const [floorEvents, setFloorEvents] = useState<readonly FloorEvent[]>([]);
+  const eventSeq = useRef(0);
   // Re-render trigger for the headless DayLoopController lifecycle.
   const [, setTick] = useState(0);
   const bump = () => setTick((n) => n + 1);
@@ -153,16 +174,57 @@ export default function App() {
     };
     const onVehicleSold = () => setLotVehicles(inventory.getLotVehicles());
     const onRevenue = () => setCash(economy.cash);
+    const onDealClosed = ({
+      frontGross,
+      backGross,
+    }: {
+      frontGross: number;
+      backGross: number;
+    }) => setGrossToday((g) => g + frontGross + backGross);
+    const onWalked = ({ tick }: { day: number; tick: number }) =>
+      setFloorEvents((log) => [
+        ...log,
+        {
+          kind: 'walk',
+          key: `w${eventSeq.current++}`,
+          text: `t${tick} · a customer walked — no capacity`,
+        },
+      ]);
+    const onExceptionRaised = ({
+      tick,
+      customerId,
+      department,
+    }: {
+      day: number;
+      tick: number;
+      customerId: string;
+      department: string;
+    }) =>
+      setFloorEvents((log) => [
+        ...log,
+        {
+          kind: 'exception',
+          key: `e${eventSeq.current++}`,
+          customerId,
+          text: `t${tick} · ${department} exception — needs you`,
+        },
+      ]);
 
     bus.subscribe('floor:day_complete', onDayComplete);
     bus.subscribe('inventory:vehicle_purchased', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_sold', onVehicleSold);
     bus.subscribe('economy:revenue_posted', onRevenue);
+    bus.subscribe('deal:closed', onDealClosed);
+    bus.subscribe('floor:customer_walked', onWalked);
+    bus.subscribe('floor:exception_raised', onExceptionRaised);
     return () => {
       bus.unsubscribe('floor:day_complete', onDayComplete);
       bus.unsubscribe('inventory:vehicle_purchased', onVehiclePurchased);
       bus.unsubscribe('inventory:vehicle_sold', onVehicleSold);
       bus.unsubscribe('economy:revenue_posted', onRevenue);
+      bus.unsubscribe('deal:closed', onDealClosed);
+      bus.unsubscribe('floor:customer_walked', onWalked);
+      bus.unsubscribe('floor:exception_raised', onExceptionRaised);
     };
   }, []);
 
@@ -170,6 +232,8 @@ export default function App() {
     // MANAGERIAL → FLOOR_OPEN, then run the live floor to exhaustion. The
     // owned FloorSim emits floor:day_complete, which flips the controller
     // back to MANAGERIAL (handled by its own subscription) and re-renders.
+    setGrossToday(0);
+    setFloorEvents([]);
     const floor = dayLoop.nextDay();
     floor.runDay();
     bump();
@@ -209,14 +273,55 @@ export default function App() {
       </>
     );
   } else if (screen === 'game' && profile) {
+    const loopState = dayLoop.state();
+    const floor = dayLoop.currentFloor();
+    const funnel = capacityManager.getDayFunnel();
+    const flooredValue = lotVehicles.reduce(
+      (sum, v) => sum + v.purchasePrice + v.reconCost,
+      0,
+    );
+    const avgDaysInInventory =
+      lotVehicles.length === 0
+        ? 0
+        : lotVehicles.reduce((sum, v) => sum + v.daysInInventory, 0) /
+          lotVehicles.length;
+    const floorModel: FloorDashboardModel | undefined = floor
+      ? {
+          day: loopState.day,
+          tick: floor.currentTick,
+          ticksPerDay: floor.ticksPerDay,
+          cash: economy.cash,
+          exceptionPending: floor
+            .grabbableCustomers()
+            .some((c) => c.source === 'exception' && c.mustHandle),
+          ups: funnel.walkedIn,
+          sold: funnel.sold,
+          walked: funnel.potentialTraffic - funnel.walkedIn,
+          pendingWarm: Math.max(0, funnel.walkedIn - funnel.staffEngaged),
+          gross: grossToday,
+          staff: staffOrg.currentRoster.map((s) => ({
+            id: s.id,
+            role: humanizeRole(s.role_id),
+            department:
+              staffTaxonomy.roles[s.role_id]?.department ?? 'unassigned',
+          })),
+          events: floorEvents,
+          inventory: {
+            unitsOnLot: lotVehicles.length,
+            flooredValue,
+            avgDaysInInventory,
+          },
+        }
+      : undefined;
     content = (
       <>
         <StatusBar style="light" />
         <DayLoopShell
           profile={profile}
-          state={dayLoop.state()}
+          state={loopState}
           onNextDay={handleNextDay}
           onOpenAuction={() => setScreen('auction')}
+          floorModel={floorModel}
         />
       </>
     );

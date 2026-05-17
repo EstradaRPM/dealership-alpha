@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import { loadTierConfig } from '../../game/CareerProgression';
 import type { DayLoopState } from '../../game/DayLoopController';
+import { FloorDashboard, type FloorDashboardModel } from '../FloorDashboard';
 
 const TIER_CONFIG = loadTierConfig();
 
@@ -14,6 +15,8 @@ interface Props {
   businessName?: string;
   accentColor?: string;
   tier?: number;
+  /** FLOOR-OPEN read-model (#116), assembled by the composition root. */
+  floorModel?: FloorDashboardModel;
 }
 
 /**
@@ -30,7 +33,12 @@ export function DayLoopShell({
   businessName,
   accentColor,
   tier = 1,
+  floorModel,
 }: Props) {
+  if (state.phase === 'FLOOR_OPEN' && floorModel) {
+    return <FloorDashboard model={floorModel} />;
+  }
+
   const tierEntry = TIER_CONFIG.tiers[tier - 1] ?? TIER_CONFIG.tiers[0];
   const displayName = businessName || `${profile.name}'s Lot`;
   const displayAccent = accentColor ?? '#c8a96e';
