@@ -13,9 +13,16 @@ Daily admittance gate. Computes how many customers the dealership can handle tod
   customer (daily-gate semantics preserved). `customerId` is synthetic
   (`floor-walk:<day>:<tick>:<i>`) until the spawn seam (#101) individuates
   arrivals.
+- `CapacityManager.getDayFunnel()` → `DayFunnel`: read-only end-of-day
+  funnel (drove-by → walked-in → staff-engaged → sold) plus a single
+  `leakCause` signal for a plain-language biggest-leak callout. Pure
+  read-model derived from observed events (`customer:arrived` /
+  `capacity:customer_admitted` path, the floor gate, and
+  `staff:auto_resolved`); no side effects, no FloorSim/#99 coupling. The
+  composition root assembles the recap from this (#110/#107). Resets daily.
 - `loadCapacityConfig` — reads capacity tunables.
 - `getStaffContribution(staff)` — pure helper computing capacity boost from a staff member.
-- Types: `CapacityManager`, `CapacityManagerDeps`, `CapacityConfig`, `CapacityFloorGate`.
+- Types: `CapacityManager`, `CapacityManagerDeps`, `CapacityConfig`, `CapacityFloorGate`, `DayFunnel`, `FunnelLeakCause`.
 
 ## Events
 - **Emits:** `capacity:customer_admitted`, `capacity:missed_opportunity` (turn-away).

@@ -198,6 +198,152 @@ describe('CapacityManager — customer gating', () => {
   });
 });
 
+// ── Day funnel read-model ─────────────────────────────────────────────────────
+
+function fireAutoResolved(
+  bus: ReturnType<typeof createEventBus>,
+  customerId: string,
+  outcome: 'closed' | 'no_sale',
+  day = 1,
+) {
+  bus.publish('staff:auto_resolved', {
+    customerId,
+    staffId: 's1',
+    day,
+    outcome,
+    grossImpact: outcome === 'closed' ? 1000 : 0,
+  });
+}
+
+describe('CapacityManager — day funnel', () => {
+  it('starts empty with leakCause none', () => {
+    const { capacity } = makeSetup([], BASE_CONFIG, 1);
+    expect(capacity.getDayFunnel()).toEqual({
+      potentialTraffic: 0,
+      walkedIn: 0,
+      staffEngaged: 0,
+      sold: 0,
+      leakCause: 'none',
+    });
+  });
+
+  it('tracks the full funnel across a representative day', () => {
+    const { bus, capacity } = makeSetup([], BASE_CONFIG, 1); // capacity = 2
+
+    fireCustomerArrived(bus, 'c1');
+    fireCustomerArrived(bus, 'c2'); // both within capacity → walked-in
+    fireAutoResolved(bus, 'c1', 'closed');
+    fireAutoResolved(bus, 'c2', 'no_sale');
+
+    expect(capacity.getDayFunnel()).toEqual({
+      potentialTraffic: 2,
+      walkedIn: 2,
+      staffEngaged: 2,
+      sold: 1,
+      leakCause: 'closing', // only drop: 2 engaged → 1 sold
+    });
+  });
+
+  it('flags capacity as the leak when most traffic is turned away', () => {
+    const { bus, capacity } = makeSetup([], ZERO_BASE_CONFIG, 1); // capacity = 0
+
+    fireCustomerArrived(bus, 'c1');
+    fireCustomerArrived(bus, 'c2');
+    fireCustomerArrived(bus, 'c3');
+
+    const f = capacity.getDayFunnel();
+    expect(f.potentialTraffic).toBe(3);
+    expect(f.walkedIn).toBe(0);
+    expect(f.leakCause).toBe('capacity');
+  });
+
+  it('flags engagement when admitted customers go unworked', () => {
+    const { bus, capacity } = makeSetup([], BASE_CONFIG, 1); // capacity = 2
+
+    fireCustomerArrived(bus, 'c1');
+    fireCustomerArrived(bus, 'c2');
+    // nobody engaged
+
+    const f = capacity.getDayFunnel();
+    expect(f).toMatchObject({
+      potentialTraffic: 2,
+      walkedIn: 2,
+      staffEngaged: 0,
+      sold: 0,
+      leakCause: 'engagement',
+    });
+  });
+
+  it('reports none when the funnel is clean (everyone sold)', () => {
+    const { bus, capacity } = makeSetup([], BASE_CONFIG, 1); // capacity = 2
+
+    fireCustomerArrived(bus, 'c1');
+    fireCustomerArrived(bus, 'c2');
+    fireAutoResolved(bus, 'c1', 'closed');
+    fireAutoResolved(bus, 'c2', 'closed');
+
+    expect(capacity.getDayFunnel().leakCause).toBe('none');
+  });
+
+  it('ties break toward the earliest stage', () => {
+    const { bus, capacity } = makeSetup([], BASE_CONFIG, 1); // capacity = 2
+
+    // potential 4, walkedIn 2 (capacity drop 2), engaged 0 (engagement drop 2)
+    fireCustomerArrived(bus, 'c1');
+    fireCustomerArrived(bus, 'c2');
+    fireCustomerArrived(bus, 'c3');
+    fireCustomerArrived(bus, 'c4');
+
+    expect(capacity.getDayFunnel().leakCause).toBe('capacity');
+  });
+
+  it('derives the funnel from the per-tick floor gate too', () => {
+    const { capacity } = makeSetup([], BASE_CONFIG, 1); // capacity = 2
+    const gate = capacity.createFloorGate();
+
+    gate.admit(3, { day: 1, tick: 1 }); // 2 admitted, 1 walked
+
+    expect(capacity.getDayFunnel()).toMatchObject({
+      potentialTraffic: 3,
+      walkedIn: 2,
+      // nobody engaged the 2 admitted → engagement drop (2) > capacity drop (1)
+      leakCause: 'engagement',
+    });
+  });
+
+  it('does not let returning callbacks make engagement negative', () => {
+    const { bus, capacity } = makeSetup([], BASE_CONFIG, 1); // capacity = 2
+
+    fireCustomerArrived(bus, 'c1');
+    // c1 plus a BDC callback both get engaged: engaged (2) > walkedIn (1)
+    fireAutoResolved(bus, 'c1', 'closed');
+    fireAutoResolved(bus, 'cb', 'closed');
+
+    const f = capacity.getDayFunnel();
+    expect(f.staffEngaged).toBe(2);
+    expect(f.sold).toBe(2);
+    expect(f.leakCause).toBe('none');
+  });
+
+  it('resets the funnel each day', () => {
+    const { bus, clock, capacity } = makeSetup([], BASE_CONFIG, 1);
+
+    fireCustomerArrived(bus, 'c1');
+    fireAutoResolved(bus, 'c1', 'closed');
+    expect(capacity.getDayFunnel().potentialTraffic).toBe(1);
+
+    clock.advanceDay();
+
+    expect(capacity.getDayFunnel()).toEqual({
+      potentialTraffic: 0,
+      walkedIn: 0,
+      staffEngaged: 0,
+      sold: 0,
+      leakCause: 'none',
+    });
+  });
+});
+
 // ── Reputation hit ───────────────────────────────────────────────────────────
 
 describe('CapacityManager — reputation satisfaction hit', () => {

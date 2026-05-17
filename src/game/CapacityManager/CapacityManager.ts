@@ -26,10 +26,39 @@ export interface CapacityFloorGate {
   remaining(): number;
 }
 
+/**
+ * Which funnel transition lost the most customers today — enough signal for
+ * the composition root to render a plain-language biggest-leak callout.
+ *   'capacity'   — drove-by → walked-in (turned away at the gate)
+ *   'engagement' — walked-in → staff-engaged (nobody worked them)
+ *   'closing'    — staff-engaged → sold (engaged but didn't buy)
+ *   'none'       — no traffic, or no measurable drop
+ */
+export type FunnelLeakCause = 'capacity' | 'engagement' | 'closing' | 'none';
+
+/**
+ * End-of-day customer funnel, derived purely from observed domain events.
+ * Read-model only — no side effects, no FloorSim/#99 coupling.
+ */
+export interface DayFunnel {
+  /** Drove-by: every customer offered to the admittance gate today. */
+  potentialTraffic: number;
+  /** Walked-in: admitted within the day's capacity. */
+  walkedIn: number;
+  /** A salesperson actually engaged the customer. */
+  staffEngaged: number;
+  /** Engagement resulted in a closed deal. */
+  sold: number;
+  /** The single biggest-leak transition for a plain-language callout. */
+  leakCause: FunnelLeakCause;
+}
+
 export interface CapacityManager {
   getDailyCapacity(): number;
   getDailyArrivals(): number;
   getMissedCount(): number;
+  /** Read-only end-of-day funnel: drove-by → walked-in → engaged → sold. */
+  getDayFunnel(): DayFunnel;
   /** Create a per-day per-tick admittance gate for FloorSim to drive. */
   createFloorGate(): CapacityFloorGate;
 }
@@ -53,16 +82,33 @@ export function createCapacityManager(deps: CapacityManagerDeps): CapacityManage
   let missedCount = 0;
   let currentDay = 1;
 
+  // Funnel read-model counters (reset each day with the rest).
+  let funnelPotential = 0;
+  let funnelWalkedIn = 0;
+  let funnelStaffEngaged = 0;
+  let funnelSold = 0;
+
   bus.subscribe('clock:day_started', ({ day }) => {
     currentDay = day;
     dailyArrivals = 0;
     missedCount = 0;
+    funnelPotential = 0;
+    funnelWalkedIn = 0;
+    funnelStaffEngaged = 0;
+    funnelSold = 0;
     dailyCapacity = computeCapacity();
+  });
+
+  bus.subscribe('staff:auto_resolved', ({ outcome }) => {
+    funnelStaffEngaged++;
+    if (outcome === 'closed') funnelSold++;
   });
 
   bus.subscribe('customer:arrived', ({ day, customerId, label }) => {
     dailyArrivals++;
+    funnelPotential++;
     if (dailyArrivals <= dailyCapacity) {
+      funnelWalkedIn++;
       bus.publish('capacity:customer_admitted', { day, customerId, label });
     } else {
       missedCount++;
@@ -82,8 +128,10 @@ export function createCapacityManager(deps: CapacityManagerDeps): CapacityManage
       admit(arrivals, { day, tick }) {
         let walked = 0;
         for (let i = 0; i < arrivals; i++) {
+          funnelPotential++;
           if (budget > 0) {
             budget--;
+            funnelWalkedIn++;
           } else {
             const customerId = `floor-walk:${day}:${tick}:${i}`;
             const label = 'Walk-in';
@@ -102,10 +150,30 @@ export function createCapacityManager(deps: CapacityManagerDeps): CapacityManage
     };
   }
 
+  function deriveLeakCause(): FunnelLeakCause {
+    if (funnelPotential <= 0) return 'none';
+    const capacityDrop = Math.max(0, funnelPotential - funnelWalkedIn);
+    const engagementDrop = Math.max(0, funnelWalkedIn - funnelStaffEngaged);
+    const closingDrop = Math.max(0, funnelStaffEngaged - funnelSold);
+    const max = Math.max(capacityDrop, engagementDrop, closingDrop);
+    if (max <= 0) return 'none';
+    // Tie-break toward the earliest funnel stage (fix the leak nearest the top).
+    if (capacityDrop === max) return 'capacity';
+    if (engagementDrop === max) return 'engagement';
+    return 'closing';
+  }
+
   return {
     getDailyCapacity: () => dailyCapacity,
     getDailyArrivals: () => dailyArrivals,
     getMissedCount: () => missedCount,
+    getDayFunnel: () => ({
+      potentialTraffic: funnelPotential,
+      walkedIn: funnelWalkedIn,
+      staffEngaged: funnelStaffEngaged,
+      sold: funnelSold,
+      leakCause: deriveLeakCause(),
+    }),
     createFloorGate,
   };
 }
