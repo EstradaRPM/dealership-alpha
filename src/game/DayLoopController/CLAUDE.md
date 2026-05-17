@@ -1,9 +1,36 @@
 # DayLoopController
 
-Headless orchestrator that owns the per-day lifecycle. **First responsibility
-only (#111):** a narrow provider seam for the per-day `DemandContext` slip and
-the construction side that creates + owns one `FloorSim` per day via the
-locked #99 contract. **No state machine yet, no UI.** FloorSim/#99 untouched.
+Headless orchestrator that owns the per-day lifecycle. **#111:** a narrow
+provider seam for the per-day `DemandContext` slip + construction side that
+creates/owns one `FloorSim` per day via the locked #99 contract. **#112:** the
+two-state MANAGERIAL↔FLOOR_OPEN lifecycle on top. Still **no UI**;
+FloorSim/#99 untouched.
+
+## Lifecycle state machine (#112, design = #107 d11/d15)
+
+Two states: `MANAGERIAL` (lot closed — recap/leak review, ownership levers
+unlocked for next-day prep, primary action "Next Day") ↔ `FLOOR_OPEN` (live
+ticking floor; ownership greyed). The game **boots MANAGERIAL = "night before
+Day 1"** (no day played ⇒ no recap).
+
+- `state() → DayLoopState` `{ phase, day (= clock day), ownershipUnlocked
+  (⇔ MANAGERIAL), hasRecap (false only at the cold-start night-before-Day-1) }`.
+  Everything derives from `phase` + clock — no separate ownership/career state.
+- `nextDay({department?}) → FloorSim` — player-gated MANAGERIAL→FLOOR_OPEN.
+  Calls `GameClock.advanceDay()` **then** `beginDay(clock.currentDay)`. The
+  advance is **skipped on the cold-start first call only** (clock already sits
+  on Day 1 = night before Day 1; advancing would skip Day 1 — the
+  deterministic cold-start rule, #107 d15). Throws if not MANAGERIAL.
+- `floor:day_complete` (exhaustion or early close, #99) for the owned floor's
+  day → FLOOR_OPEN→MANAGERIAL, `hasRecap` latches true. The subscription is
+  idempotent + floor-scoped: a foreign/stale `floor:day_complete` (e.g. a bare
+  `beginDay()` primitive used in isolation, or a wrong `day`) never drives the
+  machine. `beginDay()` itself is the unguarded low-level primitive (used by
+  the #111 seam tests); `nextDay()` is the only guarded transition.
+
+Needs a `GameClock` injected (`deps.clock`) — the controller is the
+composition-root actor that owns the player-gated clock advance; per the #99
+invariant FloorSim never advances the clock itself.
 
 ## Provider seam (#111 + locked #125 contract)
 
@@ -44,14 +71,17 @@ Capacity/drain/customer-source wiring is **#114's job** (composition root),
 not here.
 
 ## Public API (`index.ts`)
-- `createDayLoopController({ bus, seed, demandSource?, decisionSink? })`.
+- `createDayLoopController({ bus, seed, clock, demandSource?, decisionSink? })`.
 - `createStubDemandSource()` / `createNullDecisionSink()` — v1 stubs.
-- Types: `DayLoopController`, `DemandSource`, `DecisionSink`, `DayDecision`,
-  `DayOutcome`, `DemandContext` (+ its component types).
+- Types: `DayLoopController`, `DayLoopState`, `LifecyclePhase`,
+  `DemandSource`, `DecisionSink`, `DayDecision`, `DayOutcome`,
+  `DemandContext` (+ its component types).
 
 ## Events
-None yet — construction/seam slice only. EventBus is threaded through to the
-owned FloorSim; the state-machine slice adds orchestration events.
+Emits none of its own. **Consumes** `floor:day_complete` (FLOOR_OPEN→
+MANAGERIAL). `nextDay()` drives `GameClock.advanceDay()`, which fans out the
+normal `clock:*` overnight sequence. EventBus is otherwise threaded through to
+the owned FloorSim (observability only).
 
 ## Locked / do-not-re-grill
 `DemandContext` = #125 (locked 2026-05-17). FloorSim surface = #99 (locked).

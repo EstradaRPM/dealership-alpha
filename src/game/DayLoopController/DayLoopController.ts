@@ -1,5 +1,5 @@
 import type { EventBus } from '../EventBus';
-import type { Season } from '../GameClock';
+import type { Season, GameClock } from '../GameClock';
 import { createFloorSim, type FloorSim, type DayContext } from '../FloorSim';
 
 // ── DemandContext: the locked #125 "morning slip" ────────────────────────────
@@ -187,9 +187,33 @@ export function createNullDecisionSink(): DecisionSink {
 
 // ── Controller ───────────────────────────────────────────────────────────────
 
+/** The two-state per-day lifecycle (#107 decision 11). MANAGERIAL = lot
+ *  closed (recap + leak review, ownership levers unlocked for next-day prep,
+ *  primary action "Next Day"); FLOOR_OPEN = live ticking floor (ownership
+ *  greyed). The game boots MANAGERIAL = "night before Day 1". */
+export type LifecyclePhase = 'MANAGERIAL' | 'FLOOR_OPEN';
+
+/** Headless lifecycle snapshot UI renders from (#112). All fields derive from
+ *  `phase` + clock position — no separate ownership/career state here. */
+export interface DayLoopState {
+  readonly phase: LifecyclePhase;
+  /** Day the controller is centered on (clock's current day). */
+  readonly day: number;
+  /** Ownership/next-day-prep levers are interactable iff MANAGERIAL
+   *  (#107 d11: greyed while the floor is live). */
+  readonly ownershipUnlocked: boolean;
+  /** False only at the cold-start "night before Day 1" (no day has been
+   *  played ⇒ no recap to show); true for every MANAGERIAL thereafter. */
+  readonly hasRecap: boolean;
+}
+
 export interface DayLoopControllerDeps {
   bus: EventBus;
   seed: number;
+  /** Drives the player-gated overnight advance on the "Next Day" transition.
+   *  The controller is the composition-root actor that owns this call — per
+   *  the #99 invariant, FloorSim never advances the clock itself. */
+  clock: GameClock;
   /** Omitted ⇒ dumb v1 stub (same omitted-default pattern as FloorSim seams). */
   demandSource?: DemandSource;
   /** Omitted ⇒ no-op sink. */
@@ -207,6 +231,15 @@ export interface DayLoopController {
   currentSlip(): DemandContext | undefined;
   /** The FloorSim owned for the current day; undefined before `beginDay`. */
   currentFloor(): FloorSim | undefined;
+  /** Current lifecycle snapshot (#112). */
+  state(): DayLoopState;
+  /**
+   * The player-gated "Next Day" transition: MANAGERIAL → FLOOR_OPEN. Performs
+   * `GameClock.advanceDay()` (skipped only on the cold-start first call, since
+   * the clock already sits on Day 1 = "night before Day 1") then creates +
+   * owns a FloorSim for the clock's current day. Throws if not MANAGERIAL.
+   */
+  nextDay(opts?: { department?: string }): FloorSim;
   /** Hand the day's outcome to the decision sink (success-coupling /
    *  marketing-lag math is entirely behind the seam). */
   endDay(outcome: DayOutcome): void;
@@ -220,12 +253,25 @@ export interface DayLoopController {
 export function createDayLoopController(
   deps: DayLoopControllerDeps,
 ): DayLoopController {
-  const { bus, seed } = deps;
+  const { bus, seed, clock } = deps;
   const demandSource = deps.demandSource ?? createStubDemandSource();
   const decisionSink = deps.decisionSink ?? createNullDecisionSink();
 
   let slip: DemandContext | undefined;
   let floor: FloorSim | undefined;
+  let phase: LifecyclePhase = 'MANAGERIAL';
+  // No day has been played at cold start ⇒ "night before Day 1", no recap.
+  let everCompleted = false;
+
+  // FLOOR_OPEN → MANAGERIAL on the owned floor's completion (exhaustion or
+  // early close, #99). Idempotent + floor-scoped: a stale or foreign
+  // floor:day_complete (e.g. a bare beginDay() primitive used in isolation)
+  // never drives the state machine.
+  bus.subscribe('floor:day_complete', (p) => {
+    if (phase !== 'FLOOR_OPEN' || !slip || p.day !== slip.day) return;
+    phase = 'MANAGERIAL';
+    everCompleted = true;
+  });
 
   /** Project the rich #125 slip down to FloorSim's untouched #99 4-scalar
    *  DayContext. Market share is the player's town-pool draw against the
@@ -242,14 +288,43 @@ export function createDayLoopController(
     };
   }
 
+  function beginDay({
+    day,
+    department = 'sales',
+  }: {
+    day: number;
+    department?: string;
+  }): FloorSim {
+    slip = demandSource.slipFor({ day, department });
+    floor = createFloorSim({ bus, seed, ctx: project(slip) });
+    return floor;
+  }
+
   return {
-    beginDay({ day, department = 'sales' }) {
-      slip = demandSource.slipFor({ day, department });
-      floor = createFloorSim({ bus, seed, ctx: project(slip) });
-      return floor;
-    },
+    beginDay,
     currentSlip: () => slip,
     currentFloor: () => floor,
+    state: () => ({
+      phase,
+      day: clock.currentDay,
+      ownershipUnlocked: phase === 'MANAGERIAL',
+      hasRecap: everCompleted,
+    }),
+    nextDay({ department = 'sales' } = {}) {
+      if (phase !== 'MANAGERIAL') {
+        throw new Error(
+          `nextDay requires MANAGERIAL phase (was ${phase})`,
+        );
+      }
+      // Cold start sits on Day 1 already ("night before Day 1"); only advance
+      // once a day has actually been played, so we never skip Day 1.
+      if (everCompleted) {
+        clock.advanceDay();
+      }
+      const f = beginDay({ day: clock.currentDay, department });
+      phase = 'FLOOR_OPEN';
+      return f;
+    },
     endDay(outcome) {
       if (!slip) {
         throw new Error('endDay called before beginDay');

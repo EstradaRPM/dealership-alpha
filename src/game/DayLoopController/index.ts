@@ -6,6 +6,8 @@ export {
 export type {
   DayLoopController,
   DayLoopControllerDeps,
+  DayLoopState,
+  LifecyclePhase,
   DemandSource,
   DecisionSink,
   DayDecision,
