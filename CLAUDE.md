@@ -8,7 +8,11 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 
 **Authoritative spec:** GitHub issue #1 (`gh issue view 1`) is the source of truth. For day-to-day work, prefer `docs/spec-condensed.md` — it distills the load-bearing facts. Re-read issue #1 only when a question isn't answered by the condensed doc or when #1 has just changed.
 
+**Execution order & progress:** issue #126 (`gh issue view 126`) is the v1 work tracker — read it first to know what to do next. Do the first unchecked item; check it off when its underlying issue closes. Honor the phase notes (some Phase 3 edges are flexible, not serial).
+
 **Issue lookups:** use `gh issue view <N>` for a single issue and `gh issue list --state open` for the queue. The gitignored `ISSUES.md` dump is ~1.3k lines and should NOT be Read whole.
+
+**Context discipline:** Read a module's `CLAUDE.md` before its code; prefer `Grep` + ranged `Read` over whole-file reads. Delegate broad multi-file exploration to an `Explore` subagent. Treat design-record issues (#95/#99/#107) as locked — don't re-grill or re-derive them.
 
 ## Non-negotiable engineering principle
 
