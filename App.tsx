@@ -53,6 +53,17 @@ import { createTelemetry } from './src/game/Telemetry';
 import { createKPIDashboard } from './src/game/KPIDashboard';
 import { MonthCloseInterstitial } from './src/ui/MonthCloseInterstitial';
 import { useNavigator } from './src/ui/Navigator';
+import { BottomNav } from './src/ui/BottomNav';
+import { DepartmentScreen } from './src/ui/DepartmentScreen';
+import type { DeptKey } from './src/game/DepartmentQueue';
+
+const DEPT_TITLES: Record<DeptKey, string> = {
+  sales: 'Sales',
+  service: 'Service',
+  bdc: 'BDC',
+  office: 'Office',
+  lot: 'Lot',
+};
 
 const MASTER_SEED = 42;
 
@@ -378,6 +389,18 @@ export default function App() {
     bump();
   };
 
+  // Bottom-nav dispatch (#76). Sales is the hand-play workspace, not a
+  // resolve-list — it opens the existing cherry-pick/hand-play path. The
+  // other four push the generic DepartmentScreen. Always responds; never
+  // gated on badge count (see #71).
+  const handleDeptPress = (dept: DeptKey) => {
+    if (dept === 'sales') {
+      cherryPick();
+      return;
+    }
+    nav.navigate('department', { dept });
+  };
+
   const handleSaveCleared = () => {
     setProfile(null);
     nav.reset('character-creation');
@@ -407,6 +430,22 @@ export default function App() {
           lotVehicles={lotVehicles}
           cash={cash}
           onBuy={(listingId) => inventory.buyFromAuction(listingId)}
+          onClose={() => nav.back()}
+        />
+      </>
+    );
+  } else if (screen === 'department') {
+    const dept = (nav.current.params as { dept: DeptKey }).dept;
+    content = (
+      <>
+        <StatusBar style="light" />
+        <DepartmentScreen
+          title={DEPT_TITLES[dept]}
+          items={departmentQueue.getQueue(dept)}
+          onResolve={(id) => {
+            departmentQueue.resolveItem(id);
+            bump();
+          }}
           onClose={() => nav.back()}
         />
       </>
@@ -510,8 +549,9 @@ export default function App() {
       onSelectHours: setHoursOfOpId,
     };
     content = (
-      <>
+      <View style={styles.container}>
         <StatusBar style="light" />
+        <View style={styles.container}>
         <DayLoopShell
           profile={profile}
           state={loopState}
@@ -538,7 +578,12 @@ export default function App() {
           onCherryPick={floor && floor.canGrab() ? cherryPick : undefined}
           leverProps={leverProps}
         />
-      </>
+        </View>
+        <BottomNav
+          badges={departmentQueue.getBadges()}
+          onPress={handleDeptPress}
+        />
+      </View>
     );
   } else if (screen !== 'loading') {
     content = (

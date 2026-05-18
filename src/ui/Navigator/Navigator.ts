@@ -3,6 +3,8 @@
 // Pure, framework-free stack machine so it can be isolation-tested without a
 // React renderer. The React binding lives in `useNavigator.ts`.
 
+import type { DeptKey } from '../../game/DepartmentQueue';
+
 // Typed route → params map. Every reachable screen has an entry; `undefined`
 // means the route carries no params. Adding a screen = adding a key here, so
 // there is no string-keyed navigation anywhere in the app.
@@ -12,6 +14,9 @@ export type RouteParamMap = {
   game: undefined;
   auction: undefined;
   personnel: undefined;
+  // A non-sales department resolve-list, pushed over the game (#76). Sales is
+  // not here — the Sales tab routes to the hand-play workspace, not a screen.
+  department: { dept: DeptKey };
 };
 
 export type Route = keyof RouteParamMap;

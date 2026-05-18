@@ -40,6 +40,16 @@ describe('Navigator', () => {
     expect(nav.current.route).toBe('game');
   });
 
+  it('pushes the department screen with its dept param and pops back to game', () => {
+    const nav = createNavigator('game');
+    nav.navigate('department', { dept: 'service' });
+    expect(nav.current.route).toBe('department');
+    expect(nav.current.params).toEqual({ dept: 'service' });
+
+    nav.back();
+    expect(nav.current.route).toBe('game');
+  });
+
   it('reset replaces the whole stack so back cannot resurrect prior screens', () => {
     const nav = createNavigator('loading');
     nav.reset('character-creation');
