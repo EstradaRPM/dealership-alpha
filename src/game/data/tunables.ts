@@ -23,6 +23,20 @@ export const TunablesSchema = z.object({
     // FloorSim's roster are flagged mustHandle (forced for the player).
     exceptionMustHandle: z.boolean(),
   }),
+  // Live render loop (#121, design #107). UI-only: a wall-clock interval
+  // drives FloorSim.step() at `baseTickIntervalMs / speed`. Game logic never
+  // sees these — speed/cadence are pure render multipliers over step().
+  renderLoop: z.object({
+    // Cadence at 1× speed: ms between step() calls.
+    baseTickIntervalMs: z.number().int().positive(),
+    // Selectable speed multipliers (1× first = default). Skip-to-close is a
+    // separate verb (runDay()), not a multiplier.
+    speedMultipliers: z.array(z.number().int().positive()).nonempty(),
+    // Representative open-hours window for the HUD clock derived from
+    // currentTick/ticksPerDay. Cosmetic — never feeds game logic.
+    openHour: z.number().int().min(0).max(23),
+    closeHour: z.number().int().min(1).max(24),
+  }),
   handPlay: z.object({
     tickCostPerGate: z.number().int().positive(),
     defaultCustomerDifficulty: z.number().min(0).max(1),

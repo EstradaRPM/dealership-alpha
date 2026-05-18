@@ -20,6 +20,9 @@ export interface FloorDashboardModel {
   tick: number;
   /** Ticks in a full day (FloorSim.ticksPerDay). */
   ticksPerDay: number;
+  /** Representative open-hours window for the HUD clock (renderLoop tunable). */
+  openHour: number;
+  closeHour: number;
   /** Cash on hand (Economy). */
   cash: number;
   /** A forced exception is waiting to be hand-played. */
@@ -73,8 +76,24 @@ export interface InventoryStats {
   avgDaysInInventory: number;
 }
 
+/**
+ * Live-clock controls (#121). The view dispatches these; the render-loop
+ * hook in the composition root owns the wall-clock interval and FloorSim.
+ * Absent ⇒ no control bar (the pre-#121 static dashboard).
+ */
+export interface FloorControls {
+  speed: number;
+  speeds: readonly number[];
+  paused: boolean;
+  onSetSpeed: (speed: number) => void;
+  onTogglePause: () => void;
+  onSkipToClose: () => void;
+}
+
 interface Props {
   model: FloorDashboardModel;
+  /** Live-clock speed/pause controls (#121). Absent ⇒ no control bar. */
+  controls?: FloorControls;
   /**
    * Tapped an exception alert row → surface the hand-play modal (#118) for
    * that forced exception. Absent ⇒ rows render but are inert.
@@ -91,6 +110,26 @@ interface Props {
 function money(n: number): string {
   const sign = n < 0 ? '-' : '';
   return `${sign}$${Math.abs(Math.round(n)).toLocaleString()}`;
+}
+
+/**
+ * Representative open-hours wall clock from the logical tick fraction. Pure
+ * presentation — game logic stays wall-clock-free; this only maps
+ * currentTick/ticksPerDay onto the [openHour, closeHour] window.
+ */
+function clockLabel(
+  tick: number,
+  ticksPerDay: number,
+  openHour: number,
+  closeHour: number,
+): string {
+  const frac = ticksPerDay <= 0 ? 0 : Math.min(1, tick / ticksPerDay);
+  const totalMin = Math.round((openHour + frac * (closeHour - openHour)) * 60);
+  const h24 = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  const period = h24 < 12 || h24 === 24 ? 'a' : 'p';
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${String(m).padStart(2, '0')}${period}`;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -110,6 +149,7 @@ function Stat({ label, value }: { label: string; value: string }) {
  */
 export function FloorDashboard({
   model,
+  controls,
   onExceptionPress,
   onCherryPick,
 }: Props) {
@@ -117,6 +157,8 @@ export function FloorDashboard({
     day,
     tick,
     ticksPerDay,
+    openHour,
+    closeHour,
     cash,
     exceptionPending,
     ups,
@@ -137,7 +179,7 @@ export function FloorDashboard({
       <View style={styles.hud}>
         <Text style={styles.hudCell}>DAY {day}</Text>
         <Text style={styles.hudCell}>
-          {tick}/{ticksPerDay}
+          {clockLabel(tick, ticksPerDay, openHour, closeHour)}
         </Text>
         <Text style={styles.hudCell}>{money(cash)}</Text>
         <Text style={styles.hudCell}>
@@ -152,6 +194,48 @@ export function FloorDashboard({
           {exceptionPending ? '●' : '○'}
         </Text>
       </View>
+
+      {/* Live-clock controls (#121) */}
+      {controls && (
+        <View style={styles.controlBar}>
+          <TouchableOpacity
+            style={styles.ctrlBtn}
+            accessibilityRole="button"
+            accessibilityLabel={controls.paused ? 'Resume day' : 'Pause day'}
+            onPress={controls.onTogglePause}
+          >
+            <Text style={styles.ctrlBtnText}>
+              {controls.paused ? '▶ Resume' : '❚❚ Pause'}
+            </Text>
+          </TouchableOpacity>
+          {controls.speeds.map((s) => {
+            const on = !controls.paused && controls.speed === s;
+            return (
+              <TouchableOpacity
+                key={s}
+                style={[styles.ctrlBtn, on && styles.ctrlBtnActive]}
+                accessibilityRole="button"
+                accessibilityLabel={`${s}× speed`}
+                onPress={() => controls.onSetSpeed(s)}
+              >
+                <Text
+                  style={[styles.ctrlBtnText, on && styles.ctrlBtnTextActive]}
+                >
+                  {s}×
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity
+            style={styles.ctrlBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Skip to close"
+            onPress={controls.onSkipToClose}
+          >
+            <Text style={styles.ctrlBtnText}>⏭ Close</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* VIN-style live stat grid + secondary panels */}
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
@@ -250,6 +334,32 @@ const styles = StyleSheet.create({
   },
   hudPip: { fontSize: 14, color: '#333' },
   hudPipActive: { color: '#e0a23a' },
+  controlBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#141414',
+    borderBottomWidth: 1,
+    borderBottomColor: '#262626',
+  },
+  ctrlBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#2f2f2f',
+  },
+  ctrlBtnActive: { backgroundColor: '#2a2415', borderColor: '#3a2f1a' },
+  ctrlBtnText: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    color: '#999',
+    letterSpacing: 1,
+  },
+  ctrlBtnTextActive: { color: '#e0a23a' },
   body: { flex: 1 },
   bodyContent: { padding: 20 },
   sectionLabel: {

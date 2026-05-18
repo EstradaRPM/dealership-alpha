@@ -3,7 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import { loadTierConfig } from '../../game/CareerProgression';
 import type { DayLoopState } from '../../game/DayLoopController';
-import { FloorDashboard, type FloorDashboardModel } from '../FloorDashboard';
+import {
+  FloorDashboard,
+  type FloorDashboardModel,
+  type FloorControls,
+} from '../FloorDashboard';
 import { DayRecap, type DayRecapModel } from '../DayRecap';
 import { OwnershipLevers, type OwnershipLeversProps } from '../OwnershipLevers';
 
@@ -19,6 +23,8 @@ interface Props {
   tier?: number;
   /** FLOOR-OPEN read-model (#116), assembled by the composition root. */
   floorModel?: FloorDashboardModel;
+  /** Live-clock speed/pause controls (#121), wired by the composition root. */
+  floorControls?: FloorControls;
   /** Tapped a forced-exception alert row → open the hand-play modal (#118). */
   onExceptionPress?: (customerId: string) => void;
   /** Voluntary cherry-pick → open the hand-play modal (#118). */
@@ -50,6 +56,7 @@ export function DayLoopShell({
   accentColor,
   tier = 1,
   floorModel,
+  floorControls,
   onExceptionPress,
   onCherryPick,
   recap,
@@ -59,6 +66,7 @@ export function DayLoopShell({
     return (
       <FloorDashboard
         model={floorModel}
+        controls={floorControls}
         onExceptionPress={onExceptionPress}
         onCherryPick={onCherryPick}
       />

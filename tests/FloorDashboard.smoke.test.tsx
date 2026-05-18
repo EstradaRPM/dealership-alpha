@@ -9,6 +9,8 @@ const MODEL: FloorDashboardModel = {
   day: 3,
   tick: 7,
   ticksPerDay: 20,
+  openHour: 9,
+  closeHour: 19,
   cash: 48_250,
   exceptionPending: false,
   ups: 9,
@@ -70,6 +72,28 @@ describe('FloorDashboard smoke tests', () => {
     expect(() =>
       render(
         <FloorDashboard model={MODEL} onExceptionPress={() => undefined} />,
+      ),
+    ).not.toThrow();
+  });
+
+  it('renders the live-clock control bar (#121), running and paused', () => {
+    const controls = {
+      speed: 2,
+      speeds: [1, 2, 4] as const,
+      paused: false,
+      onSetSpeed: () => undefined,
+      onTogglePause: () => undefined,
+      onSkipToClose: () => undefined,
+    };
+    expect(() =>
+      render(<FloorDashboard model={MODEL} controls={controls} />),
+    ).not.toThrow();
+    expect(() =>
+      render(
+        <FloorDashboard
+          model={MODEL}
+          controls={{ ...controls, paused: true }}
+        />,
       ),
     ).not.toThrow();
   });

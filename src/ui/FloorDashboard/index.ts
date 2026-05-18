@@ -4,4 +4,5 @@ export type {
   StaffStripEntry,
   FloorEvent,
   InventoryStats,
+  FloorControls,
 } from './FloorDashboard';

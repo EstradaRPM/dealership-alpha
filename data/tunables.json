@@ -18,6 +18,12 @@
     },
     "exceptionMustHandle": true
   },
+  "renderLoop": {
+    "baseTickIntervalMs": 250,
+    "speedMultipliers": [1, 2, 4],
+    "openHour": 9,
+    "closeHour": 19
+  },
   "handPlay": {
     "tickCostPerGate": 6,
     "defaultCustomerDifficulty": 0.5,

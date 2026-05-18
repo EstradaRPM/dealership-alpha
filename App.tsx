@@ -42,6 +42,7 @@ import type {
   FloorEvent,
 } from './src/ui/FloorDashboard';
 import { HandPlayModal, type HandPlayOutcome } from './src/ui/HandPlayModal';
+import { useFloorRenderLoop } from './src/ui/FloorRenderLoop';
 import { AuctionMenu } from './src/ui/AuctionMenu';
 import { PersonnelScreen } from './src/ui/PersonnelScreen';
 import type { CharacterProfile } from './src/game/CareerProgression';
@@ -56,6 +57,9 @@ const MASTER_SEED = 42;
 // number. false ⇒ opening the modal auto-pauses the day; true ⇒ the day
 // keeps running live behind it (the #74/#105 felt-pacing comparison path).
 const HAND_PLAY_LIVE = loadTunables().handPlay.playtestLiveDefault;
+
+// Representative open-hours window for the FLOOR-OPEN HUD clock (#121).
+const RENDER_LOOP = loadTunables().renderLoop;
 
 // Hours-of-op lever options (#120). "Wired only": the lever selects an id and
 // the composition root holds the scaled ticksPerDay. Feeding it into FloorSim
@@ -190,6 +194,18 @@ export default function App() {
   const [handSession, setHandSession] = useState<HandPlaySession | null>(null);
   const [handResult, setHandResult] = useState<AdvanceResult | null>(null);
 
+  // The live clock (#121). Drives the owned FloorSim's step() at a tunable
+  // cadence; speed/pause are pure render multipliers (game logic is
+  // wall-clock-free). A hand-play modal open in auto-pause mode holds the
+  // interval without touching the player's pause state.
+  const floorLoop = useFloorRenderLoop({
+    floor: dayLoop.currentFloor() ?? null,
+    active: dayLoop.state().phase === 'FLOOR_OPEN',
+    bus,
+    onTick: bump,
+    hold: handSession != null && !HAND_PLAY_LIVE,
+  });
+
   // Open the modal on a specific grabbable customer (forced-exception row or
   // a cherry-pick the composition root already selected). When not running
   // live, the day is already idle here (the render loop is #121) — auto-pause
@@ -298,13 +314,14 @@ export default function App() {
   }, []);
 
   const handleNextDay = () => {
-    // MANAGERIAL → FLOOR_OPEN, then run the live floor to exhaustion. The
-    // owned FloorSim emits floor:day_complete, which flips the controller
-    // back to MANAGERIAL (handled by its own subscription) and re-renders.
+    // MANAGERIAL → FLOOR_OPEN. The live render loop (#121) now drives the
+    // owned FloorSim's step() at the player's chosen cadence; the day no
+    // longer runs to exhaustion synchronously. FloorSim emits
+    // floor:day_complete on the final tick, which flips the controller back
+    // to MANAGERIAL (its own subscription) and re-renders.
     setGrossToday(0);
     setFloorEvents([]);
-    const floor = dayLoop.nextDay();
-    floor.runDay();
+    dayLoop.nextDay();
     bump();
   };
 
@@ -376,6 +393,8 @@ export default function App() {
           day: loopState.day,
           tick: floor.currentTick,
           ticksPerDay: floor.ticksPerDay,
+          openHour: RENDER_LOOP.openHour,
+          closeHour: RENDER_LOOP.closeHour,
           cash: economy.cash,
           exceptionPending: floor
             .grabbableCustomers()
@@ -446,6 +465,21 @@ export default function App() {
           onNextDay={handleNextDay}
           onOpenAuction={() => setScreen('auction')}
           floorModel={floorModel}
+          floorControls={
+            floor
+              ? {
+                  speed: floorLoop.speed,
+                  speeds: floorLoop.speeds,
+                  paused: floorLoop.paused,
+                  onSetSpeed: (s) => {
+                    if (floorLoop.paused) floorLoop.togglePause();
+                    floorLoop.setSpeed(s);
+                  },
+                  onTogglePause: floorLoop.togglePause,
+                  onSkipToClose: floorLoop.skipToClose,
+                }
+              : undefined
+          }
           recap={recap}
           onExceptionPress={openHandPlay}
           onCherryPick={floor && floor.canGrab() ? cherryPick : undefined}
