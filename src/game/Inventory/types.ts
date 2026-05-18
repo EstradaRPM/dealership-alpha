@@ -31,4 +31,17 @@ export interface LotVehicle {
   readonly category: VehicleCategory;
   readonly arrivalDay: number;
   readonly daysInInventory: number;
+  /**
+   * Market-suggested retail (vAuto-style). v1 has no market/economy engine,
+   * so this is a flat cost-basis placeholder (`purchasePrice + reconCost`);
+   * the future simulated retail-value engine drops in here without changing
+   * the Pricing lever or any consumer.
+   */
+  readonly suggestedRetail: number;
+  /**
+   * Player-set asking price (the MANAGERIAL Pricing lever, #120). Defaults to
+   * `suggestedRetail`; the player decides how to interpret the suggestion
+   * (profit vs. traffic). Deep DealEngine consumption is a downstream slice.
+   */
+  readonly askingPrice: number;
 }

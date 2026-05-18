@@ -43,6 +43,7 @@ import type {
 } from './src/ui/FloorDashboard';
 import { HandPlayModal, type HandPlayOutcome } from './src/ui/HandPlayModal';
 import { AuctionMenu } from './src/ui/AuctionMenu';
+import { PersonnelScreen } from './src/ui/PersonnelScreen';
 import type { CharacterProfile } from './src/game/CareerProgression';
 import type { SaveStore } from './src/game/SaveStore';
 import type { LotVehicle } from './src/game/Inventory';
@@ -55,6 +56,15 @@ const MASTER_SEED = 42;
 // number. false ⇒ opening the modal auto-pauses the day; true ⇒ the day
 // keeps running live behind it (the #74/#105 felt-pacing comparison path).
 const HAND_PLAY_LIVE = loadTunables().handPlay.playtestLiveDefault;
+
+// Hours-of-op lever options (#120). "Wired only": the lever selects an id and
+// the composition root holds the scaled ticksPerDay. Feeding it into FloorSim
+// is a downstream slice (FloorSim/#99 is locked and reads its own value).
+const HOURS_OF_OP = loadTunables().ownership.hoursOfOp;
+
+// Primary customer-facing role the Hiring lever recruits for (v1 slice is
+// sales-only; multi-role hiring is downstream).
+const HIRING_ROLE_ID = 'salesperson';
 
 // ── Composition root (#114) ──────────────────────────────────────────────────
 // Game modules created once at module level, outside React lifecycle.
@@ -81,6 +91,10 @@ const economy = createEconomy({ bus, startingCash: 50_000 });
 const inventory = createInventory({ bus, masterSeed: MASTER_SEED, economy });
 const dealEngine = createDealEngine({ bus, inventory, economy });
 const staffTaxonomy = loadStaffTaxonomy();
+// skill_id → cap, for the PersonnelScreen skill bars (Hiring lever, #120).
+const SKILL_CAPS: Record<string, number> = Object.fromEntries(
+  Object.entries(staffTaxonomy.skills).map(([id, s]) => [id, s.cap]),
+);
 const staffOrg = createStaffOrg({
   bus,
   economy,
@@ -145,13 +159,21 @@ const dayLoop = createDayLoopController({
   floorSeams,
 });
 
-type AppScreen = 'loading' | 'character-creation' | 'game' | 'auction';
+type AppScreen =
+  | 'loading'
+  | 'character-creation'
+  | 'game'
+  | 'auction'
+  | 'personnel';
 
 export default function App() {
   const [screen, setScreen] = useState<AppScreen>('loading');
   const [profile, setProfile] = useState<CharacterProfile | null>(null);
   const [lotVehicles, setLotVehicles] = useState<readonly LotVehicle[]>([]);
   const [cash, setCash] = useState(economy.cash);
+  // Hours-of-op lever selection (#120). Composition-root state only — the
+  // downstream slice wires HOURS_OF_OP.options[…].ticksPerDay into FloorSim.
+  const [hoursOfOpId, setHoursOfOpId] = useState(HOURS_OF_OP.defaultId);
   // Running today's gross (front + back) summed from closed deals — the
   // composed-state source for the FLOOR-OPEN HUD / stat grid (#116).
   const [grossToday, setGrossToday] = useState(0);
@@ -319,6 +341,23 @@ export default function App() {
         />
       </>
     );
+  } else if (screen === 'personnel') {
+    content = (
+      <>
+        <StatusBar style="light" />
+        <PersonnelScreen
+          roleId={HIRING_ROLE_ID}
+          candidates={staffOrg.getCandidates(HIRING_ROLE_ID)}
+          skillCaps={SKILL_CAPS}
+          cash={cash}
+          onHire={(candidateId) => {
+            staffOrg.hire(candidateId);
+            setCash(economy.cash);
+          }}
+          onClose={() => setScreen('game')}
+        />
+      </>
+    );
   } else if (screen === 'game' && profile) {
     const loopState = dayLoop.state();
     const floor = dayLoop.currentFloor();
@@ -374,6 +413,30 @@ export default function App() {
           leakCause: funnel.leakCause,
         }
       : undefined;
+    // MANAGERIAL pre-open ownership levers (#120). Assembled here in the
+    // composition root; greyed by `ownershipUnlocked` (⇔ MANAGERIAL).
+    const leverProps = {
+      enabled: loopState.ownershipUnlocked,
+      vehicles: lotVehicles.map((v) => ({
+        id: v.id,
+        year: v.year,
+        make: v.make,
+        model: v.model,
+        trim: v.trim,
+        suggestedRetail: v.suggestedRetail,
+        askingPrice: v.askingPrice,
+      })),
+      onSetAskingPrice: (vehicleId: string, price: number) => {
+        inventory.setAskingPrice(vehicleId, price);
+        setLotVehicles(inventory.getLotVehicles());
+      },
+      onOpenAuction: () => setScreen('auction'),
+      onOpenHiring: () => setScreen('personnel'),
+      rosterCount: staffOrg.currentRoster.length,
+      hoursOptions: HOURS_OF_OP.options,
+      hoursOfOpId,
+      onSelectHours: setHoursOfOpId,
+    };
     content = (
       <>
         <StatusBar style="light" />
@@ -386,6 +449,7 @@ export default function App() {
           recap={recap}
           onExceptionPress={openHandPlay}
           onCherryPick={floor && floor.canGrab() ? cherryPick : undefined}
+          leverProps={leverProps}
         />
       </>
     );

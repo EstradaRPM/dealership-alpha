@@ -11,6 +11,12 @@ export interface Inventory {
   getLotVehicle(vehicleId: string): LotVehicle | undefined;
   buyFromAuction(listingId: string): void;
   sellVehicle(vehicleId: string): LotVehicle;
+  /**
+   * Player-set asking price for a lot vehicle (MANAGERIAL Pricing lever,
+   * #120). Negative inputs are clamped to 0; an unknown vehicleId is a no-op
+   * (the lever only ever passes ids it just read from `getLotVehicles`).
+   */
+  setAskingPrice(vehicleId: string, askingPrice: number): void;
 }
 
 export interface InventoryDeps {
@@ -55,6 +61,10 @@ export function createInventory(deps: InventoryDeps): Inventory {
 
       economy.postExpense(listing.askingPrice, `Auction purchase: ${listing.id}`);
 
+      // v1 has no market engine: suggested retail is a flat cost-basis
+      // placeholder. The future retail-value engine replaces this expression
+      // only — askingPrice still defaults to the suggestion.
+      const suggestedRetail = listing.askingPrice + listing.reconCost;
       const lotVehicle: LotVehicle = {
         id: listing.id,
         templateId: listing.templateId,
@@ -70,6 +80,8 @@ export function createInventory(deps: InventoryDeps): Inventory {
         category: listing.category,
         arrivalDay: currentDay,
         daysInInventory: 0,
+        suggestedRetail,
+        askingPrice: suggestedRetail,
       };
       lotVehicles.set(lotVehicle.id, { ...lotVehicle, daysInInventory: 0 });
       auctionListings = auctionListings.filter((l) => l.id !== listingId);
@@ -87,6 +99,15 @@ export function createInventory(deps: InventoryDeps): Inventory {
       lotVehicles.delete(vehicleId);
       bus.publish('inventory:vehicle_sold', { day: currentDay, vehicleId });
       return vehicle;
+    },
+
+    setAskingPrice(vehicleId, askingPrice) {
+      const vehicle = lotVehicles.get(vehicleId);
+      if (!vehicle) return;
+      lotVehicles.set(vehicleId, {
+        ...vehicle,
+        askingPrice: Math.max(0, Math.round(askingPrice)),
+      });
     },
   };
 }

@@ -46,6 +46,26 @@ export const TunablesSchema = z.object({
     startingCash: z.number().nonnegative(),
     dailyOverheadBase: z.number().nonnegative(),
   }),
+  // Pre-open ownership levers (#120, design #107 d11). v1 = "wired only":
+  // the hours-of-op lever selects an option and the composition root holds
+  // the scaled `ticksPerDay`; actually feeding it into FloorSim is a
+  // downstream slice (FloorSim/#99 is locked and reads its own ticksPerDay).
+  ownership: z.object({
+    hoursOfOp: z.object({
+      // Selectable shift lengths. Longer day ⇒ higher ticksPerDay ⇒ more
+      // arrivals (and, downstream, more morale hit per #107 d5).
+      options: z
+        .array(
+          z.object({
+            id: z.string().min(1),
+            label: z.string().min(1),
+            ticksPerDay: z.number().int().positive(),
+          }),
+        )
+        .nonempty(),
+      defaultId: z.string().min(1),
+    }),
+  }),
 });
 
 export type Tunables = z.infer<typeof TunablesSchema>;

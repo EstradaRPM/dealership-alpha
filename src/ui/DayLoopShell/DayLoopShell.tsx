@@ -5,6 +5,7 @@ import { loadTierConfig } from '../../game/CareerProgression';
 import type { DayLoopState } from '../../game/DayLoopController';
 import { FloorDashboard, type FloorDashboardModel } from '../FloorDashboard';
 import { DayRecap, type DayRecapModel } from '../DayRecap';
+import { OwnershipLevers, type OwnershipLeversProps } from '../OwnershipLevers';
 
 const TIER_CONFIG = loadTierConfig();
 
@@ -27,6 +28,11 @@ interface Props {
    * root from the #110 funnel accessor. Absent on the night before Day 1.
    */
   recap?: DayRecapModel;
+  /**
+   * MANAGERIAL pre-open ownership levers (#120), assembled by the
+   * composition root. Omitted ⇒ no lever panel (the pre-#120 shell).
+   */
+  leverProps?: OwnershipLeversProps;
 }
 
 /**
@@ -47,6 +53,7 @@ export function DayLoopShell({
   onExceptionPress,
   onCherryPick,
   recap,
+  leverProps,
 }: Props) {
   if (state.phase === 'FLOOR_OPEN' && floorModel) {
     return (
@@ -99,15 +106,20 @@ export function DayLoopShell({
           <Text style={styles.floorOpen}>Floor open — running the day…</Text>
         )}
 
-        {state.phase === 'MANAGERIAL' && onOpenAuction && (
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={onOpenAuction}
-            accessibilityRole="button"
-          >
-            <Text style={styles.secondaryBtnText}>Visit Auction →</Text>
-          </TouchableOpacity>
-        )}
+        {state.phase === 'MANAGERIAL' &&
+          (leverProps ? (
+            <OwnershipLevers {...leverProps} />
+          ) : (
+            onOpenAuction && (
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={onOpenAuction}
+                accessibilityRole="button"
+              >
+                <Text style={styles.secondaryBtnText}>Visit Auction →</Text>
+              </TouchableOpacity>
+            )
+          ))}
       </View>
     </View>
   );

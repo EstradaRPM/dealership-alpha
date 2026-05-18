@@ -149,5 +149,15 @@
     "maxDrainPerTick": 0.60,
     "exceptionSkillExpMin": 1.0,
     "exceptionSkillExpMax": 3.0
+  },
+  "ownership": {
+    "hoursOfOp": {
+      "options": [
+        { "id": "short", "label": "8 hrs (9–5)", "ticksPerDay": 120 },
+        { "id": "standard", "label": "10 hrs (9–7)", "ticksPerDay": 180 },
+        { "id": "extended", "label": "12 hrs (9–9)", "ticksPerDay": 240 }
+      ],
+      "defaultId": "standard"
+    }
   }
 }

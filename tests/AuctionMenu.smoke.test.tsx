@@ -33,6 +33,8 @@ const mockLotVehicle: LotVehicle = {
   category: 'sedan',
   arrivalDay: 1,
   daysInInventory: 3,
+  suggestedRetail: 15000,
+  askingPrice: 15000,
 };
 
 describe('AuctionMenu — smoke', () => {

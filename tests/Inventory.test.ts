@@ -181,3 +181,35 @@ describe('Inventory — DII aging', () => {
     expect(inventory.getLotVehicle(second.id)!.daysInInventory).toBe(1);
   });
 });
+
+// ── Pricing surface (#120) ────────────────────────────────────────────────────
+
+describe('Inventory — pricing surface', () => {
+  it('a freshly bought vehicle defaults askingPrice to suggestedRetail', () => {
+    const { clock, inventory } = makeSetup();
+    clock.advanceDay();
+    const [listing] = inventory.getAuctionListings();
+    inventory.buyFromAuction(listing.id);
+    const v = inventory.getLotVehicle(listing.id)!;
+    expect(v.suggestedRetail).toBe(listing.askingPrice + listing.reconCost);
+    expect(v.askingPrice).toBe(v.suggestedRetail);
+  });
+
+  it('setAskingPrice updates the lot vehicle (rounded, clamped at 0)', () => {
+    const { clock, inventory } = makeSetup();
+    clock.advanceDay();
+    const [listing] = inventory.getAuctionListings();
+    inventory.buyFromAuction(listing.id);
+
+    inventory.setAskingPrice(listing.id, 18_499.6);
+    expect(inventory.getLotVehicle(listing.id)!.askingPrice).toBe(18_500);
+
+    inventory.setAskingPrice(listing.id, -500);
+    expect(inventory.getLotVehicle(listing.id)!.askingPrice).toBe(0);
+  });
+
+  it('setAskingPrice on an unknown vehicleId is a no-op', () => {
+    const { inventory } = makeSetup();
+    expect(() => inventory.setAskingPrice('no-such-id', 1000)).not.toThrow();
+  });
+});
