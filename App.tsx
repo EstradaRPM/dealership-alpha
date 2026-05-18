@@ -52,6 +52,7 @@ import { AdminConsole } from './src/ui/AdminConsole';
 import { createTelemetry } from './src/game/Telemetry';
 import { createKPIDashboard } from './src/game/KPIDashboard';
 import { MonthCloseInterstitial } from './src/ui/MonthCloseInterstitial';
+import { useNavigator } from './src/ui/Navigator';
 
 const MASTER_SEED = 42;
 
@@ -177,15 +178,9 @@ const dayLoop = createDayLoopController({
   floorSeams,
 });
 
-type AppScreen =
-  | 'loading'
-  | 'character-creation'
-  | 'game'
-  | 'auction'
-  | 'personnel';
-
 export default function App() {
-  const [screen, setScreen] = useState<AppScreen>('loading');
+  const nav = useNavigator('loading');
+  const screen = nav.current.route;
   const [profile, setProfile] = useState<CharacterProfile | null>(null);
   const [lotVehicles, setLotVehicles] = useState<readonly LotVehicle[]>([]);
   const [cash, setCash] = useState(economy.cash);
@@ -257,7 +252,7 @@ export default function App() {
     saveStore.load().then(async (state) => {
       if (state?.character) {
         setProfile(state.character as CharacterProfile);
-        setScreen('game');
+        nav.reset('game');
         // Mid-day cold-start resume (#122): if a checkpoint exists for the
         // day the clock currently sits on, recreate the FloorSim and replay
         // its action log to land in the byte-exact pre-background state. A
@@ -273,7 +268,7 @@ export default function App() {
           await checkpointStore.clear();
         }
       } else {
-        setScreen('character-creation');
+        nav.reset('character-creation');
       }
     });
   }, []);
@@ -385,7 +380,7 @@ export default function App() {
 
   const handleSaveCleared = () => {
     setProfile(null);
-    setScreen('character-creation');
+    nav.reset('character-creation');
   };
 
   let content: React.ReactNode = <View style={styles.container} />;
@@ -398,7 +393,7 @@ export default function App() {
           saveStore={saveStore}
           onComplete={(p: CharacterProfile) => {
             setProfile(p);
-            setScreen('game');
+            nav.reset('game');
           }}
         />
       </>
@@ -412,7 +407,7 @@ export default function App() {
           lotVehicles={lotVehicles}
           cash={cash}
           onBuy={(listingId) => inventory.buyFromAuction(listingId)}
-          onClose={() => setScreen('game')}
+          onClose={() => nav.back()}
         />
       </>
     );
@@ -429,7 +424,7 @@ export default function App() {
             staffOrg.hire(candidateId);
             setCash(economy.cash);
           }}
-          onClose={() => setScreen('game')}
+          onClose={() => nav.back()}
         />
       </>
     );
@@ -507,8 +502,8 @@ export default function App() {
         inventory.setAskingPrice(vehicleId, price);
         setLotVehicles(inventory.getLotVehicles());
       },
-      onOpenAuction: () => setScreen('auction'),
-      onOpenHiring: () => setScreen('personnel'),
+      onOpenAuction: () => nav.navigate('auction'),
+      onOpenHiring: () => nav.navigate('personnel'),
       rosterCount: staffOrg.currentRoster.length,
       hoursOptions: HOURS_OF_OP.options,
       hoursOfOpId,
@@ -521,7 +516,7 @@ export default function App() {
           profile={profile}
           state={loopState}
           onNextDay={handleNextDay}
-          onOpenAuction={() => setScreen('auction')}
+          onOpenAuction={() => nav.navigate('auction')}
           floorModel={floorModel}
           floorControls={
             floor
