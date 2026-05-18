@@ -50,6 +50,8 @@ import type { SaveStore, MidDayCheckpoint } from './src/game/SaveStore';
 import type { LotVehicle } from './src/game/Inventory';
 import { AdminConsole } from './src/ui/AdminConsole';
 import { createTelemetry } from './src/game/Telemetry';
+import { createKPIDashboard } from './src/game/KPIDashboard';
+import { MonthCloseInterstitial } from './src/ui/MonthCloseInterstitial';
 
 const MASTER_SEED = 42;
 
@@ -130,6 +132,12 @@ const capacityManager = createCapacityManager({
   legacyAdmitGate: false,
 });
 const telemetry = createTelemetry({ bus });
+// Month-close hook (#123): the KPIDashboard game module supplies the
+// month-to-date snapshot the interstitial composes (no new rich content).
+const kpiDashboard = createKPIDashboard({ bus, staffOrg });
+// Month-close cadence — sourced from the same tunable GameClock uses, never
+// a magic number. clock:month_ended fires on endingDay % daysPerMonth === 0.
+const DAYS_PER_MONTH = loadTunables().clock.daysPerMonth;
 
 // CustomerPool behind FloorSim's #99 customer-source seam: FloorSim's own
 // arrival RNG decides the admitted count per tick; the adapter only mints
@@ -199,6 +207,10 @@ export default function App() {
   // and dispatches the picked approach back through advance().
   const [handSession, setHandSession] = useState<HandPlaySession | null>(null);
   const [handResult, setHandResult] = useState<AdvanceResult | null>(null);
+  // Month-close interstitial (#123): the 1-based month that just closed, or
+  // null when none is pending. Set on clock:month_ended, cleared on dismiss —
+  // the MANAGERIAL interrupt point between the day-recap and next-day prep.
+  const [monthClose, setMonthClose] = useState<number | null>(null);
 
   // The live clock (#121). Drives the owned FloorSim's step() at a tunable
   // cadence; speed/pause are pure render multipliers (game logic is
@@ -209,7 +221,7 @@ export default function App() {
     active: dayLoop.state().phase === 'FLOOR_OPEN',
     bus,
     onTick: bump,
-    hold: handSession != null && !HAND_PLAY_LIVE,
+    hold: (handSession != null && !HAND_PLAY_LIVE) || monthClose != null,
   });
 
   // Open the modal on a specific grabbable customer (forced-exception row or
@@ -318,7 +330,16 @@ export default function App() {
         },
       ]);
 
+    // Month-close hook (#123): clock:month_ended fans out during the Next Day
+    // transition (advanceDay) when the ending day completes a month. Latching
+    // the interstitial here interrupts at MANAGERIAL — the render loop holds
+    // (see useFloorRenderLoop hold) so the new month's floor stays paused
+    // behind the screen until the player dismisses it.
+    const onMonthEnded = ({ day }: { day: number }) =>
+      setMonthClose(Math.ceil(day / DAYS_PER_MONTH));
+
     bus.subscribe('floor:day_complete', onDayComplete);
+    bus.subscribe('clock:month_ended', onMonthEnded);
     bus.subscribe('inventory:vehicle_purchased', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_sold', onVehicleSold);
     bus.subscribe('economy:revenue_posted', onRevenue);
@@ -327,6 +348,7 @@ export default function App() {
     bus.subscribe('floor:exception_raised', onExceptionRaised);
     return () => {
       bus.unsubscribe('floor:day_complete', onDayComplete);
+      bus.unsubscribe('clock:month_ended', onMonthEnded);
       bus.unsubscribe('inventory:vehicle_purchased', onVehiclePurchased);
       bus.unsubscribe('inventory:vehicle_sold', onVehicleSold);
       bus.unsubscribe('economy:revenue_posted', onRevenue);
@@ -565,6 +587,17 @@ export default function App() {
           onChoose={chooseApproach}
           onClose={closeHandPlay}
         />
+        {monthClose != null && (
+          <MonthCloseInterstitial
+            model={{
+              month: monthClose,
+              tier: 1,
+              isUnlocked: kpiDashboard.isUnlocked,
+              snapshot: kpiDashboard.getSnapshot(),
+            }}
+            onDismiss={() => setMonthClose(null)}
+          />
+        )}
         {__DEV__ && (
           <AdminConsole
             bus={bus}
