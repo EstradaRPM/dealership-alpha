@@ -79,8 +79,36 @@ seams; it never builds them and never touches FloorSim/#99. The composition
 root (#114) supplies the provider that wires CapacityManager /
 StaffDispatch / CustomerPool behind the locked #99 seams.
 
+## Deterministic cold-start replay (#122)
+
+The controller transparently records the two player verbs by wrapping the
+FloorSim it owns (`grab`, and `advance` via the wrapped `HandPlaySession`) —
+the UI keeps calling them unchanged; FloorSim/#99 is wrapped, never modified.
+Each entry logs the floor's `currentTick` at dispatch (`advance` burns its
+tick-cost burst *after* this).
+
+- `checkpoint() → MidDayCheckpoint | null` — the live mid-day state in the
+  #109 schema (`{ seed, day, dayContext, currentTick, actionLog }`).
+  `dayContext` is the exact projected #99 ctx, checkpointed verbatim. `null`
+  unless FLOOR_OPEN with a live (not-yet-complete) floor.
+- `resume(cp) → FloorSim` — recreate the day's FloorSim from
+  `(seed, day, dayContext)` via the normal seam path (ctx used verbatim, never
+  re-derived), replay the ordered log (step to each action's `atTick`, re-issue
+  the verb), then step out to `currentTick` — byte-exact, headless, instant.
+  Requires the injected clock to already sit on `cp.day` (the composition root
+  positions it from the main save first; throws otherwise). Leaves the
+  controller FLOOR_OPEN with recording live, so a later checkpoint captures the
+  full history. Idempotent.
+
+Composition root wires it: `AppState` background/inactive → persist
+`checkpoint()` to a separate sqlite cell; cold start → if a checkpoint exists
+for the clock's current day, `resume()` it (a stale one the clock can't honor
+is discarded, never misapplied — broader mid-game clock/economy persistence is
+a later slice); `floor:day_complete` clears the cell.
+
 ## Public API (`index.ts`)
 - `createDayLoopController({ bus, seed, clock, demandSource?, decisionSink? })`.
+- `checkpoint()` / `resume(cp)` (#122); type `ReplayAction`.
 - `createStubDemandSource()` / `createNullDecisionSink()` — v1 stubs.
 - Types: `DayLoopController`, `DayLoopState`, `LifecyclePhase`,
   `FloorSeamProvider`, `DemandSource`, `DecisionSink`, `DayDecision`,

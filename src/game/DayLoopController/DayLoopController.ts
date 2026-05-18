@@ -7,7 +7,13 @@ import {
   type CapacityGate,
   type DeptDrain,
   type CustomerSource,
+  type HandPlaySession,
 } from '../FloorSim';
+import type {
+  MidDayCheckpoint,
+  CheckpointAction,
+  SaveState,
+} from '../SaveStore';
 
 // ── DemandContext: the locked #125 "morning slip" ────────────────────────────
 //
@@ -192,6 +198,28 @@ export function createNullDecisionSink(): DecisionSink {
   return { record: () => {} };
 }
 
+// ── Deterministic replay (#122) ──────────────────────────────────────────────
+//
+// FloorSim's #99 determinism contract: the auto path is deterministic from
+// `(seed, day, ctx)`; the interactive path from that plus the ordered
+// player-action log (player actions never draw the arrival/drain RNG). So a
+// mid-day floor state is fully reproducible by recreating the FloorSim with
+// the same `(seed, day, ctx)` and re-issuing the recorded grab/advance verbs
+// at the ticks they were dispatched, then stepping out to `currentTick`.
+//
+// The controller owns the FloorSim it creates, so it transparently records
+// the two player verbs by wrapping the floor it hands out — the UI keeps
+// calling `grab`/`advance` unchanged, and the whole replay concern stays
+// sealed here. FloorSim / #99 is untouched: we wrap, never modify.
+
+/** One entry in the ordered player-action log. `atTick` is the floor's
+ *  `currentTick` at dispatch — `advance()` burns tick-cost ticks *after* this,
+ *  so replay steps up to `atTick` then re-issues the verb, reproducing the
+ *  same internal burst. */
+export type ReplayAction =
+  | { readonly type: 'grab'; readonly customerId: string; readonly atTick: number }
+  | { readonly type: 'advance'; readonly choiceId: string; readonly atTick: number };
+
 // ── Controller ───────────────────────────────────────────────────────────────
 
 /** The two-state per-day lifecycle (#107 decision 11). MANAGERIAL = lot
@@ -269,6 +297,26 @@ export interface DayLoopController {
   /** Hand the day's outcome to the decision sink (success-coupling /
    *  marketing-lag math is entirely behind the seam). */
   endDay(outcome: DayOutcome): void;
+  /**
+   * The current mid-day checkpoint (#122), or `null` when there is nothing
+   * resumable (MANAGERIAL, no floor yet, or the day already completed). The
+   * payload is the #109 schema: `{ seed, day, dayContext, currentTick,
+   * actionLog }` — the substrate `resume()` replays from. Pure read; the
+   * composition root decides when to persist it (on background).
+   */
+  checkpoint(): MidDayCheckpoint | null;
+  /**
+   * Cold-start mid-day resume (#122): recreate the day's FloorSim from the
+   * checkpoint's `(seed, day, dayContext)` via the normal seam path, replay
+   * the ordered action log (stepping deterministically to each action's tick,
+   * re-issuing the grab/advance verb), then step out to `currentTick` —
+   * landing in the byte-exact pre-background state. Headless/instant; no
+   * FloorSim/#99 change. Requires the injected clock to already sit on
+   * `checkpoint.day` (the composition root positions it from the main save
+   * before composing). Leaves the controller FLOOR_OPEN with recording live so
+   * a later checkpoint captures the full history.
+   */
+  resume(checkpoint: MidDayCheckpoint): FloorSim;
 }
 
 /**
@@ -284,7 +332,16 @@ export function createDayLoopController(
   const decisionSink = deps.decisionSink ?? createNullDecisionSink();
 
   let slip: DemandContext | undefined;
+  // The unwrapped FloorSim we own; `floor` is the recording wrapper handed to
+  // consumers. Recording reads tick off the raw floor so an advance() logs the
+  // pre-burst tick (FloorSim.advance burns tick-cost ticks itself).
+  let rawFloor: FloorSim | undefined;
   let floor: FloorSim | undefined;
+  // The exact #99 ctx the current floor was built with — checkpointed verbatim
+  // so resume() rebuilds byte-identically instead of re-deriving from the slip.
+  let currentCtx: DayContext | undefined;
+  // Ordered player-action log for the live day; reset each beginDay/resume.
+  let actionLog: ReplayAction[] = [];
   let phase: LifecyclePhase = 'MANAGERIAL';
   // No day has been played at cold start ⇒ "night before Day 1", no recap.
   let everCompleted = false;
@@ -314,6 +371,70 @@ export function createDayLoopController(
     };
   }
 
+  /** Transparent recording wrapper over a hand-play session: logs each
+   *  `advance` with the floor's pre-burst tick, then delegates unchanged. */
+  function recordingSession(s: HandPlaySession): HandPlaySession {
+    return {
+      get customerId() {
+        return s.customerId;
+      },
+      get currentGate() {
+        return s.currentGate;
+      },
+      get choices() {
+        return s.choices;
+      },
+      advance(choiceId) {
+        actionLog.push({
+          type: 'advance',
+          choiceId,
+          atTick: rawFloor ? rawFloor.currentTick : 0,
+        });
+        return s.advance(choiceId);
+      },
+    };
+  }
+
+  /** Transparent recording wrapper over the owned FloorSim: every member
+   *  delegates unchanged; only the two player verbs (`grab`, and `advance` via
+   *  the wrapped session) append to the action log. FloorSim/#99 untouched. */
+  function recordingFloor(f: FloorSim): FloorSim {
+    return {
+      get ticksPerDay() {
+        return f.ticksPerDay;
+      },
+      get currentTick() {
+        return f.currentTick;
+      },
+      get dayComplete() {
+        return f.dayComplete;
+      },
+      get totalArrivals() {
+        return f.totalArrivals;
+      },
+      get totalWalked() {
+        return f.totalWalked;
+      },
+      get totalResolved() {
+        return f.totalResolved;
+      },
+      get totalEscalated() {
+        return f.totalEscalated;
+      },
+      get spareTickBudget() {
+        return f.spareTickBudget;
+      },
+      step: () => f.step(),
+      runDay: () => f.runDay(),
+      grabbableCustomers: () => f.grabbableCustomers(),
+      canGrab: () => f.canGrab(),
+      grab(customerId) {
+        actionLog.push({ type: 'grab', customerId, atTick: f.currentTick });
+        return recordingSession(f.grab(customerId));
+      },
+    };
+  }
+
   function beginDay({
     day,
     department = 'sales',
@@ -323,7 +444,10 @@ export function createDayLoopController(
   }): FloorSim {
     slip = demandSource.slipFor({ day, department });
     const seams = deps.floorSeams?.(slip) ?? {};
-    floor = createFloorSim({ bus, seed, ctx: project(slip), ...seams });
+    currentCtx = project(slip);
+    actionLog = [];
+    rawFloor = createFloorSim({ bus, seed, ctx: currentCtx, ...seams });
+    floor = recordingFloor(rawFloor);
     return floor;
   }
 
@@ -361,6 +485,74 @@ export function createDayLoopController(
         department: slip.department,
         outcome,
       });
+    },
+    checkpoint() {
+      if (
+        phase !== 'FLOOR_OPEN' ||
+        !rawFloor ||
+        !slip ||
+        !currentCtx ||
+        rawFloor.dayComplete
+      ) {
+        return null;
+      }
+      return {
+        seed,
+        day: slip.day,
+        dayContext: currentCtx as unknown as SaveState,
+        currentTick: rawFloor.currentTick,
+        actionLog: actionLog.slice() as unknown as readonly CheckpointAction[],
+      };
+    },
+    resume(checkpoint) {
+      if (clock.currentDay !== checkpoint.day) {
+        throw new Error(
+          `resume: clock on day ${clock.currentDay}, checkpoint day ` +
+            `${checkpoint.day} — position the clock from the main save first`,
+        );
+      }
+      const ctx = checkpoint.dayContext as unknown as DayContext;
+      const log = checkpoint.actionLog as unknown as readonly ReplayAction[];
+      // Recreate the day's FloorSim via the normal seam path, but with the
+      // checkpointed ctx verbatim (byte-determinism: never re-derive it).
+      const restoredSlip = demandSource.slipFor({
+        day: checkpoint.day,
+        department: 'sales',
+      });
+      const seams = deps.floorSeams?.(restoredSlip) ?? {};
+      const f = createFloorSim({ bus, seed, ctx, ...seams });
+
+      // Replay: step deterministically to each action's dispatch tick, then
+      // re-issue the verb. grab() doesn't burn ticks; advance() burns its own
+      // tick-cost burst, so the next action's atTick already accounts for it.
+      let session: HandPlaySession | null = null;
+      for (const a of log) {
+        while (f.currentTick < a.atTick && !f.dayComplete) f.step();
+        if (a.type === 'grab') {
+          session = f.grab(a.customerId);
+        } else {
+          if (!session) {
+            throw new Error(
+              'resume: advance replayed with no active hand-play session',
+            );
+          }
+          session.advance(a.choiceId);
+        }
+      }
+      while (f.currentTick < checkpoint.currentTick && !f.dayComplete) {
+        f.step();
+      }
+
+      slip = restoredSlip;
+      currentCtx = ctx;
+      rawFloor = f;
+      floor = recordingFloor(f);
+      actionLog = log.slice();
+      // A mid-day checkpoint implies the MANAGERIAL→FLOOR_OPEN transition
+      // already happened this day; recaps exist for any prior completed day.
+      everCompleted = checkpoint.day > 1;
+      phase = 'FLOOR_OPEN';
+      return floor;
     },
   };
 }

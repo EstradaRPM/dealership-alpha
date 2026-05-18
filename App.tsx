@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createSaveStore, createSqliteDriver } from './src/game/SaveStore';
@@ -46,7 +46,7 @@ import { useFloorRenderLoop } from './src/ui/FloorRenderLoop';
 import { AuctionMenu } from './src/ui/AuctionMenu';
 import { PersonnelScreen } from './src/ui/PersonnelScreen';
 import type { CharacterProfile } from './src/game/CareerProgression';
-import type { SaveStore } from './src/game/SaveStore';
+import type { SaveStore, MidDayCheckpoint } from './src/game/SaveStore';
 import type { LotVehicle } from './src/game/Inventory';
 import { AdminConsole } from './src/ui/AdminConsole';
 import { createTelemetry } from './src/game/Telemetry';
@@ -73,6 +73,12 @@ const HIRING_ROLE_ID = 'salesperson';
 // ── Composition root (#114) ──────────────────────────────────────────────────
 // Game modules created once at module level, outside React lifecycle.
 const saveStore: SaveStore = createSaveStore(createSqliteDriver());
+// Mid-day checkpoint cell (#122) — a physically separate sqlite db so the
+// in-progress FloorSim checkpoint can never collide with the main save blob
+// (the #109 own-cell discipline; per-slot indexing arrives with slot wiring).
+const checkpointStore: SaveStore = createSaveStore(
+  createSqliteDriver({ databaseName: 'dealership.checkpoint.db' }),
+);
 const bus = createEventBus();
 // Default initialDay = 1: the clock sits on "night before Day 1" so the
 // DayLoopController cold-start (skip-advance on the first nextDay) plays Day 1
@@ -236,10 +242,24 @@ export default function App() {
   };
 
   useEffect(() => {
-    saveStore.load().then((state) => {
+    saveStore.load().then(async (state) => {
       if (state?.character) {
         setProfile(state.character as CharacterProfile);
         setScreen('game');
+        // Mid-day cold-start resume (#122): if a checkpoint exists for the
+        // day the clock currently sits on, recreate the FloorSim and replay
+        // its action log to land in the byte-exact pre-background state. A
+        // stale checkpoint (the clock can't honor it — broader mid-game
+        // clock/economy persistence is a later slice) is discarded, never
+        // misapplied.
+        const raw = await checkpointStore.load();
+        const cp = raw as unknown as MidDayCheckpoint | null;
+        if (cp && cp.day === clock.currentDay) {
+          dayLoop.resume(cp);
+          bump();
+        } else if (cp) {
+          await checkpointStore.clear();
+        }
       } else {
         setScreen('character-creation');
       }
@@ -252,6 +272,9 @@ export default function App() {
       bump();
       setLotVehicles(inventory.getLotVehicles());
       setCash(economy.cash);
+      // Day closed → the mid-day checkpoint is obsolete (#122 / #109: caller
+      // clears it on day-complete).
+      void checkpointStore.clear();
     };
     const onVehiclePurchased = () => {
       setLotVehicles(inventory.getLotVehicles());
@@ -311,6 +334,19 @@ export default function App() {
       bus.unsubscribe('floor:customer_walked', onWalked);
       bus.unsubscribe('floor:exception_raised', onExceptionRaised);
     };
+  }, []);
+
+  // Pause-on-background → persist the mid-day checkpoint (#122). The OS gives
+  // no reliable "about to be killed" hook, so we snapshot on every
+  // background/inactive transition while the floor is open; resume replays it
+  // deterministically on the next cold start.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'background' && next !== 'inactive') return;
+      const cp = dayLoop.checkpoint();
+      if (cp) void checkpointStore.save(cp as unknown as Record<string, unknown>);
+    });
+    return () => sub.remove();
   }, []);
 
   const handleNextDay = () => {

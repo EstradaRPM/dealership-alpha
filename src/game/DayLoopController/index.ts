@@ -9,6 +9,7 @@ export type {
   FloorSeamProvider,
   DayLoopState,
   LifecyclePhase,
+  ReplayAction,
   DemandSource,
   DecisionSink,
   DayDecision,
