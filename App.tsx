@@ -46,6 +46,8 @@ import { useFloorRenderLoop } from './src/ui/FloorRenderLoop';
 import { AuctionMenu } from './src/ui/AuctionMenu';
 import { PersonnelScreen } from './src/ui/PersonnelScreen';
 import type { CharacterProfile } from './src/game/CareerProgression';
+import { createTierManager } from './src/game/CareerProgression';
+import { createReputation } from './src/game/Reputation';
 import type { SaveStore, MidDayCheckpoint } from './src/game/SaveStore';
 import type { LotVehicle } from './src/game/Inventory';
 import { AdminConsole } from './src/ui/AdminConsole';
@@ -143,6 +145,12 @@ const capacityManager = createCapacityManager({
   facilityTier: 1,
   legacyAdmitGate: false,
 });
+// Reputation + player tier: instantiated here so Home can surface the
+// day-to-day consequences of the loop (#77). Reputation drifts overnight and
+// takes deal/walk hits via the bus; TierManager evaluates tier-up on the
+// payroll-night cadence.
+const reputation = createReputation({ bus, economy });
+const tierManager = createTierManager({ bus, economy, reputation });
 const telemetry = createTelemetry({ bus });
 // Month-close hook (#123): the KPIDashboard game module supplies the
 // month-to-date snapshot the interstitial composes (no new rich content).
@@ -555,6 +563,9 @@ export default function App() {
         <DayLoopShell
           profile={profile}
           state={loopState}
+          tier={tierManager.currentTier}
+          cash={economy.cash}
+          reputation={reputation.reviewScore}
           onNextDay={handleNextDay}
           onOpenAuction={() => nav.navigate('auction')}
           floorModel={floorModel}

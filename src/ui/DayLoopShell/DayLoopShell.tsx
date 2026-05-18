@@ -21,6 +21,10 @@ interface Props {
   businessName?: string;
   accentColor?: string;
   tier?: number;
+  /** Day-to-day consequence readout on Home (#77). Absent ⇒ strip hidden. */
+  cash?: number;
+  /** Player-facing reputation (review score, 0–100) for the Home strip (#77). */
+  reputation?: number;
   /** FLOOR-OPEN read-model (#116), assembled by the composition root. */
   floorModel?: FloorDashboardModel;
   /** Live-clock speed/pause controls (#121), wired by the composition root. */
@@ -55,6 +59,8 @@ export function DayLoopShell({
   businessName,
   accentColor,
   tier = 1,
+  cash,
+  reputation,
   floorModel,
   floorControls,
   onExceptionPress,
@@ -88,6 +94,28 @@ export function DayLoopShell({
         <Text style={styles.tierLabel}>
           Tier {tier} — {tierEntry.label}
         </Text>
+        {(cash != null || reputation != null) && (
+          <View style={styles.statStrip}>
+            {cash != null && (
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>CASH</Text>
+                <Text style={styles.statValue}>
+                  ${Math.round(cash).toLocaleString()}
+                </Text>
+              </View>
+            )}
+            {reputation != null && (
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>REPUTATION</Text>
+                <Text style={styles.statValue}>{Math.round(reputation)}</Text>
+              </View>
+            )}
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>TIER</Text>
+              <Text style={styles.statValue}>{tier}</Text>
+            </View>
+          </View>
+        )}
       </View>
 
       <View style={styles.body}>
@@ -143,6 +171,24 @@ const styles = StyleSheet.create({
     marginTop: 2,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
+  },
+  statStrip: {
+    flexDirection: 'row',
+    marginTop: 14,
+    gap: 28,
+  },
+  stat: {},
+  statLabel: {
+    fontSize: 11,
+    color: '#777',
+    letterSpacing: 1,
+  },
+  statValue: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
   },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   phase: {
