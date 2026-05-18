@@ -13,6 +13,8 @@ export type {
   DriverFactory,
   MultiSlotSaveStore,
   SlotMetadata,
+  MidDayCheckpoint,
+  CheckpointAction,
   SnapshotStore,
   WeeklySnapshot,
   LegacyStore,

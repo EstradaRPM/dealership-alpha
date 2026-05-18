@@ -15,10 +15,11 @@ Persistence layer. The **only** module that touches storage drivers (SQLite or i
   - `selectSlot(id)` / `getActiveSlotId()` — active selection persists across cold start.
   - `deleteSlot(id)` — wipes only that slot's blob; clears active selection iff it was the deleted slot; recreated ids never reuse a deleted blob.
   - `save(state, { day })` / `load()` — addresses the active slot and refreshes its metadata.
+  - `writeCheckpoint(cp)` / `readCheckpoint()` / `clearCheckpoint()` — per-slot mid-day checkpoint (#109). Lives in its own cell (`checkpoint:<id>`), independent across slots, separate from the main save blob; `deleteSlot` wipes it too. Payload `MidDayCheckpoint = { seed, day, dayContext, currentTick, actionLog }` — `dayContext`/`actionLog` are opaque serializable data SaveStore round-trips but never inspects. Schema + accessors only; replay logic is #122. Caller clears it on day-complete.
 - Drivers: `createInMemoryDriver` (single-cell, tests), `createSqliteDriver` (production via `expo-sqlite`). Options: `SqliteDriverOptions`.
 - Driver factories (for multi-slot — one isolated cell per key): `createInMemoryDriverFactory` (tests), `createSqliteDriverFactory` (per-key db file).
 - Migration helpers: `CURRENT_SAVE_VERSION`, `migrate`, `wrap`. Types: `Migration`, `SaveEnvelope`.
-- Types: `SaveStore`, `SaveState`, `StorageDriver`, `DriverFactory`, `MultiSlotSaveStore`, `SlotMetadata`, `SnapshotStore`, `WeeklySnapshot`.
+- Types: `SaveStore`, `SaveState`, `StorageDriver`, `DriverFactory`, `MultiSlotSaveStore`, `SlotMetadata`, `MidDayCheckpoint`, `CheckpointAction`, `SnapshotStore`, `WeeklySnapshot`.
 
 ## Events
 None — SaveStore is invoked imperatively by orchestration code, not via the bus.

@@ -56,9 +56,32 @@ export interface SlotMetadata {
 export type DriverFactory = (key: string) => StorageDriver;
 
 /**
+ * One entry in the ordered player-action log. SaveStore round-trips these
+ * verbatim and never inspects them; the deterministic-replay slice (#122)
+ * defines and interprets the concrete shape.
+ */
+export type CheckpointAction = Record<string, unknown>;
+
+/**
+ * Lightweight mid-day checkpoint written on background and consumed by
+ * deterministic cold-start replay (#122). Everything here is plain
+ * serializable data the slot round-trips losslessly; SaveStore treats
+ * `dayContext` and each `actionLog` entry as opaque.
+ */
+export interface MidDayCheckpoint {
+  seed: number;
+  day: number;
+  /** Opaque #99 DayContext for the in-progress day. */
+  dayContext: SaveState;
+  currentTick: number;
+  /** Player actions in dispatch order; replayed to `currentTick` by #122. */
+  actionLog: readonly CheckpointAction[];
+}
+
+/**
  * Multi-slot save management sitting above the single-blob SaveStore.
  * Active-slot selection persists across cold start; deleting a slot is
- * isolated. The future per-slot mid-day checkpoint and cloud-sync driver
+ * isolated. The per-slot mid-day checkpoint and a future cloud-sync driver
  * drop in below this interface without consumer changes.
  */
 export interface MultiSlotSaveStore {
@@ -71,6 +94,12 @@ export interface MultiSlotSaveStore {
   save(state: SaveState, meta: { day: number }): Promise<void>;
   /** Load the active slot's game state, or null if none / not selected. */
   load(): Promise<SaveState | null>;
+  /** Write the mid-day checkpoint for the active slot (overwrites prior). */
+  writeCheckpoint(checkpoint: MidDayCheckpoint): Promise<void>;
+  /** Read the active slot's mid-day checkpoint, or null if none. */
+  readCheckpoint(): Promise<MidDayCheckpoint | null>;
+  /** Clear the active slot's mid-day checkpoint (called on day-complete). */
+  clearCheckpoint(): Promise<void>;
 }
 
 export interface LegacyEntry {

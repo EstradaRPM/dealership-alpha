@@ -172,3 +172,94 @@ describe('MultiSlotSaveStore', () => {
     expect(await reloaded.load()).toEqual({ resumed: 'bob' });
   });
 });
+
+describe('MultiSlotSaveStore mid-day checkpoint (#109)', () => {
+  const sampleCheckpoint = (overrides = {}) => ({
+    seed: 42,
+    day: 3,
+    dayContext: { reputation: 0.7, marketShare: 0.12, season: 'spring' },
+    currentTick: 57,
+    actionLog: [
+      { kind: 'grab', customerId: 'c1', tick: 10 },
+      { kind: 'approach', choiceId: 'lowball', tick: 12 },
+      { kind: 'skipToClose', tick: 40 },
+    ],
+    ...overrides,
+  });
+
+  it('round-trips write → cold read losslessly', async () => {
+    const factory = createInMemoryDriverFactory();
+    const store = createMultiSlotSaveStore(factory);
+    await store.createSlot('Alice');
+    const cp = sampleCheckpoint();
+    await store.writeCheckpoint(cp);
+
+    // Cold restart over the same backing storage.
+    const reloaded = createMultiSlotSaveStore(factory);
+    const read = await reloaded.readCheckpoint();
+    expect(read).toEqual(cp);
+    // Deterministic: a second read yields the identical structure.
+    expect(await reloaded.readCheckpoint()).toEqual(cp);
+  });
+
+  it('returns null when the active slot has no checkpoint', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    await store.createSlot('Alice');
+    expect(await store.readCheckpoint()).toBeNull();
+  });
+
+  it('writeCheckpoint overwrites the prior checkpoint', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    await store.createSlot('Alice');
+    await store.writeCheckpoint(sampleCheckpoint());
+    await store.writeCheckpoint(sampleCheckpoint({ currentTick: 99 }));
+    expect((await store.readCheckpoint())?.currentTick).toBe(99);
+  });
+
+  it('clearCheckpoint removes the active slot checkpoint', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    await store.createSlot('Alice');
+    await store.writeCheckpoint(sampleCheckpoint());
+    await store.clearCheckpoint();
+    expect(await store.readCheckpoint()).toBeNull();
+  });
+
+  it('keeps checkpoints independent per slot', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    const a = await store.createSlot('Alice');
+    const b = await store.createSlot('Bob');
+
+    await store.selectSlot(a.id);
+    await store.writeCheckpoint(sampleCheckpoint({ day: 1, currentTick: 5 }));
+    await store.selectSlot(b.id);
+    await store.writeCheckpoint(sampleCheckpoint({ day: 2, currentTick: 80 }));
+
+    await store.selectSlot(a.id);
+    expect(await store.readCheckpoint()).toMatchObject({ day: 1, currentTick: 5 });
+    // Clearing one slot's checkpoint leaves the sibling's intact.
+    await store.clearCheckpoint();
+    await store.selectSlot(b.id);
+    expect(await store.readCheckpoint()).toMatchObject({ day: 2, currentTick: 80 });
+  });
+
+  it('does not address a checkpoint with no active slot', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    expect(await store.readCheckpoint()).toBeNull();
+    await expect(store.writeCheckpoint(sampleCheckpoint())).rejects.toThrow(
+      /no active slot/,
+    );
+    // Clearing with no active slot is a harmless no-op.
+    await expect(store.clearCheckpoint()).resolves.toBeUndefined();
+  });
+
+  it('deleteSlot wipes the slot checkpoint so a recreated id is clean', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    const a = await store.createSlot('Alice');
+    await store.writeCheckpoint(sampleCheckpoint());
+    await store.deleteSlot(a.id);
+
+    const recreated = await store.createSlot('Alice2');
+    await store.selectSlot(recreated.id);
+    expect(await store.readCheckpoint()).toBeNull();
+  });
+});

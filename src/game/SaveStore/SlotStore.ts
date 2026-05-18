@@ -1,6 +1,7 @@
 import { createSaveStore } from './SaveStore';
 import type {
   DriverFactory,
+  MidDayCheckpoint,
   MultiSlotSaveStore,
   SaveState,
   SlotMetadata,
@@ -21,6 +22,13 @@ const EMPTY_INDEX: SlotIndex = { v: 1, seq: 0, activeSlotId: null, slots: [] };
 
 function slotKey(id: string): string {
   return `slot:${id}`;
+}
+
+// Checkpoint lives in its own isolated cell, separate from the slot's main
+// save blob, so a mid-day checkpoint never collides with a full save and is
+// independent across slots (each id → its own driver cell).
+function checkpointKey(id: string): string {
+  return `checkpoint:${id}`;
 }
 
 export interface MultiSlotOptions {
@@ -92,8 +100,10 @@ export function createMultiSlotSaveStore(
     async deleteSlot(id) {
       const index = await readIndex();
       if (!index.slots.some((s) => s.id === id)) return;
-      // Wipe only this slot's blob — other slots use independent drivers.
+      // Wipe only this slot's blob + checkpoint — other slots use
+      // independent drivers, so siblings are untouched.
       await createSaveStore(driverFactory(slotKey(id))).clear();
+      await driverFactory(checkpointKey(id)).clear();
       const slots = index.slots.filter((s) => s.id !== id);
       await writeIndex({
         ...index,
@@ -124,6 +134,31 @@ export function createMultiSlotSaveStore(
       const index = await readIndex();
       if (index.activeSlotId === null) return null;
       return createSaveStore(driverFactory(slotKey(index.activeSlotId))).load();
+    },
+
+    async writeCheckpoint(checkpoint: MidDayCheckpoint) {
+      const index = await readIndex();
+      if (index.activeSlotId === null) {
+        throw new Error('Cannot write checkpoint: no active slot selected');
+      }
+      await driverFactory(checkpointKey(index.activeSlotId)).write(
+        JSON.stringify(checkpoint),
+      );
+    },
+
+    async readCheckpoint() {
+      const index = await readIndex();
+      if (index.activeSlotId === null) return null;
+      const raw = await driverFactory(
+        checkpointKey(index.activeSlotId),
+      ).read();
+      return raw === null ? null : (JSON.parse(raw) as MidDayCheckpoint);
+    },
+
+    async clearCheckpoint() {
+      const index = await readIndex();
+      if (index.activeSlotId === null) return;
+      await driverFactory(checkpointKey(index.activeSlotId)).clear();
     },
   };
 }
