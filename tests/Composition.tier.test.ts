@@ -50,6 +50,25 @@ describe('#79 composition root — CareerProgression tier-up over a run', () => 
     expect(world.tierManager.currentTier).toBe(1);
   });
 
+  it('#136: auction board is populated on the cold-start night-before-Day-1 MANAGERIAL', () => {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed: MASTER_SEED, characterProfile: PROFILE });
+    // Before any clock advance / nextDay, the player is sitting on the first
+    // MANAGERIAL screen ("night before Day 1"). The auction board must already
+    // be populated so the player can stock the lot before Day 1 opens.
+    const listings = world.inventory.getAuctionListings();
+    expect(listings.length).toBeGreaterThanOrEqual(12);
+    expect(listings.length).toBeLessThanOrEqual(18);
+
+    // And a car bought during this prep window is on the lot for Day 1 (not
+    // Day 2): arrivalDay matches the upcoming day.
+    const [listing] = listings;
+    world.inventory.buyFromAuction(listing.id);
+    const lot = world.inventory.getLotVehicles();
+    expect(lot).toHaveLength(1);
+    expect(lot[0].arrivalDay).toBe(1);
+  });
+
   it('advances Tier 1 → 2 and fires career:tier_up when the real thresholds are met on the payroll-night cadence', () => {
     const bus = createEventBus();
     const world = createWorld({ bus, masterSeed: MASTER_SEED, characterProfile: PROFILE });

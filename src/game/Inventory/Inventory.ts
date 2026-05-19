@@ -33,13 +33,37 @@ export function createInventory(deps: InventoryDeps): Inventory {
   let currentDay = 1;
   let auctionListings: AuctionListing[] = [];
   const lotVehicles = new Map<string, LotVehicle & { daysInInventory: number }>();
+  // #136: track which day has already been prepared so the same day prepared
+  // by both the night-before prep signal and the morning-of day_started
+  // doesn't get its listings regenerated (and any bought-during-MANAGERIAL
+  // listings re-introduced). A `day=0` sentinel means no day prepared yet.
+  let lastPreparedDay = 0;
 
-  bus.subscribe('clock:day_started', ({ day }) => {
+  function prepareDay(day: number): void {
+    if (day === lastPreparedDay) return;
+    lastPreparedDay = day;
     currentDay = day;
     auctionListings = generateAuctionListings(day, masterSeed, vehicleData);
     for (const [id, v] of lotVehicles) {
       lotVehicles.set(id, { ...v, daysInInventory: day - v.arrivalDay });
     }
+  }
+
+  // #136: night-before MANAGERIAL prep — generate the auction board for the
+  // upcoming day so the player browses *the day they're about to play*, not
+  // a stale or empty board. Cars bought during this prep window land on the
+  // lot tagged with the upcoming day's arrivalDay (currentDay is shifted to
+  // upcomingDay here).
+  bus.subscribe('clock:managerial_prep', ({ upcomingDay }) => {
+    prepareDay(upcomingDay);
+  });
+
+  // Morning-of safety net: if for any reason the upcoming day wasn't prepped
+  // during MANAGERIAL, fall back to generating on day_started (this preserves
+  // every pre-#136 caller — bare GameClock harnesses, etc.). Idempotent vs.
+  // the prep-side generation via lastPreparedDay.
+  bus.subscribe('clock:day_started', ({ day }) => {
+    prepareDay(day);
   });
 
   return {

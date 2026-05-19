@@ -9,7 +9,14 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 
 ## Events
 - **Emits:** `inventory:vehicle_purchased`, `inventory:vehicle_sold`.
-- **Consumes:** `clock:overnight_inventory_arrival` (resolve pending auction wins onto the lot).
+- **Consumes:**
+  - `clock:managerial_prep` (#136) — night-before signal for the upcoming
+    day. The auction board for Day N is generated here so the player browses
+    the day they're about to play; cars bought during this prep window are
+    tagged `arrivalDay = N` and are on the lot when Day N opens.
+  - `clock:day_started` — morning-of safety net (idempotent vs. the prep
+    pass via an internal `lastPreparedDay` guard), kept so bare GameClock
+    harnesses + tests still see listings appear.
 
 ## Data
 - `data/vehicles.json` — base catalog (model definitions, MSRP, segment).

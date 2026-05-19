@@ -354,7 +354,16 @@ export function createDayLoopController(
     if (phase !== 'FLOOR_OPEN' || !slip || p.day !== slip.day) return;
     phase = 'MANAGERIAL';
     everCompleted = true;
+    // #136: announce night-before prep for the upcoming day. The clock has
+    // not yet advanced (that happens in nextDay()), so upcomingDay is the
+    // next day the player is about to play.
+    bus.publish('clock:managerial_prep', { upcomingDay: clock.currentDay + 1 });
   });
+
+  // #136: cold-start bootstrap — the world boots in MANAGERIAL "night before
+  // Day 1", so emit the prep signal for Day 1 so prep-side consumers (e.g.
+  // the auction board) populate immediately, not on the morning of Day 1.
+  bus.publish('clock:managerial_prep', { upcomingDay: clock.currentDay });
 
   /** Project the rich #125 slip down to FloorSim's #99 DayContext. Market
    *  share is the player's town-pool draw against the market cap (stub ⇒ 0 ⇒

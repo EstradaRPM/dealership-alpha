@@ -22,6 +22,14 @@ export interface EventMap {
   'clock:overnight_reputation_drift': { day: number };
   'clock:overnight_followup_decay': { day: number };
   'clock:day_started': { day: number };
+  // #136: night-before MANAGERIAL prep signal — published by DayLoopController
+  // when MANAGERIAL phase is (re-)entered for an upcoming day, so prep-side
+  // consumers (auction board, etc.) can populate state for the day the player
+  // is *about* to play. Fires on cold-start composition (upcomingDay = clock
+  // current day, the bootstrap "night before Day 1") and on every FLOOR_OPEN
+  // → MANAGERIAL transition (upcomingDay = clock current day + 1, since the
+  // clock has not yet been advanced by the next nextDay() call).
+  'clock:managerial_prep': { upcomingDay: number };
   // Fired after clock:day_started when that day was the last day of a week (day % 7 === 0).
   'clock:week_ended': { day: number };
   // Fired after clock:week_ended when the ending day completes a month
