@@ -25,6 +25,15 @@ export interface DayContext {
   /** Player market share, [0,1]. */
   readonly marketShare: number;
   readonly season: Season;
+  /**
+   * Composite controllable-lever traffic multiplier (#128a). Additive #99
+   * amendment: a single scalar so inventory/pricing/marketing economics stay
+   * behind the locked #125 DemandSource seam and never widen this contract
+   * again. Unlike rep/share it can floor traffic at ~0 (empty lot → no draw)
+   * and exceed 1 (busy high-volume store). Omitted ⇒ 1 ⇒ pre-#128a behavior,
+   * so every existing caller, test, and replay stays byte-identical.
+   */
+  readonly demandFactor?: number;
 }
 
 /**
@@ -208,11 +217,13 @@ export function createFloorSim(deps: {
   const skill = deps.skill ?? GREEN_SALESPERSON;
   const ticksPerDay = cfg.ticksPerDay;
 
+  const demandFactor = ctx.demandFactor ?? 1;
   const expectedArrivals =
     cfg.baseDailyArrivals *
     (1 + cfg.reputationArrivalCoeff * clampUnit(ctx.reputation)) *
     (1 + cfg.marketShareArrivalCoeff * clampUnit(ctx.marketShare)) *
-    cfg.seasonArrivalMultiplier[ctx.season];
+    cfg.seasonArrivalMultiplier[ctx.season] *
+    (demandFactor < 0 ? 0 : demandFactor);
 
   const perTickProb = clampUnit(expectedArrivals / ticksPerDay);
 

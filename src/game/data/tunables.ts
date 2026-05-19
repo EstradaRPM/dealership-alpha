@@ -23,6 +23,27 @@ export const TunablesSchema = z.object({
     // FloorSim's roster are flagged mustHandle (forced for the player).
     exceptionMustHandle: z.boolean(),
   }),
+  // Composite demand model (#128a). Lives behind the locked #125 DemandSource
+  // seam: the live provider derives a single demandFactor from controllable
+  // levers (v1: inventory depth × quality) and rides it on the existing
+  // pricing.trafficMultiplier field. FloorSim consumes only the projected
+  // scalar — no magic numbers in the provider.
+  demandModel: z.object({
+    // Inventory count at which the depth saturation factor reaches 0.5
+    // (Hill curve stock/(stock+halfSat)): 0 cars → 0 traffic.
+    inventoryHalfSat: z.number().positive(),
+    // Per-condition desirability weight; averaged across the lot.
+    conditionWeight: z.object({
+      clean: z.number().nonnegative(),
+      average: z.number().nonnegative(),
+      rough: z.number().nonnegative(),
+    }),
+    // Quality multiplier lerps over [min,max] by the lot's avg condition weight.
+    qualityMultMin: z.number().nonnegative(),
+    qualityMultMax: z.number().nonnegative(),
+    // Hard clamp on the composite demandFactor (outlier guard).
+    demandFactorMax: z.number().positive(),
+  }),
   // Live render loop (#121, design #107). UI-only: a wall-clock interval
   // drives FloorSim.step() at `baseTickIntervalMs / speed`. Game logic never
   // sees these — speed/cadence are pure render multipliers over step().

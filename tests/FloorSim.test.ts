@@ -132,3 +132,33 @@ describe('FloorSim — arrival distribution', () => {
     );
   });
 });
+
+describe('FloorSim — demandFactor (#128a additive #99 amendment)', () => {
+  it('omitted demandFactor is byte-identical to demandFactor: 1 (back-compat)', () => {
+    const omitted = harness(8, baseCtx);
+    const explicitOne = harness(8, { ...baseCtx, demandFactor: 1 });
+    omitted.sim.runDay();
+    explicitOne.sim.runDay();
+    expect(omitted.sim.totalArrivals).toBe(explicitOne.sim.totalArrivals);
+  });
+
+  it('higher demandFactor yields more arrivals (same seed)', () => {
+    const lo = harness(8, { ...baseCtx, demandFactor: 0.2 });
+    const hi = harness(8, { ...baseCtx, demandFactor: 2.5 });
+    lo.sim.runDay();
+    hi.sim.runDay();
+    expect(hi.sim.totalArrivals).toBeGreaterThan(lo.sim.totalArrivals);
+  });
+
+  it('demandFactor 0 floors traffic at zero (empty lot draws nobody)', () => {
+    const empty = harness(8, { ...baseCtx, demandFactor: 0 });
+    empty.sim.runDay();
+    expect(empty.sim.totalArrivals).toBe(0);
+  });
+
+  it('negative demandFactor is clamped to zero', () => {
+    const neg = harness(8, { ...baseCtx, demandFactor: -3 });
+    neg.sim.runDay();
+    expect(neg.sim.totalArrivals).toBe(0);
+  });
+});

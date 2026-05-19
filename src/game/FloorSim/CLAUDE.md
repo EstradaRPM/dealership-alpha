@@ -115,9 +115,23 @@ interface rework. Load-bearing invariants for anyone touching this module:
 - Types: `FloorSim`, `DayContext`.
 
 `DayContext` is an injected snapshot (`day`, `reputation` [0,1], `marketShare`
-[0,1], `season`). FloorSim never reaches into Reputation/CompetitorMarket/
-GameClock — the composition root supplies it, keeping `step()` pure w.r.t.
-injected state.
+[0,1], `season`, optional `demandFactor`). FloorSim never reaches into
+Reputation/CompetitorMarket/GameClock — the composition root supplies it,
+keeping `step()` pure w.r.t. injected state.
+
+**`demandFactor` (#128a, additive #99 amendment — design-record note on
+#99/#107).** One optional scalar so the full controllable-lever economics
+(inventory depth × quality now; pricing/marketing later) stay behind the
+locked #125 `DemandSource` seam and never widen this contract again. It is
+the only arrival input that can floor traffic at ~0 (empty lot ⇒ no draw)
+or exceed 1 (busy high-volume store) — rep/share/season can't. Arrival model
+becomes `expected = base · (1+repC·rep) · (1+shareC·share) · season ·
+demandFactor`. **Omitted ⇒ 1 ⇒ pre-#128a behavior**, so every existing
+caller/test and `(seed,day,ctx)` replay stays byte-identical (back-compat is
+the load-bearing invariant of this amendment). The composition root rides
+the composite on the existing #125 `pricing.trafficMultiplier` (stub = 1);
+`DayLoopController.project()` maps it additively. `DemandContext` (#125) and
+the projection's other outputs are untouched.
 
 ## Determinism
 All randomness is seeded: one stable RNG stream per `(seed, day)` via

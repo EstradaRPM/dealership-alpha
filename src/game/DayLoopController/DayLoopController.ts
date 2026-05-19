@@ -356,18 +356,24 @@ export function createDayLoopController(
     everCompleted = true;
   });
 
-  /** Project the rich #125 slip down to FloorSim's untouched #99 4-scalar
-   *  DayContext. Market share is the player's town-pool draw against the
-   *  market cap (stub ⇒ 0 ⇒ neutral). */
+  /** Project the rich #125 slip down to FloorSim's #99 DayContext. Market
+   *  share is the player's town-pool draw against the market cap (stub ⇒ 0 ⇒
+   *  neutral). `demandFactor` (#128a additive #99 amendment) rides the
+   *  existing locked #125 `pricing.trafficMultiplier` (stub ⇒ 1 ⇒ pre-#128a
+   *  behavior) — the composite economics live behind the seam; this is a
+   *  pure additive passthrough, #125 and the other projected scalars
+   *  unchanged. */
   function project(s: DemandContext): DayContext {
     const cap = s.marketGrowth.marketCap;
     const marketShare =
       cap > 0 ? clampUnit(s.demand.townPool.headcount / cap) : 0;
+    const tm = s.pricing.trafficMultiplier;
     return {
       day: s.day,
       reputation: clampUnit(s.reputation),
       marketShare,
       season: s.season,
+      demandFactor: tm < 0 ? 0 : tm,
     };
   }
 

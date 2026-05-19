@@ -25,6 +25,8 @@ import {
 } from './game/CustomerPool';
 import { createEconomy, type Economy } from './game/Economy';
 import { createInventory, type Inventory } from './game/Inventory';
+import { loadTunables } from './game/data';
+import { computeDemandFactor } from './computeDemandFactor';
 import { createStaffOrg, type StaffOrg } from './game/StaffOrg';
 import { createCapacityManager } from './game/CapacityManager';
 import type { CapacityManager } from './game/CapacityManager';
@@ -233,12 +235,27 @@ export function createWorld(deps: {
   // #99 DayContext, where the arrival model scales expected traffic by it.
   // reviewScore is the lag indicator on the [satisfactionMin, satisfactionMax]
   // = [0,100] scale → normalized to FloorSim's [0,1] reputation input.
+  // #128a: the composite controllable-lever traffic multiplier (v1: inventory
+  // depth × quality) rides the locked #125 `pricing.trafficMultiplier`. The
+  // demand math stays behind this seam; DayLoopController.project() forwards
+  // it to FloorSim's #99 `demandFactor`. An empty lot ⇒ factor 0 ⇒ no draw.
   const stubDemand = createStubDemandSource();
+  const demandModelCfg = loadTunables().demandModel;
   const demandSource: DemandSource = {
-    slipFor: (ctx) => ({
-      ...stubDemand.slipFor(ctx),
-      reputation: Math.min(1, Math.max(0, reputation.reviewScore / 100)),
-    }),
+    slipFor: (ctx) => {
+      const slip = stubDemand.slipFor(ctx);
+      return {
+        ...slip,
+        reputation: Math.min(1, Math.max(0, reputation.reviewScore / 100)),
+        pricing: {
+          ...slip.pricing,
+          trafficMultiplier: computeDemandFactor(
+            inventory.getLotVehicles(),
+            demandModelCfg,
+          ),
+        },
+      };
+    },
   };
 
   const dayLoop = createDayLoopController({
