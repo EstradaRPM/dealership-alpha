@@ -27,6 +27,9 @@ import type { SaveStore, MidDayCheckpoint } from './src/game/SaveStore';
 import type { LotVehicle } from './src/game/Inventory';
 import { AdminConsole } from './src/ui/AdminConsole';
 import { MonthCloseInterstitial } from './src/ui/MonthCloseInterstitial';
+import { ChapterCard } from './src/ui/NarrativeBeat';
+import { EndCard } from './src/ui/EndCard';
+import type { EndCardData } from './src/game/EndCard';
 import { useNavigator } from './src/ui/Navigator';
 import { BottomNav } from './src/ui/BottomNav';
 import { DepartmentScreen } from './src/ui/DepartmentScreen';
@@ -134,6 +137,21 @@ export default function App() {
   // null when none is pending. Set on clock:month_ended, cleared on dismiss —
   // the MANAGERIAL interrupt point between the day-recap and next-day prep.
   const [monthClose, setMonthClose] = useState<number | null>(null);
+  // Event-interrupt overlay channel (#84 / design record #127). Lives in the
+  // composition root, layered ABOVE the Navigator — NOT a RouteParamMap route.
+  // Non-terminal beats (career:tier_up / chapter rebrand) enqueue silently
+  // during FLOOR_OPEN and drain as sequential full-bleed acknowledge-cards at
+  // the MANAGERIAL boundary, FIFO by emission order (bus delivers in publish
+  // order, so array order == emission order). Acknowledgement is OUT of the
+  // tick-stamped action log by construction — it never enters the live sim,
+  // so it carries zero replay-determinism risk (#127 decision 1/6).
+  const [chapterQueue, setChapterQueue] = useState<
+    readonly { fromTier: number; toTier: number; day: number }[]
+  >([]);
+  // Terminal end-of-career data (#127 decision 2). Set on career:game_over —
+  // hard-stops the sim (held render loop) and routes to the EndCard via a
+  // Navigator reset. Preempts the non-terminal queue (#127 decision 4).
+  const [endCard, setEndCard] = useState<EndCardData | null>(null);
 
   // The live clock (#121). Drives the owned FloorSim's step() at a tunable
   // cadence; speed/pause are pure render multipliers (game logic is
@@ -144,7 +162,11 @@ export default function App() {
     active: world ? world.dayLoop.state().phase === 'FLOOR_OPEN' : false,
     bus,
     onTick: bump,
-    hold: (handSession != null && !HAND_PLAY_LIVE) || monthClose != null,
+    hold:
+      (handSession != null && !HAND_PLAY_LIVE) ||
+      monthClose != null ||
+      chapterQueue.length > 0 ||
+      endCard != null,
   });
 
   // Open the modal on a specific grabbable customer (forced-exception row or
@@ -184,10 +206,15 @@ export default function App() {
         // here; the ?? 42 is a defensive belt only.
         const seed =
           typeof state.masterSeed === 'number' ? state.masterSeed : 42;
-        const w = createWorld({ bus, masterSeed: seed });
+        const character = state.character as CharacterProfile;
+        const w = createWorld({
+          bus,
+          masterSeed: seed,
+          characterProfile: character,
+        });
         setWorld(w);
         setCash(w.economy.cash);
-        setProfile(state.character as CharacterProfile);
+        setProfile(character);
         nav.reset('game');
         // Mid-day cold-start resume (#122): if a checkpoint exists for the
         // day the clock currently sits on, recreate the FloorSim and replay
@@ -280,8 +307,25 @@ export default function App() {
     const onMonthEnded = ({ day }: { day: number }) =>
       setMonthClose(Math.ceil(day / DAYS_PER_MONTH));
 
+    // Non-terminal interrupt (#127 decision 1): a tier-up / chapter beat.
+    // Enqueued here regardless of phase; it surfaces only when the queue
+    // drains at the MANAGERIAL boundary (see the ChapterCard overlay below).
+    const onTierUp = (e: { fromTier: number; toTier: number; day: number }) =>
+      setChapterQueue((q) => [...q, e]);
+    // Terminal interrupt (#127 decision 2/4): preempts everything — the rest
+    // of the non-terminal queue is moot once the run is over. Hard-stops the
+    // sim (the held render loop) and routes to the EndCard via a Navigator
+    // reset (a new unreachable starting point).
+    const onGameOver = ({ data }: { day: number; data: EndCardData }) => {
+      setChapterQueue([]);
+      setEndCard(data);
+      nav.reset('end-card');
+    };
+
     bus.subscribe('floor:day_complete', onDayComplete);
     bus.subscribe('clock:month_ended', onMonthEnded);
+    bus.subscribe('career:tier_up', onTierUp);
+    bus.subscribe('career:game_over', onGameOver);
     bus.subscribe('inventory:vehicle_purchased', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_sold', onVehicleSold);
     bus.subscribe('economy:revenue_posted', onRevenue);
@@ -291,6 +335,8 @@ export default function App() {
     return () => {
       bus.unsubscribe('floor:day_complete', onDayComplete);
       bus.unsubscribe('clock:month_ended', onMonthEnded);
+      bus.unsubscribe('career:tier_up', onTierUp);
+      bus.unsubscribe('career:game_over', onGameOver);
       bus.unsubscribe('inventory:vehicle_purchased', onVehiclePurchased);
       bus.unsubscribe('inventory:vehicle_sold', onVehicleSold);
       bus.unsubscribe('economy:revenue_posted', onRevenue);
@@ -355,7 +401,11 @@ export default function App() {
           onComplete={(p: CharacterProfile) => {
             // New game → build the World from the freshly-minted seed that
             // CharacterCreation just persisted (#96).
-            const w = createWorld({ bus, masterSeed: NEW_GAME_SEED });
+            const w = createWorld({
+              bus,
+              masterSeed: NEW_GAME_SEED,
+              characterProfile: p,
+            });
             setWorld(w);
             setCash(w.economy.cash);
             setProfile(p);
@@ -531,6 +581,25 @@ export default function App() {
         />
       </View>
     );
+  } else if (screen === 'end-card' && endCard) {
+    // Terminal EndCard (#127 decision 2/5). The only Navigator-reset target of
+    // the interrupt channel; "New Career" wipes the save and returns to
+    // character-creation (a fresh unreachable start).
+    content = (
+      <>
+        <StatusBar style="light" />
+        <EndCard
+          visible
+          data={endCard}
+          onDismiss={() => {
+            void saveStore.clear();
+            setEndCard(null);
+            setWorld(null);
+            handleSaveCleared();
+          }}
+        />
+      </>
+    );
   } else if (screen !== 'loading') {
     content = (
       <View style={styles.container}>
@@ -584,6 +653,28 @@ export default function App() {
             onDismiss={() => setMonthClose(null)}
           />
         )}
+        {endCard == null &&
+          world != null &&
+          chapterQueue.length > 0 &&
+          world.dayLoop.state().phase === 'MANAGERIAL' && (
+            // Non-terminal drain (#127 decision 1/3): one full-bleed
+            // acknowledge-card at a time, at the MANAGERIAL boundary, before
+            // the EOD recap (this Modal renders over the DayLoopShell recap).
+            // onConfirm applies the tier-up rebrand and pops the queue head;
+            // remaining beats surface FIFO on the next render.
+            <ChapterCard
+              visible
+              toTier={chapterQueue[0].toTier}
+              defaultBusinessName={
+                world.tierManager.businessName || (profile?.name ?? '')
+              }
+              onConfirm={(opts) => {
+                world.tierManager.applyTierUp(opts);
+                setChapterQueue((q) => q.slice(1));
+                bump();
+              }}
+            />
+          )}
         {__DEV__ && world && (
           <AdminConsole
             bus={bus}

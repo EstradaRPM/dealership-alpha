@@ -1,7 +1,20 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
+import type { CharacterProfile } from '../src/game/CareerProgression';
 
 const MASTER_SEED = 42;
+
+const PROFILE: CharacterProfile = {
+  name: 'Ray Estrada',
+  backstoryId: 'ex-mechanic',
+  day1Modifier: {
+    backstoryId: 'ex-mechanic',
+    reconJudgmentBonus: 0.15,
+    startingCreditLine: 0,
+    startingCapitalBonus: 0,
+    grudgesFlag: false,
+  },
+};
 
 function resolveCustomer(
   bus: ReturnType<typeof createEventBus>,
@@ -33,13 +46,13 @@ function closeDeal(bus: ReturnType<typeof createEventBus>, i: number): void {
 describe('#79 composition root — CareerProgression tier-up over a run', () => {
   it('boots at Tier 1 (Gravel Yard)', () => {
     const bus = createEventBus();
-    const world = createWorld({ bus, masterSeed: MASTER_SEED });
+    const world = createWorld({ bus, masterSeed: MASTER_SEED, characterProfile: PROFILE });
     expect(world.tierManager.currentTier).toBe(1);
   });
 
   it('advances Tier 1 → 2 and fires career:tier_up when the real thresholds are met on the payroll-night cadence', () => {
     const bus = createEventBus();
-    const world = createWorld({ bus, masterSeed: MASTER_SEED });
+    const world = createWorld({ bus, masterSeed: MASTER_SEED, characterProfile: PROFILE });
 
     const tierUp = jest.fn();
     bus.subscribe('career:tier_up', tierUp);
@@ -67,7 +80,7 @@ describe('#79 composition root — CareerProgression tier-up over a run', () => 
 
   it('does not tier up when thresholds are unmet on the cadence', () => {
     const bus = createEventBus();
-    const world = createWorld({ bus, masterSeed: MASTER_SEED });
+    const world = createWorld({ bus, masterSeed: MASTER_SEED, characterProfile: PROFILE });
 
     const tierUp = jest.fn();
     bus.subscribe('career:tier_up', tierUp);
@@ -81,5 +94,55 @@ describe('#79 composition root — CareerProgression tier-up over a run', () => 
 
     expect(world.tierManager.currentTier).toBe(1);
     expect(tierUp).not.toHaveBeenCalled();
+  });
+});
+
+describe('#84 composition root — EndCardManager wired into the live world', () => {
+  it('converges a terminal failure into a single career:game_over with EndCardData', () => {
+    const bus = createEventBus();
+    const world = createWorld({
+      bus,
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+
+    const gameOver = jest.fn();
+    bus.subscribe('career:game_over', gameOver);
+
+    bus.publish('career:bankruptcy_terminal', { day: 100, tier: 1 });
+
+    expect(gameOver).toHaveBeenCalledTimes(1);
+    expect(gameOver).toHaveBeenCalledWith(
+      expect.objectContaining({
+        day: 100,
+        data: expect.objectContaining({
+          reason: 'bankruptcy',
+          playerName: PROFILE.name,
+        }),
+      }),
+    );
+    expect(world.endCardManager.data?.reason).toBe('bankruptcy');
+  });
+
+  it('routes a success ending (career:retired) through the same converged game-over', () => {
+    const bus = createEventBus();
+    const world = createWorld({
+      bus,
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+
+    const gameOver = jest.fn();
+    bus.subscribe('career:game_over', gameOver);
+
+    bus.publish('career:retired', {
+      day: 9 * 364,
+      tier: 2,
+      cashOnHand: 1_000_000,
+      careerYear: 9,
+    });
+
+    expect(gameOver).toHaveBeenCalledTimes(1);
+    expect(world.endCardManager.data?.reason).toBe('retire');
   });
 });

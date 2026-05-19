@@ -51,7 +51,12 @@ import {
   loadCustomerTunables,
 } from './game/NPC';
 import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
-import { createTierManager, type TierManager } from './game/CareerProgression';
+import {
+  createTierManager,
+  type TierManager,
+  type CharacterProfile,
+} from './game/CareerProgression';
+import { createEndCardManager, type EndCardManager } from './game/EndCard';
 import { createReputation, type Reputation } from './game/Reputation';
 import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
@@ -74,6 +79,7 @@ export interface World {
   reputation: Reputation;
   serviceQueue: ServiceQueue;
   tierManager: TierManager;
+  endCardManager: EndCardManager;
   telemetry: Telemetry;
   kpiDashboard: KPIDashboard;
   dayLoop: DayLoopController;
@@ -92,8 +98,9 @@ export function makeSeed(): number {
 export function createWorld(deps: {
   bus: EventBus;
   masterSeed: number;
+  characterProfile: CharacterProfile;
 }): World {
-  const { bus, masterSeed } = deps;
+  const { bus, masterSeed, characterProfile } = deps;
 
   // Default initialDay = 1: the clock sits on "night before Day 1" so the
   // DayLoopController cold-start (skip-advance on the first nextDay) plays
@@ -164,6 +171,15 @@ export function createWorld(deps: {
   // surfaced/resolved by the generic DepartmentScreen with no extra wiring.
   const serviceQueue = createServiceQueue({ bus, masterSeed });
   const tierManager = createTierManager({ bus, economy, reputation });
+  // EndCardManager (#84): all terminal failure paths + success endings
+  // converge here and re-emit a single career:game_over carrying the
+  // assembled EndCardData. Wired in the live world (not just tests) so the
+  // composition-root interrupt channel can route game-over to the EndCard.
+  const endCardManager = createEndCardManager({
+    bus,
+    characterProfile,
+    tierManager,
+  });
   const telemetry = createTelemetry({ bus });
   // Month-close hook (#123): the KPIDashboard supplies the month-to-date
   // snapshot the interstitial composes.
@@ -248,6 +264,7 @@ export function createWorld(deps: {
     reputation,
     serviceQueue,
     tierManager,
+    endCardManager,
     telemetry,
     kpiDashboard,
     dayLoop,

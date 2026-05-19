@@ -17,6 +17,11 @@ export type RouteParamMap = {
   // A non-sales department resolve-list, pushed over the game (#76). Sales is
   // not here — the Sales tab routes to the hand-play workspace, not a screen.
   department: { dept: DeptKey };
+  // Terminal end-of-career screen (#84 / design record #127). Reached ONLY via
+  // a Navigator reset on career:game_over — a new unreachable starting point
+  // (canGoBack false). Non-terminal interrupt cards are NOT routes; they are a
+  // separate composition-root overlay layered above the Navigator.
+  'end-card': undefined;
 };
 
 export type Route = keyof RouteParamMap;
