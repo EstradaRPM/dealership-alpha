@@ -123,7 +123,12 @@
     }
   },
   "auctionConfig": {
-    "minListings": 3,
-    "maxListings": 6
+    "minListings": 6,
+    "maxListings": 10,
+    "earlyGame": {
+      "throughDay": 5,
+      "minListings": 12,
+      "maxListings": 18
+    }
   }
 }

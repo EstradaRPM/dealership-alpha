@@ -30,6 +30,16 @@ export const VehicleDataSchema = z.object({
   auctionConfig: z.object({
     minListings: z.number().int().positive(),
     maxListings: z.number().int().positive(),
+    // Opening days get a fatter board so the player can bootstrap a viable
+    // lot with real stocking decisions instead of an RNG-gated trickle.
+    // Applies while day <= throughDay; steady-state values apply after.
+    earlyGame: z
+      .object({
+        throughDay: z.number().int().positive(),
+        minListings: z.number().int().positive(),
+        maxListings: z.number().int().positive(),
+      })
+      .optional(),
   }),
 });
 

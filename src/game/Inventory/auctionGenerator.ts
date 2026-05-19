@@ -54,7 +54,10 @@ export function generateAuctionListings(
   const seed = deriveSeed(masterSeed, 'inventory.auction_listings', { day });
   const rng = createRng(seed);
 
-  const { minListings, maxListings } = auctionConfig;
+  const { earlyGame } = auctionConfig;
+  const useEarlyGame = earlyGame !== undefined && day <= earlyGame.throughDay;
+  const minListings = useEarlyGame ? earlyGame!.minListings : auctionConfig.minListings;
+  const maxListings = useEarlyGame ? earlyGame!.maxListings : auctionConfig.maxListings;
   const count = minListings + Math.floor(rng() * (maxListings - minListings + 1));
 
   const listings: AuctionListing[] = [];

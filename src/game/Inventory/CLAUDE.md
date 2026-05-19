@@ -25,5 +25,12 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   future simulated retail-value engine replaces the `suggestedRetail`
   expression only — no consumer or lever changes.
 
+## Auction volume (#129)
+- `auctionConfig.minListings`/`maxListings` = steady-state daily board size.
+- Optional `auctionConfig.earlyGame { throughDay, minListings, maxListings }`
+  overrides volume while `day <= throughDay` so opening days present a
+  viable bootstrap board instead of an RNG-gated trickle. Omit the block
+  for flat volume.
+
 ## Notes
 - The auction generator is intentionally simple in v1 (random draw weighted by brand share). It is exposed via interface so a v2 replacement drops in cleanly.

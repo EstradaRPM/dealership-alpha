@@ -26,11 +26,23 @@ describe('Inventory — auction listing generation', () => {
     expect(inventory.getAuctionListings()).toHaveLength(0);
   });
 
-  it('listings appear on clock:day_started', () => {
+  it('listings appear on clock:day_started (early-game board is fat)', () => {
     const { clock, inventory } = makeSetup();
     clock.advanceDay();
-    expect(inventory.getAuctionListings().length).toBeGreaterThanOrEqual(3);
-    expect(inventory.getAuctionListings().length).toBeLessThanOrEqual(6);
+    expect(inventory.getAuctionListings().length).toBeGreaterThanOrEqual(12);
+    expect(inventory.getAuctionListings().length).toBeLessThanOrEqual(18);
+  });
+
+  it('opening days yield a viable bootstrap board, then settle to steady-state (#129)', () => {
+    const eg = vehicleData.auctionConfig.earlyGame!;
+    for (let day = 1; day <= eg.throughDay; day++) {
+      const n = generateAuctionListings(day, MASTER_SEED, vehicleData).length;
+      expect(n).toBeGreaterThanOrEqual(eg.minListings);
+      expect(n).toBeLessThanOrEqual(eg.maxListings);
+    }
+    const steady = generateAuctionListings(eg.throughDay + 1, MASTER_SEED, vehicleData).length;
+    expect(steady).toBeGreaterThanOrEqual(vehicleData.auctionConfig.minListings);
+    expect(steady).toBeLessThanOrEqual(vehicleData.auctionConfig.maxListings);
   });
 
   it('listings are deterministic for the same seed+day', () => {
