@@ -31,7 +31,9 @@ import type { CapacityManager } from './game/CapacityManager';
 import { createStaffFloorDrain } from './game/StaffDispatch';
 import {
   createDayLoopController,
+  createStubDemandSource,
   type DayLoopController,
+  type DemandSource,
   type FloorSeamProvider,
 } from './game/DayLoopController';
 import { createDealEngine, type DealEngine } from './game/DealEngine';
@@ -169,10 +171,25 @@ export function createWorld(deps: {
     customerSource,
   });
 
+  // Reputation → demand feedback (#82). The #125 slip stays the stub neutral
+  // fill for every reserved field; only the READ-only `reputation` scalar is
+  // backed by the live module. DayLoopController projects this into FloorSim's
+  // #99 DayContext, where the arrival model scales expected traffic by it.
+  // reviewScore is the lag indicator on the [satisfactionMin, satisfactionMax]
+  // = [0,100] scale → normalized to FloorSim's [0,1] reputation input.
+  const stubDemand = createStubDemandSource();
+  const demandSource: DemandSource = {
+    slipFor: (ctx) => ({
+      ...stubDemand.slipFor(ctx),
+      reputation: Math.min(1, Math.max(0, reputation.reviewScore / 100)),
+    }),
+  };
+
   const dayLoop = createDayLoopController({
     bus,
     seed: masterSeed,
     clock,
+    demandSource,
     floorSeams,
   });
 
