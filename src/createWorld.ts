@@ -192,18 +192,29 @@ export function createWorld(deps: {
   // CustomerPool behind FloorSim's #99 customer-source seam: FloorSim's own
   // arrival RNG decides the admitted count per tick; the adapter only mints
   // identities for that count via CustomerPool.
+  // #135: with `legacyAdmitGate:false`, CapacityManager's per-tick floor gate
+  // owns admit-side domain consequences (missed-opportunity / walks) but the
+  // gate cannot see the FloorSim-minted identities for admitted ups. Publish
+  // `capacity:customer_admitted` here — once per admitted sales ref, after
+  // the id is minted and before `floor:tick` (canonical #99 order) — so
+  // DepartmentQueue enqueues a `workspace` item and the staff floor drain has
+  // someone to hold.
   const customerSource: CustomerSource = {
     spawn({ day, tick, count }): readonly CustomerRef[] {
       const refs: CustomerRef[] = [];
       for (let i = 0; i < count; i++) {
         const a = SALES_ARCHETYPES[(day + tick + i) % SALES_ARCHETYPES.length];
         const id = customerPool.spawnCustomer(a.personId, a.visitId, a.label);
-        refs.push({
+        const ref: CustomerRef = {
           id,
           source: 'ambient',
           mustHandle: false,
           department: 'sales',
-        });
+        };
+        refs.push(ref);
+        if (ref.department === 'sales') {
+          bus.publish('capacity:customer_admitted', { day, customerId: id, label: a.label });
+        }
       }
       return refs;
     },
