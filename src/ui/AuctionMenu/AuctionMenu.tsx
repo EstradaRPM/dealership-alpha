@@ -8,6 +8,7 @@ import {
   Modal,
 } from 'react-native';
 import type { AuctionListing, LotVehicle } from '../../game/Inventory';
+import { colors } from '../theme';
 
 interface DetailModalProps {
   listing: AuctionListing;
@@ -75,9 +76,9 @@ function DetailModal({ listing, cash, onBuy, onClose }: DetailModalProps) {
 
 function conditionColor(condition: AuctionListing['condition']) {
   switch (condition) {
-    case 'clean':   return { color: '#4caf50' };
-    case 'average': return { color: '#c8a96e' };
-    case 'rough':   return { color: '#ef5350' };
+    case 'clean':   return { color: colors.positive };
+    case 'average': return { color: colors.primary };
+    case 'rough':   return { color: colors.danger };
   }
 }
 
@@ -183,7 +184,7 @@ export function AuctionMenu({ listings, lotVehicles, cash, onBuy, onClose }: Auc
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.base,
   },
   header: {
     flexDirection: 'row',
@@ -192,25 +193,25 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border,
   },
   backBtn: {
     marginRight: 12,
   },
   backText: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 16,
   },
   headerCenter: {
     flex: 1,
   },
   title: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
   cashLabel: {
-    color: '#4caf50',
+    color: colors.positive,
     fontSize: 13,
     marginTop: 2,
   },
@@ -221,13 +222,13 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   empty: {
-    color: '#555',
+    color: colors.borderMuted,
     fontSize: 15,
     textAlign: 'center',
     marginTop: 40,
   },
   sectionHeader: {
-    color: '#888',
+    color: colors.textMuted,
     fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 14,
     marginBottom: 10,
@@ -244,24 +245,24 @@ const styles = StyleSheet.create({
   },
   lotRow: {
     flexDirection: 'row',
-    backgroundColor: '#161616',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 14,
     marginBottom: 10,
     alignItems: 'center',
     borderLeftWidth: 3,
-    borderLeftColor: '#333',
+    borderLeftColor: colors.border,
   },
   rowMain: {
     flex: 1,
   },
   rowTitle: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '600',
   },
   rowSub: {
-    color: '#666',
+    color: colors.borderMuted,
     fontSize: 12,
     marginTop: 2,
   },
@@ -276,17 +277,17 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   rowPrice: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '600',
   },
   diiLabel: {
-    color: '#c8a96e',
+    color: colors.primary,
     fontSize: 12,
     fontWeight: '600',
   },
   reconSmall: {
-    color: '#666',
+    color: colors.borderMuted,
     fontSize: 11,
     marginTop: 2,
   },
@@ -297,7 +298,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 24,
@@ -309,11 +310,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalCloseText: {
-    color: '#666',
+    color: colors.borderMuted,
     fontSize: 18,
   },
   modalTitle: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 8,
@@ -331,54 +332,54 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: colors.surfaceRaised,
   },
   detailLabel: {
-    color: '#888',
+    color: colors.textMuted,
     fontSize: 14,
   },
   detailValue: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
   reconValue: {
-    color: '#ef9a9a',
+    color: colors.danger,
   },
   reportBox: {
-    backgroundColor: '#111',
+    backgroundColor: colors.base,
     borderRadius: 8,
     padding: 12,
     marginTop: 16,
     marginBottom: 20,
   },
   reportLabel: {
-    color: '#666',
+    color: colors.borderMuted,
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     marginBottom: 6,
   },
   reportText: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 19,
   },
   buyBtn: {
-    backgroundColor: '#1e3a5f',
+    backgroundColor: colors.primaryDim,
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: 'center',
   },
   buyBtnDisabled: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
   },
   buyBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
   buyBtnTextDisabled: {
-    color: '#444',
+    color: colors.border,
   },
 });

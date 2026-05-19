@@ -10,6 +10,7 @@ import {
 import { loadTierConfig } from '../../game/CareerProgression';
 import { KPIDashboard } from '../KPIDashboard';
 import type { KPISnapshot } from '../../game/KPIDashboard';
+import { colors } from '../theme';
 
 const TIER_CONFIG = loadTierConfig();
 
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     flex: 1,
-    backgroundColor: '#141414',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     overflow: 'hidden',
   },
@@ -101,20 +102,20 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: colors.surfaceRaised,
   },
   chapterLabel: {
     fontSize: 11,
-    color: '#555',
+    color: colors.borderMuted,
     letterSpacing: 3,
     textTransform: 'uppercase',
     marginBottom: 10,
   },
   chapterIllustration: { fontSize: 56, marginBottom: 8 },
-  chapterTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  chapterTitle: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
   chapterCaption: {
     fontSize: 14,
-    color: '#888',
+    color: colors.textMuted,
     fontStyle: 'italic',
     marginTop: 4,
   },
@@ -125,12 +126,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#c8a96e',
+    backgroundColor: colors.primary,
   },
   continueText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111',
+    color: colors.base,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },

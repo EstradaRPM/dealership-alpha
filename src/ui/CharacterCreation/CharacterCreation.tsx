@@ -10,6 +10,7 @@ import {
 import { loadBackstories, buildCharacterModifier } from '../../game/CareerProgression';
 import type { BackstoryId, CharacterProfile } from '../../game/CareerProgression';
 import type { SaveStore } from '../../game/SaveStore';
+import { colors } from '../theme';
 
 interface Props {
   saveStore: SaveStore;
@@ -89,67 +90,67 @@ const styles = StyleSheet.create({
   container: {
     padding: 24,
     paddingBottom: 48,
-    backgroundColor: '#111',
+    backgroundColor: colors.base,
     flexGrow: 1,
   },
   heading: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
     marginBottom: 16,
   },
   nameInput: {
-    backgroundColor: '#222',
-    color: '#fff',
+    backgroundColor: colors.surfaceRaised,
+    color: colors.textPrimary,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   subheading: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#aaa',
+    color: colors.textSecondary,
     marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   backstoryCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   backstoryCardActive: {
-    borderColor: '#c8a96e',
+    borderColor: colors.primary,
   },
   backstoryLabel: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#ddd',
+    color: colors.textPrimary,
     marginBottom: 6,
   },
   backstoryLabelActive: {
-    color: '#c8a96e',
+    color: colors.primary,
   },
   backstoryFlavor: {
     fontSize: 14,
-    color: '#888',
+    color: colors.textMuted,
     lineHeight: 20,
   },
   error: {
-    color: '#e05555',
+    color: colors.danger,
     marginTop: 8,
     marginBottom: 8,
     fontSize: 14,
   },
   confirmButton: {
     marginTop: 24,
-    backgroundColor: '#c8a96e',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
@@ -157,6 +158,6 @@ const styles = StyleSheet.create({
   confirmText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111',
+    color: colors.base,
   },
 });

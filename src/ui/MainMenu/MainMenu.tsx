@@ -9,6 +9,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import type { MultiSlotSaveStore, SlotMetadata } from '../../game/SaveStore';
+import { colors } from '../theme';
 
 type Mode = 'menu' | 'new' | 'load';
 
@@ -169,7 +170,7 @@ export function MainMenu({
                 <TextInput
                   style={styles.nameInput}
                   placeholder="Name this save"
-                  placeholderTextColor="#555"
+                  placeholderTextColor={colors.borderMuted}
                   value={name}
                   onChangeText={(v) => { setName(v); setError(''); }}
                   maxLength={40}
@@ -191,13 +192,13 @@ export function MainMenu({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.base,
   },
   brand: {
     fontFamily: 'monospace',
     fontSize: 32,
     fontWeight: '700',
-    color: '#c8a96e',
+    color: colors.primary,
     letterSpacing: 6,
     textAlign: 'center',
     marginTop: 96,
@@ -215,12 +216,12 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#222',
+    borderBottomColor: colors.surfaceRaised,
   },
   title: {
     fontFamily: 'monospace',
     fontSize: 11,
-    color: '#555',
+    color: colors.borderMuted,
     letterSpacing: 4,
   },
   closeBtn: {
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   closeText: {
-    color: '#888',
+    color: colors.textMuted,
     fontSize: 14,
   },
   content: {
@@ -237,13 +238,13 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'monospace',
     fontSize: 9,
-    color: '#444',
+    color: colors.border,
     letterSpacing: 3,
     marginBottom: 12,
     textTransform: 'uppercase',
   },
   emptyText: {
-    color: '#555',
+    color: colors.borderMuted,
     fontSize: 13,
     fontStyle: 'italic',
     lineHeight: 20,
@@ -251,11 +252,11 @@ const styles = StyleSheet.create({
   slotRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderRadius: 4,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#252525',
+    borderColor: colors.surfaceRaised,
   },
   slotMain: {
     flex: 1,
@@ -264,14 +265,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   slotName: {
-    color: '#ccc',
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
   slotMeta: {
     fontFamily: 'monospace',
     fontSize: 10,
-    color: '#555',
+    color: colors.borderMuted,
     letterSpacing: 1,
   },
   deleteBtn: {
@@ -281,7 +282,7 @@ const styles = StyleSheet.create({
   deleteText: {
     fontFamily: 'monospace',
     fontSize: 10,
-    color: '#e05555',
+    color: colors.danger,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
@@ -289,17 +290,17 @@ const styles = StyleSheet.create({
     marginTop: 28,
   },
   nameInput: {
-    backgroundColor: '#222',
-    color: '#fff',
+    backgroundColor: colors.surfaceRaised,
+    color: colors.textPrimary,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   primaryBtn: {
-    backgroundColor: '#c8a96e',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
@@ -307,29 +308,29 @@ const styles = StyleSheet.create({
   primaryText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111',
+    color: colors.base,
   },
   secondaryBtn: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   secondaryText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ccc',
+    color: colors.textSecondary,
   },
   hint: {
-    color: '#444',
+    color: colors.border,
     fontSize: 11,
     lineHeight: 17,
     fontStyle: 'italic',
   },
   error: {
-    color: '#e05555',
+    color: colors.danger,
     marginTop: 16,
     fontSize: 14,
   },

@@ -10,6 +10,7 @@ import {
 } from '../FloorDashboard';
 import { DayRecap, type DayRecapModel } from '../DayRecap';
 import { OwnershipLevers, type OwnershipLeversProps } from '../OwnershipLevers';
+import { colors } from '../theme';
 
 const TIER_CONFIG = loadTierConfig();
 
@@ -81,7 +82,7 @@ export function DayLoopShell({
 
   const tierEntry = TIER_CONFIG.tiers[tier - 1] ?? TIER_CONFIG.tiers[0];
   const displayName = businessName || `${profile.name}'s Lot`;
-  const displayAccent = accentColor ?? '#c8a96e';
+  const displayAccent = accentColor ?? colors.primary;
 
   const showRecap = state.phase === 'MANAGERIAL' && state.hasRecap && !!recap;
 
@@ -162,12 +163,12 @@ export function DayLoopShell({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#111' },
+  root: { flex: 1, backgroundColor: colors.base },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
   dealershipName: { fontSize: 22, fontWeight: '700' },
   tierLabel: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textMuted,
     marginTop: 2,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -180,12 +181,12 @@ const styles = StyleSheet.create({
   stat: {},
   statLabel: {
     fontSize: 11,
-    color: '#777',
+    color: colors.textMuted,
     letterSpacing: 1,
   },
   statValue: {
     fontSize: 18,
-    color: '#fff',
+    color: colors.textPrimary,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
     marginTop: 2,
@@ -193,20 +194,20 @@ const styles = StyleSheet.create({
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   phase: {
     fontSize: 13,
-    color: '#666',
+    color: colors.borderMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     marginBottom: 8,
   },
-  recap: { fontSize: 17, color: '#ccc', marginBottom: 28, textAlign: 'center' },
-  floorOpen: { fontSize: 15, color: '#888', fontStyle: 'italic' },
+  recap: { fontSize: 17, color: colors.textSecondary, marginBottom: 28, textAlign: 'center' },
+  floorOpen: { fontSize: 15, color: colors.textMuted, fontStyle: 'italic' },
   primaryBtn: {
     paddingVertical: 14,
     paddingHorizontal: 36,
     borderRadius: 8,
   },
   primaryBtnText: {
-    color: '#111',
+    color: colors.base,
     fontSize: 16,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -217,7 +218,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 8,
-    backgroundColor: '#1e3a5f',
+    backgroundColor: colors.primaryDim,
   },
-  secondaryBtnText: { color: '#4a9eff', fontSize: 15, fontWeight: '600' },
+  secondaryBtnText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
 });

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import type { CandidateListing } from '../../game/StaffOrg';
 import type { StaffWithComposites } from '../../game/StaffOrg/types';
+import { colors } from '../theme';
 
 function SkillRow({ label, value, cap }: { label: string; value: number; cap: number }) {
   const ratio = Math.max(0, Math.min(1, value / cap));
@@ -25,9 +26,9 @@ function SkillRow({ label, value, cap }: { label: string; value: number; cap: nu
 }
 
 function compositeColor(v: number): object {
-  if (v >= 0.7) return { color: '#4caf50' };
-  if (v >= 0.45) return { color: '#c8a96e' };
-  return { color: '#ef5350' };
+  if (v >= 0.7) return { color: colors.positive };
+  if (v >= 0.45) return { color: colors.primary };
+  return { color: colors.danger };
 }
 
 interface DetailModalProps {
@@ -197,7 +198,7 @@ export function PersonnelScreen({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.base,
   },
   header: {
     flexDirection: 'row',
@@ -206,26 +207,26 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border,
   },
   backBtn: {
     marginRight: 12,
   },
   backText: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 16,
   },
   headerCenter: {
     flex: 1,
   },
   title: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
     textTransform: 'capitalize',
   },
   cashLabel: {
-    color: '#4caf50',
+    color: colors.positive,
     fontSize: 13,
     marginTop: 2,
   },
@@ -236,14 +237,14 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   empty: {
-    color: '#555',
+    color: colors.borderMuted,
     fontSize: 15,
     textAlign: 'center',
     marginTop: 40,
   },
   row: {
     flexDirection: 'row',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 14,
     marginBottom: 10,
@@ -253,13 +254,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rowTitle: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
   rowSub: {
-    color: '#666',
+    color: colors.borderMuted,
     fontSize: 12,
     marginTop: 2,
     textTransform: 'capitalize',
@@ -273,7 +274,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   rowCost: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -284,7 +285,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 24,
@@ -296,18 +297,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalCloseText: {
-    color: '#666',
+    color: colors.borderMuted,
     fontSize: 18,
   },
   modalTitle: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 20,
     fontWeight: '700',
     textTransform: 'capitalize',
     marginBottom: 2,
   },
   modalRole: {
-    color: '#888',
+    color: colors.textMuted,
     fontSize: 13,
     textTransform: 'capitalize',
     marginBottom: 12,
@@ -319,13 +320,13 @@ const styles = StyleSheet.create({
   },
   compositeItem: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.base,
     borderRadius: 8,
     padding: 10,
     alignItems: 'center',
   },
   compositeLabel: {
-    color: '#666',
+    color: colors.borderMuted,
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -342,13 +343,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   traitPill: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   traitText: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 12,
     textTransform: 'capitalize',
   },
@@ -360,10 +361,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#222',
+    borderBottomColor: colors.surfaceRaised,
   },
   skillLabel: {
-    color: '#888',
+    color: colors.textMuted,
     fontSize: 13,
     width: 130,
     textTransform: 'capitalize',
@@ -371,36 +372,36 @@ const styles = StyleSheet.create({
   skillBarBg: {
     flex: 1,
     height: 6,
-    backgroundColor: '#222',
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 3,
     marginHorizontal: 8,
   },
   skillBarFill: {
     height: 6,
-    backgroundColor: '#c8a96e',
+    backgroundColor: colors.primary,
     borderRadius: 3,
   },
   skillValue: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 12,
     width: 28,
     textAlign: 'right',
   },
   hireBtn: {
-    backgroundColor: '#1e3a5f',
+    backgroundColor: colors.primaryDim,
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: 'center',
   },
   hireBtnDisabled: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
   },
   hireBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
   hireBtnTextDisabled: {
-    color: '#444',
+    color: colors.border,
   },
 });

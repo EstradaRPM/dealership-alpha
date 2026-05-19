@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import type { EndCardData, EndCardReason } from '../../game/EndCard';
 import { END_CARD_OUTCOME } from '../../game/EndCard';
+import { colors } from '../theme';
 
 const REASON_LABELS: Record<EndCardReason, string> = {
   bankruptcy: 'Bankruptcy',
@@ -91,10 +92,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   card: {
-    backgroundColor: '#0a0a0a',
+    backgroundColor: colors.base,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: colors.surfaceRaised,
     padding: 32,
     width: 340,
     alignItems: 'center',
@@ -102,7 +103,7 @@ const styles = StyleSheet.create({
   gameOver: {
     fontFamily: 'monospace',
     fontSize: 11,
-    color: '#444',
+    color: colors.border,
     letterSpacing: 6,
     marginBottom: 28,
     textTransform: 'uppercase',
@@ -115,7 +116,7 @@ const styles = StyleSheet.create({
   reasonLabel: {
     fontFamily: 'monospace',
     fontSize: 20,
-    color: '#bbb',
+    color: colors.textSecondary,
     letterSpacing: 2,
     textTransform: 'uppercase',
     marginBottom: 24,
@@ -124,13 +125,13 @@ const styles = StyleSheet.create({
   divider: {
     width: '100%',
     height: 1,
-    backgroundColor: '#1e1e1e',
+    backgroundColor: colors.surface,
     marginBottom: 24,
   },
   playerName: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#e8e8e8',
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: 20,
     letterSpacing: 1,
@@ -147,24 +148,24 @@ const styles = StyleSheet.create({
   metaSep: {
     width: 1,
     height: 32,
-    backgroundColor: '#1e1e1e',
+    backgroundColor: colors.surface,
   },
   metaLabel: {
     fontFamily: 'monospace',
     fontSize: 9,
-    color: '#444',
+    color: colors.border,
     letterSpacing: 2,
     marginBottom: 4,
   },
   metaValue: {
     fontFamily: 'monospace',
     fontSize: 22,
-    color: '#888',
+    color: colors.textMuted,
     fontWeight: '700',
   },
   flavor: {
     fontSize: 14,
-    color: '#555',
+    color: colors.borderMuted,
     fontStyle: 'italic',
     textAlign: 'center',
     lineHeight: 22,
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
   },
   dismissButton: {
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
     borderRadius: 2,
     paddingVertical: 12,
     paddingHorizontal: 32,
@@ -180,7 +181,7 @@ const styles = StyleSheet.create({
   dismissText: {
     fontFamily: 'monospace',
     fontSize: 12,
-    color: '#666',
+    color: colors.borderMuted,
     letterSpacing: 3,
     textTransform: 'uppercase',
   },

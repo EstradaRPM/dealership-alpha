@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { colors } from '../theme';
 import {
   View,
   Text,
@@ -38,7 +39,7 @@ export interface OwnershipLeversProps {
   onSelectHours: (id: string) => void;
 }
 
-const ACCENT = '#c8a96e';
+const ACCENT = colors.primary;
 
 function PriceRow({
   vehicle,
@@ -184,19 +185,19 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 32 },
   heading: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   lockedNote: {
     fontSize: 12,
-    color: '#777',
+    color: colors.textMuted,
     fontStyle: 'italic',
     marginBottom: 8,
   },
   card: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 14,
     marginTop: 12,
@@ -208,8 +209,8 @@ const styles = StyleSheet.create({
     color: ACCENT,
     marginBottom: 8,
   },
-  empty: { fontSize: 13, color: '#777', fontStyle: 'italic' },
-  subtle: { fontSize: 13, color: '#999', marginBottom: 8 },
+  empty: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
+  subtle: { fontSize: 13, color: colors.textMuted, marginBottom: 8 },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -217,29 +218,29 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   priceInfo: { flex: 1, paddingRight: 12 },
-  vehName: { fontSize: 14, color: '#ddd' },
-  vehSuggested: { fontSize: 12, color: '#888', marginTop: 2 },
+  vehName: { fontSize: 14, color: colors.textPrimary },
+  vehSuggested: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   priceInput: {
     width: 96,
-    backgroundColor: '#111',
-    borderColor: '#333',
+    backgroundColor: colors.base,
+    borderColor: colors.border,
     borderWidth: 1,
     borderRadius: 6,
     paddingVertical: 8,
     paddingHorizontal: 10,
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 14,
     textAlign: 'right',
   },
-  inputDisabled: { color: '#777' },
+  inputDisabled: { color: colors.textMuted },
   actionBtn: {
-    backgroundColor: '#1e3a5f',
+    backgroundColor: colors.primaryDim,
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
-  actionBtnText: { color: '#4a9eff', fontSize: 15, fontWeight: '600' },
+  actionBtnText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
   btnDisabled: { opacity: 0.6 },
   hoursRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   hoursOpt: {
@@ -247,10 +248,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#333',
-    backgroundColor: '#111',
+    borderColor: colors.border,
+    backgroundColor: colors.base,
   },
-  hoursOptSel: { borderColor: ACCENT, backgroundColor: '#2a2418' },
-  hoursOptText: { color: '#aaa', fontSize: 13, fontWeight: '600' },
+  hoursOptSel: { borderColor: ACCENT, backgroundColor: colors.primaryDim },
+  hoursOptText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   hoursOptTextSel: { color: ACCENT },
 });

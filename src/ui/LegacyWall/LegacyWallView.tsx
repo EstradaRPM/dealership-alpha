@@ -12,6 +12,7 @@ import type { LegacyEntry } from '../../game/SaveStore';
 import { EndCard } from '../EndCard';
 import type { EndCardData, EndCardReason } from '../../game/EndCard';
 import { END_CARD_OUTCOME } from '../../game/EndCard';
+import { colors } from '../theme';
 
 const REASON_LABELS: Record<string, string> = {
   bankruptcy: 'Bankruptcy',
@@ -33,7 +34,7 @@ const REASON_ICON: Record<string, string> = {
 
 function outcomeColor(reason: string): string {
   const outcome = END_CARD_OUTCOME[reason as EndCardReason];
-  return outcome === 'success' ? '#4a7c4e' : '#7c4a4a';
+  return outcome === 'success' ? colors.positive : colors.danger;
 }
 
 interface LegacyRowProps {
@@ -122,7 +123,7 @@ export function LegacyWallView({ visible, legacies, onClose }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: colors.base,
   },
   header: {
     flexDirection: 'row',
@@ -131,17 +132,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e1e1e',
+    borderBottomColor: colors.surface,
   },
   title: {
     fontFamily: 'monospace',
     fontSize: 11,
-    color: '#444',
+    color: colors.border,
     letterSpacing: 6,
   },
   closeBtn: {
     fontSize: 18,
-    color: '#555',
+    color: colors.borderMuted,
   },
   list: {
     paddingVertical: 8,
@@ -163,7 +164,7 @@ const styles = StyleSheet.create({
   rowName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ccc',
+    color: colors.textSecondary,
     marginBottom: 2,
   },
   rowReason: {
@@ -176,15 +177,15 @@ const styles = StyleSheet.create({
   rowMeta: {
     fontFamily: 'monospace',
     fontSize: 10,
-    color: '#444',
+    color: colors.border,
   },
   rowChevron: {
     fontSize: 22,
-    color: '#333',
+    color: colors.border,
   },
   separator: {
     height: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.base,
     marginLeft: 64,
   },
   empty: {
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: 'monospace',
     fontSize: 12,
-    color: '#333',
+    color: colors.border,
     letterSpacing: 2,
   },
 });

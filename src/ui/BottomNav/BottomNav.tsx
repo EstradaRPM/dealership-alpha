@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import type { DeptKey } from '../../game/DepartmentQueue';
+import { colors } from '../theme';
 
 /**
  * The 5-department bottom nav (#76). Always tappable — the badge count is a
@@ -54,9 +55,9 @@ export function BottomNav({ badges, onPress }: BottomNavProps) {
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    backgroundColor: '#161616',
+    backgroundColor: colors.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#2a2a2a',
+    borderTopColor: colors.surfaceRaised,
   },
   tab: {
     flex: 1,
@@ -65,7 +66,7 @@ const styles = StyleSheet.create({
   },
   iconRow: { flexDirection: 'row', alignItems: 'center' },
   label: {
-    color: '#bbb',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -77,12 +78,12 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     paddingHorizontal: 5,
-    backgroundColor: '#c8503a',
+    backgroundColor: colors.danger,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 11,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],

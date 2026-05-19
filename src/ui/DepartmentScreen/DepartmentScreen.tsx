@@ -7,6 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import type { QueueItem } from '../../game/DepartmentQueue';
+import { colors } from '../theme';
 
 /**
  * Generic resolve-list for a single department (#76). One component drives
@@ -93,7 +94,7 @@ export function DepartmentScreen({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#111' },
+  root: { flex: 1, backgroundColor: colors.base },
   background: { ...StyleSheet.absoluteFillObject },
   header: {
     flexDirection: 'row',
@@ -102,24 +103,24 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#2a2a2a',
+    borderBottomColor: colors.surfaceRaised,
   },
   backBtn: { paddingRight: 14, paddingVertical: 4 },
-  backText: { color: '#4a9eff', fontSize: 16, fontWeight: '600' },
+  backText: { color: colors.accent, fontSize: 16, fontWeight: '600' },
   title: {
     flex: 1,
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
   count: {
-    color: '#888',
+    color: colors.textMuted,
     fontSize: 15,
     fontVariant: ['tabular-nums'],
   },
   list: { padding: 16 },
   empty: {
-    color: '#666',
+    color: colors.borderMuted,
     fontSize: 15,
     fontStyle: 'italic',
     textAlign: 'center',
@@ -129,12 +130,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 10,
   },
-  rowLabel: { color: '#ddd', fontSize: 15, flex: 1, paddingRight: 12 },
-  rowAction: { color: '#4a9eff', fontSize: 14, fontWeight: '600' },
+  rowLabel: { color: colors.textPrimary, fontSize: 15, flex: 1, paddingRight: 12 },
+  rowAction: { color: colors.accent, fontSize: 14, fontWeight: '600' },
 });

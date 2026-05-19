@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { loadTierConfig } from '../../game/CareerProgression';
 import type { AccentOption, FontOption } from '../../game/CareerProgression';
+import { colors } from '../theme';
 
 export interface ChapterCardConfirmation {
   businessName: string;
@@ -63,7 +64,7 @@ export function ChapterCard({ visible, toTier, defaultBusinessName, onConfirm }:
             onChangeText={(v) => { setBusinessName(v); setError(''); }}
             maxLength={50}
             placeholder="Your dealership name"
-            placeholderTextColor="#555"
+            placeholderTextColor={colors.borderMuted}
           />
 
           <Text style={styles.fieldLabel}>Accent Color</Text>
@@ -124,7 +125,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   card: {
-    backgroundColor: '#141414',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 28,
     width: 340,
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
   },
   chapterLabel: {
     fontSize: 11,
-    color: '#555',
+    color: colors.borderMuted,
     letterSpacing: 3,
     textTransform: 'uppercase',
     marginBottom: 14,
@@ -144,13 +145,13 @@ const styles = StyleSheet.create({
   tierTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   caption: {
     fontSize: 14,
-    color: '#888',
+    color: colors.textMuted,
     fontStyle: 'italic',
     textAlign: 'center',
     marginBottom: 20,
@@ -158,27 +159,27 @@ const styles = StyleSheet.create({
   divider: {
     width: '100%',
     height: 1,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.surfaceRaised,
     marginBottom: 20,
   },
   fieldLabel: {
     alignSelf: 'flex-start',
     fontSize: 11,
-    color: '#666',
+    color: colors.borderMuted,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     marginBottom: 8,
   },
   nameInput: {
     width: '100%',
-    backgroundColor: '#222',
-    color: '#fff',
+    backgroundColor: colors.surfaceRaised,
+    color: colors.textPrimary,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   swatchRow: {
     flexDirection: 'row',
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   swatchSelected: {
-    borderColor: '#fff',
+    borderColor: colors.textPrimary,
   },
   fontRow: {
     flexDirection: 'row',
@@ -206,20 +207,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: '#222',
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   fontPillSelected: {
-    borderColor: '#555',
+    borderColor: colors.borderMuted,
   },
   fontPillText: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textMuted,
     fontWeight: '600',
   },
   error: {
-    color: '#e05555',
+    color: colors.danger,
     fontSize: 13,
     marginBottom: 10,
     alignSelf: 'flex-start',
@@ -234,6 +235,6 @@ const styles = StyleSheet.create({
   confirmText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#111',
+    color: colors.base,
   },
 });

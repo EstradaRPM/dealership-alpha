@@ -22,6 +22,7 @@ import type { SaveStore } from '../../game/SaveStore';
 import type { Telemetry } from '../../game/Telemetry';
 import type { CustomerPool } from '../../game/CustomerPool';
 import { SALES_ARCHETYPES } from '../../game/CustomerPool';
+import { colors } from '../theme';
 
 interface Props {
   bus: EventBus;
@@ -215,7 +216,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
                 value={cashInput}
                 onChangeText={setCashInput}
                 placeholder="amount"
-                placeholderTextColor="#555"
+                placeholderTextColor={colors.borderMuted}
                 keyboardType="numeric"
                 returnKeyType="done"
               />
@@ -234,7 +235,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
                 value={daysInput}
                 onChangeText={setDaysInput}
                 placeholder="days (1–365)"
-                placeholderTextColor="#555"
+                placeholderTextColor={colors.borderMuted}
                 keyboardType="number-pad"
                 returnKeyType="done"
               />
@@ -329,7 +330,7 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.surface,
   },
   header: {
     flexDirection: 'row',
@@ -338,16 +339,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2c4a',
+    borderBottomColor: colors.surfaceRaised,
   },
   headerTitle: {
-    color: '#e74c3c',
+    color: colors.danger,
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 2,
   },
   closeBtn: {
-    color: '#888',
+    color: colors.textMuted,
     fontSize: 22,
   },
   body: {
@@ -356,13 +357,13 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   statLine: {
-    color: '#7f8c8d',
+    color: colors.textMuted,
     fontSize: 12,
     fontFamily: 'monospace',
     marginBottom: 6,
   },
   sectionLabel: {
-    color: '#e74c3c',
+    color: colors.danger,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 2,
@@ -370,13 +371,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   input: {
-    backgroundColor: '#0d0d1a',
+    backgroundColor: colors.base,
     borderWidth: 1,
-    borderColor: '#2c2c4a',
+    borderColor: colors.surfaceRaised,
     borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#ecf0f1',
+    color: colors.textPrimary,
     fontSize: 15,
     fontFamily: 'monospace',
     marginBottom: 10,
@@ -391,20 +392,20 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     marginTop: 0,
-    backgroundColor: '#2c3e50',
+    backgroundColor: colors.surfaceRaised,
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
   },
   primaryBtnLabel: {
-    color: '#ecf0f1',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   statusLine: {
     marginTop: 16,
-    color: '#27ae60',
+    color: colors.positive,
     fontSize: 12,
     fontFamily: 'monospace',
   },
@@ -413,21 +414,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#2c2c4a',
+    borderColor: colors.surfaceRaised,
     marginBottom: 6,
-    backgroundColor: '#0d0d1a',
+    backgroundColor: colors.base,
   },
   archetypeRowSelected: {
-    borderColor: '#e74c3c',
-    backgroundColor: '#1e1030',
+    borderColor: colors.danger,
+    backgroundColor: colors.surface,
   },
   archetypeLabel: {
-    color: '#7f8c8d',
+    color: colors.textMuted,
     fontSize: 13,
     fontFamily: 'monospace',
   },
   archetypeLabelSelected: {
-    color: '#ecf0f1',
+    color: colors.textPrimary,
   },
   spawnBtn: {
     marginTop: 10,
@@ -436,41 +437,41 @@ const styles = StyleSheet.create({
     height: 32,
   },
   activeBtn: {
-    backgroundColor: '#1a5c3a',
+    backgroundColor: colors.positive,
     borderWidth: 1,
-    borderColor: '#27ae60',
+    borderColor: colors.positive,
   },
   logPanel: {
     marginTop: 10,
-    backgroundColor: '#0d0d1a',
+    backgroundColor: colors.base,
     borderWidth: 1,
-    borderColor: '#2c2c4a',
+    borderColor: colors.surfaceRaised,
     borderRadius: 6,
     maxHeight: 220,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   logEntry: {
-    color: '#7f8c8d',
+    color: colors.textMuted,
     fontSize: 10,
     fontFamily: 'monospace',
     marginBottom: 4,
     lineHeight: 14,
   },
   logEventName: {
-    color: '#e74c3c',
+    color: colors.danger,
   },
   dangerBtn: {
     marginTop: 0,
-    backgroundColor: '#7b1c1c',
+    backgroundColor: colors.danger,
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e74c3c',
+    borderColor: colors.danger,
   },
   dangerBtnLabel: {
-    color: '#e74c3c',
+    color: colors.danger,
     fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.5,

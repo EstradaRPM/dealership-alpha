@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import type { WeeklySnapshot } from '../../game/SaveStore';
+import { colors } from '../theme';
 
 interface Props {
   snapshots: readonly WeeklySnapshot[];
@@ -79,7 +80,7 @@ export function SettingsScreen({ snapshots, onRollback, onClose }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.base,
   },
   header: {
     flexDirection: 'row',
@@ -89,12 +90,12 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#222',
+    borderBottomColor: colors.surfaceRaised,
   },
   title: {
     fontFamily: 'monospace',
     fontSize: 11,
-    color: '#555',
+    color: colors.borderMuted,
     letterSpacing: 4,
   },
   closeBtn: {
@@ -102,7 +103,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   closeText: {
-    color: '#888',
+    color: colors.textMuted,
     fontSize: 14,
   },
   content: {
@@ -111,13 +112,13 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'monospace',
     fontSize: 9,
-    color: '#444',
+    color: colors.border,
     letterSpacing: 3,
     marginBottom: 12,
     textTransform: 'uppercase',
   },
   emptyText: {
-    color: '#555',
+    color: colors.borderMuted,
     fontSize: 13,
     fontStyle: 'italic',
     lineHeight: 20,
@@ -126,37 +127,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderRadius: 4,
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#252525',
+    borderColor: colors.surfaceRaised,
   },
   snapshotMeta: {
     gap: 4,
   },
   snapshotDay: {
-    color: '#ccc',
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '600',
   },
   snapshotTier: {
     fontFamily: 'monospace',
     fontSize: 10,
-    color: '#555',
+    color: colors.borderMuted,
     letterSpacing: 1,
   },
   rollbackLabel: {
     fontFamily: 'monospace',
     fontSize: 10,
-    color: '#c8a96e',
+    color: colors.primary,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   hint: {
-    color: '#444',
+    color: colors.border,
     fontSize: 11,
     marginTop: 20,
     lineHeight: 17,

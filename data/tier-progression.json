@@ -31,10 +31,10 @@
     }
   ],
   "accentOptions": [
-    { "id": "gold",    "label": "Gold",    "color": "#c8a96e" },
-    { "id": "cobalt",  "label": "Cobalt",  "color": "#4a9eff" },
-    { "id": "crimson", "label": "Crimson", "color": "#c0392b" },
-    { "id": "slate",   "label": "Slate",   "color": "#7f8c8d" }
+    { "id": "azure",   "label": "Azure",   "color": "#38bdf8" },
+    { "id": "indigo",  "label": "Indigo",  "color": "#818cf8" },
+    { "id": "crimson", "label": "Crimson", "color": "#f4505a" },
+    { "id": "slate",   "label": "Slate",   "color": "#8a94a6" }
   ],
   "fontOptions": [
     { "id": "classic",    "label": "Classic" },

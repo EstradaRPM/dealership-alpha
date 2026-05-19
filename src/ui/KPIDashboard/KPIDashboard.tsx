@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import type { KPISnapshot } from '../../game/KPIDashboard';
+import { colors } from '../theme';
 
 function fmt$(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
@@ -90,17 +91,17 @@ export function KPIDashboard({ isUnlocked, snapshot }: KPIDashboardProps) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.base,
   },
   header: {
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border,
   },
   title: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
@@ -115,14 +116,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   lockedTitle: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
   },
   lockedSub: {
-    color: '#666',
+    color: colors.borderMuted,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
@@ -134,7 +135,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   sectionHeader: {
-    color: '#888',
+    color: colors.textMuted,
     fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   card: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     paddingHorizontal: 14,
     marginBottom: 12,
@@ -155,14 +156,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#222',
+    borderBottomColor: colors.surfaceRaised,
   },
   rowLabel: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 14,
   },
   rowValue: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
