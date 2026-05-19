@@ -118,6 +118,14 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         throw new StaffOrgError(`Unknown candidate "${candidateId}"`);
       }
 
+      const tier = getTier ? getTier() : 1;
+      const cap = config.headcountCapByTier[String(tier)] ?? Infinity;
+      if (roster.length >= cap) {
+        throw new StaffOrgError(
+          `Headcount cap reached: tier ${tier} allows at most ${cap} staff (current: ${roster.length})`,
+        );
+      }
+
       economy.postExpense(listing.hiringCost, `Hiring — ${listing.staff.role_id}`);
 
       roster.push(listing.staff);

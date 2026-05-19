@@ -30,7 +30,7 @@
     "demandFactorMax": 3.0
   },
   "renderLoop": {
-    "baseTickIntervalMs": 250,
+    "baseTickIntervalMs": 400,
     "speedMultipliers": [1, 2, 4],
     "openHour": 9,
     "closeHour": 19
@@ -61,7 +61,12 @@
       "manager": 2500,
       "gm": 5000
     },
-    "candidatesPerRole": 3
+    "candidatesPerRole": 3,
+    "headcountCapByTier": {
+      "1": 4,
+      "2": 8,
+      "3": 16
+    }
   },
   "staffMorale": {
     "defaultMorale": 70,
@@ -165,7 +170,7 @@
     "minDrainPerTick": 0.15,
     "maxDrainPerTick": 0.60,
     "exceptionSkillExpMin": 1.0,
-    "exceptionSkillExpMax": 3.0
+    "exceptionSkillExpMax": 2.0
   },
   "ownership": {
     "hoursOfOp": {

@@ -15,6 +15,7 @@ const NO_OVERHEAD = { weeklyRent: 0, weeklyPayrollStub: 0 };
 const CHEAP_CONFIG: StaffOrgConfig = {
   hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
   candidatesPerRole: 3,
+  headcountCapByTier: { '1': 50, '2': 50, '3': 50 },
 };
 
 function makeSetup(startingCash = STARTING_CASH, config = CHEAP_CONFIG) {
@@ -172,6 +173,82 @@ describe('StaffOrg — hire', () => {
     const [first] = staffOrg.getCandidates('salesperson');
     try { staffOrg.hire(first.candidateId); } catch { /* expected */ }
     expect(staffOrg.currentRoster).toHaveLength(0);
+  });
+});
+
+// ── Headcount cap by tier (#131) ────────────────────────────────────────────
+
+describe('StaffOrg — headcount cap by tier', () => {
+  const CAP_CONFIG: StaffOrgConfig = {
+    hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
+    candidatesPerRole: 3,
+    headcountCapByTier: { '1': 2, '2': 4, '3': 8 },
+  };
+
+  function makeCapSetup(tier: number) {
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const staffOrg = createStaffOrg({
+      bus, economy, masterSeed: MASTER_SEED, taxonomy, archetypes,
+      config: CAP_CONFIG, getTier: () => tier,
+    });
+    return { bus, clock, economy, staffOrg };
+  }
+
+  // Hires up to `count` salespeople, one fresh candidate per day.
+  function hireN(clock: ReturnType<typeof createGameClock>, staffOrg: ReturnType<typeof createStaffOrg>, count: number) {
+    for (let i = 0; i < count; i++) {
+      clock.advanceDay();
+      staffOrg.hire(staffOrg.getCandidates('salesperson')[0].candidateId);
+    }
+  }
+
+  it('allows hiring up to the Tier 1 cap', () => {
+    const { clock, staffOrg } = makeCapSetup(1);
+    hireN(clock, staffOrg, 2);
+    expect(staffOrg.currentRoster).toHaveLength(2);
+  });
+
+  it('throws StaffOrgError when hiring past the Tier 1 cap', () => {
+    const { clock, staffOrg } = makeCapSetup(1);
+    hireN(clock, staffOrg, 2);
+    clock.advanceDay();
+    const next = staffOrg.getCandidates('salesperson')[0].candidateId;
+    expect(() => staffOrg.hire(next)).toThrow(/[Hh]eadcount cap/);
+  });
+
+  it('does not grow roster or post event when the cap is hit', () => {
+    const { bus, clock, economy, staffOrg } = makeCapSetup(1);
+    hireN(clock, staffOrg, 2);
+    clock.advanceDay();
+    const events: unknown[] = [];
+    bus.subscribe('staff:hired', (e) => events.push(e));
+    const cashBefore = economy.cash;
+    const next = staffOrg.getCandidates('salesperson')[0].candidateId;
+    try { staffOrg.hire(next); } catch { /* expected */ }
+    expect(staffOrg.currentRoster).toHaveLength(2);
+    expect(events).toHaveLength(0);
+    expect(economy.cash).toBe(cashBefore);
+  });
+
+  it('a higher tier permits a larger roster', () => {
+    const { clock, staffOrg } = makeCapSetup(2);
+    hireN(clock, staffOrg, 4);
+    expect(staffOrg.currentRoster).toHaveLength(4);
+  });
+
+  it('defaults to the Tier 1 cap when getTier is not provided', () => {
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const staffOrg = createStaffOrg({
+      bus, economy, masterSeed: MASTER_SEED, taxonomy, archetypes, config: CAP_CONFIG,
+    });
+    hireN(clock, staffOrg, 2);
+    clock.advanceDay();
+    const next = staffOrg.getCandidates('salesperson')[0].candidateId;
+    expect(() => staffOrg.hire(next)).toThrow(/[Hh]eadcount cap/);
   });
 });
 

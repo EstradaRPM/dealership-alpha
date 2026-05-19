@@ -125,12 +125,19 @@ export function createWorld(deps: {
   const inventory = createInventory({ bus, masterSeed, economy });
   const dealEngine = createDealEngine({ bus, inventory, economy });
   const staffTaxonomy = loadStaffTaxonomy();
+  // Reputation + TierManager are created ahead of StaffOrg so the hiring
+  // headcount cap (#131) can read the live dealership tier. Reputation drifts
+  // overnight and takes deal/walk hits via the bus; TierManager evaluates
+  // tier-up on the payroll-night cadence.
+  const reputation = createReputation({ bus, economy });
+  const tierManager = createTierManager({ bus, economy, reputation });
   const staffOrg = createStaffOrg({
     bus,
     economy,
     masterSeed,
     taxonomy: staffTaxonomy,
     archetypes: loadStaffArchetypes(),
+    getTier: () => tierManager.currentTier,
   });
   // StaffMorale owns the per-staff morale dimension over the StaffOrg roster:
   // recognition on auto-closes, end-of-day workload drift, overnight pay
@@ -163,16 +170,11 @@ export function createWorld(deps: {
     tunables: loadCustomerTunables().followUp,
   });
 
-  // Reputation + player tier: surface the day-to-day consequences of the
-  // loop (#77). Reputation drifts overnight and takes deal/walk hits via the
-  // bus; TierManager evaluates tier-up on the payroll-night cadence.
-  const reputation = createReputation({ bus, economy });
   // ServiceQueue (#80): starts silent (default initialTier=1 < minTierRequired
   // 2), follows career:tier_up off the bus, and once at Tier 2 emits a daily
   // service:intake_ready that DepartmentQueue pushes into the Service lane —
   // surfaced/resolved by the generic DepartmentScreen with no extra wiring.
   const serviceQueue = createServiceQueue({ bus, masterSeed });
-  const tierManager = createTierManager({ bus, economy, reputation });
   // EndCardManager (#84): all terminal failure paths + success endings
   // converge here and re-emit a single career:game_over carrying the
   // assembled EndCardData. Wired in the live world (not just tests) so the
