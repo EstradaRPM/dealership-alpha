@@ -36,4 +36,21 @@ describe('SaveStore migrations', () => {
     const env: SaveEnvelope = { v: 1, state: {} };
     expect(() => migrate(env, {}, 3)).toThrow(/No migration registered from save v1/);
   });
+
+  describe('v1 → v2 masterSeed backfill (#96)', () => {
+    it('backfills the fixed legacy seed 42 for a pre-#96 save', () => {
+      const env: SaveEnvelope = { v: 1, state: { character: { name: 'A' } } };
+      expect(migrate(env)).toEqual({ character: { name: 'A' }, masterSeed: 42 });
+    });
+
+    it('preserves an already-present masterSeed', () => {
+      const env: SaveEnvelope = { v: 1, state: { masterSeed: 12345 } };
+      expect(migrate(env)).toEqual({ masterSeed: 12345 });
+    });
+
+    it('leaves a current-version save untouched', () => {
+      const env: SaveEnvelope = { v: 2, state: { masterSeed: 999 } };
+      expect(migrate(env)).toEqual({ masterSeed: 999 });
+    });
+  });
 });

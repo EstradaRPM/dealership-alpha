@@ -4,36 +4,13 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createSaveStore, createSqliteDriver } from './src/game/SaveStore';
 import { createEventBus } from './src/game/EventBus';
-import { createGameClock } from './src/game/GameClock';
-import { createDepartmentQueue } from './src/game/DepartmentQueue';
-import {
-  createCustomerPool,
-  SALES_ARCHETYPES,
-} from './src/game/CustomerPool';
-import { createDealEngine } from './src/game/DealEngine';
-import { createEconomy } from './src/game/Economy';
-import { createInventory } from './src/game/Inventory';
-import { createStaffOrg } from './src/game/StaffOrg';
-import { createCapacityManager } from './src/game/CapacityManager';
-import { createStaffFloorDrain } from './src/game/StaffDispatch';
-import {
-  createDayLoopController,
-  type FloorSeamProvider,
-} from './src/game/DayLoopController';
 import type {
-  CustomerSource,
-  CustomerRef,
   HandPlaySession,
   AdvanceResult,
 } from './src/game/FloorSim';
 import { loadTunables } from './src/game/data';
-import {
-  loadPersonArchetypes,
-  loadVisitArchetypes,
-  loadTraitTaxonomy,
-  loadStaffTaxonomy,
-  loadStaffArchetypes,
-} from './src/game/NPC';
+import { loadStaffTaxonomy } from './src/game/NPC';
+import { createWorld, makeSeed, type World } from './src/createWorld';
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { DayLoopShell } from './src/ui/DayLoopShell';
 import type { DayRecapModel } from './src/ui/DayRecap';
@@ -46,13 +23,9 @@ import { useFloorRenderLoop } from './src/ui/FloorRenderLoop';
 import { AuctionMenu } from './src/ui/AuctionMenu';
 import { PersonnelScreen } from './src/ui/PersonnelScreen';
 import type { CharacterProfile } from './src/game/CareerProgression';
-import { createTierManager } from './src/game/CareerProgression';
-import { createReputation } from './src/game/Reputation';
 import type { SaveStore, MidDayCheckpoint } from './src/game/SaveStore';
 import type { LotVehicle } from './src/game/Inventory';
 import { AdminConsole } from './src/ui/AdminConsole';
-import { createTelemetry } from './src/game/Telemetry';
-import { createKPIDashboard } from './src/game/KPIDashboard';
 import { MonthCloseInterstitial } from './src/ui/MonthCloseInterstitial';
 import { useNavigator } from './src/ui/Navigator';
 import { BottomNav } from './src/ui/BottomNav';
@@ -66,8 +39,6 @@ const DEPT_TITLES: Record<DeptKey, string> = {
   office: 'Office',
   lot: 'Lot',
 };
-
-const MASTER_SEED = 42;
 
 // Hand-play modal default (#118): sourced from a tunable, never a magic
 // number. false ⇒ opening the modal auto-pauses the day; true ⇒ the day
@@ -87,7 +58,10 @@ const HOURS_OF_OP = loadTunables().ownership.hoursOfOp;
 const HIRING_ROLE_ID = 'salesperson';
 
 // ── Composition root (#114) ──────────────────────────────────────────────────
-// Game modules created once at module level, outside React lifecycle.
+// Seed-free, must outlive world (re)construction. saveStore reads the
+// persisted per-save masterSeed (#96) before the seed-dependent World is
+// built; bus stays stable so the render-loop hook + bus subscriptions have a
+// bus before the seed is known.
 const saveStore: SaveStore = createSaveStore(createSqliteDriver());
 // Mid-day checkpoint cell (#122) — a physically separate sqlite db so the
 // in-progress FloorSim checkpoint can never collide with the main save blob
@@ -96,38 +70,20 @@ const checkpointStore: SaveStore = createSaveStore(
   createSqliteDriver({ databaseName: 'dealership.checkpoint.db' }),
 );
 const bus = createEventBus();
-// Default initialDay = 1: the clock sits on "night before Day 1" so the
-// DayLoopController cold-start (skip-advance on the first nextDay) plays Day 1
-// rather than skipping it.
-const clock = createGameClock({ bus });
-const departmentQueue = createDepartmentQueue({ bus });
-// Legacy live-day arrival path OFF: FloorSim owns arrivals via the injected
-// customer-source seam below.
-const customerPool = createCustomerPool({
-  bus,
-  legacyDailyArrivals: false,
-  npcDeps: {
-    masterSeed: MASTER_SEED,
-    personArchetypes: loadPersonArchetypes(),
-    visitArchetypes: loadVisitArchetypes(),
-    traits: loadTraitTaxonomy(),
-  },
-});
-const economy = createEconomy({ bus, startingCash: 50_000 });
-const inventory = createInventory({ bus, masterSeed: MASTER_SEED, economy });
-const dealEngine = createDealEngine({ bus, inventory, economy });
+
+// Fresh random root seed minted once per app launch; consumed only if this
+// launch starts a brand-new game (#96). An existing save ignores it and
+// rebuilds the World from its own persisted seed.
+const NEW_GAME_SEED = makeSeed();
+
+// staffTaxonomy is seed-free: kept module-level so SKILL_CAPS (PersonnelScreen
+// bars, #120) and the FLOOR-OPEN staff-strip department lookup don't depend on
+// a built World.
 const staffTaxonomy = loadStaffTaxonomy();
 // skill_id → cap, for the PersonnelScreen skill bars (Hiring lever, #120).
 const SKILL_CAPS: Record<string, number> = Object.fromEntries(
   Object.entries(staffTaxonomy.skills).map(([id, s]) => [id, s.cap]),
 );
-const staffOrg = createStaffOrg({
-  bus,
-  economy,
-  masterSeed: MASTER_SEED,
-  taxonomy: staffTaxonomy,
-  archetypes: loadStaffArchetypes(),
-});
 
 // role_id → humanized label + serving department, for the impressionistic
 // FLOOR-OPEN staff strip (#117). Pure read mapping off the role catalog.
@@ -137,72 +93,25 @@ function humanizeRole(roleId: string): string {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
 }
-// Legacy aggregate admit gate OFF: the per-tick floor gate is the sole
-// admittance path under FloorSim.
-const capacityManager = createCapacityManager({
-  bus,
-  staffOrg,
-  facilityTier: 1,
-  legacyAdmitGate: false,
-});
-// Reputation + player tier: instantiated here so Home can surface the
-// day-to-day consequences of the loop (#77). Reputation drifts overnight and
-// takes deal/walk hits via the bus; TierManager evaluates tier-up on the
-// payroll-night cadence.
-const reputation = createReputation({ bus, economy });
-const tierManager = createTierManager({ bus, economy, reputation });
-const telemetry = createTelemetry({ bus });
-// Month-close hook (#123): the KPIDashboard game module supplies the
-// month-to-date snapshot the interstitial composes (no new rich content).
-const kpiDashboard = createKPIDashboard({ bus, staffOrg });
+
 // Month-close cadence — sourced from the same tunable GameClock uses, never
 // a magic number. clock:month_ended fires on endingDay % daysPerMonth === 0.
 const DAYS_PER_MONTH = loadTunables().clock.daysPerMonth;
-
-// CustomerPool behind FloorSim's #99 customer-source seam: FloorSim's own
-// arrival RNG decides the admitted count per tick; the adapter only mints
-// identities for that count via CustomerPool.
-const customerSource: CustomerSource = {
-  spawn({ day, tick, count }): readonly CustomerRef[] {
-    const refs: CustomerRef[] = [];
-    for (let i = 0; i < count; i++) {
-      const a = SALES_ARCHETYPES[(day + tick + i) % SALES_ARCHETYPES.length];
-      const id = customerPool.spawnCustomer(a.personId, a.visitId, a.label);
-      refs.push({ id, source: 'ambient', mustHandle: false, department: 'sales' });
-    }
-    return refs;
-  },
-};
-
-// Per-day FloorSim seam set: CapacityManager / StaffDispatch / CustomerPool
-// behind the locked #99 seams. Invoked once per day → fresh per-day instances.
-const floorSeams: FloorSeamProvider = () => ({
-  capacity: capacityManager.createFloorGate(),
-  drains: [
-    createStaffFloorDrain({
-      bus,
-      staffOrg,
-      queue: departmentQueue,
-      economy,
-      masterSeed: MASTER_SEED,
-    }),
-  ],
-  customerSource,
-});
-
-const dayLoop = createDayLoopController({
-  bus,
-  seed: MASTER_SEED,
-  clock,
-  floorSeams,
-});
 
 export default function App() {
   const nav = useNavigator('loading');
   const screen = nav.current.route;
   const [profile, setProfile] = useState<CharacterProfile | null>(null);
+  // The seed-dependent composition root (#96). Null until the per-save
+  // masterSeed is resolved — from the persisted save on load, or the fresh
+  // NEW_GAME_SEED at character creation. Built exactly once per game.
+  const [world, setWorld] = useState<World | null>(null);
+  // Latest world for bus handlers / AppState listener (their effects mount
+  // once with [] before the world exists).
+  const worldRef = useRef<World | null>(null);
+  worldRef.current = world;
   const [lotVehicles, setLotVehicles] = useState<readonly LotVehicle[]>([]);
-  const [cash, setCash] = useState(economy.cash);
+  const [cash, setCash] = useState(0);
   // Hours-of-op lever selection (#120). Composition-root state only — the
   // downstream slice wires HOURS_OF_OP.options[…].ticksPerDay into FloorSim.
   const [hoursOfOpId, setHoursOfOpId] = useState(HOURS_OF_OP.defaultId);
@@ -231,8 +140,8 @@ export default function App() {
   // wall-clock-free). A hand-play modal open in auto-pause mode holds the
   // interval without touching the player's pause state.
   const floorLoop = useFloorRenderLoop({
-    floor: dayLoop.currentFloor() ?? null,
-    active: dayLoop.state().phase === 'FLOOR_OPEN',
+    floor: world?.dayLoop.currentFloor() ?? null,
+    active: world ? world.dayLoop.state().phase === 'FLOOR_OPEN' : false,
     bus,
     onTick: bump,
     hold: (handSession != null && !HAND_PLAY_LIVE) || monthClose != null,
@@ -243,13 +152,13 @@ export default function App() {
   // live, the day is already idle here (the render loop is #121) — auto-pause
   // is the default and holds until the player resumes.
   const openHandPlay = (customerId: string) => {
-    const f = dayLoop.currentFloor();
+    const f = world?.dayLoop.currentFloor();
     if (!f || !f.canGrab()) return;
     setHandSession(f.grab(customerId));
     setHandResult(null);
   };
   const cherryPick = () => {
-    const f = dayLoop.currentFloor();
+    const f = world?.dayLoop.currentFloor();
     if (!f || !f.canGrab()) return;
     const next = f.grabbableCustomers()[0];
     if (next) openHandPlay(next.id);
@@ -270,6 +179,14 @@ export default function App() {
   useEffect(() => {
     saveStore.load().then(async (state) => {
       if (state?.character) {
+        // Per-save masterSeed (#96): the SaveStore v1→v2 migration backfills
+        // the fixed legacy 42 for pre-#96 saves, so a number is guaranteed
+        // here; the ?? 42 is a defensive belt only.
+        const seed =
+          typeof state.masterSeed === 'number' ? state.masterSeed : 42;
+        const w = createWorld({ bus, masterSeed: seed });
+        setWorld(w);
+        setCash(w.economy.cash);
         setProfile(state.character as CharacterProfile);
         nav.reset('game');
         // Mid-day cold-start resume (#122): if a checkpoint exists for the
@@ -280,8 +197,8 @@ export default function App() {
         // misapplied.
         const raw = await checkpointStore.load();
         const cp = raw as unknown as MidDayCheckpoint | null;
-        if (cp && cp.day === clock.currentDay) {
-          dayLoop.resume(cp);
+        if (cp && cp.day === w.clock.currentDay) {
+          w.dayLoop.resume(cp);
           bump();
         } else if (cp) {
           await checkpointStore.clear();
@@ -295,19 +212,30 @@ export default function App() {
   // Lifecycle + Auction-relevant state stay in sync with the EventBus.
   useEffect(() => {
     const onDayComplete = () => {
+      const w = worldRef.current;
       bump();
-      setLotVehicles(inventory.getLotVehicles());
-      setCash(economy.cash);
+      if (w) {
+        setLotVehicles(w.inventory.getLotVehicles());
+        setCash(w.economy.cash);
+      }
       // Day closed → the mid-day checkpoint is obsolete (#122 / #109: caller
       // clears it on day-complete).
       void checkpointStore.clear();
     };
     const onVehiclePurchased = () => {
-      setLotVehicles(inventory.getLotVehicles());
-      setCash(economy.cash);
+      const w = worldRef.current;
+      if (!w) return;
+      setLotVehicles(w.inventory.getLotVehicles());
+      setCash(w.economy.cash);
     };
-    const onVehicleSold = () => setLotVehicles(inventory.getLotVehicles());
-    const onRevenue = () => setCash(economy.cash);
+    const onVehicleSold = () => {
+      const w = worldRef.current;
+      if (w) setLotVehicles(w.inventory.getLotVehicles());
+    };
+    const onRevenue = () => {
+      const w = worldRef.current;
+      if (w) setCash(w.economy.cash);
+    };
     const onDealClosed = ({
       frontGross,
       backGross,
@@ -379,7 +307,7 @@ export default function App() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'background' && next !== 'inactive') return;
-      const cp = dayLoop.checkpoint();
+      const cp = worldRef.current?.dayLoop.checkpoint();
       if (cp) void checkpointStore.save(cp as unknown as Record<string, unknown>);
     });
     return () => sub.remove();
@@ -391,9 +319,10 @@ export default function App() {
     // longer runs to exhaustion synchronously. FloorSim emits
     // floor:day_complete on the final tick, which flips the controller back
     // to MANAGERIAL (its own subscription) and re-renders.
+    if (!world) return;
     setGrossToday(0);
     setFloorEvents([]);
-    dayLoop.nextDay();
+    world.dayLoop.nextDay();
     bump();
   };
 
@@ -422,63 +351,69 @@ export default function App() {
         <StatusBar style="light" />
         <CharacterCreation
           saveStore={saveStore}
+          masterSeed={NEW_GAME_SEED}
           onComplete={(p: CharacterProfile) => {
+            // New game → build the World from the freshly-minted seed that
+            // CharacterCreation just persisted (#96).
+            const w = createWorld({ bus, masterSeed: NEW_GAME_SEED });
+            setWorld(w);
+            setCash(w.economy.cash);
             setProfile(p);
             nav.reset('game');
           }}
         />
       </>
     );
-  } else if (screen === 'auction') {
+  } else if (screen === 'auction' && world) {
     content = (
       <>
         <StatusBar style="light" />
         <AuctionMenu
-          listings={inventory.getAuctionListings()}
+          listings={world.inventory.getAuctionListings()}
           lotVehicles={lotVehicles}
           cash={cash}
-          onBuy={(listingId) => inventory.buyFromAuction(listingId)}
+          onBuy={(listingId) => world.inventory.buyFromAuction(listingId)}
           onClose={() => nav.back()}
         />
       </>
     );
-  } else if (screen === 'department') {
+  } else if (screen === 'department' && world) {
     const dept = (nav.current.params as { dept: DeptKey }).dept;
     content = (
       <>
         <StatusBar style="light" />
         <DepartmentScreen
           title={DEPT_TITLES[dept]}
-          items={departmentQueue.getQueue(dept)}
+          items={world.departmentQueue.getQueue(dept)}
           onResolve={(id) => {
-            departmentQueue.resolveItem(id);
+            world.departmentQueue.resolveItem(id);
             bump();
           }}
           onClose={() => nav.back()}
         />
       </>
     );
-  } else if (screen === 'personnel') {
+  } else if (screen === 'personnel' && world) {
     content = (
       <>
         <StatusBar style="light" />
         <PersonnelScreen
           roleId={HIRING_ROLE_ID}
-          candidates={staffOrg.getCandidates(HIRING_ROLE_ID)}
+          candidates={world.staffOrg.getCandidates(HIRING_ROLE_ID)}
           skillCaps={SKILL_CAPS}
           cash={cash}
           onHire={(candidateId) => {
-            staffOrg.hire(candidateId);
-            setCash(economy.cash);
+            world.staffOrg.hire(candidateId);
+            setCash(world.economy.cash);
           }}
           onClose={() => nav.back()}
         />
       </>
     );
-  } else if (screen === 'game' && profile) {
-    const loopState = dayLoop.state();
-    const floor = dayLoop.currentFloor();
-    const funnel = capacityManager.getDayFunnel();
+  } else if (screen === 'game' && profile && world) {
+    const loopState = world.dayLoop.state();
+    const floor = world.dayLoop.currentFloor();
+    const funnel = world.capacityManager.getDayFunnel();
     const flooredValue = lotVehicles.reduce(
       (sum, v) => sum + v.purchasePrice + v.reconCost,
       0,
@@ -495,7 +430,7 @@ export default function App() {
           ticksPerDay: floor.ticksPerDay,
           openHour: RENDER_LOOP.openHour,
           closeHour: RENDER_LOOP.closeHour,
-          cash: economy.cash,
+          cash: world.economy.cash,
           exceptionPending: floor
             .grabbableCustomers()
             .some((c) => c.source === 'exception' && c.mustHandle),
@@ -504,7 +439,7 @@ export default function App() {
           walked: funnel.potentialTraffic - funnel.walkedIn,
           pendingWarm: Math.max(0, funnel.walkedIn - funnel.staffEngaged),
           gross: grossToday,
-          staff: staffOrg.currentRoster.map((s) => ({
+          staff: world.staffOrg.currentRoster.map((s) => ({
             id: s.id,
             role: humanizeRole(s.role_id),
             department:
@@ -546,12 +481,12 @@ export default function App() {
         askingPrice: v.askingPrice,
       })),
       onSetAskingPrice: (vehicleId: string, price: number) => {
-        inventory.setAskingPrice(vehicleId, price);
-        setLotVehicles(inventory.getLotVehicles());
+        world.inventory.setAskingPrice(vehicleId, price);
+        setLotVehicles(world.inventory.getLotVehicles());
       },
       onOpenAuction: () => nav.navigate('auction'),
       onOpenHiring: () => nav.navigate('personnel'),
-      rosterCount: staffOrg.currentRoster.length,
+      rosterCount: world.staffOrg.currentRoster.length,
       hoursOptions: HOURS_OF_OP.options,
       hoursOfOpId,
       onSelectHours: setHoursOfOpId,
@@ -563,9 +498,9 @@ export default function App() {
         <DayLoopShell
           profile={profile}
           state={loopState}
-          tier={tierManager.currentTier}
-          cash={economy.cash}
-          reputation={reputation.reviewScore}
+          tier={world.tierManager.currentTier}
+          cash={world.economy.cash}
+          reputation={world.reputation.reviewScore}
           onNextDay={handleNextDay}
           onOpenAuction={() => nav.navigate('auction')}
           floorModel={floorModel}
@@ -591,7 +526,7 @@ export default function App() {
         />
         </View>
         <BottomNav
-          badges={departmentQueue.getBadges()}
+          badges={world.departmentQueue.getBadges()}
           onPress={handleDeptPress}
         />
       </View>
@@ -638,26 +573,26 @@ export default function App() {
           onChoose={chooseApproach}
           onClose={closeHandPlay}
         />
-        {monthClose != null && (
+        {monthClose != null && world && (
           <MonthCloseInterstitial
             model={{
               month: monthClose,
               tier: 1,
-              isUnlocked: kpiDashboard.isUnlocked,
-              snapshot: kpiDashboard.getSnapshot(),
+              isUnlocked: world.kpiDashboard.isUnlocked,
+              snapshot: world.kpiDashboard.getSnapshot(),
             }}
             onDismiss={() => setMonthClose(null)}
           />
         )}
-        {__DEV__ && (
+        {__DEV__ && world && (
           <AdminConsole
             bus={bus}
-            clock={clock}
-            economy={economy}
-            inventory={inventory}
+            clock={world.clock}
+            economy={world.economy}
+            inventory={world.inventory}
             saveStore={saveStore}
-            telemetry={telemetry}
-            customerPool={customerPool}
+            telemetry={world.telemetry}
+            customerPool={world.customerPool}
             onSaveCleared={handleSaveCleared}
           />
         )}
