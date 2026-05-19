@@ -32,6 +32,9 @@ export type {
 
 export { loadPersonArchetypes, loadVisitArchetypes } from './CustomerArchetypes';
 
+export { loadCustomerTunables } from './CustomerTunables';
+export type { CustomerTunables } from './CustomerTunables';
+
 export type { Competitor } from './Competitor';
 
 export { loadCompetitorArchetypes, loadBrandMarketShare } from './CompetitorArchetypes';

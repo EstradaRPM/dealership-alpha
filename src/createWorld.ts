@@ -48,7 +48,9 @@ import {
   loadTraitTaxonomy,
   loadStaffTaxonomy,
   loadStaffArchetypes,
+  loadCustomerTunables,
 } from './game/NPC';
+import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
 import { createTierManager, type TierManager } from './game/CareerProgression';
 import { createReputation, type Reputation } from './game/Reputation';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
@@ -67,6 +69,7 @@ export interface World {
   staffOrg: StaffOrg;
   staffMorale: StaffMorale;
   capacityManager: CapacityManager;
+  followUpPool: FollowUpPool;
   reputation: Reputation;
   tierManager: TierManager;
   telemetry: Telemetry;
@@ -138,6 +141,17 @@ export function createWorld(deps: {
     facilityTier: 1,
     legacyAdmitGate: false,
   });
+  // FollowUpPool (#78): walked customers enter the pool with computed heat
+  // (off the extended customer:resolved payload), decay overnight, and the
+  // hottest resurface as morning BDC callback tasks that can return a
+  // customer to Sales. Wired here so the live loop — not just tests — drains
+  // walks into the BDC queue.
+  const followUpPool = createFollowUpPool({
+    bus,
+    pool: customerPool,
+    tunables: loadCustomerTunables().followUp,
+  });
+
   // Reputation + player tier: surface the day-to-day consequences of the
   // loop (#77). Reputation drifts overnight and takes deal/walk hits via the
   // bus; TierManager evaluates tier-up on the payroll-night cadence.
@@ -223,6 +237,7 @@ export function createWorld(deps: {
     staffOrg,
     staffMorale,
     capacityManager,
+    followUpPool,
     reputation,
     tierManager,
     telemetry,
