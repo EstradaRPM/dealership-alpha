@@ -221,6 +221,7 @@ describe('CapacityManager — day funnel', () => {
     expect(capacity.getDayFunnel()).toEqual({
       potentialTraffic: 0,
       walkedIn: 0,
+      gated: 0,
       staffEngaged: 0,
       sold: 0,
       leakCause: 'none',
@@ -238,6 +239,7 @@ describe('CapacityManager — day funnel', () => {
     expect(capacity.getDayFunnel()).toEqual({
       potentialTraffic: 2,
       walkedIn: 2,
+      gated: 0,
       staffEngaged: 2,
       sold: 1,
       leakCause: 'closing', // only drop: 2 engaged → 1 sold
@@ -337,10 +339,47 @@ describe('CapacityManager — day funnel', () => {
     expect(capacity.getDayFunnel()).toEqual({
       potentialTraffic: 0,
       walkedIn: 0,
+      gated: 0,
       staffEngaged: 0,
       sold: 0,
       leakCause: 'none',
     });
+  });
+
+  it('classifies floor-gate overflow as gated, not walked-in (#128b)', () => {
+    const { capacity } = makeSetup([], BASE_CONFIG, 1); // capacity = 2
+    const gate = capacity.createFloorGate();
+
+    gate.admit(5, { day: 1, tick: 1 }); // 2 admitted, 3 turned away
+
+    const f = capacity.getDayFunnel();
+    expect(f.potentialTraffic).toBe(5);
+    expect(f.walkedIn).toBe(2);
+    expect(f.gated).toBe(3);
+  });
+
+  it('a closed lot (gate created but never driven) reports zero funnel (#128b)', () => {
+    const { capacity } = makeSetup([], BASE_CONFIG, 1);
+    capacity.createFloorGate(); // floor never opens → gate never admits
+
+    expect(capacity.getDayFunnel()).toEqual({
+      potentialTraffic: 0,
+      walkedIn: 0,
+      gated: 0,
+      staffEngaged: 0,
+      sold: 0,
+      leakCause: 'none',
+    });
+  });
+
+  it('resets the gated bucket each day', () => {
+    const { clock, capacity } = makeSetup([], ZERO_BASE_CONFIG, 1); // cap 0
+    capacity.createFloorGate().admit(3, { day: 1, tick: 1 });
+    expect(capacity.getDayFunnel().gated).toBe(3);
+
+    clock.advanceDay();
+
+    expect(capacity.getDayFunnel().gated).toBe(0);
   });
 });
 
@@ -369,6 +408,19 @@ describe('CapacityManager — reputation satisfaction hit', () => {
     fireCustomerArrived(bus, 'c2');
 
     expect(hits).toHaveLength(0);
+  });
+
+  it('floor-gate gated customers take NO reputation hit but DO signal missed opportunity (#128b)', () => {
+    const { bus, capacity } = makeSetup([], ZERO_BASE_CONFIG, 1); // cap 0
+    const hits: unknown[] = [];
+    const missed: unknown[] = [];
+    bus.subscribe('reputation:satisfaction_hit', (p) => hits.push(p));
+    bus.subscribe('capacity:missed_opportunity', (p) => missed.push(p));
+
+    capacity.createFloorGate().admit(4, { day: 1, tick: 1 });
+
+    expect(hits).toHaveLength(0); // gated ≠ walk → no bad review
+    expect(missed).toHaveLength(4); // still opportunity cost (KPI signal)
   });
 });
 

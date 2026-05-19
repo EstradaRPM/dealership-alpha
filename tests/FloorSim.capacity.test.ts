@@ -88,14 +88,15 @@ describe('FloorSim — per-tick admittance + felt walk (#100)', () => {
     }
   });
 
-  it('preserves capacity:missed_opportunity + reputation hit per felt walk', () => {
+  it('floor-gate turn-aways are gated: capacity:missed_opportunity per head, NO reputation hit (#128b)', () => {
     const { sim, walked, missed, hits } = harness(42, 0);
     sim.runDay();
+    // The locked taxonomy (#107 reconciliation): an un-admitted up is
+    // `gated` — pure opportunity cost (missed_opportunity, the KPI signal),
+    // never a walk, so it carries no reputation satisfaction hit. FloorSim
+    // still emits its locked #99 floor:customer_walked heartbeat.
     expect(missed).toHaveLength(walked.length);
-    expect(hits).toHaveLength(walked.length);
-    expect(hits.every((h) => h.amount === -5 && h.reason === 'missed_opportunity')).toBe(
-      true,
-    );
+    expect(hits).toHaveLength(0);
     expect(missed.every((m) => m.day === baseCtx.day)).toBe(true);
   });
 

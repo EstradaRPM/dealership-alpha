@@ -47,12 +47,24 @@ export type FunnelLeakCause = 'capacity' | 'engagement' | 'closing' | 'none';
 /**
  * End-of-day customer funnel, derived purely from observed domain events.
  * Read-model only — no side effects, no FloorSim/#99 coupling.
+ *
+ * Disposition taxonomy is LOCKED by the #107 reconciliation gate
+ * (2026-05-19): a `walk` is admitted-then-left ONLY; a customer the lot
+ * never admitted (capacity overflow / deliberate player gating) is a
+ * distinct `gated` disposition — pure opportunity cost, never a walk and
+ * never a lost-sellable, so it carries no reputation consequence. A closed
+ * lot ticks no gate ⇒ every counter stays zero (zero funnel).
  */
 export interface DayFunnel {
-  /** Drove-by: every customer offered to the admittance gate today. */
+  /** Drove-by: every customer offered to the admittance gate today.
+   *  EOD-recap-only signal (#107) — not a live-floor visual. */
   potentialTraffic: number;
   /** Walked-in: admitted within the day's capacity. */
   walkedIn: number;
+  /** Turned away un-admitted (lot at/over capacity, or player-gated).
+   *  Opportunity cost, NOT a walk — distinct bucket per the locked
+   *  taxonomy; never incurs the walk's reputation hit. */
+  gated: number;
   /** A salesperson actually engaged the customer. */
   staffEngaged: number;
   /** Engagement resulted in a closed deal. */
@@ -93,6 +105,7 @@ export function createCapacityManager(deps: CapacityManagerDeps): CapacityManage
   // Funnel read-model counters (reset each day with the rest).
   let funnelPotential = 0;
   let funnelWalkedIn = 0;
+  let funnelGated = 0;
   let funnelStaffEngaged = 0;
   let funnelSold = 0;
 
@@ -102,6 +115,7 @@ export function createCapacityManager(deps: CapacityManagerDeps): CapacityManage
     missedCount = 0;
     funnelPotential = 0;
     funnelWalkedIn = 0;
+    funnelGated = 0;
     funnelStaffEngaged = 0;
     funnelSold = 0;
     dailyCapacity = computeCapacity();
@@ -149,16 +163,20 @@ export function createCapacityManager(deps: CapacityManagerDeps): CapacityManage
             budget--;
             funnelWalkedIn++;
           } else {
+            // Locked taxonomy (#107 reconciliation, #128b): an un-admitted
+            // up is `gated`, not a walk. It is pure opportunity cost —
+            // surfaced via capacity:missed_opportunity (the KPI "hire/
+            // upgrade" signal) but NOT a reputation satisfaction hit, since
+            // a customer who never got on the lot leaves no bad review.
+            // FloorSim still emits its locked #99 floor:customer_walked
+            // heartbeat off this return count (observability only); the
+            // domain disposition lives here, behind the seam.
             const customerId = `floor-walk:${day}:${tick}:${i}`;
             const label = 'Walk-in';
             walked++;
             missedCount++;
+            funnelGated++;
             bus.publish('capacity:missed_opportunity', { day, customerId, label });
-            bus.publish('reputation:satisfaction_hit', {
-              day,
-              amount: config.missedOpportunitySatisfactionHit,
-              reason: 'missed_opportunity',
-            });
           }
         }
         return walked;
@@ -186,6 +204,7 @@ export function createCapacityManager(deps: CapacityManagerDeps): CapacityManage
     getDayFunnel: () => ({
       potentialTraffic: funnelPotential,
       walkedIn: funnelWalkedIn,
+      gated: funnelGated,
       staffEngaged: funnelStaffEngaged,
       sold: funnelSold,
       leakCause: deriveLeakCause(),

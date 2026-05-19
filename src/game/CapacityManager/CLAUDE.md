@@ -14,12 +14,24 @@ Daily admittance gate. Computes how many customers the dealership can handle tod
   (`floor-walk:<day>:<tick>:<i>`) until the spawn seam (#101) individuates
   arrivals.
 - `CapacityManager.getDayFunnel()` → `DayFunnel`: read-only end-of-day
-  funnel (drove-by → walked-in → staff-engaged → sold) plus a single
-  `leakCause` signal for a plain-language biggest-leak callout. Pure
-  read-model derived from observed events (`customer:arrived` /
-  `capacity:customer_admitted` path, the floor gate, and
-  `staff:auto_resolved`); no side effects, no FloorSim/#99 coupling. The
-  composition root assembles the recap from this (#110/#107). Resets daily.
+  funnel (drove-by → walked-in → staff-engaged → sold, plus a parallel
+  `gated` bucket off drove-by) plus a single `leakCause` signal for a
+  plain-language biggest-leak callout. Pure read-model derived from observed
+  events (`customer:arrived` / `capacity:customer_admitted` path, the floor
+  gate, and `staff:auto_resolved`); no side effects, no FloorSim/#99
+  coupling. The composition root assembles the recap from this (#110/#107).
+  Resets daily — a closed lot ticks no gate ⇒ every counter stays zero.
+
+### Disposition taxonomy (LOCKED — #107 reconciliation 2026-05-19, #128b)
+- `walk` = admitted-then-left ONLY.
+- A customer the lot never admitted (capacity overflow OR deliberate player
+  gating) is the distinct `gated` bucket: **pure opportunity cost, never a
+  walk, never a lost-sellable**. It still emits `capacity:missed_opportunity`
+  (the KPI "hire more / upgrade tier" signal) but carries **no**
+  `reputation:satisfaction_hit` — a customer who never got on the lot leaves
+  no bad review. FloorSim still emits its locked #99 `floor:customer_walked`
+  heartbeat off the gate's return count (observability only); the domain
+  disposition is owned here, behind the seam.
 - `loadCapacityConfig` — reads capacity tunables.
 - `getStaffContribution(staff)` — pure helper computing capacity boost from a staff member.
 - Types: `CapacityManager`, `CapacityManagerDeps`, `CapacityConfig`, `CapacityFloorGate`, `DayFunnel`, `FunnelLeakCause`.

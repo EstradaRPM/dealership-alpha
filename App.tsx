@@ -486,7 +486,7 @@ export default function App() {
             .some((c) => c.source === 'exception' && c.mustHandle),
           ups: funnel.walkedIn,
           sold: funnel.sold,
-          walked: funnel.potentialTraffic - funnel.walkedIn,
+          walked: funnel.gated,
           pendingWarm: Math.max(0, funnel.walkedIn - funnel.staffEngaged),
           gross: grossToday,
           staff: world.staffOrg.currentRoster.map((s) => ({
