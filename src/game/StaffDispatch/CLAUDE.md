@@ -2,6 +2,18 @@
 
 Auto-resolves Sales queue items using on-duty salespeople. Reads the queue, picks a staff member, runs the resolution, posts outcome.
 
+## Hold-floor model (#134)
+Any salesperson on the roster **always works (holds) the up** — there is no
+skill-gated decline, so a staffed floor never produces staff-side walks.
+`effectiveness × morale` governs only whether the held up *closes* (`closed`
+with gross vs `no_sale`). The sole `declined` path is an **unstaffed** floor
+(zero salespeople). This makes hiring observable: any hire stops the staff-side
+bleeding; a capable full-timer measurably moves close results. Entry-level
+"hold" as a manual escape valve stays vestigial per the managerial-default
+steer — automation (this resolver) is the spine. `min/maxAutoResolveRate` were
+removed; the close curve (`min/maxCloseRate`, `baseAutoGross`,
+`minGrossModifier`) is the skill dial. Final balance is #105 HITL.
+
 ## Public API (`index.ts`)
 - `createStaffDispatch()` → `StaffDispatch`. Legacy once-per-admit path:
   subscribes to `capacity:customer_admitted` and resolves immediately.

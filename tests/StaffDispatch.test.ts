@@ -50,12 +50,12 @@ const ALL_FLAGS = {
   audit_trigger: 1,
 };
 
-// All flags set to 0 so exception rolls never fire.
+// All flags set to 0 so exception rolls never fire. Under the hold-floor
+// model (#134) a staffed, non-exception up is *always* worked (held), so this
+// config alone guarantees auto-resolution regardless of skill.
 const NO_EXCEPTION_CONFIG: StaffDispatchConfig = {
   exceptionFlagRates: ZERO_FLAGS,
   gmExceptionFlagRates: ZERO_FLAGS,
-  minAutoResolveRate: 0.30,
-  maxAutoResolveRate: 0.95,
   minCloseRate: 0.20,
   maxCloseRate: 0.65,
   baseAutoGross: 2500,
@@ -72,21 +72,14 @@ const ALL_EXCEPTION_CONFIG: StaffDispatchConfig = {
   exceptionFlagRates: ALL_FLAGS,
 };
 
-// Force auto-resolve on every customer for any skill level.
-const ALWAYS_AUTO_CONFIG: StaffDispatchConfig = {
-  ...NO_EXCEPTION_CONFIG,
-  minAutoResolveRate: 1.0,
-  maxAutoResolveRate: 1.0,
-};
-
 const ALWAYS_CLOSE_CONFIG: StaffDispatchConfig = {
-  ...ALWAYS_AUTO_CONFIG,
+  ...NO_EXCEPTION_CONFIG,
   minCloseRate: 1.0,
   maxCloseRate: 1.0,
 };
 
 const NEVER_CLOSE_CONFIG: StaffDispatchConfig = {
-  ...ALWAYS_AUTO_CONFIG,
+  ...NO_EXCEPTION_CONFIG,
   minCloseRate: 0.0,
   maxCloseRate: 0.0,
 };
@@ -110,13 +103,13 @@ function makeSetup(
 
 describe('StaffDispatch — no staff on roster', () => {
   it('leaves all sales items in queue when roster is empty', () => {
-    const { bus, queue } = makeSetup([], ALWAYS_AUTO_CONFIG);
+    const { bus, queue } = makeSetup([], NO_EXCEPTION_CONFIG);
     bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:1', label: 'Test' });
     expect(queue.getBadgeCount('sales')).toBe(1);
   });
 
   it('emits no staff:auto_resolved events when roster is empty', () => {
-    const { bus, queue } = makeSetup([], ALWAYS_AUTO_CONFIG);
+    const { bus, queue } = makeSetup([], NO_EXCEPTION_CONFIG);
     const events: unknown[] = [];
     bus.subscribe('staff:auto_resolved', (e) => events.push(e));
     bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:1', label: 'Test' });
@@ -151,14 +144,14 @@ describe('StaffDispatch — exception flags', () => {
 describe('StaffDispatch — auto-resolve basic flow', () => {
   it('removes item from sales queue on auto-resolve', () => {
     const roster = [makeStaff(0.8)];
-    const { bus, queue } = makeSetup(roster, ALWAYS_AUTO_CONFIG);
+    const { bus, queue } = makeSetup(roster, NO_EXCEPTION_CONFIG);
     bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:1', label: 'Test' });
     expect(queue.getBadgeCount('sales')).toBe(0);
   });
 
   it('emits staff:auto_resolved event', () => {
     const roster = [makeStaff(0.8)];
-    const { bus } = makeSetup(roster, ALWAYS_AUTO_CONFIG);
+    const { bus } = makeSetup(roster, NO_EXCEPTION_CONFIG);
     const events: Array<{ customerId: string; staffId: string; outcome: string }> = [];
     bus.subscribe('staff:auto_resolved', (e) => events.push(e));
     bus.publish('capacity:customer_admitted',{ day: 1, customerId: 'cust:1', label: 'Test' });
@@ -193,7 +186,7 @@ describe('StaffDispatch — auto-resolve basic flow', () => {
 
   it('auto-resolved event carries correct day', () => {
     const roster = [makeStaff(0.8)];
-    const { bus } = makeSetup(roster, ALWAYS_AUTO_CONFIG);
+    const { bus } = makeSetup(roster, NO_EXCEPTION_CONFIG);
     const events: Array<{ day: number }> = [];
     bus.subscribe('staff:auto_resolved', (e) => events.push(e));
     bus.publish('capacity:customer_admitted',{ day: 5, customerId: 'cust:5', label: 'Test' });
@@ -201,37 +194,42 @@ describe('StaffDispatch — auto-resolve basic flow', () => {
   });
 });
 
-// ── Skill-based escalation rate ──────────────────────────────────────────────
+// ── Hold-floor: staffed up is always worked, skill drives the close ─────────
 
-describe('StaffDispatch — skill affects escalation rate', () => {
-  function countAutoResolved(effectiveness: number, n: number): number {
+describe('StaffDispatch — hold-floor model (#134)', () => {
+  function tally(effectiveness: number, n: number): { resolved: number; closed: number } {
     const roster = [makeStaff(effectiveness)];
     let resolved = 0;
+    let closed = 0;
     for (let i = 0; i < n; i++) {
       const bus = createEventBus();
       const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
       const queue = createDepartmentQueue({ bus });
       const staffOrg = makeStaffOrg(roster);
       createStaffDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config: NO_EXCEPTION_CONFIG });
-      bus.subscribe('staff:auto_resolved', () => { resolved++; });
+      bus.subscribe('staff:auto_resolved', ({ outcome }) => {
+        resolved++;
+        if (outcome === 'closed') closed++;
+      });
       bus.publish('capacity:customer_admitted',{ day: i + 1, customerId: `cust:${i}`, label: 'Test' });
     }
-    return resolved;
+    return { resolved, closed };
   }
 
-  it('high-skill staff auto-resolve more customers than low-skill', () => {
+  it('a staffed floor always holds the up — even the weakest hire never leaves a non-exception up unworked', () => {
     const n = 200;
-    const lowResolved = countAutoResolved(0.05, n);
-    const highResolved = countAutoResolved(0.95, n);
-    expect(highResolved).toBeGreaterThan(lowResolved);
+    // The core #134 promise: hiring anyone stops the staff-side bleeding.
+    expect(tally(0.01, n).resolved).toBe(n);
+    expect(tally(0.95, n).resolved).toBe(n);
   });
 
-  it('low-skill auto-resolve rate is below high-skill by a meaningful margin', () => {
+  it('skill drives the *close*, not whether the up is worked: a capable full-timer measurably out-closes a green hire', () => {
     const n = 200;
-    const lowRate = countAutoResolved(0.05, n) / n;
-    const highRate = countAutoResolved(0.95, n) / n;
-    // Expect at least a 30% gap between high and low skill rates.
-    expect(highRate - lowRate).toBeGreaterThan(0.30);
+    const lowClose = tally(0.05, n).closed / n;
+    const highClose = tally(0.95, n).closed / n;
+    expect(highClose).toBeGreaterThan(lowClose);
+    // Observability bar: the hire must move close results by a real margin.
+    expect(highClose - lowClose).toBeGreaterThan(0.30);
   });
 });
 
@@ -266,8 +264,8 @@ describe('StaffDispatch — config', () => {
   it('loadStaffDispatchConfig returns valid tunables', () => {
     const config = loadStaffDispatchConfig();
     expect(config.baseAutoGross).toBeGreaterThan(0);
-    expect(config.minAutoResolveRate).toBeGreaterThanOrEqual(0);
-    expect(config.maxAutoResolveRate).toBeLessThanOrEqual(1);
+    expect(config.minCloseRate).toBeGreaterThanOrEqual(0);
+    expect(config.maxCloseRate).toBeLessThanOrEqual(1);
     expect(Object.keys(config.exceptionFlagRates).length).toBeGreaterThan(0);
     expect(Object.keys(config.gmExceptionFlagRates).length).toBeGreaterThan(0);
   });
@@ -287,8 +285,6 @@ describe('StaffDispatch — GM exception thresholds', () => {
       lemon_law_threat: 1,
       audit_trigger: 1,
     },
-    minAutoResolveRate: 1.0,
-    maxAutoResolveRate: 1.0,
   };
 
   it('without GM: all-flag config blocks auto-resolve', () => {

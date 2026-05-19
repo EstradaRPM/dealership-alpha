@@ -65,8 +65,6 @@ const BASE_CONFIG: StaffDispatchConfig = {
     lemon_law_threat: 0,
     audit_trigger: 0,
   },
-  minAutoResolveRate: 1.0,
-  maxAutoResolveRate: 1.0,
   minCloseRate: 0.5,
   maxCloseRate: 0.5,
   baseAutoGross: 2500,

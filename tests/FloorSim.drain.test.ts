@@ -72,8 +72,6 @@ const ZERO_FLAGS = {
 const STAFF_CONFIG: StaffDispatchConfig = {
   exceptionFlagRates: ZERO_FLAGS,
   gmExceptionFlagRates: ZERO_FLAGS,
-  minAutoResolveRate: 0.3,
-  maxAutoResolveRate: 0.95,
   minCloseRate: 0.2,
   maxCloseRate: 0.65,
   baseAutoGross: 2500,
@@ -82,12 +80,6 @@ const STAFF_CONFIG: StaffDispatchConfig = {
   maxDrainPerTick: 0.6,
   exceptionSkillExpMin: 1.0,
   exceptionSkillExpMax: 3.0,
-};
-
-const ALWAYS_AUTO_CONFIG: StaffDispatchConfig = {
-  ...STAFF_CONFIG,
-  minAutoResolveRate: 1.0,
-  maxAutoResolveRate: 1.0,
 };
 
 const SERVICE_CONFIG: ServiceDispatchConfig = {
@@ -134,7 +126,7 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
       queue,
       economy,
       masterSeed: MASTER_SEED,
-      config: ALWAYS_AUTO_CONFIG,
+      config: STAFF_CONFIG,
     });
     const sim = createFloorSim({
       bus,
@@ -177,7 +169,7 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
         queue,
         economy,
         masterSeed: MASTER_SEED,
-        config: ALWAYS_AUTO_CONFIG,
+        config: STAFF_CONFIG,
       });
       const sim = createFloorSim({
         bus,

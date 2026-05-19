@@ -33,7 +33,7 @@ function lerp(a: number, b: number, t: number): number {
 /**
  * Builds the per-customer sales auto-resolution closure shared by the legacy
  * once-per-admit path and the per-tick floor drain (#101). Resolution
- * behaviour — exception rolls, skill-scaled auto/close chances, gross, events,
+ * behaviour — exception rolls, guaranteed hold + skill-scaled close chance, gross, events,
  * RNG keying on (customerId, day) — is identical regardless of which path
  * invokes it, so cadence changes never change outcomes.
  */
@@ -80,15 +80,11 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       if (rng() < Math.pow(rate, skillExp)) return 'escalated';
     }
 
-    // Skill-based probability of auto-resolving (vs leaving for player).
-    const autoChance = lerp(
-      config.minAutoResolveRate,
-      config.maxAutoResolveRate,
-      salesperson.effectiveness,
-    );
-    if (rng() > autoChance) return 'declined';
-
-    // Auto-resolve: remove workspace item the queue just added.
+    // Hold-floor model (#134): any salesperson on the roster always works
+    // (holds) the up — there is no skill-gated decline, so a staffed floor
+    // never produces staff-side walks. Skill (effectiveness) × morale governs
+    // only whether the held up *closes*. The sole 'declined' path is an
+    // unstaffed floor, handled above.
     queue.resolveByCustomerId(customerId);
 
     const moraleMult = staffMorale?.getMoraleMultiplier(salesperson.id) ?? 1.0;
