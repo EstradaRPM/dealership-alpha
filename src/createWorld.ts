@@ -29,6 +29,7 @@ import { createStaffOrg, type StaffOrg } from './game/StaffOrg';
 import { createCapacityManager } from './game/CapacityManager';
 import type { CapacityManager } from './game/CapacityManager';
 import { createStaffFloorDrain } from './game/StaffDispatch';
+import { createStaffMorale, type StaffMorale } from './game/StaffMorale';
 import {
   createDayLoopController,
   createStubDemandSource,
@@ -64,6 +65,7 @@ export interface World {
   inventory: Inventory;
   dealEngine: DealEngine;
   staffOrg: StaffOrg;
+  staffMorale: StaffMorale;
   capacityManager: CapacityManager;
   reputation: Reputation;
   tierManager: TierManager;
@@ -116,6 +118,18 @@ export function createWorld(deps: {
     taxonomy: staffTaxonomy,
     archetypes: loadStaffArchetypes(),
   });
+  // StaffMorale owns the per-staff morale dimension over the StaffOrg roster:
+  // recognition on auto-closes, end-of-day workload drift, overnight pay
+  // bump, and the overnight quit-risk roll — all via the bus. Wired here so
+  // the live world (not just tests) feeds the morale multiplier into
+  // StaffDispatch's resolver.
+  const staffMorale = createStaffMorale({
+    bus,
+    staffOrg,
+    queue: departmentQueue,
+    masterSeed,
+  });
+
   // Legacy aggregate admit gate OFF: the per-tick floor gate is the sole
   // admittance path under FloorSim.
   const capacityManager = createCapacityManager({
@@ -166,6 +180,11 @@ export function createWorld(deps: {
         queue: departmentQueue,
         economy,
         masterSeed,
+        staffMorale,
+        // GM-presence seam (#124): a staffed GM suppresses dramatic-case
+        // escalations (gmExceptionFlagRates), so StaffDispatch returns
+        // escalated:0 and the GM-gated batch sim-week can run unattended.
+        getHasGm: () => staffOrg.currentRoster.some(s => s.role_id === 'gm'),
       }),
     ],
     customerSource,
@@ -202,6 +221,7 @@ export function createWorld(deps: {
     inventory,
     dealEngine,
     staffOrg,
+    staffMorale,
     capacityManager,
     reputation,
     tierManager,
