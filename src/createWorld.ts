@@ -53,6 +53,7 @@ import {
 import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
 import { createTierManager, type TierManager } from './game/CareerProgression';
 import { createReputation, type Reputation } from './game/Reputation';
+import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
 
@@ -71,6 +72,7 @@ export interface World {
   capacityManager: CapacityManager;
   followUpPool: FollowUpPool;
   reputation: Reputation;
+  serviceQueue: ServiceQueue;
   tierManager: TierManager;
   telemetry: Telemetry;
   kpiDashboard: KPIDashboard;
@@ -156,6 +158,11 @@ export function createWorld(deps: {
   // loop (#77). Reputation drifts overnight and takes deal/walk hits via the
   // bus; TierManager evaluates tier-up on the payroll-night cadence.
   const reputation = createReputation({ bus, economy });
+  // ServiceQueue (#80): starts silent (default initialTier=1 < minTierRequired
+  // 2), follows career:tier_up off the bus, and once at Tier 2 emits a daily
+  // service:intake_ready that DepartmentQueue pushes into the Service lane —
+  // surfaced/resolved by the generic DepartmentScreen with no extra wiring.
+  const serviceQueue = createServiceQueue({ bus, masterSeed });
   const tierManager = createTierManager({ bus, economy, reputation });
   const telemetry = createTelemetry({ bus });
   // Month-close hook (#123): the KPIDashboard supplies the month-to-date
@@ -239,6 +246,7 @@ export function createWorld(deps: {
     capacityManager,
     followUpPool,
     reputation,
+    serviceQueue,
     tierManager,
     telemetry,
     kpiDashboard,
