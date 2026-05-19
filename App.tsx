@@ -270,15 +270,6 @@ export default function App() {
       frontGross: number;
       backGross: number;
     }) => setGrossToday((g) => g + frontGross + backGross);
-    const onWalked = ({ tick }: { day: number; tick: number }) =>
-      setFloorEvents((log) => [
-        ...log,
-        {
-          kind: 'walk',
-          key: `w${eventSeq.current++}`,
-          text: `t${tick} · a customer walked — no capacity`,
-        },
-      ]);
     const onExceptionRaised = ({
       tick,
       customerId,
@@ -330,7 +321,6 @@ export default function App() {
     bus.subscribe('inventory:vehicle_sold', onVehicleSold);
     bus.subscribe('economy:revenue_posted', onRevenue);
     bus.subscribe('deal:closed', onDealClosed);
-    bus.subscribe('floor:customer_walked', onWalked);
     bus.subscribe('floor:exception_raised', onExceptionRaised);
     return () => {
       bus.unsubscribe('floor:day_complete', onDayComplete);
@@ -341,7 +331,6 @@ export default function App() {
       bus.unsubscribe('inventory:vehicle_sold', onVehicleSold);
       bus.unsubscribe('economy:revenue_posted', onRevenue);
       bus.unsubscribe('deal:closed', onDealClosed);
-      bus.unsubscribe('floor:customer_walked', onWalked);
       bus.unsubscribe('floor:exception_raised', onExceptionRaised);
     };
   }, []);
@@ -486,7 +475,6 @@ export default function App() {
             .some((c) => c.source === 'exception' && c.mustHandle),
           ups: funnel.walkedIn,
           sold: funnel.sold,
-          walked: funnel.gated,
           pendingWarm: Math.max(0, funnel.walkedIn - funnel.staffEngaged),
           gross: grossToday,
           staff: world.staffOrg.currentRoster.map((s) => ({

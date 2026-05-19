@@ -27,12 +27,13 @@ export interface FloorDashboardModel {
   cash: number;
   /** A forced exception is waiting to be hand-played. */
   exceptionPending: boolean;
-  /** Ups: customers admitted onto the lot today (funnel walked-in). */
+  /** Ups: real customers admitted onto the lot today (fresh walk-ins +
+   *  be-backs). The only arrival count the live floor surfaces — drove-by /
+   *  turned-away traffic is an EOD-recap concept, never a live-floor visual
+   *  (#130, locked by the #107 reconciliation). */
   ups: number;
   /** Closed deals today (funnel sold). */
   sold: number;
-  /** Customers turned away / lost today (funnel drop). */
-  walked: number;
   /** Walked-in but not yet engaged — still-warm prospects. */
   pendingWarm: number;
   /** Running gross today (front + back, summed from closed deals). */
@@ -163,7 +164,6 @@ export function FloorDashboard({
     exceptionPending,
     ups,
     sold,
-    walked,
     pendingWarm,
     gross,
     staff,
@@ -243,7 +243,6 @@ export function FloorDashboard({
         <View style={styles.grid}>
           <Stat label="UPS" value={String(ups)} />
           <Stat label="SOLD" value={String(sold)} />
-          <Stat label="WALKED" value={String(walked)} />
           <Stat label="PENDING-WARM" value={String(pendingWarm)} />
           <Stat label="GROSS" value={money(gross)} />
         </View>

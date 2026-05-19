@@ -15,7 +15,6 @@ const MODEL: FloorDashboardModel = {
   exceptionPending: false,
   ups: 9,
   sold: 2,
-  walked: 4,
   pendingWarm: 3,
   gross: 5_400,
   staff: [
@@ -23,7 +22,7 @@ const MODEL: FloorDashboardModel = {
     { id: 's2', role: 'Lot Porter', department: 'unassigned' },
   ],
   events: [
-    { kind: 'walk', key: 'w0', text: 't2 · a customer walked — no capacity' },
+    { kind: 'walk', key: 'w0', text: 't2 · lot opened' },
     {
       kind: 'exception',
       key: 'e1',
