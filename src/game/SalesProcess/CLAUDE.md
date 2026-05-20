@@ -48,6 +48,13 @@ Quadrant close + price formation (#90):
   - **Low-trust forced close:** `outcome=buy AND unconditional AND trust < trustFloor` → `badReview=true + highFiResistance=true` (signals downstream).
   - `closingComposite` = `skill.skillFor('NEGOTIATE')` — the NEGOTIATE gate skill drives price hold.
 
+Affordability eligibility (#144) — pure, deterministic helpers for whether a deal can structure:
+
+- `cashEligible(customer, vehicle, marketPriceFn?)` → list price ≤ `wealth × cashSpendFraction`.
+- `financeEligible(customer, vehicle, tier, marketPriceFn?, bookValueFn?)` → checks down-gap → PTI → LTV in order; `failReason` ∈ `'down' | 'pti' | 'ltv'` names the FIRST failure. PTI uses `computeMonthlyPayment` from DealEngine against `tier.maxTerm/apr`; LTV compares `loanAmount` to `bookValue × tier.ltvCeiling`.
+- `isEligible(customer, vehicle, deps?)` → dispatches on `paymentMethod`; finance requires `deps.tier`.
+- Narrow inputs: `AffordabilityCustomer { wealth, annualIncome, paymentMethod, cashSpendFraction?, downPaymentBehavior? }`, `CreditTierPolicy { apr, maxTerm, ptiCap, ltvCeiling }`. Caller assembles from Person/Visit + DealEngine tier.
+
 Accessor (#87):
 
 - `vehicleSpaced(vehicle, deps?)` → `SpacedVector`. Pure. Resolves SPACED in four layers: category base → per-template override (replace named axes; unknown template inherits the base) → brand-tier additive modifier (make → tier; unknown make = no modifier) → deterministic bounded year modifier (`(year − referenceYear)` × per-axis delta, each clamped to ±`maxAbs`), then every axis clamped to [0,1]. `deps` lets tests inject configs; defaults to the bundled loaders. Input is the narrow structural `SpacedVehicleInput` (`category/templateId/make/year`) — Inventory's `LotVehicle`/`AuctionListing` satisfy it without a module dependency.

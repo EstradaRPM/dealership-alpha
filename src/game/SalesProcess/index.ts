@@ -84,3 +84,12 @@ export type {
   CloseResult,
   PriceFormation,
 } from './close';
+
+export { cashEligible, financeEligible, isEligible } from './affordability';
+export type {
+  AffordabilityCustomer,
+  AffordabilityDeps,
+  CreditTierPolicy,
+  FinanceEligibility,
+  FinanceFailReason,
+} from './affordability';
