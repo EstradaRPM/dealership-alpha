@@ -72,6 +72,7 @@ const maxVisit: SalesVisit = {
     dependability: 1,
   },
   resources: { trust: 1, patience: 1 },
+  paymentMethod: 'finance',
 };
 
 const OPEN_CAPACITY: CapacityConfig = {

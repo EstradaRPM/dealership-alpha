@@ -31,6 +31,7 @@ function visit(tag: string, prefs: SalesVisit['preferences']): SalesVisit {
     person_id: tag,
     preferences: prefs,
     resources: { trust: 0.5, patience: 0.5 },
+    paymentMethod: 'finance',
   };
 }
 

@@ -24,6 +24,7 @@ describe('hotButtons', () => {
         dependability: 0.4,
       },
       resources,
+      paymentMethod: 'finance',
     };
     const top2 = hotButtons(visit, 2);
     expect(top2).toEqual(['economy', 'performance']);
@@ -76,6 +77,7 @@ describe('hotButtons', () => {
         dependability: 0.6,
       },
       resources,
+      paymentMethod: 'finance',
     };
     expect(hotButtons(visit, 10)).toHaveLength(6);
   });
@@ -95,6 +97,7 @@ describe('VisitSchema', () => {
         comfort: 0.6, economy: 0.7, dependability: 0.5,
       },
       resources,
+      paymentMethod: 'finance',
     });
     expect(result.success).toBe(true);
   });

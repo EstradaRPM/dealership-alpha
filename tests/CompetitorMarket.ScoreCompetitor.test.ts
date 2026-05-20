@@ -25,6 +25,7 @@ function makeVisit(prefs: SalesVisit['preferences']): SalesVisit {
     person_id: 'test',
     preferences: prefs,
     resources: { trust: 0.5, patience: 0.5 },
+    paymentMethod: 'finance',
   };
 }
 

@@ -20,6 +20,14 @@ export interface CreateCustomerDeps {
   personArchetypes: PersonArchetypeCatalog;
   visitArchetypes: VisitArchetypeCatalog;
   traits: TraitSet;
+  /**
+   * Floor price of the cheapest unit on the lot. Used by the cash-affordability
+   * gate: customers whose `wealth × cashSpendFraction` falls below this floor
+   * are forced to `paymentMethod: 'finance'`, closing the silent-fail bug where
+   * a broke customer "pays cash" for nothing on the lot. Omit (or pass 0) to
+   * disable the gate.
+   */
+  cheapestLotPriceFloor?: number;
 }
 
 export interface CustomerBundle {
@@ -83,7 +91,13 @@ function applyEffectsToVisit(
       const d = effects[ek] ?? 0;
       if (d !== 0) pref[sk] += d;
     }
-    return { kind: 'sales', person_id: base.person_id, preferences: pref, resources: res };
+    return {
+      kind: 'sales',
+      person_id: base.person_id,
+      preferences: pref,
+      resources: res,
+      paymentMethod: base.paymentMethod,
+    };
   } else {
     const pref = { ...base.preferences } as PSQTCVector;
     for (const [ek, pk] of Object.entries(PSQTC_EFFECT_MAP) as [EffectKey, keyof PSQTCVector][]) {
@@ -148,6 +162,22 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
   if (visitArchetype.kind === 'sales') {
     const p = visitArchetype.preferences;
     const r = visitArchetype.resources;
+    const pay = visitArchetype.payment;
+
+    // Cash/finance roll: Bernoulli on cashProbability, then gate against
+    // affordability. cashSpendFraction is gaussian per archetype.
+    const cashRoll = createRng(seedFor('payment.method'))();
+    const cashSpendFraction = gaussian(
+      createRng(seedFor('payment.cashSpendFraction')),
+      pay.cashSpendFraction.mu,
+      pay.cashSpendFraction.sigma,
+    );
+    const wantsCash = cashRoll < pay.cashProbability;
+    const floor = deps.cheapestLotPriceFloor ?? 0;
+    const canAffordCash = person.wealth * cashSpendFraction >= floor;
+    const paymentMethod: 'cash' | 'finance' =
+      wantsCash && canAffordCash ? 'cash' : 'finance';
+
     baseVisit = VisitSchema.parse({
       kind: 'sales',
       person_id: person.id,
@@ -163,6 +193,7 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
         trust: rollField('res.trust', r.trust.mu, r.trust.sigma),
         patience: rollField('res.patience', r.patience.mu, r.patience.sigma),
       },
+      paymentMethod,
     });
   } else {
     const p = visitArchetype.preferences;

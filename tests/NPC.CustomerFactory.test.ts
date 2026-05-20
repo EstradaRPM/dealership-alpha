@@ -91,6 +91,70 @@ describe('CustomerFactory.createCustomer — determinism', () => {
   });
 });
 
+// ── paymentMethod ─────────────────────────────────────────────────────────────
+
+describe('CustomerFactory.createCustomer — paymentMethod', () => {
+  const salesArchetypeIds = Object.keys(visitArchetypes).filter(
+    (id) => visitArchetypes[id]?.kind === 'sales',
+  );
+
+  it('every sales visit carries a paymentMethod of cash or finance', () => {
+    for (const visitArchetypeId of salesArchetypeIds) {
+      const { visit } = createCustomer(
+        { ...salesCtx, visitArchetypeId, slot: 0 },
+        deps,
+      );
+      if (visit.kind !== 'sales') throw new Error('expected sales');
+      expect(['cash', 'finance']).toContain(visit.paymentMethod);
+    }
+  });
+
+  it('1000-customer cash-share roughly matches archetype cashProbability', () => {
+    // No affordability gate (floor = 0) so the Bernoulli is unbiased.
+    const N = 1000;
+    for (const visitArchetypeId of salesArchetypeIds) {
+      const arch = visitArchetypes[visitArchetypeId]!;
+      if (arch.kind !== 'sales') throw new Error('unreachable');
+      const expected = arch.payment.cashProbability;
+      let cashCount = 0;
+      for (let slot = 0; slot < N; slot++) {
+        const { visit } = createCustomer(
+          { personArchetypeId: 'young_family', visitArchetypeId, day: 7, slot },
+          deps,
+        );
+        if (visit.kind === 'sales' && visit.paymentMethod === 'cash') cashCount++;
+      }
+      const observed = cashCount / N;
+      // ±0.04 absolute tolerance — generous for N=1000 Bernoulli (3σ ≈ 0.03 at p=0.5).
+      expect(Math.abs(observed - expected)).toBeLessThan(0.04);
+    }
+  });
+
+  it('cash-affordability gate forces finance when floor exceeds wealth × cashSpendFraction', () => {
+    // Floor of $10M is well above any rolled wealth × spend fraction → every
+    // customer must be forced to finance.
+    const gateDeps = { ...deps, cheapestLotPriceFloor: 10_000_000 };
+    for (let slot = 0; slot < 200; slot++) {
+      const { visit } = createCustomer(
+        { personArchetypeId: 'young_family', visitArchetypeId: 'retirement_upgrade', day: 9, slot },
+        gateDeps,
+      );
+      if (visit.kind !== 'sales') throw new Error('expected sales');
+      expect(visit.paymentMethod).toBe('finance');
+    }
+  });
+
+  it('same seed → same paymentMethod (determinism)', () => {
+    for (const visitArchetypeId of salesArchetypeIds) {
+      const ctx = { personArchetypeId: 'young_family', visitArchetypeId, day: 11, slot: 3 };
+      const a = createCustomer(ctx, deps);
+      const b = createCustomer(ctx, deps);
+      if (a.visit.kind !== 'sales' || b.visit.kind !== 'sales') throw new Error('expected sales');
+      expect(a.visit.paymentMethod).toBe(b.visit.paymentMethod);
+    }
+  });
+});
+
 // ── Trait application ─────────────────────────────────────────────────────────
 
 describe('CustomerFactory.createCustomer — trait application', () => {

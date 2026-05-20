@@ -69,6 +69,7 @@ export const SalesVisitSchema = z
     person_id: z.string().min(1),
     preferences: SPACEDVectorSchema,
     resources: VisitResourcesSchema,
+    paymentMethod: z.enum(['cash', 'finance']),
   })
   .strict();
 export type SalesVisit = z.infer<typeof SalesVisitSchema>;
