@@ -206,6 +206,13 @@ export interface EventMap {
     day: number;
     outcome: 'closed' | 'no_sale';
     grossImpact: number;
+    /**
+     * Named reason for a `no_sale` outcome (#147 tracer): `'no_session'`,
+     * `'not_sales'`, `'no_fit'`, `'no_close'`, or a SalesProcess `WalkCause`
+     * (`'patience_drain' | 'trust_collapse' | 'demo_nonnegotiable_miss'`).
+     * Omitted on `outcome: 'closed'`.
+     */
+    reason?: string;
   };
 
   // StaffMorale — staff member quit due to low morale

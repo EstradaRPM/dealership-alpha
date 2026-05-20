@@ -7,7 +7,10 @@ import {
   createStaffDispatch,
   createStaffFloorDrain,
   type StaffDispatchConfig,
+  type StaffDispatchDeps,
 } from '../src/game/StaffDispatch';
+import { createDealEngine, loadCreditTiers } from '../src/game/DealEngine';
+import type { Inventory } from '../src/game/Inventory';
 import {
   createServiceFloorDrain,
   type ServiceDispatchConfig,
@@ -72,15 +75,31 @@ const ZERO_FLAGS = {
 const STAFF_CONFIG: StaffDispatchConfig = {
   exceptionFlagRates: ZERO_FLAGS,
   gmExceptionFlagRates: ZERO_FLAGS,
-  minCloseRate: 0.2,
-  maxCloseRate: 0.65,
-  baseAutoGross: 2500,
-  minGrossModifier: 0.5,
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.6,
   exceptionSkillExpMin: 1.0,
   exceptionSkillExpMax: 3.0,
 };
+
+// Empty-lot Inventory stub — drain tests focus on cadence, not closes.
+const emptyInventory: Pick<Inventory, 'getLotVehicles'> = {
+  getLotVehicles: () => [],
+};
+
+/** Extras the #147-rewired StaffDispatch needs (cadence-only tests don't care
+ *  about real closes — empty lot + empty bundle lookup ⇒ every up resolves
+ *  with `no_sale`, which still counts as `resolved` for cadence assertions). */
+function staffExtras(bus: import('../src/game/EventBus').EventBus): Pick<
+  StaffDispatchDeps,
+  'inventory' | 'dealEngine' | 'creditTiers' | 'getCustomerSession'
+> {
+  return {
+    inventory: emptyInventory,
+    dealEngine: createDealEngine({ bus }),
+    creditTiers: loadCreditTiers(),
+    getCustomerSession: () => undefined,
+  };
+}
 
 const SERVICE_CONFIG: ServiceDispatchConfig = {
   minAutoResolveRate: 1.0,
@@ -124,10 +143,11 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
       bus,
       staffOrg,
       queue,
-      economy,
       masterSeed: MASTER_SEED,
       config: STAFF_CONFIG,
+      ...staffExtras(bus),
     });
+    void economy;
     const sim = createFloorSim({
       bus,
       seed: MASTER_SEED,
@@ -167,10 +187,11 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
         bus,
         staffOrg,
         queue,
-        economy,
         masterSeed: MASTER_SEED,
         config: STAFF_CONFIG,
+        ...staffExtras(bus),
       });
+      void economy;
       const sim = createFloorSim({
         bus,
         seed: MASTER_SEED,
@@ -203,10 +224,11 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
       bus: legacyBus,
       staffOrg: makeStaffOrg([makeStaff(0.7, 'salesperson')]),
       queue: legacyQueue,
-      economy: legacyEconomy,
       masterSeed: MASTER_SEED,
       config: STAFF_CONFIG,
+      ...staffExtras(legacyBus),
     });
+    void legacyEconomy;
     seedSalesQueue(legacyBus, 15);
 
     // Floor-drain path: same customers, resolved across FloorSim ticks.
@@ -224,10 +246,11 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
       bus: floorBus,
       staffOrg: makeStaffOrg([makeStaff(0.7, 'salesperson')]),
       queue: floorQueue,
-      economy: floorEconomy,
       masterSeed: MASTER_SEED,
       config: STAFF_CONFIG,
+      ...staffExtras(floorBus),
     });
+    void floorEconomy;
     const sim = createFloorSim({
       bus: floorBus,
       seed: MASTER_SEED,
@@ -259,10 +282,11 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
         bus,
         staffOrg: makeStaffOrg([makeStaff(0.6, 'salesperson')]),
         queue,
-        economy,
         masterSeed: MASTER_SEED,
         config: STAFF_CONFIG,
+        ...staffExtras(bus),
       });
+      void economy;
       const sim = createFloorSim({
         bus,
         seed: MASTER_SEED,

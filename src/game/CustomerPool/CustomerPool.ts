@@ -47,6 +47,8 @@ export interface CustomerSession {
   readonly bundle: CustomerBundle;
   readonly stage: CustomerStage;
   readonly archetypeLabel: string;
+  /** Visit-archetype id, used by SalesProcess's nonnegotiable-distribution seam. */
+  readonly visitArchetypeId: string;
 }
 
 interface MutableSession extends Omit<CustomerSession, 'stage'> {

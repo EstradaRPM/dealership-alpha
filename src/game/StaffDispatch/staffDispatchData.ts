@@ -4,10 +4,6 @@ import { parseData } from '../data/loadJson';
 const StaffDispatchConfigSchema = z.object({
   exceptionFlagRates: z.record(z.string().min(1), z.number().min(0).max(1)),
   gmExceptionFlagRates: z.record(z.string().min(1), z.number().min(0).max(1)),
-  minCloseRate: z.number().min(0).max(1),
-  maxCloseRate: z.number().min(0).max(1),
-  baseAutoGross: z.number().positive(),
-  minGrossModifier: z.number().min(0).max(1),
   // Per-tick floor-drain throughput (#101): sales items a salesperson works
   // per FloorSim tick, lerped by effectiveness. Fractional; accumulated.
   minDrainPerTick: z.number().min(0),

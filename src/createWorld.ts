@@ -237,9 +237,17 @@ export function createWorld(deps: {
         bus,
         staffOrg,
         queue: departmentQueue,
-        economy,
         masterSeed,
         staffMorale,
+        inventory,
+        dealEngine,
+        creditTiers: loadCreditTiers(),
+        getCustomerSession: (id) => {
+          const s = customerPool.getSession(id);
+          return s
+            ? { bundle: s.bundle, visitArchetypeId: s.visitArchetypeId }
+            : undefined;
+        },
         // GM-presence seam (#124): a staffed GM suppresses dramatic-case
         // escalations (gmExceptionFlagRates), so StaffDispatch returns
         // escalated:0 and the GM-gated batch sim-week can run unattended.

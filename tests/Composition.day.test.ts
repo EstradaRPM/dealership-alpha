@@ -5,6 +5,8 @@ import { createCustomerPool, SALES_ARCHETYPES } from '../src/game/CustomerPool';
 import { createEconomy } from '../src/game/Economy';
 import { createCapacityManager } from '../src/game/CapacityManager';
 import { createStaffFloorDrain } from '../src/game/StaffDispatch';
+import { createInventory } from '../src/game/Inventory';
+import { createDealEngine, loadCreditTiers } from '../src/game/DealEngine';
 import {
   createDayLoopController,
   type FloorSeamProvider,
@@ -47,6 +49,8 @@ function composeApp(opts: { staffOrg?: StaffOrg } = {}) {
     },
   });
   const economy = createEconomy({ bus, startingCash: 50_000 });
+  const inventory = createInventory({ bus, masterSeed: MASTER_SEED, economy });
+  const dealEngine = createDealEngine({ bus, inventory, economy });
   const staffOrg = opts.staffOrg ?? emptyStaffOrg;
   const capacityManager = createCapacityManager({
     bus,
@@ -81,8 +85,14 @@ function composeApp(opts: { staffOrg?: StaffOrg } = {}) {
         bus,
         staffOrg,
         queue: departmentQueue,
-        economy,
         masterSeed: MASTER_SEED,
+        inventory,
+        dealEngine,
+        creditTiers: loadCreditTiers(),
+        getCustomerSession: (id) => {
+          const s = customerPool.getSession(id);
+          return s ? { bundle: s.bundle, visitArchetypeId: s.visitArchetypeId } : undefined;
+        },
       }),
     ],
     customerSource,

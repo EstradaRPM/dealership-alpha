@@ -7,6 +7,8 @@ import {
   createStaffFloorDrain,
   type StaffDispatchConfig,
 } from '../src/game/StaffDispatch';
+import { createDealEngine, loadCreditTiers } from '../src/game/DealEngine';
+import type { Inventory } from '../src/game/Inventory';
 import type { StaffOrg } from '../src/game/StaffOrg';
 import type { StaffWithComposites, Staff } from '../src/game/NPC';
 
@@ -65,15 +67,13 @@ const BASE_CONFIG: StaffDispatchConfig = {
     lemon_law_threat: 0,
     audit_trigger: 0,
   },
-  minCloseRate: 0.5,
-  maxCloseRate: 0.5,
-  baseAutoGross: 2500,
-  minGrossModifier: 0.5,
   minDrainPerTick: 0.6,
   maxDrainPerTick: 0.6,
   exceptionSkillExpMin: 1.0,
   exceptionSkillExpMax: 3.0,
 };
+
+const emptyInventory: Pick<Inventory, 'getLotVehicles'> = { getLotVehicles: () => [] };
 
 // Every designated dramatic case is forced (rate 1.0). rate^exp == 1 for any
 // exponent, so these escalate regardless of staff skill.
@@ -120,10 +120,14 @@ function setup(config: StaffDispatchConfig, effectiveness: number, n: number) {
     bus,
     staffOrg: makeStaffOrg([makeStaff(effectiveness)]),
     queue,
-    economy,
     masterSeed: MASTER_SEED,
     config,
+    inventory: emptyInventory,
+    dealEngine: createDealEngine({ bus }),
+    creditTiers: loadCreditTiers(),
+    getCustomerSession: () => undefined,
   });
+  void economy;
   const sim = createFloorSim({
     bus,
     seed: MASTER_SEED,
