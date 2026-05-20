@@ -4,6 +4,7 @@
     "trait_count": { "min": 1, "max": 2 },
     "wealth":        { "mu": 55000, "sigma": 14000 },
     "credit":        { "mu": 658,   "sigma": 48 },
+    "annualIncome":  { "mu": 62000, "sigma": 12000 },
     "int":           { "mu": 60,    "sigma": 12 },
     "agreeableness": { "mu": 65,    "sigma": 12 }
   },
@@ -13,6 +14,7 @@
     "trait_count": { "min": 1, "max": 2 },
     "wealth":        { "mu": 82000, "sigma": 22000 },
     "credit":        { "mu": 718,   "sigma": 36 },
+    "annualIncome":  { "mu": 95000, "sigma": 22000 },
     "int":           { "mu": 72,    "sigma": 10 },
     "agreeableness": { "mu": 50,    "sigma": 16 }
   },
@@ -22,6 +24,7 @@
     "trait_count": { "min": 1, "max": 2 },
     "wealth":        { "mu": 48000, "sigma": 10000 },
     "credit":        { "mu": 674,   "sigma": 44 },
+    "annualIncome":  { "mu": 58000, "sigma": 11000 },
     "int":           { "mu": 58,    "sigma": 12 },
     "agreeableness": { "mu": 68,    "sigma": 10 }
   },
@@ -31,6 +34,7 @@
     "trait_count": { "min": 1, "max": 2 },
     "wealth":        { "mu": 95000, "sigma": 28000 },
     "credit":        { "mu": 754,   "sigma": 26 },
+    "annualIncome":  { "mu": 48000, "sigma": 14000 },
     "int":           { "mu": 60,    "sigma": 10 },
     "agreeableness": { "mu": 72,    "sigma": 10 }
   },
@@ -40,6 +44,7 @@
     "trait_count": { "min": 1, "max": 2 },
     "wealth":        { "mu": 70000, "sigma": 20000 },
     "credit":        { "mu": 648,   "sigma": 56 },
+    "annualIncome":  { "mu": 78000, "sigma": 18000 },
     "int":           { "mu": 57,    "sigma": 12 },
     "agreeableness": { "mu": 45,    "sigma": 16 }
   }

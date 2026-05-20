@@ -132,6 +132,7 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
     trait_ids: traitIds,
     wealth: rollStat('wealth', personArchetype.wealth.mu, personArchetype.wealth.sigma),
     credit: rollStat('credit', personArchetype.credit.mu, personArchetype.credit.sigma),
+    annualIncome: Math.max(1, rollStat('annualIncome', personArchetype.annualIncome.mu, personArchetype.annualIncome.sigma)),
     int: rollStat('int', personArchetype.int.mu, personArchetype.int.sigma),
     agreeableness,
     brand_affinity: {},

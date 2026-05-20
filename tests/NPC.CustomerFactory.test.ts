@@ -40,6 +40,17 @@ describe('CustomerFactory.createCustomer — schema validity', () => {
     expect(person.counters).toEqual({ prior_visits: 0, prior_deals: 0, days_since_last_visit: 0 });
   });
 
+  it('rolls annualIncome > 0 from archetype distribution', () => {
+    const { person } = createCustomer(salesCtx, deps);
+    expect(person.annualIncome).toBeGreaterThan(0);
+  });
+
+  it('same seed → same annualIncome (determinism)', () => {
+    const a = createCustomer(salesCtx, deps);
+    const b = createCustomer(salesCtx, deps);
+    expect(a.person.annualIncome).toBe(b.person.annualIncome);
+  });
+
   it('produces valid customers for service visit archetypes', () => {
     const ctx = { personArchetypeId: 'commuter', visitArchetypeId: 'routine_maintenance', day: 3, slot: 2 };
     const { person, visit } = createCustomer(ctx, deps);

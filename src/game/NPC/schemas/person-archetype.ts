@@ -21,6 +21,7 @@ export const PersonArchetypeSchema = z
       }),
     wealth: DistributionSchema,
     credit: DistributionSchema,
+    annualIncome: DistributionSchema,
     int: DistributionSchema,
     agreeableness: DistributionSchema,
   })

@@ -42,6 +42,7 @@ export const PersonSchema = z
     trait_ids: z.array(z.string().min(1)),
     wealth: z.number(),
     credit: z.number(),
+    annualIncome: z.number().positive(),
     int: z.number(),
     agreeableness: z.number(),
     brand_affinity: z.record(z.string().min(1), z.number()),
