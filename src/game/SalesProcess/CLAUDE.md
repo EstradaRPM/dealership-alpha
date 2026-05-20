@@ -48,6 +48,8 @@ Quadrant close + price formation (#90):
   - **Low-trust forced close:** `outcome=buy AND unconditional AND trust < trustFloor` → `badReview=true + highFiResistance=true` (signals downstream).
   - `closingComposite` = `skill.skillFor('NEGOTIATE')` — the NEGOTIATE gate skill drives price hold.
 
+Customer→vehicle matcher (#145) — `pickVehicleFor(customer, lot, deps?) → vehicleId | null`. Filters the lot by `isEligible` then `nonnegotiablesSatisfied`, argmax-scores survivors as `wantAxisFit·WANT_WEIGHT − pricePenalty·priceSensitivity + reputationBonus(make)`. Reputation hook is a stub (`() => 0`); real surface is a follow-on. Headroom: cash = `wealth × cashSpendFraction`, finance = `annualIncome`. Pure, deterministic — ties break by ascending `vehicleId` (no RNG). `MatchableVehicle` is `SpacedVehicleInput & PricedVehicleInput & { id }` (Inventory's `LotVehicle` satisfies it structurally); `MatchCustomer` accepts an optional pre-classified `axisProfile` to skip the seeded `classifyAxes` call.
+
 Affordability eligibility (#144) — pure, deterministic helpers for whether a deal can structure:
 
 - `cashEligible(customer, vehicle, marketPriceFn?)` → list price ≤ `wealth × cashSpendFraction`.
