@@ -5,6 +5,17 @@ import {
   type MonthCloseModel,
 } from '../src/ui/MonthCloseInterstitial';
 
+const ZERO_SPLITS = {
+  cashUnits: 0,
+  cashGross: 0,
+  financeUnits: 0,
+  financeGross: 0,
+  heavyDownUnits: 0,
+  avgApr: 0,
+  avgTerm: 0,
+  avgDownPct: 0,
+};
+
 const SNAPSHOT = {
   unitsRetailed: 14,
   pvr: 2_350,
@@ -12,6 +23,7 @@ const SNAPSHOT = {
   avgFrontGross: 1_370,
   avgBackGross: 980,
   avgDii: 41,
+  ...ZERO_SPLITS,
 };
 
 const MODEL: MonthCloseModel = {
@@ -63,6 +75,7 @@ describe('MonthCloseInterstitial smoke tests', () => {
               avgFrontGross: 0,
               avgBackGross: 0,
               avgDii: 0,
+              ...ZERO_SPLITS,
             },
           }}
           onDismiss={() => {}}

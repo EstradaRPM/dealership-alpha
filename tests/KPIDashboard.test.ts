@@ -34,6 +34,53 @@ function publishDeal(
   });
 }
 
+function publishCash(
+  bus: ReturnType<typeof createEventBus>,
+  opts: { agreedPrice: number; frontGross?: number; backGross?: number },
+) {
+  const { agreedPrice, frontGross = 1_000, backGross = 0 } = opts;
+  bus.publish('deal:closed', {
+    customerId: 'c1',
+    vehicleId: 'v1',
+    agreedPrice,
+    frontGross,
+    backGross,
+    daysInInventory: 10,
+    paymentMethod: 'cash',
+    downPayment: agreedPrice,
+    loanAmount: 0,
+    term: 0,
+    apr: 0,
+  });
+}
+
+function publishFinance(
+  bus: ReturnType<typeof createEventBus>,
+  opts: {
+    agreedPrice: number;
+    downPayment: number;
+    term: number;
+    apr: number;
+    frontGross?: number;
+    backGross?: number;
+  },
+) {
+  const { agreedPrice, downPayment, term, apr, frontGross = 1_000, backGross = 500 } = opts;
+  bus.publish('deal:closed', {
+    customerId: 'c1',
+    vehicleId: 'v1',
+    agreedPrice,
+    frontGross,
+    backGross,
+    daysInInventory: 10,
+    paymentMethod: 'finance',
+    downPayment,
+    loanAmount: agreedPrice - downPayment,
+    term,
+    apr,
+  });
+}
+
 // ── isUnlocked ────────────────────────────────────────────────────────────────
 
 describe('KPIDashboard.isUnlocked', () => {
@@ -193,5 +240,124 @@ describe('KPIDashboard.getSnapshot — multiple deals', () => {
     publishDeal(bus, 4_000, 0, 20);
     expect(dashboard.getSnapshot().unitsRetailed).toBe(2);
     expect(dashboard.getSnapshot().avgFrontGross).toBe(3_000);
+  });
+});
+
+// ── getSnapshot — payment-method splits ───────────────────────────────────────
+
+describe('KPIDashboard.getSnapshot — payment splits', () => {
+  it('zero snapshot exposes all split fields as zero', () => {
+    const bus = createEventBus();
+    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const snap = dashboard.getSnapshot();
+
+    expect(snap.cashUnits).toBe(0);
+    expect(snap.cashGross).toBe(0);
+    expect(snap.financeUnits).toBe(0);
+    expect(snap.financeGross).toBe(0);
+    expect(snap.heavyDownUnits).toBe(0);
+    expect(snap.avgApr).toBe(0);
+    expect(snap.avgTerm).toBe(0);
+    expect(snap.avgDownPct).toBe(0);
+  });
+
+  it('cash deal increments cashUnits + cashGross only', () => {
+    const bus = createEventBus();
+    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+
+    publishCash(bus, { agreedPrice: 20_000, frontGross: 2_000, backGross: 300 });
+    const snap = dashboard.getSnapshot();
+
+    expect(snap.cashUnits).toBe(1);
+    expect(snap.cashGross).toBe(2_300);
+    expect(snap.financeUnits).toBe(0);
+    expect(snap.financeGross).toBe(0);
+    expect(snap.heavyDownUnits).toBe(0);
+    // No finance deals → APR/term/downPct averages stay zero.
+    expect(snap.avgApr).toBe(0);
+    expect(snap.avgTerm).toBe(0);
+    expect(snap.avgDownPct).toBe(0);
+  });
+
+  it('finance deal with downPct ≥ 0.25 increments heavyDownUnits', () => {
+    const bus = createEventBus();
+    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+
+    publishFinance(bus, {
+      agreedPrice: 20_000,
+      downPayment: 5_000, // 25% exactly
+      term: 60,
+      apr: 0.07,
+      frontGross: 1_500,
+      backGross: 800,
+    });
+    const snap = dashboard.getSnapshot();
+
+    expect(snap.financeUnits).toBe(1);
+    expect(snap.financeGross).toBe(2_300);
+    expect(snap.heavyDownUnits).toBe(1);
+    expect(snap.cashUnits).toBe(0);
+    expect(snap.avgApr).toBeCloseTo(0.07, 5);
+    expect(snap.avgTerm).toBe(60);
+    expect(snap.avgDownPct).toBeCloseTo(0.25, 5);
+  });
+
+  it('finance deal below threshold does not count as heavy-down', () => {
+    const bus = createEventBus();
+    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+
+    publishFinance(bus, {
+      agreedPrice: 20_000,
+      downPayment: 2_000, // 10%
+      term: 72,
+      apr: 0.09,
+    });
+
+    expect(dashboard.getSnapshot().heavyDownUnits).toBe(0);
+    expect(dashboard.getSnapshot().financeUnits).toBe(1);
+  });
+
+  it('APR / term / downPct are weighted by finance count only', () => {
+    const bus = createEventBus();
+    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+
+    // Mix: 1 cash, 2 finance. Cash should not influence finance averages.
+    publishCash(bus, { agreedPrice: 30_000 });
+    publishFinance(bus, { agreedPrice: 20_000, downPayment: 2_000, term: 60, apr: 0.06 });
+    publishFinance(bus, { agreedPrice: 40_000, downPayment: 8_000, term: 72, apr: 0.10 });
+
+    const snap = dashboard.getSnapshot();
+    expect(snap.cashUnits).toBe(1);
+    expect(snap.financeUnits).toBe(2);
+    expect(snap.avgApr).toBeCloseTo(0.08, 5);
+    expect(snap.avgTerm).toBe(66);
+    // Down pcts: 0.10, 0.20 → avg 0.15
+    expect(snap.avgDownPct).toBeCloseTo(0.15, 5);
+    // Only the second finance deal hits ≥0.25? No — 0.20 < 0.25, so 0 heavy-down.
+    expect(snap.heavyDownUnits).toBe(0);
+  });
+
+  it('mix of cash and heavy-down finance reports both correctly', () => {
+    const bus = createEventBus();
+    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+
+    publishCash(bus, { agreedPrice: 20_000, frontGross: 1_000, backGross: 0 });
+    publishCash(bus, { agreedPrice: 25_000, frontGross: 1_500, backGross: 200 });
+    publishFinance(bus, {
+      agreedPrice: 20_000,
+      downPayment: 8_000, // 40% — heavy
+      term: 48,
+      apr: 0.05,
+      frontGross: 2_000,
+      backGross: 1_000,
+    });
+
+    const snap = dashboard.getSnapshot();
+    expect(snap.cashUnits).toBe(2);
+    expect(snap.cashGross).toBe(2_700);
+    expect(snap.financeUnits).toBe(1);
+    expect(snap.financeGross).toBe(3_000);
+    expect(snap.heavyDownUnits).toBe(1);
+    expect(snap.unitsRetailed).toBe(3);
   });
 });
