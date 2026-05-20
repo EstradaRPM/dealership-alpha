@@ -70,6 +70,9 @@ export const SalesVisitSchema = z
     preferences: SPACEDVectorSchema,
     resources: VisitResourcesSchema,
     paymentMethod: z.enum(['cash', 'finance']),
+    // Behavioral down-payment fraction the customer brings (finance only).
+    // Clamped at roll time to [tier.minDownPct, 0.5]; cash customers omit it.
+    downPaymentBehavior: z.number().min(0).max(0.5).optional(),
   })
   .strict();
 export type SalesVisit = z.infer<typeof SalesVisitSchema>;

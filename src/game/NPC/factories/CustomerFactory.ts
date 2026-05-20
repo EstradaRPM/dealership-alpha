@@ -28,6 +28,13 @@ export interface CreateCustomerDeps {
    * disable the gate.
    */
   cheapestLotPriceFloor?: number;
+  /**
+   * Returns the lender-policy minimum down-payment fraction for a given credit
+   * score (i.e. `tier.minDownPct`). Used as the lower bound of the clamp when
+   * rolling `downPaymentBehavior` for finance customers. Omit to default to 0
+   * (no floor) — useful when callers don't need the credit-tier coupling.
+   */
+  minDownPctForCredit?: (credit: number) => number;
 }
 
 export interface CustomerBundle {
@@ -97,6 +104,9 @@ function applyEffectsToVisit(
       preferences: pref,
       resources: res,
       paymentMethod: base.paymentMethod,
+      ...(base.downPaymentBehavior !== undefined
+        ? { downPaymentBehavior: base.downPaymentBehavior }
+        : {}),
     };
   } else {
     const pref = { ...base.preferences } as PSQTCVector;
@@ -178,6 +188,19 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
     const paymentMethod: 'cash' | 'finance' =
       wantsCash && canAffordCash ? 'cash' : 'finance';
 
+    // Finance customers carry a behavioral down-payment fraction, clamped to
+    // [tier.minDownPct, 0.5]. Cash customers omit the field.
+    let downPaymentBehavior: number | undefined;
+    if (paymentMethod === 'finance') {
+      const downRoll = gaussian(
+        createRng(seedFor('payment.downPaymentBehavior')),
+        pay.downPaymentBehavior.mu,
+        pay.downPaymentBehavior.sigma,
+      );
+      const floor = deps.minDownPctForCredit?.(person.credit) ?? 0;
+      downPaymentBehavior = Math.min(0.5, Math.max(floor, downRoll));
+    }
+
     baseVisit = VisitSchema.parse({
       kind: 'sales',
       person_id: person.id,
@@ -194,6 +217,7 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
         patience: rollField('res.patience', r.patience.mu, r.patience.sigma),
       },
       paymentMethod,
+      ...(downPaymentBehavior !== undefined ? { downPaymentBehavior } : {}),
     });
   } else {
     const p = visitArchetype.preferences;

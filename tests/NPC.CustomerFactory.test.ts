@@ -7,6 +7,11 @@ import {
   resolveEffects,
 } from '../src/game/NPC';
 import { PersonSchema, VisitSchema } from '../src/game/NPC/schemas/customer';
+import { classifyCredit, loadCreditTiers } from '../src/game/DealEngine';
+
+const creditTiers = loadCreditTiers();
+const minDownPctForCredit = (credit: number): number =>
+  creditTiers.tiers[classifyCredit(credit, creditTiers)].minDownPct;
 
 const personArchetypes = loadPersonArchetypes();
 const visitArchetypes = loadVisitArchetypes();
@@ -151,6 +156,93 @@ describe('CustomerFactory.createCustomer — paymentMethod', () => {
       const b = createCustomer(ctx, deps);
       if (a.visit.kind !== 'sales' || b.visit.kind !== 'sales') throw new Error('expected sales');
       expect(a.visit.paymentMethod).toBe(b.visit.paymentMethod);
+    }
+  });
+});
+
+// ── downPaymentBehavior ───────────────────────────────────────────────────────
+
+describe('CustomerFactory.createCustomer — downPaymentBehavior', () => {
+  const salesArchetypeIds = Object.keys(visitArchetypes).filter(
+    (id) => visitArchetypes[id]?.kind === 'sales',
+  );
+  const dpDeps = { ...deps, minDownPctForCredit };
+
+  it('finance sales customers carry downPaymentBehavior; cash customers do not', () => {
+    let sawFinance = false;
+    let sawCash = false;
+    for (let slot = 0; slot < 200 && !(sawFinance && sawCash); slot++) {
+      const { visit } = createCustomer(
+        { personArchetypeId: 'young_family', visitArchetypeId: 'retirement_upgrade', day: 13, slot },
+        dpDeps,
+      );
+      if (visit.kind !== 'sales') throw new Error('expected sales');
+      if (visit.paymentMethod === 'finance') {
+        sawFinance = true;
+        expect(typeof visit.downPaymentBehavior).toBe('number');
+      } else {
+        sawCash = true;
+        expect(visit.downPaymentBehavior).toBeUndefined();
+      }
+    }
+    expect(sawFinance).toBe(true);
+    expect(sawCash).toBe(true);
+  });
+
+  it('downPaymentBehavior respects the [tier.minDownPct, 0.5] clamp', () => {
+    const N = 500;
+    for (const visitArchetypeId of salesArchetypeIds) {
+      for (let slot = 0; slot < N; slot++) {
+        const { person, visit } = createCustomer(
+          { personArchetypeId: 'young_family', visitArchetypeId, day: 17, slot },
+          dpDeps,
+        );
+        if (visit.kind !== 'sales') throw new Error('expected sales');
+        if (visit.paymentMethod !== 'finance') continue;
+        const floor = minDownPctForCredit(person.credit);
+        expect(visit.downPaymentBehavior).toBeDefined();
+        expect(visit.downPaymentBehavior!).toBeGreaterThanOrEqual(floor);
+        expect(visit.downPaymentBehavior!).toBeLessThanOrEqual(0.5);
+      }
+    }
+  });
+
+  it('per-archetype distribution mean ≈ archetype mu (ignoring clamp-affected samples)', () => {
+    const N = 2000;
+    for (const visitArchetypeId of salesArchetypeIds) {
+      const arch = visitArchetypes[visitArchetypeId]!;
+      if (arch.kind !== 'sales') throw new Error('unreachable');
+      const mu = arch.payment.downPaymentBehavior.mu;
+      const sigma = arch.payment.downPaymentBehavior.sigma;
+      let sum = 0;
+      let n = 0;
+      for (let slot = 0; slot < N; slot++) {
+        const { person, visit } = createCustomer(
+          { personArchetypeId: 'young_family', visitArchetypeId, day: 19, slot },
+          dpDeps,
+        );
+        if (visit.kind !== 'sales') throw new Error('expected sales');
+        if (visit.paymentMethod !== 'finance') continue;
+        const floor = minDownPctForCredit(person.credit);
+        // Only include samples not pinned by either bound to avoid biasing the mean.
+        if (visit.downPaymentBehavior! <= floor + 1e-9) continue;
+        if (visit.downPaymentBehavior! >= 0.5 - 1e-9) continue;
+        sum += visit.downPaymentBehavior!;
+        n++;
+      }
+      if (n < 50) continue; // archetype mostly clamped — skip the mean check
+      const observed = sum / n;
+      expect(Math.abs(observed - mu)).toBeLessThan(Math.max(0.03, sigma));
+    }
+  });
+
+  it('same seed → same downPaymentBehavior (determinism)', () => {
+    for (const visitArchetypeId of salesArchetypeIds) {
+      const ctx = { personArchetypeId: 'young_family', visitArchetypeId, day: 23, slot: 7 };
+      const a = createCustomer(ctx, dpDeps);
+      const b = createCustomer(ctx, dpDeps);
+      if (a.visit.kind !== 'sales' || b.visit.kind !== 'sales') throw new Error('expected sales');
+      expect(a.visit.downPaymentBehavior).toBe(b.visit.downPaymentBehavior);
     }
   });
 });
