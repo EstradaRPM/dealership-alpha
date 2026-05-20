@@ -33,6 +33,13 @@ export type MarketPriceFn = (vehicle: PricedVehicleInput) => number;
 /** Seam: static all-in vehicle cost (PRD decision 8). */
 export type VehicleCostFn = (vehicle: PricedVehicleInput) => number;
 
+/**
+ * Seam: static book value (wholesale reference). Distinct from cost basis and
+ * market price so LTV affordability checks have their own anchor. Dynamic
+ * internal-economy follow-on (PRD #85 decision 8) drops in as a swap.
+ */
+export type BookValueFn = (vehicle: PricedVehicleInput) => number;
+
 const clampUnit = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 
 /**
@@ -81,3 +88,9 @@ const STATIC_MARKET_MARKUP = 1.25;
 /** v1 static market-price stub (decision 8). */
 export const staticMarketPrice: MarketPriceFn = (v) =>
   Math.round(staticVehicleCost(v) * STATIC_MARKET_MARKUP);
+
+/**
+ * v1 static book-value stub: acquisition cost ≈ wholesale book for healthy
+ * auction buys. Reconditioning is value-add, not book.
+ */
+export const staticBookValue: BookValueFn = (v) => v.purchasePrice;

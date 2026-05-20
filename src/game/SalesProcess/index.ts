@@ -30,6 +30,7 @@ export {
   makeSalespersonProfile,
   staticMarketPrice,
   staticVehicleCost,
+  staticBookValue,
 } from './seams';
 export type {
   GateSkill,
@@ -37,6 +38,7 @@ export type {
   PricedVehicleInput,
   MarketPriceFn,
   VehicleCostFn,
+  BookValueFn,
 } from './seams';
 
 export {

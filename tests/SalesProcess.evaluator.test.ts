@@ -7,6 +7,7 @@ import {
   makeSalespersonProfile,
   staticMarketPrice,
   staticVehicleCost,
+  staticBookValue,
   GATES,
 } from '../src/game/SalesProcess';
 import type {
@@ -199,6 +200,11 @@ describe('seam stubs', () => {
     const v = { purchasePrice: 10000, reconCost: 1000 };
     expect(staticVehicleCost(v)).toBe(11000);
     expect(staticMarketPrice(v)).toBe(13750);
+  });
+
+  it('staticBookValue returns purchasePrice (wholesale ≈ acquisition for healthy buys)', () => {
+    expect(staticBookValue({ purchasePrice: 10000, reconCost: 1000 })).toBe(10000);
+    expect(staticBookValue({ purchasePrice: 0, reconCost: 500 })).toBe(0);
   });
 });
 
