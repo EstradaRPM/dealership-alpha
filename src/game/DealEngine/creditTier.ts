@@ -5,6 +5,10 @@ import type { CreditTier, CreditTierCatalog } from './types';
 const TierDefSchema = z.object({
   minScore: z.number().nonnegative(),
   apr: z.number().positive(),
+  maxTerm: z.number().int().positive(),
+  ptiCap: z.number().positive().max(1),
+  minDownPct: z.number().min(0).max(1),
+  ltvCeiling: z.number().positive(),
 });
 
 export const CreditTierCatalogSchema = z.object({

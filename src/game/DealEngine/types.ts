@@ -3,6 +3,10 @@ export type CreditTier = 'A' | 'B' | 'C' | 'D';
 export interface TierDef {
   minScore: number;
   apr: number;
+  maxTerm: number;
+  ptiCap: number;
+  minDownPct: number;
+  ltvCeiling: number;
 }
 
 export interface CreditTierCatalog {

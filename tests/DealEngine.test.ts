@@ -1,14 +1,14 @@
-import { createDealEngine, computeMonthlyPayment, classifyCredit } from '../src/game/DealEngine';
+import { createDealEngine, computeMonthlyPayment, computeMaxFinancedAmount, classifyCredit } from '../src/game/DealEngine';
 import type { CreditTierCatalog, LoanParams } from '../src/game/DealEngine';
 
 // Minimal catalog used across all tests — mirrors data/credit-tiers.json structure.
 const CATALOG: CreditTierCatalog = {
   schemaVersion: 1,
   tiers: {
-    A: { minScore: 720, apr: 0.059 },
-    B: { minScore: 680, apr: 0.089 },
-    C: { minScore: 620, apr: 0.129 },
-    D: { minScore:   0, apr: 0.189 },
+    A: { minScore: 720, apr: 0.059, maxTerm: 84, ptiCap: 0.20, minDownPct: 0.00, ltvCeiling: 1.25 },
+    B: { minScore: 680, apr: 0.089, maxTerm: 75, ptiCap: 0.17, minDownPct: 0.05, ltvCeiling: 1.20 },
+    C: { minScore: 620, apr: 0.129, maxTerm: 72, ptiCap: 0.15, minDownPct: 0.10, ltvCeiling: 1.10 },
+    D: { minScore:   0, apr: 0.189, maxTerm: 66, ptiCap: 0.13, minDownPct: 0.20, ltvCeiling: 1.05 },
   },
 };
 
@@ -59,7 +59,7 @@ describe('computeMonthlyPayment', () => {
   it('zero APR falls back to principal / term', () => {
     const result = computeMonthlyPayment(
       { price: 6000, down: 0, termMonths: 12, tier: 'A' },
-      { minScore: 720, apr: 0 },
+      { minScore: 720, apr: 0, maxTerm: 84, ptiCap: 0.20, minDownPct: 0.00, ltvCeiling: 1.25 },
     );
     expect(result.monthlyPayment).toBeCloseTo(500, 5);
   });
@@ -71,6 +71,35 @@ describe('computeMonthlyPayment', () => {
     );
     expect(result.principal).toBe(0);
     expect(result.monthlyPayment).toBe(0);
+  });
+});
+
+describe('computeMaxFinancedAmount', () => {
+  const cases: Array<{ M: number; apr: number; n: number }> = [
+    { M: 347.15, apr: 0.059, n: 60 },
+    { M: 500,    apr: 0.089, n: 72 },
+    { M: 240.26, apr: 0.129, n: 72 },
+    { M: 800,    apr: 0.189, n: 36 },
+  ];
+
+  for (const { M, apr, n } of cases) {
+    it(`round-trip: PMT(maxFinanced(${M}, ${apr}, ${n})) ≈ ${M}`, () => {
+      const principal = computeMaxFinancedAmount(M, apr, n);
+      const back = computeMonthlyPayment(
+        { price: principal, down: 0, termMonths: n, tier: 'A' },
+        { minScore: 720, apr, maxTerm: 84, ptiCap: 0.20, minDownPct: 0, ltvCeiling: 1.25 },
+      );
+      expect(back.monthlyPayment).toBeCloseTo(M, 4);
+    });
+  }
+
+  it('zero APR: financed = M * n', () => {
+    expect(computeMaxFinancedAmount(500, 0, 12)).toBeCloseTo(6000, 5);
+  });
+
+  it('zero/negative inputs clamp to 0', () => {
+    expect(computeMaxFinancedAmount(0, 0.05, 60)).toBe(0);
+    expect(computeMaxFinancedAmount(500, 0.05, 0)).toBe(0);
   });
 });
 

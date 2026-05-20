@@ -2,5 +2,5 @@ export { createDealEngine } from './DealEngine';
 export type { DealEngine, DealEngineDeps } from './DealEngine';
 export type { CreditTier, CreditTierCatalog, TierDef, LoanParams, LoanResult, CloseDealParams, ClosedDealResult, FniProduct, FniProductCatalog, AttachedFniProduct, FniAutoAttachConfig } from './types';
 export { classifyCredit, loadCreditTiers } from './creditTier';
-export { computeMonthlyPayment } from './loanMath';
+export { computeMonthlyPayment, computeMaxFinancedAmount } from './loanMath';
 export { loadFniProducts, loadFniAutoAttachConfig } from './fniProducts';
