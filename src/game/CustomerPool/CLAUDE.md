@@ -3,17 +3,20 @@
 Per-day customer roster + SalesProcess-driven resolution. Rolls today's customers, advances them through Sales stages, runs `SalesProcess.resolveSalesProcess` + `closeAndPrice` at resolution time, and handles poach attempts by competitors.
 
 ## Public API (`index.ts`)
-- `createCustomerPool(deps)` → `CustomerPool`. Optional `deps.skill?: SalespersonSkill` (defaults to `GREEN_SALESPERSON`; StaffOrg wiring is a follow-on). Optional `deps.legacyDailyArrivals?: boolean` (default `true`) — the old `clock:day_started` once-per-day arrival generator; the #114 composition root passes `false` so FloorSim's customer-source seam is the sole arrival source (`currentDay` + poach still run).
+- `createCustomerPool(deps)` → `CustomerPool`. Optional `deps.skill?: SalespersonSkill` (defaults to `GREEN_SALESPERSON`; StaffOrg wiring is a follow-on). Optional `deps.legacyDailyArrivals?: boolean` (default `true`) — the old `clock:day_started` once-per-day arrival generator; the #114 composition root passes `false` so FloorSim's customer-source seam is the sole arrival source (`currentDay` + poach still run). Optional `deps.dealEngine` + `deps.inventory` + `deps.creditTiers` (all three together) — when supplied, `dispatch(CLOSE)` real-close path routes through `DealEngine.closeDeal` (#146) so the canonical `deal:closed` with the five deal-structuring fields fires; absent any of the three, falls back to legacy SalesProcess-direct emit (test harnesses without inventory wiring).
 - Session type: `CustomerSession`.
 - `transition(...)`, `IllegalTransitionError` — FSM validates dispatch legality (intermediate stages).
 - `checkPoach(...)` — competitor poach decision. `PoachParams`, `PoachResult`, `PoachOutcome`.
 - `loadPoachConfig` — reads `data/poach-config.json`.
 - Types: `CustomerStage`, `CustomerAction`, `PoachConfig`.
 
-## Resolution semantics (#91)
-- **`dispatch(CLOSE)`** — SalesProcess-driven: runs `resolveSalesProcess` + `closeAndPrice`; outcome may be 'closed' or 'walk' depending on meters + price formation.
+## Resolution semantics (#91, extended #146)
+- **`dispatch(CLOSE)`** — SalesProcess-driven outcome determination (`resolveSalesProcess` + `closeAndPrice`):
+  - Outcome `walk` → emits `customer:resolved` directly.
+  - Outcome `closed` AND DealEngine wiring present AND lot non-empty → routes through `DealEngine.closeDeal` with the five deal-structuring fields (paymentMethod / downPayment / loanAmount / term / apr) computed from the customer's Visit + classified credit tier; the `deal:closed` listener below handles the resulting `CLOSED` transition + `customer:resolved` emit. Cash: `downPayment=agreedPrice, loanAmount=term=apr=0`. Finance: `apr/term` from `creditTiers.tiers[tier]`, `downPayment = agreedPrice × visit.downPaymentBehavior`.
+  - Outcome `closed` AND no DealEngine wiring (or empty lot) → legacy fallback: emits `customer:resolved` directly with SalesProcess `agreedPrice`/`frontGross` (no inventory decrement).
 - **`dispatch(WALK_CUSTOMER)`** — forced walk: uses visit patience as heat proxy (no SalesProcess evaluation).
-- **`deal:closed` listener** — DealEngine-driven close: forces outcome='closed', runs SalesProcess for quality scalars only; uses `agreedPrice`/`frontGross` from DealEngine payload.
+- **`deal:closed` listener** — DealEngine-driven close (own dispatch *or* external caller, e.g. future StaffDispatch tracer #147): forces outcome='closed', runs SalesProcess for quality scalars only; uses `agreedPrice`/`frontGross` from the DealEngine payload.
 - Intermediate actions (GREET, QUALIFY, DEMO, NEGOTIATE) still use FSM.
 
 ## Events

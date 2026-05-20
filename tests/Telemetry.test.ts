@@ -20,6 +20,7 @@ describe('Telemetry — enable/disable', () => {
     bus.publish('deal:closed', {
       customerId: 'c1', vehicleId: 'v1', agreedPrice: 25000,
       frontGross: 2000, backGross: 500, daysInInventory: 10,
+      paymentMethod: 'cash', downPayment: 25000, loanAmount: 0, term: 0, apr: 0,
     });
     expect(telemetry.getEventCount()).toBe(0);
   });
@@ -72,6 +73,7 @@ describe('Telemetry — derived metrics', () => {
     bus.publish('deal:closed', {
       customerId: 'c', vehicleId: 'v1', agreedPrice: 30000,
       frontGross: 2000, backGross: 800, daysInInventory: 5,
+      paymentMethod: 'cash', downPayment: 30000, loanAmount: 0, term: 0, apr: 0,
     });
     bus.publish('economy:revenue_posted', { day: 1, amount: 30000, label: 'sale' });
     bus.publish('economy:expense_posted', { day: 1, amount: 5000, label: 'overhead' });
@@ -81,6 +83,7 @@ describe('Telemetry — derived metrics', () => {
     bus.publish('deal:closed', {
       customerId: 'd', vehicleId: 'v2', agreedPrice: 20000,
       frontGross: 1000, backGross: 0, daysInInventory: 12,
+      paymentMethod: 'cash', downPayment: 20000, loanAmount: 0, term: 0, apr: 0,
     });
     bus.publish('economy:revenue_posted', { day: 2, amount: 20000, label: 'sale' });
     bus.publish('staff:quit', { staffId: 's1', roleId: 'sales', day: 2, morale: 5 });

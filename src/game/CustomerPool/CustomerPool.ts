@@ -4,6 +4,8 @@ import type { CreateCustomerDeps, CustomerBundle } from '../NPC';
 import type { EventBus } from '../EventBus';
 import type { BrandCatalog } from '../CompetitorMarket/schemas/brand';
 import type { Competitor } from '../CompetitorMarket/Competitor';
+import type { DealEngine, CreditTierCatalog } from '../DealEngine';
+import type { Inventory } from '../Inventory';
 import { transition, IllegalTransitionError } from './CustomerStateMachine';
 import type { CustomerStage, CustomerAction } from './types';
 import { checkPoach } from './PoachEngine';
@@ -88,6 +90,17 @@ export function createCustomerPool(deps: {
    * fire. `currentDay` tracking + poach checks still run regardless.
    */
   legacyDailyArrivals?: boolean;
+  /**
+   * Real-close wiring (#146): when supplied, `dispatch(CLOSE)` with a
+   * successful resolution routes through `DealEngine.closeDeal` instead of
+   * synthesizing `customer:resolved` against a stub vehicle. Requires all
+   * three (dealEngine + inventory + creditTiers) plus a non-empty lot;
+   * otherwise falls back to the legacy SalesProcess-direct emit so test
+   * harnesses without inventory wiring still close.
+   */
+  dealEngine?: Pick<DealEngine, 'closeDeal' | 'classifyCredit'>;
+  inventory?: Pick<Inventory, 'getLotVehicles'>;
+  creditTiers?: CreditTierCatalog;
 }): CustomerPool {
   const { bus, npcDeps } = deps;
   const sessions = new Map<string, MutableSession>();
@@ -231,6 +244,53 @@ export function createCustomerPool(deps: {
       });
     } else if (action === 'CLOSE') {
       const resolved = resolveViaProcess(session);
+
+      // Real-close path (#146): when DealEngine + inventory + tiers are wired
+      // AND the lot has a vehicle AND SalesProcess resolved 'closed', route
+      // through DealEngine.closeDeal so the canonical deal:closed (with the
+      // five deal-structuring fields) fires. The existing deal:closed listener
+      // below transitions the session to CLOSED and emits customer:resolved.
+      if (resolved.outcome === 'closed' && deps.dealEngine && deps.inventory && deps.creditTiers) {
+        const lot = deps.inventory.getLotVehicles();
+        if (lot.length > 0) {
+          const vehicle = lot[0];
+          const visit = session.bundle.visit;
+          const paymentMethod = visit.kind === 'sales' ? visit.paymentMethod : 'cash';
+          const downBehavior =
+            visit.kind === 'sales' ? visit.downPaymentBehavior ?? 0 : 0;
+          const agreedPrice = resolved.agreedPrice;
+
+          let downPayment = 0;
+          let loanAmount = 0;
+          let term = 0;
+          let apr = 0;
+          if (paymentMethod === 'cash') {
+            downPayment = agreedPrice;
+          } else {
+            const tier = deps.dealEngine.classifyCredit(session.bundle.person.credit);
+            const policy = deps.creditTiers.tiers[tier];
+            apr = policy.apr;
+            term = policy.maxTerm;
+            downPayment = agreedPrice * downBehavior;
+            loanAmount = agreedPrice - downPayment;
+          }
+
+          deps.dealEngine.closeDeal({
+            customerId,
+            vehicleId: vehicle.id,
+            agreedPrice,
+            paymentMethod,
+            downPayment,
+            loanAmount,
+            term,
+            apr,
+          });
+          return;
+        }
+      }
+
+      // Fallback path: legacy SalesProcess-direct close — used by harnesses
+      // without inventory/DealEngine wiring, and as the walk path always.
       const to: CustomerStage = resolved.outcome === 'closed' ? 'CLOSED' : 'WALK';
       session.stage = to;
       bus.publish('customer:state_changed', { customerId, from, to });

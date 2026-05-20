@@ -48,6 +48,11 @@ function publishDealClosed(bus: ReturnType<typeof createEventBus>, customerId = 
     frontGross: 2000,
     backGross: 800,
     daysInInventory: 0,
+    paymentMethod: 'cash',
+    downPayment: 25_000,
+    loanAmount: 0,
+    term: 0,
+    apr: 0,
   });
 }
 

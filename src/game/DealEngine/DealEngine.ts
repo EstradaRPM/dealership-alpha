@@ -73,7 +73,21 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       return attached;
     },
 
-    closeDeal({ customerId, vehicleId, agreedPrice, fniProducts = [] }) {
+    closeDeal({
+      customerId,
+      vehicleId,
+      agreedPrice,
+      fniProducts = [],
+      paymentMethod = 'cash',
+      downPayment,
+      loanAmount = 0,
+      term = 0,
+      apr = 0,
+    }) {
+      // Default to a full-down cash structure when the caller omits the deal-
+      // structuring fields. downPayment defaults to agreedPrice for cash so the
+      // sum (downPayment + loanAmount) equals what was actually paid.
+      const resolvedDownPayment = downPayment ?? (paymentMethod === 'cash' ? agreedPrice : 0);
       if (!bus || !inventory || !economy) {
         throw new Error('closeDeal requires bus, inventory, and economy deps');
       }
@@ -107,9 +121,26 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
         backGross,
         daysInInventory,
         fniProducts,
+        paymentMethod,
+        downPayment: resolvedDownPayment,
+        loanAmount,
+        term,
+        apr,
       };
 
-      bus.publish('deal:closed', { customerId, vehicleId, agreedPrice, frontGross, backGross, daysInInventory });
+      bus.publish('deal:closed', {
+        customerId,
+        vehicleId,
+        agreedPrice,
+        frontGross,
+        backGross,
+        daysInInventory,
+        paymentMethod,
+        downPayment: resolvedDownPayment,
+        loanAmount,
+        term,
+        apr,
+      });
       return result;
     },
   };

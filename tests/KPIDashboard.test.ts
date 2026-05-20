@@ -26,6 +26,11 @@ function publishDeal(
     frontGross,
     backGross,
     daysInInventory,
+    paymentMethod: 'cash',
+    downPayment: 20_000,
+    loanAmount: 0,
+    term: 0,
+    apr: 0,
   });
 }
 

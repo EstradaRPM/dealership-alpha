@@ -172,7 +172,13 @@ export interface EventMap {
   // FollowUpPool — a BDC callback attempt succeeded; customer returns to Sales
   'bdc:callback_succeeded': { customerId: string; day: number; archetypeLabel: string };
 
-  // DealEngine — a deal has been fully closed (vehicle sold, revenue posted)
+  // DealEngine — a deal has been fully closed (vehicle sold, revenue posted).
+  // Deal-structuring fields (paymentMethod / downPayment / loanAmount / term /
+  // apr) ride the event so KPI splits (#148) can aggregate cash vs finance vs
+  // heavy-down without re-deriving from customer state. Cash closes:
+  // paymentMethod='cash', downPayment=agreedPrice, loanAmount=0, term=0, apr=0.
+  // Finance closes: term/apr from credit tier; downPayment derived from the
+  // customer's behavioral down fraction × agreedPrice.
   'deal:closed': {
     customerId: string;
     vehicleId: string;
@@ -180,6 +186,13 @@ export interface EventMap {
     frontGross: number;
     backGross: number;
     daysInInventory: number;
+    paymentMethod: 'cash' | 'finance';
+    downPayment: number;
+    loanAmount: number;
+    /** Months; 0 for cash. */
+    term: number;
+    /** Annualized rate as a decimal (e.g. 0.07); 0 for cash. */
+    apr: number;
   };
 
   // StaffOrg — roster changes

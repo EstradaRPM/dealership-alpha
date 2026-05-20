@@ -40,6 +40,11 @@ function closeDeal(bus: ReturnType<typeof createEventBus>, i: number): void {
     frontGross: 0,
     backGross: 0,
     daysInInventory: 1,
+    paymentMethod: 'cash',
+    downPayment: 20_000,
+    loanAmount: 0,
+    term: 0,
+    apr: 0,
   });
 }
 

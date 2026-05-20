@@ -56,6 +56,19 @@ export interface CloseDealParams {
   vehicleId: string;
   agreedPrice: number;
   fniProducts?: AttachedFniProduct[];
+  // Deal-structuring fields (round-tripped to deal:closed for KPI splits, #148).
+  // Optional for caller convenience — when omitted, defaults to a cash deal
+  // (downPayment=agreedPrice, loanAmount=0, term=0, apr=0). Production callers
+  // (CustomerPool real-close, #147 StaffDispatch tracer) supply them
+  // explicitly; legacy tests that don't care about deal-structure rely on the
+  // default. Either supply paymentMethod or omit all five.
+  paymentMethod?: 'cash' | 'finance';
+  downPayment?: number;
+  loanAmount?: number;
+  /** Months; 0 for cash. */
+  term?: number;
+  /** Annualized rate as a decimal; 0 for cash. */
+  apr?: number;
 }
 
 export interface ClosedDealResult {
@@ -71,4 +84,9 @@ export interface ClosedDealResult {
   backGross: number;
   daysInInventory: number;
   fniProducts: AttachedFniProduct[];
+  paymentMethod: 'cash' | 'finance';
+  downPayment: number;
+  loanAmount: number;
+  term: number;
+  apr: number;
 }

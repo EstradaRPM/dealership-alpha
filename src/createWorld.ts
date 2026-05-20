@@ -39,7 +39,7 @@ import {
   type DemandSource,
   type FloorSeamProvider,
 } from './game/DayLoopController';
-import { createDealEngine, type DealEngine } from './game/DealEngine';
+import { createDealEngine, loadCreditTiers, type DealEngine } from './game/DealEngine';
 import type {
   CustomerSource,
   CustomerRef,
@@ -111,6 +111,13 @@ export function createWorld(deps: {
   const departmentQueue = createDepartmentQueue({ bus });
   // Legacy live-day arrival path OFF: FloorSim owns arrivals via the injected
   // customer-source seam below.
+  const economy = createEconomy({ bus, startingCash: 50_000 });
+  const inventory = createInventory({ bus, masterSeed, economy });
+  const dealEngine = createDealEngine({ bus, inventory, economy });
+  // CustomerPool gets the DealEngine + inventory + tier-catalog wiring (#146)
+  // so dispatch(CLOSE) routes real closes through DealEngine.closeDeal — the
+  // canonical deal:closed (with the five deal-structuring fields) fires
+  // instead of synthesizing a SalesProcess emit against a stub vehicle.
   const customerPool = createCustomerPool({
     bus,
     legacyDailyArrivals: false,
@@ -120,10 +127,10 @@ export function createWorld(deps: {
       visitArchetypes: loadVisitArchetypes(),
       traits: loadTraitTaxonomy(),
     },
+    dealEngine,
+    inventory,
+    creditTiers: loadCreditTiers(),
   });
-  const economy = createEconomy({ bus, startingCash: 50_000 });
-  const inventory = createInventory({ bus, masterSeed, economy });
-  const dealEngine = createDealEngine({ bus, inventory, economy });
   const staffTaxonomy = loadStaffTaxonomy();
   // Reputation + TierManager are created ahead of StaffOrg so the hiring
   // headcount cap (#131) can read the live dealership tier. Reputation drifts
