@@ -35,11 +35,20 @@ const VisitResourcesDistSchema = z
   })
   .strict();
 
+const SalesPaymentSchema = z
+  .object({
+    cashProbability: z.number().min(0).max(1),
+    cashSpendFraction: DistributionSchema,
+    downPaymentBehavior: DistributionSchema,
+  })
+  .strict();
+
 export const SalesVisitArchetypeSchema = z
   .object({
     kind: z.literal('sales'),
     preferences: SPACEDDistSchema,
     resources: VisitResourcesDistSchema,
+    payment: SalesPaymentSchema,
   })
   .strict();
 

@@ -12,6 +12,11 @@
     "resources": {
       "trust":    { "mu": 0.38, "sigma": 0.10 },
       "patience": { "mu": 0.62, "sigma": 0.10 }
+    },
+    "payment": {
+      "cashProbability": 0.05,
+      "cashSpendFraction":    { "mu": 0.45, "sigma": 0.05 },
+      "downPaymentBehavior":  { "mu": 0.05, "sigma": 0.02 }
     }
   },
 
@@ -28,6 +33,11 @@
     "resources": {
       "trust":    { "mu": 0.55, "sigma": 0.10 },
       "patience": { "mu": 0.50, "sigma": 0.12 }
+    },
+    "payment": {
+      "cashProbability": 0.10,
+      "cashSpendFraction":    { "mu": 0.50, "sigma": 0.10 },
+      "downPaymentBehavior":  { "mu": 0.10, "sigma": 0.05 }
     }
   },
 
@@ -44,6 +54,11 @@
     "resources": {
       "trust":    { "mu": 0.42, "sigma": 0.10 },
       "patience": { "mu": 0.68, "sigma": 0.10 }
+    },
+    "payment": {
+      "cashProbability": 0.08,
+      "cashSpendFraction":    { "mu": 0.50, "sigma": 0.10 },
+      "downPaymentBehavior":  { "mu": 0.05, "sigma": 0.02 }
     }
   },
 
@@ -60,6 +75,11 @@
     "resources": {
       "trust":    { "mu": 0.60, "sigma": 0.10 },
       "patience": { "mu": 0.72, "sigma": 0.08 }
+    },
+    "payment": {
+      "cashProbability": 0.45,
+      "cashSpendFraction":    { "mu": 0.40, "sigma": 0.10 },
+      "downPaymentBehavior":  { "mu": 0.30, "sigma": 0.15 }
     }
   },
 
@@ -76,6 +96,11 @@
     "resources": {
       "trust":    { "mu": 0.32, "sigma": 0.10 },
       "patience": { "mu": 0.45, "sigma": 0.12 }
+    },
+    "payment": {
+      "cashProbability": 0.15,
+      "cashSpendFraction":    { "mu": 0.55, "sigma": 0.10 },
+      "downPaymentBehavior":  { "mu": 0.15, "sigma": 0.08 }
     }
   },
 

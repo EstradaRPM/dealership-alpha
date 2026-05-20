@@ -184,4 +184,28 @@ describe('loadVisitArchetypes', () => {
       }
     }
   });
+
+  it('every sales archetype carries a well-formed payment block', () => {
+    const catalog = loadVisitArchetypes();
+    const salesArchs = Object.entries(catalog).filter(([, a]) => a.kind === 'sales');
+    expect(salesArchs.length).toBeGreaterThan(0);
+    for (const [id, archetype] of salesArchs) {
+      if (archetype.kind !== 'sales') throw new Error('unreachable');
+      const { cashProbability, cashSpendFraction, downPaymentBehavior } = archetype.payment;
+      expect(cashProbability).toBeGreaterThanOrEqual(0);
+      expect(cashProbability).toBeLessThanOrEqual(1);
+      expect(cashSpendFraction).toMatchObject({
+        mu: expect.any(Number),
+        sigma: expect.any(Number),
+      });
+      expect(downPaymentBehavior).toMatchObject({
+        mu: expect.any(Number),
+        sigma: expect.any(Number),
+      });
+      expect(cashSpendFraction.sigma).toBeGreaterThanOrEqual(0);
+      expect(downPaymentBehavior.sigma).toBeGreaterThanOrEqual(0);
+      // tag the id into the failure message via a no-op expect on truthy id
+      expect(id).toBeTruthy();
+    }
+  });
 });
