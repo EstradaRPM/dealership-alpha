@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Auction source catalog (slice #160). Each save rolls a hidden reliability per source from the band — different per save. Reliable sources cluster listings tightly around honest book (motivated-seller multiplier stdev ≈ stdevHonest); unreliable sources widen the distribution (longer bargain + overpriced tails). reliabilityBand is [min, max] for the per-save draw; bands cover the spectrum from clean national wholesale to fringe repo lanes.",
+  "sources": [
+    {
+      "id": "manheim_digital",
+      "label": "Manheim Digital",
+      "reliabilityBand": [0.75, 0.95]
+    },
+    {
+      "id": "adesa_regional",
+      "label": "ADESA Regional",
+      "reliabilityBand": [0.60, 0.85]
+    },
+    {
+      "id": "estate_close_out",
+      "label": "Estate Close-Outs",
+      "reliabilityBand": [0.50, 0.80]
+    },
+    {
+      "id": "independent_consignment",
+      "label": "Independent Consignment",
+      "reliabilityBand": [0.45, 0.75]
+    },
+    {
+      "id": "repo_lane",
+      "label": "Repo Lane",
+      "reliabilityBand": [0.25, 0.55]
+    }
+  ]
+}

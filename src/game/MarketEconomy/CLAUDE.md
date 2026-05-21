@@ -99,6 +99,12 @@ fallback path per slice #155 AC.
 - `data/market-shocks.json` — stochastic shock catalog (#159). Each shock
   carries per-segment signed magnitude bands + a duration band + a rarity
   weight used by the scheduler's weighted pick.
+- `data/auction-sources.json` — auction source catalog (#160). Each save
+  rolls a hidden reliability per source from the catalog band via
+  `rollAuctionSourceReliability(masterSeed)`; the auction generator picks a
+  source per listing and draws the motivated-seller multiplier with stdev
+  lerped from `stdevHonest` (most reliable) to `stdevUnreliable`, then clipped
+  to `[floor, ceiling]`. Tunables live under `marketEconomy.motivatedSeller`.
 
 Tuning of all five is deliberately neutral so the static-stub midpoint
 (`(purchase + recon) × 1.25`) and the live providers produce comparable

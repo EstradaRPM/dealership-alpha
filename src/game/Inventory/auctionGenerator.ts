@@ -1,7 +1,17 @@
 import { createRng, deriveSeed } from '../NPC/Rng';
 import {
   loadMileageDistributionConfig,
+  loadAuctionSourcesConfig,
+  loadMotivatedSellerConfig,
+  rollAuctionSourceReliability,
+  sampleMotivatedSellerMultiplier,
+  pickAuctionSource,
+  computeAnchor,
   type MileageDistributionConfig,
+  type AuctionSourcesConfig,
+  type AuctionSourceReliability,
+  type MotivatedSellerConfig,
+  type AnchorDeps,
 } from '../MarketEconomy';
 import type { VehicleData, VehicleTemplate, ConditionTier } from './vehicleData';
 import type { AuctionListing, VehicleCondition } from './types';
@@ -31,9 +41,6 @@ function rollMileage(
     throw new Error(`mileage-distribution: missing category "${category}"`);
   }
   const age = Math.max(1, dist.referenceYear - year + 1);
-  // Symmetric uniform around mean*age; older cars get wider absolute spread
-  // (the spread scales with age, so a 10-year-old truck varies more in
-  // absolute miles than a 2-year-old one).
   const mean = shape.perYearMean * age;
   const spread = shape.perYearSpread * age;
   const draw = mean + spread * (rng() * 2 - 1);
@@ -41,19 +48,80 @@ function rollMileage(
   return Math.round(clamped / 500) * 500;
 }
 
-function buildListing(
-  index: number,
-  day: number,
-  template: VehicleTemplate,
-  condition: VehicleCondition,
-  tier: ConditionTier,
-  rng: () => number,
-  mileageDist: MileageDistributionConfig,
-): AuctionListing {
+export interface AuctionGeneratorDeps {
+  readonly mileageDist?: MileageDistributionConfig;
+  readonly sources?: AuctionSourcesConfig;
+  readonly sourceReliability?: AuctionSourceReliability;
+  readonly motivatedSeller?: MotivatedSellerConfig;
+  readonly anchorDeps?: AnchorDeps;
+}
+
+interface BuildListingArgs {
+  readonly index: number;
+  readonly day: number;
+  readonly masterSeed: number;
+  readonly template: VehicleTemplate;
+  readonly condition: VehicleCondition;
+  readonly tier: ConditionTier;
+  readonly rng: () => number;
+  readonly mileageDist: MileageDistributionConfig;
+  readonly sources: AuctionSourcesConfig;
+  readonly sourceReliability: AuctionSourceReliability;
+  readonly motivatedSeller: MotivatedSellerConfig;
+  readonly anchorDeps: AnchorDeps;
+}
+
+function buildListing(args: BuildListingArgs): AuctionListing {
+  const {
+    index, day, masterSeed, template, condition, tier, rng, mileageDist,
+    sources, sourceReliability, motivatedSeller, anchorDeps,
+  } = args;
+
   const year = lerp(template.yearRange[0], template.yearRange[1], rng());
   const baseMileage = rollMileage(year, template.category, rng, mileageDist);
-  const basePrice = lerp(template.basePriceRange[0], template.basePriceRange[1], rng());
-  const askingPrice = Math.round(basePrice * tier.priceMultiplier / 100) * 100;
+
+  // Per-listing seed namespace (#160 AC): source pick + motivated-seller draw
+  // route through their own seeds so source/multiplier remain stable across
+  // unrelated changes to the day-level RNG sequence (template/year order, etc.).
+  const sourcePick = pickAuctionSource(
+    sources,
+    createRng(
+      deriveSeed(masterSeed, 'inventory.auction_source_pick', {
+        day,
+        index,
+      }),
+    ),
+  );
+  const reliability = sourceReliability.reliability[sourcePick.id] ?? 0.5;
+  const mult = sampleMotivatedSellerMultiplier(
+    reliability,
+    deriveSeed(masterSeed, 'inventory.auction_motivated_seller', {
+      day,
+      index,
+    }),
+    motivatedSeller,
+  );
+
+  // listingPrice = bookValue × motivatedSellerMultiplier. bookValue here is
+  // the engine's anchor (segment heat is unobserved at the auction — dealers
+  // pay wholesale and ride heat as inventory). The condition-discount term
+  // from the locked #182 formula is already baked into the anchor via
+  // `conditionMod` (clean ↑, rough ↓). The legacy `tier.priceMultiplier` from
+  // vehicles.json is unused by the new chain — kept in the data file for the
+  // reconCost field other code reads.
+  const anchorValue = computeAnchor(
+    {
+      templateId: template.id,
+      make: template.make,
+      year,
+      mileage: baseMileage,
+      category: template.category,
+      condition,
+    },
+    anchorDeps,
+  );
+  const raw = anchorValue * mult;
+  const askingPrice = Math.max(100, Math.round(raw / 100) * 100);
 
   return {
     id: `auction-day${day}-${index}-${template.id}`,
@@ -68,6 +136,7 @@ function buildListing(
     askingPrice,
     reconCost: tier.reconCost,
     category: template.category,
+    sourceId: sourcePick.id,
   };
 }
 
@@ -75,9 +144,16 @@ export function generateAuctionListings(
   day: number,
   masterSeed: number,
   data: VehicleData,
-  mileageDist: MileageDistributionConfig = loadMileageDistributionConfig(),
+  deps: AuctionGeneratorDeps = {},
 ): AuctionListing[] {
   const { templates, conditionTiers, auctionConfig } = data;
+  const mileageDist = deps.mileageDist ?? loadMileageDistributionConfig();
+  const sources = deps.sources ?? loadAuctionSourcesConfig();
+  const sourceReliability =
+    deps.sourceReliability ?? rollAuctionSourceReliability(masterSeed, sources);
+  const motivatedSeller = deps.motivatedSeller ?? loadMotivatedSellerConfig();
+  const anchorDeps = deps.anchorDeps ?? {};
+
   const seed = deriveSeed(masterSeed, 'inventory.auction_listings', { day });
   const rng = createRng(seed);
 
@@ -92,7 +168,6 @@ export function generateAuctionListings(
 
   for (let i = 0; i < count; i++) {
     let template: VehicleTemplate;
-    // avoid picking same template twice when pool is large enough
     let attempts = 0;
     do {
       template = templates[Math.floor(rng() * templates.length)];
@@ -102,11 +177,23 @@ export function generateAuctionListings(
 
     const condition = pickCondition(rng);
     const tier = conditionTiers[condition];
-    listings.push(buildListing(i, day, template, condition, tier, rng, mileageDist));
+    listings.push(buildListing({
+      index: i,
+      day,
+      masterSeed,
+      template,
+      condition,
+      tier,
+      rng,
+      mileageDist,
+      sources,
+      sourceReliability,
+      motivatedSeller,
+      anchorDeps,
+    }));
   }
 
   return listings;
 }
 
-// Re-export for test use
 export { CONDITIONS };

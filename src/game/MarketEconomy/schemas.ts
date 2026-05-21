@@ -152,6 +152,27 @@ export type MarketShocksConfig = z.infer<typeof MarketShocksConfigSchema>;
 export type ShockDefinition = z.infer<typeof ShockDefinitionSchema>;
 export type ShockSegmentEffect = z.infer<typeof ShockSegmentEffectSchema>;
 
+const AuctionSourceSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string().min(1),
+    reliabilityBand: z.tuple([z.number().min(0).max(1), z.number().min(0).max(1)]),
+  })
+  .strict()
+  .refine((s) => s.reliabilityBand[0] <= s.reliabilityBand[1], {
+    message: 'reliabilityBand[0] must be <= reliabilityBand[1]',
+  });
+
+export const AuctionSourcesConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    sources: z.array(AuctionSourceSchema).nonempty(),
+  })
+  .strict();
+export type AuctionSourcesConfig = z.infer<typeof AuctionSourcesConfigSchema>;
+export type AuctionSourceDefinition = z.infer<typeof AuctionSourceSchema>;
+
 export const MarketMarkupConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -220,6 +241,12 @@ export function loadMarketShocksConfig(): MarketShocksConfig {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw: unknown = require('../../../data/market-shocks.json');
   return parseData(raw, MarketShocksConfigSchema, 'data/market-shocks.json');
+}
+
+export function loadAuctionSourcesConfig(): AuctionSourcesConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/auction-sources.json');
+  return parseData(raw, AuctionSourcesConfigSchema, 'data/auction-sources.json');
 }
 
 export function loadMarketMarkupConfig(): MarketMarkupConfig {

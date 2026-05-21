@@ -29,6 +29,17 @@ export type {
 } from './shocks';
 
 export {
+  rollAuctionSourceReliability,
+  sampleMotivatedSellerMultiplier,
+  loadMotivatedSellerConfig,
+  pickAuctionSource,
+} from './auctionSources';
+export type {
+  AuctionSourceReliability,
+  MotivatedSellerConfig,
+} from './auctionSources';
+
+export {
   NEUTRAL_PERSONALITY,
   rollPersonalityVector,
   personalityBiasFor,
@@ -44,6 +55,8 @@ export {
   MarketPersonalityDistributionSchema,
   MileageDistributionConfigSchema,
   MarketShocksConfigSchema,
+  AuctionSourcesConfigSchema,
+  loadAuctionSourcesConfig,
   loadMarketAnchorConfig,
   loadMarketSegmentFallbackConfig,
   loadMarketDepreciationCurvesConfig,
@@ -64,4 +77,6 @@ export type {
   MarketShocksConfig,
   ShockDefinition,
   ShockSegmentEffect,
+  AuctionSourcesConfig,
+  AuctionSourceDefinition,
 } from './schemas';

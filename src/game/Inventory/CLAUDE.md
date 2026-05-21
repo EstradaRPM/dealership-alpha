@@ -39,5 +39,19 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   viable bootstrap board instead of an RNG-gated trickle. Omit the block
   for flat volume.
 
+## Auction price formula (#160)
+- `listingPrice = computeAnchor(vehicle) × motivatedSellerMultiplier`. The
+  multiplier is drawn per-listing seeded by `(masterSeed, day, index)`; its
+  stdev is determined by the per-save reliability of the listing's source
+  (honest sources cluster tightly around book, fringe lanes throw wide tails).
+- `AuctionListing.sourceId` carries the source for that listing. Sources
+  live in `data/auction-sources.json`; per-save reliability is rolled from
+  `masterSeed` and never persisted (the seed + catalog are the canonical
+  artifact, same pattern as the #156 personality vector).
+- The legacy `conditionTier.priceMultiplier` in `data/vehicles.json` is no
+  longer used by the price chain — the condition adjustment lives inside
+  `computeAnchor` via `data/market-condition-mods.json`. The field stays in
+  the schema because `conditionTier.reconCost` is still load-bearing.
+
 ## Notes
 - The auction generator is intentionally simple in v1 (random draw weighted by brand share). It is exposed via interface so a v2 replacement drops in cleanly.

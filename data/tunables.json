@@ -179,6 +179,13 @@
     "shocks": {
       "arrivalProbPerDay": 0.03,
       "maxConcurrent": 3
+    },
+    "motivatedSeller": {
+      "meanMultiplier": 1.0,
+      "stdevHonest": 0.05,
+      "stdevUnreliable": 0.18,
+      "floor": 0.70,
+      "ceiling": 1.20
     }
   },
   "competitorMarket": {

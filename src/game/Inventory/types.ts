@@ -14,6 +14,12 @@ export interface AuctionListing {
   readonly askingPrice: number;
   readonly reconCost: number;
   readonly category: VehicleCategory;
+  /**
+   * Auction source the listing came from (slice #160). Each save rolls a
+   * hidden reliability per source — the player learns which lanes produce
+   * honest book vs. wild swings.
+   */
+  readonly sourceId: string;
 }
 
 export interface LotVehicle {

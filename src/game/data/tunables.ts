@@ -128,6 +128,18 @@ export const TunablesSchema = z.object({
       arrivalProbPerDay: z.number().min(0).max(1),
       maxConcurrent: z.number().int().positive(),
     }),
+    // Motivated-seller noise distribution applied to each auction listing
+    // price (slice #160). Per-source reliability lerps the multiplier stdev
+    // from `stdevHonest` (reliability=1) to `stdevUnreliable` (reliability=0),
+    // then the raw draw is clipped to `[floor, ceiling]`. Centered at
+    // `meanMultiplier` so listings stay anchored to honest book on average.
+    motivatedSeller: z.object({
+      meanMultiplier: z.number().positive(),
+      stdevHonest: z.number().nonnegative(),
+      stdevUnreliable: z.number().nonnegative(),
+      floor: z.number().positive(),
+      ceiling: z.number().positive(),
+    }),
   }),
   // CompetitorMarket (slice #158). Weekly drift emits
   // `competitor:price_changed` when |new − old| ≥ this threshold. Below the
