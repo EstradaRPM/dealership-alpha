@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "referenceYear": 2024,
+  "curves": {
+    "sedan": {
+      "perYearDepreciation": 0.08,
+      "floor": 0.45
+    },
+    "truck": {
+      "perYearDepreciation": 0.06,
+      "floor": 0.55
+    },
+    "suv": {
+      "perYearDepreciation": 0.07,
+      "floor": 0.50
+    }
+  }
+}

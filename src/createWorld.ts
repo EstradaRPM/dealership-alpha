@@ -31,6 +31,7 @@ import { createStaffOrg, type StaffOrg } from './game/StaffOrg';
 import { createCapacityManager } from './game/CapacityManager';
 import type { CapacityManager } from './game/CapacityManager';
 import { createStaffFloorDrain } from './game/StaffDispatch';
+import { createMarketEconomy } from './game/MarketEconomy';
 import { createStaffMorale, type StaffMorale } from './game/StaffMorale';
 import {
   createDayLoopController,
@@ -227,6 +228,15 @@ export function createWorld(deps: {
     },
   };
 
+  // MarketEconomy live providers (#155): closed-form anchor + markup table
+  // replace the static cost-plus stubs in `SalesProcess/seams.ts`. Wired into
+  // StaffFloorDrain only — the runtime contract is that the resolver always
+  // passes a full LotVehicle, which satisfies the providers' richer input
+  // shape. Other call sites that still pass narrow PricedVehicleInput stubs
+  // (CustomerPool's resolveViaProcess, the #94 calibration test) fall back to
+  // the static stubs by not injecting these.
+  const marketEconomy = createMarketEconomy();
+
   // Per-day FloorSim seam set: CapacityManager / StaffDispatch / CustomerPool
   // behind the locked #99 seams. Invoked once per day → fresh per-day
   // instances.
@@ -252,6 +262,11 @@ export function createWorld(deps: {
         // escalations (gmExceptionFlagRates), so StaffDispatch returns
         // escalated:0 and the GM-gated batch sim-week can run unattended.
         getHasGm: () => staffOrg.currentRoster.some(s => s.role_id === 'gm'),
+        salesProcessDeps: {
+          marketPriceFn: marketEconomy.marketPriceFn,
+          vehicleCostFn: marketEconomy.vehicleCostFn,
+          bookValueFn: marketEconomy.bookValueFn,
+        },
       }),
     ],
     customerSource,

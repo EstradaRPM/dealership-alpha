@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "modifiers": {
+    "clean":   1.05,
+    "average": 1.00,
+    "rough":   0.88
+  }
+}

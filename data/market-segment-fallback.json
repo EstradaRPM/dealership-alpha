@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "fallbacks": {
+    "sedan": {
+      "luxury":     { "baseAnchor": 24000, "curveType": "sedan" },
+      "mainstream": { "baseAnchor": 13500, "curveType": "sedan" },
+      "economy":    { "baseAnchor": 10500, "curveType": "sedan" }
+    },
+    "truck": {
+      "luxury":     { "baseAnchor": 32000, "curveType": "truck" },
+      "mainstream": { "baseAnchor": 20500, "curveType": "truck" },
+      "economy":    { "baseAnchor": 15000, "curveType": "truck" }
+    },
+    "suv": {
+      "luxury":     { "baseAnchor": 28000, "curveType": "suv" },
+      "mainstream": { "baseAnchor": 16000, "curveType": "suv" },
+      "economy":    { "baseAnchor": 12500, "curveType": "suv" }
+    }
+  }
+}

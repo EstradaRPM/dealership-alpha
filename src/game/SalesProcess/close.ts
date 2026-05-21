@@ -27,6 +27,14 @@ export interface CloseInput {
 
 export interface CloseDeps {
   readonly config?: SalesProcessConfig;
+  /**
+   * Optional injection point so composition can route live MarketEconomy
+   * providers (#155) through `salesProcessDeps` without per-call wiring. If
+   * the same fn is set on `CloseInput` it wins; otherwise these are consulted;
+   * otherwise the static stubs.
+   */
+  readonly marketPriceFn?: MarketPriceFn;
+  readonly vehicleCostFn?: VehicleCostFn;
 }
 
 export type CloseOutcome = 'buy' | 'no_close';
@@ -102,8 +110,8 @@ export function closeAndPrice(
 ): CloseResult {
   const cfg = deps.config ?? loadSalesProcessConfig();
   const { meters, skill, priceSensitivity, vehicle } = input;
-  const marketPriceFn = input.marketPriceFn ?? staticMarketPrice;
-  const vehicleCostFn = input.vehicleCostFn ?? staticVehicleCost;
+  const marketPriceFn = input.marketPriceFn ?? deps.marketPriceFn ?? staticMarketPrice;
+  const vehicleCostFn = input.vehicleCostFn ?? deps.vehicleCostFn ?? staticVehicleCost;
 
   const marketPrice = marketPriceFn(vehicle);
   const vehicleCost = vehicleCostFn(vehicle);
