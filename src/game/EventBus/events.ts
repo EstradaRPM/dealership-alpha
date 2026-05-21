@@ -101,6 +101,23 @@ export interface EventMap {
     competitors: ReadonlyArray<Competitor>;
   };
 
+  // CompetitorMarket → MarketEconomy (slice #158). Emitted during the weekly
+  // personality drift on `clock:day_ended` (day % 7 === 0) when a competitor's
+  // pricing index moves by at least `competitorMarket.pricingChangeThreshold`.
+  // Carries the brand's segment_affinity so consumers don't need to dereference
+  // the brand catalog. `newPricing > oldPricing` means prices went up (the
+  // `pricing` stat reads as "how high prices are" — see ScoreCompetitor's
+  // `(1 - pricing)` term). MarketEconomy fans the delta out as a synthetic
+  // comp per segment, weighted by affinity.
+  'competitor:price_changed': {
+    day: number;
+    competitorId: string;
+    brand: string;
+    oldPricing: number;
+    newPricing: number;
+    segmentAffinity: Readonly<Record<string, number>>;
+  };
+
   // CustomerPool lifecycle — published in this order per customer per day:
   //   customer:arrived → customer:state_changed (0-n times) →
   //   customer:gate_evaluated (one per gate, in gate order, only on a

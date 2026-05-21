@@ -1,6 +1,8 @@
 import type { EventBus } from '../EventBus';
+import { loadTunables, type Tunables } from '../data';
 import type { Competitor, CompetitorCatalog } from './Competitor';
 import type { PersonalityDriftCatalog } from './PersonalityDrift';
+import type { BrandCatalog } from './schemas/brand';
 
 export interface CompetitorMarket {
   getCompetitors(): ReadonlyArray<Competitor>;
@@ -39,9 +41,20 @@ export function createCompetitorMarket(deps: {
   competitors: CompetitorCatalog;
   personalityDrift: PersonalityDriftCatalog;
   seed: number;
+  /**
+   * Optional brand catalog. When provided, the weekly drift emits
+   * `competitor:price_changed` (slice #158) on meaningful pricing moves,
+   * carrying the brand's segment_affinity so MarketEconomy can fan the move
+   * out as synthetic comps without dereferencing brand data. Omit in tests
+   * that don't care about the event.
+   */
+  brands?: BrandCatalog;
+  tunables?: Tunables;
 }): CompetitorMarket {
-  const { bus, personalityDrift, seed } = deps;
+  const { bus, personalityDrift, seed, brands } = deps;
   const rng = makeRng(seed >>> 0);
+  const tunables = deps.tunables ?? loadTunables();
+  const pricingChangeThreshold = tunables.competitorMarket.pricingChangeThreshold;
 
   // Mutable live state — starts at loaded base values
   const live: Competitor[] = deps.competitors.map((c) => ({ ...c }));
@@ -54,7 +67,27 @@ export function createCompetitorMarket(deps: {
       if (!sigma) continue;
       c.rep      = clampStat(c.rep      + (rng() * 2 - 1) * sigma.rep,      c.clamp.rep.lo,      c.clamp.rep.hi);
       c.inventory = clampStat(c.inventory + (rng() * 2 - 1) * sigma.inventory, c.clamp.inventory.lo, c.clamp.inventory.hi);
-      c.pricing   = clampStat(c.pricing   + (rng() * 2 - 1) * sigma.pricing,   c.clamp.pricing.lo,   c.clamp.pricing.hi);
+      const oldPricing = c.pricing;
+      const newPricing = clampStat(
+        c.pricing + (rng() * 2 - 1) * sigma.pricing,
+        c.clamp.pricing.lo,
+        c.clamp.pricing.hi,
+      );
+      c.pricing = newPricing;
+
+      if (brands && Math.abs(newPricing - oldPricing) >= pricingChangeThreshold) {
+        const brandEntry = brands[c.brand];
+        if (brandEntry) {
+          bus.publish('competitor:price_changed', {
+            day: payload.day,
+            competitorId: c.id,
+            brand: c.brand,
+            oldPricing,
+            newPricing,
+            segmentAffinity: brandEntry.segment_affinity,
+          });
+        }
+      }
     }
   };
 

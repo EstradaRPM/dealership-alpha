@@ -172,8 +172,13 @@
       "ageCutoffDays": 90,
       "retailWeight": 1.0,
       "wholesaleWeight": 0.5,
+      "competitorWeight": 0.3,
       "driftDamping": 0.5
-    }
+    },
+    "competitorInfluence": 0.5
+  },
+  "competitorMarket": {
+    "pricingChangeThreshold": 0.01
   },
   "ownership": {
     "hoursOfOp": {

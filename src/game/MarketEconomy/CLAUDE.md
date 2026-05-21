@@ -68,6 +68,10 @@ fallback path per slice #155 AC.
   `inventory:vehicle_sold` → retail comp. Both events carry a vehicle
   snapshot (templateId/make/year/mileage/condition/category) so MarketEconomy
   re-computes the anchor without depending on Inventory internals.
+- **Consumes** (slice #158): `competitor:price_changed` → one synthetic comp
+  per segment with non-zero brand affinity. Delta = `(newPricing − oldPricing)
+  × marketEconomy.competitorInfluence`; entry weight scales by affinity
+  (high-affinity segments carry more weight in the drift mean).
 - **Emits:** none yet. #159 lands `market:shock_started/resolved`; #176 lands
   `market:news_published`.
 

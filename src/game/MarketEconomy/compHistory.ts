@@ -8,7 +8,7 @@ import { loadTunables, type Tunables } from '../data';
  * deltas into a segment drift term that layers on top of the per-save
  * personality bias (#156).
  */
-export type CompSource = 'wholesale' | 'retail';
+export type CompSource = 'wholesale' | 'retail' | 'competitor';
 
 export interface CompEntry {
   readonly segment: string;
@@ -23,6 +23,12 @@ export interface CompWindowConfig {
   readonly ageCutoffDays: number;
   readonly retailWeight: number;
   readonly wholesaleWeight: number;
+  /**
+   * Weight applied to synthetic comps derived from
+   * `competitor:price_changed` (slice #158). Set below retail so the player's
+   * own realized prices remain the dominant drift signal.
+   */
+  readonly competitorWeight: number;
   readonly driftDamping: number;
 }
 
@@ -34,6 +40,18 @@ export interface CompHistorySnapshot {
 export interface CompHistory {
   recordWholesale(input: { segment: string; delta: number; day: number }): void;
   recordRetail(input: { segment: string; delta: number; day: number }): void;
+  /**
+   * Records a synthetic comp derived from a `competitor:price_changed` event
+   * (slice #158). `weightScale` (default 1) lets the consumer scale the
+   * baseline `competitorWeight` by per-segment brand affinity so unaffected
+   * segments contribute proportionally less.
+   */
+  recordCompetitor(input: {
+    segment: string;
+    delta: number;
+    day: number;
+    weightScale?: number;
+  }): void;
   /**
    * Returns the damped weighted-mean delta over the window, ignoring entries
    * older than `ageCutoffDays`. Empty window → 0 (the slice AC cold-start
@@ -86,6 +104,16 @@ export function createCompHistory(deps: CompHistoryDeps = {}): CompHistory {
         weight: config.retailWeight,
         day,
         source: 'retail',
+      });
+    },
+
+    recordCompetitor({ segment, delta, day, weightScale = 1 }) {
+      push({
+        segment,
+        delta,
+        weight: config.competitorWeight * weightScale,
+        day,
+        source: 'competitor',
       });
     },
 

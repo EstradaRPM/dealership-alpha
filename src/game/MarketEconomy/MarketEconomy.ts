@@ -19,6 +19,7 @@ import {
 import { createSegmentHeat } from './segmentHeat';
 import { loadMarketMarkupConfig, type MarketMarkupConfig } from './schemas';
 import { loadBrandTiersConfig, type BrandTiersConfig } from '../SalesProcess';
+import { loadTunables, type Tunables } from '../data';
 
 /**
  * MarketEconomy — slice #155/#156/#157 surface. Owns the per-save personality
@@ -57,6 +58,12 @@ export interface MarketEconomyDeps extends ProvidersDeps, CompHistoryDeps {
    * delegate to `GameClock.currentDay`.
    */
   readonly getCurrentDay?: () => number;
+  /**
+   * Override for the tunables-loaded `marketEconomy.competitorInfluence` and
+   * `competitorMarket.pricingChangeThreshold` constants. Tests pass an
+   * explicit tunables shape; production code resolves from `loadTunables()`.
+   */
+  readonly tunables?: Tunables;
 }
 
 export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy {
@@ -147,6 +154,37 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
     bus.subscribe('inventory:vehicle_sold', onSold);
     unsubscribers.push(() => bus.unsubscribe('inventory:vehicle_purchased', onPurchased));
     unsubscribers.push(() => bus.unsubscribe('inventory:vehicle_sold', onSold));
+
+    // Synthetic competitor comps (slice #158). Each `competitor:price_changed`
+    // event fans out as one comp entry per segment with non-zero brand
+    // affinity. Delta scales by `competitorInfluence` (so realized retail
+    // remains the dominant signal); weight scales by affinity (so a luxury
+    // brand's price move barely moves the truck segment).
+    const tunables = deps.tunables ?? loadTunables();
+    const competitorInfluence = tunables.marketEconomy.competitorInfluence;
+
+    const onCompetitorPriceChanged = (e: {
+      day: number;
+      oldPricing: number;
+      newPricing: number;
+      segmentAffinity: Readonly<Record<string, number>>;
+    }): void => {
+      const delta = (e.newPricing - e.oldPricing) * competitorInfluence;
+      for (const [segment, affinity] of Object.entries(e.segmentAffinity)) {
+        if (affinity <= 0) continue;
+        compHistory.recordCompetitor({
+          segment,
+          delta,
+          day: e.day,
+          weightScale: affinity,
+        });
+      }
+    };
+
+    bus.subscribe('competitor:price_changed', onCompetitorPriceChanged);
+    unsubscribers.push(() =>
+      bus.unsubscribe('competitor:price_changed', onCompetitorPriceChanged),
+    );
   }
 
   let disposed = false;

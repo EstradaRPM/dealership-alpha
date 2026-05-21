@@ -105,11 +105,25 @@ export const TunablesSchema = z.object({
       // motivated-seller variance, future #160).
       retailWeight: z.number().positive(),
       wholesaleWeight: z.number().positive(),
+      // Synthetic-comp weight applied to entries derived from
+      // `competitor:price_changed` (slice #158). Lower than retail so the
+      // player's own realized prices dominate the drift signal.
+      competitorWeight: z.number().positive(),
       // Multiplier applied to the weighted mean delta to produce the
       // segmentDrift term. < 1 dampens (prevents runaway feedback once
       // drift loops back into demand in later slices); > 1 amplifies.
       driftDamping: z.number().nonnegative(),
     }),
+    // Scales `(newPricing - oldPricing)` from competitor:price_changed into
+    // the synthetic-comp delta. < 1 keeps competitor moves from dominating
+    // realized retail comps (slice #158).
+    competitorInfluence: z.number().nonnegative(),
+  }),
+  // CompetitorMarket (slice #158). Weekly drift emits
+  // `competitor:price_changed` when |new − old| ≥ this threshold. Below the
+  // threshold the drift is treated as noise and no event fires.
+  competitorMarket: z.object({
+    pricingChangeThreshold: z.number().nonnegative(),
   }),
   ownership: z.object({
     hoursOfOp: z.object({

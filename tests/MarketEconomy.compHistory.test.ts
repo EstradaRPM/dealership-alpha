@@ -44,6 +44,7 @@ const TEST_CONFIG = {
   ageCutoffDays: 30,
   retailWeight: 1.0,
   wholesaleWeight: 0.5,
+  competitorWeight: 0.3,
   driftDamping: 1.0,
 };
 
@@ -138,7 +139,10 @@ describe('MarketEconomy — segmentHeat composer wired through providers (#157)'
       salePrice: Math.round(
         computeAnchor(v) *
           loadMarketMarkupConfig().markups.sedan[
-            loadBrandTiersConfig().makes[v.make] ?? 'mainstream'
+            (loadBrandTiersConfig().makes[v.make] ?? 'mainstream') as
+              | 'economy'
+              | 'luxury'
+              | 'mainstream'
           ] *
           1.3,
       ),
