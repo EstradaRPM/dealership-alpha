@@ -166,6 +166,15 @@
     "exceptionSkillExpMin": 1.0,
     "exceptionSkillExpMax": 2.0
   },
+  "marketEconomy": {
+    "compWindow": {
+      "sizePerSegment": 40,
+      "ageCutoffDays": 90,
+      "retailWeight": 1.0,
+      "wholesaleWeight": 0.5,
+      "driftDamping": 0.5
+    }
+  },
   "ownership": {
     "hoursOfOp": {
       "options": [

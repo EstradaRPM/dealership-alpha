@@ -85,6 +85,32 @@ export const TunablesSchema = z.object({
   // the hours-of-op lever selects an option and the composition root holds
   // the scaled `ticksPerDay`; actually feeding it into FloorSim is a
   // downstream slice (FloorSim/#99 is locked and reads its own ticksPerDay).
+  // MarketEconomy comp-history window (#157). Rolling window per segment of
+  // realized wholesale + retail transactions; the mean of `(price/reference)
+  // - 1` over the window is the emergent segment-drift term that layers on
+  // top of the per-save personality bias (#156). All tunables live here so
+  // the engine has zero magic numbers in code.
+  marketEconomy: z.object({
+    compWindow: z.object({
+      // Max comp entries retained per segment (FIFO). Older entries drop
+      // when the window is full.
+      sizePerSegment: z.number().int().positive(),
+      // Comps older than this (in days, vs. the current day at read time)
+      // are ignored by the drift calculation. They stay in the window until
+      // a fresher comp pushes them out — keeps the math stable across
+      // reload + replay.
+      ageCutoffDays: z.number().int().positive(),
+      // Weights applied when averaging deltas. Retail signal is stronger
+      // (realized customer-paid price); wholesale is noisier (auction
+      // motivated-seller variance, future #160).
+      retailWeight: z.number().positive(),
+      wholesaleWeight: z.number().positive(),
+      // Multiplier applied to the weighted mean delta to produce the
+      // segmentDrift term. < 1 dampens (prevents runaway feedback once
+      // drift loops back into demand in later slices); > 1 amplifies.
+      driftDamping: z.number().nonnegative(),
+    }),
+  }),
   ownership: z.object({
     hoursOfOp: z.object({
       // Selectable shift lengths. Longer day ⇒ higher ticksPerDay ⇒ more

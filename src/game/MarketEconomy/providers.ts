@@ -20,6 +20,7 @@ import {
   loadMarketMarkupConfig,
   type MarketMarkupConfig,
 } from './schemas';
+import type { SegmentHeatFn } from './segmentHeat';
 
 /**
  * Full structural input the live providers consume. Inventory's `LotVehicle`
@@ -44,6 +45,13 @@ export interface ProvidersDeps extends AnchorDeps {
    * fixtures. Future slices layer comp drift + active shocks on top of this.
    */
   readonly personality?: MarketPersonalityVector;
+  /**
+   * Live segmentHeat override (slice #157). When provided, the providers
+   * route value-vs-anchor scaling through the composer that reads personality
+   * + comp drift (+ future shock terms). Omit to keep the slice-#155 path:
+   * personality-only (or NEUTRAL for the calibration test).
+   */
+  readonly segmentHeatFn?: SegmentHeatFn;
 }
 
 function markupFor(
@@ -84,9 +92,12 @@ export function createProviders(deps: ProvidersDeps = {}): LiveProviders {
   const personality = deps.personality ?? NEUTRAL_PERSONALITY;
   const anchorDeps: AnchorDeps = { ...deps, brandTiers };
 
-  // segmentHeat(v) = personalityBias(category) + 0 (#157 adds drift + shocks)
-  const segmentHeat = (v: AnchorVehicleInput): number =>
-    personalityBiasFor(personality, v.category);
+  // Default heat: personality-only (slice #156). The composition root passes
+  // a live `segmentHeatFn` once compHistory + (future) shocks are wired —
+  // see MarketEconomy.ts.
+  const segmentHeat: SegmentHeatFn =
+    deps.segmentHeatFn ??
+    ((v: AnchorVehicleInput): number => personalityBiasFor(personality, v.category));
 
   const bookValueFn: BookValueFn = (v) => {
     const wide = v as MarketVehicleInput;

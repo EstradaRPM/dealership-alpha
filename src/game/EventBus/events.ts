@@ -150,15 +150,44 @@ export interface EventMap {
     competitorName: string;
   };
 
-  // Inventory — vehicle purchased from auction, moved to lot
-  'inventory:vehicle_purchased': { day: number; vehicleId: string; cost: number };
+  // Inventory — vehicle purchased from auction, moved to lot.
+  // Carries the structural snapshot MarketEconomy's compHistory needs to
+  // re-compute the anchor of the comp without depending on Inventory
+  // internals. The slice-#157 wholesale-comp consumer reads category + the
+  // anchor-input fields to record `(price / anchor) - 1` for segment drift.
+  'inventory:vehicle_purchased': {
+    day: number;
+    vehicleId: string;
+    cost: number;
+    templateId: string;
+    make: string;
+    year: number;
+    mileage: number;
+    condition: 'clean' | 'average' | 'rough';
+    category: string;
+    reconCost: number;
+  };
 
   // Economy — money flows posted to the ledger
   'economy:revenue_posted': { day: number; amount: number; label: string };
   'economy:expense_posted': { day: number; amount: number; label: string };
 
-  // Inventory — vehicle sold off lot
-  'inventory:vehicle_sold': { day: number; vehicleId: string };
+  // Inventory — vehicle sold off lot. Carries the same snapshot as
+  // vehicle_purchased plus the realized sale price so MarketEconomy's
+  // compHistory can record a retail comp without consulting DealEngine.
+  'inventory:vehicle_sold': {
+    day: number;
+    vehicleId: string;
+    salePrice: number;
+    templateId: string;
+    make: string;
+    year: number;
+    mileage: number;
+    condition: 'clean' | 'average' | 'rough';
+    category: string;
+    purchasePrice: number;
+    reconCost: number;
+  };
 
   // FollowUpPool — a walked customer's heat decayed to zero; no longer actionable
   'followup:customer_archived': { customerId: string; day: number };

@@ -1,22 +1,27 @@
 # MarketEconomy
 
 Peer to `Economy/` (a money ledger). MarketEconomy owns the *valuation* surface
-— anchor, comps, personality, shocks, providers, news. v1 slice #155 is the
-skeleton: closed-form anchor + three live providers + segmentHeat=0
-placeholder. Subsequent slices (#157–#181) bolt onto the same factory.
+— anchor, comps, personality, shocks, providers, news. v1 slices #155/#156/#157
+ship the skeleton + closed-form anchor + per-save personality + comp-history
+rolling window. Subsequent slices (#158–#181) bolt onto the same factory.
 
 Design record: issue **#182** (locked). Read that before working any slice.
 
 ## Public API (`index.ts`)
 
-- `createMarketEconomy(deps?)` → `MarketEconomy`. Currently extends
-  `LiveProviders` (the three composed seam fns); future slices add the news
-  subscription + segment-heat read.
+- `createMarketEconomy(deps?)` → `MarketEconomy`. Extends `LiveProviders` +
+  exposes `personality`, `compHistory` (snapshot/restore/segmentDrift), and
+  `dispose()`. Pass `bus` + `getCurrentDay` to wire the comp-history
+  subscriptions (#157); omit both for the pure-engine path used by the #94
+  calibration test and fixtures.
 - `createProviders(deps?)` → `LiveProviders` = `{ bookValueFn, marketPriceFn, vehicleCostFn }`.
   These match SalesProcess seam shapes (`BookValueFn`, `MarketPriceFn`,
   `VehicleCostFn`) and slot into `StaffDispatch.salesProcessDeps` /
-  `CloseDeps` / `PickVehicleDeps`.
+  `CloseDeps` / `PickVehicleDeps`. Accepts an optional `segmentHeatFn`
+  override — the MarketEconomy factory passes the live composer (#157).
 - `computeAnchor(vehicle, deps?)` — pure, deterministic, no RNG.
+- `createCompHistory(deps?)` — rolling-window comp store with snapshot/restore.
+- `createSegmentHeat(deps)` — composer for `personality + drift + shock`.
 - Five typed loaders + Zod schemas under `./schemas.ts`.
 
 ## Engine (slices #155, #156)
@@ -32,11 +37,15 @@ marketPrice(v) = round(bookValue(v) × markup(category, brandTier))
 vehicleCost(v) = v.purchasePrice + v.reconCost          -- design-locked unchanged
 ```
 
-`segmentHeat(v)` returns the per-save personality bias for `v.category` (slice
-#156). The comp-history + shock-scheduler terms layer on top in #157–#159.
-Omitting `masterSeed` from `createMarketEconomy` produces the neutral world
-(personality vector = empty, segmentHeat = 0) — the path used by the #94
-calibration test and the static-stub fixtures.
+`segmentHeat(v) = personalityBias(category) + segmentDrift(category, currentDay) + activeShockMod(...)`.
+Slice #156 lit up the personality term, #157 the comp-history drift term; the
+shock term stays at 0 until #159 wires `shocks.ts`. Drift is the damped
+weighted mean of stored deltas `(realizedPrice / referenceValue) - 1` —
+wholesale comps use `anchor(v)` as reference, retail comps use `anchor(v) ×
+markup`. Cold start (empty window) → drift=0, the engine reduces to the
+slice-#156 personality world. Omitting `masterSeed` *and* `bus` from
+`createMarketEconomy` produces the fully-neutral world (segmentHeat=0) — the
+path used by the #94 calibration test and the static-stub fixtures.
 
 ## Provider input contract
 
@@ -55,8 +64,12 @@ fallback path per slice #155 AC.
 
 ## Events
 
-None (slice #155). #176 lands the news engine + `market:news_published`,
-#157 lands `market:shock_started/resolved` via `shocks.ts`.
+- **Consumes** (slice #157): `inventory:vehicle_purchased` → wholesale comp;
+  `inventory:vehicle_sold` → retail comp. Both events carry a vehicle
+  snapshot (templateId/make/year/mileage/condition/category) so MarketEconomy
+  re-computes the anchor without depending on Inventory internals.
+- **Emits:** none yet. #159 lands `market:shock_started/resolved`; #176 lands
+  `market:news_published`.
 
 ## Data files
 

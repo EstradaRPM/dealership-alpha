@@ -94,7 +94,7 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       const vehicle = inventory.getLotVehicle(vehicleId);
       if (!vehicle) throw new Error(`No lot vehicle "${vehicleId}"`);
 
-      inventory.sellVehicle(vehicleId);
+      inventory.sellVehicle(vehicleId, agreedPrice);
       economy.postRevenue(agreedPrice, `Vehicle sale: ${vehicleId}`);
 
       let backGross = 0;

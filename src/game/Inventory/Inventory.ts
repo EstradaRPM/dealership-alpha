@@ -10,7 +10,13 @@ export interface Inventory {
   getLotVehicles(): readonly LotVehicle[];
   getLotVehicle(vehicleId: string): LotVehicle | undefined;
   buyFromAuction(listingId: string): void;
-  sellVehicle(vehicleId: string): LotVehicle;
+  /**
+   * Remove a lot vehicle and publish `inventory:vehicle_sold`. `salePrice` is
+   * the realized retail price (DealEngine passes `agreedPrice`). Tests calling
+   * `sellVehicle` without DealEngine in the loop can omit it — it defaults to
+   * the vehicle's `askingPrice` so the comp record stays meaningful.
+   */
+  sellVehicle(vehicleId: string, salePrice?: number): LotVehicle;
   /**
    * Player-set asking price for a lot vehicle (MANAGERIAL Pricing lever,
    * #120). Negative inputs are clamped to 0; an unknown vehicleId is a no-op
@@ -114,14 +120,33 @@ export function createInventory(deps: InventoryDeps): Inventory {
         day: currentDay,
         vehicleId: lotVehicle.id,
         cost: listing.askingPrice,
+        templateId: lotVehicle.templateId,
+        make: lotVehicle.make,
+        year: lotVehicle.year,
+        mileage: lotVehicle.mileage,
+        condition: lotVehicle.condition,
+        category: lotVehicle.category,
+        reconCost: lotVehicle.reconCost,
       });
     },
 
-    sellVehicle(vehicleId) {
+    sellVehicle(vehicleId, salePrice) {
       const vehicle = lotVehicles.get(vehicleId);
       if (!vehicle) throw new Error(`No lot vehicle "${vehicleId}"`);
       lotVehicles.delete(vehicleId);
-      bus.publish('inventory:vehicle_sold', { day: currentDay, vehicleId });
+      bus.publish('inventory:vehicle_sold', {
+        day: currentDay,
+        vehicleId,
+        salePrice: salePrice ?? vehicle.askingPrice,
+        templateId: vehicle.templateId,
+        make: vehicle.make,
+        year: vehicle.year,
+        mileage: vehicle.mileage,
+        condition: vehicle.condition,
+        category: vehicle.category,
+        purchasePrice: vehicle.purchasePrice,
+        reconCost: vehicle.reconCost,
+      });
       return vehicle;
     },
 

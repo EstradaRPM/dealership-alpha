@@ -238,7 +238,17 @@ export function createWorld(deps: {
   // #156: the per-save personality vector is rolled from masterSeed at
   // construction. Two slots with different seeds get distinct hidden biases →
   // genuinely different worlds from minute one.
-  const marketEconomy = createMarketEconomy({ masterSeed });
+  // #157 wiring: pass the bus + a getCurrentDay so MarketEconomy subscribes
+  // to inventory:vehicle_purchased/sold, records each transaction's
+  // delta-vs-anchor into its rolling window, and exposes the emergent
+  // segment-drift term in segmentHeat. With no comps recorded yet (cold
+  // start), drift=0 and the engine reduces to the slice-#156 personality
+  // world — the #94 calibration path stays untouched.
+  const marketEconomy = createMarketEconomy({
+    masterSeed,
+    bus,
+    getCurrentDay: () => clock.currentDay,
+  });
 
   // Per-day FloorSim seam set: CapacityManager / StaffDispatch / CustomerPool
   // behind the locked #99 seams. Invoked once per day → fresh per-day

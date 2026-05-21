@@ -7,6 +7,19 @@ export type { AnchorVehicleInput, AnchorDeps } from './anchor';
 export { createProviders } from './providers';
 export type { LiveProviders, MarketVehicleInput, ProvidersDeps } from './providers';
 
+export { createCompHistory } from './compHistory';
+export type {
+  CompEntry,
+  CompHistory,
+  CompHistoryDeps,
+  CompHistorySnapshot,
+  CompSource,
+  CompWindowConfig,
+} from './compHistory';
+
+export { createSegmentHeat } from './segmentHeat';
+export type { SegmentHeatDeps, SegmentHeatFn, ShockModFn } from './segmentHeat';
+
 export {
   NEUTRAL_PERSONALITY,
   rollPersonalityVector,
