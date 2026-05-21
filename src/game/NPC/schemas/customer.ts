@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { CurrentVehicleSchema } from './customer-current-vehicle';
+export type { CurrentVehicle } from './customer-current-vehicle';
 
 // ── Preference vectors ────────────────────────────────────────────────────────
 
@@ -47,6 +49,13 @@ export const PersonSchema = z
     agreeableness: z.number(),
     brand_affinity: z.record(z.string().min(1), z.number()),
     counters: PersonCountersSchema,
+    /**
+     * The car this person actually drove in on. Generated at pool entry
+     * (slice #165) so the customer is a person with a real history rather
+     * than a transaction. Trade-in slices (#166–#171) consume this directly.
+     * Optional only for legacy fixtures predating #165.
+     */
+    currentVehicle: CurrentVehicleSchema.optional(),
   })
   .strict();
 export type Person = z.infer<typeof PersonSchema>;

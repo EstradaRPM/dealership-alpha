@@ -5,6 +5,8 @@ import type { PersonArchetypeCatalog } from '../schemas/person-archetype';
 import type { VisitArchetypeCatalog } from '../schemas/visit-archetype';
 import type { Person, Visit, SPACEDVector, PSQTCVector } from '../schemas/customer';
 import { PersonSchema, VisitSchema } from '../schemas/customer';
+import type { CustomerCurrentVehicleConfig } from '../schemas/customer-current-vehicle';
+import { rollCurrentVehicle } from './CurrentVehicleFactory';
 
 export const CUSTOMER_FACTORY_NAMESPACE = 'npc.customer.factory';
 
@@ -35,6 +37,20 @@ export interface CreateCustomerDeps {
    * (no floor) — useful when callers don't need the credit-tier coupling.
    */
   minDownPctForCredit?: (credit: number) => number;
+  /**
+   * `data/customer-current-vehicle.json` (#165). Omit to skip currentVehicle
+   * generation entirely — the rolled Person comes back without the field
+   * (legacy/test path). Wired in production via the composition root.
+   */
+  currentVehicleConfig?: CustomerCurrentVehicleConfig;
+  /**
+   * Maps a rolled credit score to the credit tier key used by the
+   * currentVehicle payoff distribution. Required when `currentVehicleConfig`
+   * is supplied; omitted otherwise. The caller injects this seam (typically
+   * `(credit) => classifyCredit(credit, creditTiers)`) so NPC stays free of
+   * a DealEngine dep.
+   */
+  classifyCreditTier?: (credit: number) => 'A' | 'B' | 'C' | 'D';
 }
 
 export interface CustomerBundle {
@@ -151,16 +167,38 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
 
   const agreeableness = rollStat('agreeableness', personArchetype.agreeableness.mu, personArchetype.agreeableness.sigma);
 
+  const credit = rollStat('credit', personArchetype.credit.mu, personArchetype.credit.sigma);
+
+  // currentVehicle (#165) — only generated when both the config and the
+  // credit-tier classifier seam are wired; legacy callers get a Person
+  // without the field.
+  let currentVehicle;
+  if (deps.currentVehicleConfig && deps.classifyCreditTier) {
+    currentVehicle = rollCurrentVehicle(
+      {
+        personArchetypeId: ctx.personArchetypeId,
+        day: ctx.day,
+        slot: ctx.slot,
+      },
+      {
+        masterSeed,
+        config: deps.currentVehicleConfig,
+        creditTier: deps.classifyCreditTier(credit),
+      },
+    );
+  }
+
   const person = PersonSchema.parse({
     id: `customer:${ctx.personArchetypeId}:${ctx.day}:${ctx.slot}`,
     trait_ids: traitIds,
     wealth: rollStat('wealth', personArchetype.wealth.mu, personArchetype.wealth.sigma),
-    credit: rollStat('credit', personArchetype.credit.mu, personArchetype.credit.sigma),
+    credit,
     annualIncome: Math.max(1, rollStat('annualIncome', personArchetype.annualIncome.mu, personArchetype.annualIncome.sigma)),
     int: rollStat('int', personArchetype.int.mu, personArchetype.int.sigma),
     agreeableness,
     brand_affinity: {},
     counters: { prior_visits: 0, prior_deals: 0, days_since_last_visit: 0 },
+    ...(currentVehicle !== undefined ? { currentVehicle } : {}),
   });
 
   // -- Roll visit base values from archetype distributions --

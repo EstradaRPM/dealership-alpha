@@ -30,6 +30,23 @@ export type {
   Visit,
 } from './Customer';
 
+export {
+  rollCurrentVehicle,
+  loadCustomerCurrentVehicleConfig,
+} from './factories/CurrentVehicleFactory';
+export type {
+  RollCurrentVehicleContext,
+  RollCurrentVehicleDeps,
+} from './factories/CurrentVehicleFactory';
+export type {
+  CurrentVehicle,
+  CustomerCurrentVehicleConfig,
+} from './schemas/customer-current-vehicle';
+export {
+  CurrentVehicleSchema,
+  CustomerCurrentVehicleConfigSchema,
+} from './schemas/customer-current-vehicle';
+
 export { loadPersonArchetypes, loadVisitArchetypes } from './CustomerArchetypes';
 
 export { loadCustomerTunables } from './CustomerTunables';

@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "referenceYear": 2024,
+  "yearBounds": [2008, 2024],
+  "mileagePerYear": 12000,
+
+  "templates": {
+    "honda_civic":      { "make": "Honda",     "model": "Civic",          "category": "sedan" },
+    "toyota_camry":     { "make": "Toyota",    "model": "Camry",          "category": "sedan" },
+    "nissan_altima":    { "make": "Nissan",    "model": "Altima",         "category": "sedan" },
+    "ford_focus":       { "make": "Ford",      "model": "Focus",          "category": "sedan" },
+    "hyundai_sonata":   { "make": "Hyundai",   "model": "Sonata",         "category": "sedan" },
+    "bmw_3series":      { "make": "BMW",       "model": "3 Series",       "category": "sedan" },
+    "lexus_es":         { "make": "Lexus",     "model": "ES",             "category": "sedan" },
+
+    "ford_f150":        { "make": "Ford",      "model": "F-150",          "category": "truck" },
+    "chevy_silverado":  { "make": "Chevrolet", "model": "Silverado 1500", "category": "truck" },
+    "ram_1500":         { "make": "Ram",       "model": "1500",           "category": "truck" },
+    "toyota_tacoma":    { "make": "Toyota",    "model": "Tacoma",         "category": "truck" },
+
+    "toyota_rav4":      { "make": "Toyota",    "model": "RAV4",           "category": "suv" },
+    "honda_crv":        { "make": "Honda",     "model": "CR-V",           "category": "suv" },
+    "ford_escape":      { "make": "Ford",      "model": "Escape",         "category": "suv" },
+    "chevy_equinox":    { "make": "Chevrolet", "model": "Equinox",        "category": "suv" },
+    "jeep_cherokee":    { "make": "Jeep",      "model": "Cherokee",       "category": "suv" },
+    "lexus_rx":         { "make": "Lexus",     "model": "RX",             "category": "suv" },
+    "acura_mdx":        { "make": "Acura",     "model": "MDX",            "category": "suv" }
+  },
+
+  "archetypes": {
+    "young_family": {
+      "categoryWeights": { "sedan": 0.35, "suv": 0.55, "truck": 0.10 },
+      "templatePool": {
+        "sedan": ["honda_civic", "toyota_camry", "nissan_altima", "ford_focus", "hyundai_sonata"],
+        "suv":   ["toyota_rav4", "honda_crv", "ford_escape", "chevy_equinox", "jeep_cherokee"],
+        "truck": ["ford_f150", "chevy_silverado", "toyota_tacoma"]
+      },
+      "ageOffset":         { "mu": 6.0, "sigma": 2.5 },
+      "mileageMultiplier": { "mu": 1.05, "sigma": 0.25 },
+      "conditionWeights":  { "clean": 0.20, "average": 0.55, "rough": 0.25 },
+      "financeProbability": 0.75,
+      "payoffByTier": {
+        "A": { "mu": 6500,  "sigma": 3000 },
+        "B": { "mu": 9500,  "sigma": 3500 },
+        "C": { "mu": 13000, "sigma": 4500 },
+        "D": { "mu": 16500, "sigma": 5500 }
+      }
+    },
+
+    "enthusiast": {
+      "categoryWeights": { "sedan": 0.55, "suv": 0.35, "truck": 0.10 },
+      "templatePool": {
+        "sedan": ["bmw_3series", "lexus_es", "honda_civic", "toyota_camry", "nissan_altima"],
+        "suv":   ["lexus_rx", "acura_mdx", "toyota_rav4", "jeep_cherokee"],
+        "truck": ["toyota_tacoma", "ford_f150"]
+      },
+      "ageOffset":         { "mu": 3.0, "sigma": 1.8 },
+      "mileageMultiplier": { "mu": 0.80, "sigma": 0.20 },
+      "conditionWeights":  { "clean": 0.55, "average": 0.35, "rough": 0.10 },
+      "financeProbability": 0.65,
+      "payoffByTier": {
+        "A": { "mu": 14000, "sigma": 5500 },
+        "B": { "mu": 18000, "sigma": 6000 },
+        "C": { "mu": 22000, "sigma": 7000 },
+        "D": { "mu": 25000, "sigma": 8000 }
+      }
+    },
+
+    "commuter": {
+      "categoryWeights": { "sedan": 0.65, "suv": 0.25, "truck": 0.10 },
+      "templatePool": {
+        "sedan": ["honda_civic", "toyota_camry", "nissan_altima", "ford_focus", "hyundai_sonata"],
+        "suv":   ["honda_crv", "toyota_rav4", "ford_escape", "chevy_equinox"],
+        "truck": ["toyota_tacoma", "ford_f150"]
+      },
+      "ageOffset":         { "mu": 7.5, "sigma": 2.5 },
+      "mileageMultiplier": { "mu": 1.20, "sigma": 0.25 },
+      "conditionWeights":  { "clean": 0.15, "average": 0.55, "rough": 0.30 },
+      "financeProbability": 0.65,
+      "payoffByTier": {
+        "A": { "mu": 5000,  "sigma": 2500 },
+        "B": { "mu": 7500,  "sigma": 3000 },
+        "C": { "mu": 11000, "sigma": 4000 },
+        "D": { "mu": 14500, "sigma": 5000 }
+      }
+    },
+
+    "retiree": {
+      "categoryWeights": { "sedan": 0.55, "suv": 0.40, "truck": 0.05 },
+      "templatePool": {
+        "sedan": ["toyota_camry", "lexus_es", "honda_civic", "hyundai_sonata"],
+        "suv":   ["lexus_rx", "acura_mdx", "honda_crv", "toyota_rav4"],
+        "truck": ["ford_f150", "toyota_tacoma"]
+      },
+      "ageOffset":         { "mu": 5.5, "sigma": 2.0 },
+      "mileageMultiplier": { "mu": 0.70, "sigma": 0.20 },
+      "conditionWeights":  { "clean": 0.55, "average": 0.35, "rough": 0.10 },
+      "financeProbability": 0.30,
+      "payoffByTier": {
+        "A": { "mu": 4500,  "sigma": 2500 },
+        "B": { "mu": 7000,  "sigma": 3000 },
+        "C": { "mu": 10000, "sigma": 4000 },
+        "D": { "mu": 13000, "sigma": 5000 }
+      }
+    },
+
+    "tradesperson": {
+      "categoryWeights": { "sedan": 0.10, "suv": 0.20, "truck": 0.70 },
+      "templatePool": {
+        "sedan": ["nissan_altima", "ford_focus", "honda_civic"],
+        "suv":   ["jeep_cherokee", "chevy_equinox", "ford_escape"],
+        "truck": ["ford_f150", "chevy_silverado", "ram_1500", "toyota_tacoma"]
+      },
+      "ageOffset":         { "mu": 8.5, "sigma": 3.0 },
+      "mileageMultiplier": { "mu": 1.35, "sigma": 0.30 },
+      "conditionWeights":  { "clean": 0.10, "average": 0.45, "rough": 0.45 },
+      "financeProbability": 0.70,
+      "payoffByTier": {
+        "A": { "mu": 9000,  "sigma": 4000 },
+        "B": { "mu": 13500, "sigma": 5000 },
+        "C": { "mu": 18000, "sigma": 6000 },
+        "D": { "mu": 22000, "sigma": 7000 }
+      }
+    }
+  }
+}

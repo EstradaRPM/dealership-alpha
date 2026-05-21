@@ -6,6 +6,7 @@ Shared people-and-traits substrate used by `CustomerPool`, `StaffOrg`, and `Comp
 - Traits: `resolveEffects`, `TraitAppliesError`, `loadTraitTaxonomy`. Types: `Trait`, `TraitSet`.
 - Staff: `loadStaffTaxonomy`, `loadStaffArchetypes`, `createStaff`, `promoteStaff`. Types: `Staff`, `StaffRole`, `StaffSkill`, `CreateStaffContext`, `CreateStaffDeps`, `StaffWithComposites`.
 - Customers: `createCustomer`, `hotButtons`, `loadPersonArchetypes`, `loadVisitArchetypes`. Types: `Person`, `SalesVisit`, `ServiceVisit`, `BodyVisit`, `Visit`, `CustomerBundle`, `CreateCustomerContext`, `CreateCustomerDeps`.
+- CurrentVehicle (#165): `rollCurrentVehicle`, `loadCustomerCurrentVehicleConfig`, `CurrentVehicleSchema`, `CustomerCurrentVehicleConfigSchema`. Types: `CurrentVehicle`, `CustomerCurrentVehicleConfig`. When the composition root passes `currentVehicleConfig` + `classifyCreditTier` to `createCustomer`, the rolled `Person` carries `currentVehicle` (the car they drove in on) with an optional `loanPayoff` per finance roll × credit tier. Legacy callers (omitting both deps) get a Person without the field — the engine doesn't require it yet (#165 is data-only; trade-in machinery is #166–#171).
 - Competitors: `loadCompetitorArchetypes`, `loadBrandMarketShare`, `createCompetitor`. Types: `Competitor`, `CreateCompetitorContext`, `CreateCompetitorDeps`.
 - Shared: `Rng` (deterministic RNG seed plumbing).
 
@@ -17,6 +18,7 @@ NPC is a factory/library module — does not publish or subscribe. Consumers (Cu
 - `data/person-archetypes.json`, `data/visit-archetypes.json`, `data/customer-tunables.json`.
 - `data/staff-archetypes.json`, `data/staff-roles.json`, `data/staff-skills.json`.
 - `data/competitor-archetypes.json`, `data/brand-market-share.json`.
+- `data/customer-current-vehicle.json` (#165) — per-archetype distribution: category weights, year-age + mileage skews, condition weights, finance probability, and per-credit-tier loan-payoff distributions. Templates declared inline so NPC stays free of an Inventory dep.
 
 ## Why this exists
 Issue #5 grilled on NPC architecture; this module is the resulting shared substrate. See `npc-architecture-grill-me` memory for context if extending the trait or factory model.

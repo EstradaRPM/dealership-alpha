@@ -60,7 +60,9 @@ import {
   loadStaffTaxonomy,
   loadStaffArchetypes,
   loadCustomerTunables,
+  loadCustomerCurrentVehicleConfig,
 } from './game/NPC';
+import { classifyCredit } from './game/DealEngine';
 import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
 import {
   createTierManager,
@@ -143,6 +145,7 @@ export function createWorld(deps: {
   // so dispatch(CLOSE) routes real closes through DealEngine.closeDeal — the
   // canonical deal:closed (with the five deal-structuring fields) fires
   // instead of synthesizing a SalesProcess emit against a stub vehicle.
+  const creditTiers = loadCreditTiers();
   const customerPool = createCustomerPool({
     bus,
     legacyDailyArrivals: false,
@@ -151,10 +154,14 @@ export function createWorld(deps: {
       personArchetypes: loadPersonArchetypes(),
       visitArchetypes: loadVisitArchetypes(),
       traits: loadTraitTaxonomy(),
+      // #165: stamp a deterministic `currentVehicle` on every customer so
+      // the trade-in slices (#166–#171) have real history to work against.
+      currentVehicleConfig: loadCustomerCurrentVehicleConfig(),
+      classifyCreditTier: (credit) => classifyCredit(credit, creditTiers),
     },
     dealEngine,
     inventory,
-    creditTiers: loadCreditTiers(),
+    creditTiers,
   });
   const staffTaxonomy = loadStaffTaxonomy();
   // Reputation + TierManager are created ahead of StaffOrg so the hiring

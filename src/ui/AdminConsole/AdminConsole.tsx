@@ -22,6 +22,7 @@ import type { SaveStore } from '../../game/SaveStore';
 import type { Telemetry } from '../../game/Telemetry';
 import type { CustomerPool } from '../../game/CustomerPool';
 import { SALES_ARCHETYPES } from '../../game/CustomerPool';
+import { CustomerCard } from '../CustomerCard';
 import { colors } from '../theme';
 
 interface Props {
@@ -45,6 +46,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
   const [cashInput, setCashInput] = useState('');
   const [daysInput, setDaysInput] = useState('');
   const [selectedArchetypeIdx, setSelectedArchetypeIdx] = useState(0);
+  const [sessionTick, setSessionTick] = useState(0);
   const [busLogEnabled, setBusLogEnabled] = useState(false);
   const [busLog, setBusLog] = useState<Array<{ id: number; event: string; preview: string }>>([]);
   const busLogIdRef = useRef(0);
@@ -125,8 +127,18 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
   const spawnCustomer = () => {
     const arch = SALES_ARCHETYPES[selectedArchetypeIdx];
     const id = customerPool.spawnCustomer(arch.personId, arch.visitId, arch.label);
+    setSessionTick((t) => t + 1);
     setStatus(`spawned ${arch.label} → ${id}`);
   };
+
+  // Snapshot of live customer sessions for the inspect-a-customer card (#165).
+  // Recomputed when the modal opens or a customer is spawned; the live floor
+  // pushes new sessions through the bus path, not via this admin entrypoint.
+  const liveSessions = React.useMemo(() => {
+    if (!open) return [];
+    return customerPool.getSessions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, sessionTick, customerPool]);
 
   const exportTelemetry = async () => {
     const count = telemetry.getEventCount();
@@ -258,6 +270,23 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
               <TouchableOpacity style={[styles.primaryBtn, styles.spawnBtn]} onPress={spawnCustomer}>
                 <Text style={styles.primaryBtnLabel}>Spawn Customer</Text>
               </TouchableOpacity>
+
+              {liveSessions.length > 0 && (
+                <>
+                  <Text style={styles.sectionLabel}>LIVE CUSTOMERS</Text>
+                  {liveSessions.map((s) => (
+                    <View key={s.customerId} style={styles.customerCardWrap}>
+                      <CustomerCard
+                        model={{
+                          customerId: s.customerId,
+                          archetypeLabel: s.archetypeLabel,
+                          currentVehicle: s.bundle.person.currentVehicle,
+                        }}
+                      />
+                    </View>
+                  ))}
+                </>
+              )}
 
               <Text style={styles.sectionLabel}>EVENT LOG</Text>
               <View style={styles.cashRow}>
@@ -429,6 +458,9 @@ const styles = StyleSheet.create({
   },
   archetypeLabelSelected: {
     color: colors.textPrimary,
+  },
+  customerCardWrap: {
+    marginTop: 8,
   },
   spawnBtn: {
     marginTop: 10,
