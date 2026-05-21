@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Per-save hidden bias the segment-heat composer reads. Sampled once at save creation from masterSeed (#96). Bounds are unitless multipliers on baseAnchor; symmetric around 0 to keep population-mean neutral. #94 calibration uses static stubs, so this is invisible there.",
+  "segments": {
+    "sedan": { "biasMin": -0.04, "biasMax": 0.04 },
+    "truck": { "biasMin": -0.05, "biasMax": 0.05 },
+    "suv":   { "biasMin": -0.04, "biasMax": 0.04 }
+  }
+}

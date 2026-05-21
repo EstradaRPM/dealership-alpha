@@ -12,6 +12,11 @@ import {
   type AnchorVehicleInput,
 } from './anchor';
 import {
+  NEUTRAL_PERSONALITY,
+  personalityBiasFor,
+  type MarketPersonalityVector,
+} from './personality';
+import {
   loadMarketMarkupConfig,
   type MarketMarkupConfig,
 } from './schemas';
@@ -33,6 +38,12 @@ export type MarketVehicleInput = PricedVehicleInput & AnchorVehicleInput;
 export interface ProvidersDeps extends AnchorDeps {
   readonly markupConfig?: MarketMarkupConfig;
   readonly brandTiers?: BrandTiersConfig;
+  /**
+   * Per-save hidden personality (slice #156). Omit for the neutral
+   * (population-mean) world used by the calibration test and the static-stub
+   * fixtures. Future slices layer comp drift + active shocks on top of this.
+   */
+  readonly personality?: MarketPersonalityVector;
 }
 
 function markupFor(
@@ -70,14 +81,21 @@ export interface LiveProviders {
 export function createProviders(deps: ProvidersDeps = {}): LiveProviders {
   const markup = deps.markupConfig ?? loadMarketMarkupConfig();
   const brandTiers = deps.brandTiers ?? loadBrandTiersConfig();
+  const personality = deps.personality ?? NEUTRAL_PERSONALITY;
   const anchorDeps: AnchorDeps = { ...deps, brandTiers };
 
-  const bookValueFn: BookValueFn = (v) =>
-    computeAnchor(v as MarketVehicleInput, anchorDeps);
+  // segmentHeat(v) = personalityBias(category) + 0 (#157 adds drift + shocks)
+  const segmentHeat = (v: AnchorVehicleInput): number =>
+    personalityBiasFor(personality, v.category);
+
+  const bookValueFn: BookValueFn = (v) => {
+    const wide = v as MarketVehicleInput;
+    return computeAnchor(wide, anchorDeps) * (1 + segmentHeat(wide));
+  };
 
   const marketPriceFn: MarketPriceFn = (v) => {
     const wide = v as MarketVehicleInput;
-    const book = computeAnchor(wide, anchorDeps);
+    const book = computeAnchor(wide, anchorDeps) * (1 + segmentHeat(wide));
     return Math.round(book * markupFor(wide, markup, brandTiers));
   };
 

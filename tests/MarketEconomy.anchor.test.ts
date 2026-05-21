@@ -24,6 +24,7 @@ const civicAtRef: AnchorVehicleInput = {
   templateId: 'honda_civic',
   make: 'Honda',
   year: deps.curvesConfig.referenceYear,
+  mileage: deps.curvesConfig.referenceMileage,
   category: 'sedan',
   condition: 'average',
 };
@@ -101,6 +102,7 @@ describe('MarketEconomy.createProviders (#155)', () => {
     templateId: 'honda_civic',
     make: 'Honda',
     year: deps.curvesConfig.referenceYear,
+    mileage: deps.curvesConfig.referenceMileage,
     category: 'sedan',
     condition: 'average',
   };

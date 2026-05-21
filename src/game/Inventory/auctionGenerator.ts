@@ -1,4 +1,8 @@
 import { createRng, deriveSeed } from '../NPC/Rng';
+import {
+  loadMileageDistributionConfig,
+  type MileageDistributionConfig,
+} from '../MarketEconomy';
 import type { VehicleData, VehicleTemplate, ConditionTier } from './vehicleData';
 import type { AuctionListing, VehicleCondition } from './types';
 
@@ -16,6 +20,27 @@ function lerp(min: number, max: number, t: number): number {
   return Math.round(min + (max - min) * t);
 }
 
+function rollMileage(
+  year: number,
+  category: 'sedan' | 'truck' | 'suv',
+  rng: () => number,
+  dist: MileageDistributionConfig,
+): number {
+  const shape = dist.distributions[category];
+  if (!shape) {
+    throw new Error(`mileage-distribution: missing category "${category}"`);
+  }
+  const age = Math.max(1, dist.referenceYear - year + 1);
+  // Symmetric uniform around mean*age; older cars get wider absolute spread
+  // (the spread scales with age, so a 10-year-old truck varies more in
+  // absolute miles than a 2-year-old one).
+  const mean = shape.perYearMean * age;
+  const spread = shape.perYearSpread * age;
+  const draw = mean + spread * (rng() * 2 - 1);
+  const clamped = Math.min(shape.ceiling, Math.max(shape.floor, draw));
+  return Math.round(clamped / 500) * 500;
+}
+
 function buildListing(
   index: number,
   day: number,
@@ -23,9 +48,10 @@ function buildListing(
   condition: VehicleCondition,
   tier: ConditionTier,
   rng: () => number,
+  mileageDist: MileageDistributionConfig,
 ): AuctionListing {
   const year = lerp(template.yearRange[0], template.yearRange[1], rng());
-  const baseMileage = lerp(template.mileageRange[0], template.mileageRange[1], rng());
+  const baseMileage = rollMileage(year, template.category, rng, mileageDist);
   const basePrice = lerp(template.basePriceRange[0], template.basePriceRange[1], rng());
   const askingPrice = Math.round(basePrice * tier.priceMultiplier / 100) * 100;
 
@@ -49,6 +75,7 @@ export function generateAuctionListings(
   day: number,
   masterSeed: number,
   data: VehicleData,
+  mileageDist: MileageDistributionConfig = loadMileageDistributionConfig(),
 ): AuctionListing[] {
   const { templates, conditionTiers, auctionConfig } = data;
   const seed = deriveSeed(masterSeed, 'inventory.auction_listings', { day });
@@ -75,7 +102,7 @@ export function generateAuctionListings(
 
     const condition = pickCondition(rng);
     const tier = conditionTiers[condition];
-    listings.push(buildListing(i, day, template, condition, tier, rng));
+    listings.push(buildListing(i, day, template, condition, tier, rng, mileageDist));
   }
 
   return listings;

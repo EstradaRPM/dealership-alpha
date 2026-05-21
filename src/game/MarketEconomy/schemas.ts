@@ -45,13 +45,16 @@ const CurveShapeSchema = z
   .object({
     perYearDepreciation: unit,
     floor: unit,
+    per10kMileageDepreciation: unit,
+    mileageFloor: unit,
   })
   .strict();
 
 export const MarketDepreciationCurvesConfigSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.literal(2),
     referenceYear: z.number().int(),
+    referenceMileage: z.number().int().nonnegative(),
     curves: z.record(CurveTypeEnum, CurveShapeSchema),
   })
   .strict();
@@ -67,6 +70,50 @@ export const MarketConditionModsConfigSchema = z
   .strict();
 export type MarketConditionModsConfig = z.infer<
   typeof MarketConditionModsConfigSchema
+>;
+
+const PersonalitySegmentBoundsSchema = z
+  .object({
+    biasMin: z.number(),
+    biasMax: z.number(),
+  })
+  .strict()
+  .refine((b) => b.biasMin <= b.biasMax, {
+    message: 'biasMin must be <= biasMax',
+  });
+
+export const MarketPersonalityDistributionSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    segments: z.record(z.string().min(1), PersonalitySegmentBoundsSchema),
+  })
+  .strict();
+export type MarketPersonalityDistribution = z.infer<
+  typeof MarketPersonalityDistributionSchema
+>;
+
+const MileageDistributionShapeSchema = z
+  .object({
+    perYearMean: z.number().positive(),
+    perYearSpread: z.number().nonnegative(),
+    floor: z.number().nonnegative(),
+    ceiling: z.number().positive(),
+  })
+  .strict()
+  .refine((d) => d.floor <= d.ceiling, {
+    message: 'floor must be <= ceiling',
+  });
+
+export const MileageDistributionConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    referenceYear: z.number().int(),
+    distributions: z.record(CurveTypeEnum, MileageDistributionShapeSchema),
+  })
+  .strict();
+export type MileageDistributionConfig = z.infer<
+  typeof MileageDistributionConfigSchema
 >;
 
 export const MarketMarkupConfigSchema = z
@@ -110,6 +157,26 @@ export function loadMarketConditionModsConfig(): MarketConditionModsConfig {
     raw,
     MarketConditionModsConfigSchema,
     'data/market-condition-mods.json',
+  );
+}
+
+export function loadMarketPersonalityDistribution(): MarketPersonalityDistribution {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/market-personality-distribution.json');
+  return parseData(
+    raw,
+    MarketPersonalityDistributionSchema,
+    'data/market-personality-distribution.json',
+  );
+}
+
+export function loadMileageDistributionConfig(): MileageDistributionConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/mileage-distribution.json');
+  return parseData(
+    raw,
+    MileageDistributionConfigSchema,
+    'data/mileage-distribution.json',
   );
 }
 

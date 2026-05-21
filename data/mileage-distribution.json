@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "referenceYear": 2024,
+  "distributions": {
+    "sedan":  { "perYearMean": 12000, "perYearSpread": 4000,  "floor": 5000, "ceiling": 220000 },
+    "truck":  { "perYearMean": 14000, "perYearSpread": 5000,  "floor": 5000, "ceiling": 260000 },
+    "suv":    { "perYearMean": 12500, "perYearSpread": 4500,  "floor": 5000, "ceiling": 240000 }
+  }
+}

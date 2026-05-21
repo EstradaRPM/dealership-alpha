@@ -19,21 +19,24 @@ Design record: issue **#182** (locked). Read that before working any slice.
 - `computeAnchor(vehicle, deps?)` — pure, deterministic, no RNG.
 - Five typed loaders + Zod schemas under `./schemas.ts`.
 
-## Engine (slice #155)
+## Engine (slices #155, #156)
 
 ```
 anchor(v)      = baseAnchor(template OR (category × brandTier) fallback)
                  × yearCurve(yearAge, curveType)
+                 × mileageCurve(mileage, curveType)    -- #156
                  × conditionMod(condition)
 
-bookValue(v)   = anchor(v) × (1 + segmentHeat(...))    -- heat=0 in #155, live in #157
+bookValue(v)   = anchor(v) × (1 + segmentHeat(v))
 marketPrice(v) = round(bookValue(v) × markup(category, brandTier))
 vehicleCost(v) = v.purchasePrice + v.reconCost          -- design-locked unchanged
 ```
 
-Mileage is reserved for slice #156 (it enters the anchor formula then).
-Segment heat is a `0` placeholder; the comp-history + shock-scheduler
-composer lands in #157–#159.
+`segmentHeat(v)` returns the per-save personality bias for `v.category` (slice
+#156). The comp-history + shock-scheduler terms layer on top in #157–#159.
+Omitting `masterSeed` from `createMarketEconomy` produces the neutral world
+(personality vector = empty, segmentHeat = 0) — the path used by the #94
+calibration test and the static-stub fixtures.
 
 ## Provider input contract
 
@@ -60,10 +63,16 @@ None (slice #155). #176 lands the news engine + `market:news_published`,
 - `data/market-anchor.json` — per-template hand-tuned anchors.
 - `data/market-segment-fallback.json` — `(category × brandTier) → fallback` for
   templates not in the per-template table.
-- `data/market-depreciation-curves.json` — year-age curve shape per
-  `curveType` (linear with floor in #155; richer shapes possible later).
+- `data/market-depreciation-curves.json` — per-`curveType` year + mileage
+  curve shapes (linear with floor for both axes; richer shapes possible
+  later). `referenceMileage` is the mileage-curve break point — at or below
+  it the multiplier is 1.
 - `data/market-condition-mods.json` — `condition → multiplier`.
 - `data/market-markup.json` — `(category × brandTier) → retail markup`.
+- `data/market-personality-distribution.json` — per-segment bias bounds the
+  per-save personality vector samples from (#156).
+- `data/mileage-distribution.json` — year-conditioned mileage distribution
+  consumed by the auction generator (#156).
 
 Tuning of all five is deliberately neutral so the static-stub midpoint
 (`(purchase + recon) × 1.25`) and the live providers produce comparable

@@ -235,7 +235,10 @@ export function createWorld(deps: {
   // shape. Other call sites that still pass narrow PricedVehicleInput stubs
   // (CustomerPool's resolveViaProcess, the #94 calibration test) fall back to
   // the static stubs by not injecting these.
-  const marketEconomy = createMarketEconomy();
+  // #156: the per-save personality vector is rolled from masterSeed at
+  // construction. Two slots with different seeds get distinct hidden biases →
+  // genuinely different worlds from minute one.
+  const marketEconomy = createMarketEconomy({ masterSeed });
 
   // Per-day FloorSim seam set: CapacityManager / StaffDispatch / CustomerPool
   // behind the locked #99 seams. Invoked once per day → fresh per-day

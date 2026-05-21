@@ -1,18 +1,25 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "referenceYear": 2024,
+  "referenceMileage": 36000,
   "curves": {
     "sedan": {
       "perYearDepreciation": 0.08,
-      "floor": 0.45
+      "floor": 0.45,
+      "per10kMileageDepreciation": 0.022,
+      "mileageFloor": 0.55
     },
     "truck": {
       "perYearDepreciation": 0.06,
-      "floor": 0.55
+      "floor": 0.55,
+      "per10kMileageDepreciation": 0.012,
+      "mileageFloor": 0.65
     },
     "suv": {
       "perYearDepreciation": 0.07,
-      "floor": 0.50
+      "floor": 0.50,
+      "per10kMileageDepreciation": 0.017,
+      "mileageFloor": 0.60
     }
   }
 }

@@ -15,13 +15,15 @@ import {
  * and `AuctionListing` satisfy this without an explicit Inventory dependency
  * — MarketEconomy stays decoupled.
  *
- * Mileage is reserved for slice #156; the v1 anchor uses
- * baseAnchor × yearCurve × conditionMod.
+ * Slice #156 makes `mileage` load-bearing: it enters the anchor formula via
+ * the mileage curve (per-curveType `per10kMileageDepreciation` discount
+ * relative to `referenceMileage`). Trucks tolerate mileage better than sedans.
  */
 export interface AnchorVehicleInput {
   readonly templateId: string;
   readonly make: string;
   readonly year: number;
+  readonly mileage: number;
   readonly category: string;
   readonly condition: 'clean' | 'average' | 'rough';
 }
@@ -61,18 +63,43 @@ function resolveAnchorEntry(
   return entry;
 }
 
-function yearCurveMultiplier(
-  vehicleYear: number,
+interface CurveShape {
+  perYearDepreciation: number;
+  floor: number;
+  per10kMileageDepreciation: number;
+  mileageFloor: number;
+}
+
+function resolveCurve(
   curveType: string,
   curves: MarketDepreciationCurvesConfig,
-): number {
-  const shape = (curves.curves as Record<string, { perYearDepreciation: number; floor: number } | undefined>)[curveType];
+): CurveShape {
+  const shape = (curves.curves as Record<string, CurveShape | undefined>)[curveType];
   if (!shape) {
     throw new Error(`MarketEconomy: missing depreciation curve "${curveType}"`);
   }
-  const age = Math.max(0, curves.referenceYear - vehicleYear);
+  return shape;
+}
+
+function yearCurveMultiplier(
+  vehicleYear: number,
+  shape: CurveShape,
+  referenceYear: number,
+): number {
+  const age = Math.max(0, referenceYear - vehicleYear);
   const mult = 1 - shape.perYearDepreciation * age;
   return mult < shape.floor ? shape.floor : mult;
+}
+
+function mileageCurveMultiplier(
+  mileage: number,
+  shape: CurveShape,
+  referenceMileage: number,
+): number {
+  const overage = Math.max(0, mileage - referenceMileage);
+  const tenKs = overage / 10_000;
+  const mult = 1 - shape.per10kMileageDepreciation * tenKs;
+  return mult < shape.mileageFloor ? shape.mileageFloor : mult;
 }
 
 function conditionMultiplier(
@@ -105,9 +132,11 @@ export function computeAnchor(
   const brandTiersCfg = deps.brandTiers ?? loadBrandTiersConfig();
 
   const entry = resolveAnchorEntry(vehicle, anchorCfg, fallbackCfg, brandTiersCfg);
+  const shape = resolveCurve(entry.curveType, curvesCfg);
   return (
     entry.baseAnchor *
-    yearCurveMultiplier(vehicle.year, entry.curveType, curvesCfg) *
+    yearCurveMultiplier(vehicle.year, shape, curvesCfg.referenceYear) *
+    mileageCurveMultiplier(vehicle.mileage, shape, curvesCfg.referenceMileage) *
     conditionMultiplier(vehicle.condition, conditionCfg)
   );
 }
