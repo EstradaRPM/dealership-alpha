@@ -67,6 +67,22 @@ describe('AuctionMenu — smoke', () => {
     expect(getByText('$12,000')).toBeTruthy();
   });
 
+  it('shows retail range estimate and source label on each row', () => {
+    const { getByText } = render(
+      <AuctionMenu
+        listings={[mockListing]}
+        lotVehicles={[]}
+        cash={50000}
+        valuationFor={() => ({ bookValue: 11000, marketPrice: 13500 })}
+        sourceLabelFor={(id) => (id === 'manheim_digital' ? 'Manheim Digital' : id)}
+        onBuy={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    );
+    expect(getByText('$11,000–$13,500')).toBeTruthy();
+    expect(getByText('Manheim Digital')).toBeTruthy();
+  });
+
   it('shows lot vehicle with DII and recon cost', () => {
     const { getByText } = render(
       <AuctionMenu

@@ -22,7 +22,12 @@ import {
   type ShockScheduler,
   type ShocksSnapshot,
 } from './shocks';
-import { loadMarketMarkupConfig, type MarketMarkupConfig } from './schemas';
+import {
+  loadAuctionSourcesConfig,
+  loadMarketMarkupConfig,
+  type AuctionSourcesConfig,
+  type MarketMarkupConfig,
+} from './schemas';
 import { loadBrandTiersConfig, type BrandTiersConfig } from '../SalesProcess';
 import { loadTunables, type Tunables } from '../data';
 
@@ -56,6 +61,21 @@ export interface MarketEconomy extends LiveProviders {
     ShockScheduler,
     'activeInstances' | 'snapshot' | 'restore'
   >;
+  /**
+   * Player-visible valuation for a vehicle described only by its anchor
+   * fields (no purchasePrice/reconCost). Used by surfaces that quote a
+   * retail range estimate for listings the dealer doesn't own yet — the
+   * auction board per #161. Equivalent to running the live providers on a
+   * `MarketVehicleInput` with placeholder cost fields, but typed against the
+   * narrow anchor input so callers don't fabricate fake cost data.
+   */
+  valuationFor(vehicle: AnchorVehicleInput): { bookValue: number; marketPrice: number };
+  /**
+   * Source catalog label lookup. Returns the human label for a known source
+   * id, or the id itself if absent (defensive — a missing source is a data
+   * mismatch, not a runtime crash).
+   */
+  sourceLabelFor(sourceId: string): string;
   /** Tear down event subscriptions. Idempotent. */
   dispose(): void;
 }
@@ -91,6 +111,12 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
 
   const markup: MarketMarkupConfig = deps.markupConfig ?? loadMarketMarkupConfig();
   const brandTiers: BrandTiersConfig = deps.brandTiers ?? loadBrandTiersConfig();
+  const auctionSources: AuctionSourcesConfig = loadAuctionSourcesConfig();
+  const sourceLabels: Readonly<Record<string, string>> = (() => {
+    const m: Record<string, string> = {};
+    for (const s of auctionSources.sources) m[s.id] = s.label;
+    return m;
+  })();
   const anchorDeps = { ...deps, brandTiers };
 
   const compHistory = createCompHistory(deps);
@@ -230,6 +256,15 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
   return {
     ...providers,
     personality,
+    valuationFor(vehicle: AnchorVehicleInput) {
+      const anchor = computeAnchor(vehicle, anchorDeps);
+      const book = anchor * (1 + segmentHeatFn(vehicle));
+      const market = Math.round(book * markupFor(vehicle));
+      return { bookValue: book, marketPrice: market };
+    },
+    sourceLabelFor(sourceId: string) {
+      return sourceLabels[sourceId] ?? sourceId;
+    },
     compHistory: {
       segmentDrift: (segment, day) => compHistory.segmentDrift(segment, day),
       liveCount: (segment, day) => compHistory.liveCount(segment, day),

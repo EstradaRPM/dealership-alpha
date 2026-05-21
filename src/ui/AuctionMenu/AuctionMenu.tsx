@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useReducer, useState } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,36 @@ import {
   Modal,
 } from 'react-native';
 import type { AuctionListing, LotVehicle } from '../../game/Inventory';
+import type { EventBus } from '../../game/EventBus';
 import { colors } from '../theme';
+
+export interface ListingValuation {
+  readonly bookValue: number;
+  readonly marketPrice: number;
+}
+
+/**
+ * Player-visible retail range estimate per #161 — `bookValueFn` is the low
+ * end of the band, `marketPriceFn` the high end. The asking price stays
+ * precise (it's the listed number); the range is *judgment*, not arithmetic.
+ */
+export type ValuationFor = (vehicle: AuctionListing) => ListingValuation;
+export type SourceLabelFor = (sourceId: string) => string;
+
+function formatRange(low: number, high: number): string {
+  return `$${Math.round(low).toLocaleString()}–$${Math.round(high).toLocaleString()}`;
+}
 
 interface DetailModalProps {
   listing: AuctionListing;
   cash: number;
+  valuation: ListingValuation;
+  sourceLabel: string;
   onBuy: () => void;
   onClose: () => void;
 }
 
-function DetailModal({ listing, cash, onBuy, onClose }: DetailModalProps) {
+function DetailModal({ listing, cash, valuation, sourceLabel, onBuy, onClose }: DetailModalProps) {
   const canAfford = cash >= listing.askingPrice;
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
@@ -44,6 +64,16 @@ function DetailModal({ listing, cash, onBuy, onClose }: DetailModalProps) {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Asking Price</Text>
             <Text style={styles.detailValue}>${listing.askingPrice.toLocaleString()}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Retail Range Est.</Text>
+            <Text style={styles.detailValue}>
+              {formatRange(valuation.bookValue, valuation.marketPrice)}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Source</Text>
+            <Text style={styles.detailValue}>{sourceLabel}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Est. Recon Cost</Text>
@@ -84,10 +114,12 @@ function conditionColor(condition: AuctionListing['condition']) {
 
 interface ListingRowProps {
   listing: AuctionListing;
+  valuation: ListingValuation;
+  sourceLabel: string;
   onPress: () => void;
 }
 
-function ListingRow({ listing, onPress }: ListingRowProps) {
+function ListingRow({ listing, valuation, sourceLabel, onPress }: ListingRowProps) {
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} accessibilityRole="button">
       <View style={styles.rowMain}>
@@ -97,12 +129,16 @@ function ListingRow({ listing, onPress }: ListingRowProps) {
         <Text style={styles.rowSub}>
           {listing.trim} · {listing.mileage.toLocaleString()} mi
         </Text>
+        <Text style={styles.rowSource}>{sourceLabel}</Text>
       </View>
       <View style={styles.rowRight}>
         <Text style={[styles.rowCondition, conditionColor(listing.condition)]}>
           {listing.condition}
         </Text>
         <Text style={styles.rowPrice}>${listing.askingPrice.toLocaleString()}</Text>
+        <Text style={styles.rowRange}>
+          {formatRange(valuation.bookValue, valuation.marketPrice)}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -112,12 +148,55 @@ export interface AuctionMenuProps {
   listings: readonly AuctionListing[];
   lotVehicles: readonly LotVehicle[];
   cash: number;
+  /**
+   * Live retail-range provider (slice #161). `bookValueFn` = low end of the
+   * band, `marketPriceFn` = high end. Defaults to the listing's asking price
+   * for both bounds so the smoke test renders without wiring the live engine.
+   */
+  valuationFor?: ValuationFor;
+  /**
+   * Resolves the source id stamped on each listing to its human label (e.g.
+   * `manheim_digital` → "Manheim Digital"). Defaults to identity for tests.
+   */
+  sourceLabelFor?: SourceLabelFor;
+  /**
+   * Bus for live re-render on `market:shock_started` / `market:shock_resolved`
+   * (slice #161 AC). Optional — without it, the range stays computed from
+   * the providers as of mount.
+   */
+  bus?: EventBus;
   onBuy: (listingId: string) => void;
   onClose: () => void;
 }
 
-export function AuctionMenu({ listings, lotVehicles, cash, onBuy, onClose }: AuctionMenuProps) {
+export function AuctionMenu({
+  listings,
+  lotVehicles,
+  cash,
+  valuationFor,
+  sourceLabelFor,
+  bus,
+  onBuy,
+  onClose,
+}: AuctionMenuProps) {
   const [selected, setSelected] = useState<AuctionListing | null>(null);
+  const [, bump] = useReducer((n: number) => n + 1, 0);
+
+  // Re-render when active shocks change so the range visibly shifts with
+  // segment heat (per #161 AC: "Range updates live as shocks change").
+  useEffect(() => {
+    if (!bus) return;
+    bus.subscribe('market:shock_started', bump);
+    bus.subscribe('market:shock_resolved', bump);
+    return () => {
+      bus.unsubscribe('market:shock_started', bump);
+      bus.unsubscribe('market:shock_resolved', bump);
+    };
+  }, [bus]);
+
+  const valuate: ValuationFor =
+    valuationFor ?? ((l) => ({ bookValue: l.askingPrice, marketPrice: l.askingPrice }));
+  const sourceName: SourceLabelFor = sourceLabelFor ?? ((id) => id);
 
   const handleBuy = () => {
     if (!selected) return;
@@ -142,7 +221,13 @@ export function AuctionMenu({ listings, lotVehicles, cash, onBuy, onClose }: Auc
           <Text style={styles.empty}>No vehicles available today.</Text>
         ) : (
           listings.map((l) => (
-            <ListingRow key={l.id} listing={l} onPress={() => setSelected(l)} />
+            <ListingRow
+              key={l.id}
+              listing={l}
+              valuation={valuate(l)}
+              sourceLabel={sourceName(l.sourceId)}
+              onPress={() => setSelected(l)}
+            />
           ))
         )}
 
@@ -173,6 +258,8 @@ export function AuctionMenu({ listings, lotVehicles, cash, onBuy, onClose }: Auc
         <DetailModal
           listing={selected}
           cash={cash}
+          valuation={valuate(selected)}
+          sourceLabel={sourceName(selected.sourceId)}
           onBuy={handleBuy}
           onClose={() => setSelected(null)}
         />
@@ -280,6 +367,17 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '600',
+  },
+  rowSource: {
+    color: colors.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
+  rowRange: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
   },
   diiLabel: {
     color: colors.primary,

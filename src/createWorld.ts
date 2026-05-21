@@ -31,7 +31,7 @@ import { createStaffOrg, type StaffOrg } from './game/StaffOrg';
 import { createCapacityManager } from './game/CapacityManager';
 import type { CapacityManager } from './game/CapacityManager';
 import { createStaffFloorDrain } from './game/StaffDispatch';
-import { createMarketEconomy } from './game/MarketEconomy';
+import { createMarketEconomy, type MarketEconomy } from './game/MarketEconomy';
 import { createStaffMorale, type StaffMorale } from './game/StaffMorale';
 import {
   createDayLoopController,
@@ -87,6 +87,7 @@ export interface World {
   kpiDashboard: KPIDashboard;
   dayLoop: DayLoopController;
   staffTaxonomy: StaffTaxonomy;
+  marketEconomy: MarketEconomy;
 }
 
 /**
@@ -342,5 +343,6 @@ export function createWorld(deps: {
     kpiDashboard,
     dayLoop,
     staffTaxonomy,
+    marketEconomy,
   };
 }

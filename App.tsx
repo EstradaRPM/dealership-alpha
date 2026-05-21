@@ -411,6 +411,9 @@ export default function App() {
           listings={world.inventory.getAuctionListings()}
           lotVehicles={lotVehicles}
           cash={cash}
+          valuationFor={world.marketEconomy.valuationFor}
+          sourceLabelFor={world.marketEconomy.sourceLabelFor}
+          bus={bus}
           onBuy={(listingId) => world.inventory.buyFromAuction(listingId)}
           onClose={() => nav.back()}
         />
