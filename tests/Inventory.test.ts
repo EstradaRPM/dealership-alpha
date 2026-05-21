@@ -123,7 +123,11 @@ describe('Inventory — purchase flow', () => {
     expect(v).toBeDefined();
     expect(v!.make).toBe(listing.make);
     expect(v!.purchasePrice).toBe(listing.askingPrice);
-    expect(v!.reconCost).toBe(listing.reconCost);
+    // #162: reconCost is now the running sunk cost (0 at purchase); the
+    // auction-listed estimate lives on reconEstimate.
+    expect(v!.reconCost).toBe(0);
+    expect(v!.reconEstimate).toBe(listing.reconCost);
+    expect(v!.reconStatus).toBe('in_progress');
   });
 
   it('throws when buying an unknown listing id', () => {

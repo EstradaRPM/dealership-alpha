@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Mid-recon surprise event templates (slice #162). When the realized cost exceeds the estimate band by surpriseThreshold (recon-variance.json), one template is selected by realized bucket from this catalog. Reason text surfaces to the player on the inventory:recon_surprise event.",
+  "templates": [
+    { "id": "minor_fluid_service",     "bucket": "minor", "reason": "Transmission slip on lift — full fluid + filter service required." },
+    { "id": "minor_brake_rotors",      "bucket": "minor", "reason": "Brake rotors warped beyond machine spec — rotors + pads all four." },
+    { "id": "minor_suspension_bushings","bucket": "minor", "reason": "Control-arm bushings shot — front-end refresh kit + alignment." },
+    { "id": "minor_ac_recharge",       "bucket": "minor", "reason": "AC won't hold charge — evac, leak-trace, condenser reseal." },
+    { "id": "major_head_gasket",       "bucket": "major", "reason": "Engine smokes on cold start — head gasket suspect, top-end teardown." },
+    { "id": "major_transmission_rebuild","bucket": "major","reason": "Transmission downshifts hard under load — rebuild estimate doubled." },
+    { "id": "major_frame_rust",        "bucket": "major", "reason": "Frame rust deeper than report indicated — cut, weld, refinish." },
+    { "id": "catastrophic_engine_replace","bucket": "catastrophic","reason": "Cylinder #3 dead compression — full engine replacement." },
+    { "id": "catastrophic_flood_damage","bucket": "catastrophic","reason": "Salt-line found behind dash — confirmed flood unit. Full electrical rewire or wholesale." },
+    { "id": "catastrophic_branded_title","bucket": "catastrophic","reason": "Title check pulled a salvage brand the auction missed. Disclosure + rework to retailable spec." }
+  ]
+}

@@ -142,6 +142,12 @@ function makeLotVehicle(id: string, overrides: Partial<LotVehicle> = {}): LotVeh
     daysInInventory: 0,
     suggestedRetail: 10_625,
     askingPrice: 10_625,
+    reconStatus: 'complete',
+    reconEstimate: 500,
+    reconRealizedCost: 500,
+    reconDaysRemaining: 0,
+    reconDaysTotal: 3,
+    reconBucket: 'within',
     ...overrides,
   };
 }

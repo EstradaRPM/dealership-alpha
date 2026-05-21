@@ -50,4 +50,30 @@ export interface LotVehicle {
    * (profit vs. traffic). Deep DealEngine consumption is a downstream slice.
    */
   readonly askingPrice: number;
+  /**
+   * Recon process state (slice #162). Vehicles enter recon on purchase. The
+   * estimate displayed at auction (`reconCost`) is what the player budgeted;
+   * the hidden realized cost may exceed it (asymmetric long tail gated by
+   * condition × source-reliability × mileage extreme). When realized exceeds
+   * estimate by `surpriseThreshold`, recon pauses and an
+   * `inventory:recon_surprise` event fires — the player must `authorizeReconSpend`
+   * or `abandonRecon`.
+   */
+  readonly reconStatus: 'in_progress' | 'paused_for_decision' | 'complete' | 'abandoned';
+  /** Auction-listed recon estimate (the player's budget at point of purchase). */
+  readonly reconEstimate: number;
+  /**
+   * Hidden realized recon total rolled at acquisition. Convention: presented
+   * to the player only piecewise via daily spend ticks and surprise events,
+   * not surfaced directly in UI. Engine + tests read this for determinism.
+   */
+  readonly reconRealizedCost: number;
+  readonly reconDaysRemaining: number;
+  readonly reconDaysTotal: number;
+  /**
+   * Tail-bucket the realized cost came from. `within` for routine recon
+   * (≤ surpriseThreshold over estimate), tail buckets seed the surprise
+   * event template selection.
+   */
+  readonly reconBucket: 'within' | 'minor' | 'major' | 'catastrophic';
 }

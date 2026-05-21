@@ -29,6 +29,22 @@ export type {
 } from './shocks';
 
 export {
+  rollRecon,
+  pickSurpriseTemplate,
+  bucketProbabilities,
+  reliabilityBand,
+  mileageBand,
+  deriveReconSeed,
+  deriveReconSurpriseSeed,
+  loadReconVarianceConfig,
+  loadReconSurpriseEventsConfig,
+} from './reconVariance';
+export type {
+  ReconRollInputs,
+  ReconRollResult,
+} from './reconVariance';
+
+export {
   rollAuctionSourceReliability,
   sampleMotivatedSellerMultiplier,
   loadMotivatedSellerConfig,
@@ -79,4 +95,13 @@ export type {
   ShockSegmentEffect,
   AuctionSourcesConfig,
   AuctionSourceDefinition,
+  ReconVarianceConfig,
+  ReconBucket,
+  ReconBucketId,
+  ReconSurpriseEventsConfig,
+  ReconSurpriseTemplate,
+} from './schemas';
+export {
+  ReconVarianceConfigSchema,
+  ReconSurpriseEventsConfigSchema,
 } from './schemas';

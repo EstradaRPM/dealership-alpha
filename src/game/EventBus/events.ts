@@ -206,6 +206,31 @@ export interface EventMap {
     reconCost: number;
   };
 
+  // Inventory — mid-recon surprise fires when realized cost crosses
+  // surpriseThreshold × estimate (slice #162). Player must call
+  // `authorizeReconSpend` or `abandonRecon`; recon is paused until they do.
+  'inventory:recon_surprise': {
+    day: number;
+    vehicleId: string;
+    templateId: string;
+    reason: string;
+    estimate: number;
+    revisedTotal: number;
+    spentToDate: number;
+    bucket: 'minor' | 'major' | 'catastrophic';
+  };
+
+  // Inventory — recon process finished cleanly (no surprise, or surprise
+  // authorized and amortized through). reconCost on the lot vehicle now
+  // equals the realized total. Slice #162.
+  'inventory:recon_completed': {
+    day: number;
+    vehicleId: string;
+    realizedCost: number;
+    estimate: number;
+    bucket: 'within' | 'minor' | 'major' | 'catastrophic';
+  };
+
   // Economy — money flows posted to the ledger
   'economy:revenue_posted': { day: number; amount: number; label: string };
   'economy:expense_posted': { day: number; amount: number; label: string };

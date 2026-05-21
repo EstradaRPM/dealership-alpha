@@ -173,6 +173,75 @@ export const AuctionSourcesConfigSchema = z
 export type AuctionSourcesConfig = z.infer<typeof AuctionSourcesConfigSchema>;
 export type AuctionSourceDefinition = z.infer<typeof AuctionSourceSchema>;
 
+const ReconBucketSchema = z
+  .object({
+    id: z.enum(['within', 'minor', 'major', 'catastrophic']),
+    multRange: z.tuple([z.number().positive(), z.number().positive()]),
+    baseProb: z.number().min(0).max(1),
+  })
+  .strict()
+  .refine((b) => b.multRange[0] <= b.multRange[1], {
+    message: 'multRange[0] must be <= multRange[1]',
+  });
+
+const TailBucketFactorsSchema = z
+  .object({
+    minor: z.number().nonnegative(),
+    major: z.number().nonnegative(),
+    catastrophic: z.number().nonnegative(),
+  })
+  .strict();
+
+export const ReconVarianceConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    buckets: z.array(ReconBucketSchema).length(4),
+    conditionFactors: z.record(ConditionEnum, TailBucketFactorsSchema),
+    sourceReliabilityFactors: z.object({
+      high: TailBucketFactorsSchema,
+      mid: TailBucketFactorsSchema,
+      low: TailBucketFactorsSchema,
+    }).strict(),
+    mileageFactors: z.object({
+      normal: TailBucketFactorsSchema,
+      extreme: TailBucketFactorsSchema,
+    }).strict(),
+    reliabilityBands: z.object({
+      highMin: z.number().min(0).max(1),
+      midMin: z.number().min(0).max(1),
+    }).strict(),
+    mileageExtremeThreshold: z.number().positive(),
+    surpriseThreshold: z.number().min(1),
+    reconDaysByCondition: z.object({
+      clean: z.number().int().positive(),
+      average: z.number().int().positive(),
+      rough: z.number().int().positive(),
+    }).strict(),
+  })
+  .strict();
+export type ReconVarianceConfig = z.infer<typeof ReconVarianceConfigSchema>;
+export type ReconBucket = z.infer<typeof ReconBucketSchema>;
+export type ReconBucketId = ReconBucket['id'];
+
+const ReconSurpriseTemplateSchema = z
+  .object({
+    id: z.string().min(1),
+    bucket: z.enum(['minor', 'major', 'catastrophic']),
+    reason: z.string().min(1),
+  })
+  .strict();
+
+export const ReconSurpriseEventsConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    templates: z.array(ReconSurpriseTemplateSchema).nonempty(),
+  })
+  .strict();
+export type ReconSurpriseEventsConfig = z.infer<typeof ReconSurpriseEventsConfigSchema>;
+export type ReconSurpriseTemplate = z.infer<typeof ReconSurpriseTemplateSchema>;
+
 export const MarketMarkupConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -247,6 +316,22 @@ export function loadAuctionSourcesConfig(): AuctionSourcesConfig {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw: unknown = require('../../../data/auction-sources.json');
   return parseData(raw, AuctionSourcesConfigSchema, 'data/auction-sources.json');
+}
+
+export function loadReconVarianceConfig(): ReconVarianceConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/recon-variance.json');
+  return parseData(raw, ReconVarianceConfigSchema, 'data/recon-variance.json');
+}
+
+export function loadReconSurpriseEventsConfig(): ReconSurpriseEventsConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/recon-surprise-events.json');
+  return parseData(
+    raw,
+    ReconSurpriseEventsConfigSchema,
+    'data/recon-surprise-events.json',
+  );
 }
 
 export function loadMarketMarkupConfig(): MarketMarkupConfig {

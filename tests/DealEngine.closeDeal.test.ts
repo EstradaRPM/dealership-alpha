@@ -87,8 +87,11 @@ describe('DealEngine.closeDeal — end-to-end', () => {
 
     expect(result.agreedPrice).toBe(agreedPrice);
     expect(result.purchasePrice).toBe(listing.askingPrice);
-    expect(result.reconCost).toBe(listing.reconCost);
-    expect(result.frontGross).toBe(agreedPrice - listing.askingPrice - listing.reconCost);
+    // #162: lot vehicle's reconCost is now running sunk recon (starts at 0,
+    // grows daily during recon). These tests sell same-day-ish without
+    // advancing days, so sunk recon = 0.
+    expect(result.reconCost).toBe(0);
+    expect(result.frontGross).toBe(agreedPrice - listing.askingPrice - 0);
     expect(result.backGross).toBe(0);
   });
 
@@ -130,7 +133,7 @@ describe('DealEngine.closeDeal — end-to-end', () => {
 
     expect(events).toHaveLength(1);
     expect(events[0].customerId).toBe(customerId);
-    expect(events[0].frontGross).toBe(agreedPrice - listing.askingPrice - listing.reconCost);
+    expect(events[0].frontGross).toBe(agreedPrice - listing.askingPrice - 0);
     expect(events[0].backGross).toBe(0);
   });
 

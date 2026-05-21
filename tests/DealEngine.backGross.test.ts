@@ -141,7 +141,8 @@ describe('DealEngine.closeDeal — back gross (VSC only)', () => {
       fniProducts: [{ productId: 'vsc', price: vsc.defaultPrice }],
     });
 
-    expect(result.frontGross).toBe(1_000 - listing.reconCost);
+    // #162: sold same-day before recon spend; sunk recon = 0.
+    expect(result.frontGross).toBe(1_000 - 0);
     expect(result.backGross).toBe(vsc.defaultPrice - vsc.cost);
   });
 });

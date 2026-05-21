@@ -53,5 +53,27 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   `computeAnchor` via `data/market-condition-mods.json`. The field stays in
   the schema because `conditionTier.reconCost` is still load-bearing.
 
+## Recon process (#162)
+- Vehicles enter `reconStatus='in_progress'` on purchase. The auction-listed
+  recon estimate is preserved as `reconEstimate`; the realized cost is rolled
+  via `MarketEconomy.rollRecon` at acquisition (deterministic from
+  `(masterSeed, vehicleId)`) and stored as `reconRealizedCost` (hidden by
+  convention).
+- `reconCost` on `LotVehicle` is the *running sunk cost* (starts at 0, grows
+  daily during recon; final on `complete`; frozen on `abandoned`). DealEngine's
+  `frontGross = agreedPrice − purchasePrice − reconCost` consumes the sunk
+  total.
+- `clock:day_started` / `clock:managerial_prep` advance recon: each tick
+  spends `realizedCost / reconDaysTotal` (rounded). When sunk crosses
+  `reconEstimate × surpriseThreshold` for tail-bucket vehicles, recon pauses
+  (`paused_for_decision`) and `inventory:recon_surprise` fires with a reason
+  picked from `data/recon-surprise-events.json` keyed by bucket.
+- Player API: `authorizeReconSpend(vehicleId)` resumes recon;
+  `abandonRecon(vehicleId)` wholesale-dumps the unit at
+  `bookValueFn(v) − reconCost` (the AC's "current book − reconCostToDate"),
+  posts revenue, and emits `inventory:vehicle_sold`.
+- `bookValueFn` is an optional dep; the default mirror is
+  `purchasePrice + reconCost` (the static stub shape).
+
 ## Notes
 - The auction generator is intentionally simple in v1 (random draw weighted by brand share). It is exposed via interface so a v2 replacement drops in cleanly.

@@ -36,6 +36,12 @@ const mockLotVehicle: LotVehicle = {
   daysInInventory: 3,
   suggestedRetail: 15000,
   askingPrice: 15000,
+  reconStatus: 'complete',
+  reconEstimate: 500,
+  reconRealizedCost: 500,
+  reconDaysRemaining: 0,
+  reconDaysTotal: 3,
+  reconBucket: 'within',
 };
 
 describe('AuctionMenu — smoke', () => {

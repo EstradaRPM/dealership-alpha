@@ -106,6 +106,17 @@ fallback path per slice #155 AC.
   lerped from `stdevHonest` (most reliable) to `stdevUnreliable`, then clipped
   to `[floor, ceiling]`. Tunables live under `marketEconomy.motivatedSeller`.
 
+- `data/recon-variance.json` — tail-shape parameters for the hidden-lemon
+  variance roll (#162). Bucket probabilities (within/minor/major/catastrophic)
+  reshape by `condition × source-reliability-band × mileage-extreme`; the
+  realized recon cost is `estimate × bucketMultiplier`. The catalog also
+  carries `surpriseThreshold` (when sunk recon trips this multiple of estimate,
+  a surprise event fires) and `reconDaysByCondition` (how the daily-spend
+  cadence amortizes the realized total).
+- `data/recon-surprise-events.json` — surprise event templates keyed by tail
+  bucket (#162). The sampler picks one when a tail-bucket vehicle crosses the
+  surprise threshold mid-recon.
+
 Tuning of all five is deliberately neutral so the static-stub midpoint
 (`(purchase + recon) × 1.25`) and the live providers produce comparable
 outputs at the population midpoint — the slice #155 AC is the `#94`
