@@ -82,6 +82,13 @@ export const SalesVisitSchema = z
     // Behavioral down-payment fraction the customer brings (finance only).
     // Clamped at roll time to [tier.minDownPct, 0.5]; cash customers omit it.
     downPaymentBehavior: z.number().min(0).max(0.5).optional(),
+    /**
+     * Whether this visit arrived with a trade. Rolled at visit creation from
+     * the composite (archetype × paymentMethod × creditTier) incidence matrix
+     * (#166). Optional only for legacy fixtures predating #166 — production
+     * customers always carry it once `tradeIncidenceConfig` is wired through.
+     */
+    hasTrade: z.boolean().optional(),
   })
   .strict();
 export type SalesVisit = z.infer<typeof SalesVisitSchema>;

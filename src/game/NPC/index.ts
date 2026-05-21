@@ -47,6 +47,17 @@ export {
   CustomerCurrentVehicleConfigSchema,
 } from './schemas/customer-current-vehicle';
 
+export {
+  rollHasTrade,
+  loadTradeIncidenceConfig,
+} from './factories/TradeIncidenceFactory';
+export type {
+  RollHasTradeContext,
+  RollHasTradeDeps,
+} from './factories/TradeIncidenceFactory';
+export type { TradeIncidenceConfig } from './schemas/trade-incidence';
+export { TradeIncidenceConfigSchema } from './schemas/trade-incidence';
+
 export { loadPersonArchetypes, loadVisitArchetypes } from './CustomerArchetypes';
 
 export { loadCustomerTunables } from './CustomerTunables';

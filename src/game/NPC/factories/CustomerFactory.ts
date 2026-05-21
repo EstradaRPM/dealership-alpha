@@ -7,6 +7,8 @@ import type { Person, Visit, SPACEDVector, PSQTCVector } from '../schemas/custom
 import { PersonSchema, VisitSchema } from '../schemas/customer';
 import type { CustomerCurrentVehicleConfig } from '../schemas/customer-current-vehicle';
 import { rollCurrentVehicle } from './CurrentVehicleFactory';
+import type { TradeIncidenceConfig } from '../schemas/trade-incidence';
+import { rollHasTrade } from './TradeIncidenceFactory';
 
 export const CUSTOMER_FACTORY_NAMESPACE = 'npc.customer.factory';
 
@@ -44,9 +46,17 @@ export interface CreateCustomerDeps {
    */
   currentVehicleConfig?: CustomerCurrentVehicleConfig;
   /**
+   * `data/trade-incidence.json` (#166). Omit to skip hasTrade generation —
+   * the rolled sales Visit comes back without the field (legacy/test path).
+   * Wired in production via the composition root. Like `currentVehicleConfig`,
+   * the credit-tier seam (`classifyCreditTier`) must also be supplied.
+   */
+  tradeIncidenceConfig?: TradeIncidenceConfig;
+  /**
    * Maps a rolled credit score to the credit tier key used by the
-   * currentVehicle payoff distribution. Required when `currentVehicleConfig`
-   * is supplied; omitted otherwise. The caller injects this seam (typically
+   * currentVehicle payoff distribution and the trade-incidence matrix.
+   * Required when either `currentVehicleConfig` or `tradeIncidenceConfig` is
+   * supplied; omitted otherwise. The caller injects this seam (typically
    * `(credit) => classifyCredit(credit, creditTiers)`) so NPC stays free of
    * a DealEngine dep.
    */
@@ -123,6 +133,7 @@ function applyEffectsToVisit(
       ...(base.downPaymentBehavior !== undefined
         ? { downPaymentBehavior: base.downPaymentBehavior }
         : {}),
+      ...(base.hasTrade !== undefined ? { hasTrade: base.hasTrade } : {}),
     };
   } else {
     const pref = { ...base.preferences } as PSQTCVector;
@@ -239,6 +250,26 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
       downPaymentBehavior = Math.min(0.5, Math.max(floor, downRoll));
     }
 
+    // hasTrade (#166) — only stamped when both the config and the credit-tier
+    // classifier seam are wired; legacy callers get a sales Visit without
+    // the field.
+    let hasTrade: boolean | undefined;
+    if (deps.tradeIncidenceConfig && deps.classifyCreditTier) {
+      hasTrade = rollHasTrade(
+        {
+          personArchetypeId: ctx.personArchetypeId,
+          day: ctx.day,
+          slot: ctx.slot,
+        },
+        {
+          masterSeed,
+          config: deps.tradeIncidenceConfig,
+          paymentMethod,
+          creditTier: deps.classifyCreditTier(person.credit),
+        },
+      );
+    }
+
     baseVisit = VisitSchema.parse({
       kind: 'sales',
       person_id: person.id,
@@ -256,6 +287,7 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
       },
       paymentMethod,
       ...(downPaymentBehavior !== undefined ? { downPaymentBehavior } : {}),
+      ...(hasTrade !== undefined ? { hasTrade } : {}),
     });
   } else {
     const p = visitArchetype.preferences;

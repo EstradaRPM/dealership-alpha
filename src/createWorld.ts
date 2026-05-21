@@ -61,6 +61,7 @@ import {
   loadStaffArchetypes,
   loadCustomerTunables,
   loadCustomerCurrentVehicleConfig,
+  loadTradeIncidenceConfig,
 } from './game/NPC';
 import { classifyCredit } from './game/DealEngine';
 import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
@@ -157,6 +158,10 @@ export function createWorld(deps: {
       // #165: stamp a deterministic `currentVehicle` on every customer so
       // the trade-in slices (#166–#171) have real history to work against.
       currentVehicleConfig: loadCustomerCurrentVehicleConfig(),
+      // #166: stamp `hasTrade` on every sales visit via the composite
+      // (archetype × paymentMethod × creditTier) incidence matrix. Doesn't
+      // do anything mechanical yet — the trade flow lands in #167–#171.
+      tradeIncidenceConfig: loadTradeIncidenceConfig(),
       classifyCreditTier: (credit) => classifyCredit(credit, creditTiers),
     },
     dealEngine,
