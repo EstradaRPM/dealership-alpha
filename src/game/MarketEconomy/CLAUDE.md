@@ -38,8 +38,9 @@ vehicleCost(v) = v.purchasePrice + v.reconCost          -- design-locked unchang
 ```
 
 `segmentHeat(v) = personalityBias(category) + segmentDrift(category, currentDay) + activeShockMod(...)`.
-Slice #156 lit up the personality term, #157 the comp-history drift term; the
-shock term stays at 0 until #159 wires `shocks.ts`. Drift is the damped
+Slice #156 lit up the personality term, #157 the comp-history drift term, #159
+the shock term via `shocks.ts` (active only when both `bus` and `masterSeed`
+are wired). Drift is the damped
 weighted mean of stored deltas `(realizedPrice / referenceValue) - 1` —
 wholesale comps use `anchor(v)` as reference, retail comps use `anchor(v) ×
 markup`. Cold start (empty window) → drift=0, the engine reduces to the
@@ -72,8 +73,13 @@ fallback path per slice #155 AC.
   per segment with non-zero brand affinity. Delta = `(newPricing − oldPricing)
   × marketEconomy.competitorInfluence`; entry weight scales by affinity
   (high-affinity segments carry more weight in the drift mean).
-- **Emits:** none yet. #159 lands `market:shock_started/resolved`; #176 lands
-  `market:news_published`.
+- **Consumes** (slice #159): `clock:day_started` → shock scheduler tick
+  (resolve expired, then maybe activate a new shock via a single
+  arrival-prob roll seeded by `(masterSeed, day)`).
+- **Emits** (slice #159): `market:shock_started` on activation,
+  `market:shock_resolved` on expiration. Both carry `instanceId =
+  ${shockId}@${startDay}` so multiple activations of the same catalog shock
+  are disambiguable. `#176` will land `market:news_published`.
 
 ## Data files
 
@@ -90,6 +96,9 @@ fallback path per slice #155 AC.
   per-save personality vector samples from (#156).
 - `data/mileage-distribution.json` — year-conditioned mileage distribution
   consumed by the auction generator (#156).
+- `data/market-shocks.json` — stochastic shock catalog (#159). Each shock
+  carries per-segment signed magnitude bands + a duration band + a rarity
+  weight used by the scheduler's weighted pick.
 
 Tuning of all five is deliberately neutral so the static-stub midpoint
 (`(purchase + recon) × 1.25`) and the live providers produce comparable

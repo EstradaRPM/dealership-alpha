@@ -116,6 +116,42 @@ export type MileageDistributionConfig = z.infer<
   typeof MileageDistributionConfigSchema
 >;
 
+const ShockSegmentEffectSchema = z
+  .object({
+    segment: z.string().min(1),
+    magnitudeMin: z.number(),
+    magnitudeMax: z.number(),
+  })
+  .strict()
+  .refine((e) => e.magnitudeMin <= e.magnitudeMax, {
+    message: 'magnitudeMin must be <= magnitudeMax',
+  });
+
+const ShockDefinitionSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string().min(1),
+    rarityWeight: z.number().positive(),
+    durationMinDays: z.number().int().positive(),
+    durationMaxDays: z.number().int().positive(),
+    segmentEffects: z.array(ShockSegmentEffectSchema).nonempty(),
+  })
+  .strict()
+  .refine((s) => s.durationMinDays <= s.durationMaxDays, {
+    message: 'durationMinDays must be <= durationMaxDays',
+  });
+
+export const MarketShocksConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    shocks: z.array(ShockDefinitionSchema).nonempty(),
+  })
+  .strict();
+export type MarketShocksConfig = z.infer<typeof MarketShocksConfigSchema>;
+export type ShockDefinition = z.infer<typeof ShockDefinitionSchema>;
+export type ShockSegmentEffect = z.infer<typeof ShockSegmentEffectSchema>;
+
 export const MarketMarkupConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -178,6 +214,12 @@ export function loadMileageDistributionConfig(): MileageDistributionConfig {
     MileageDistributionConfigSchema,
     'data/mileage-distribution.json',
   );
+}
+
+export function loadMarketShocksConfig(): MarketShocksConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/market-shocks.json');
+  return parseData(raw, MarketShocksConfigSchema, 'data/market-shocks.json');
 }
 
 export function loadMarketMarkupConfig(): MarketMarkupConfig {

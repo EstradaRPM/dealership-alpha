@@ -118,6 +118,16 @@ export const TunablesSchema = z.object({
     // the synthetic-comp delta. < 1 keeps competitor moves from dominating
     // realized retail comps (slice #158).
     competitorInfluence: z.number().nonnegative(),
+    // Stochastic market-shock scheduler (slice #159). On each
+    // clock:day_started, a single deterministic roll decides whether a new
+    // shock activates (probability `arrivalProbPerDay`). The active list is
+    // capped at `maxConcurrent` — if at cap, the day's roll is skipped.
+    // Selection is rarity-weighted from market-shocks.json; magnitude +
+    // duration draw uniformly from the catalog band.
+    shocks: z.object({
+      arrivalProbPerDay: z.number().min(0).max(1),
+      maxConcurrent: z.number().int().positive(),
+    }),
   }),
   // CompetitorMarket (slice #158). Weekly drift emits
   // `competitor:price_changed` when |new − old| ≥ this threshold. Below the

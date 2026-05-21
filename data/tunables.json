@@ -175,7 +175,11 @@
       "competitorWeight": 0.3,
       "driftDamping": 0.5
     },
-    "competitorInfluence": 0.5
+    "competitorInfluence": 0.5,
+    "shocks": {
+      "arrivalProbPerDay": 0.03,
+      "maxConcurrent": 3
+    }
   },
   "competitorMarket": {
     "pricingChangeThreshold": 0.01

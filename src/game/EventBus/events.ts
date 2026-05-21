@@ -167,6 +167,27 @@ export interface EventMap {
     competitorName: string;
   };
 
+  // MarketEconomy → world (slice #159). Stochastic shock scheduler activates a
+  // catalog shock deterministically from masterSeed + day on clock:day_started
+  // and emits `market:shock_started`; on its expectedEndDay (or earlier under
+  // future preconditions) emits `market:shock_resolved`. The active set
+  // modulates segmentHeat via the composer's activeShockMod term; consumers
+  // (KPI, news) read these for visibility. `instanceId` disambiguates repeat
+  // activations of the same shock id and is `${shockId}@${startDay}`.
+  'market:shock_started': {
+    day: number;
+    shockId: string;
+    instanceId: string;
+    label: string;
+    segmentMagnitudes: Readonly<Record<string, number>>;
+    expectedEndDay: number;
+  };
+  'market:shock_resolved': {
+    day: number;
+    shockId: string;
+    instanceId: string;
+  };
+
   // Inventory — vehicle purchased from auction, moved to lot.
   // Carries the structural snapshot MarketEconomy's compHistory needs to
   // re-compute the anchor of the comp without depending on Inventory

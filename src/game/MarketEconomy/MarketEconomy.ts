@@ -17,6 +17,11 @@ import {
   type MarketPersonalityVector,
 } from './personality';
 import { createSegmentHeat } from './segmentHeat';
+import {
+  createShockScheduler,
+  type ShockScheduler,
+  type ShocksSnapshot,
+} from './shocks';
 import { loadMarketMarkupConfig, type MarketMarkupConfig } from './schemas';
 import { loadBrandTiersConfig, type BrandTiersConfig } from '../SalesProcess';
 import { loadTunables, type Tunables } from '../data';
@@ -39,6 +44,17 @@ export interface MarketEconomy extends LiveProviders {
   readonly compHistory: Pick<
     CompHistory,
     'segmentDrift' | 'liveCount' | 'snapshot' | 'restore'
+  >;
+  /**
+   * Shock scheduler view (slice #159). `activeInstances` is read-only for
+   * KPI/news consumers; `snapshot`/`restore` are the SaveStore persistence
+   * surface. The scheduler ticks internally on `clock:day_started` when a
+   * `bus` + `masterSeed` are wired; the pure-engine path (no bus) leaves the
+   * active list empty and `activeShockMod` returns 0.
+   */
+  readonly shocks: Pick<
+    ShockScheduler,
+    'activeInstances' | 'snapshot' | 'restore'
   >;
   /** Tear down event subscriptions. Idempotent. */
   dispose(): void;
@@ -79,10 +95,25 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
 
   const compHistory = createCompHistory(deps);
   const getCurrentDay = deps.getCurrentDay ?? (() => 1);
+
+  // Shock scheduler is wired only when masterSeed + bus are present — the
+  // pure-engine path used by the #94 calibration test stays at neutral
+  // (activeShockMod always 0). Even with masterSeed alone, no scheduler is
+  // built: the activation cadence is event-driven (clock:day_started).
+  const shockScheduler: ShockScheduler | null =
+    deps.bus && deps.masterSeed !== undefined
+      ? createShockScheduler({
+          masterSeed: deps.masterSeed,
+          bus: deps.bus,
+          tunables: deps.tunables,
+        })
+      : null;
+
   const segmentHeatFn = createSegmentHeat({
     personality,
     compHistory,
     getCurrentDay,
+    activeShockMod: shockScheduler?.activeShockMod,
   });
 
   const providers = createProviders({
@@ -185,6 +216,14 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
     unsubscribers.push(() =>
       bus.unsubscribe('competitor:price_changed', onCompetitorPriceChanged),
     );
+
+    if (shockScheduler) {
+      const onDayStarted = (e: { day: number }): void => {
+        shockScheduler.step(e.day);
+      };
+      bus.subscribe('clock:day_started', onDayStarted);
+      unsubscribers.push(() => bus.unsubscribe('clock:day_started', onDayStarted));
+    }
   }
 
   let disposed = false;
@@ -196,6 +235,12 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
       liveCount: (segment, day) => compHistory.liveCount(segment, day),
       snapshot: (): CompHistorySnapshot => compHistory.snapshot(),
       restore: (snap: CompHistorySnapshot) => compHistory.restore(snap),
+    },
+    shocks: {
+      activeInstances: () => shockScheduler?.activeInstances() ?? [],
+      snapshot: (): ShocksSnapshot =>
+        shockScheduler?.snapshot() ?? { schemaVersion: 1, active: [] },
+      restore: (snap: ShocksSnapshot) => shockScheduler?.restore(snap),
     },
     dispose() {
       if (disposed) return;

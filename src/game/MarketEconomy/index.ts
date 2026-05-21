@@ -20,6 +20,14 @@ export type {
 export { createSegmentHeat } from './segmentHeat';
 export type { SegmentHeatDeps, SegmentHeatFn, ShockModFn } from './segmentHeat';
 
+export { createShockScheduler } from './shocks';
+export type {
+  ActiveShockInstance,
+  ShockScheduler,
+  ShockSchedulerDeps,
+  ShocksSnapshot,
+} from './shocks';
+
 export {
   NEUTRAL_PERSONALITY,
   rollPersonalityVector,
@@ -35,6 +43,7 @@ export {
   MarketMarkupConfigSchema,
   MarketPersonalityDistributionSchema,
   MileageDistributionConfigSchema,
+  MarketShocksConfigSchema,
   loadMarketAnchorConfig,
   loadMarketSegmentFallbackConfig,
   loadMarketDepreciationCurvesConfig,
@@ -42,6 +51,7 @@ export {
   loadMarketMarkupConfig,
   loadMarketPersonalityDistribution,
   loadMileageDistributionConfig,
+  loadMarketShocksConfig,
 } from './schemas';
 export type {
   MarketAnchorConfig,
@@ -51,4 +61,7 @@ export type {
   MarketMarkupConfig,
   MarketPersonalityDistribution,
   MileageDistributionConfig,
+  MarketShocksConfig,
+  ShockDefinition,
+  ShockSegmentEffect,
 } from './schemas';

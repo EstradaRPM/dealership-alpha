@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Stochastic market shock catalog (slice #159). Each shock activates deterministically from the per-save masterSeed + day. Active shocks modulate segment heat additively via activeShockMod(category, vehicle). magnitudeMin/Max are signed unitless multipliers layered into segmentHeat — negatives drop bookValue, positives lift. rarityWeight biases shock selection when a roll fires; absolute arrival cadence is governed by tunables.marketEconomy.shocks. Segments here match the vehicle.category axis (sedan / truck / suv) the heat composer reads.",
+  "shocks": [
+    {
+      "id": "truck_oem_recall",
+      "label": "OEM truck recall",
+      "rarityWeight": 1.0,
+      "durationMinDays": 14,
+      "durationMaxDays": 30,
+      "segmentEffects": [
+        { "segment": "truck", "magnitudeMin": -0.12, "magnitudeMax": -0.05 }
+      ]
+    },
+    {
+      "id": "suv_oem_recall",
+      "label": "OEM SUV recall",
+      "rarityWeight": 0.8,
+      "durationMinDays": 14,
+      "durationMaxDays": 30,
+      "segmentEffects": [
+        { "segment": "suv", "magnitudeMin": -0.10, "magnitudeMax": -0.04 }
+      ]
+    },
+    {
+      "id": "fuel_spike",
+      "label": "Fuel price spike",
+      "rarityWeight": 0.9,
+      "durationMinDays": 21,
+      "durationMaxDays": 45,
+      "segmentEffects": [
+        { "segment": "truck", "magnitudeMin": -0.10, "magnitudeMax": -0.04 },
+        { "segment": "suv",   "magnitudeMin": -0.08, "magnitudeMax": -0.03 },
+        { "segment": "sedan", "magnitudeMin":  0.02, "magnitudeMax":  0.06 }
+      ]
+    },
+    {
+      "id": "auction_supply_crunch",
+      "label": "Auction-house consolidation",
+      "rarityWeight": 0.6,
+      "durationMinDays": 30,
+      "durationMaxDays": 60,
+      "segmentEffects": [
+        { "segment": "sedan", "magnitudeMin": 0.02, "magnitudeMax": 0.06 },
+        { "segment": "truck", "magnitudeMin": 0.02, "magnitudeMax": 0.06 },
+        { "segment": "suv",   "magnitudeMin": 0.02, "magnitudeMax": 0.06 }
+      ]
+    },
+    {
+      "id": "credit_pullback",
+      "label": "Credit pullback",
+      "rarityWeight": 0.5,
+      "durationMinDays": 30,
+      "durationMaxDays": 90,
+      "segmentEffects": [
+        { "segment": "sedan", "magnitudeMin": -0.08, "magnitudeMax": -0.03 },
+        { "segment": "suv",   "magnitudeMin": -0.06, "magnitudeMax": -0.02 },
+        { "segment": "truck", "magnitudeMin": -0.04, "magnitudeMax": -0.01 }
+      ]
+    },
+    {
+      "id": "sedan_oversupply",
+      "label": "Sedan oversupply",
+      "rarityWeight": 0.7,
+      "durationMinDays": 14,
+      "durationMaxDays": 45,
+      "segmentEffects": [
+        { "segment": "sedan", "magnitudeMin": -0.08, "magnitudeMax": -0.03 }
+      ]
+    }
+  ]
+}
