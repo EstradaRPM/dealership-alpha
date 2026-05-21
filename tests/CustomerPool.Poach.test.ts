@@ -86,6 +86,7 @@ const emptyStaffOrg: StaffOrg = {
   getCandidates: () => [],
   hire: () => {},
   fire: () => {},
+    assessCondition: () => null,
 };
 
 // ── PoachEngine unit tests ────────────────────────────────────────────────────

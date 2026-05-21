@@ -30,6 +30,7 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},
+    assessCondition: () => null,
   };
 }
 

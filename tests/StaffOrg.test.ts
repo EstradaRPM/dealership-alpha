@@ -16,6 +16,12 @@ const CHEAP_CONFIG: StaffOrgConfig = {
   hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
   candidatesPerRole: 3,
   headcountCapByTier: { '1': 50, '2': 50, '3': 50 },
+  conditionRead: {
+    minHalfWidthFraction: 0.10,
+    maxHalfWidthFraction: 0.80,
+    maxBiasFraction: 0.50,
+    widthSkillExponent: 0.7,
+  },
 };
 
 function makeSetup(startingCash = STARTING_CASH, config = CHEAP_CONFIG) {
@@ -183,6 +189,7 @@ describe('StaffOrg — headcount cap by tier', () => {
     hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
     candidatesPerRole: 3,
     headcountCapByTier: { '1': 2, '2': 4, '3': 8 },
+    conditionRead: CHEAP_CONFIG.conditionRead,
   };
 
   function makeCapSetup(tier: number) {

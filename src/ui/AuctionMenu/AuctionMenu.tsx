@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import type { AuctionListing, LotVehicle } from '../../game/Inventory';
 import type { EventBus } from '../../game/EventBus';
+import type { ConditionRead } from '../../game/StaffOrg';
 import { colors } from '../theme';
 
 export interface ListingValuation {
@@ -23,6 +24,19 @@ export interface ListingValuation {
  */
 export type ValuationFor = (vehicle: AuctionListing) => ListingValuation;
 export type SourceLabelFor = (sourceId: string) => string;
+/**
+ * UCM condition read (#163). Returns `null` when no `used-car-manager` is on
+ * staff — the auction board then hides the read row entirely (green-operator
+ * difficulty, per #182's "no UCM = raw condition tag only").
+ */
+export type ConditionReadFor = (vehicle: AuctionListing) => ConditionRead | null;
+
+function formatConfidence(c: number): string {
+  if (c >= 0.75) return 'High';
+  if (c >= 0.5) return 'Medium';
+  if (c >= 0.25) return 'Low';
+  return 'Very Low';
+}
 
 function formatRange(low: number, high: number): string {
   return `$${Math.round(low).toLocaleString()}–$${Math.round(high).toLocaleString()}`;
@@ -33,11 +47,12 @@ interface DetailModalProps {
   cash: number;
   valuation: ListingValuation;
   sourceLabel: string;
+  conditionRead: ConditionRead | null;
   onBuy: () => void;
   onClose: () => void;
 }
 
-function DetailModal({ listing, cash, valuation, sourceLabel, onBuy, onClose }: DetailModalProps) {
+function DetailModal({ listing, cash, valuation, sourceLabel, conditionRead, onBuy, onClose }: DetailModalProps) {
   const canAfford = cash >= listing.askingPrice;
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
@@ -81,6 +96,18 @@ function DetailModal({ listing, cash, valuation, sourceLabel, onBuy, onClose }: 
               ${listing.reconCost.toLocaleString()}
             </Text>
           </View>
+          {conditionRead && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>UCM Recon Read</Text>
+              <Text style={styles.detailValue}>
+                {formatRange(conditionRead.estimatedReconLow, conditionRead.estimatedReconHigh)}
+                {'  '}
+                <Text style={styles.confidenceText}>
+                  ({formatConfidence(conditionRead.confidence)})
+                </Text>
+              </Text>
+            </View>
+          )}
 
           <View style={styles.reportBox}>
             <Text style={styles.reportLabel}>Condition Report</Text>
@@ -160,6 +187,12 @@ export interface AuctionMenuProps {
    */
   sourceLabelFor?: SourceLabelFor;
   /**
+   * Pre-purchase UCM condition read (#163). Returns null when no UCM is
+   * hired — the modal then omits the read row entirely. Defaults to always
+   * null so tests + no-UCM saves render unchanged.
+   */
+  conditionReadFor?: ConditionReadFor;
+  /**
    * Bus for live re-render on `market:shock_started` / `market:shock_resolved`
    * (slice #161 AC). Optional — without it, the range stays computed from
    * the providers as of mount.
@@ -175,6 +208,7 @@ export function AuctionMenu({
   cash,
   valuationFor,
   sourceLabelFor,
+  conditionReadFor,
   bus,
   onBuy,
   onClose,
@@ -197,6 +231,7 @@ export function AuctionMenu({
   const valuate: ValuationFor =
     valuationFor ?? ((l) => ({ bookValue: l.askingPrice, marketPrice: l.askingPrice }));
   const sourceName: SourceLabelFor = sourceLabelFor ?? ((id) => id);
+  const readFor: ConditionReadFor = conditionReadFor ?? (() => null);
 
   const handleBuy = () => {
     if (!selected) return;
@@ -260,6 +295,7 @@ export function AuctionMenu({
           cash={cash}
           valuation={valuate(selected)}
           sourceLabel={sourceName(selected.sourceId)}
+          conditionRead={readFor(selected)}
           onBuy={handleBuy}
           onClose={() => setSelected(null)}
         />
@@ -443,6 +479,11 @@ const styles = StyleSheet.create({
   },
   reconValue: {
     color: colors.danger,
+  },
+  confidenceText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '500',
   },
   reportBox: {
     backgroundColor: colors.base,

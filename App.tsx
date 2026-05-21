@@ -413,6 +413,15 @@ export default function App() {
           cash={cash}
           valuationFor={world.marketEconomy.valuationFor}
           sourceLabelFor={world.marketEconomy.sourceLabelFor}
+          conditionReadFor={(l) =>
+            world.staffOrg.assessCondition({
+              id: l.id,
+              reconEstimate: l.reconCost,
+              condition: l.condition,
+              mileage: l.mileage,
+              sourceId: l.sourceId,
+            })
+          }
           bus={bus}
           onBuy={(listingId) => world.inventory.buyFromAuction(listingId)}
           onClose={() => nav.back()}

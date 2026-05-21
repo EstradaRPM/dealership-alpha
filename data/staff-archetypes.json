@@ -182,6 +182,34 @@
     }
   },
 
+  "entry_used_car_manager": {
+    "role_id": "used-car-manager",
+    "trait_pool": ["transparency", "aggressiveness", "ego", "charisma"],
+    "trait_count": { "min": 2, "max": 3 },
+    "skills": {
+      "condition_reading": { "mu": 42, "sigma": 10 },
+      "pricing":           { "mu": 50, "sigma": 9 },
+      "mechanical_aptitude": { "mu": 48, "sigma": 10 }
+    },
+    "resources": {
+      "stamina": { "mu": 76, "sigma": 8 }
+    }
+  },
+
+  "veteran_used_car_manager": {
+    "role_id": "used-car-manager",
+    "trait_pool": ["transparency", "closer", "aggressiveness", "ego", "charisma"],
+    "trait_count": { "min": 3, "max": 4 },
+    "skills": {
+      "condition_reading": { "mu": 78, "sigma": 7 },
+      "pricing":           { "mu": 72, "sigma": 8 },
+      "mechanical_aptitude": { "mu": 70, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 72, "sigma": 8 }
+    }
+  },
+
   "dealmaker_gm": {
     "role_id": "gm",
     "trait_pool": ["closer", "charisma", "aggressiveness", "ego", "transparency"],

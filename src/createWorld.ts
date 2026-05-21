@@ -31,7 +31,15 @@ import { createStaffOrg, type StaffOrg } from './game/StaffOrg';
 import { createCapacityManager } from './game/CapacityManager';
 import type { CapacityManager } from './game/CapacityManager';
 import { createStaffFloorDrain } from './game/StaffDispatch';
-import { createMarketEconomy, type MarketEconomy } from './game/MarketEconomy';
+import {
+  createMarketEconomy,
+  rollAuctionSourceReliability,
+  loadAuctionSourcesConfig,
+  loadReconVarianceConfig,
+  rollRecon,
+  deriveReconSeed,
+  type MarketEconomy,
+} from './game/MarketEconomy';
 import { createStaffMorale, type StaffMorale } from './game/StaffMorale';
 import {
   createDayLoopController,
@@ -114,7 +122,22 @@ export function createWorld(deps: {
   // Legacy live-day arrival path OFF: FloorSim owns arrivals via the injected
   // customer-source seam below.
   const economy = createEconomy({ bus, startingCash: 50_000 });
-  const inventory = createInventory({ bus, masterSeed, economy });
+  // Per-save auction-source reliability rolled once + shared between Inventory
+  // (recon realization at acquisition) and StaffOrg (#163 UCM pre-purchase
+  // read). Both need the same hidden reliability or the read drifts from the
+  // realized truth.
+  const auctionSourceReliability = rollAuctionSourceReliability(
+    masterSeed,
+    loadAuctionSourcesConfig(),
+  );
+  const reconVarianceCfg = loadReconVarianceConfig();
+  const inventory = createInventory({
+    bus,
+    masterSeed,
+    economy,
+    auctionSourceReliability,
+    reconVariance: reconVarianceCfg,
+  });
   const dealEngine = createDealEngine({ bus, inventory, economy });
   // CustomerPool gets the DealEngine + inventory + tier-catalog wiring (#146)
   // so dispatch(CLOSE) routes real closes through DealEngine.closeDeal — the
@@ -147,6 +170,23 @@ export function createWorld(deps: {
     taxonomy: staffTaxonomy,
     archetypes: loadStaffArchetypes(),
     getTier: () => tierManager.currentTier,
+    // UCM condition-read truth seam (#163). Replays the same recon roll that
+    // Inventory.buyFromAuction will use at acquisition — deterministic from
+    // (masterSeed, listing.id) — so the read targets the realized truth the
+    // player would actually realize on purchase.
+    realizedReconFor: (v) => {
+      const reliability = auctionSourceReliability.reliability[v.sourceId] ?? 0.5;
+      return rollRecon(
+        {
+          estimate: v.reconEstimate,
+          condition: v.condition,
+          mileage: v.mileage,
+          sourceReliability: reliability,
+        },
+        deriveReconSeed(masterSeed, v.id),
+        reconVarianceCfg,
+      ).realizedCost;
+    },
   });
   // StaffMorale owns the per-staff morale dimension over the StaffOrg roster:
   // recognition on auto-closes, end-of-day workload drift, overnight pay

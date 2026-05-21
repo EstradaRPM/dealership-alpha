@@ -29,6 +29,7 @@ const emptyStaffOrg: StaffOrg = {
   getCandidates: () => [],
   hire: () => {},
   fire: () => {},
+    assessCondition: () => null,
 };
 
 /** Mirrors App.tsx's #114 composition root: CapacityManager / StaffDispatch /
@@ -128,6 +129,7 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},
+    assessCondition: () => null,
   };
 }
 

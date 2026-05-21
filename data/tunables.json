@@ -66,6 +66,12 @@
       "1": 4,
       "2": 8,
       "3": 16
+    },
+    "conditionRead": {
+      "minHalfWidthFraction": 0.10,
+      "maxHalfWidthFraction": 0.80,
+      "maxBiasFraction": 0.50,
+      "widthSkillExponent": 0.7
     }
   },
   "staffMorale": {

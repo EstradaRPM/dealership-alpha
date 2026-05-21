@@ -49,6 +49,14 @@
     "promotes_to": ["gm"],
     "promotion_gates": { "effectiveness": 0.75, "trustworthiness": 0.7 }
   },
+  "used-car-manager": {
+    "tier": "manager",
+    "department": "sales",
+    "grants_skills": ["condition_reading", "pricing"],
+    "promotes_to": ["gm"],
+    "promotion_gates": { "effectiveness": 0.7, "trustworthiness": 0.65 },
+    "hireTier": 2
+  },
   "gm": {
     "tier": "gm",
     "department": null,

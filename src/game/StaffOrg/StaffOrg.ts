@@ -5,6 +5,27 @@ import type { StaffArchetypeCatalog } from '../NPC/schemas/staff-archetype';
 import { createStaff, type StaffWithComposites } from '../NPC/factories/StaffFactory';
 import { loadStaffOrgConfig, type StaffOrgConfig } from './staffOrgData';
 import type { CandidateListing } from './types';
+import {
+  computeConditionRead,
+  deriveConditionReadSeed,
+  CONDITION_READING_SKILL_ID,
+  type ConditionRead,
+} from './conditionRead';
+
+/**
+ * Narrow vehicle shape the UCM reads. Decoupled from `AuctionListing` so
+ * StaffOrg stays independent of Inventory's surface — callers project the
+ * minimum needed fields (#163). The realized-recon seam reads `mileage`,
+ * `condition`, `sourceId`, `reconEstimate` to produce the hidden truth the
+ * read is anchored on.
+ */
+export interface ConditionAssessInput {
+  readonly id: string;
+  readonly reconEstimate: number;
+  readonly condition: 'clean' | 'average' | 'rough';
+  readonly mileage: number;
+  readonly sourceId: string;
+}
 
 export interface StaffOrgDeps {
   bus: EventBus;
@@ -14,6 +35,14 @@ export interface StaffOrgDeps {
   archetypes: StaffArchetypeCatalog;
   config?: StaffOrgConfig;
   getTier?: () => number;
+  /**
+   * Hidden-truth provider for the UCM condition read (#163). Receives the
+   * narrow vehicle shape and returns the realized recon cost the engine
+   * already rolled (or will roll) for that vehicle. Omit to disable
+   * `assessCondition` entirely — without a truth seam, `assessCondition`
+   * always returns null even when a UCM is on staff (the test/fixture path).
+   */
+  realizedReconFor?: (vehicle: ConditionAssessInput) => number;
 }
 
 export interface StaffOrg {
@@ -21,6 +50,14 @@ export interface StaffOrg {
   getCandidates(roleId: string): readonly CandidateListing[];
   hire(candidateId: string): void;
   fire(staffId: string): void;
+  /**
+   * Pre-purchase condition read for an auction listing (#163). Returns the
+   * UCM's skill-gated `[estimatedReconLow, estimatedReconHigh] + confidence`
+   * band, or `null` when (a) no `used-car-manager` is on the roster, or
+   * (b) the `realizedReconFor` truth seam wasn't wired. Same vehicle + same
+   * UCM + same masterSeed → same read.
+   */
+  assessCondition(vehicle: ConditionAssessInput): ConditionRead | null;
 }
 
 export class StaffOrgError extends Error {
@@ -34,6 +71,7 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   const { bus, economy, masterSeed, taxonomy, archetypes } = deps;
   const config = deps.config ?? loadStaffOrgConfig();
   const getTier = deps.getTier;
+  const realizedReconFor = deps.realizedReconFor;
 
   const roster: StaffWithComposites[] = [];
   // candidateId → CandidateListing; cleared on day advance
@@ -143,6 +181,30 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         day: currentDay,
         hiringCost: listing.hiringCost,
       });
+    },
+
+    assessCondition(vehicle: ConditionAssessInput): ConditionRead | null {
+      if (!realizedReconFor) return null;
+      // Pick the UCM with the highest condition_reading skill. Ties broken by
+      // id (stable) so two equally-skilled UCMs don't flicker between reads.
+      let best: StaffWithComposites | null = null;
+      let bestSkill = -Infinity;
+      for (const s of roster) {
+        if (s.role_id !== 'used-car-manager') continue;
+        const skill = s.skills[CONDITION_READING_SKILL_ID] ?? 0;
+        if (skill > bestSkill || (skill === bestSkill && best !== null && s.id < best.id)) {
+          best = s;
+          bestSkill = skill;
+        }
+      }
+      if (!best) return null;
+
+      const realized = realizedReconFor(vehicle);
+      const seed = deriveConditionReadSeed(masterSeed, vehicle.id, best.id);
+      return computeConditionRead(
+        { realizedRecon: realized, estimate: vehicle.reconEstimate, skill: bestSkill, seed },
+        config.conditionRead,
+      );
     },
 
     fire(staffId: string): void {

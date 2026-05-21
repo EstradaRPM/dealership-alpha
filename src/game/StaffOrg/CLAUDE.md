@@ -5,7 +5,22 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 ## Public API (`index.ts`)
 - `createStaffOrg()` → `StaffOrg`. Error type: `StaffOrgError`.
 - `loadStaffOrgConfig` — reads `data/staff-roles.json` + related tunables.
-- Types: `StaffOrg`, `StaffOrgDeps`, `StaffOrgConfig`, `CandidateListing`.
+- `computeConditionRead`, `deriveConditionReadSeed` — pure helpers behind
+  `assessCondition` (also exported for fixture/test use).
+- Types: `StaffOrg`, `StaffOrgDeps`, `StaffOrgConfig`, `CandidateListing`,
+  `ConditionAssessInput`, `ConditionRead`, `ConditionReadConfig`.
+
+## UCM condition read (#163)
+- `assessCondition(vehicle) → ConditionRead | null`. Returns null when no
+  `used-car-manager` is on the roster OR when `realizedReconFor` is omitted
+  (test/fixture path). Picks the highest-skilled UCM (`condition_reading`).
+- The pure math lives in `conditionRead.ts`. Band half-width shrinks with
+  skill via `skill^widthSkillExponent`; the center can be off realized by
+  up to `maxBiasFraction × estimate` at zero skill, scaling linearly to 0.
+- Determinism: `deriveConditionReadSeed(masterSeed, vehicleId, staffId)` —
+  identical seed + UCM + vehicle → identical read. Different UCMs reading
+  the same vehicle get different (but skill-bounded) bands.
+- Tunables in `data/tunables.json#staffOrg.conditionRead`.
 
 ## Events
 - **Emits:** `staff:hired` (with `hiringCost`), `staff:fired`.

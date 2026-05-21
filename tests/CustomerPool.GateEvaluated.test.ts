@@ -33,6 +33,7 @@ const emptyStaffOrg: StaffOrg = {
   getCandidates: () => [],
   hire: () => {},
   fire: () => {},
+    assessCondition: () => null,
 };
 
 type GatePayload = {

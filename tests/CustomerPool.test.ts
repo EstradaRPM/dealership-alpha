@@ -33,6 +33,7 @@ const emptyStaffOrg: StaffOrg = {
   getCandidates: () => [],
   hire: () => {},
   fire: () => {},
+    assessCondition: () => null,
 };
 
 function makeSetup(initialDay = 0, skill?: Parameters<typeof createCustomerPool>[0]['skill']) {

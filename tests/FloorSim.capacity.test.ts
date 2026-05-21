@@ -27,6 +27,7 @@ const emptyStaffOrg: StaffOrg = {
   getCandidates: () => [],
   hire: () => {},
   fire: () => {},
+    assessCondition: () => null,
 };
 
 function harness(seed: number, capacityBase: number) {
