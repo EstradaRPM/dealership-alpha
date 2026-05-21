@@ -75,5 +75,20 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 - `bookValueFn` is an optional dep; the default mirror is
   `purchasePrice + reconCost` (the static stub shape).
 
+## Paid inspection (#164)
+- `requestInspection(listingId)` pays `tunables.inventory.inspection.cost`
+  via Economy, marks the listing `inspectionStatus='pending'`, and stashes it
+  in a private `pendingInspections` map so the daily auction-board regen
+  doesn't blow it away. `inspectionAvailableDay = currentDay + daysToComplete`.
+- `buyFromAuction` throws while the listing is `pending`; once `completed`,
+  the unit can be purchased through the same code path as a fresh listing.
+- On `clock:managerial_prep` / `clock:day_started` the inspection advances:
+  `pending → completed` (rolls the realized recon via `rollRecon` with the
+  same `deriveReconSeed(masterSeed, listingId)` namespace `buyFromAuction`
+  uses, then publishes a band of `realized ± realized × halfWidthFraction`).
+  `completed` listings expire one day later if not purchased.
+- `getAuctionListings()` returns the daily board merged with any pending
+  inspections so the UI sees one combined view.
+
 ## Notes
 - The auction generator is intentionally simple in v1 (random draw weighted by brand share). It is exposed via interface so a v2 replacement drops in cleanly.

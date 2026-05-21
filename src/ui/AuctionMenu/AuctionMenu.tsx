@@ -48,12 +48,27 @@ interface DetailModalProps {
   valuation: ListingValuation;
   sourceLabel: string;
   conditionRead: ConditionRead | null;
+  inspectionCost: number;
   onBuy: () => void;
+  onRequestInspection: () => void;
   onClose: () => void;
 }
 
-function DetailModal({ listing, cash, valuation, sourceLabel, conditionRead, onBuy, onClose }: DetailModalProps) {
-  const canAfford = cash >= listing.askingPrice;
+function DetailModal({
+  listing,
+  cash,
+  valuation,
+  sourceLabel,
+  conditionRead,
+  inspectionCost,
+  onBuy,
+  onRequestInspection,
+  onClose,
+}: DetailModalProps) {
+  const pending = listing.inspectionStatus === 'pending';
+  const canAfford = cash >= listing.askingPrice && !pending;
+  const canInspect =
+    listing.inspectionStatus === 'none' && cash >= inspectionCost;
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -108,6 +123,25 @@ function DetailModal({ listing, cash, valuation, sourceLabel, conditionRead, onB
               </Text>
             </View>
           )}
+          {listing.inspectionStatus === 'completed' && listing.inspectionResult && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Inspection Read</Text>
+              <Text style={styles.detailValue}>
+                {formatRange(
+                  listing.inspectionResult.reconLow,
+                  listing.inspectionResult.reconHigh,
+                )}
+              </Text>
+            </View>
+          )}
+          {pending && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Inspection</Text>
+              <Text style={styles.detailValue}>
+                Pending — ready day {listing.inspectionAvailableDay}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.reportBox}>
             <Text style={styles.reportLabel}>Condition Report</Text>
@@ -122,9 +156,31 @@ function DetailModal({ listing, cash, valuation, sourceLabel, conditionRead, onB
             accessibilityState={{ disabled: !canAfford }}
           >
             <Text style={[styles.buyBtnText, !canAfford && styles.buyBtnTextDisabled]}>
-              {canAfford ? `Buy for $${listing.askingPrice.toLocaleString()}` : 'Insufficient Funds'}
+              {pending
+                ? 'Inspection Pending'
+                : canAfford
+                  ? `Buy for $${listing.askingPrice.toLocaleString()}`
+                  : 'Insufficient Funds'}
             </Text>
           </TouchableOpacity>
+          {listing.inspectionStatus === 'none' && (
+            <TouchableOpacity
+              style={[styles.inspectBtn, !canInspect && styles.inspectBtnDisabled]}
+              onPress={canInspect ? onRequestInspection : undefined}
+              disabled={!canInspect}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canInspect }}
+            >
+              <Text
+                style={[
+                  styles.inspectBtnText,
+                  !canInspect && styles.inspectBtnTextDisabled,
+                ]}
+              >
+                Request Inspection (${inspectionCost.toLocaleString()})
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </Modal>
@@ -157,6 +213,12 @@ function ListingRow({ listing, valuation, sourceLabel, onPress }: ListingRowProp
           {listing.trim} · {listing.mileage.toLocaleString()} mi
         </Text>
         <Text style={styles.rowSource}>{sourceLabel}</Text>
+        {listing.inspectionStatus === 'pending' && (
+          <Text style={styles.rowInspection}>Inspection pending</Text>
+        )}
+        {listing.inspectionStatus === 'completed' && (
+          <Text style={styles.rowInspection}>Inspected</Text>
+        )}
       </View>
       <View style={styles.rowRight}>
         <Text style={[styles.rowCondition, conditionColor(listing.condition)]}>
@@ -198,7 +260,17 @@ export interface AuctionMenuProps {
    * the providers as of mount.
    */
   bus?: EventBus;
+  /**
+   * Inspection cost displayed on the "Request Inspection" button (#164).
+   * Defaults to 0 → the button is rendered disabled if not wired (tests).
+   */
+  inspectionCost?: number;
   onBuy: (listingId: string) => void;
+  /**
+   * Pay for a pre-purchase inspection on this listing (#164). Optional —
+   * tests without an Inventory wired can omit it; the button no-ops.
+   */
+  onRequestInspection?: (listingId: string) => void;
   onClose: () => void;
 }
 
@@ -210,7 +282,9 @@ export function AuctionMenu({
   sourceLabelFor,
   conditionReadFor,
   bus,
+  inspectionCost = 0,
   onBuy,
+  onRequestInspection,
   onClose,
 }: AuctionMenuProps) {
   const [selected, setSelected] = useState<AuctionListing | null>(null);
@@ -236,6 +310,11 @@ export function AuctionMenu({
   const handleBuy = () => {
     if (!selected) return;
     onBuy(selected.id);
+    setSelected(null);
+  };
+  const handleRequestInspection = () => {
+    if (!selected || !onRequestInspection) return;
+    onRequestInspection(selected.id);
     setSelected(null);
   };
 
@@ -296,7 +375,9 @@ export function AuctionMenu({
           valuation={valuate(selected)}
           sourceLabel={sourceName(selected.sourceId)}
           conditionRead={readFor(selected)}
+          inspectionCost={inspectionCost}
           onBuy={handleBuy}
+          onRequestInspection={handleRequestInspection}
           onClose={() => setSelected(null)}
         />
       )}
@@ -520,5 +601,29 @@ const styles = StyleSheet.create({
   },
   buyBtnTextDisabled: {
     color: colors.border,
+  },
+  inspectBtn: {
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  inspectBtnDisabled: {
+    backgroundColor: colors.surface,
+  },
+  inspectBtnText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  inspectBtnTextDisabled: {
+    color: colors.border,
+  },
+  rowInspection: {
+    color: colors.primary,
+    fontSize: 11,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });

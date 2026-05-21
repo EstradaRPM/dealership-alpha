@@ -15,6 +15,7 @@ import {
 } from '../MarketEconomy';
 import { generateAuctionListings } from './auctionGenerator';
 import { loadVehicleData } from './vehicleData';
+import { loadInventoryConfig, type InventoryConfig } from './inventoryConfig';
 import type { VehicleData } from './vehicleData';
 import type { AuctionListing, LotVehicle } from './types';
 
@@ -48,6 +49,16 @@ export interface Inventory {
    * posts as a loss via Economy. No-op if vehicle isn't paused for a decision.
    */
   abandonRecon(vehicleId: string): void;
+  /**
+   * Player pays for a pre-purchase inspection on an auction listing (#164).
+   * Posts the inspection cost via Economy and blocks purchase of the listing
+   * until `inspectionAvailableDay` (currentDay + daysToComplete). The listing
+   * is held across the day rollover (pulled out of the daily regenerated board)
+   * so the result can be presented and the unit can be bought on the next
+   * morning. Idempotent for status !== 'none'; throws if the listing id is
+   * unknown.
+   */
+  requestInspection(listingId: string): void;
 }
 
 export interface InventoryDeps {
@@ -65,6 +76,7 @@ export interface InventoryDeps {
   reconVariance?: ReconVarianceConfig;
   reconSurprises?: ReconSurpriseEventsConfig;
   auctionSourceReliability?: AuctionSourceReliability;
+  inventoryConfig?: InventoryConfig;
 }
 
 export function createInventory(deps: InventoryDeps): Inventory {
@@ -75,11 +87,17 @@ export function createInventory(deps: InventoryDeps): Inventory {
   const sourceReliability =
     deps.auctionSourceReliability ??
     rollAuctionSourceReliability(masterSeed, loadAuctionSourcesConfig());
+  const inventoryConfig = deps.inventoryConfig ?? loadInventoryConfig();
   const bookValueFn =
     deps.bookValueFn ?? ((v: LotVehicle) => v.purchasePrice + v.reconCost);
 
   let currentDay = 1;
   let auctionListings: AuctionListing[] = [];
+  // Listings the player has paid to inspect (#164). Pulled out of the daily
+  // regenerated board on `requestInspection` so they survive the rollover; the
+  // pending result resolves the morning of `inspectionAvailableDay`. Re-merged
+  // into `getAuctionListings()` so the UI sees one combined board.
+  const pendingInspections = new Map<string, AuctionListing>();
   const lotVehicles = new Map<string, LotVehicle>();
   let lastPreparedDay = 0;
 
@@ -88,9 +106,54 @@ export function createInventory(deps: InventoryDeps): Inventory {
     lastPreparedDay = day;
     currentDay = day;
     auctionListings = generateAuctionListings(day, masterSeed, vehicleData);
+    advanceInspections(day);
     for (const [id, v] of lotVehicles) {
       const aged = { ...v, daysInInventory: day - v.arrivalDay };
       lotVehicles.set(id, advanceRecon(aged, day));
+    }
+  }
+
+  function rollListingRealizedRecon(listing: AuctionListing): number {
+    const reliability =
+      sourceReliability.reliability[listing.sourceId] ?? 0.5;
+    return rollRecon(
+      {
+        estimate: listing.reconCost,
+        condition: listing.condition,
+        mileage: listing.mileage,
+        sourceReliability: reliability,
+      },
+      deriveReconSeed(masterSeed, listing.id),
+      reconVariance,
+    ).realizedCost;
+  }
+
+  function advanceInspections(day: number): void {
+    for (const [id, listing] of pendingInspections) {
+      if (
+        listing.inspectionStatus === 'pending' &&
+        listing.inspectionAvailableDay !== undefined &&
+        day >= listing.inspectionAvailableDay
+      ) {
+        const realized = rollListingRealizedRecon(listing);
+        const halfWidth = realized * inventoryConfig.inspection.halfWidthFraction;
+        const reconLow = Math.max(0, Math.round(realized - halfWidth));
+        const reconHigh = Math.max(reconLow, Math.round(realized + halfWidth));
+        pendingInspections.set(id, {
+          ...listing,
+          inspectionStatus: 'completed',
+          inspectionResult: { reconLow, reconHigh },
+        });
+        continue;
+      }
+      // Completed listings expire one day after they were made available.
+      if (
+        listing.inspectionStatus === 'completed' &&
+        listing.inspectionAvailableDay !== undefined &&
+        day > listing.inspectionAvailableDay
+      ) {
+        pendingInspections.delete(id);
+      }
     }
   }
 
@@ -171,7 +234,8 @@ export function createInventory(deps: InventoryDeps): Inventory {
 
   return {
     getAuctionListings() {
-      return auctionListings;
+      if (pendingInspections.size === 0) return auctionListings;
+      return [...auctionListings, ...pendingInspections.values()];
     },
 
     getLotVehicles() {
@@ -183,8 +247,14 @@ export function createInventory(deps: InventoryDeps): Inventory {
     },
 
     buyFromAuction(listingId) {
-      const listing = auctionListings.find((l) => l.id === listingId);
+      const pending = pendingInspections.get(listingId);
+      const listing = pending ?? auctionListings.find((l) => l.id === listingId);
       if (!listing) throw new Error(`No auction listing "${listingId}"`);
+      if (listing.inspectionStatus === 'pending') {
+        throw new Error(
+          `Listing "${listingId}" has a pending inspection — purchase blocked until day ${listing.inspectionAvailableDay}`,
+        );
+      }
 
       economy.postExpense(listing.askingPrice, `Auction purchase: ${listing.id}`);
 
@@ -229,6 +299,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
       };
       lotVehicles.set(lotVehicle.id, lotVehicle);
       auctionListings = auctionListings.filter((l) => l.id !== listingId);
+      pendingInspections.delete(listingId);
 
       bus.publish('inventory:vehicle_purchased', {
         day: currentDay,
@@ -285,6 +356,28 @@ export function createInventory(deps: InventoryDeps): Inventory {
         reconStatus: 'in_progress',
         reconDaysRemaining: daysRemaining,
       });
+    },
+
+    requestInspection(listingId) {
+      if (pendingInspections.has(listingId)) return;
+      const idx = auctionListings.findIndex((l) => l.id === listingId);
+      if (idx === -1) throw new Error(`No auction listing "${listingId}"`);
+      const listing = auctionListings[idx];
+
+      economy.postExpense(
+        inventoryConfig.inspection.cost,
+        `Inspection: ${listing.id}`,
+      );
+
+      const availableDay =
+        currentDay + inventoryConfig.inspection.daysToComplete;
+      const updated: AuctionListing = {
+        ...listing,
+        inspectionStatus: 'pending',
+        inspectionAvailableDay: availableDay,
+      };
+      auctionListings = auctionListings.filter((_, i) => i !== idx);
+      pendingInspections.set(listingId, updated);
     },
 
     abandonRecon(vehicleId) {

@@ -197,6 +197,13 @@
   "competitorMarket": {
     "pricingChangeThreshold": 0.01
   },
+  "inventory": {
+    "inspection": {
+      "cost": 250,
+      "halfWidthFraction": 0.05,
+      "daysToComplete": 1
+    }
+  },
   "ownership": {
     "hoursOfOp": {
       "options": [

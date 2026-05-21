@@ -9,6 +9,7 @@ import type {
   AdvanceResult,
 } from './src/game/FloorSim';
 import { loadTunables } from './src/game/data';
+import { loadInventoryConfig } from './src/game/Inventory';
 import { loadStaffTaxonomy } from './src/game/NPC';
 import { createWorld, makeSeed, type World } from './src/createWorld';
 import { CharacterCreation } from './src/ui/CharacterCreation';
@@ -55,6 +56,9 @@ const RENDER_LOOP = loadTunables().renderLoop;
 // the composition root holds the scaled ticksPerDay. Feeding it into FloorSim
 // is a downstream slice (FloorSim/#99 is locked and reads its own value).
 const HOURS_OF_OP = loadTunables().ownership.hoursOfOp;
+
+// Paid pre-purchase inspection cost shown on the auction-board action (#164).
+const INSPECTION_COST = loadInventoryConfig().inspection.cost;
 
 // Primary customer-facing role the Hiring lever recruits for (v1 slice is
 // sales-only; multi-role hiring is downstream).
@@ -423,7 +427,12 @@ export default function App() {
             })
           }
           bus={bus}
+          inspectionCost={INSPECTION_COST}
           onBuy={(listingId) => world.inventory.buyFromAuction(listingId)}
+          onRequestInspection={(listingId) => {
+            world.inventory.requestInspection(listingId);
+            setCash(world.economy.cash);
+          }}
           onClose={() => nav.back()}
         />
       </>

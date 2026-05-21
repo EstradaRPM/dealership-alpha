@@ -1,6 +1,13 @@
 export type VehicleCondition = 'clean' | 'average' | 'rough';
 export type VehicleCategory = 'sedan' | 'truck' | 'suv';
 
+export interface InspectionResult {
+  readonly reconLow: number;
+  readonly reconHigh: number;
+}
+
+export type InspectionStatus = 'none' | 'pending' | 'completed';
+
 export interface AuctionListing {
   readonly id: string;
   readonly templateId: string;
@@ -20,6 +27,19 @@ export interface AuctionListing {
    * honest book vs. wild swings.
    */
   readonly sourceId: string;
+  /**
+   * Paid pre-purchase inspection state (#164). `none` = no inspection
+   * requested; `pending` = paid, awaiting result (purchase blocked); `completed`
+   * = result ready, listing held into a single follow-up day for purchase.
+   */
+  readonly inspectionStatus: InspectionStatus;
+  /** Day the inspection result becomes available (and purchase unblocks). */
+  readonly inspectionAvailableDay?: number;
+  /**
+   * Tightened recon band produced by the inspection (#164). Centered on the
+   * realized recon truth with half-width = realized × halfWidthFraction.
+   */
+  readonly inspectionResult?: InspectionResult;
 }
 
 export interface LotVehicle {

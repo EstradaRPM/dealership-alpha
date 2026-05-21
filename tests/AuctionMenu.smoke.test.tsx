@@ -17,6 +17,7 @@ const mockListing: AuctionListing = {
   reconCost: 1200,
   category: 'sedan',
   sourceId: 'manheim_digital',
+  inspectionStatus: 'none',
 };
 
 const mockLotVehicle: LotVehicle = {

@@ -137,6 +137,7 @@ function buildListing(args: BuildListingArgs): AuctionListing {
     reconCost: tier.reconCost,
     category: template.category,
     sourceId: sourcePick.id,
+    inspectionStatus: 'none',
   };
 }
 
