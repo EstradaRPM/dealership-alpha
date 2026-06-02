@@ -8,11 +8,16 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 
 **Authoritative spec:** GitHub issue #1 (`gh issue view 1`) is the source of truth. For day-to-day work, prefer `docs/spec-condensed.md` — it distills the load-bearing facts. Re-read issue #1 only when a question isn't answered by the condensed doc or when #1 has just changed.
 
-**Execution order & progress:** issue #126 (`gh issue view 126`) is the v1 work tracker — read it first to know what to do next. Do the first unchecked item; check it off when its underlying issue closes. Honor the phase notes (some Phase 3 edges are flexible, not serial).
+**Execution order:** chronological by issue number with dependencies respected. Run `gh issue list --state open` and pick the lowest-numbered open issue whose deps are met. No tracker issues, no design-record meta-issues — work directly off the issue queue.
 
 **Issue lookups:** use `gh issue view <N>` for a single issue and `gh issue list --state open` for the queue. The gitignored `ISSUES.md` dump is ~1.3k lines and should NOT be Read whole.
 
-**Context discipline:** Read a module's `CLAUDE.md` before its code; prefer `Grep` + ranged `Read` over whole-file reads. Delegate broad multi-file exploration to an `Explore` subagent. Treat design-record issues (#95/#99/#107) as locked — don't re-grill or re-derive them.
+**Context discipline:** Read a module's `CLAUDE.md` before its code; prefer `Grep` + ranged `Read` over whole-file reads. Treat design-record issues (#95/#99/#107) as locked — don't re-grill or re-derive them.
+
+**Before implementing a slice, do NOT cold-read 10+ files into this context to relearn where things live.** That exploration is repeated, stable knowledge and burns the main context (a recent slice spent ~90k tokens this way before writing any code). Instead:
+- **Generation seams** (a value generated per customer/visit from `data/`, injected through a factory, composed in `createWorld`) follow a fixed recipe — read `docs/generation-seam-recipe.md`, not the prior slices' source. Most remaining MarketEconomy slices (#155–#181) are generation seams.
+- **For anything else** that needs broad multi-file orientation, delegate it to an `Explore` subagent ("where does X live, how was Y wired, what's the shape of Z"). The fan-out reads stay in the subagent's context; you get back only the conclusions + `file:line` pointers. This is the default, not a fallback.
+- When you learn a reusable wiring pattern that isn't yet written down, capture it as a short `docs/*-recipe.md` so the next slice reads one doc instead of re-deriving it.
 
 ## Non-negotiable engineering principle
 
