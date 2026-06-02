@@ -22,7 +22,7 @@ import type {
   SalesVisit,
   CurrentVehicle,
 } from '../src/game/NPC';
-import type { TradeConditionRead } from '../src/game/DealEngine';
+import type { TradeConditionRead, TradeApprover } from '../src/game/DealEngine';
 
 const MASTER_SEED = 42;
 
@@ -194,6 +194,17 @@ interface TradeResolvedPayload {
   currentVehicle: { loanPayoff: number | null };
 }
 
+interface TradeEscalatedPayload {
+  customerId: string;
+  day: number;
+  book: number;
+  allowanceAsk: number;
+  payoff: number;
+  target: number;
+  recommendedCounter: number;
+  staffConfidence: number;
+}
+
 interface Wired {
   bus: EventBus;
   inventory: Pick<Inventory, 'getLotVehicles' | 'getLotVehicle' | 'sellVehicle'>;
@@ -202,6 +213,7 @@ interface Wired {
   events: Array<{ outcome: string; reason?: string; grossImpact: number; customerId: string }>;
   closedDeals: ClosedDealPayload[];
   trades: TradeResolvedPayload[];
+  escalations: TradeEscalatedPayload[];
   inventorySold: string[];
 }
 
@@ -215,6 +227,8 @@ function setup(
     lot?: LotVehicle[];
     getHasGm?: () => boolean;
     tradeConditionRead?: () => TradeConditionRead | null;
+    tradeApprover?: () => TradeApprover | null;
+    tradeEscalationOverride?: () => number;
   } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
@@ -249,6 +263,8 @@ function setup(
   bus.subscribe('deal:closed', (e) => closedDeals.push(e as ClosedDealPayload));
   const trades: TradeResolvedPayload[] = [];
   bus.subscribe('trade:resolved', (e) => trades.push(e as TradeResolvedPayload));
+  const escalations: TradeEscalatedPayload[] = [];
+  bus.subscribe('trade:escalated', (e) => escalations.push(e as TradeEscalatedPayload));
 
   createStaffDispatch({
     bus,
@@ -266,6 +282,9 @@ function setup(
     // #169: constant book seam + optional UCM condition read.
     tradeBookValueFn: () => TRADE_BOOK,
     getTradeConditionRead: opts.tradeConditionRead,
+    // #170: escalation approver + per-slot override.
+    getTradeApprover: opts.tradeApprover,
+    getTradeEscalationOverride: opts.tradeEscalationOverride,
   });
 
   return {
@@ -276,6 +295,7 @@ function setup(
     events,
     closedDeals,
     trades,
+    escalations,
     inventorySold: sold,
     economy,
   };
@@ -487,33 +507,19 @@ describe('StaffDispatch — routine trade resolution (#169)', () => {
     expect(deal.downPayment).toBeCloseTo(baseDeal.downPayment - 5_000, 5);
   });
 
-  it('unusual ask (far above target) escalates ⇒ no_sale reason=trade_unusual, no deal', () => {
+  it('negative equity (allowance < payoff, small overhang) ⇒ no_sale reason=trade_negative_equity, no deal', () => {
     const w = setup([makeStaff(0.9)]);
-    w.sessions.set(
-      'cust:1',
-      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 9_000), {
-        currentVehicle: makeTradeVehicle(null),
-      }),
-    );
-    admit(w.bus, 'cust:1');
-    expect(w.trades).toHaveLength(0);
-    expect(w.closedDeals).toHaveLength(0);
-    expect(w.events).toHaveLength(1);
-    expect(w.events[0].outcome).toBe('no_sale');
-    expect(w.events[0].reason).toBe('trade_unusual');
-  });
-
-  it('negative equity (allowance < payoff) ⇒ no_sale reason=trade_negative_equity, no deal', () => {
-    const w = setup([makeStaff(0.9)]);
-    // ask 5_000 ≤ target ⇒ routine accept, but payoff 7_000 leaves the buyer underwater.
+    // ask 5_000 ≤ target ⇒ routine accept; payoff 5_500 is within the escalation
+    // margin (target×1.1 = 5_610) so it stays routine, but the buyer is underwater.
     w.sessions.set(
       'cust:1',
       makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 5_000), {
-        currentVehicle: makeTradeVehicle(7_000),
+        currentVehicle: makeTradeVehicle(5_500),
       }),
     );
     admit(w.bus, 'cust:1');
     expect(w.trades).toHaveLength(0);
+    expect(w.escalations).toHaveLength(0);
     expect(w.closedDeals).toHaveLength(0);
     expect(w.events[0].outcome).toBe('no_sale');
     expect(w.events[0].reason).toBe('trade_negative_equity');
@@ -535,6 +541,90 @@ describe('StaffDispatch — routine trade resolution (#169)', () => {
     expect(w.trades).toHaveLength(1);
     expect(w.trades[0].action).toBe('accept');
     expect(w.trades[0].agreedAllowance).toBe(6_000);
+  });
+});
+
+// ── Manager-attention escalation (#170) ──────────────────────────────────────
+
+describe('StaffDispatch — trade escalation (#170)', () => {
+  // ask 9_000: above target 5_100 and beyond the routine gap ⇒ unusual.
+  const unusualAsk = (w: Wired) =>
+    w.sessions.set(
+      'cust:1',
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 9_000), {
+        currentVehicle: makeTradeVehicle(null),
+      }),
+    );
+
+  it('no manager on staff ⇒ trade:escalated fires with the overlay payload, deal held', () => {
+    const w = setup([makeStaff(0.9)]);
+    unusualAsk(w);
+    admit(w.bus, 'cust:1');
+    // Deal is held for the player — no close, no trade:resolved, no no_sale.
+    expect(w.closedDeals).toHaveLength(0);
+    expect(w.trades).toHaveLength(0);
+    expect(w.events).toHaveLength(0);
+    // The overlay gets everything it needs.
+    expect(w.escalations).toHaveLength(1);
+    const e = w.escalations[0];
+    expect(e.customerId).toBe('cust:1');
+    expect(e.allowanceAsk).toBe(9_000);
+    expect(e.book).toBe(TRADE_BOOK);
+    expect(e.target).toBe(TRADE_TARGET);
+    expect(e.recommendedCounter).toBeGreaterThanOrEqual(TRADE_TARGET);
+    expect(e.recommendedCounter).toBeLessThanOrEqual(9_000);
+  });
+
+  it('a GM resolves the escalated trade silently ⇒ deal closes, trade:resolved, no escalation', () => {
+    const gm: () => TradeApprover = () => ({ role: 'gm', skill: { effectiveness: 0.6, trustworthiness: 0.5 } });
+    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, { tradeApprover: gm });
+    unusualAsk(w);
+    admit(w.bus, 'cust:1');
+    expect(w.escalations).toHaveLength(0);
+    expect(w.trades).toHaveLength(1);
+    expect(w.trades[0].action).toBe('counter');
+    expect(w.closedDeals).toHaveLength(1);
+  });
+
+  it('a UCM approver also resolves silently when no GM is present', () => {
+    const ucm: () => TradeApprover = () => ({ role: 'ucm', skill: { effectiveness: 0.6, trustworthiness: 0.5 } });
+    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, { tradeApprover: ucm });
+    unusualAsk(w);
+    admit(w.bus, 'cust:1');
+    expect(w.escalations).toHaveLength(0);
+    expect(w.trades).toHaveLength(1);
+    expect(w.closedDeals).toHaveLength(1);
+  });
+
+  it('per-slot override forces player review even with a GM on staff', () => {
+    const gm: () => TradeApprover = () => ({ role: 'gm', skill: { effectiveness: 0.6, trustworthiness: 0.5 } });
+    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+      tradeApprover: gm,
+      tradeEscalationOverride: () => 8_000, // ask 9_000 > 8_000 ⇒ escalate to player
+    });
+    unusualAsk(w);
+    admit(w.bus, 'cust:1');
+    expect(w.escalations).toHaveLength(1);
+    expect(w.trades).toHaveLength(0);
+    expect(w.closedDeals).toHaveLength(0);
+  });
+
+  it('a manager who declines beyond the extended window ⇒ no_sale reason=trade_manager_declined', () => {
+    const gm: () => TradeApprover = () => ({ role: 'gm', skill: { effectiveness: 0.1, trustworthiness: 0.5 } });
+    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, { tradeApprover: gm });
+    // ask 9_000 = target 5_100 × 1.76 — beyond the manager window (×1.6) + weak closer.
+    w.sessions.set(
+      'cust:1',
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 9_000), {
+        currentVehicle: makeTradeVehicle(null),
+      }),
+    );
+    admit(w.bus, 'cust:1');
+    expect(w.escalations).toHaveLength(0);
+    expect(w.trades).toHaveLength(0);
+    expect(w.closedDeals).toHaveLength(0);
+    expect(w.events[0].outcome).toBe('no_sale');
+    expect(w.events[0].reason).toBe('trade_manager_declined');
   });
 });
 

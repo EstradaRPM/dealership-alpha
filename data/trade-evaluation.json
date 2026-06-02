@@ -1,10 +1,15 @@
 {
   "schemaVersion": 1,
-  "_doc": "Tunables for staff trade evaluation (#168) + routine auto-resolution (#169). counterWindowFraction: how far above the internal target an ask may sit and still draw a counter (rather than a decline). confidencePenaltyFraction: max defensive pull-down on the internal valuation at zero condition-read confidence (a poor/absent UCM read makes staff hedge against hidden recon). counterGiveWeight: how far a weak negotiator drifts from target toward the customer's ask (overpay) — a perfect closer gives nothing. skillCounterThreshold: NEGOTIATE effectiveness at/above which staff still counter a far-above ask instead of declining it. routineGapFraction (#169): a trade auto-resolves silently only when ask − target ≤ target × this; wider gaps escalate to the player (slice 16). Set equal to counterWindowFraction so any in-window counter is routine and only far-above asks escalate. routineConfidenceFloor (#169): routine also requires condition-read confidence ≥ this; 0 lets a no-UCM (defensive) appraisal still auto-resolve.",
+  "_doc": "Tunables for staff trade evaluation (#168) + routine auto-resolution (#169) + manager-attention escalation (#170). counterWindowFraction: how far above the internal target an ask may sit and still draw a counter (rather than a decline). confidencePenaltyFraction: max defensive pull-down on the internal valuation at zero condition-read confidence (a poor/absent UCM read makes staff hedge against hidden recon). counterGiveWeight: how far a weak negotiator drifts from target toward the customer's ask (overpay) — a perfect closer gives nothing. skillCounterThreshold: NEGOTIATE effectiveness at/above which staff still counter a far-above ask instead of declining it. routineGapFraction (#169): a trade auto-resolves silently only when ask − target ≤ target × this; wider gaps escalate (slice 16). Set equal to counterWindowFraction so any in-window counter is routine and only far-above asks escalate. routineConfidenceFloor (#169): routine also requires condition-read confidence ≥ this; 0 lets a no-UCM (defensive) appraisal still auto-resolve. managerCounterWindowFraction (#170): the extended counter range an escalation approver (GM/UCM) works with — wider than counterWindowFraction so a manager counters far-above asks a salesperson would decline. negativeEquityEscalationMargin (#170): a routine-looking but underwater trade escalates (manager attention) instead of silently abandoning when payoff − target > target × this. playerOverrideThresholdDefault (#170): default per-slot 'always escalate to me above $X' — an ask over this routes to the player even when a manager could handle it. counterGapAversion + counterSensitivityWeight (#170): customer accept/reject on a PLAYER counter — acceptProb = 1 − gapFraction × counterGapAversion × (1 + priceSensitivity × counterSensitivityWeight), where gapFraction = (ask − counter)/ask.",
   "counterWindowFraction": 0.25,
   "confidencePenaltyFraction": 0.15,
   "counterGiveWeight": 0.5,
   "skillCounterThreshold": 0.5,
   "routineGapFraction": 0.25,
-  "routineConfidenceFloor": 0.0
+  "routineConfidenceFloor": 0.0,
+  "managerCounterWindowFraction": 0.6,
+  "negativeEquityEscalationMargin": 0.1,
+  "playerOverrideThresholdDefault": 25000,
+  "counterGapAversion": 2.0,
+  "counterSensitivityWeight": 1.0
 }

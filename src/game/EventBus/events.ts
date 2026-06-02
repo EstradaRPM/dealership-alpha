@@ -315,6 +315,40 @@ export interface EventMap {
     hadCounter: boolean;
   };
 
+  // DealEngine/StaffDispatch — an *unusual* trade with no manager to handle it
+  // (or an ask over the player override) escalated to the #84 manager-attention
+  // overlay (#170). Published by the close-flow seam (StaffDispatch) when
+  // `resolveTradeIn` returns `player_review`; the composition root subscribes to
+  // open the overlay + pause the day (cf. `floor:exception_raised`). The deal is
+  // held for the player — no `deal:closed` fires for this customer this pass.
+  // Carries the full review surface so the overlay needs no further lookups.
+  'trade:escalated': {
+    customerId: string;
+    day: number;
+    currentVehicle: {
+      templateId: string;
+      make: string;
+      model: string;
+      year: number;
+      mileage: number;
+      condition: string;
+      category: string;
+      loanPayoff: number | null;
+    };
+    /** Honest wholesale book for the trade. */
+    book: number;
+    /** What the customer wants for the trade. */
+    allowanceAsk: number;
+    /** Outstanding lien (0 for a free-and-clear owner). */
+    payoff: number;
+    /** Staff's internal acceptance target. */
+    target: number;
+    /** Advisory counter the salesperson would have offered. */
+    recommendedCounter: number;
+    /** UCM condition-read confidence behind the appraisal (0 = no UCM). */
+    staffConfidence: number;
+  };
+
   // StaffOrg — roster changes
   'staff:hired': { staffId: string; roleId: string; day: number; hiringCost: number };
   'staff:fired': { staffId: string; roleId: string; day: number };
@@ -328,11 +362,12 @@ export interface EventMap {
     grossImpact: number;
     /**
      * Named reason for a `no_sale` outcome (#147 tracer): `'no_session'`,
-     * `'not_sales'`, `'no_fit'`, `'no_close'`, the #169 trade walks
-     * (`'trade_unusual'` — unusual ask, slice-16 overlay placeholder;
-     * `'trade_negative_equity'` — underwater trade), or a SalesProcess
-     * `WalkCause` (`'patience_drain' | 'trust_collapse' |
-     * 'demo_nonnegotiable_miss'`). Omitted on `outcome: 'closed'`.
+     * `'not_sales'`, `'no_fit'`, `'no_close'`, the trade walks
+     * (`'trade_negative_equity'` — underwater trade (#169);
+     * `'trade_manager_declined'` — escalation manager refused (#170)), or a
+     * SalesProcess `WalkCause` (`'patience_drain' | 'trust_collapse' |
+     * 'demo_nonnegotiable_miss'`). Omitted on `outcome: 'closed'`. An *unusual*
+     * trade escalated to the player emits `trade:escalated` instead (#170).
      */
     reason?: string;
   };

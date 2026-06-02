@@ -126,6 +126,33 @@ export const TradeEvalConfigSchema = z
      * player.
      */
     routineConfidenceFloor: z.number().min(0).max(1),
+    // ── Manager-attention escalation (#170) ──
+    /**
+     * The extended counter range an escalation approver (GM/UCM) works with —
+     * wider than `counterWindowFraction` so a manager counters far-above asks a
+     * salesperson would decline. Fed to `evaluateTrade` (in place of
+     * `counterWindowFraction`) on the staff-approver path.
+     */
+    managerCounterWindowFraction: z.number().min(0),
+    /**
+     * A routine-looking but underwater trade escalates (manager attention)
+     * instead of silently abandoning when the lien overhang clears this band:
+     * `payoff − target > target × negativeEquityEscalationMargin`.
+     */
+    negativeEquityEscalationMargin: z.number().min(0),
+    /**
+     * Default per-slot "always escalate to me above $X" — an ask over this
+     * routes to the player even when a manager could handle it. The composition
+     * root overrides it per save slot via `TradeResolutionDeps.playerOverrideThreshold`.
+     */
+    playerOverrideThresholdDefault: z.number().min(0),
+    /**
+     * Customer accept/reject on a PLAYER counter (#170). The base aversion
+     * turning the haircut `gapFraction = (ask − counter)/ask` into rejection.
+     */
+    counterGapAversion: z.number().min(0),
+    /** How much a customer's price-sensitivity amplifies counter-gap aversion. */
+    counterSensitivityWeight: z.number().min(0),
   })
   .strict();
 
@@ -299,29 +326,80 @@ export interface TradeResolutionInput {
   readonly conditionRead: TradeConditionRead | null;
 }
 
+/**
+ * An escalation approver resolved from StaffOrg (#170). Priority is GM > UCM >
+ * player; the composition root resolves the highest-ranking manager on the
+ * roster and passes their role + resolved NEGOTIATE composite. `null` (or
+ * omitted) ⇒ no manager on staff ⇒ the player is the approver.
+ */
+export interface TradeApprover {
+  readonly role: 'gm' | 'ucm';
+  /** The approver's resolved NEGOTIATE composite (drives the extended counter). */
+  readonly skill: NegotiationSkill;
+}
+
 export interface TradeResolutionDeps {
   /** Honest wholesale book for the trade (live MarketEconomy provider at runtime). */
   readonly bookValueFn: TradeBookValueFn;
   /** Trade-policy multiplier (slice #18 seam). Default `1.0` (market). */
   readonly policyMultiplier?: number;
+  /**
+   * Escalation approver resolved from StaffOrg (#170). When an *unusual* trade
+   * escalates and an approver is present (and the ask is under the player
+   * override), they decide silently via the extended evaluator. `null`/omitted
+   * ⇒ no manager ⇒ the trade routes to the player overlay (`player_review`).
+   */
+  readonly approver?: TradeApprover | null;
+  /**
+   * Per-slot "always escalate to me above $X" (#170). An ask over this routes
+   * to the player even when a manager could handle it. Defaults to
+   * `config.playerOverrideThresholdDefault`.
+   */
+  readonly playerOverrideThreshold?: number;
   readonly config?: TradeEvalConfig;
 }
 
 /**
- * Outcome of resolving a customer's trade as part of a closing deal (#169).
+ * The data an escalated trade hands the manager-attention overlay (#170) — the
+ * player approver's decision surface. Plain serializable figures (it doubles as
+ * the `trade:escalated` event payload at the StaffDispatch seam). The player
+ * weighs the honest `book` and the customer's `payoff` against their `ask`,
+ * with the staff's `recommendedCounter` and `staffConfidence` as advisories.
+ */
+export interface TradeReviewPayload {
+  readonly currentVehicle: CurrentVehicle;
+  /** Honest wholesale book for the trade. */
+  readonly book: number;
+  /** What the customer wants for the trade. */
+  readonly allowanceAsk: number;
+  /** Outstanding lien on the trade (0 for a free-and-clear owner). */
+  readonly payoff: number;
+  /** The staff's internal acceptance target (`evaluateTrade.target`). */
+  readonly target: number;
+  /** Advisory counter the salesperson would have offered (whole dollars). */
+  readonly recommendedCounter: number;
+  /** UCM condition-read confidence behind the appraisal (0 = no UCM). */
+  readonly staffConfidence: number;
+}
+
+/**
+ * Outcome of resolving a customer's trade as part of a closing deal (#169,
+ * escalation #170).
  *
- *   - `resolved`  — routine trade; auto-resolves silently. Carries the agreed
- *                   allowance, the net `tradeEquity` (allowance − payoff, ≥ 0)
- *                   the deal structure folds in, and whether the customer took
- *                   a staff counter.
- *   - `abandoned` — routine but the agreed allowance can't clear the lien
- *                   (allowance < payoff). The underwater customer walks rather
- *                   than roll negative equity into the new note. Slice 16 adds
- *                   the staff-counter / player overlay; until then this walks.
- *   - `escalated` — *unusual* trade (ask too far above the staff target, the
- *                   evaluator declined, or confidence below the routine floor).
- *                   Slice 16 routes this to a player counter-offer overlay; the
- *                   v1 placeholder declines it (the caller walks the deal).
+ *   - `resolved`      — routine *or* manager-approved. Auto-resolves silently;
+ *                       carries the agreed allowance, the net `tradeEquity`
+ *                       (allowance − payoff, ≥ 0) the deal structure folds in,
+ *                       whether a counter was taken, and which `approver`
+ *                       settled it (`auto` = routine salesperson, else the
+ *                       escalation manager).
+ *   - `abandoned`     — the agreed allowance can't clear the lien
+ *                       (`negative_equity`), or an escalation manager declined
+ *                       even at the extended counter range (`manager_declined`).
+ *                       The customer walks.
+ *   - `player_review` — *unusual* trade with no manager to handle it (or an ask
+ *                       over the player override). Routes to the #84 player
+ *                       overlay carrying `review`; StaffDispatch emits
+ *                       `trade:escalated` and holds the deal for the player.
  */
 export type TradeResolution =
   | {
@@ -331,31 +409,81 @@ export type TradeResolution =
       readonly hadCounter: boolean;
       /** `agreedAllowance − payoff`, ≥ 0. Net credit the deal structure folds in. */
       readonly tradeEquity: number;
+      /** Who settled it: routine salesperson (`auto`) or the escalation manager. */
+      readonly approver: 'auto' | 'gm' | 'ucm';
       readonly rationale: string;
     }
   | {
       readonly status: 'abandoned';
-      readonly reason: 'negative_equity';
+      readonly reason: 'negative_equity' | 'manager_declined';
       readonly rationale: string;
     }
-  | { readonly status: 'escalated'; readonly rationale: string };
+  | {
+      readonly status: 'player_review';
+      readonly review: TradeReviewPayload;
+      readonly rationale: string;
+    };
+
+/** Structure a routine/manager `accept|counter` into a resolved/abandoned trade. */
+function settleAgreed(
+  action: 'accept' | 'counter',
+  agreedAllowance: number,
+  payoff: number,
+  approver: 'auto' | 'gm' | 'ucm',
+  rationale: string,
+): TradeResolution {
+  const tradeEquity = agreedAllowance - payoff;
+  if (tradeEquity < 0) {
+    return {
+      status: 'abandoned',
+      reason: approver === 'auto' ? 'negative_equity' : 'manager_declined',
+      rationale: `Agreed allowance $${agreedAllowance.toLocaleString(
+        'en-US',
+      )} below lien payoff $${payoff.toLocaleString(
+        'en-US',
+      )}; can't clear the lien. ${
+        approver === 'auto'
+          ? 'Customer underwater — abandoned.'
+          : `${approver.toUpperCase()} declined to roll the negative equity.`
+      }`,
+    };
+  }
+  return {
+    status: 'resolved',
+    action,
+    agreedAllowance,
+    hadCounter: action === 'counter',
+    tradeEquity,
+    approver,
+    rationale,
+  };
+}
 
 /**
- * Resolve a customer's trade for a deal that has otherwise reached close
- * (#169). Pure and deterministic — composes `evaluateTrade` with the routine
- * gate and the negative-equity guard; no RNG, no I/O.
+ * Resolve a customer's trade for a deal that has otherwise reached close (#169;
+ * manager-attention escalation #170). Pure and deterministic — composes
+ * `evaluateTrade` with the routine gate, the negative-equity guard, and the
+ * escalation/approver model; no RNG, no I/O.
  *
- * A trade is *routine* (auto-resolves silently) when the evaluator did not
- * decline, the ask sits within `routineGapFraction` of the staff target, and
- * condition-read confidence clears `routineConfidenceFloor`. Routine accepts
- * agree at the ask; routine counters agree at the staff counter (the customer
- * takes a small, in-window counter without escalation). Everything else is
- * unusual and escalates to the player (slice 16) — the v1 placeholder declines.
+ * A trade is *routine* (auto-resolves silently, `approver: 'auto'`) when the
+ * salesperson's evaluation didn't decline, the ask sits within
+ * `routineGapFraction` of the staff target, condition-read confidence clears
+ * `routineConfidenceFloor`, and the lien overhang is within
+ * `negativeEquityEscalationMargin`. Routine accepts agree at the ask; routine
+ * counters agree at the staff counter.
  *
- * The negative-equity guard runs only on an otherwise-routine trade: if the
- * agreed allowance can't clear the lien, the underwater customer abandons
- * rather than rolling the shortfall into the new note (slice 16 will let staff
- * counter or the player intervene).
+ * Anything else is *unusual* and escalates to a manager-attention decision:
+ *   - If an `approver` (GM/UCM) is on staff and the ask is under the player
+ *     override, they re-decide via `evaluateTrade` with the **extended** counter
+ *     range (`managerCounterWindowFraction`) and their own NEGOTIATE skill — a
+ *     counter a salesperson would decline. Resolves silently (`approver` tag),
+ *     or `abandoned`/`manager_declined` if even the manager won't.
+ *   - Otherwise (no manager, or ask over the player override) it returns
+ *     `player_review` carrying the overlay payload; StaffDispatch routes it to
+ *     the #84 player overlay.
+ *
+ * The negative-equity guard still applies after a manager approves: a manager
+ * won't roll negative equity into the note (`manager_declined`).
  */
 export function resolveTradeIn(
   input: TradeResolutionInput,
@@ -365,6 +493,7 @@ export function resolveTradeIn(
   const policyMultiplier = deps.policyMultiplier ?? 1.0;
   const { currentVehicle, allowanceAsk, skill, conditionRead, loanPayoff } =
     input;
+  const payoff = loanPayoff ?? 0;
 
   const evaluation = evaluateTrade(
     { currentVehicle, allowanceAsk, skill, conditionRead },
@@ -376,40 +505,125 @@ export function resolveTradeIn(
     allowanceAsk - evaluation.target <=
     evaluation.target * cfg.routineGapFraction;
   const confidenceOk = confidence >= cfg.routineConfidenceFloor;
-  const routine = evaluation.action !== 'decline' && gapOk && confidenceOk;
+  // A large lien overhang (payoff far over our internal target) is unusual even
+  // when the ask itself looks routine — it routes to manager/player attention
+  // rather than silently abandoning at the salesperson's desk.
+  const overhangOk =
+    payoff - evaluation.target <=
+    evaluation.target * cfg.negativeEquityEscalationMargin;
+  const routine =
+    evaluation.action !== 'decline' && gapOk && confidenceOk && overhangOk;
 
-  if (!routine) {
-    return {
-      status: 'escalated',
-      rationale: `Unusual trade — ${evaluation.rationale} (gap within routine band: ${gapOk}, confidence ≥ floor: ${confidenceOk}). Escalates to player (slice 16); v1 placeholder declines.`,
-    };
+  if (routine) {
+    const agreedAllowance =
+      evaluation.action === 'accept'
+        ? allowanceAsk
+        : (evaluation.counterAmount as number);
+    return settleAgreed(
+      evaluation.action,
+      agreedAllowance,
+      payoff,
+      'auto',
+      evaluation.rationale,
+    );
   }
 
-  const agreedAllowance =
-    evaluation.action === 'accept'
-      ? allowanceAsk
-      : (evaluation.counterAmount as number);
-  const payoff = loanPayoff ?? 0;
-  const tradeEquity = agreedAllowance - payoff;
+  // ── Escalation: resolve the approver (GM > UCM > player). ──
+  const override =
+    deps.playerOverrideThreshold ?? cfg.playerOverrideThresholdDefault;
+  const forcePlayer = allowanceAsk > override;
+  const approver = deps.approver ?? null;
 
-  if (tradeEquity < 0) {
-    return {
-      status: 'abandoned',
-      reason: 'negative_equity',
-      rationale: `Agreed allowance $${agreedAllowance.toLocaleString(
-        'en-US',
-      )} below lien payoff $${payoff.toLocaleString(
-        'en-US',
-      )}; customer underwater and the deal can't clear the lien. Abandoned (slice 16 adds staff-counter).`,
-    };
+  if (approver && !forcePlayer) {
+    // Manager re-decides with the extended counter range + their own skill.
+    const managerEval = evaluateTrade(
+      { currentVehicle, allowanceAsk, skill: approver.skill, conditionRead },
+      {
+        bookValueFn: deps.bookValueFn,
+        policyMultiplier,
+        config: { ...cfg, counterWindowFraction: cfg.managerCounterWindowFraction },
+      },
+    );
+    if (managerEval.action === 'decline') {
+      return {
+        status: 'abandoned',
+        reason: 'manager_declined',
+        rationale: `${approver.role.toUpperCase()} reviewed the escalated trade and declined — ${managerEval.rationale}`,
+      };
+    }
+    const agreedAllowance =
+      managerEval.action === 'accept'
+        ? allowanceAsk
+        : (managerEval.counterAmount as number);
+    return settleAgreed(
+      managerEval.action,
+      agreedAllowance,
+      payoff,
+      approver.role,
+      `${approver.role.toUpperCase()} approved the escalated trade — ${managerEval.rationale}`,
+    );
   }
 
+  // Player approver: hand the overlay everything it needs to decide.
+  const recommendedCounter = Math.round(
+    evaluation.target +
+      Math.max(0, allowanceAsk - evaluation.target) *
+        (1 - skill.effectiveness) *
+        cfg.counterGiveWeight,
+  );
   return {
-    status: 'resolved',
-    action: evaluation.action,
-    agreedAllowance,
-    hadCounter: evaluation.action === 'counter',
-    tradeEquity,
-    rationale: evaluation.rationale,
+    status: 'player_review',
+    review: {
+      currentVehicle,
+      book: deps.bookValueFn(currentVehicle),
+      allowanceAsk,
+      payoff,
+      target: evaluation.target,
+      recommendedCounter,
+      staffConfidence: confidence,
+    },
+    rationale: `Unusual trade escalated to the player — ${evaluation.rationale} (gap within band: ${gapOk}, confidence ≥ floor: ${confidenceOk}, overhang within band: ${overhangOk}, ask over override: ${forcePlayer}, manager on staff: ${approver !== null}).`,
   };
+}
+
+// ── Customer accept/reject on a player counter (#170) ─────────────────────────
+
+export interface CustomerCounterInput {
+  /** What the customer wanted for the trade. */
+  readonly allowanceAsk: number;
+  /** The player's proposed counter (whole dollars). */
+  readonly counterAmount: number;
+  /** Customer's price-sensitivity in [0,1] (1 = most haircut-averse). */
+  readonly priceSensitivity: number;
+}
+
+/**
+ * Deterministic customer accept/reject on a PLAYER counter (#170). When the
+ * player offers `counterAmount` below the customer's `allowanceAsk`, the haircut
+ * `gapFraction = (ask − counter)/ask` drives rejection, amplified by the
+ * customer's price-sensitivity:
+ *
+ *   acceptProb = clamp01(
+ *     1 − gapFraction · counterGapAversion · (1 + priceSensitivity · counterSensitivityWeight)
+ *   )
+ *
+ * A counter at or above the ask is accepted outright (`acceptProb = 1`). Pure
+ * and deterministic from `seed` — the caller derives it (e.g.
+ * `deriveSeed(masterSeed, 'trade_counter_response', { customerId, day })`).
+ */
+export function rollCustomerCounterResponse(
+  input: CustomerCounterInput,
+  seed: number,
+  config: TradeEvalConfig = loadTradeEvalConfig(),
+): boolean {
+  const { allowanceAsk, counterAmount, priceSensitivity } = input;
+  if (allowanceAsk <= 0 || counterAmount >= allowanceAsk) return true;
+  const gapFraction = (allowanceAsk - counterAmount) / allowanceAsk;
+  const sensitivity = priceSensitivity < 0 ? 0 : priceSensitivity > 1 ? 1 : priceSensitivity;
+  const aversion =
+    gapFraction *
+    config.counterGapAversion *
+    (1 + sensitivity * config.counterSensitivityWeight);
+  const acceptProb = aversion >= 1 ? 0 : 1 - aversion;
+  return createRng(seed)() < acceptProb;
 }

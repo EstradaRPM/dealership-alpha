@@ -120,8 +120,15 @@ export function createWorld(deps: {
   bus: EventBus;
   masterSeed: number;
   characterProfile: CharacterProfile;
+  /**
+   * Per-slot "always escalate to me above $X" trade override (#170). A
+   * persisted player setting the composition root reads from the active save
+   * slot (SaveStore is the gateway) and passes in like `masterSeed`. Omitted ⇒
+   * the trade-evaluation config default (`playerOverrideThresholdDefault`).
+   */
+  tradeEscalationOverride?: number;
 }): World {
-  const { bus, masterSeed, characterProfile } = deps;
+  const { bus, masterSeed, characterProfile, tradeEscalationOverride } = deps;
 
   // Default initialDay = 1: the clock sits on "night before Day 1" so the
   // DayLoopController cold-start (skip-advance on the first nextDay) plays
@@ -371,6 +378,32 @@ export function createWorld(deps: {
           );
           return { confidence: Math.min(1, Math.max(0, bestSkill / 100)) };
         },
+        // #170: escalation approver resolved with GM > UCM > player priority.
+        // The highest-ranking manager on the roster reviews an unusual trade via
+        // the extended evaluator; with none hired this returns null and the
+        // trade routes to the player overlay.
+        getTradeApprover: () => {
+          const roster = staffOrg.currentRoster;
+          const gms = roster.filter((s) => s.role_id === 'gm');
+          const ucms = roster.filter((s) => s.role_id === 'used-car-manager');
+          const pool = gms.length > 0 ? gms : ucms;
+          if (pool.length === 0) return null;
+          const best = pool.reduce((m, s) =>
+            s.effectiveness > m.effectiveness ? s : m,
+          );
+          return {
+            role: gms.length > 0 ? 'gm' : 'ucm',
+            skill: {
+              effectiveness: best.effectiveness,
+              trustworthiness: best.trustworthiness ?? 0,
+            },
+          };
+        },
+        // #170: per-slot player override. Omitted ⇒ config default.
+        getTradeEscalationOverride:
+          tradeEscalationOverride !== undefined
+            ? () => tradeEscalationOverride
+            : undefined,
       }),
     ],
     customerSource,

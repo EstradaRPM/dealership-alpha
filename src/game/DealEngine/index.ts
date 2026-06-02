@@ -12,6 +12,7 @@ export {
   loadTradeEvalConfig,
   TradeEvalConfigSchema,
   resolveTradeIn,
+  rollCustomerCounterResponse,
 } from './trade';
 export type {
   TradeAllowanceNoiseConfig,
@@ -26,4 +27,7 @@ export type {
   TradeResolution,
   TradeResolutionInput,
   TradeResolutionDeps,
+  TradeApprover,
+  TradeReviewPayload,
+  CustomerCounterInput,
 } from './trade';

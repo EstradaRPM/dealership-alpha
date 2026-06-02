@@ -9,6 +9,7 @@ import type {
   CreditTierCatalog,
   TradeBookValueFn,
   TradeConditionRead,
+  TradeApprover,
 } from '../DealEngine';
 import { resolveTradeIn } from '../DealEngine';
 import type { Person, Visit } from '../NPC';
@@ -68,6 +69,19 @@ export interface StaffDispatchDeps {
    * manager's `condition_reading` skill.
    */
   getTradeConditionRead?: () => TradeConditionRead | null;
+  /**
+   * Escalation approver (#170) resolved from StaffOrg with GM > UCM > player
+   * priority. Returns the highest-ranking manager on the roster + their
+   * NEGOTIATE composite, or `null` when none is hired (⇒ player overlay).
+   */
+  getTradeApprover?: () => TradeApprover | null;
+  /**
+   * Per-slot "always escalate to me above $X" trade override (#170). An ask
+   * over this routes to the player even when a manager could handle it.
+   * Defaults to the trade-evaluation config default. Persisted per save slot;
+   * the composition root reads it through the save-scoped settings source.
+   */
+  getTradeEscalationOverride?: () => number;
 }
 
 // Intentionally empty — dispatch is fully autonomous.
@@ -253,13 +267,16 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       return 'resolved';
     }
 
-    // Trade resolution (#169): a visit that arrived with a trade resolves the
-    // allowance after the deal reaches close but before it structures. Routine
-    // trades auto-resolve silently (emit `trade:resolved`, net the equity into
-    // the structure); unusual asks escalate (slice-16 placeholder: walk) and an
-    // underwater customer whose allowance can't clear their lien abandons.
-    // Requires the book provider; without it (legacy/test harness) a `hasTrade`
-    // visit just closes without a trade.
+    // Trade resolution (#169, escalation #170): a visit that arrived with a
+    // trade resolves the allowance after the deal reaches close but before it
+    // structures. Routine trades auto-resolve silently (emit `trade:resolved`,
+    // net the equity into the structure). Unusual trades escalate: a manager on
+    // staff (GM > UCM) resolves them silently too; with none (or an ask over the
+    // player override) the trade routes to the #84 overlay via `trade:escalated`
+    // and the deal is HELD (this resolver returns 'escalated' so FloorSim raises
+    // a grabbable exception). An underwater allowance / manager-declined trade
+    // abandons. Requires the book provider; without it (legacy/test harness) a
+    // `hasTrade` visit just closes without a trade.
     let tradeEquity = 0;
     if (
       visit.hasTrade &&
@@ -275,16 +292,36 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
           skill: { effectiveness, trustworthiness },
           conditionRead: deps.getTradeConditionRead?.() ?? null,
         },
-        { bookValueFn: deps.tradeBookValueFn },
+        {
+          bookValueFn: deps.tradeBookValueFn,
+          approver: deps.getTradeApprover?.() ?? null,
+          playerOverrideThreshold: deps.getTradeEscalationOverride?.(),
+        },
       );
-      if (tradeRes.status !== 'resolved') {
+      if (tradeRes.status === 'player_review') {
+        // Hand the manager-attention overlay everything it needs, then hold the
+        // deal for the player by surfacing this as a floor exception.
+        bus.publish('trade:escalated', {
+          customerId,
+          day,
+          currentVehicle: person.currentVehicle,
+          book: tradeRes.review.book,
+          allowanceAsk: tradeRes.review.allowanceAsk,
+          payoff: tradeRes.review.payoff,
+          target: tradeRes.review.target,
+          recommendedCounter: tradeRes.review.recommendedCounter,
+          staffConfidence: tradeRes.review.staffConfidence,
+        });
+        return 'escalated';
+      }
+      if (tradeRes.status === 'abandoned') {
         emitNoSale(
           customerId,
           salesperson.id,
           day,
-          tradeRes.status === 'abandoned'
+          tradeRes.reason === 'negative_equity'
             ? 'trade_negative_equity'
-            : 'trade_unusual',
+            : 'trade_manager_declined',
         );
         return 'resolved';
       }
