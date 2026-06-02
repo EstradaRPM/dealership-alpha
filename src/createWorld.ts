@@ -63,7 +63,13 @@ import {
   loadCustomerCurrentVehicleConfig,
   loadTradeIncidenceConfig,
 } from './game/NPC';
-import { classifyCredit } from './game/DealEngine';
+import {
+  classifyCredit,
+  generateTradeAsk,
+  loadTradeAllowanceNoiseConfig,
+  type TradeBookValueFn,
+} from './game/DealEngine';
+import type { PricedVehicleInput } from './game/SalesProcess';
 import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
 import {
   createTierManager,
@@ -147,6 +153,36 @@ export function createWorld(deps: {
   // canonical deal:closed (with the five deal-structuring fields) fires
   // instead of synthesizing a SalesProcess emit against a stub vehicle.
   const creditTiers = loadCreditTiers();
+  // MarketEconomy live providers (#155): closed-form anchor + markup table
+  // replace the static cost-plus stubs in `SalesProcess/seams.ts`. Wired into
+  // StaffFloorDrain (resolver always passes a full LotVehicle) and — since
+  // #167 — into the customer factory's trade-ask seam below. Other call sites
+  // that still pass narrow PricedVehicleInput stubs (CustomerPool's
+  // resolveViaProcess, the #94 calibration test) fall back to the static stubs
+  // by not injecting these.
+  // #156: the per-save personality vector is rolled from masterSeed at
+  // construction. Two slots with different seeds get distinct hidden biases →
+  // genuinely different worlds from minute one.
+  // #157 wiring: pass the bus + a getCurrentDay so MarketEconomy subscribes
+  // to inventory:vehicle_purchased/sold, records each transaction's
+  // delta-vs-anchor into its rolling window, and exposes the emergent
+  // segment-drift term in segmentHeat. With no comps recorded yet (cold
+  // start), drift=0 and the engine reduces to the slice-#156 personality
+  // world — the #94 calibration path stays untouched.
+  const marketEconomy = createMarketEconomy({
+    masterSeed,
+    bus,
+    getCurrentDay: () => clock.currentDay,
+  });
+  // #167: the customer's trade allowance ask. Compose DealEngine's pure
+  // `generateTradeAsk` with the live book-value provider + noise config so the
+  // NPC factory stays free of a DealEngine dep. The provider declares the
+  // narrow `PricedVehicleInput` seam but reads only the anchor fields a
+  // CurrentVehicle carries — the cast is the documented runtime contract and
+  // lives here at the composition boundary, never in game logic.
+  const tradeAllowanceNoise = loadTradeAllowanceNoiseConfig();
+  const tradeBookValue: TradeBookValueFn = (cv) =>
+    marketEconomy.bookValueFn(cv as unknown as PricedVehicleInput);
   const customerPool = createCustomerPool({
     bus,
     legacyDailyArrivals: false,
@@ -159,10 +195,18 @@ export function createWorld(deps: {
       // the trade-in slices (#166–#171) have real history to work against.
       currentVehicleConfig: loadCustomerCurrentVehicleConfig(),
       // #166: stamp `hasTrade` on every sales visit via the composite
-      // (archetype × paymentMethod × creditTier) incidence matrix. Doesn't
-      // do anything mechanical yet — the trade flow lands in #167–#171.
+      // (archetype × paymentMethod × creditTier) incidence matrix.
       tradeIncidenceConfig: loadTradeIncidenceConfig(),
       classifyCreditTier: (credit) => classifyCredit(credit, creditTiers),
+      // #167: stamp `allowanceAsk` on every trade-carrying sales visit.
+      tradeAskFn: (currentVehicle, seed) =>
+        generateTradeAsk(
+          currentVehicle,
+          currentVehicle.loanPayoff,
+          tradeBookValue,
+          seed,
+          tradeAllowanceNoise,
+        ),
     },
     dealEngine,
     inventory,
@@ -280,28 +324,6 @@ export function createWorld(deps: {
       return refs;
     },
   };
-
-  // MarketEconomy live providers (#155): closed-form anchor + markup table
-  // replace the static cost-plus stubs in `SalesProcess/seams.ts`. Wired into
-  // StaffFloorDrain only — the runtime contract is that the resolver always
-  // passes a full LotVehicle, which satisfies the providers' richer input
-  // shape. Other call sites that still pass narrow PricedVehicleInput stubs
-  // (CustomerPool's resolveViaProcess, the #94 calibration test) fall back to
-  // the static stubs by not injecting these.
-  // #156: the per-save personality vector is rolled from masterSeed at
-  // construction. Two slots with different seeds get distinct hidden biases →
-  // genuinely different worlds from minute one.
-  // #157 wiring: pass the bus + a getCurrentDay so MarketEconomy subscribes
-  // to inventory:vehicle_purchased/sold, records each transaction's
-  // delta-vs-anchor into its rolling window, and exposes the emergent
-  // segment-drift term in segmentHeat. With no comps recorded yet (cold
-  // start), drift=0 and the engine reduces to the slice-#156 personality
-  // world — the #94 calibration path stays untouched.
-  const marketEconomy = createMarketEconomy({
-    masterSeed,
-    bus,
-    getCurrentDay: () => clock.currentDay,
-  });
 
   // Per-day FloorSim seam set: CapacityManager / StaffDispatch / CustomerPool
   // behind the locked #99 seams. Invoked once per day → fresh per-day

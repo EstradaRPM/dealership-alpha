@@ -1,0 +1,8 @@
+{
+  "_doc": "Trade allowance ask noise (slice #167). Mirrors the auction-side motivated-seller distribution (slice #160): a Box-Muller normal centered at meanMultiplier, clipped to [floor, ceiling]. Unlike the auction side there is no per-source reliability — the spread captures how well an individual customer knows their own car's wholesale book. Most cluster near honest book (±1 stdev); the upper tail is the entitled 'my buddy said it's worth...' ask, the lower tail the ignorance bargain (a discovery opportunity for the player). meanMultiplier=1.0 keeps the aggregate cash-owner ask mean ≈ honest book mean. Neutral starting values — hard calibration is slice #180.",
+  "schemaVersion": 1,
+  "meanMultiplier": 1.0,
+  "stdev": 0.15,
+  "floor": 0.6,
+  "ceiling": 1.5
+}

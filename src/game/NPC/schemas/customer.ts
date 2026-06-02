@@ -89,6 +89,13 @@ export const SalesVisitSchema = z
      * customers always carry it once `tradeIncidenceConfig` is wired through.
      */
     hasTrade: z.boolean().optional(),
+    /**
+     * The dollar number the customer wants for their trade (#167). Rolled at
+     * visit creation only when `hasTrade` is true and the trade-ask seam is
+     * wired: `book × motivatedSellerMultiplier + max(0, payoff − book)`. Absent
+     * on no-trade visits and on legacy fixtures predating #167.
+     */
+    allowanceAsk: z.number().nonnegative().optional(),
   })
   .strict();
 export type SalesVisit = z.infer<typeof SalesVisitSchema>;

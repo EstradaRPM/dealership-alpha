@@ -5,7 +5,10 @@ import type { PersonArchetypeCatalog } from '../schemas/person-archetype';
 import type { VisitArchetypeCatalog } from '../schemas/visit-archetype';
 import type { Person, Visit, SPACEDVector, PSQTCVector } from '../schemas/customer';
 import { PersonSchema, VisitSchema } from '../schemas/customer';
-import type { CustomerCurrentVehicleConfig } from '../schemas/customer-current-vehicle';
+import type {
+  CustomerCurrentVehicleConfig,
+  CurrentVehicle,
+} from '../schemas/customer-current-vehicle';
 import { rollCurrentVehicle } from './CurrentVehicleFactory';
 import type { TradeIncidenceConfig } from '../schemas/trade-incidence';
 import { rollHasTrade } from './TradeIncidenceFactory';
@@ -61,6 +64,15 @@ export interface CreateCustomerDeps {
    * a DealEngine dep.
    */
   classifyCreditTier?: (credit: number) => 'A' | 'B' | 'C' | 'D';
+  /**
+   * Trade-allowance-ask seam (#167). Given the customer's `currentVehicle` and
+   * a deterministic seed, returns the dollar ask they want for their trade.
+   * The composition root composes this from DealEngine's `generateTradeAsk`
+   * bound to the live book-value provider + noise config, so NPC stays free of
+   * a DealEngine dep. Invoked only for sales visits where `hasTrade` is true
+   * and a `currentVehicle` was rolled; omit to skip allowanceAsk entirely.
+   */
+  tradeAskFn?: (currentVehicle: CurrentVehicle, seed: number) => number;
 }
 
 export interface CustomerBundle {
@@ -134,6 +146,9 @@ function applyEffectsToVisit(
         ? { downPaymentBehavior: base.downPaymentBehavior }
         : {}),
       ...(base.hasTrade !== undefined ? { hasTrade: base.hasTrade } : {}),
+      ...(base.allowanceAsk !== undefined
+        ? { allowanceAsk: base.allowanceAsk }
+        : {}),
     };
   } else {
     const pref = { ...base.preferences } as PSQTCVector;
@@ -270,6 +285,15 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
       );
     }
 
+    // allowanceAsk (#167) — the dollar number a trading customer wants for
+    // their car. Only rolled when the visit carries a trade, a currentVehicle
+    // was generated, and the trade-ask seam is wired (production path). NPC
+    // derives the seed; the seam owns the book-value read + noise draw.
+    let allowanceAsk: number | undefined;
+    if (hasTrade && currentVehicle && deps.tradeAskFn) {
+      allowanceAsk = deps.tradeAskFn(currentVehicle, seedFor('tradeAsk'));
+    }
+
     baseVisit = VisitSchema.parse({
       kind: 'sales',
       person_id: person.id,
@@ -288,6 +312,7 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
       paymentMethod,
       ...(downPaymentBehavior !== undefined ? { downPaymentBehavior } : {}),
       ...(hasTrade !== undefined ? { hasTrade } : {}),
+      ...(allowanceAsk !== undefined ? { allowanceAsk } : {}),
     });
   } else {
     const p = visitArchetype.preferences;
