@@ -4,7 +4,13 @@ import type { DepartmentQueue } from '../DepartmentQueue';
 import type { StaffMorale } from '../StaffMorale';
 import type { DeptDrain } from '../FloorSim';
 import type { Inventory } from '../Inventory';
-import type { DealEngine, CreditTierCatalog } from '../DealEngine';
+import type {
+  DealEngine,
+  CreditTierCatalog,
+  TradeBookValueFn,
+  TradeConditionRead,
+} from '../DealEngine';
+import { resolveTradeIn } from '../DealEngine';
 import type { Person, Visit } from '../NPC';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import { EXCEPTION_FLAGS } from './types';
@@ -47,6 +53,21 @@ export interface StaffDispatchDeps {
   unlockedRolesFn?: () => string[];
   /** Optional SalesProcess deps (configs, market/cost/book seam overrides). */
   salesProcessDeps?: ResolveDeps & CloseDeps & PickVehicleDeps;
+  /**
+   * Honest wholesale book for a customer's trade-in (#169). Wired from the live
+   * MarketEconomy book provider at the composition root (which owns the
+   * CurrentVehicle→PricedVehicleInput cast). Omitting it disables trade
+   * resolution — `hasTrade` visits simply close without a trade (legacy/test
+   * harnesses without a book provider).
+   */
+  tradeBookValueFn?: TradeBookValueFn;
+  /**
+   * UCM condition read on the trade (#169) — `confidence` pulls the staff's
+   * internal trade valuation. Defaults to `null` (no UCM ⇒ maximally
+   * defensive). The composition root derives it from the on-roster used-car
+   * manager's `condition_reading` skill.
+   */
+  getTradeConditionRead?: () => TradeConditionRead | null;
 }
 
 // Intentionally empty — dispatch is fully autonomous.
@@ -232,6 +253,51 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       return 'resolved';
     }
 
+    // Trade resolution (#169): a visit that arrived with a trade resolves the
+    // allowance after the deal reaches close but before it structures. Routine
+    // trades auto-resolve silently (emit `trade:resolved`, net the equity into
+    // the structure); unusual asks escalate (slice-16 placeholder: walk) and an
+    // underwater customer whose allowance can't clear their lien abandons.
+    // Requires the book provider; without it (legacy/test harness) a `hasTrade`
+    // visit just closes without a trade.
+    let tradeEquity = 0;
+    if (
+      visit.hasTrade &&
+      person.currentVehicle &&
+      visit.allowanceAsk !== undefined &&
+      deps.tradeBookValueFn
+    ) {
+      const tradeRes = resolveTradeIn(
+        {
+          currentVehicle: person.currentVehicle,
+          loanPayoff: person.currentVehicle.loanPayoff,
+          allowanceAsk: visit.allowanceAsk,
+          skill: { effectiveness, trustworthiness },
+          conditionRead: deps.getTradeConditionRead?.() ?? null,
+        },
+        { bookValueFn: deps.tradeBookValueFn },
+      );
+      if (tradeRes.status !== 'resolved') {
+        emitNoSale(
+          customerId,
+          salesperson.id,
+          day,
+          tradeRes.status === 'abandoned'
+            ? 'trade_negative_equity'
+            : 'trade_unusual',
+        );
+        return 'resolved';
+      }
+      tradeEquity = tradeRes.tradeEquity;
+      bus.publish('trade:resolved', {
+        customerId,
+        currentVehicle: person.currentVehicle,
+        agreedAllowance: tradeRes.agreedAllowance,
+        action: tradeRes.action,
+        hadCounter: tradeRes.hadCounter,
+      });
+    }
+
     const unlockedRoles =
       deps.unlockedRolesFn?.() ??
       Array.from(new Set(staffOrg.currentRoster.map(s => s.role_id)));
@@ -247,13 +313,15 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
     let term = 0;
     let apr = 0;
     if (visit.paymentMethod === 'cash') {
-      downPayment = agreedPrice;
+      // Net trade equity reduces the cash the customer brings to close.
+      downPayment = Math.max(0, agreedPrice - tradeEquity);
     } else {
       const policy = tier!;
       apr = policy.apr;
       term = policy.maxTerm;
       downPayment = agreedPrice * (visit.downPaymentBehavior ?? 0);
-      loanAmount = agreedPrice - downPayment;
+      // Net trade equity acts as additional cap reduction, shrinking the note.
+      loanAmount = Math.max(0, agreedPrice - downPayment - tradeEquity);
     }
 
     const result = deps.dealEngine.closeDeal({

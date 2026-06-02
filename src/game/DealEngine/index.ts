@@ -11,6 +11,7 @@ export {
   evaluateTrade,
   loadTradeEvalConfig,
   TradeEvalConfigSchema,
+  resolveTradeIn,
 } from './trade';
 export type {
   TradeAllowanceNoiseConfig,
@@ -22,4 +23,7 @@ export type {
   TradeAction,
   NegotiationSkill,
   TradeConditionRead,
+  TradeResolution,
+  TradeResolutionInput,
+  TradeResolutionDeps,
 } from './trade';

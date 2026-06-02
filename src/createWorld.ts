@@ -355,6 +355,22 @@ export function createWorld(deps: {
           vehicleCostFn: marketEconomy.vehicleCostFn,
           bookValueFn: marketEconomy.bookValueFn,
         },
+        // #169: trade resolution. Book provider (adapted at this boundary) +
+        // the UCM condition-read confidence. A used-car-manager on the roster
+        // appraises the trade with confidence = their `condition_reading`
+        // skill (0–100 → unit); no UCM ⇒ null ⇒ maximally defensive valuation.
+        tradeBookValueFn: tradeBookValue,
+        getTradeConditionRead: () => {
+          const ucms = staffOrg.currentRoster.filter(
+            (s) => s.role_id === 'used-car-manager',
+          );
+          if (ucms.length === 0) return null;
+          const bestSkill = ucms.reduce(
+            (m, s) => Math.max(m, s.skills['condition_reading'] ?? 0),
+            0,
+          );
+          return { confidence: Math.min(1, Math.max(0, bestSkill / 100)) };
+        },
       }),
     ],
     customerSource,

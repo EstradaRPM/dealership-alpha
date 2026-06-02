@@ -15,16 +15,30 @@ to the real machinery. Per customer (after exception roll + hold-floor):
    `makeSalespersonProfile`. Walk ⇒ `no_sale`/`<WalkCause>`.
 3. `closeAndPrice(...)` with the resolved meters + skill + priceSensitivity.
    `outcome !== 'buy'` ⇒ `no_sale`/`no_close`.
-4. `dealEngine.computeAutoFni(effectiveness×100, unlockedRoles, fniRng)` →
+4. **Trade resolution (#169).** If the visit `hasTrade` (and the book seam is
+   wired), `resolveTradeIn(...)` runs after the buy decision but before
+   structuring. Routine → emit `trade:resolved` and net `tradeEquity` into the
+   structure (cash: less cash down; finance: smaller note). Underwater
+   (`abandoned`) → `no_sale`/`trade_negative_equity`. Unusual (`escalated`,
+   slice-16 overlay placeholder) → `no_sale`/`trade_unusual`. No trade / no book
+   seam → closes without a trade.
+5. `dealEngine.computeAutoFni(effectiveness×100, unlockedRoles, fniRng)` →
    `dealEngine.closeDeal(...)` with the realized price, F&I attaches, and the
    five deal-structuring fields (paymentMethod / downPayment / loanAmount /
-   term / apr) derived from the customer's Visit + classified credit tier.
-5. Emit `staff:auto_resolved` with `outcome='closed'` and
+   term / apr) derived from the customer's Visit + classified credit tier, with
+   net trade equity subtracted from the financed amount (or cash down).
+6. Emit `staff:auto_resolved` with `outcome='closed'` and
    `grossImpact = frontGross + backGross` from the DealEngine result.
 
+`trade:resolved` (#169) precedes the matching `deal:closed` for that customer.
+The trade-acquisition/economy reconciliation (the dealer paying the allowance,
+adding the trade to inventory) is a downstream consumer of `trade:resolved`, a
+later slice; #169 only nets the equity into the deal structure.
+
 `staff:auto_resolved` now carries an optional `reason` field on `no_sale`
-outcomes (`no_session | not_sales | no_fit | no_close | <WalkCause>`). The
-sole `declined` path is an unstaffed floor.
+outcomes (`no_session | not_sales | no_fit | no_close | trade_unusual |
+trade_negative_equity | <WalkCause>`). The sole `declined` path is an
+unstaffed floor.
 
 ### Required deps for the close
 `inventory` (lot snapshot), `dealEngine` (closeDeal + classifyCredit +
@@ -32,7 +46,9 @@ computeAutoFni), `creditTiers` (tier policy lookup), `getCustomerSession`
 (adapter to CustomerPool — returns `{ bundle, visitArchetypeId }`). Optional:
 `fniRng` (defaults Math.random), `unlockedRolesFn` (defaults to deriving
 unique role_ids from staffOrg roster), `salesProcessDeps` (configs +
-market/cost/book seam overrides).
+market/cost/book seam overrides), `tradeBookValueFn` (#169 — honest trade book;
+omit to disable trade resolution), `getTradeConditionRead` (#169 — UCM
+condition read, defaults `null` ⇒ defensive).
 
 ### Known gaps
 Cash buyers don't carry a stamped behavioral `cashSpendFraction` on the
@@ -68,7 +84,8 @@ with #147.
   `grossImpact` and on `no_sale` an optional `reason`). On a successful close
   the resolver delegates to `DealEngine.closeDeal`, so the canonical
   `deal:closed` (with the five deal-structuring fields) and
-  `inventory:vehicle_sold` fire too.
+  `inventory:vehicle_sold` fire too. On a routine auto-resolved trade (#169) it
+  emits `trade:resolved` just before `deal:closed`.
 - **Consumes:** Sales queue items via `DepartmentQueue` (legacy path on
   `capacity:customer_admitted`; floor-drain path per FloorSim tick).
 

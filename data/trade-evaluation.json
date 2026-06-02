@@ -1,8 +1,10 @@
 {
   "schemaVersion": 1,
-  "_doc": "Tunables for staff trade evaluation (#168). counterWindowFraction: how far above the internal target an ask may sit and still draw a counter (rather than a decline). confidencePenaltyFraction: max defensive pull-down on the internal valuation at zero condition-read confidence (a poor/absent UCM read makes staff hedge against hidden recon). counterGiveWeight: how far a weak negotiator drifts from target toward the customer's ask (overpay) — a perfect closer gives nothing. skillCounterThreshold: NEGOTIATE effectiveness at/above which staff still counter a far-above ask instead of declining it.",
+  "_doc": "Tunables for staff trade evaluation (#168) + routine auto-resolution (#169). counterWindowFraction: how far above the internal target an ask may sit and still draw a counter (rather than a decline). confidencePenaltyFraction: max defensive pull-down on the internal valuation at zero condition-read confidence (a poor/absent UCM read makes staff hedge against hidden recon). counterGiveWeight: how far a weak negotiator drifts from target toward the customer's ask (overpay) — a perfect closer gives nothing. skillCounterThreshold: NEGOTIATE effectiveness at/above which staff still counter a far-above ask instead of declining it. routineGapFraction (#169): a trade auto-resolves silently only when ask − target ≤ target × this; wider gaps escalate to the player (slice 16). Set equal to counterWindowFraction so any in-window counter is routine and only far-above asks escalate. routineConfidenceFloor (#169): routine also requires condition-read confidence ≥ this; 0 lets a no-UCM (defensive) appraisal still auto-resolve.",
   "counterWindowFraction": 0.25,
   "confidencePenaltyFraction": 0.15,
   "counterGiveWeight": 0.5,
-  "skillCounterThreshold": 0.5
+  "skillCounterThreshold": 0.5,
+  "routineGapFraction": 0.25,
+  "routineConfidenceFloor": 0.0
 }

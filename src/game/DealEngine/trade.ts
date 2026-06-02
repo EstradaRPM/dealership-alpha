@@ -111,6 +111,21 @@ export const TradeEvalConfigSchema = z
     confidencePenaltyFraction: z.number().min(0).max(1),
     counterGiveWeight: z.number().min(0).max(1),
     skillCounterThreshold: z.number().min(0).max(1),
+    // ── Routine auto-resolution gate (#169) ──
+    /**
+     * A trade auto-resolves (no player overlay) only when the ask sits within
+     * this fraction of the internal target above it: `ask − target ≤ target ×
+     * routineGapFraction`. Wider gaps are *unusual* and escalate to the player
+     * (slice 16). Accepts (`ask ≤ target`) are trivially within the gate.
+     */
+    routineGapFraction: z.number().min(0),
+    /**
+     * Routine auto-resolution also requires condition-read confidence ≥ this
+     * floor. `0` lets a no-UCM (maximally defensive) appraisal still
+     * auto-resolve; a positive floor forces low-confidence trades to the
+     * player.
+     */
+    routineConfidenceFloor: z.number().min(0).max(1),
   })
   .strict();
 
@@ -149,6 +164,13 @@ export interface TradeEvaluation {
   readonly action: TradeAction;
   /** Present only when `action === 'counter'`. Whole dollars. */
   readonly counterAmount?: number;
+  /**
+   * The internal acceptance target the decision was measured against
+   * (`book × policyMultiplier × read-confidence factor`). Exposed so the
+   * routine-gate in `resolveTradeIn` (#169) reads the same figure instead of
+   * re-deriving the formula. Whole dollars.
+   */
+  readonly target: number;
   /** Human-readable decision trace (figures, target, gating skill). */
   readonly rationale: string;
 }
@@ -217,9 +239,12 @@ export function evaluateTrade(
 
   const dollars = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
 
+  const roundedTarget = Math.round(target);
+
   if (allowanceAsk <= target) {
     return {
       action: 'accept',
+      target: roundedTarget,
       rationale: `Ask ${dollars(allowanceAsk)} ≤ internal target ${dollars(
         target,
       )} (book ${dollars(book)} × policy ${policyMultiplier} × read-confidence factor ${defensiveFactor.toFixed(
@@ -237,6 +262,7 @@ export function evaluateTrade(
   if (farAbove && skill.effectiveness < cfg.skillCounterThreshold) {
     return {
       action: 'decline',
+      target: roundedTarget,
       rationale: `Ask ${dollars(allowanceAsk)} far above target ${dollars(
         target,
       )} (> +${(cfg.counterWindowFraction * 100).toFixed(
@@ -250,10 +276,140 @@ export function evaluateTrade(
   return {
     action: 'counter',
     counterAmount,
+    target: roundedTarget,
     rationale: `Ask ${dollars(allowanceAsk)} above target ${dollars(
       target,
     )}; counter ${dollars(counterAmount)} (NEGOTIATE effectiveness ${skill.effectiveness.toFixed(
       2,
     )}${farAbove ? ', skilled closer holding a far-above ask' : ''}).`,
+  };
+}
+
+// ── Routine trade auto-resolution (#169) ──────────────────────────────────────
+
+export interface TradeResolutionInput {
+  readonly currentVehicle: CurrentVehicle;
+  /** Outstanding lien on the trade; `null` for a free-and-clear owner. */
+  readonly loanPayoff: number | null;
+  /** What the customer wants for the trade (`generateTradeAsk` output). */
+  readonly allowanceAsk: number;
+  /** Acting salesperson's resolved NEGOTIATE composite. */
+  readonly skill: NegotiationSkill;
+  /** UCM condition read on the trade, or `null` when no UCM is on staff. */
+  readonly conditionRead: TradeConditionRead | null;
+}
+
+export interface TradeResolutionDeps {
+  /** Honest wholesale book for the trade (live MarketEconomy provider at runtime). */
+  readonly bookValueFn: TradeBookValueFn;
+  /** Trade-policy multiplier (slice #18 seam). Default `1.0` (market). */
+  readonly policyMultiplier?: number;
+  readonly config?: TradeEvalConfig;
+}
+
+/**
+ * Outcome of resolving a customer's trade as part of a closing deal (#169).
+ *
+ *   - `resolved`  — routine trade; auto-resolves silently. Carries the agreed
+ *                   allowance, the net `tradeEquity` (allowance − payoff, ≥ 0)
+ *                   the deal structure folds in, and whether the customer took
+ *                   a staff counter.
+ *   - `abandoned` — routine but the agreed allowance can't clear the lien
+ *                   (allowance < payoff). The underwater customer walks rather
+ *                   than roll negative equity into the new note. Slice 16 adds
+ *                   the staff-counter / player overlay; until then this walks.
+ *   - `escalated` — *unusual* trade (ask too far above the staff target, the
+ *                   evaluator declined, or confidence below the routine floor).
+ *                   Slice 16 routes this to a player counter-offer overlay; the
+ *                   v1 placeholder declines it (the caller walks the deal).
+ */
+export type TradeResolution =
+  | {
+      readonly status: 'resolved';
+      readonly action: 'accept' | 'counter';
+      readonly agreedAllowance: number;
+      readonly hadCounter: boolean;
+      /** `agreedAllowance − payoff`, ≥ 0. Net credit the deal structure folds in. */
+      readonly tradeEquity: number;
+      readonly rationale: string;
+    }
+  | {
+      readonly status: 'abandoned';
+      readonly reason: 'negative_equity';
+      readonly rationale: string;
+    }
+  | { readonly status: 'escalated'; readonly rationale: string };
+
+/**
+ * Resolve a customer's trade for a deal that has otherwise reached close
+ * (#169). Pure and deterministic — composes `evaluateTrade` with the routine
+ * gate and the negative-equity guard; no RNG, no I/O.
+ *
+ * A trade is *routine* (auto-resolves silently) when the evaluator did not
+ * decline, the ask sits within `routineGapFraction` of the staff target, and
+ * condition-read confidence clears `routineConfidenceFloor`. Routine accepts
+ * agree at the ask; routine counters agree at the staff counter (the customer
+ * takes a small, in-window counter without escalation). Everything else is
+ * unusual and escalates to the player (slice 16) — the v1 placeholder declines.
+ *
+ * The negative-equity guard runs only on an otherwise-routine trade: if the
+ * agreed allowance can't clear the lien, the underwater customer abandons
+ * rather than rolling the shortfall into the new note (slice 16 will let staff
+ * counter or the player intervene).
+ */
+export function resolveTradeIn(
+  input: TradeResolutionInput,
+  deps: TradeResolutionDeps,
+): TradeResolution {
+  const cfg = deps.config ?? loadTradeEvalConfig();
+  const policyMultiplier = deps.policyMultiplier ?? 1.0;
+  const { currentVehicle, allowanceAsk, skill, conditionRead, loanPayoff } =
+    input;
+
+  const evaluation = evaluateTrade(
+    { currentVehicle, allowanceAsk, skill, conditionRead },
+    { bookValueFn: deps.bookValueFn, policyMultiplier, config: cfg },
+  );
+
+  const confidence = conditionRead?.confidence ?? 0;
+  const gapOk =
+    allowanceAsk - evaluation.target <=
+    evaluation.target * cfg.routineGapFraction;
+  const confidenceOk = confidence >= cfg.routineConfidenceFloor;
+  const routine = evaluation.action !== 'decline' && gapOk && confidenceOk;
+
+  if (!routine) {
+    return {
+      status: 'escalated',
+      rationale: `Unusual trade — ${evaluation.rationale} (gap within routine band: ${gapOk}, confidence ≥ floor: ${confidenceOk}). Escalates to player (slice 16); v1 placeholder declines.`,
+    };
+  }
+
+  const agreedAllowance =
+    evaluation.action === 'accept'
+      ? allowanceAsk
+      : (evaluation.counterAmount as number);
+  const payoff = loanPayoff ?? 0;
+  const tradeEquity = agreedAllowance - payoff;
+
+  if (tradeEquity < 0) {
+    return {
+      status: 'abandoned',
+      reason: 'negative_equity',
+      rationale: `Agreed allowance $${agreedAllowance.toLocaleString(
+        'en-US',
+      )} below lien payoff $${payoff.toLocaleString(
+        'en-US',
+      )}; customer underwater and the deal can't clear the lien. Abandoned (slice 16 adds staff-counter).`,
+    };
+  }
+
+  return {
+    status: 'resolved',
+    action: evaluation.action,
+    agreedAllowance,
+    hadCounter: evaluation.action === 'counter',
+    tradeEquity,
+    rationale: evaluation.rationale,
   };
 }

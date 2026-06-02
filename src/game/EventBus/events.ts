@@ -287,6 +287,34 @@ export interface EventMap {
     apr: number;
   };
 
+  // DealEngine — a customer's trade-in resolved during a closing deal (#169).
+  // Fires only on a *routine* trade that auto-resolved silently, after the deal
+  // reached close and before DealEngine.closeDeal, so it precedes the matching
+  // `deal:closed` for that customer. `currentVehicle` is the car the customer
+  // drove in on (the asset the dealer acquires); `agreedAllowance` is the gross
+  // credit; `action` is the staff decision ('accept' or 'counter'); `hadCounter`
+  // is true when the customer took a staff counter rather than their ask.
+  // Unusual trades (player overlay, slice 16) and underwater abandons do NOT
+  // emit this. The downstream trade-acquisition/economy reconciliation (later
+  // slice) consumes this event; #169 only nets the equity into the deal
+  // structure (downPayment / loanAmount).
+  'trade:resolved': {
+    customerId: string;
+    currentVehicle: {
+      templateId: string;
+      make: string;
+      model: string;
+      year: number;
+      mileage: number;
+      condition: string;
+      category: string;
+      loanPayoff: number | null;
+    };
+    agreedAllowance: number;
+    action: 'accept' | 'counter';
+    hadCounter: boolean;
+  };
+
   // StaffOrg — roster changes
   'staff:hired': { staffId: string; roleId: string; day: number; hiringCost: number };
   'staff:fired': { staffId: string; roleId: string; day: number };
@@ -300,9 +328,11 @@ export interface EventMap {
     grossImpact: number;
     /**
      * Named reason for a `no_sale` outcome (#147 tracer): `'no_session'`,
-     * `'not_sales'`, `'no_fit'`, `'no_close'`, or a SalesProcess `WalkCause`
-     * (`'patience_drain' | 'trust_collapse' | 'demo_nonnegotiable_miss'`).
-     * Omitted on `outcome: 'closed'`.
+     * `'not_sales'`, `'no_fit'`, `'no_close'`, the #169 trade walks
+     * (`'trade_unusual'` — unusual ask, slice-16 overlay placeholder;
+     * `'trade_negative_equity'` — underwater trade), or a SalesProcess
+     * `WalkCause` (`'patience_drain' | 'trust_collapse' |
+     * 'demo_nonnegotiable_miss'`). Omitted on `outcome: 'closed'`.
      */
     reason?: string;
   };

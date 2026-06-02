@@ -20,7 +20,9 @@ import type {
   Staff,
   Person,
   SalesVisit,
+  CurrentVehicle,
 } from '../src/game/NPC';
+import type { TradeConditionRead } from '../src/game/DealEngine';
 
 const MASTER_SEED = 42;
 
@@ -118,6 +120,28 @@ function makeFinanceVisit(personId: string): SalesVisit {
   };
 }
 
+function makeCashVisit(personId: string): SalesVisit {
+  return { ...makeFinanceVisit(personId), paymentMethod: 'cash', downPaymentBehavior: undefined };
+}
+
+// The car the trade customer drove in on. loanPayoff overridable per test.
+function makeTradeVehicle(loanPayoff: number | null = null): CurrentVehicle {
+  return {
+    templateId: 'cv:civic',
+    make: 'Honda',
+    model: 'Civic',
+    year: 2016,
+    mileage: 80_000,
+    condition: 'average',
+    category: 'sedan',
+    loanPayoff,
+  };
+}
+
+function withTrade(visit: SalesVisit, allowanceAsk: number): SalesVisit {
+  return { ...visit, hasTrade: true, allowanceAsk };
+}
+
 function makeSession(personId: string, visit: SalesVisit, opts: Partial<Person> = {}): StaffDispatchCustomerSession {
   return {
     bundle: { person: makePerson(personId, opts), visit },
@@ -153,20 +177,45 @@ function makeLotVehicle(id: string, overrides: Partial<LotVehicle> = {}): LotVeh
   };
 }
 
+interface ClosedDealPayload {
+  customerId: string;
+  agreedPrice: number;
+  downPayment: number;
+  loanAmount: number;
+  paymentMethod: string;
+  frontGross: number;
+}
+
+interface TradeResolvedPayload {
+  customerId: string;
+  agreedAllowance: number;
+  action: 'accept' | 'counter';
+  hadCounter: boolean;
+  currentVehicle: { loanPayoff: number | null };
+}
+
 interface Wired {
   bus: EventBus;
   inventory: Pick<Inventory, 'getLotVehicles' | 'getLotVehicle' | 'sellVehicle'>;
   dealEngine: DealEngine;
   sessions: Map<string, StaffDispatchCustomerSession>;
   events: Array<{ outcome: string; reason?: string; grossImpact: number; customerId: string }>;
-  closedDeals: unknown[];
+  closedDeals: ClosedDealPayload[];
+  trades: TradeResolvedPayload[];
   inventorySold: string[];
 }
+
+// Fixed book seam so trade decisions are isolated from the live anchor engine.
+const TRADE_BOOK = 6_000;
 
 function setup(
   roster: StaffWithComposites[],
   config: StaffDispatchConfig = NO_EXCEPTION_CONFIG,
-  opts: { lot?: LotVehicle[]; getHasGm?: () => boolean } = {},
+  opts: {
+    lot?: LotVehicle[];
+    getHasGm?: () => boolean;
+    tradeConditionRead?: () => TradeConditionRead | null;
+  } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
   createGameClock({ bus });
@@ -196,8 +245,10 @@ function setup(
 
   const events: Wired['events'] = [];
   bus.subscribe('staff:auto_resolved', (e) => events.push(e));
-  const closedDeals: unknown[] = [];
-  bus.subscribe('deal:closed', (e) => closedDeals.push(e));
+  const closedDeals: ClosedDealPayload[] = [];
+  bus.subscribe('deal:closed', (e) => closedDeals.push(e as ClosedDealPayload));
+  const trades: TradeResolvedPayload[] = [];
+  bus.subscribe('trade:resolved', (e) => trades.push(e as TradeResolvedPayload));
 
   createStaffDispatch({
     bus,
@@ -212,6 +263,9 @@ function setup(
     getHasGm: opts.getHasGm,
     // Deterministic FNI: never attach (keeps backGross = 0 so per-test math is exact).
     fniRng: () => 1.0,
+    // #169: constant book seam + optional UCM condition read.
+    tradeBookValueFn: () => TRADE_BOOK,
+    getTradeConditionRead: opts.tradeConditionRead,
   });
 
   return {
@@ -221,6 +275,7 @@ function setup(
     sessions,
     events,
     closedDeals,
+    trades,
     inventorySold: sold,
     economy,
   };
@@ -347,6 +402,139 @@ describe('StaffDispatch — config', () => {
     expect('minCloseRate' in config).toBe(false);
     expect('maxCloseRate' in config).toBe(false);
     expect('minGrossModifier' in config).toBe(false);
+  });
+});
+
+// ── Trade resolution (#169) ──────────────────────────────────────────────────
+
+// With the default null condition read: confidence 0 ⇒ defensiveFactor
+// 1 − 0.15 = 0.85 ⇒ target = TRADE_BOOK × 0.85 = 5_100.
+const TRADE_TARGET = 5_100;
+
+describe('StaffDispatch — routine trade resolution (#169)', () => {
+  it('routine accept: trade:resolved fires before deal:closed; allowance nets into the note', () => {
+    // Baseline: same customer/seed, no trade.
+    const base = setup([makeStaff(0.9)]);
+    base.sessions.set('cust:1', makeSession('cust:1', makeFinanceVisit('cust:1')));
+    admit(base.bus, 'cust:1');
+    expect(base.closedDeals).toHaveLength(1);
+    const baseDeal = base.closedDeals[0];
+
+    // Same customer/seed, now with an in-band trade (ask ≤ target ⇒ accept).
+    const w = setup([makeStaff(0.9)]);
+    w.sessions.set(
+      'cust:1',
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 5_000), {
+        currentVehicle: makeTradeVehicle(null),
+      }),
+    );
+    admit(w.bus, 'cust:1');
+
+    // Deal still closes.
+    expect(w.events.filter(e => e.outcome === 'closed')).toHaveLength(1);
+    expect(w.closedDeals).toHaveLength(1);
+
+    // trade:resolved fired with the accepted ask, no counter.
+    expect(w.trades).toHaveLength(1);
+    expect(w.trades[0].action).toBe('accept');
+    expect(w.trades[0].hadCounter).toBe(false);
+    expect(w.trades[0].agreedAllowance).toBe(5_000);
+
+    // Price/down are unchanged by the trade (resolution runs after close); the
+    // net equity (5_000, no payoff) comes straight off the financed amount.
+    const deal = w.closedDeals[0];
+    expect(deal.agreedPrice).toBe(baseDeal.agreedPrice);
+    expect(deal.downPayment).toBeCloseTo(baseDeal.downPayment, 5);
+    expect(deal.loanAmount).toBeCloseTo(baseDeal.loanAmount - 5_000, 5);
+  });
+
+  it('routine counter: customer takes a held counter below their ask', () => {
+    const w = setup([makeStaff(0.9)]);
+    // ask 6_000: above target (5_100) but inside the routine gap (≤ 25%).
+    w.sessions.set(
+      'cust:1',
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 6_000), {
+        currentVehicle: makeTradeVehicle(null),
+      }),
+    );
+    admit(w.bus, 'cust:1');
+
+    expect(w.trades).toHaveLength(1);
+    expect(w.trades[0].action).toBe('counter');
+    expect(w.trades[0].hadCounter).toBe(true);
+    expect(w.trades[0].agreedAllowance).toBeLessThan(6_000);
+    expect(w.trades[0].agreedAllowance).toBeGreaterThanOrEqual(TRADE_TARGET);
+    expect(w.events.filter(e => e.outcome === 'closed')).toHaveLength(1);
+  });
+
+  it('cash deal: net equity reduces the cash brought to close', () => {
+    const base = setup([makeStaff(0.9)]);
+    base.sessions.set('cust:1', makeSession('cust:1', makeCashVisit('cust:1')));
+    admit(base.bus, 'cust:1');
+    const baseDeal = base.closedDeals[0];
+    expect(baseDeal.paymentMethod).toBe('cash');
+
+    const w = setup([makeStaff(0.9)]);
+    w.sessions.set(
+      'cust:1',
+      makeSession('cust:1', withTrade(makeCashVisit('cust:1'), 5_000), {
+        currentVehicle: makeTradeVehicle(null),
+      }),
+    );
+    admit(w.bus, 'cust:1');
+    const deal = w.closedDeals[0];
+    expect(deal.loanAmount).toBe(0);
+    expect(deal.downPayment).toBeCloseTo(baseDeal.downPayment - 5_000, 5);
+  });
+
+  it('unusual ask (far above target) escalates ⇒ no_sale reason=trade_unusual, no deal', () => {
+    const w = setup([makeStaff(0.9)]);
+    w.sessions.set(
+      'cust:1',
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 9_000), {
+        currentVehicle: makeTradeVehicle(null),
+      }),
+    );
+    admit(w.bus, 'cust:1');
+    expect(w.trades).toHaveLength(0);
+    expect(w.closedDeals).toHaveLength(0);
+    expect(w.events).toHaveLength(1);
+    expect(w.events[0].outcome).toBe('no_sale');
+    expect(w.events[0].reason).toBe('trade_unusual');
+  });
+
+  it('negative equity (allowance < payoff) ⇒ no_sale reason=trade_negative_equity, no deal', () => {
+    const w = setup([makeStaff(0.9)]);
+    // ask 5_000 ≤ target ⇒ routine accept, but payoff 7_000 leaves the buyer underwater.
+    w.sessions.set(
+      'cust:1',
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 5_000), {
+        currentVehicle: makeTradeVehicle(7_000),
+      }),
+    );
+    admit(w.bus, 'cust:1');
+    expect(w.trades).toHaveLength(0);
+    expect(w.closedDeals).toHaveLength(0);
+    expect(w.events[0].outcome).toBe('no_sale');
+    expect(w.events[0].reason).toBe('trade_negative_equity');
+  });
+
+  it('a UCM condition read lifts the target (higher confidence ⇒ less defensive)', () => {
+    // High-confidence read ⇒ defensiveFactor 1 ⇒ target = TRADE_BOOK (6_000).
+    // An ask of 6_000 now accepts rather than drawing a counter.
+    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+      tradeConditionRead: () => ({ confidence: 1.0 }),
+    });
+    w.sessions.set(
+      'cust:1',
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 6_000), {
+        currentVehicle: makeTradeVehicle(null),
+      }),
+    );
+    admit(w.bus, 'cust:1');
+    expect(w.trades).toHaveLength(1);
+    expect(w.trades[0].action).toBe('accept');
+    expect(w.trades[0].agreedAllowance).toBe(6_000);
   });
 });
 
