@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Tunables for staff trade evaluation (#168). counterWindowFraction: how far above the internal target an ask may sit and still draw a counter (rather than a decline). confidencePenaltyFraction: max defensive pull-down on the internal valuation at zero condition-read confidence (a poor/absent UCM read makes staff hedge against hidden recon). counterGiveWeight: how far a weak negotiator drifts from target toward the customer's ask (overpay) — a perfect closer gives nothing. skillCounterThreshold: NEGOTIATE effectiveness at/above which staff still counter a far-above ask instead of declining it.",
+  "counterWindowFraction": 0.25,
+  "confidencePenaltyFraction": 0.15,
+  "counterGiveWeight": 0.5,
+  "skillCounterThreshold": 0.5
+}

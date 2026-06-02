@@ -8,5 +8,18 @@ export {
   generateTradeAsk,
   loadTradeAllowanceNoiseConfig,
   TradeAllowanceNoiseConfigSchema,
+  evaluateTrade,
+  loadTradeEvalConfig,
+  TradeEvalConfigSchema,
 } from './trade';
-export type { TradeAllowanceNoiseConfig, TradeBookValueFn } from './trade';
+export type {
+  TradeAllowanceNoiseConfig,
+  TradeBookValueFn,
+  TradeEvalConfig,
+  TradeEvaluation,
+  TradeEvalInput,
+  TradeEvalDeps,
+  TradeAction,
+  NegotiationSkill,
+  TradeConditionRead,
+} from './trade';
