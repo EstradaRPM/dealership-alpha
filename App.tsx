@@ -579,6 +579,10 @@ export default function App() {
         trim: v.trim,
         suggestedRetail: v.suggestedRetail,
         askingPrice: v.askingPrice,
+        daysInInventory: v.daysInInventory,
+        carryingCostToDate: v.carryingCostToDate,
+        dailyCarryingCost: v.dailyCarryingCost,
+        aged: v.aged,
       })),
       onSetAskingPrice: (vehicleId: string, price: number) => {
         world.inventory.setAskingPrice(vehicleId, price);

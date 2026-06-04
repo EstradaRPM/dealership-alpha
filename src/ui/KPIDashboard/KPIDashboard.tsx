@@ -67,6 +67,10 @@ function UnlockedState({ snapshot }: { snapshot: KPISnapshot }) {
           label="Avg Days in Inventory"
           value={hasDeals ? `${Math.round(snapshot.avgDii)} days` : '—'}
         />
+        <KPIRow
+          label="Daily Carrying Cost"
+          value={fmt$(snapshot.dailyCarryingCost)}
+        />
       </View>
     </ScrollView>
   );

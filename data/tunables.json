@@ -202,6 +202,15 @@
       "cost": 250,
       "halfWidthFraction": 0.05,
       "daysToComplete": 1
+    },
+    "carrying": {
+      "_doc": "Daily per-vehicle floorplan + carrying cost accrual (#173). Floorplan interest = currentBook × apr / 365; apr is the floorplan rate for the dealership's CareerProgression tier (better tier → cheaper money, a diegetic progression reward) and falls back to `baselineApr` for any tier without an explicit entry. `insurancePerDay`/`overheadPerDay` are flat per-unit-per-day allocations; `reconFadePerDay` is a small additive that only applies once recon is complete (a detailed car depreciating while it sits). A unit is visually flagged `aged` once `daysInInventory` exceeds `agedThresholdDays`. Retune the burn here without touching code.",
+      "baselineApr": 0.09,
+      "aprByTier": { "1": 0.09, "2": 0.075, "3": 0.06 },
+      "insurancePerDay": 5,
+      "overheadPerDay": 8,
+      "reconFadePerDay": 3,
+      "agedThresholdDays": 45
     }
   },
   "ownership": {

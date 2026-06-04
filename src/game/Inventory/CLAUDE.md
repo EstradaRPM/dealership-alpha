@@ -9,7 +9,8 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 
 ## Events
 - **Emits:** `inventory:vehicle_purchased`, `inventory:vehicle_sold`,
-  `inventory:vehicle_acquired_via_trade` (#171).
+  `inventory:vehicle_acquired_via_trade` (#171),
+  `economy:carrying_cost_posted` (#173).
 - **Consumes:**
   - `trade:resolved` (#171) — an accepted/countered customer trade materializes
     onto the lot via `acquireFromTrade` (only `accept`/`counter` emit the event;
@@ -111,6 +112,29 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   `completed` listings expire one day later if not purchased.
 - `getAuctionListings()` returns the daily board merged with any pending
   inspections so the UI sees one combined view.
+
+## Carrying cost (#173)
+- On the daily lot pass (`prepareDay` → `accrueDay`, after each unit's recon
+  advances) every lot vehicle accrues one day of floorplan + carrying cost. The
+  per-vehicle burn is summed and posted as a single aggregate Economy expense
+  via `forceDebit` (NOT `postExpense`) — carrying cost is a non-discretionary
+  accrual that legitimately pushes cash negative, which is exactly what
+  BankruptcyMonitor watches. `economy:carrying_cost_posted` then fires for
+  KPI/UI (fires with 0/0 on an empty-lot day; no expense is posted then).
+- Per-vehicle daily burn = `bookValue × apr / 365` (floorplan interest) + flat
+  `insurancePerDay` + flat `overheadPerDay` + `reconFadePerDay` (only once recon
+  is complete). Pure + rounded in `computeDailyCarryingCost` (exported for
+  tests); `bookValue` comes from the same `bookValueFn` the recon-abandon path
+  uses.
+- Floorplan `apr` is resolved per dealership tier via `floorplanAprForTier`
+  (`carrying.aprByTier[tier] ?? baselineApr`) — better tier → cheaper money, a
+  diegetic progression reward. The live tier is read through the optional
+  `getTier` dep (defaults to tier 1); the composition root passes
+  `() => tierManager.currentTier`.
+- Each `LotVehicle` carries running `carryingCostToDate`, the latest
+  `dailyCarryingCost`, and an `aged` flag (`daysInInventory >
+  carrying.agedThresholdDays`) — the lot view (`OwnershipLevers` Pricing card)
+  reads all three. Tunables live in `data/tunables.json#inventory.carrying`.
 
 ## Notes
 - The auction generator is intentionally simple in v1 (random draw weighted by brand share). It is exposed via interface so a v2 replacement drops in cleanly.

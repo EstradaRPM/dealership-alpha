@@ -11,4 +11,9 @@ export type {
   TradeAcquisitionInput,
 } from './types';
 export { loadInventoryConfig } from './inventoryConfig';
-export type { InventoryConfig, InspectionConfig } from './inventoryConfig';
+export type {
+  InventoryConfig,
+  InspectionConfig,
+  CarryingConfig,
+} from './inventoryConfig';
+export { computeDailyCarryingCost, floorplanAprForTier } from './carryingCost';

@@ -258,6 +258,19 @@ export interface EventMap {
   'economy:revenue_posted': { day: number; amount: number; label: string };
   'economy:expense_posted': { day: number; amount: number; label: string };
 
+  // Inventory — daily floorplan + carrying cost accrual (#173). Fires once per
+  // day from the lot pass after each unit's recon advances. `totalCost` is the
+  // aggregate burn already posted to Economy (as a single `forceDebit`);
+  // `vehicleCount` is how many units it covered. Both are 0 on a day the lot is
+  // empty (no aggregate expense is posted then, but the event still fires so
+  // KPI/UI see the zero-burn day). KPIDashboard consumes this for the daily
+  // carrying-cost line item; full month aggregation lands in slice #178/#25.
+  'economy:carrying_cost_posted': {
+    day: number;
+    totalCost: number;
+    vehicleCount: number;
+  };
+
   // Inventory — vehicle sold off lot. Carries the same snapshot as
   // vehicle_purchased plus the realized sale price so MarketEconomy's
   // compHistory can record a retail comp without consulting DealEngine.

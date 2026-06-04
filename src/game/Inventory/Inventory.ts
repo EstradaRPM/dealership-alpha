@@ -16,6 +16,7 @@ import {
 import { generateAuctionListings } from './auctionGenerator';
 import { loadVehicleData } from './vehicleData';
 import { loadInventoryConfig, type InventoryConfig } from './inventoryConfig';
+import { computeDailyCarryingCost, floorplanAprForTier } from './carryingCost';
 import type { VehicleData } from './vehicleData';
 import type { AuctionListing, LotVehicle, TradeAcquisitionInput } from './types';
 
@@ -75,7 +76,13 @@ export interface Inventory {
 export interface InventoryDeps {
   bus: EventBus;
   masterSeed: number;
-  economy: Pick<Economy, 'cash' | 'postExpense' | 'postRevenue'>;
+  economy: Pick<Economy, 'cash' | 'postExpense' | 'postRevenue' | 'forceDebit'>;
+  /**
+   * Live dealership tier provider (#173). Drives the floorplan APR used in the
+   * daily carrying-cost accrual — better tiers borrow more cheaply. Omit to
+   * default to tier 1 (the baseline APR).
+   */
+  getTier?: () => number;
   vehicleData?: VehicleData;
   /**
    * Live book-value provider used by the recon-abandon path (#162). Receives
@@ -99,6 +106,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
     deps.auctionSourceReliability ??
     rollAuctionSourceReliability(masterSeed, loadAuctionSourcesConfig());
   const inventoryConfig = deps.inventoryConfig ?? loadInventoryConfig();
+  const getTier = deps.getTier ?? (() => 1);
   const bookValueFn =
     deps.bookValueFn ?? ((v: LotVehicle) => v.purchasePrice + v.reconCost);
 
@@ -118,10 +126,52 @@ export function createInventory(deps: InventoryDeps): Inventory {
     currentDay = day;
     auctionListings = generateAuctionListings(day, masterSeed, vehicleData);
     advanceInspections(day);
+    accrueDay(day);
+  }
+
+  /**
+   * Daily lot pass (#173): age each unit, advance its recon, then accrue one
+   * day of floorplan + carrying cost. The per-vehicle burn is summed and posted
+   * as a single aggregate Economy expense, and `economy:carrying_cost_posted`
+   * fires for KPI/UI consumption. `forceDebit` (not `postExpense`) because
+   * carrying cost is a non-discretionary accrual that legitimately pushes cash
+   * negative — that descent is exactly what BankruptcyMonitor watches for.
+   * Driven through `prepareDay`'s once-per-day guard, so it is idempotent.
+   */
+  function accrueDay(day: number): void {
+    const carrying = inventoryConfig.carrying;
+    const apr = floorplanAprForTier(carrying, getTier());
+    let totalCarry = 0;
+    let unitCount = 0;
     for (const [id, v] of lotVehicles) {
-      const aged = { ...v, daysInInventory: day - v.arrivalDay };
-      lotVehicles.set(id, advanceRecon(aged, day));
+      const daysInInventory = day - v.arrivalDay;
+      const advanced = advanceRecon({ ...v, daysInInventory }, day);
+      const dailyCarry = computeDailyCarryingCost({
+        bookValue: bookValueFn(advanced),
+        apr,
+        reconComplete: advanced.reconStatus === 'complete',
+        config: carrying,
+      });
+      lotVehicles.set(id, {
+        ...advanced,
+        carryingCostToDate: advanced.carryingCostToDate + dailyCarry,
+        dailyCarryingCost: dailyCarry,
+        aged: daysInInventory > carrying.agedThresholdDays,
+      });
+      totalCarry += dailyCarry;
+      unitCount += 1;
     }
+    if (totalCarry > 0) {
+      economy.forceDebit(
+        totalCarry,
+        `Floorplan & carrying cost (Day ${day}, ${unitCount} unit${unitCount === 1 ? '' : 's'})`,
+      );
+    }
+    bus.publish('economy:carrying_cost_posted', {
+      day,
+      totalCost: totalCarry,
+      vehicleCount: unitCount,
+    });
   }
 
   function rollListingRealizedRecon(listing: AuctionListing): number {
@@ -191,6 +241,9 @@ export function createInventory(deps: InventoryDeps): Inventory {
       category: args.category,
       arrivalDay: currentDay,
       daysInInventory: 0,
+      carryingCostToDate: 0,
+      dailyCarryingCost: 0,
+      aged: false,
       suggestedRetail,
       askingPrice: suggestedRetail,
       reconStatus: 'in_progress',

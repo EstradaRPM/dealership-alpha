@@ -24,4 +24,10 @@ export interface KPISnapshot {
   avgApr: number;
   avgTerm: number;
   avgDownPct: number;
+  /**
+   * Total floorplan + carrying cost burned on the most recent day (#173), off
+   * the latest `economy:carrying_cost_posted`. The day's lot-wide burn rate;
+   * full month-to-date aggregation lands in slice #25.
+   */
+  dailyCarryingCost: number;
 }

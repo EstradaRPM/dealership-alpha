@@ -160,12 +160,22 @@ export function createWorld(deps: {
     loadAuctionSourcesConfig(),
   );
   const reconVarianceCfg = loadReconVarianceConfig();
+  // Reputation + TierManager are created ahead of Inventory + StaffOrg: the
+  // hiring headcount cap (#131) reads the live tier, and Inventory's #173
+  // floorplan APR scales with it (better tier → cheaper money). Reputation
+  // drifts overnight and takes deal/walk hits via the bus; TierManager
+  // evaluates tier-up on the payroll-night cadence.
+  const reputation = createReputation({ bus, economy });
+  const tierManager = createTierManager({ bus, economy, reputation });
   const inventory = createInventory({
     bus,
     masterSeed,
     economy,
     auctionSourceReliability,
     reconVariance: reconVarianceCfg,
+    // #173: floorplan APR follows the dealership tier — a diegetic
+    // progression reward read live so a mid-game tier-up cheapens carry.
+    getTier: () => tierManager.currentTier,
   });
   const dealEngine = createDealEngine({ bus, inventory, economy });
   // CustomerPool gets the DealEngine + inventory + tier-catalog wiring (#146)
@@ -233,12 +243,6 @@ export function createWorld(deps: {
     creditTiers,
   });
   const staffTaxonomy = loadStaffTaxonomy();
-  // Reputation + TierManager are created ahead of StaffOrg so the hiring
-  // headcount cap (#131) can read the live dealership tier. Reputation drifts
-  // overnight and takes deal/walk hits via the bus; TierManager evaluates
-  // tier-up on the payroll-night cadence.
-  const reputation = createReputation({ bus, economy });
-  const tierManager = createTierManager({ bus, economy, reputation });
   const staffOrg = createStaffOrg({
     bus,
     economy,

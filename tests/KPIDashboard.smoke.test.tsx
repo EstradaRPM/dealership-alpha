@@ -12,6 +12,7 @@ const ZERO_SPLITS = {
   avgApr: 0,
   avgTerm: 0,
   avgDownPct: 0,
+  dailyCarryingCost: 0,
 };
 
 const ZERO_SNAPSHOT: KPISnapshot = {

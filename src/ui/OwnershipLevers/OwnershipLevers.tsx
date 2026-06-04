@@ -17,6 +17,14 @@ export interface LeverVehicle {
   readonly trim: string;
   readonly suggestedRetail: number;
   readonly askingPrice: number;
+  /** Days the unit has sat on the lot (#173). */
+  readonly daysInInventory: number;
+  /** Floorplan + carrying cost burned against the unit so far (#173). */
+  readonly carryingCostToDate: number;
+  /** The unit's current daily burn rate (#173). */
+  readonly dailyCarryingCost: number;
+  /** `true` once days-on-lot crosses the aged threshold (#173). */
+  readonly aged: boolean;
 }
 
 export interface HoursOption {
@@ -73,9 +81,15 @@ function PriceRow({
       <View style={styles.priceInfo}>
         <Text style={styles.vehName} numberOfLines={1}>
           {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.trim}
+          {vehicle.aged ? <Text style={styles.agedFlag}>  AGED</Text> : null}
         </Text>
         <Text style={styles.vehSuggested}>
           Suggested ${vehicle.suggestedRetail.toLocaleString()}
+        </Text>
+        <Text style={[styles.vehCarry, vehicle.aged && styles.vehCarryAged]}>
+          {vehicle.daysInInventory}d on lot · carry $
+          {vehicle.carryingCostToDate.toLocaleString()} · $
+          {vehicle.dailyCarryingCost.toLocaleString()}/day
         </Text>
       </View>
       <TextInput
@@ -268,6 +282,9 @@ const styles = StyleSheet.create({
   priceInfo: { flex: 1, paddingRight: 12 },
   vehName: { fontSize: 14, color: colors.textPrimary },
   vehSuggested: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  vehCarry: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  vehCarryAged: { color: colors.danger },
+  agedFlag: { fontSize: 11, fontWeight: '700', color: colors.danger },
   priceInput: {
     width: 96,
     backgroundColor: colors.base,

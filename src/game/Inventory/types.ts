@@ -86,6 +86,22 @@ export interface LotVehicle {
   readonly arrivalDay: number;
   readonly daysInInventory: number;
   /**
+   * Accumulated floorplan + carrying cost posted against this unit since it
+   * landed on the lot (#173). Grows by `dailyCarryingCost` on each daily tick.
+   */
+  readonly carryingCostToDate: number;
+  /**
+   * The carrying cost posted on the most recent daily tick (#173) — the unit's
+   * current daily burn rate, surfaced on the lot view.
+   */
+  readonly dailyCarryingCost: number;
+  /**
+   * `true` once `daysInInventory` exceeds the tunable aged threshold (#173).
+   * Computed on the daily tick so the UI can flag stale inventory without
+   * re-reading config.
+   */
+  readonly aged: boolean;
+  /**
    * Market-suggested retail (vAuto-style). v1 has no market/economy engine,
    * so this is a flat cost-basis placeholder (`purchasePrice + reconCost`);
    * the future simulated retail-value engine drops in here without changing

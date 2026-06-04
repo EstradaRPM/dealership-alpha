@@ -32,11 +32,15 @@ const ZERO_SNAPSHOT: KPISnapshot = {
   avgApr: 0,
   avgTerm: 0,
   avgDownPct: 0,
+  dailyCarryingCost: 0,
 };
 
-function computeSnapshot(deals: readonly DealRecord[]): KPISnapshot {
+function computeSnapshot(
+  deals: readonly DealRecord[],
+  dailyCarryingCost: number,
+): KPISnapshot {
   const n = deals.length;
-  if (n === 0) return ZERO_SNAPSHOT;
+  if (n === 0) return { ...ZERO_SNAPSHOT, dailyCarryingCost };
 
   let totalFront = 0;
   let totalBack = 0;
@@ -84,12 +88,20 @@ function computeSnapshot(deals: readonly DealRecord[]): KPISnapshot {
     avgApr: financeUnits > 0 ? totalApr / financeUnits : 0,
     avgTerm: financeUnits > 0 ? totalTerm / financeUnits : 0,
     avgDownPct: financeUnits > 0 ? totalDownPct / financeUnits : 0,
+    dailyCarryingCost,
   };
 }
 
 export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
   const { bus, staffOrg } = deps;
   const deals: DealRecord[] = [];
+  // Latest day's lot-wide floorplan + carrying burn (#173). Tracked off the
+  // bus so the snapshot can surface it as a line item without Inventory access.
+  let dailyCarryingCost = 0;
+
+  bus.subscribe('economy:carrying_cost_posted', (payload) => {
+    dailyCarryingCost = payload.totalCost;
+  });
 
   bus.subscribe('deal:closed', (payload) => {
     deals.push({
@@ -110,7 +122,7 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
     },
 
     getSnapshot(): KPISnapshot {
-      return computeSnapshot(deals);
+      return computeSnapshot(deals, dailyCarryingCost);
     },
   };
 }
