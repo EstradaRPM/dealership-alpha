@@ -229,6 +229,7 @@ function setup(
     tradeConditionRead?: () => TradeConditionRead | null;
     tradeApprover?: () => TradeApprover | null;
     tradeEscalationOverride?: () => number;
+    tradePolicyMultiplier?: () => number;
   } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
@@ -285,6 +286,8 @@ function setup(
     // #170: escalation approver + per-slot override.
     getTradeApprover: opts.tradeApprover,
     getTradeEscalationOverride: opts.tradeEscalationOverride,
+    // #172: per-slot trade-acquisition policy multiplier.
+    getTradePolicyMultiplier: opts.tradePolicyMultiplier,
   });
 
   return {
@@ -625,6 +628,61 @@ describe('StaffDispatch — trade escalation (#170)', () => {
     expect(w.closedDeals).toHaveLength(0);
     expect(w.events[0].outcome).toBe('no_sale');
     expect(w.events[0].reason).toBe('trade_manager_declined');
+  });
+});
+
+// ── Trade-acquisition policy multiplier (#172) ────────────────────────────────
+
+describe('StaffDispatch — trade-policy multiplier wiring (#172)', () => {
+  // Default null read ⇒ defensiveFactor 0.85, so target = TRADE_BOOK × policy ×
+  // 0.85. Market (1.0) ⇒ 5_100; aggressive (1.1) ⇒ 5_610; conservative (0.92)
+  // ⇒ 4_692. The getter must reach resolveTradeIn, shifting the accept/counter/
+  // escalation boundary.
+  const tradeAsk = (w: Wired, ask: number) =>
+    w.sessions.set(
+      'cust:1',
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), ask), {
+        currentVehicle: makeTradeVehicle(null),
+      }),
+    );
+
+  it('aggressive policy lifts the target so a market-counter ask is accepted at the ask', () => {
+    // ask 5_600: above market target (5_100 → counter) but below the aggressive
+    // target (5_610 → accept).
+    const market = setup([makeStaff(0.9)]);
+    tradeAsk(market, 5_600);
+    admit(market.bus, 'cust:1');
+    expect(market.trades[0].action).toBe('counter');
+    expect(market.trades[0].hadCounter).toBe(true);
+    expect(market.trades[0].agreedAllowance).toBeLessThan(5_600);
+
+    const aggressive = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+      tradePolicyMultiplier: () => 1.1,
+    });
+    tradeAsk(aggressive, 5_600);
+    admit(aggressive.bus, 'cust:1');
+    expect(aggressive.trades[0].action).toBe('accept');
+    expect(aggressive.trades[0].hadCounter).toBe(false);
+    expect(aggressive.trades[0].agreedAllowance).toBe(5_600);
+  });
+
+  it('conservative policy lowers the target so a market-routine ask escalates instead', () => {
+    // ask 6_300: inside the market routine band (≤ 5_100 × 1.25 = 6_375) but
+    // beyond the conservative band (≤ 4_692 × 1.25 = 5_865). No approver ⇒ the
+    // conservative trade routes to the player overlay.
+    const market = setup([makeStaff(0.9)]);
+    tradeAsk(market, 6_300);
+    admit(market.bus, 'cust:1');
+    expect(market.trades).toHaveLength(1);
+    expect(market.escalations).toHaveLength(0);
+
+    const conservative = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+      tradePolicyMultiplier: () => 0.92,
+    });
+    tradeAsk(conservative, 6_300);
+    admit(conservative.bus, 'cust:1');
+    expect(conservative.trades).toHaveLength(0);
+    expect(conservative.escalations).toHaveLength(1);
   });
 });
 

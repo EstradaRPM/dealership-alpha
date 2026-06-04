@@ -163,6 +163,25 @@ export const TunablesSchema = z.object({
       defaultId: z.string().min(1),
     }),
   }),
+  // Per-slot trade-acquisition policy (#172). `multiplier` scales the staff's
+  // internal trade-in acceptance target in DealEngine.evaluateTrade. The
+  // composition root resolves the selected id to its multiplier
+  // (`resolveTradePolicyMultiplier`) and threads it through the trade resolver;
+  // the chosen id persists per save slot. Default `market` = 1.0 (honest book),
+  // so an unset/legacy slot leaves the #94 calibration path untouched.
+  tradePolicy: z.object({
+    defaultId: z.string().min(1),
+    policies: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          label: z.string().min(1),
+          multiplier: z.number().positive(),
+          blurb: z.string().min(1),
+        }),
+      )
+      .nonempty(),
+  }),
 });
 
 export type Tunables = z.infer<typeof TunablesSchema>;

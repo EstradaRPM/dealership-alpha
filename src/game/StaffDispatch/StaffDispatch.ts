@@ -82,6 +82,15 @@ export interface StaffDispatchDeps {
    * the composition root reads it through the save-scoped settings source.
    */
   getTradeEscalationOverride?: () => number;
+  /**
+   * Per-slot trade-acquisition policy multiplier (#172). Scales the staff's
+   * internal trade-in acceptance target: `> 1` chases volume (overpay), `< 1`
+   * protects gross (under-pay). Resolved live from the persisted slot setting
+   * (`resolveTradePolicyMultiplier`) so a mid-game change takes effect on the
+   * next trade. Omitted/`undefined` ⇒ `1.0` (market) — the #94 calibration
+   * path is unaffected.
+   */
+  getTradePolicyMultiplier?: () => number;
 }
 
 // Intentionally empty — dispatch is fully autonomous.
@@ -297,6 +306,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
           bookValueFn: deps.tradeBookValueFn,
           approver: deps.getTradeApprover?.() ?? null,
           playerOverrideThreshold: deps.getTradeEscalationOverride?.(),
+          policyMultiplier: deps.getTradePolicyMultiplier?.(),
         },
       );
       if (tradeRes.status === 'player_review') {

@@ -28,11 +28,29 @@ const BASE: OwnershipLeversProps = {
   ],
   hoursOfOpId: 'standard',
   onSelectHours: jest.fn(),
+  tradePolicyOptions: [
+    { id: 'aggressive', label: 'Aggressive', blurb: 'Pay over book to win trades.' },
+    { id: 'market', label: 'Market', blurb: 'Appraise at honest book.' },
+    { id: 'conservative', label: 'Conservative', blurb: 'Target under book to protect gross.' },
+  ],
+  tradePolicyId: 'market',
+  onSelectTradePolicy: jest.fn(),
 };
 
 describe('OwnershipLevers smoke tests', () => {
-  it('renders all four levers without crashing', () => {
+  it('renders all levers without crashing', () => {
     expect(() => render(<OwnershipLevers {...BASE} />)).not.toThrow();
+  });
+
+  it('shows the selected trade policy blurb and dispatches a policy change', () => {
+    const onSelectTradePolicy = jest.fn();
+    const { getByText } = render(
+      <OwnershipLevers {...BASE} onSelectTradePolicy={onSelectTradePolicy} />,
+    );
+    // The market blurb is visible for the current selection.
+    expect(getByText('Appraise at honest book.')).toBeTruthy();
+    fireEvent.press(getByText('Aggressive'));
+    expect(onSelectTradePolicy).toHaveBeenCalledWith('aggressive');
   });
 
   it('renders greyed (no vehicles) when disabled', () => {

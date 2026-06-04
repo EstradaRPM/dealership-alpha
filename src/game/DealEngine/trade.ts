@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { createRng } from '../NPC/Rng';
 import type { CurrentVehicle } from '../NPC';
-import { parseData } from '../data';
+import { parseData, loadTunables } from '../data';
 
 /**
  * Trade-in machinery (slice #167+, parent #150). The customer's *ask* — what
@@ -162,6 +162,54 @@ export function loadTradeEvalConfig(): TradeEvalConfig {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw: unknown = require('../../../data/trade-evaluation.json');
   return parseData(raw, TradeEvalConfigSchema, 'data/trade-evaluation.json');
+}
+
+// ── Trade-acquisition policy (#172) ───────────────────────────────────────────
+
+/**
+ * One selectable per-slot trade policy. `multiplier` scales the staff's
+ * internal acceptance target in `evaluateTrade` (`book × multiplier ×
+ * read-confidence factor`): `> 1` chases volume (overpay vs book), `< 1`
+ * protects gross (under-pay). `label`/`blurb` drive the settings UI. Tunables
+ * live in `data/tunables.json` (`tradePolicy`).
+ */
+export interface TradePolicyOption {
+  readonly id: string;
+  readonly label: string;
+  readonly multiplier: number;
+  readonly blurb: string;
+}
+
+export interface TradePolicyConfig {
+  /** Policy applied when a slot has no persisted choice (v1: `market`). */
+  readonly defaultId: string;
+  readonly policies: readonly TradePolicyOption[];
+}
+
+/** Reads the trade-policy catalog from the `tradePolicy` section of tunables. */
+export function loadTradePolicyConfig(): TradePolicyConfig {
+  return loadTunables().tradePolicy;
+}
+
+/**
+ * Resolve a per-slot trade-policy id to its acceptance-target multiplier. An
+ * unknown or `undefined` id (legacy slot / never set) falls back to the
+ * catalog `defaultId`, and a missing default falls back to the first listed
+ * policy — so the resolver always returns a real multiplier. Pure.
+ */
+export function resolveTradePolicyMultiplier(
+  policyId: string | undefined,
+  config: TradePolicyConfig = loadTradePolicyConfig(),
+): number {
+  const byId =
+    policyId !== undefined
+      ? config.policies.find((p) => p.id === policyId)
+      : undefined;
+  const chosen =
+    byId ??
+    config.policies.find((p) => p.id === config.defaultId) ??
+    config.policies[0];
+  return chosen.multiplier;
 }
 
 /**

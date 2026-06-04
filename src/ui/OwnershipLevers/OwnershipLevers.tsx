@@ -25,6 +25,14 @@ export interface HoursOption {
   readonly ticksPerDay: number;
 }
 
+/** One selectable trade-acquisition policy (#172). */
+export interface TradePolicyLeverOption {
+  readonly id: string;
+  readonly label: string;
+  /** One-sentence description of the consequence, shown for the selection. */
+  readonly blurb: string;
+}
+
 export interface OwnershipLeversProps {
   /** ⇔ DayLoopState.ownershipUnlocked. All levers greyed + inert when false
    *  (#107 d11: levers greyed while the floor is live). */
@@ -37,6 +45,10 @@ export interface OwnershipLeversProps {
   hoursOptions: readonly HoursOption[];
   hoursOfOpId: string;
   onSelectHours: (id: string) => void;
+  /** Trade-policy lever (#172): options + current selection + setter. */
+  tradePolicyOptions: readonly TradePolicyLeverOption[];
+  tradePolicyId: string;
+  onSelectTradePolicy: (id: string) => void;
 }
 
 const ACCENT = colors.primary;
@@ -97,7 +109,13 @@ export function OwnershipLevers({
   hoursOptions,
   hoursOfOpId,
   onSelectHours,
+  tradePolicyOptions,
+  tradePolicyId,
+  onSelectTradePolicy,
 }: OwnershipLeversProps) {
+  const selectedPolicy =
+    tradePolicyOptions.find((p) => p.id === tradePolicyId) ??
+    tradePolicyOptions[0];
   return (
     <ScrollView
       style={styles.root}
@@ -175,6 +193,36 @@ export function OwnershipLevers({
             );
           })}
         </View>
+      </View>
+
+      <View style={[styles.card, !enabled && styles.cardDisabled]}>
+        <Text style={styles.cardTitle}>Trade Policy</Text>
+        <View style={styles.hoursRow}>
+          {tradePolicyOptions.map((o) => {
+            const sel = o.id === tradePolicyId;
+            return (
+              <TouchableOpacity
+                key={o.id}
+                style={[
+                  styles.hoursOpt,
+                  sel && styles.hoursOptSel,
+                  !enabled && styles.btnDisabled,
+                ]}
+                disabled={!enabled}
+                onPress={() => onSelectTradePolicy(o.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: sel }}
+              >
+                <Text style={[styles.hoursOptText, sel && styles.hoursOptTextSel]}>
+                  {o.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {selectedPolicy && (
+          <Text style={styles.policyBlurb}>{selectedPolicy.blurb}</Text>
+        )}
       </View>
     </ScrollView>
   );
@@ -254,4 +302,10 @@ const styles = StyleSheet.create({
   hoursOptSel: { borderColor: ACCENT, backgroundColor: colors.primaryDim },
   hoursOptText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   hoursOptTextSel: { color: ACCENT },
+  policyBlurb: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 10,
+    lineHeight: 17,
+  },
 });

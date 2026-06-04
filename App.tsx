@@ -9,6 +9,10 @@ import type {
   AdvanceResult,
 } from './src/game/FloorSim';
 import { loadTunables } from './src/game/data';
+import {
+  loadTradePolicyConfig,
+  resolveTradePolicyMultiplier,
+} from './src/game/DealEngine';
 import { loadInventoryConfig } from './src/game/Inventory';
 import { loadStaffTaxonomy } from './src/game/NPC';
 import { createWorld, makeSeed, type World } from './src/createWorld';
@@ -59,6 +63,11 @@ const HOURS_OF_OP = loadTunables().ownership.hoursOfOp;
 
 // Paid pre-purchase inspection cost shown on the auction-board action (#164).
 const INSPECTION_COST = loadInventoryConfig().inspection.cost;
+
+// Trade-acquisition policy catalog (#172). Seed-free; the selected id persists
+// per save slot and resolves to the acceptance-target multiplier the trade
+// resolver reads. Default = market (1.0).
+const TRADE_POLICY = loadTradePolicyConfig();
 
 // Primary customer-facing role the Hiring lever recruits for (v1 slice is
 // sales-only; multi-role hiring is downstream).
@@ -122,6 +131,15 @@ export default function App() {
   // Hours-of-op lever selection (#120). Composition-root state only — the
   // downstream slice wires HOURS_OF_OP.options[…].ticksPerDay into FloorSim.
   const [hoursOfOpId, setHoursOfOpId] = useState(HOURS_OF_OP.defaultId);
+  // Per-slot trade-acquisition policy (#172). Initialized from the persisted
+  // slot setting on load (or the catalog default for a fresh slot). The ref
+  // feeds the live getter handed to createWorld so a mid-game change applies on
+  // the next trade without rebuilding the world.
+  const [tradePolicyId, setTradePolicyId] = useState(TRADE_POLICY.defaultId);
+  const tradePolicyIdRef = useRef(TRADE_POLICY.defaultId);
+  tradePolicyIdRef.current = tradePolicyId;
+  const getTradePolicyMultiplier = () =>
+    resolveTradePolicyMultiplier(tradePolicyIdRef.current, TRADE_POLICY);
   // Running today's gross (front + back) summed from closed deals — the
   // composed-state source for the FLOOR-OPEN HUD / stat grid (#116).
   const [grossToday, setGrossToday] = useState(0);
@@ -211,10 +229,18 @@ export default function App() {
         const seed =
           typeof state.masterSeed === 'number' ? state.masterSeed : 42;
         const character = state.character as CharacterProfile;
+        // Restore the persisted per-slot trade policy (#172) before any trade
+        // can resolve. The ref backs the live multiplier getter handed to
+        // createWorld.
+        if (typeof state.tradePolicy === 'string') {
+          tradePolicyIdRef.current = state.tradePolicy;
+          setTradePolicyId(state.tradePolicy);
+        }
         const w = createWorld({
           bus,
           masterSeed: seed,
           characterProfile: character,
+          getTradePolicyMultiplier,
         });
         setWorld(w);
         setCash(w.economy.cash);
@@ -382,6 +408,20 @@ export default function App() {
     nav.reset('character-creation');
   };
 
+  // Persist the trade-policy choice into the active slot (#172). Mirrors
+  // CharacterCreation's merge-with-existing write so the character/seed blob is
+  // preserved. The ref updates immediately so the live multiplier getter
+  // reflects the new policy before the persist resolves.
+  const handleSelectTradePolicy = (id: string) => {
+    tradePolicyIdRef.current = id;
+    setTradePolicyId(id);
+    void saveStore
+      .load()
+      .then((existing) =>
+        saveStore.save({ ...(existing ?? {}), tradePolicy: id }),
+      );
+  };
+
   let content: React.ReactNode = <View style={styles.container} />;
 
   if (screen === 'character-creation') {
@@ -398,6 +438,7 @@ export default function App() {
               bus,
               masterSeed: NEW_GAME_SEED,
               characterProfile: p,
+              getTradePolicyMultiplier,
             });
             setWorld(w);
             setCash(w.economy.cash);
@@ -549,6 +590,15 @@ export default function App() {
       hoursOptions: HOURS_OF_OP.options,
       hoursOfOpId,
       onSelectHours: setHoursOfOpId,
+      // Trade-policy lever (#172): strip the multiplier from the catalog (the
+      // UI only needs id/label/blurb) and persist the choice per slot.
+      tradePolicyOptions: TRADE_POLICY.policies.map((p) => ({
+        id: p.id,
+        label: p.label,
+        blurb: p.blurb,
+      })),
+      tradePolicyId,
+      onSelectTradePolicy: handleSelectTradePolicy,
     };
     content = (
       <View style={styles.container}>

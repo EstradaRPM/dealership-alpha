@@ -63,7 +63,10 @@ omit to disable trade resolution), `getTradeConditionRead` (#169 — UCM
 condition read, defaults `null` ⇒ defensive), `getTradeApprover` (#170 —
 escalation approver resolved GM > UCM > player; `null`/omitted ⇒ player
 overlay), `getTradeEscalationOverride` (#170 — per-slot "always escalate above
-$X"; defaults to the trade-evaluation config default).
+$X"; defaults to the trade-evaluation config default), `getTradePolicyMultiplier`
+(#172 — per-slot trade-acquisition policy multiplier passed to `resolveTradeIn`'s
+`policyMultiplier`; live getter so a Settings change applies on the next trade;
+omitted ⇒ `1.0` market).
 
 ### Known gaps
 Cash buyers don't carry a stamped behavioral `cashSpendFraction` on the

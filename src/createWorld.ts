@@ -127,8 +127,21 @@ export function createWorld(deps: {
    * the trade-evaluation config default (`playerOverrideThresholdDefault`).
    */
   tradeEscalationOverride?: number;
+  /**
+   * Per-slot trade-acquisition policy multiplier (#172). A live getter (not a
+   * value) so a mid-game Settings change takes effect on the next trade without
+   * rebuilding the world — the composition root reads the persisted slot policy
+   * id through `resolveTradePolicyMultiplier`. Omitted ⇒ `1.0` (market).
+   */
+  getTradePolicyMultiplier?: () => number;
 }): World {
-  const { bus, masterSeed, characterProfile, tradeEscalationOverride } = deps;
+  const {
+    bus,
+    masterSeed,
+    characterProfile,
+    tradeEscalationOverride,
+    getTradePolicyMultiplier,
+  } = deps;
 
   // Default initialDay = 1: the clock sits on "night before Day 1" so the
   // DayLoopController cold-start (skip-advance on the first nextDay) plays
@@ -404,6 +417,9 @@ export function createWorld(deps: {
           tradeEscalationOverride !== undefined
             ? () => tradeEscalationOverride
             : undefined,
+        // #172: per-slot trade-acquisition policy. Live getter so a Settings
+        // change applies on the next trade. Omitted ⇒ 1.0 (market).
+        getTradePolicyMultiplier,
       }),
     ],
     customerSource,

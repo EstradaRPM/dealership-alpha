@@ -13,8 +13,12 @@ export {
   TradeEvalConfigSchema,
   resolveTradeIn,
   rollCustomerCounterResponse,
+  loadTradePolicyConfig,
+  resolveTradePolicyMultiplier,
 } from './trade';
 export type {
+  TradePolicyOption,
+  TradePolicyConfig,
   TradeAllowanceNoiseConfig,
   TradeBookValueFn,
   TradeEvalConfig,

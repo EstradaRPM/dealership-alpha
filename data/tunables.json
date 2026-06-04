@@ -213,5 +213,29 @@
       ],
       "defaultId": "standard"
     }
+  },
+  "tradePolicy": {
+    "_doc": "Per-slot trade-acquisition policy (#172). The `multiplier` scales the staff's internal trade-in acceptance target (book × multiplier × read-confidence factor) inside DealEngine.evaluateTrade. Aggressive (>1) chases volume by paying over book — more trades acquired, thinner gross; Conservative (<1) protects gross by targeting under book — fewer trades, fatter margins; Market (1.0) appraises at honest book and is the default. The composition root resolves the selected id to its multiplier and threads it through the trade resolver; the setting persists per save slot. Retune the spread here without touching code.",
+    "defaultId": "market",
+    "policies": [
+      {
+        "id": "aggressive",
+        "label": "Aggressive",
+        "multiplier": 1.1,
+        "blurb": "Pay up to 10% over book to win trades — more cars acquired, thinner gross per deal."
+      },
+      {
+        "id": "market",
+        "label": "Market",
+        "multiplier": 1.0,
+        "blurb": "Appraise trades at honest book value — balanced acquisition rate and gross."
+      },
+      {
+        "id": "conservative",
+        "label": "Conservative",
+        "multiplier": 0.92,
+        "blurb": "Target ~8% under book to protect gross — fewer trades acquired, fatter margins."
+      }
+    ]
   }
 }
