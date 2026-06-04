@@ -284,13 +284,14 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       visit.allowanceAsk !== undefined &&
       deps.tradeBookValueFn
     ) {
+      const tradeConditionRead = deps.getTradeConditionRead?.() ?? null;
       const tradeRes = resolveTradeIn(
         {
           currentVehicle: person.currentVehicle,
           loanPayoff: person.currentVehicle.loanPayoff,
           allowanceAsk: visit.allowanceAsk,
           skill: { effectiveness, trustworthiness },
-          conditionRead: deps.getTradeConditionRead?.() ?? null,
+          conditionRead: tradeConditionRead,
         },
         {
           bookValueFn: deps.tradeBookValueFn,
@@ -332,6 +333,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         agreedAllowance: tradeRes.agreedAllowance,
         action: tradeRes.action,
         hadCounter: tradeRes.hadCounter,
+        staffConfidence: tradeConditionRead?.confidence ?? 0,
       });
     }
 

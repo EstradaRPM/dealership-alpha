@@ -8,6 +8,7 @@ export type {
   VehicleCategory,
   InspectionStatus,
   InspectionResult,
+  TradeAcquisitionInput,
 } from './types';
 export { loadInventoryConfig } from './inventoryConfig';
 export type { InventoryConfig, InspectionConfig } from './inventoryConfig';

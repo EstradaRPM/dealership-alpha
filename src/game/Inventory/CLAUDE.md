@@ -8,8 +8,12 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 - Types: `Inventory`, `InventoryDeps`, `AuctionListing`, `LotVehicle`, `VehicleCondition`, `VehicleCategory`.
 
 ## Events
-- **Emits:** `inventory:vehicle_purchased`, `inventory:vehicle_sold`.
+- **Emits:** `inventory:vehicle_purchased`, `inventory:vehicle_sold`,
+  `inventory:vehicle_acquired_via_trade` (#171).
 - **Consumes:**
+  - `trade:resolved` (#171) — an accepted/countered customer trade materializes
+    onto the lot via `acquireFromTrade` (only `accept`/`counter` emit the event;
+    declines/abandons never do).
   - `clock:managerial_prep` (#136) — night-before signal for the upcoming
     day. The auction board for Day N is generated here so the player browses
     the day they're about to play; cars bought during this prep window are
@@ -52,6 +56,24 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   longer used by the price chain — the condition adjustment lives inside
   `computeAnchor` via `data/market-condition-mods.json`. The field stays in
   the schema because `conditionTier.reconCost` is still load-bearing.
+
+## Trade acquisition (#171)
+- `acquireFromTrade(acquisition) → LotVehicle` materializes a customer's
+  accepted trade-in onto the lot. Driven by the `trade:resolved` subscription;
+  exposed for direct/test use. Cost basis = `agreedAllowance`, **non-cash** — no
+  Economy expense is posted (the allowance is offset against deal cash in the
+  close structure, #169). Emits `inventory:vehicle_acquired_via_trade`; the unit
+  is on the lot immediately and then flows through the normal recon →
+  carrying-cost → listing → sale path.
+- Recon estimate = the condition-tier baseline (`conditionTiers[condition].reconCost`,
+  the same budget an auction unit of that condition shows); `conditionReport`
+  reuses the same tier's `report`; `trim` is `''` (CurrentVehicle carries none).
+- The realized recon is rolled via the shared `buildAcquiredVehicle` helper
+  (same machinery as `buyFromAuction`), with the staff condition-read
+  **confidence standing in for source reliability** — a confident UCM read
+  clusters realized recon near the estimate; an unread trade (no UCM, confidence
+  0) throws the same wide lemon tails as a fringe auction lane. So a trade can
+  hide a lemon exactly like an auction buy.
 
 ## Recon process (#162)
 - Vehicles enter `reconStatus='in_progress'` on purchase. The auction-listed

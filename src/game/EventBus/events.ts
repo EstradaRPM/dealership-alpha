@@ -206,6 +206,29 @@ export interface EventMap {
     reconCost: number;
   };
 
+  // Inventory — a customer's trade-in entered the lot as a new LotVehicle
+  // (#171). Parallel to `vehicle_purchased`, but a *non-cash* acquisition: the
+  // `allowance` cost basis is offset against the deal cash in the close
+  // structure (#169), NOT posted as a separate Economy expense — which is why
+  // this is a distinct event name (Economy/MarketEconomy subscribe to
+  // `vehicle_purchased`, not this). The acquired unit then participates in the
+  // normal recon → carrying-cost → listing → sale flow. `reconCost` is the
+  // estimate the staff condition-read produced at acquisition.
+  'inventory:vehicle_acquired_via_trade': {
+    day: number;
+    vehicleId: string;
+    customerId: string;
+    /** Cost basis = agreed trade allowance (non-cash). */
+    allowance: number;
+    templateId: string;
+    make: string;
+    year: number;
+    mileage: number;
+    condition: 'clean' | 'average' | 'rough';
+    category: string;
+    reconCost: number;
+  };
+
   // Inventory — mid-recon surprise fires when realized cost crosses
   // surpriseThreshold × estimate (slice #162). Player must call
   // `authorizeReconSpend` or `abandonRecon`; recon is paused until they do.
@@ -295,9 +318,12 @@ export interface EventMap {
   // credit; `action` is the staff decision ('accept' or 'counter'); `hadCounter`
   // is true when the customer took a staff counter rather than their ask.
   // Unusual trades (player overlay, slice 16) and underwater abandons do NOT
-  // emit this. The downstream trade-acquisition/economy reconciliation (later
-  // slice) consumes this event; #169 only nets the equity into the deal
-  // structure (downPayment / loanAmount).
+  // emit this. Inventory consumes this event (#171) to materialize the
+  // acquired trade onto the lot via `inventory:vehicle_acquired_via_trade`;
+  // #169 nets the equity into the deal structure (downPayment / loanAmount).
+  // `staffConfidence` is the UCM condition-read confidence behind the
+  // appraisal (0 = no UCM), carried so the acquisition's recon-variance roll
+  // reads the same figure the resolution used (mirrors `trade:escalated`).
   'trade:resolved': {
     customerId: string;
     currentVehicle: {
@@ -306,13 +332,14 @@ export interface EventMap {
       model: string;
       year: number;
       mileage: number;
-      condition: string;
-      category: string;
+      condition: 'clean' | 'average' | 'rough';
+      category: 'sedan' | 'truck' | 'suv';
       loanPayoff: number | null;
     };
     agreedAllowance: number;
     action: 'accept' | 'counter';
     hadCounter: boolean;
+    staffConfidence: number;
   };
 
   // DealEngine/StaffDispatch — an *unusual* trade with no manager to handle it

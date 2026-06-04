@@ -17,13 +17,24 @@ import { generateAuctionListings } from './auctionGenerator';
 import { loadVehicleData } from './vehicleData';
 import { loadInventoryConfig, type InventoryConfig } from './inventoryConfig';
 import type { VehicleData } from './vehicleData';
-import type { AuctionListing, LotVehicle } from './types';
+import type { AuctionListing, LotVehicle, TradeAcquisitionInput } from './types';
 
 export interface Inventory {
   getAuctionListings(): readonly AuctionListing[];
   getLotVehicles(): readonly LotVehicle[];
   getLotVehicle(vehicleId: string): LotVehicle | undefined;
   buyFromAuction(listingId: string): void;
+  /**
+   * Materialize a customer's accepted trade-in as a new lot vehicle (#171).
+   * Driven by `trade:resolved` (subscribed internally); exposed for direct /
+   * test use. The `agreedAllowance` is the cost basis — a *non-cash*
+   * acquisition (offset against deal cash in the close structure, NOT posted as
+   * an Economy expense). Recon-variance machinery applies exactly as for an
+   * auction buy, with the staff condition-read confidence standing in for
+   * source reliability, so a trade can hide a lemon. Emits
+   * `inventory:vehicle_acquired_via_trade`; the unit is on the lot immediately.
+   */
+  acquireFromTrade(acquisition: TradeAcquisitionInput): LotVehicle;
   /**
    * Remove a lot vehicle and publish `inventory:vehicle_sold`. `salePrice` is
    * the realized retail price (DealEngine passes `agreedPrice`). Tests calling
@@ -126,6 +137,115 @@ export function createInventory(deps: InventoryDeps): Inventory {
       deriveReconSeed(masterSeed, listing.id),
       reconVariance,
     ).realizedCost;
+  }
+
+  /**
+   * Build a freshly-acquired lot vehicle and roll its hidden realized recon
+   * (#162). Shared by the auction-buy and trade-acquisition paths (#171): the
+   * only axis that differs is `sourceReliability` — the auction source's hidden
+   * reliability for a buy, the staff condition-read confidence for a trade — and
+   * both feed the same recon-variance gate. `reconEstimate` is the player's
+   * budget (auction listing's `reconCost`, or the condition-tier baseline for a
+   * trade); `purchasePrice` is the cost basis.
+   */
+  function buildAcquiredVehicle(args: {
+    id: string;
+    templateId: string;
+    year: number;
+    make: string;
+    model: string;
+    trim: string;
+    mileage: number;
+    condition: AuctionListing['condition'];
+    conditionReport: string;
+    purchasePrice: number;
+    category: AuctionListing['category'];
+    reconEstimate: number;
+    sourceReliability: number;
+  }): LotVehicle {
+    const reconRoll = rollRecon(
+      {
+        estimate: args.reconEstimate,
+        condition: args.condition,
+        mileage: args.mileage,
+        sourceReliability: args.sourceReliability,
+      },
+      deriveReconSeed(masterSeed, args.id),
+      reconVariance,
+    );
+    const reconDaysTotal =
+      reconVariance.reconDaysByCondition[args.condition] ?? 5;
+    const suggestedRetail = args.purchasePrice + args.reconEstimate;
+    return {
+      id: args.id,
+      templateId: args.templateId,
+      year: args.year,
+      make: args.make,
+      model: args.model,
+      trim: args.trim,
+      mileage: args.mileage,
+      condition: args.condition,
+      conditionReport: args.conditionReport,
+      purchasePrice: args.purchasePrice,
+      reconCost: 0,
+      category: args.category,
+      arrivalDay: currentDay,
+      daysInInventory: 0,
+      suggestedRetail,
+      askingPrice: suggestedRetail,
+      reconStatus: 'in_progress',
+      reconEstimate: args.reconEstimate,
+      reconRealizedCost: reconRoll.realizedCost,
+      reconDaysRemaining: reconDaysTotal,
+      reconDaysTotal,
+      reconBucket: reconRoll.bucket,
+    };
+  }
+
+  /**
+   * Materialize a customer's accepted trade-in onto the lot (#171). Cost basis
+   * is the agreed allowance and NO Economy expense is posted — the allowance is
+   * already offset against the deal cash in the close structure (#169). The
+   * recon estimate is the condition-tier baseline (the same budget an auction
+   * unit of that condition shows); the staff condition-read confidence drives
+   * the realized-recon spread, so an unread trade hides lemons.
+   */
+  function acquireFromTrade(acquisition: TradeAcquisitionInput): LotVehicle {
+    const { customerId, currentVehicle, agreedAllowance, staffConfidence } =
+      acquisition;
+    const tier = vehicleData.conditionTiers[currentVehicle.condition];
+    const lotVehicle = buildAcquiredVehicle({
+      id: `trade-day${currentDay}-${customerId}`,
+      templateId: currentVehicle.templateId,
+      year: currentVehicle.year,
+      make: currentVehicle.make,
+      model: currentVehicle.model,
+      // CurrentVehicle carries no trim — the dealer reconditions/relists it.
+      trim: '',
+      mileage: currentVehicle.mileage,
+      condition: currentVehicle.condition,
+      conditionReport: tier.report,
+      purchasePrice: agreedAllowance,
+      category: currentVehicle.category,
+      reconEstimate: tier.reconCost,
+      sourceReliability: staffConfidence,
+    });
+    lotVehicles.set(lotVehicle.id, lotVehicle);
+
+    bus.publish('inventory:vehicle_acquired_via_trade', {
+      day: currentDay,
+      vehicleId: lotVehicle.id,
+      customerId,
+      allowance: agreedAllowance,
+      templateId: lotVehicle.templateId,
+      make: lotVehicle.make,
+      year: lotVehicle.year,
+      mileage: lotVehicle.mileage,
+      condition: lotVehicle.condition,
+      category: lotVehicle.category,
+      reconCost: lotVehicle.reconEstimate,
+    });
+    return lotVehicle;
   }
 
   function advanceInspections(day: number): void {
@@ -231,6 +351,17 @@ export function createInventory(deps: InventoryDeps): Inventory {
   bus.subscribe('clock:day_started', ({ day }) => {
     prepareDay(day);
   });
+  // #171: an accepted/countered trade resolves → the trade vehicle enters the
+  // lot. `trade:resolved` only fires for `accept`/`counter` (declines and
+  // underwater abandons never emit it), so every event here is an acquisition.
+  bus.subscribe('trade:resolved', (e) => {
+    acquireFromTrade({
+      customerId: e.customerId,
+      currentVehicle: e.currentVehicle,
+      agreedAllowance: e.agreedAllowance,
+      staffConfidence: e.staffConfidence,
+    });
+  });
 
   return {
     getAuctionListings() {
@@ -259,21 +390,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
       economy.postExpense(listing.askingPrice, `Auction purchase: ${listing.id}`);
 
       const reliability = sourceReliability.reliability[listing.sourceId] ?? 0.5;
-      const reconRoll = rollRecon(
-        {
-          estimate: listing.reconCost,
-          condition: listing.condition,
-          mileage: listing.mileage,
-          sourceReliability: reliability,
-        },
-        deriveReconSeed(masterSeed, listing.id),
-        reconVariance,
-      );
-      const reconDaysTotal =
-        reconVariance.reconDaysByCondition[listing.condition] ?? 5;
-
-      const suggestedRetail = listing.askingPrice + listing.reconCost;
-      const lotVehicle: LotVehicle = {
+      const lotVehicle = buildAcquiredVehicle({
         id: listing.id,
         templateId: listing.templateId,
         year: listing.year,
@@ -284,19 +401,10 @@ export function createInventory(deps: InventoryDeps): Inventory {
         condition: listing.condition,
         conditionReport: listing.conditionReport,
         purchasePrice: listing.askingPrice,
-        reconCost: 0,
         category: listing.category,
-        arrivalDay: currentDay,
-        daysInInventory: 0,
-        suggestedRetail,
-        askingPrice: suggestedRetail,
-        reconStatus: 'in_progress',
         reconEstimate: listing.reconCost,
-        reconRealizedCost: reconRoll.realizedCost,
-        reconDaysRemaining: reconDaysTotal,
-        reconDaysTotal,
-        reconBucket: reconRoll.bucket,
-      };
+        sourceReliability: reliability,
+      });
       lotVehicles.set(lotVehicle.id, lotVehicle);
       auctionListings = auctionListings.filter((l) => l.id !== listingId);
       pendingInspections.delete(listingId);
@@ -334,6 +442,8 @@ export function createInventory(deps: InventoryDeps): Inventory {
       });
       return vehicle;
     },
+
+    acquireFromTrade,
 
     setAskingPrice(vehicleId, askingPrice) {
       const vehicle = lotVehicles.get(vehicleId);

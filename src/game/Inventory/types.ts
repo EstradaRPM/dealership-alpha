@@ -42,6 +42,34 @@ export interface AuctionListing {
   readonly inspectionResult?: InspectionResult;
 }
 
+/**
+ * Input to `Inventory.acquireFromTrade` (#171) — the customer's trade vehicle
+ * (the car they drove in on, structurally the `trade:resolved` `currentVehicle`
+ * snapshot) plus the negotiated terms. `agreedAllowance` becomes the lot
+ * vehicle's cost basis (non-cash: offset against deal cash, never posted as an
+ * Economy expense). `staffConfidence` is the UCM condition-read confidence at
+ * acquisition (0 = no UCM); it feeds the recon-variance roll's source-reliability
+ * gate, so a confident appraisal clusters realized recon near the estimate while
+ * an unread trade throws the same wide lemon tails as a fringe auction lane.
+ */
+export interface TradeAcquisitionInput {
+  readonly customerId: string;
+  readonly currentVehicle: {
+    readonly templateId: string;
+    readonly make: string;
+    readonly model: string;
+    readonly year: number;
+    readonly mileage: number;
+    readonly condition: VehicleCondition;
+    readonly category: VehicleCategory;
+    readonly loanPayoff: number | null;
+  };
+  /** Agreed trade allowance = the acquired unit's cost basis (non-cash). */
+  readonly agreedAllowance: number;
+  /** UCM condition-read confidence at acquisition (0 = no UCM). */
+  readonly staffConfidence: number;
+}
+
 export interface LotVehicle {
   readonly id: string;
   readonly templateId: string;

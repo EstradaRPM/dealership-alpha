@@ -39,9 +39,12 @@ to the real machinery. Per customer (after exception roll + hold-floor):
    `grossImpact = frontGross + backGross` from the DealEngine result.
 
 `trade:resolved` (#169) precedes the matching `deal:closed` for that customer.
-The trade-acquisition/economy reconciliation (the dealer paying the allowance,
-adding the trade to inventory) is a downstream consumer of `trade:resolved`, a
-later slice; #169 only nets the equity into the deal structure.
+It carries `staffConfidence` (the UCM condition-read confidence behind the
+appraisal) so the downstream acquisition reads the same figure. Inventory
+consumes it (#171) to materialize the acquired trade onto the lot
+(`acquireFromTrade`) as a non-cash unit — the allowance is offset against deal
+cash here, never posted as a separate expense; #169 nets the equity into the
+deal structure.
 
 `staff:auto_resolved` now carries an optional `reason` field on `no_sale`
 outcomes (`no_session | not_sales | no_fit | no_close | trade_negative_equity |
