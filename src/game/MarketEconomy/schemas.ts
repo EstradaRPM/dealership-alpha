@@ -250,6 +250,42 @@ export const MarketMarkupConfigSchema = z
   .strict();
 export type MarketMarkupConfig = z.infer<typeof MarketMarkupConfigSchema>;
 
+export const DaysToSellCurvesConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    defaultBaselineDays: positive,
+    segmentBaselines: z.record(z.string().min(1), positive),
+    priceSensitivity: z
+      .object({ above: positive, below: positive })
+      .strict(),
+    heatSensitivity: z.number().nonnegative(),
+    aging: z
+      .object({
+        referenceDays: positive,
+        exponent: z.number().nonnegative(),
+        weight: z.number().nonnegative(),
+      })
+      .strict(),
+    bounds: z
+      .object({ minDays: positive, maxDays: positive })
+      .strict()
+      .refine((b) => b.minDays <= b.maxDays, {
+        message: 'minDays must be <= maxDays',
+      }),
+    confidence: z
+      .object({
+        priceSensitivity: z.number().nonnegative(),
+        aboveWeight: z.number().nonnegative(),
+        belowWeight: z.number().nonnegative(),
+        compFloor: unit,
+        compHalfSaturation: positive,
+      })
+      .strict(),
+  })
+  .strict();
+export type DaysToSellCurvesConfig = z.infer<typeof DaysToSellCurvesConfigSchema>;
+
 export function loadMarketAnchorConfig(): MarketAnchorConfig {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw: unknown = require('../../../data/market-anchor.json');
@@ -338,4 +374,14 @@ export function loadMarketMarkupConfig(): MarketMarkupConfig {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw: unknown = require('../../../data/market-markup.json');
   return parseData(raw, MarketMarkupConfigSchema, 'data/market-markup.json');
+}
+
+export function loadDaysToSellCurvesConfig(): DaysToSellCurvesConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/days-to-sell-curves.json');
+  return parseData(
+    raw,
+    DaysToSellCurvesConfigSchema,
+    'data/days-to-sell-curves.json',
+  );
 }

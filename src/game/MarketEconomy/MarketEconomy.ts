@@ -1,6 +1,10 @@
 import type { EventBus } from '../EventBus';
 import { computeAnchor, type AnchorVehicleInput } from './anchor';
 import {
+  predictDaysToSell,
+  type DaysToSellPrediction,
+} from './daysToSell';
+import {
   createCompHistory,
   type CompHistory,
   type CompHistoryDeps,
@@ -24,8 +28,10 @@ import {
 } from './shocks';
 import {
   loadAuctionSourcesConfig,
+  loadDaysToSellCurvesConfig,
   loadMarketMarkupConfig,
   type AuctionSourcesConfig,
+  type DaysToSellCurvesConfig,
   type MarketMarkupConfig,
 } from './schemas';
 import { loadBrandTiersConfig, type BrandTiersConfig } from '../SalesProcess';
@@ -71,6 +77,17 @@ export interface MarketEconomy extends LiveProviders {
    */
   valuationFor(vehicle: AnchorVehicleInput): { bookValue: number; marketPrice: number };
   /**
+   * Days-to-sell prediction (slice #174). Estimates how long `vehicle` takes to
+   * sell at `askingPrice` given its market position + current segment heat +
+   * (optional) days already on the lot. Resolves marketPrice + heat + live comp
+   * count from current state, then delegates to the pure `predictDaysToSell`
+   * engine. Deterministic — no RNG. Used by the real-time pricing screen (#175).
+   */
+  predictDaysToSell(
+    vehicle: AnchorVehicleInput & { daysOnLot?: number },
+    askingPrice: number,
+  ): DaysToSellPrediction;
+  /**
    * Source catalog label lookup. Returns the human label for a known source
    * id, or the id itself if absent (defensive — a missing source is a data
    * mismatch, not a runtime crash).
@@ -112,6 +129,7 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
   const markup: MarketMarkupConfig = deps.markupConfig ?? loadMarketMarkupConfig();
   const brandTiers: BrandTiersConfig = deps.brandTiers ?? loadBrandTiersConfig();
   const auctionSources: AuctionSourcesConfig = loadAuctionSourcesConfig();
+  const daysToSellConfig: DaysToSellCurvesConfig = loadDaysToSellCurvesConfig();
   const sourceLabels: Readonly<Record<string, string>> = (() => {
     const m: Record<string, string> = {};
     for (const s of auctionSources.sources) m[s.id] = s.label;
@@ -261,6 +279,22 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
       const book = anchor * (1 + segmentHeatFn(vehicle));
       const market = Math.round(book * markupFor(vehicle));
       return { bookValue: book, marketPrice: market };
+    },
+    predictDaysToSell(vehicle, askingPrice) {
+      const anchor = computeAnchor(vehicle, anchorDeps);
+      const heat = segmentHeatFn(vehicle);
+      const marketPrice = Math.round(anchor * (1 + heat) * markupFor(vehicle));
+      return predictDaysToSell(
+        {
+          marketPrice,
+          askingPrice,
+          segment: vehicle.category,
+          segmentHeat: heat,
+          daysOnLot: vehicle.daysOnLot,
+          compObservations: compHistory.liveCount(vehicle.category, getCurrentDay()),
+        },
+        { config: daysToSellConfig },
+      );
     },
     sourceLabelFor(sourceId: string) {
       return sourceLabels[sourceId] ?? sourceId;

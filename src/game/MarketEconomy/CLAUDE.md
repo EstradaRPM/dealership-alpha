@@ -19,7 +19,18 @@ Design record: issue **#182** (locked). Read that before working any slice.
   `VehicleCostFn`) and slot into `StaffDispatch.salesProcessDeps` /
   `CloseDeps` / `PickVehicleDeps`. Accepts an optional `segmentHeatFn`
   override — the MarketEconomy factory passes the live composer (#157).
+- `marketEconomy.predictDaysToSell(vehicle, askingPrice)` → `{ expectedDays, confidence }`
+  (slice #174). Resolves marketPrice + segment heat + live comp count from
+  current state, then delegates to the pure `predictDaysToSell` engine. Reads
+  optional `vehicle.daysOnLot`. Deterministic. The real-time pricing screen
+  (#175) consumes it.
 - `computeAnchor(vehicle, deps?)` — pure, deterministic, no RNG.
+- `predictDaysToSell(input, deps?)` — pure engine for the above (slice #174).
+  `expectedDays = baseline(segment) × priceMult × heatMult × agingMult`, clamped;
+  `priceMult`/`heatMult` are exponential (strictly positive, monotonic). Tuned
+  so at-market → baseline, +20% → ~4×, −10% → 0.5×. Confidence falls with
+  extrapolation distance (above-market weighted heavier) and rises with live
+  comp count. Config: `data/days-to-sell-curves.json`.
 - `createCompHistory(deps?)` — rolling-window comp store with snapshot/restore.
 - `createSegmentHeat(deps)` — composer for `personality + drift + shock`.
 - Five typed loaders + Zod schemas under `./schemas.ts`.
@@ -116,6 +127,9 @@ fallback path per slice #155 AC.
 - `data/recon-surprise-events.json` — surprise event templates keyed by tail
   bucket (#162). The sampler picks one when a tail-bucket vehicle crosses the
   surprise threshold mid-recon.
+- `data/days-to-sell-curves.json` — per-segment baseline days + price/heat
+  sensitivities + aging shape + confidence params for the #174 predictor.
+  `priceSensitivity.above`/`below` are separate so #180 can tune asymmetry.
 
 Tuning of all five is deliberately neutral so the static-stub midpoint
 (`(purchase + recon) × 1.25`) and the live providers produce comparable

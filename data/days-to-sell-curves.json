@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Slice #174 — days-to-sell prediction tunables. Pure deterministic predictor: expectedDays = baseline(segment) × priceMult × heatMult × agingMult, clamped to bounds. priceMult/heatMult are exponential so they stay strictly positive and monotonic. Calibrated so at-market → baseline, +20% → ~4x, -10% → 0.5x (priceSensitivity ≈ ln(4)/0.2 ≈ ln(0.5)/-0.1 ≈ 6.93). 'above'/'below' kept separate so #180 can tune asymmetry (above-market overpricing penalty vs below-market acceleration) independently. Confidence falls with extrapolation distance (above-market weighted heavier) and rises with the count of live comps backing the market estimate.",
+  "defaultBaselineDays": 30,
+  "segmentBaselines": {
+    "sedan": 28,
+    "truck": 35,
+    "suv": 32
+  },
+  "priceSensitivity": {
+    "above": 6.93,
+    "below": 6.93
+  },
+  "heatSensitivity": 2.0,
+  "aging": {
+    "referenceDays": 30,
+    "exponent": 2.0,
+    "weight": 0.5
+  },
+  "bounds": {
+    "minDays": 2,
+    "maxDays": 240
+  },
+  "confidence": {
+    "priceSensitivity": 1.5,
+    "aboveWeight": 1.0,
+    "belowWeight": 0.4,
+    "compFloor": 0.5,
+    "compHalfSaturation": 6
+  }
+}

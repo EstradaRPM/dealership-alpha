@@ -20,6 +20,13 @@ export type {
 export { createSegmentHeat } from './segmentHeat';
 export type { SegmentHeatDeps, SegmentHeatFn, ShockModFn } from './segmentHeat';
 
+export { predictDaysToSell } from './daysToSell';
+export type {
+  DaysToSellInput,
+  DaysToSellPrediction,
+  DaysToSellDeps,
+} from './daysToSell';
+
 export { createShockScheduler } from './shocks';
 export type {
   ActiveShockInstance,
@@ -81,6 +88,8 @@ export {
   loadMarketPersonalityDistribution,
   loadMileageDistributionConfig,
   loadMarketShocksConfig,
+  loadDaysToSellCurvesConfig,
+  DaysToSellCurvesConfigSchema,
 } from './schemas';
 export type {
   MarketAnchorConfig,
@@ -100,6 +109,7 @@ export type {
   ReconBucketId,
   ReconSurpriseEventsConfig,
   ReconSurpriseTemplate,
+  DaysToSellCurvesConfig,
 } from './schemas';
 export {
   ReconVarianceConfigSchema,
