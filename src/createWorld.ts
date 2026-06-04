@@ -81,6 +81,14 @@ import { createReputation, type Reputation } from './game/Reputation';
 import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
+import {
+  createCompetitorMarket,
+  loadCompetitors,
+  loadPersonalityDrift,
+  loadBrands,
+  type CompetitorMarket,
+} from './game/CompetitorMarket';
+import { deriveSeed } from './game/NPC/Rng';
 
 export type StaffTaxonomy = ReturnType<typeof loadStaffTaxonomy>;
 
@@ -105,6 +113,7 @@ export interface World {
   dayLoop: DayLoopController;
   staffTaxonomy: StaffTaxonomy;
   marketEconomy: MarketEconomy;
+  competitorMarket: CompetitorMarket;
 }
 
 /**
@@ -204,6 +213,28 @@ export function createWorld(deps: {
     bus,
     getCurrentDay: () => clock.currentDay,
   });
+  // #183: CompetitorMarket — the static v1 rival roster with weekly drift.
+  // Built earlier but never instantiated in the world (a dark module): its
+  // `market:competitive_pressure` (CustomerPool poaching) and #158
+  // `competitor:price_changed` (one of emergent-C's four demand fuels) never
+  // fired in a running game. Wired here so both go live.
+  //
+  // Determinism: like every other module, CompetitorMarket is reconstructed
+  // from `masterSeed` at construction — no snapshot/restore. Drift is a pure
+  // function of its derived seed + the count of weekly `clock:day_ended` ticks,
+  // and the #122 mid-day replay never advances `day_ended`, so drift state is
+  // invariant across a checkpoint resume by construction. No module persists
+  // drift across a cold start today; full world-state persistence is #186.
+  const brands = loadBrands();
+  const competitorMarket = createCompetitorMarket({
+    bus,
+    competitors: loadCompetitors(),
+    personalityDrift: loadPersonalityDrift(),
+    seed: deriveSeed(masterSeed, 'competitor_market.drift', {}),
+    // `brands` enables the #158 `competitor:price_changed` emit on meaningful
+    // weekly pricing moves; MarketEconomy fans each into a synthetic comp.
+    brands,
+  });
   // #167: the customer's trade allowance ask. Compose DealEngine's pure
   // `generateTradeAsk` with the live book-value provider + noise config so the
   // NPC factory stays free of a DealEngine dep. The provider declares the
@@ -241,6 +272,15 @@ export function createWorld(deps: {
     dealEngine,
     inventory,
     creditTiers,
+    // #183: poaching wiring. `runPoachChecks` early-returns without BOTH of
+    // these, so customer poaching was doubly dark. `brands` lets the poach
+    // engine score the rival roster carried on `market:competitive_pressure`;
+    // `getPlayerStrength` is the live reputation review score normalized to
+    // [0,1] — the same signal that already scales demand — against which a
+    // competitor's relative strength is measured. (Tier could layer in later.)
+    brands,
+    getPlayerStrength: () =>
+      Math.min(1, Math.max(0, reputation.reviewScore / 100)),
   });
   const staffTaxonomy = loadStaffTaxonomy();
   const staffOrg = createStaffOrg({
@@ -487,5 +527,6 @@ export function createWorld(deps: {
     dayLoop,
     staffTaxonomy,
     marketEconomy,
+    competitorMarket,
   };
 }

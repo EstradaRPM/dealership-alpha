@@ -14,7 +14,6 @@ import {
   resolveTradePolicyMultiplier,
 } from './src/game/DealEngine';
 import { loadInventoryConfig } from './src/game/Inventory';
-import { loadCompetitors } from './src/game/CompetitorMarket';
 import { loadStaffTaxonomy } from './src/game/NPC';
 import { createWorld, makeSeed, type World } from './src/createWorld';
 import { CharacterCreation } from './src/ui/CharacterCreation';
@@ -74,13 +73,6 @@ const INSPECTION_COST = loadInventoryConfig().inspection.cost;
 
 // Aged-unit threshold for the pricing-screen aging warning (#173/#175).
 const AGED_THRESHOLD_DAYS = loadInventoryConfig().carrying.agedThresholdDays;
-
-// Static competitor roster for the pricing-screen comparables panel (#175).
-// v1's roster is static (CompetitorMarket §"v1 simplification"); the live
-// drifting instance isn't wired into the World yet, so the screen reads the
-// base catalog — the comparable price band is derived from each competitor's
-// pricing lean against the unit's live market price.
-const COMPETITORS = loadCompetitors();
 
 // Trade-acquisition policy catalog (#172). Seed-free; the selected id persists
 // per save slot and resolves to the acceptance-target multiplier the trade
@@ -563,9 +555,14 @@ export default function App() {
               aged: v.aged,
               agedThresholdDays: AGED_THRESHOLD_DAYS,
             }}
-            comps={deriveCompetitorComps(marketPrice, COMPETITORS, {
-              config: PRICING_STRATEGIES,
-            }).slice(0, 4)}
+            comps={deriveCompetitorComps(
+              marketPrice,
+              // #183: the live drifting roster (CompetitorMarket is now wired
+              // into the World), so the comparables panel reflects the actual
+              // post-drift market rather than the static base catalog.
+              [...world.competitorMarket.getCompetitors()],
+              { config: PRICING_STRATEGIES },
+            ).slice(0, 4)}
             suggestion={{
               price: suggestion.suggestedPrice,
               source: ucm ? 'ucm' : 'heuristic',

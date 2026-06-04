@@ -18,3 +18,9 @@ Static (v1) competitor roster. Each competitor has a personality, price point, a
 
 ## v1 simplification
 Static roster; weekly drift only. ADR-0001 §10 documents the pressure-publish contract — read it before changing the publish/consume shape.
+
+## Persistence & determinism (#183)
+Wired into the world in `createWorld` from `seed: deriveSeed(masterSeed, 'competitor_market.drift', {})`. **No snapshot/restore surface, by decision:**
+- Drift state is a pure function of that derived seed + the count of weekly `clock:day_ended` ticks elapsed, so a same-seed world reproduces the identical drift trajectory on reconstruction — `createCompetitorMarket` *is* the deterministic re-derivation.
+- The only live persistence path, the #122 mid-day FloorSim checkpoint, replays the in-day action log and **never advances `clock:day_ended`**, so competitor drift cannot change during a replay — it is invariant across a checkpoint resume by construction.
+- No module persists runtime drift across a cold start today (the clock itself rebuilds to "night before Day 1"); adding a snapshot surface here alone would be premature and inconsistent. Full world-state persistence (multi-slot, restore-on-load) is tracked in **issue #186** — when that lands, this module joins the world-snapshot contract like the rest.
