@@ -14,6 +14,7 @@ import {
   resolveTradePolicyMultiplier,
 } from './src/game/DealEngine';
 import { loadInventoryConfig } from './src/game/Inventory';
+import { loadCompetitors } from './src/game/CompetitorMarket';
 import { loadStaffTaxonomy } from './src/game/NPC';
 import { createWorld, makeSeed, type World } from './src/createWorld';
 import { CharacterCreation } from './src/ui/CharacterCreation';
@@ -27,6 +28,13 @@ import { HandPlayModal, type HandPlayOutcome } from './src/ui/HandPlayModal';
 import { useFloorRenderLoop } from './src/ui/FloorRenderLoop';
 import { AuctionMenu } from './src/ui/AuctionMenu';
 import { PersonnelScreen } from './src/ui/PersonnelScreen';
+import { PricingScreen } from './src/ui/PricingScreen';
+import {
+  loadPricingStrategiesConfig,
+  suggestListPrice,
+  classifyPricePosition,
+  deriveCompetitorComps,
+} from './src/game/MarketEconomy';
 import type { CharacterProfile } from './src/game/CareerProgression';
 import type { SaveStore, MidDayCheckpoint } from './src/game/SaveStore';
 import type { LotVehicle } from './src/game/Inventory';
@@ -64,10 +72,28 @@ const HOURS_OF_OP = loadTunables().ownership.hoursOfOp;
 // Paid pre-purchase inspection cost shown on the auction-board action (#164).
 const INSPECTION_COST = loadInventoryConfig().inspection.cost;
 
+// Aged-unit threshold for the pricing-screen aging warning (#173/#175).
+const AGED_THRESHOLD_DAYS = loadInventoryConfig().carrying.agedThresholdDays;
+
+// Static competitor roster for the pricing-screen comparables panel (#175).
+// v1's roster is static (CompetitorMarket §"v1 simplification"); the live
+// drifting instance isn't wired into the World yet, so the screen reads the
+// base catalog — the comparable price band is derived from each competitor's
+// pricing lean against the unit's live market price.
+const COMPETITORS = loadCompetitors();
+
 // Trade-acquisition policy catalog (#172). Seed-free; the selected id persists
 // per save slot and resolves to the acceptance-target multiplier the trade
 // resolver reads. Default = market (1.0).
 const TRADE_POLICY = loadTradePolicyConfig();
+
+// List-price strategy catalog (#154). Seed-free; the selected id persists per
+// save slot and drives the staff-suggested list price on the pricing screen
+// (#175). Default = market.
+const PRICING_STRATEGIES = loadPricingStrategiesConfig();
+const PRICING_STRATEGY_OPTIONS = Object.entries(PRICING_STRATEGIES.strategies).map(
+  ([id, s]) => ({ id, label: s.label, blurb: s.blurb }),
+);
 
 // Primary customer-facing role the Hiring lever recruits for (v1 slice is
 // sales-only; multi-role hiring is downstream).
@@ -140,6 +166,11 @@ export default function App() {
   tradePolicyIdRef.current = tradePolicyId;
   const getTradePolicyMultiplier = () =>
     resolveTradePolicyMultiplier(tradePolicyIdRef.current, TRADE_POLICY);
+  // Per-slot list-price strategy (#154). Restored from the persisted slot
+  // setting on load; drives the pricing screen's staff suggestion (#175).
+  const [pricingStrategyId, setPricingStrategyId] = useState(
+    PRICING_STRATEGIES.defaultStrategy,
+  );
   // Running today's gross (front + back) summed from closed deals — the
   // composed-state source for the FLOOR-OPEN HUD / stat grid (#116).
   const [grossToday, setGrossToday] = useState(0);
@@ -235,6 +266,10 @@ export default function App() {
         if (typeof state.tradePolicy === 'string') {
           tradePolicyIdRef.current = state.tradePolicy;
           setTradePolicyId(state.tradePolicy);
+        }
+        // Restore the persisted per-slot list-price strategy (#154).
+        if (typeof state.pricingStrategy === 'string') {
+          setPricingStrategyId(state.pricingStrategy);
         }
         const w = createWorld({
           bus,
@@ -422,6 +457,17 @@ export default function App() {
       );
   };
 
+  // Persist the list-price strategy choice into the active slot (#154). Same
+  // merge-with-existing write as the trade policy above.
+  const handleSelectPricingStrategy = (id: string) => {
+    setPricingStrategyId(id);
+    void saveStore
+      .load()
+      .then((existing) =>
+        saveStore.save({ ...(existing ?? {}), pricingStrategy: id }),
+      );
+  };
+
   let content: React.ReactNode = <View style={styles.container} />;
 
   if (screen === 'character-creation') {
@@ -478,6 +524,75 @@ export default function App() {
         />
       </>
     );
+  } else if (screen === 'pricing' && world) {
+    const { vehicleId } = nav.current.params as { vehicleId: string };
+    const v = world.inventory.getLotVehicles().find((x) => x.id === vehicleId);
+    if (!v) {
+      // Unit sold/abandoned while the screen was queued — bounce to the game.
+      content = <View style={styles.container} />;
+      nav.back();
+    } else {
+      const { bookValue, marketPrice } = world.marketEconomy.valuationFor(v);
+      const strategyEntry =
+        PRICING_STRATEGIES.strategies[pricingStrategyId] ??
+        PRICING_STRATEGIES.strategies[PRICING_STRATEGIES.defaultStrategy];
+      const suggestion = suggestListPrice(
+        { bookValue, marketPrice, strategy: pricingStrategyId },
+        { config: PRICING_STRATEGIES },
+      );
+      const ucm = world.staffOrg.currentRoster.find(
+        (s) => s.role_id === 'used-car-manager',
+      );
+      content = (
+        <>
+          <StatusBar style="light" />
+          <PricingScreen
+            vehicle={{
+              id: v.id,
+              year: v.year,
+              make: v.make,
+              model: v.model,
+              trim: v.trim,
+              bookValue,
+              marketPrice,
+              vehicleCost: v.purchasePrice + v.reconCost,
+              initialAskingPrice: v.askingPrice,
+              daysInInventory: v.daysInInventory,
+              carryingCostToDate: v.carryingCostToDate,
+              dailyCarryingCost: v.dailyCarryingCost,
+              aged: v.aged,
+              agedThresholdDays: AGED_THRESHOLD_DAYS,
+            }}
+            comps={deriveCompetitorComps(marketPrice, COMPETITORS, {
+              config: PRICING_STRATEGIES,
+            }).slice(0, 4)}
+            suggestion={{
+              price: suggestion.suggestedPrice,
+              source: ucm ? 'ucm' : 'heuristic',
+              pricingSkill: ucm?.skills['pricing'],
+              strategyLabel: strategyEntry.label,
+            }}
+            predictDays={(ask) =>
+              world.marketEconomy.predictDaysToSell(
+                { ...v, daysOnLot: v.daysInInventory },
+                ask,
+              )
+            }
+            classifyPosition={(ask) =>
+              classifyPricePosition(ask, marketPrice, {
+                config: PRICING_STRATEGIES,
+              })
+            }
+            enabled={world.dayLoop.state().ownershipUnlocked}
+            onCommit={(price) => {
+              world.inventory.setAskingPrice(v.id, price);
+              setLotVehicles(world.inventory.getLotVehicles());
+            }}
+            onClose={() => nav.back()}
+          />
+        </>
+      );
+    }
   } else if (screen === 'department' && world) {
     const dept = (nav.current.params as { dept: DeptKey }).dept;
     content = (
@@ -588,6 +703,10 @@ export default function App() {
         world.inventory.setAskingPrice(vehicleId, price);
         setLotVehicles(world.inventory.getLotVehicles());
       },
+      onOpenPricing: (vehicleId: string) => nav.navigate('pricing', { vehicleId }),
+      pricingStrategyOptions: PRICING_STRATEGY_OPTIONS,
+      pricingStrategyId,
+      onSelectPricingStrategy: handleSelectPricingStrategy,
       onOpenAuction: () => nav.navigate('auction'),
       onOpenHiring: () => nav.navigate('personnel'),
       rosterCount: world.staffOrg.currentRoster.length,

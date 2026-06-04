@@ -27,6 +27,21 @@ export type {
   DaysToSellDeps,
 } from './daysToSell';
 
+export {
+  suggestListPrice,
+  classifyPricePosition,
+  deriveCompetitorComps,
+} from './pricingSuggestion';
+export type {
+  PricingStrategyId,
+  PricePosition,
+  SuggestListPriceInput,
+  SuggestListPriceResult,
+  PricingSuggestionDeps,
+  ComparableCompetitorInput,
+  CompetitorComp,
+} from './pricingSuggestion';
+
 export { createShockScheduler } from './shocks';
 export type {
   ActiveShockInstance,
@@ -90,6 +105,8 @@ export {
   loadMarketShocksConfig,
   loadDaysToSellCurvesConfig,
   DaysToSellCurvesConfigSchema,
+  loadPricingStrategiesConfig,
+  PricingStrategiesConfigSchema,
 } from './schemas';
 export type {
   MarketAnchorConfig,
@@ -110,6 +127,8 @@ export type {
   ReconSurpriseEventsConfig,
   ReconSurpriseTemplate,
   DaysToSellCurvesConfig,
+  PricingStrategiesConfig,
+  PricingStrategyEntry,
 } from './schemas';
 export {
   ReconVarianceConfigSchema,

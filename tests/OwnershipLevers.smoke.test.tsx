@@ -23,6 +23,14 @@ const BASE: OwnershipLeversProps = {
     },
   ],
   onSetAskingPrice: jest.fn(),
+  onOpenPricing: jest.fn(),
+  pricingStrategyOptions: [
+    { id: 'aggressive', label: 'Aggressive', blurb: 'List above market.' },
+    { id: 'market', label: 'Market', blurb: 'List at market.' },
+    { id: 'value', label: 'Value', blurb: 'List below market.' },
+  ],
+  pricingStrategyId: 'market',
+  onSelectPricingStrategy: jest.fn(),
   onOpenAuction: jest.fn(),
   onOpenHiring: jest.fn(),
   rosterCount: 2,
@@ -48,13 +56,38 @@ describe('OwnershipLevers smoke tests', () => {
 
   it('shows the selected trade policy blurb and dispatches a policy change', () => {
     const onSelectTradePolicy = jest.fn();
-    const { getByText } = render(
+    const { getByText, getAllByText } = render(
       <OwnershipLevers {...BASE} onSelectTradePolicy={onSelectTradePolicy} />,
     );
     // The market blurb is visible for the current selection.
     expect(getByText('Appraise at honest book.')).toBeTruthy();
-    fireEvent.press(getByText('Aggressive'));
+    // Both the Pricing and Trade-Policy cards have an "Aggressive" chip; the
+    // Trade-Policy card renders last, so it is the second match.
+    fireEvent.press(getAllByText('Aggressive')[1]);
     expect(onSelectTradePolicy).toHaveBeenCalledWith('aggressive');
+  });
+
+  it('shows the pricing strategy blurb and dispatches a strategy change', () => {
+    const onSelectPricingStrategy = jest.fn();
+    const { getByText, getAllByText } = render(
+      <OwnershipLevers
+        {...BASE}
+        onSelectPricingStrategy={onSelectPricingStrategy}
+      />,
+    );
+    expect(getByText('List at market.')).toBeTruthy();
+    // Pricing card renders first → its "Aggressive" chip is the first match.
+    fireEvent.press(getAllByText('Aggressive')[0]);
+    expect(onSelectPricingStrategy).toHaveBeenCalledWith('aggressive');
+  });
+
+  it('tapping a vehicle row opens the pricing screen', () => {
+    const onOpenPricing = jest.fn();
+    const { getByLabelText } = render(
+      <OwnershipLevers {...BASE} onOpenPricing={onOpenPricing} />,
+    );
+    fireEvent.press(getByLabelText('Open pricing for 2019 Toyota Camry'));
+    expect(onOpenPricing).toHaveBeenCalledWith('v1');
   });
 
   it('renders greyed (no vehicles) when disabled', () => {

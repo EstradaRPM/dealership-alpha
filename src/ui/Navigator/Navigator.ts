@@ -14,6 +14,9 @@ export type RouteParamMap = {
   game: undefined;
   auction: undefined;
   personnel: undefined;
+  // Per-vehicle real-time pricing screen (#175), pushed over the game from the
+  // pre-open ownership levers' Pricing card. Closed with back().
+  pricing: { vehicleId: string };
   // A non-sales department resolve-list, pushed over the game (#76). Sales is
   // not here — the Sales tab routes to the hand-play workspace, not a screen.
   department: { dept: DeptKey };

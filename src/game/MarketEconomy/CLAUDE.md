@@ -31,6 +31,22 @@ Design record: issue **#182** (locked). Read that before working any slice.
   so at-market → baseline, +20% → ~4×, −10% → 0.5×. Confidence falls with
   extrapolation distance (above-market weighted heavier) and rises with live
   comp count. Config: `data/days-to-sell-curves.json`.
+- Pricing-suggestion engine (#154, folded into #175) — pure, deterministic,
+  no live state:
+  - `suggestListPrice({ bookValue, marketPrice, strategy }, deps?)` →
+    `{ suggestedPrice, floor, marketTarget, floored }`. The strategy's market
+    posture (`market × marketAggression`) sets the target; the gross floor
+    (`book × (1 + targetMarkupPct)`) is the minimum, so even a Value posture
+    never lists below cost-plus-target. Unknown strategy id falls back to the
+    config default.
+  - `classifyPricePosition(ask, marketPrice, deps?)` → `PricePosition`
+    (`fire-sale | below-market | at-market | above-market | wishful`) via the
+    configured ask/market ratio bands.
+  - `deriveCompetitorComps(marketPrice, competitors, deps?)` → comparable
+    asking prices, mapping each competitor's `[0,1]` pricing lean onto a
+    `±competitorSpread` band around market. Takes a narrow structural
+    competitor input so MarketEconomy stays decoupled from CompetitorMarket.
+  - Config: `data/pricing-strategies.json` (`loadPricingStrategiesConfig`).
 - `createCompHistory(deps?)` — rolling-window comp store with snapshot/restore.
 - `createSegmentHeat(deps)` — composer for `personality + drift + shock`.
 - Five typed loaders + Zod schemas under `./schemas.ts`.
@@ -130,6 +146,10 @@ fallback path per slice #155 AC.
 - `data/days-to-sell-curves.json` — per-segment baseline days + price/heat
   sensitivities + aging shape + confidence params for the #174 predictor.
   `priceSensitivity.above`/`below` are separate so #180 can tune asymmetry.
+- `data/pricing-strategies.json` — list-price strategy postures
+  (`marketAggression` + `targetMarkupPct` per strategy), the default strategy,
+  the position-indicator ratio bands, and the competitor-comparable spread for
+  the #154/#175 pricing screen.
 
 Tuning of all five is deliberately neutral so the static-stub midpoint
 (`(purchase + recon) × 1.25`) and the live providers produce comparable

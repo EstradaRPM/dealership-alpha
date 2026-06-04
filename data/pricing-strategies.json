@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Pricing-strategy lever + real-time pricing-screen tunables (#154 / #175). `strategies` is the dealership-wide list-price posture the player picks (persisted per save). `marketAggression` multiplies the honest market price (>1 lists above market, <1 below); `targetMarkupPct` sets the book+gross floor the suggestion never undercuts. `positionBands` are askingPrice/marketPrice ratio thresholds for the position indicator. `competitorSpread` maps each competitor's [0,1] pricing lean onto a +/- band around market for the comparables panel. Retune posture/feel here without touching code.",
+  "defaultStrategy": "market",
+  "strategies": {
+    "aggressive": {
+      "label": "Aggressive",
+      "blurb": "List above market — fatter gross per unit, slower turn.",
+      "marketAggression": 1.06,
+      "targetMarkupPct": 0.08
+    },
+    "market": {
+      "label": "Market",
+      "blurb": "List at market — balanced gross and turn.",
+      "marketAggression": 1.0,
+      "targetMarkupPct": 0.07
+    },
+    "value": {
+      "label": "Value",
+      "blurb": "List below market — thin gross, fast turn.",
+      "marketAggression": 0.95,
+      "targetMarkupPct": 0.04
+    }
+  },
+  "positionBands": {
+    "fireSale": 0.9,
+    "belowMarket": 0.97,
+    "atMarket": 1.03,
+    "aboveMarket": 1.1
+  },
+  "competitorSpread": 0.18
+}

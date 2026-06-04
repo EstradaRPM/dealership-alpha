@@ -41,12 +41,25 @@ export interface TradePolicyLeverOption {
   readonly blurb: string;
 }
 
+/** One selectable list-price strategy (#154). Same shape as trade policy. */
+export interface PricingStrategyLeverOption {
+  readonly id: string;
+  readonly label: string;
+  readonly blurb: string;
+}
+
 export interface OwnershipLeversProps {
   /** ⇔ DayLoopState.ownershipUnlocked. All levers greyed + inert when false
    *  (#107 d11: levers greyed while the floor is live). */
   enabled: boolean;
   vehicles: readonly LeverVehicle[];
   onSetAskingPrice: (vehicleId: string, price: number) => void;
+  /** Open the per-vehicle real-time pricing screen (#175). */
+  onOpenPricing: (vehicleId: string) => void;
+  /** Pricing-strategy lever (#154): options + current selection + setter. */
+  pricingStrategyOptions: readonly PricingStrategyLeverOption[];
+  pricingStrategyId: string;
+  onSelectPricingStrategy: (id: string) => void;
   onOpenAuction: () => void;
   onOpenHiring: () => void;
   rosterCount: number;
@@ -65,10 +78,12 @@ function PriceRow({
   vehicle,
   enabled,
   onCommit,
+  onOpen,
 }: {
   vehicle: LeverVehicle;
   enabled: boolean;
   onCommit: (price: number) => void;
+  onOpen: () => void;
 }) {
   const [text, setText] = useState(String(vehicle.askingPrice));
   const commit = () => {
@@ -78,20 +93,26 @@ function PriceRow({
   };
   return (
     <View style={styles.priceRow}>
-      <View style={styles.priceInfo}>
+      <TouchableOpacity
+        style={styles.priceInfo}
+        onPress={onOpen}
+        disabled={!enabled}
+        accessibilityRole="button"
+        accessibilityLabel={`Open pricing for ${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+      >
         <Text style={styles.vehName} numberOfLines={1}>
           {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.trim}
           {vehicle.aged ? <Text style={styles.agedFlag}>  AGED</Text> : null}
         </Text>
         <Text style={styles.vehSuggested}>
-          Suggested ${vehicle.suggestedRetail.toLocaleString()}
+          Suggested ${vehicle.suggestedRetail.toLocaleString()}  ·  Tune ›
         </Text>
         <Text style={[styles.vehCarry, vehicle.aged && styles.vehCarryAged]}>
           {vehicle.daysInInventory}d on lot · carry $
           {vehicle.carryingCostToDate.toLocaleString()} · $
           {vehicle.dailyCarryingCost.toLocaleString()}/day
         </Text>
-      </View>
+      </TouchableOpacity>
       <TextInput
         style={[styles.priceInput, !enabled && styles.inputDisabled]}
         value={text}
@@ -117,6 +138,10 @@ export function OwnershipLevers({
   enabled,
   vehicles,
   onSetAskingPrice,
+  onOpenPricing,
+  pricingStrategyOptions,
+  pricingStrategyId,
+  onSelectPricingStrategy,
   onOpenAuction,
   onOpenHiring,
   rosterCount,
@@ -130,6 +155,9 @@ export function OwnershipLevers({
   const selectedPolicy =
     tradePolicyOptions.find((p) => p.id === tradePolicyId) ??
     tradePolicyOptions[0];
+  const selectedStrategy =
+    pricingStrategyOptions.find((p) => p.id === pricingStrategyId) ??
+    pricingStrategyOptions[0];
   return (
     <ScrollView
       style={styles.root}
@@ -143,6 +171,32 @@ export function OwnershipLevers({
 
       <View style={[styles.card, !enabled && styles.cardDisabled]}>
         <Text style={styles.cardTitle}>Pricing</Text>
+        <View style={styles.hoursRow}>
+          {pricingStrategyOptions.map((o) => {
+            const sel = o.id === pricingStrategyId;
+            return (
+              <TouchableOpacity
+                key={o.id}
+                style={[
+                  styles.hoursOpt,
+                  sel && styles.hoursOptSel,
+                  !enabled && styles.btnDisabled,
+                ]}
+                disabled={!enabled}
+                onPress={() => onSelectPricingStrategy(o.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: sel }}
+              >
+                <Text style={[styles.hoursOptText, sel && styles.hoursOptTextSel]}>
+                  {o.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {selectedStrategy && (
+          <Text style={styles.policyBlurb}>{selectedStrategy.blurb}</Text>
+        )}
         {vehicles.length === 0 ? (
           <Text style={styles.empty}>No vehicles on the lot.</Text>
         ) : (
@@ -152,6 +206,7 @@ export function OwnershipLevers({
               vehicle={v}
               enabled={enabled}
               onCommit={(p) => onSetAskingPrice(v.id, p)}
+              onOpen={() => onOpenPricing(v.id)}
             />
           ))
         )}

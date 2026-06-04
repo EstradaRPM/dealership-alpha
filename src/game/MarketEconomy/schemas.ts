@@ -286,6 +286,47 @@ export const DaysToSellCurvesConfigSchema = z
   .strict();
 export type DaysToSellCurvesConfig = z.infer<typeof DaysToSellCurvesConfigSchema>;
 
+const PricingStrategyEntrySchema = z
+  .object({
+    label: z.string().min(1),
+    blurb: z.string().min(1),
+    /** Multiplies honest market price: >1 lists above market, <1 below. */
+    marketAggression: positive,
+    /** Book+gross floor as a fraction of book; the suggestion never undercuts it. */
+    targetMarkupPct: z.number().nonnegative(),
+  })
+  .strict();
+
+export const PricingStrategiesConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    defaultStrategy: z.string().min(1),
+    strategies: z.record(z.string().min(1), PricingStrategyEntrySchema),
+    positionBands: z
+      .object({
+        fireSale: positive,
+        belowMarket: positive,
+        atMarket: positive,
+        aboveMarket: positive,
+      })
+      .strict()
+      .refine(
+        (b) =>
+          b.fireSale <= b.belowMarket &&
+          b.belowMarket <= b.atMarket &&
+          b.atMarket <= b.aboveMarket,
+        { message: 'position bands must be ascending' },
+      ),
+    competitorSpread: z.number().nonnegative(),
+  })
+  .strict()
+  .refine((c) => c.strategies[c.defaultStrategy] !== undefined, {
+    message: 'defaultStrategy must name a defined strategy',
+  });
+export type PricingStrategiesConfig = z.infer<typeof PricingStrategiesConfigSchema>;
+export type PricingStrategyEntry = z.infer<typeof PricingStrategyEntrySchema>;
+
 export function loadMarketAnchorConfig(): MarketAnchorConfig {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw: unknown = require('../../../data/market-anchor.json');
@@ -383,5 +424,15 @@ export function loadDaysToSellCurvesConfig(): DaysToSellCurvesConfig {
     raw,
     DaysToSellCurvesConfigSchema,
     'data/days-to-sell-curves.json',
+  );
+}
+
+export function loadPricingStrategiesConfig(): PricingStrategiesConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/pricing-strategies.json');
+  return parseData(
+    raw,
+    PricingStrategiesConfigSchema,
+    'data/pricing-strategies.json',
   );
 }
