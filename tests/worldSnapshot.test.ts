@@ -4,6 +4,10 @@ import { createEconomy } from '../src/game/Economy';
 import { createInventory } from '../src/game/Inventory';
 import { createReputation } from '../src/game/Reputation';
 import { createTierManager } from '../src/game/CareerProgression';
+import {
+  createMultiSlotSaveStore,
+  createInMemoryDriverFactory,
+} from '../src/game/SaveStore';
 import { createWorld } from '../src/createWorld';
 import {
   snapshotWorld,
@@ -574,6 +578,95 @@ describe('FollowUpPool + queues + KPIDashboard + Telemetry through the world sea
     const allIds = (['sales', 'service', 'bdc', 'office', 'lot'] as const)
       .flatMap((d) => rebuilt.departmentQueue.getQueue(d).map((i) => i.id));
     expect(new Set(allIds).size).toBe(allIds.length);
+  });
+});
+
+describe('Multi-slot world persistence (#194)', () => {
+  function build(masterSeed: number) {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed, characterProfile: PROFILE });
+    return { bus, world };
+  }
+
+  // The App wiring (#194): on a day boundary the world snapshot is autosaved
+  // into the ACTIVE slot; on reload a fresh same-seed World is rebuilt and the
+  // active slot's snapshot is restored onto it. This exercises that round-trip
+  // at the store seam (App composes exactly this MultiSlotSaveStore + the
+  // snapshotWorld/restoreWorld pair).
+  it('autosaves the world into the active slot and restores it on reload', async () => {
+    const seed = 111;
+    const slots = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    await slots.createSlot('Save 1'); // auto-activates
+
+    const { world } = build(seed);
+    world.clock.advanceDay();
+    world.clock.advanceDay();
+    world.economy.postRevenue(5_000, 'Sale');
+    const expectedDay = world.clock.currentDay;
+    const expectedCash = world.economy.cash;
+
+    await slots.save(
+      { character: PROFILE, masterSeed: seed, world: snapshotWorld(world) },
+      { day: expectedDay },
+    );
+
+    // Reload: the active slot's blob carries the seed + the world snapshot.
+    const loaded = await slots.load();
+    expect(loaded).not.toBeNull();
+    expect(loaded!.masterSeed).toBe(seed);
+
+    // A brand-new same-seed World boots cold, then the snapshot restores it.
+    const { world: rebuilt } = build(seed);
+    expect(rebuilt.clock.currentDay).toBe(1);
+    restoreWorld(loaded!.world as WorldSnapshot, rebuilt);
+    expect(rebuilt.clock.currentDay).toBe(expectedDay);
+    expect(rebuilt.economy.cash).toBe(expectedCash);
+
+    // Slot metadata reflects the saved day for the picker (#195).
+    const meta = (await slots.listSlots())[0];
+    expect(meta.day).toBe(expectedDay);
+  });
+
+  it('keeps two slots fully independent — no world bleed', async () => {
+    const slots = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    const a = await slots.createSlot('Game A'); // active
+    const { world: wa } = build(111);
+    wa.clock.advanceDay();
+    wa.economy.postRevenue(1_000, 'Sale');
+    await slots.save(
+      { masterSeed: 111, world: snapshotWorld(wa) },
+      { day: wa.clock.currentDay },
+    );
+
+    const b = await slots.createSlot('Game B');
+    await slots.selectSlot(b.id);
+    const { world: wb } = build(222);
+    wb.economy.postExpense(2_000, 'Recon');
+    await slots.save(
+      { masterSeed: 222, world: snapshotWorld(wb) },
+      { day: wb.clock.currentDay },
+    );
+
+    // The active slot (B) loads B's seed + world, untouched by A's save.
+    const lb = await slots.load();
+    expect(lb!.masterSeed).toBe(222);
+    expect((lb!.world as WorldSnapshot).modules.gameClock.day).toBe(
+      wb.clock.currentDay,
+    );
+    expect((lb!.world as WorldSnapshot).modules.economy.cash).toBe(
+      wb.economy.cash,
+    );
+
+    // Switching back to A loads A's independent world — no bleed from B.
+    await slots.selectSlot(a.id);
+    const la = await slots.load();
+    expect(la!.masterSeed).toBe(111);
+    expect((la!.world as WorldSnapshot).modules.gameClock.day).toBe(
+      wa.clock.currentDay,
+    );
+    expect((la!.world as WorldSnapshot).modules.economy.cash).toBe(
+      wa.economy.cash,
+    );
   });
 });
 

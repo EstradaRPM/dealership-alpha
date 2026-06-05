@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { createSaveStore, createSqliteDriver } from './src/game/SaveStore';
+import {
+  createMultiSlotSaveStore,
+  createSqliteDriverFactory,
+} from './src/game/SaveStore';
 import { createEventBus } from './src/game/EventBus';
 import type {
   HandPlaySession,
@@ -40,7 +43,11 @@ import {
   deriveCompetitorComps,
 } from './src/game/MarketEconomy';
 import type { CharacterProfile } from './src/game/CareerProgression';
-import type { SaveStore, MidDayCheckpoint } from './src/game/SaveStore';
+import type {
+  SaveStore,
+  MultiSlotSaveStore,
+  MidDayCheckpoint,
+} from './src/game/SaveStore';
 import type { LotVehicle } from './src/game/Inventory';
 import { AdminConsole } from './src/ui/AdminConsole';
 import { MonthCloseInterstitial } from './src/ui/MonthCloseInterstitial';
@@ -97,17 +104,41 @@ const PRICING_STRATEGY_OPTIONS = Object.entries(PRICING_STRATEGIES.strategies).m
 const HIRING_ROLE_ID = 'salesperson';
 
 // ── Composition root (#114) ──────────────────────────────────────────────────
-// Seed-free, must outlive world (re)construction. saveStore reads the
+// Seed-free, must outlive world (re)construction. The store reads the
 // persisted per-save masterSeed (#96) before the seed-dependent World is
 // built; bus stays stable so the render-loop hook + bus subscriptions have a
 // bus before the seed is known.
-const saveStore: SaveStore = createSaveStore(createSqliteDriver());
-// Mid-day checkpoint cell (#122) — a physically separate sqlite db so the
-// in-progress FloorSim checkpoint can never collide with the main save blob
-// (the #109 own-cell discipline; per-slot indexing arrives with slot wiring).
-const checkpointStore: SaveStore = createSaveStore(
-  createSqliteDriver({ databaseName: 'dealership.checkpoint.db' }),
+//
+// Multi-slot store (#194): the active slot holds one game's full world
+// trajectory; the per-slot checkpoint cell (#109/#122) lives beside it,
+// isolated, so the in-progress FloorSim checkpoint can never collide with the
+// main save blob and never bleeds between slots.
+const slotStore: MultiSlotSaveStore = createMultiSlotSaveStore(
+  createSqliteDriverFactory(),
 );
+// Active-slot-backed SaveStore adapter (#194). The character/admin/end-card
+// flows depend on the narrow single-blob SaveStore surface (save/load/clear);
+// this presents exactly that, always addressing whichever slot is active.
+// Until the start menu (#195) lets the player create/pick slots, the first
+// save lazily auto-creates a single "Save 1" slot so a fresh install — or a
+// post-reset new game — has somewhere to write; #195 removes the lazy
+// auto-create and routes slot creation through the MainMenu. The slot-picker
+// `day` metadata is read off the persisted world snapshot when present, else 0.
+const saveStore: SaveStore = {
+  async save(state) {
+    if ((await slotStore.getActiveSlotId()) === null) {
+      await slotStore.createSlot('Save 1'); // auto-activates the first slot
+    }
+    const day =
+      (state.world as WorldSnapshot | undefined)?.modules.gameClock.day ?? 0;
+    await slotStore.save(state, { day });
+  },
+  load: () => slotStore.load(),
+  async clear() {
+    const id = await slotStore.getActiveSlotId();
+    if (id !== null) await slotStore.deleteSlot(id);
+  },
+};
 const bus = createEventBus();
 
 // Fresh random root seed minted once per app launch; consumed only if this
@@ -292,14 +323,14 @@ export default function App() {
         // its action log to land in the byte-exact pre-background state. A
         // stale checkpoint (the clock can't honor it — broader mid-game
         // clock/economy persistence is a later slice) is discarded, never
-        // misapplied.
-        const raw = await checkpointStore.load();
-        const cp = raw as unknown as MidDayCheckpoint | null;
+        // misapplied. The checkpoint now lives in the active slot's own cell
+        // (#194), so it can never bleed between slots.
+        const cp: MidDayCheckpoint | null = await slotStore.readCheckpoint();
         if (cp && cp.day === w.clock.currentDay) {
           w.dayLoop.resume(cp);
           bump();
         } else if (cp) {
-          await checkpointStore.clear();
+          await slotStore.clearCheckpoint();
         }
       } else {
         nav.reset('character-creation');
@@ -315,19 +346,20 @@ export default function App() {
       if (w) {
         setLotVehicles(w.inventory.getLotVehicles());
         setCash(w.economy.cash);
-        // Cross-day autosave (#188 tracer): persist the world snapshot at the
-        // day boundary, merged into the active single-slot blob (same
-        // merge-with-existing write the policy/strategy setters use). The
-        // single→multi-slot switch + per-slot autosave is #194.
+        // Cross-day autosave (#194): persist the world snapshot into the
+        // active slot at the day boundary, merged with the slot's existing
+        // blob (preserving character/seed/policy — the same merge-with-existing
+        // write the policy/strategy setters use). The adapter derives the
+        // slot's `day` metadata from this snapshot.
         void saveStore
           .load()
           .then((existing) =>
             saveStore.save({ ...(existing ?? {}), world: snapshotWorld(w) }),
           );
       }
-      // Day closed → the mid-day checkpoint is obsolete (#122 / #109: caller
-      // clears it on day-complete).
-      void checkpointStore.clear();
+      // Day closed → the active slot's mid-day checkpoint is obsolete (#122 /
+      // #109: caller clears it on day-complete).
+      void slotStore.clearCheckpoint();
     };
     const onVehiclePurchased = () => {
       const w = worldRef.current;
@@ -423,7 +455,10 @@ export default function App() {
     const sub = AppState.addEventListener('change', (next) => {
       if (next !== 'background' && next !== 'inactive') return;
       const cp = worldRef.current?.dayLoop.checkpoint();
-      if (cp) void checkpointStore.save(cp as unknown as Record<string, unknown>);
+      // A mid-day checkpoint only exists while a game is loaded, so an active
+      // slot is always present here (#194 — written into the active slot's
+      // isolated checkpoint cell).
+      if (cp) void slotStore.writeCheckpoint(cp);
     });
     return () => sub.remove();
   }, []);
