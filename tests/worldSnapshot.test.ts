@@ -12,8 +12,11 @@ import { createWorld } from '../src/createWorld';
 import {
   snapshotWorld,
   restoreWorld,
+  migrateWorldSnapshot,
   WORLD_SNAPSHOT_VERSION,
   type WorldSnapshot,
+  type PersistedWorldSnapshot,
+  type WorldSnapshotMigration,
 } from '../src/worldSnapshot';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
@@ -666,6 +669,85 @@ describe('Multi-slot world persistence (#194)', () => {
     );
     expect((la!.world as WorldSnapshot).modules.economy.cash).toBe(
       wa.economy.cash,
+    );
+  });
+});
+
+describe('world-snapshot versioning + migrations (#196)', () => {
+  function build(masterSeed: number) {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed, characterProfile: PROFILE });
+    return { bus, world };
+  }
+
+  it('stamps the current envelope version on every snapshot', () => {
+    const { world } = build(42);
+    expect(snapshotWorld(world).version).toBe(WORLD_SNAPSHOT_VERSION);
+  });
+
+  // The AC round-trip: write a save at version N, bump the runtime to N+1 with a
+  // registered migration, load → the older snapshot upgrades correctly.
+  it('upgrades an older snapshot through a registered migration on load', () => {
+    const seed = 9001;
+    const { world } = build(seed);
+    world.clock.advanceDay();
+    world.economy.postRevenue(3_000, 'Sale');
+
+    // A current (v1) snapshot persisted to "disk" and read back as plain data.
+    const v1 = snapshotWorld(world);
+    const persisted = JSON.parse(JSON.stringify(v1)) as PersistedWorldSnapshot;
+    expect(persisted.version).toBe(1);
+
+    // Simulate a future schema change: v2 adds a module key. The runtime is now
+    // at v2 with a registered v1→v2 step (injected so we needn't ship a real v2).
+    const migrations: Record<number, WorldSnapshotMigration> = {
+      1: (snap) => ({
+        version: 2,
+        modules: { ...snap.modules, widgets: { schemaVersion: 1, count: 0 } },
+      }),
+    };
+
+    const migrated = migrateWorldSnapshot(persisted, migrations, 2);
+    expect(migrated.version).toBe(2);
+    // Pre-existing module blobs survive the bump untouched...
+    expect(migrated.modules.gameClock).toEqual(v1.modules.gameClock);
+    expect(migrated.modules.economy).toEqual(v1.modules.economy);
+    // ...and the new key is materialized at its default.
+    expect((migrated.modules as Record<string, unknown>).widgets).toEqual({
+      schemaVersion: 1,
+      count: 0,
+    });
+  });
+
+  it('is a no-op pass-through for a snapshot already at the current version', () => {
+    const { world } = build(7);
+    const snap = snapshotWorld(world);
+    expect(migrateWorldSnapshot(snap)).toEqual(snap);
+  });
+
+  it('fails safe on a snapshot written by a newer runtime', () => {
+    const { world } = build(7);
+    const fromFuture = {
+      ...snapshotWorld(world),
+      version: WORLD_SNAPSHOT_VERSION + 1,
+    };
+    expect(() => migrateWorldSnapshot(fromFuture)).toThrow(/newer game version/);
+    // The same guard protects the restore funnel, so a too-new blob never
+    // half-rehydrates onto a live World.
+    const { world: target } = build(7);
+    expect(() => restoreWorld(fromFuture, target)).toThrow(/newer game version/);
+  });
+
+  it('fails safe when a migration step is missing (no silent corruption)', () => {
+    const { world } = build(7);
+    const v1 = snapshotWorld(world);
+    // Runtime claims v3 but only a v2→v3 step exists; the v1→v2 gap must throw
+    // rather than restore a shape mismatched to the current modules.
+    const migrations: Record<number, WorldSnapshotMigration> = {
+      2: (snap) => ({ ...snap, version: 3 }),
+    };
+    expect(() => migrateWorldSnapshot(v1, migrations, 3)).toThrow(
+      /No world-snapshot migration registered from v1/,
     );
   });
 });

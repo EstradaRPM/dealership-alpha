@@ -23,6 +23,7 @@ import {
   snapshotWorld,
   restoreWorld,
   type WorldSnapshot,
+  type PersistedWorldSnapshot,
 } from './src/worldSnapshot';
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { MainMenu } from './src/ui/MainMenu';
@@ -312,7 +313,9 @@ export default function App() {
     // against the restored day. Fan-out modules (#186 slices 2–6) extend the
     // snapshot; this call site never changes.
     if (state.world) {
-      restoreWorld(state.world as unknown as WorldSnapshot, w);
+      // restoreWorld migrates the persisted (possibly older) snapshot to the
+      // current envelope shape before rehydrating (#196).
+      restoreWorld(state.world as PersistedWorldSnapshot, w);
     }
     setWorld(w);
     setCash(w.economy.cash);

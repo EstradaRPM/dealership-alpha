@@ -44,7 +44,10 @@ import type { TelemetrySnapshot } from './game/Telemetry';
  *  `schemaVersion`. */
 export const WORLD_SNAPSHOT_VERSION = 1;
 
-export interface WorldSnapshot {
+// A `type` (not `interface`) so the concrete envelope stays assignable to the
+// loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
+// signature that assignment requires, and `restoreWorld` accepts the loose form.
+export type WorldSnapshot = {
   readonly version: number;
   readonly modules: {
     readonly gameClock: GameClockSnapshot;
@@ -67,6 +70,68 @@ export interface WorldSnapshot {
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
+};
+
+/**
+ * A persisted world snapshot of unknown vintage — the raw blob SaveStore reads
+ * back, before migration. `version` discriminates which migration steps still
+ * need to run; `modules` is treated opaquely until migrated up to current.
+ * Every current `WorldSnapshot` is structurally a `PersistedWorldSnapshot`.
+ */
+export type PersistedWorldSnapshot = {
+  readonly version: number;
+  readonly modules: Readonly<Record<string, unknown>>;
+};
+
+/**
+ * One forward migration step. Keyed in `WORLD_SNAPSHOT_MIGRATIONS` by the *old*
+ * envelope version it upgrades *from* (mirrors `SaveStore/migrations.ts`). A
+ * step transforms the `modules` map to the next version's shape — add/rename/
+ * restructure keys — and is responsible only for that single version bump.
+ */
+export type WorldSnapshotMigration = (
+  snap: PersistedWorldSnapshot,
+) => PersistedWorldSnapshot;
+
+/**
+ * Registered world-snapshot migrations, keyed by source version. Empty while
+ * the envelope sits at v1 (the first versioned shape, #188): there is no prior
+ * shape to upgrade from yet. When a future slice adds/restructures module keys,
+ * it bumps `WORLD_SNAPSHOT_VERSION` and registers the v1→v2 step here.
+ */
+export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
+  {};
+
+/**
+ * Upgrade a persisted world snapshot to the current envelope shape, running
+ * each registered step in order. Fail-safe by design (issue #196 AC): a
+ * snapshot from a newer runtime, or a gap with no registered step, throws
+ * rather than silently restoring a mismatched shape. `migrations`/`target` are
+ * injectable so a version bump can be exercised in tests without shipping a
+ * real v2.
+ */
+export function migrateWorldSnapshot(
+  persisted: PersistedWorldSnapshot,
+  migrations: Record<number, WorldSnapshotMigration> = WORLD_SNAPSHOT_MIGRATIONS,
+  targetVersion: number = WORLD_SNAPSHOT_VERSION,
+): WorldSnapshot {
+  if (persisted.version > targetVersion) {
+    throw new Error(
+      `World snapshot was written by a newer game version ` +
+        `(snapshot v${persisted.version}, runtime v${targetVersion}). Refusing to load.`,
+    );
+  }
+  let snap = persisted;
+  for (let from = persisted.version; from < targetVersion; from++) {
+    const step = migrations[from];
+    if (!step) {
+      throw new Error(
+        `No world-snapshot migration registered from v${from} to v${from + 1}.`,
+      );
+    }
+    snap = step(snap);
+  }
+  return snap as unknown as WorldSnapshot;
 }
 
 export function snapshotWorld(world: World): WorldSnapshot {
@@ -91,7 +156,15 @@ export function snapshotWorld(world: World): WorldSnapshot {
   };
 }
 
-export function restoreWorld(snap: WorldSnapshot, world: World): void {
+export function restoreWorld(
+  persisted: PersistedWorldSnapshot,
+  world: World,
+): void {
+  // Single migration funnel (#196): every restore — App load, tests, future
+  // callers — passes through here, so an older on-disk snapshot is upgraded to
+  // the current shape before any module rehydrates. A current-version snapshot
+  // is a no-op pass-through.
+  const snap = migrateWorldSnapshot(persisted);
   world.clock.restore(snap.modules.gameClock);
   world.economy.restore(snap.modules.economy);
   world.inventory.restore(snap.modules.inventory);
