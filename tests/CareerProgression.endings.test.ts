@@ -56,6 +56,8 @@ function makeTierManager(tier: number, customersServed = 100): TierManager & {
     applyContraction: jest.fn((to: number) => { current = to; }),
     getSerializableState: jest.fn(),
     restoreState: jest.fn(),
+    snapshot: jest.fn(),
+    restore: jest.fn(),
     setTier(t: number) { current = t; },
   };
 }

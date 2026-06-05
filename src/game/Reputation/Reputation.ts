@@ -4,12 +4,27 @@ import type { Season } from '../GameClock';
 import { DAYS_PER_WEEK } from '../GameClock';
 import { loadReputationConfig, type ReputationConfig } from './reputationData';
 
+/**
+ * Persistence surface for Reputation (#192, parent #186). Module-owned
+ * `schemaVersion`, same convention as Economy/Inventory. Captures the three
+ * live scalars; the demand curve + config are seed/data-derived, not persisted.
+ */
+export interface ReputationSnapshot {
+  readonly schemaVersion: 1;
+  readonly customerSatisfaction: number;
+  readonly reviewScore: number;
+  readonly marketingBudget: number;
+}
+
 export interface Reputation {
   readonly customerSatisfaction: number;
   readonly reviewScore: number;
   readonly marketingBudget: number;
   setMarketingBudget(weeklyAmount: number): void;
   getDailyDemand(season: Season, dayOfWeek: number): number;
+  /** #192 SaveStore seam: capture/rehydrate the reputation scalars. */
+  snapshot(): ReputationSnapshot;
+  restore(snap: ReputationSnapshot): void;
 }
 
 export interface ReputationDeps {
@@ -107,6 +122,25 @@ export function createReputation(deps: ReputationDeps): Reputation {
       const mktMult = 1 + marketingFactor();
       const raw = config.baseDailyDemand * repMult * mktMult * seasonMult * dowMult;
       return Math.max(0, raw);
+    },
+
+    snapshot() {
+      return {
+        schemaVersion: 1,
+        customerSatisfaction: satisfaction,
+        reviewScore: review,
+        marketingBudget,
+      };
+    },
+
+    restore(snap) {
+      satisfaction = clamp(
+        snap.customerSatisfaction,
+        config.satisfactionMin,
+        config.satisfactionMax,
+      );
+      review = clamp(snap.reviewScore, config.satisfactionMin, config.satisfactionMax);
+      marketingBudget = Math.max(0, snap.marketingBudget);
     },
   };
 }

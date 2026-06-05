@@ -8,7 +8,15 @@ Player tier (1 → 3 in v1) + backstory-driven Day 1 modifiers + branding rebran
 - `createCareerEndingsMonitor` → `CareerEndingsMonitor` (retire / sellout / family handoff — issue #35).
 - `loadBackstories`, `getDay1Modifier`, `buildCharacterModifier` — character-creation hooks.
 - `loadTierConfig`, `loadFailureTunables`, `loadIndictmentTunables`, `loadEndingsTunables` — data loaders.
-- Types: `TierManager`, `TierManagerState`, `TierConfig`, `TierEntry`, `TierThreshold`, `AccentOption`, `FontOption`, `BackstoryId`, `Day1Modifier`, `BackstoryEntry`, `CharacterProfile`, `BankruptcyMonitor*`, `IndictmentMonitor*`, `CareerEndingsMonitor*`, `PESelloutOffer`, `EndingsTunables`.
+- Types: `TierManager`, `TierManagerState`, `TierManagerSnapshot`, `TierConfig`, `TierEntry`, `TierThreshold`, `AccentOption`, `FontOption`, `BackstoryId`, `Day1Modifier`, `BackstoryEntry`, `CharacterProfile`, `BankruptcyMonitor*`, `IndictmentMonitor*`, `CareerEndingsMonitor*`, `PESelloutOffer`, `EndingsTunables`.
+
+## Persistence (#192, parent #186)
+- `TierManager.snapshot()/restore()` — module-owned `schemaVersion` wrapping the
+  full tier state: tier + business identity (`currentTier`/`businessName`/branding)
+  AND career progress (`customersServed`, the tier-up accumulator). This single
+  blob is the world seam's `tierManager` key — it round-trips both the
+  "tier/business identity" and "career progression" facets #192 calls out.
+  (`getSerializableState()/restoreState()` remain the module-internal raw form.)
 
 ## Events
 - **Emits:** `career:tier_up`, `career:bankruptcy_*`, `career:debt_payment_made`, `career:indictment_*`, `career:retired`, `career:pe_offer_made`, `career:pe_sellout`, `career:family_handoff`.

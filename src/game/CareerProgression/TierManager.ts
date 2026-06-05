@@ -11,6 +11,18 @@ export interface TierManagerState {
   customersServed: number;
 }
 
+/**
+ * Persistence surface for the CareerProgression module (#192, parent #186).
+ * Module-owned `schemaVersion`, same convention as Economy/Inventory. Wraps the
+ * full TierManager state: tier + business identity (tier/businessName/branding)
+ * AND career progress (`customersServed`, the tier-up accumulator). This single
+ * blob is the world seam's `tierManager` key — it round-trips both the
+ * "tier/business identity" and "career progression" facets #192 calls out.
+ */
+export interface TierManagerSnapshot extends TierManagerState {
+  readonly schemaVersion: 1;
+}
+
 export interface TierManagerDeps {
   bus: EventBus;
   economy: Economy;
@@ -30,6 +42,9 @@ export interface TierManager {
   applyContraction(toTier: number): void;
   getSerializableState(): TierManagerState;
   restoreState(state: TierManagerState): void;
+  /** #192 SaveStore seam: versioned capture/rehydrate (tier + career progress). */
+  snapshot(): TierManagerSnapshot;
+  restore(snap: TierManagerSnapshot): void;
 }
 
 export function createTierManager(deps: TierManagerDeps): TierManager {
@@ -99,6 +114,18 @@ export function createTierManager(deps: TierManagerDeps): TierManager {
       accentColor = state.accentColor;
       fontId = state.fontId;
       customersServed = state.customersServed;
+    },
+
+    snapshot() {
+      return { schemaVersion: 1, currentTier, businessName, accentColor, fontId, customersServed };
+    },
+
+    restore(snap) {
+      currentTier = snap.currentTier;
+      businessName = snap.businessName;
+      accentColor = snap.accentColor;
+      fontId = snap.fontId;
+      customersServed = snap.customersServed;
     },
   };
 }

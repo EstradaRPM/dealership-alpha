@@ -2,6 +2,8 @@ import { createEventBus } from '../src/game/EventBus';
 import { createGameClock } from '../src/game/GameClock';
 import { createEconomy } from '../src/game/Economy';
 import { createInventory } from '../src/game/Inventory';
+import { createReputation } from '../src/game/Reputation';
+import { createTierManager } from '../src/game/CareerProgression';
 import { createWorld } from '../src/createWorld';
 import {
   snapshotWorld,
@@ -285,6 +287,162 @@ describe('MarketEconomy + CompetitorMarket snapshot/restore (#191)', () => {
     expect(rebuilt.competitorMarket.getCompetitors()).toEqual(
       original.competitorMarket.getCompetitors(),
     );
+  });
+});
+
+describe('Reputation snapshot/restore (#192)', () => {
+  it('captures the three scalars and rehydrates them onto a fresh reputation', () => {
+    const bus = createEventBus();
+    const reputation = createReputation({ bus });
+
+    // Shift all three scalars off their cold-start defaults.
+    reputation.setMarketingBudget(750);
+    bus.publish('deal:closed', { /* bumps satisfaction + review */ } as never);
+    bus.publish('reputation:satisfaction_hit', { day: 1, amount: -4, reason: 'test' });
+    const satBefore = reputation.customerSatisfaction;
+    const reviewBefore = reputation.reviewScore;
+
+    const snap = reputation.snapshot();
+    expect(snap.schemaVersion).toBe(1);
+    expect(snap.marketingBudget).toBe(750);
+
+    const fresh = createReputation({ bus: createEventBus() });
+    expect(fresh.marketingBudget).toBe(0);
+    fresh.restore(snap);
+    expect(fresh.customerSatisfaction).toBe(satBefore);
+    expect(fresh.reviewScore).toBe(reviewBefore);
+    expect(fresh.marketingBudget).toBe(750);
+  });
+});
+
+describe('TierManager snapshot/restore (#192)', () => {
+  // Stub config with low thresholds so a real tier-up fires cheaply — proves
+  // currentTier + career progress (customersServed) survive the round-trip.
+  const STUB_CONFIG = {
+    checkIntervalDays: 28,
+    tiers: [
+      { tier: 1, label: 'Gravel Yard', illustration: '🏚', caption: 'awaits' },
+      {
+        tier: 2,
+        label: 'Paved Lot',
+        illustration: '🏗',
+        caption: 'shape',
+        triggerThreshold: { minCashOnHand: 1000, minCustomersServed: 5, minReputationScore: 60 },
+      },
+    ],
+    accentOptions: [{ id: 'gold', label: 'Gold', color: '#c8a96e' }],
+    fontOptions: [{ id: 'classic', label: 'Classic' }],
+  };
+
+  function makeEconomy(cash: number) {
+    return {
+      get cash() { return cash; },
+      postRevenue: jest.fn(),
+      postExpense: jest.fn(),
+      forceDebit: jest.fn(),
+      getPnL: jest.fn(),
+      snapshot: jest.fn(),
+      restore: jest.fn(),
+    } as never;
+  }
+  function makeReputation(score: number) {
+    return {
+      get customerSatisfaction() { return score; },
+      get reviewScore() { return score; },
+      get marketingBudget() { return 0; },
+      setMarketingBudget: jest.fn(),
+      getDailyDemand: jest.fn(),
+      snapshot: jest.fn(),
+      restore: jest.fn(),
+    } as never;
+  }
+
+  it('round-trips tier, business identity, and career progress exactly', () => {
+    const bus = createEventBus();
+    const tm = createTierManager({
+      bus,
+      economy: makeEconomy(2000),
+      reputation: makeReputation(65),
+      config: STUB_CONFIG,
+    });
+
+    // Progress career (customersServed) + advance the tier on the month-end check.
+    for (let i = 0; i < 6; i++) {
+      bus.publish('customer:resolved', {
+        customerId: `c${i}`, outcome: 'closed', receptivity: 0.5,
+        satisfaction: 1, retentionSeed: 0.5, heat: 0, agreedPrice: 0, frontGross: 0,
+      });
+    }
+    bus.publish('clock:overnight_payroll', { day: 28 });
+    tm.applyTierUp({ businessName: 'Revived Rides', accentColor: '#c8a96e', fontId: 'classic' });
+    expect(tm.currentTier).toBe(2);
+
+    const snap = tm.snapshot();
+    expect(snap.schemaVersion).toBe(1);
+
+    const tm2 = createTierManager({
+      bus: createEventBus(),
+      economy: makeEconomy(0),
+      reputation: makeReputation(50),
+      config: STUB_CONFIG,
+    });
+    tm2.restore(snap);
+    expect(tm2.currentTier).toBe(2);
+    expect(tm2.businessName).toBe('Revived Rides');
+    expect(tm2.accentColor).toBe('#c8a96e');
+    expect(tm2.customersServed).toBe(6);
+  });
+});
+
+describe('Reputation + CareerProgression through the world seam (#192)', () => {
+  function build(masterSeed: number) {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed, characterProfile: PROFILE });
+    return { bus, world };
+  }
+
+  // The AC: change reputation, rename, progress career → snapshot → restore on a
+  // fresh same-seed World → reputation standing, business identity, and career
+  // progress all match exactly.
+  it('round-trips reputation, business identity, and career progress', () => {
+    const seed = 7777;
+    const { bus, world: original } = build(seed);
+
+    original.reputation.setMarketingBudget(500);
+    bus.publish('reputation:satisfaction_hit', { day: 1, amount: -6, reason: 'test' });
+    original.tierManager.applyTierUp({
+      businessName: 'Estrada Motors', accentColor: '#818cf8', fontId: 'prestige',
+    });
+    for (let i = 0; i < 12; i++) {
+      bus.publish('customer:resolved', {
+        customerId: `c${i}`, outcome: 'walk', receptivity: 0.3,
+        satisfaction: 0, retentionSeed: 0.5, heat: 0, agreedPrice: 0, frontGross: 0,
+      });
+    }
+
+    const satBefore = original.reputation.customerSatisfaction;
+    const reviewBefore = original.reputation.reviewScore;
+    const servedBefore = original.tierManager.customersServed;
+    expect(servedBefore).toBe(12);
+
+    const snap = snapshotWorld(original);
+    const reparsed = JSON.parse(JSON.stringify(snap)) as WorldSnapshot;
+    expect(reparsed).toEqual(snap);
+
+    // Fresh same-seed World boots at the cold start...
+    const { world: rebuilt } = build(seed);
+    expect(rebuilt.tierManager.businessName).not.toBe('Estrada Motors');
+    expect(rebuilt.reputation.marketingBudget).toBe(0);
+
+    // ...until we restore the snapshot onto it.
+    restoreWorld(reparsed, rebuilt);
+    expect(rebuilt.reputation.customerSatisfaction).toBe(satBefore);
+    expect(rebuilt.reputation.reviewScore).toBe(reviewBefore);
+    expect(rebuilt.reputation.marketingBudget).toBe(500);
+    expect(rebuilt.tierManager.businessName).toBe('Estrada Motors');
+    expect(rebuilt.tierManager.accentColor).toBe('#818cf8');
+    expect(rebuilt.tierManager.fontId).toBe('prestige');
+    expect(rebuilt.tierManager.customersServed).toBe(servedBefore);
   });
 });
 

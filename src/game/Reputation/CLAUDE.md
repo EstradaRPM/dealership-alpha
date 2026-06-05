@@ -5,7 +5,13 @@ Dealership reputation score + marketing → demand feedback loop. Drifts overnig
 ## Public API (`index.ts`)
 - `createReputation()` → `Reputation`.
 - `loadReputationConfig` — reads reputation tunables.
-- Types: `Reputation`, `ReputationDeps`, `ReputationConfig`.
+- Types: `Reputation`, `ReputationDeps`, `ReputationConfig`, `ReputationSnapshot`.
+
+## Persistence (#192, parent #186)
+- `snapshot()/restore()` — module-owned `schemaVersion`, captures the three live
+  scalars (`customerSatisfaction`, `reviewScore`, `marketingBudget`). The demand
+  curve + config are data-derived and not persisted. Wired into the world seam
+  under the `reputation` key.
 
 ## Events
 - **Emits:** none directly (state read by `CustomerPool` / `CapacityManager` for arrival rates).

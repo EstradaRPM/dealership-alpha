@@ -31,6 +31,8 @@ import type { StaffOrgSnapshot } from './game/StaffOrg';
 import type { StaffMoraleSnapshot } from './game/StaffMorale';
 import type { MarketEconomySnapshot } from './game/MarketEconomy';
 import type { CompetitorMarketSnapshot } from './game/CompetitorMarket';
+import type { ReputationSnapshot } from './game/Reputation';
+import type { TierManagerSnapshot } from './game/CareerProgression';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
@@ -47,7 +49,11 @@ export interface WorldSnapshot {
     readonly staffMorale: StaffMoraleSnapshot;
     readonly marketEconomy: MarketEconomySnapshot;
     readonly competitorMarket: CompetitorMarketSnapshot;
-    // Later #186 slices add keys here (reputation, …)
+    readonly reputation: ReputationSnapshot;
+    // CareerProgression module: tier + business identity AND career progress
+    // (customersServed) ride in one TierManager blob.
+    readonly tierManager: TierManagerSnapshot;
+    // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
 }
@@ -63,6 +69,8 @@ export function snapshotWorld(world: World): WorldSnapshot {
       staffMorale: world.staffMorale.snapshot(),
       marketEconomy: world.marketEconomy.snapshot(),
       competitorMarket: world.competitorMarket.snapshot(),
+      reputation: world.reputation.snapshot(),
+      tierManager: world.tierManager.snapshot(),
     },
   };
 }
@@ -76,4 +84,6 @@ export function restoreWorld(snap: WorldSnapshot, world: World): void {
   world.staffMorale.restore(snap.modules.staffMorale);
   world.marketEconomy.restore(snap.modules.marketEconomy);
   world.competitorMarket.restore(snap.modules.competitorMarket);
+  world.reputation.restore(snap.modules.reputation);
+  world.tierManager.restore(snap.modules.tierManager);
 }

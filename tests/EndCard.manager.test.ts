@@ -28,6 +28,8 @@ function makeTierManager(tier: number): TierManager {
     applyContraction: jest.fn(),
     getSerializableState: jest.fn(),
     restoreState: jest.fn(),
+    snapshot: jest.fn(),
+    restore: jest.fn(),
   };
 }
 

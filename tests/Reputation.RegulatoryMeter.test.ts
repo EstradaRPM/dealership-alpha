@@ -48,6 +48,8 @@ function makeTierManager(tier: number): TierManager & { setTier(t: number): void
     applyContraction: jest.fn((to: number) => { current = to; }),
     getSerializableState: jest.fn(),
     restoreState: jest.fn(),
+    snapshot: jest.fn(),
+    restore: jest.fn(),
     setTier(t: number) { current = t; },
   };
 }

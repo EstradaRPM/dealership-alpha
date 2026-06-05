@@ -52,6 +52,13 @@ function makeReputation(score: number): Reputation {
     get marketingBudget() { return 0; },
     setMarketingBudget: jest.fn(),
     getDailyDemand: jest.fn().mockReturnValue(3),
+    snapshot: jest.fn().mockReturnValue({
+      schemaVersion: 1,
+      customerSatisfaction: score,
+      reviewScore: score,
+      marketingBudget: 0,
+    }),
+    restore: jest.fn(),
   };
 }
 
