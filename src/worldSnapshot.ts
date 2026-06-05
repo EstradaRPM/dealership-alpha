@@ -33,6 +33,11 @@ import type { MarketEconomySnapshot } from './game/MarketEconomy';
 import type { CompetitorMarketSnapshot } from './game/CompetitorMarket';
 import type { ReputationSnapshot } from './game/Reputation';
 import type { TierManagerSnapshot } from './game/CareerProgression';
+import type { FollowUpPoolSnapshot } from './game/FollowUpPool';
+import type { ServiceQueueSnapshot } from './game/ServiceQueue';
+import type { DepartmentQueueSnapshot } from './game/DepartmentQueue';
+import type { KPIDashboardSnapshot } from './game/KPIDashboard';
+import type { TelemetrySnapshot } from './game/Telemetry';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
@@ -53,6 +58,12 @@ export interface WorldSnapshot {
     // CareerProgression module: tier + business identity AND career progress
     // (customersServed) ride in one TierManager blob.
     readonly tierManager: TierManagerSnapshot;
+    // Queued/pending work + accumulated metrics (#193).
+    readonly followUpPool: FollowUpPoolSnapshot;
+    readonly serviceQueue: ServiceQueueSnapshot;
+    readonly departmentQueue: DepartmentQueueSnapshot;
+    readonly kpiDashboard: KPIDashboardSnapshot;
+    readonly telemetry: TelemetrySnapshot;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -71,6 +82,11 @@ export function snapshotWorld(world: World): WorldSnapshot {
       competitorMarket: world.competitorMarket.snapshot(),
       reputation: world.reputation.snapshot(),
       tierManager: world.tierManager.snapshot(),
+      followUpPool: world.followUpPool.snapshot(),
+      serviceQueue: world.serviceQueue.snapshot(),
+      departmentQueue: world.departmentQueue.snapshot(),
+      kpiDashboard: world.kpiDashboard.snapshot(),
+      telemetry: world.telemetry.snapshot(),
     },
   };
 }
@@ -86,4 +102,9 @@ export function restoreWorld(snap: WorldSnapshot, world: World): void {
   world.competitorMarket.restore(snap.modules.competitorMarket);
   world.reputation.restore(snap.modules.reputation);
   world.tierManager.restore(snap.modules.tierManager);
+  world.followUpPool.restore(snap.modules.followUpPool);
+  world.serviceQueue.restore(snap.modules.serviceQueue);
+  world.departmentQueue.restore(snap.modules.departmentQueue);
+  world.kpiDashboard.restore(snap.modules.kpiDashboard);
+  world.telemetry.restore(snap.modules.telemetry);
 }

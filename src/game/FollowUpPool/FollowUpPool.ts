@@ -1,6 +1,12 @@
 import type { EventBus } from '../EventBus';
 import type { CustomerPool } from '../CustomerPool';
-import type { FollowUpEntry, ArchivedEntry, FollowUpPool, CallbackOutcome } from './types';
+import type {
+  FollowUpEntry,
+  ArchivedEntry,
+  FollowUpPool,
+  FollowUpPoolSnapshot,
+  CallbackOutcome,
+} from './types';
 
 export interface FollowUpTunables {
   /** Heat lost per night. Walk heat ∈ [0,1] arrives from customer:resolved. */
@@ -105,6 +111,25 @@ export function createFollowUpPool(deps: {
       }
 
       return outcome;
+    },
+
+    snapshot(): FollowUpPoolSnapshot {
+      return {
+        schemaVersion: 1,
+        active: [...active.values()],
+        archived: [...archived],
+        currentDay,
+      };
+    },
+
+    restore(snap) {
+      active.clear();
+      for (const entry of snap.active) {
+        active.set(entry.customerId, { ...entry });
+      }
+      archived.length = 0;
+      archived.push(...snap.archived.map((a) => ({ ...a })));
+      currentDay = snap.currentDay;
     },
   };
 }

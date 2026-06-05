@@ -9,6 +9,19 @@ export interface DealRecord {
   apr: number;
 }
 
+/**
+ * Save/load blob (#193). Self-versioned per the #188 contract. Persists the
+ * raw `DealRecord` log (KPIs are derived on read, so the log is the source of
+ * truth) plus the latest daily carrying-cost reading, keeping the dashboard
+ * continuous across sessions. Distinct from `KPISnapshot`, which is the
+ * computed read-model returned by `getSnapshot()`.
+ */
+export interface KPIDashboardSnapshot {
+  readonly schemaVersion: 1;
+  readonly deals: readonly DealRecord[];
+  readonly dailyCarryingCost: number;
+}
+
 export interface KPISnapshot {
   unitsRetailed: number;
   pvr: number;

@@ -1,10 +1,12 @@
 import type { EventBus } from '../EventBus';
 import type { StaffOrg } from '../StaffOrg';
-import type { DealRecord, KPISnapshot } from './types';
+import type { DealRecord, KPISnapshot, KPIDashboardSnapshot } from './types';
 
 export interface KPIDashboard {
   readonly isUnlocked: boolean;
   getSnapshot(): KPISnapshot;
+  snapshot(): KPIDashboardSnapshot;
+  restore(snap: KPIDashboardSnapshot): void;
 }
 
 export interface KPIDashboardDeps {
@@ -123,6 +125,20 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
 
     getSnapshot(): KPISnapshot {
       return computeSnapshot(deals, dailyCarryingCost);
+    },
+
+    snapshot(): KPIDashboardSnapshot {
+      return {
+        schemaVersion: 1,
+        deals: deals.map((d) => ({ ...d })),
+        dailyCarryingCost,
+      };
+    },
+
+    restore(snap) {
+      deals.length = 0;
+      deals.push(...snap.deals.map((d) => ({ ...d })));
+      dailyCarryingCost = snap.dailyCarryingCost;
     },
   };
 }

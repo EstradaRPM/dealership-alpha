@@ -16,3 +16,10 @@ Daily service-department intake generator. Active at Tier 2+. Produces a batch o
 
 ## Tier gate
 Do nothing at Tier 1 — service is unlocked at Tier 2. Check tier from `CareerProgression` before generating.
+
+## Persistence (#193)
+- `snapshot()/restore()` (barrel-exported `ServiceQueueSnapshot`) carry only the
+  tier gate (`currentTier`) — daily intake regenerates deterministically from
+  `masterSeed + day`. Wired into `snapshotWorld`/`restoreWorld` under the
+  `serviceQueue` key so the Tier 2+ unlock survives a load without waiting for
+  the next `career:tier_up`.

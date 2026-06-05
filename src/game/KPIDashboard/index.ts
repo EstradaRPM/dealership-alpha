@@ -1,3 +1,3 @@
 export { createKPIDashboard } from './KPIDashboard';
 export type { KPIDashboard, KPIDashboardDeps } from './KPIDashboard';
-export type { DealRecord, KPISnapshot } from './types';
+export type { DealRecord, KPISnapshot, KPIDashboardSnapshot } from './types';

@@ -1,5 +1,5 @@
 import type { EventBus } from '../EventBus';
-import type { DeptKey, QueueItem } from './types';
+import type { DeptKey, QueueItem, DepartmentQueueSnapshot } from './types';
 
 export interface DepartmentQueue {
   getQueue(dept: DeptKey): readonly QueueItem[];
@@ -9,6 +9,8 @@ export interface DepartmentQueue {
   resolveTop(dept: DeptKey): void;
   resolveByCustomerId(customerId: string): boolean;
   drainQueues(): readonly QueueItem[];
+  snapshot(): DepartmentQueueSnapshot;
+  restore(snap: DepartmentQueueSnapshot): void;
 }
 
 const DEPT_KEYS: DeptKey[] = ['sales', 'service', 'bdc', 'office', 'lot'];
@@ -132,6 +134,29 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
         queues[dept] = [];
       }
       return all;
+    },
+
+    snapshot() {
+      const out = {} as Record<DeptKey, readonly QueueItem[]>;
+      for (const dept of DEPT_KEYS) {
+        out[dept] = queues[dept].map((item) => ({ ...item }));
+      }
+      return { schemaVersion: 1, queues: out };
+    },
+
+    restore(snap) {
+      let maxAutoId = 0;
+      for (const dept of DEPT_KEYS) {
+        queues[dept] = (snap.queues[dept] ?? []).map((item) => ({ ...item }));
+        for (const item of queues[dept]) {
+          // Auto-generated ids are `q-<n>`; service items carry their own
+          // `svc:...` id and don't feed this counter.
+          const match = /^q-(\d+)$/.exec(item.id);
+          if (match) maxAutoId = Math.max(maxAutoId, Number(match[1]));
+        }
+      }
+      // Advance the shared counter past any restored id so new items are unique.
+      if (maxAutoId >= _nextId) _nextId = maxAutoId + 1;
     },
   };
 }

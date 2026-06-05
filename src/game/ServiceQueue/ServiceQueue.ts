@@ -9,8 +9,22 @@ export interface ServiceQueueDeps {
   config?: ServiceQueueConfig;
 }
 
-// Intentionally empty — ServiceQueue is fully autonomous.
-export interface ServiceQueue {}
+/**
+ * Save/load blob (#193). The module regenerates its daily intake
+ * deterministically from `masterSeed + day`, so the only carried state is the
+ * tier gate — restoring it keeps the Tier 2+ unlock honored after a load
+ * without waiting for the next `career:tier_up`.
+ */
+export interface ServiceQueueSnapshot {
+  readonly schemaVersion: 1;
+  readonly currentTier: number;
+}
+
+// Near-autonomous: only the tier gate is carried state (see snapshot/restore).
+export interface ServiceQueue {
+  snapshot(): ServiceQueueSnapshot;
+  restore(snap: ServiceQueueSnapshot): void;
+}
 
 export function createServiceQueue(deps: ServiceQueueDeps): ServiceQueue {
   const { bus, masterSeed } = deps;
@@ -52,5 +66,12 @@ export function createServiceQueue(deps: ServiceQueueDeps): ServiceQueue {
     bus.publish('service:intake_ready', { day, items });
   });
 
-  return {};
+  return {
+    snapshot(): ServiceQueueSnapshot {
+      return { schemaVersion: 1, currentTier };
+    },
+    restore(snap) {
+      currentTier = snap.currentTier;
+    },
+  };
 }

@@ -13,5 +13,10 @@ Walked-customer heat tracker. Customers who didn't close sit in this pool with a
 ## Data
 - `data/customer-tunables.json` — `followUp` section (`decayPerNight`). Initial heat is the computed `heat` scalar from the extended `customer:resolved` payload (#85/#93), not a flat base.
 
+## Persistence (#193)
+- `snapshot()/restore()` (barrel-exported `FollowUpPoolSnapshot`) capture the
+  active pool, the archived history, and the last-seen day. Wired into
+  `snapshotWorld`/`restoreWorld` under the `followUpPool` key.
+
 ## Notes
 - Archived entries (heat=0) stay readable for KPI/historical purposes but are no longer actionable.

@@ -70,6 +70,20 @@ export interface SessionLog {
   events: ReadonlyArray<StoredEvent>;
 }
 
+/**
+ * Save/load blob (#193). Self-versioned per the #188 contract. Persists the
+ * raw event buffer (metrics are derived on read) plus the day cursor, the
+ * session start offset, and whether recording was on — so a restore reproduces
+ * `getRawEvents()`/`getMetrics()` exactly and keeps recording if it was live.
+ */
+export interface TelemetrySnapshot {
+  readonly schemaVersion: 1;
+  readonly enabled: boolean;
+  readonly sessionStartedAt: number;
+  readonly currentDay: number;
+  readonly events: ReadonlyArray<StoredEvent>;
+}
+
 export interface Telemetry {
   setEnabled(on: boolean): void;
   isEnabled(): boolean;
@@ -78,6 +92,8 @@ export interface Telemetry {
   getRawEvents(): ReadonlyArray<StoredEvent>;
   getMetrics(): SessionMetrics;
   exportSessionLog(): string;
+  snapshot(): TelemetrySnapshot;
+  restore(snap: TelemetrySnapshot): void;
 }
 
 function loadConfig(): TelemetryConfig {
@@ -342,6 +358,30 @@ export function createTelemetry(deps: { bus: EventBus }): Telemetry {
         events: buffer,
       };
       return JSON.stringify(log, null, 2);
+    },
+    snapshot(): TelemetrySnapshot {
+      return {
+        schemaVersion: 1,
+        enabled,
+        sessionStartedAt,
+        currentDay,
+        events: buffer.map((e) => ({ ...e })),
+      };
+    },
+    restore(snap) {
+      buffer.length = 0;
+      buffer.push(...snap.events.map((e) => ({ ...e })));
+      currentDay = snap.currentDay;
+      sessionStartedAt = snap.sessionStartedAt;
+      // Re-seat the subscription state so recording resumes (or stays off) to
+      // match the saved session.
+      if (snap.enabled && !enabled) {
+        enabled = true;
+        attach();
+      } else if (!snap.enabled && enabled) {
+        enabled = false;
+        detach();
+      }
     },
   };
 }

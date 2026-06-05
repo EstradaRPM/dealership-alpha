@@ -13,5 +13,12 @@ In-memory work queue per department (Sales, Service, BDC, etc.). Items wait here
 ## Data
 None. Pure in-memory; persisted only via `SaveStore` snapshot.
 
+## Persistence (#193)
+- `snapshot()/restore()` (barrel-exported `DepartmentQueueSnapshot`) capture every
+  department's pending items verbatim. Wired into `snapshotWorld`/`restoreWorld`
+  under the `departmentQueue` key. `restore` advances the shared `q-<n>` id
+  counter past the highest restored id so freshly-enqueued items never collide
+  with the loaded ones.
+
 ## Notes
 - Queue is FIFO within a department. If you need priority ordering, do it at insertion time — don't add a priority field without discussing with the user first.

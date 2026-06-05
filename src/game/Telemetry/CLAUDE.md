@@ -26,6 +26,13 @@ Optional, dev-only session recorder. Subscribes to `EventBus` events when enable
 ## Data
 - `data/telemetry.json` — `cashCurveBucketDays` (reserved; v1 always uses 1), `maxBufferedEvents` (hard cap to bound memory in long sessions).
 
+## Persistence (#193)
+- `snapshot()/restore()` (barrel-exported `TelemetrySnapshot`) persist the raw
+  event buffer (metrics are derived on read), the day cursor, the session-start
+  offset, and the enabled flag. Wired into `snapshotWorld`/`restoreWorld` under
+  the `telemetry` key. `restore` re-attaches (or detaches) subscriptions so
+  recording resumes in the same state it was saved in.
+
 ## Notes
 - Subscribes only to a fixed list of existing events (see `TRACKED_EVENTS` in `Telemetry.ts`). Does **not** add new event types.
 - When disabled, no subscriptions exist on the bus — no overhead.

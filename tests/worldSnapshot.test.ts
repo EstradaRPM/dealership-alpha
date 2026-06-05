@@ -446,6 +446,137 @@ describe('Reputation + CareerProgression through the world seam (#192)', () => {
   });
 });
 
+describe('FollowUpPool + queues + KPIDashboard + Telemetry through the world seam (#193)', () => {
+  function build(masterSeed: number) {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed, characterProfile: PROFILE });
+    return { bus, world };
+  }
+
+  // The AC: enqueue follow-ups + service/dept work, accumulate KPIs + telemetry,
+  // snapshot, then restore on a fresh same-seed World — all five modules match
+  // exactly (queued work, open follow-ups, and accumulated metrics continuous).
+  it('round-trips pending work + accumulated metrics through the world seam', () => {
+    const seed = 31337;
+    const { bus, world: original } = build(seed);
+
+    // Telemetry on so the buffer accumulates as we drive the world.
+    original.telemetry.setEnabled(true);
+
+    // Day 1: open the lot, admit a customer (→ DepartmentQueue sales item),
+    // and buy a unit (→ KPI carrying-cost reading later, inventory churn).
+    bus.publish('clock:day_started', { day: 1 });
+    bus.publish('capacity:customer_admitted', {
+      day: 1,
+      customerId: 'walkin-1',
+      label: 'Tire-Kicker',
+    });
+
+    // A walked customer with leftover heat enters the FollowUpPool. The pool
+    // owns session creation, so spawn a real one before resolving it as a walk.
+    const walkerId = original.customerPool.spawnCustomer(
+      'young_family', 'family_vehicle_search', 'Young Family',
+    );
+    bus.publish('customer:resolved', {
+      customerId: walkerId, outcome: 'walk', receptivity: 0.4,
+      satisfaction: 0, retentionSeed: 0.5, heat: 0.8, agreedPrice: 0, frontGross: 0,
+    });
+    expect(original.followUpPool.getFollowUps().length).toBeGreaterThan(0);
+
+    // A closed deal so the KPIDashboard accumulates a real deal record.
+    bus.publish('deal:closed', {
+      frontGross: 1500, backGross: 900, daysInInventory: 12, agreedPrice: 20000,
+      paymentMethod: 'finance', downPayment: 6000, term: 60, apr: 7.9,
+    } as never);
+    bus.publish('economy:carrying_cost_posted', { day: 1, totalCost: 137 } as never);
+
+    const kpiBefore = original.kpiDashboard.getSnapshot();
+    expect(kpiBefore.unitsRetailed).toBe(1);
+    const salesBadgeBefore = original.departmentQueue.getBadgeCount('sales');
+    expect(salesBadgeBefore).toBeGreaterThan(0);
+    const telemetryCountBefore = original.telemetry.getEventCount();
+    expect(telemetryCountBefore).toBeGreaterThan(0);
+
+    const snap = snapshotWorld(original);
+    // SaveStore persists plain data — the blob must survive JSON.
+    const reparsed = JSON.parse(JSON.stringify(snap)) as WorldSnapshot;
+    expect(reparsed).toEqual(snap);
+
+    // A brand-new same-seed World boots with empty queues + zeroed metrics...
+    const { world: rebuilt } = build(seed);
+    expect(rebuilt.followUpPool.getFollowUps()).toEqual([]);
+    expect(rebuilt.departmentQueue.getBadgeCount('sales')).toBe(0);
+    expect(rebuilt.kpiDashboard.getSnapshot().unitsRetailed).toBe(0);
+    expect(rebuilt.telemetry.getEventCount()).toBe(0);
+
+    // ...until we restore the snapshot onto it.
+    restoreWorld(reparsed, rebuilt);
+
+    expect(rebuilt.followUpPool.getFollowUps()).toEqual(
+      original.followUpPool.getFollowUps(),
+    );
+    expect(rebuilt.followUpPool.getArchived()).toEqual(
+      original.followUpPool.getArchived(),
+    );
+    expect(rebuilt.departmentQueue.getBadges()).toEqual(
+      original.departmentQueue.getBadges(),
+    );
+    expect(rebuilt.departmentQueue.getQueue('sales')).toEqual(
+      original.departmentQueue.getQueue('sales'),
+    );
+    expect(rebuilt.kpiDashboard.getSnapshot()).toEqual(kpiBefore);
+    expect(rebuilt.telemetry.getRawEvents()).toEqual(
+      original.telemetry.getRawEvents(),
+    );
+    expect(rebuilt.telemetry.getMetrics()).toEqual(
+      original.telemetry.getMetrics(),
+    );
+  });
+
+  it('restores the ServiceQueue tier gate so Tier 2+ intake resumes after load', () => {
+    const seed = 808;
+    const { bus, world: original } = build(seed);
+
+    // Reach Tier 2 so ServiceQueue starts producing intake.
+    bus.publish('career:tier_up', { fromTier: 1, toTier: 2 } as never);
+    expect(original.serviceQueue.snapshot().currentTier).toBe(2);
+
+    const snap = snapshotWorld(original);
+
+    // Fresh same-seed World is at Tier 1 (gate closed)...
+    const { bus: busR, world: rebuilt } = build(seed);
+    expect(rebuilt.serviceQueue.snapshot().currentTier).toBe(1);
+
+    // ...restore reopens the gate, so the next morning produces service intake.
+    restoreWorld(snap, rebuilt);
+    expect(rebuilt.serviceQueue.snapshot().currentTier).toBe(2);
+    busR.publish('clock:day_started', { day: 2 });
+    expect(rebuilt.departmentQueue.getBadgeCount('service')).toBeGreaterThan(0);
+  });
+
+  it('advances the DepartmentQueue id counter past restored ids (no collisions)', () => {
+    const seed = 4242;
+    const { bus, world: original } = build(seed);
+    bus.publish('clock:day_started', { day: 1 });
+    bus.publish('capacity:customer_admitted', {
+      day: 1, customerId: 'c-collide', label: 'Buyer',
+    });
+    const snap = snapshotWorld(original);
+
+    const { bus: busR, world: rebuilt } = build(seed);
+    restoreWorld(snap, rebuilt);
+
+    // Enqueue fresh work post-restore; every id must stay unique.
+    busR.publish('clock:day_started', { day: 2 });
+    busR.publish('capacity:customer_admitted', {
+      day: 2, customerId: 'c-new', label: 'Buyer',
+    });
+    const allIds = (['sales', 'service', 'bdc', 'office', 'lot'] as const)
+      .flatMap((d) => rebuilt.departmentQueue.getQueue(d).map((i) => i.id));
+    expect(new Set(allIds).size).toBe(allIds.length);
+  });
+});
+
 describe('snapshotWorld / restoreWorld seam (#188)', () => {
   function build(masterSeed: number) {
     const bus = createEventBus();
