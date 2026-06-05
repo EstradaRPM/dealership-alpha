@@ -607,7 +607,7 @@ describe('Multi-slot world persistence (#194)', () => {
 
     await slots.save(
       { character: PROFILE, masterSeed: seed, world: snapshotWorld(world) },
-      { day: expectedDay },
+      { day: expectedDay, tier: world.tierManager.currentTier },
     );
 
     // Reload: the active slot's blob carries the seed + the world snapshot.
@@ -635,7 +635,7 @@ describe('Multi-slot world persistence (#194)', () => {
     wa.economy.postRevenue(1_000, 'Sale');
     await slots.save(
       { masterSeed: 111, world: snapshotWorld(wa) },
-      { day: wa.clock.currentDay },
+      { day: wa.clock.currentDay, tier: wa.tierManager.currentTier },
     );
 
     const b = await slots.createSlot('Game B');
@@ -644,7 +644,7 @@ describe('Multi-slot world persistence (#194)', () => {
     wb.economy.postExpense(2_000, 'Recon');
     await slots.save(
       { masterSeed: 222, world: snapshotWorld(wb) },
-      { day: wb.clock.currentDay },
+      { day: wb.clock.currentDay, tier: wb.tierManager.currentTier },
     );
 
     // The active slot (B) loads B's seed + world, untouched by A's save.

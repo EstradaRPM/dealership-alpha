@@ -66,6 +66,7 @@ export function createMultiSlotSaveStore(
         id: `slot-${seq}`,
         name,
         day: 0,
+        tier: 1,
         lastPlayed: now(),
       };
       const next: SlotIndex = {
@@ -112,7 +113,7 @@ export function createMultiSlotSaveStore(
       });
     },
 
-    async save(state: SaveState, meta: { day: number }) {
+    async save(state: SaveState, meta: { day: number; tier: number }) {
       const index = await readIndex();
       const activeId = index.activeSlotId;
       if (activeId === null) {
@@ -123,7 +124,12 @@ export function createMultiSlotSaveStore(
         throw new Error(`Active slot ${activeId} no longer exists`);
       }
       await createSaveStore(driverFactory(slotKey(activeId))).save(state);
-      const updated: SlotMetadata = { ...slot, day: meta.day, lastPlayed: now() };
+      const updated: SlotMetadata = {
+        ...slot,
+        day: meta.day,
+        tier: meta.tier,
+        lastPlayed: now(),
+      };
       await writeIndex({
         ...index,
         slots: index.slots.map((s) => (s.id === activeId ? updated : s)),

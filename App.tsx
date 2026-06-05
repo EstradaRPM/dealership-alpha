@@ -25,6 +25,7 @@ import {
   type WorldSnapshot,
 } from './src/worldSnapshot';
 import { CharacterCreation } from './src/ui/CharacterCreation';
+import { MainMenu } from './src/ui/MainMenu';
 import { DayLoopShell } from './src/ui/DayLoopShell';
 import type { DayRecapModel } from './src/ui/DayRecap';
 import type {
@@ -119,19 +120,16 @@ const slotStore: MultiSlotSaveStore = createMultiSlotSaveStore(
 // Active-slot-backed SaveStore adapter (#194). The character/admin/end-card
 // flows depend on the narrow single-blob SaveStore surface (save/load/clear);
 // this presents exactly that, always addressing whichever slot is active.
-// Until the start menu (#195) lets the player create/pick slots, the first
-// save lazily auto-creates a single "Save 1" slot so a fresh install — or a
-// post-reset new game — has somewhere to write; #195 removes the lazy
-// auto-create and routes slot creation through the MainMenu. The slot-picker
-// `day` metadata is read off the persisted world snapshot when present, else 0.
+// Slot creation/selection is owned entirely by the start menu (#195) — by the
+// time anything saves, the MainMenu has already created+selected the active
+// slot, so there is no lazy auto-create here. The slot-picker `day`/`tier`
+// metadata is read off the persisted world snapshot when present, else 0/1.
 const saveStore: SaveStore = {
   async save(state) {
-    if ((await slotStore.getActiveSlotId()) === null) {
-      await slotStore.createSlot('Save 1'); // auto-activates the first slot
-    }
-    const day =
-      (state.world as WorldSnapshot | undefined)?.modules.gameClock.day ?? 0;
-    await slotStore.save(state, { day });
+    const snap = state.world as WorldSnapshot | undefined;
+    const day = snap?.modules.gameClock.day ?? 0;
+    const tier = snap?.modules.tierManager.currentTier ?? 1;
+    await slotStore.save(state, { day, tier });
   },
   load: () => slotStore.load(),
   async clear() {
@@ -140,11 +138,6 @@ const saveStore: SaveStore = {
   },
 };
 const bus = createEventBus();
-
-// Fresh random root seed minted once per app launch; consumed only if this
-// launch starts a brand-new game (#96). An existing save ignores it and
-// rebuilds the World from its own persisted seed.
-const NEW_GAME_SEED = makeSeed();
 
 // staffTaxonomy is seed-free: kept module-level so SKILL_CAPS (PersonnelScreen
 // bars, #120) and the FLOOR-OPEN staff-strip department lookup don't depend on
@@ -172,9 +165,14 @@ export default function App() {
   const nav = useNavigator('loading');
   const screen = nav.current.route;
   const [profile, setProfile] = useState<CharacterProfile | null>(null);
+  // Fresh root RNG seed (#96) for the next brand-new game. Re-minted each time
+  // the player starts a New Game from the menu, so two new games created in one
+  // app session don't clone the same world. CharacterCreation persists it into
+  // the active slot; an existing save ignores it and rebuilds from its own seed.
+  const [newGameSeed, setNewGameSeed] = useState(makeSeed);
   // The seed-dependent composition root (#96). Null until the per-save
   // masterSeed is resolved — from the persisted save on load, or the fresh
-  // NEW_GAME_SEED at character creation. Built exactly once per game.
+  // newGameSeed at character creation. Built exactly once per game.
   const [world, setWorld] = useState<World | null>(null);
   // Latest world for bus handlers / AppState listener (their effects mount
   // once with [] before the world exists).
@@ -279,63 +277,67 @@ export default function App() {
     setHandResult(null);
   };
 
-  useEffect(() => {
-    saveStore.load().then(async (state) => {
-      if (state?.character) {
-        // Per-save masterSeed (#96): the SaveStore v1→v2 migration backfills
-        // the fixed legacy 42 for pre-#96 saves, so a number is guaranteed
-        // here; the ?? 42 is a defensive belt only.
-        const seed =
-          typeof state.masterSeed === 'number' ? state.masterSeed : 42;
-        const character = state.character as CharacterProfile;
-        // Restore the persisted per-slot trade policy (#172) before any trade
-        // can resolve. The ref backs the live multiplier getter handed to
-        // createWorld.
-        if (typeof state.tradePolicy === 'string') {
-          tradePolicyIdRef.current = state.tradePolicy;
-          setTradePolicyId(state.tradePolicy);
-        }
-        // Restore the persisted per-slot list-price strategy (#154).
-        if (typeof state.pricingStrategy === 'string') {
-          setPricingStrategyId(state.pricingStrategy);
-        }
-        const w = createWorld({
-          bus,
-          masterSeed: seed,
-          characterProfile: character,
-          getTradePolicyMultiplier,
-        });
-        // World-state restore (#188 tracer): rehydrate the persisted world
-        // snapshot (day + cash) onto the freshly-built World instead of leaving
-        // it reset to "night before Day 1". Done before the checkpoint-resume
-        // block below so the mid-day guard (`cp.day === clock.currentDay`)
-        // compares against the restored day. Fan-out modules (#186 slices 2–6)
-        // extend the snapshot; this call site never changes.
-        if (state.world) {
-          restoreWorld(state.world as unknown as WorldSnapshot, w);
-        }
-        setWorld(w);
-        setCash(w.economy.cash);
-        setProfile(character);
-        nav.reset('game');
-        // Mid-day cold-start resume (#122): if a checkpoint exists for the
-        // day the clock currently sits on, recreate the FloorSim and replay
-        // its action log to land in the byte-exact pre-background state. A
-        // stale checkpoint (the clock can't honor it — broader mid-game
-        // clock/economy persistence is a later slice) is discarded, never
-        // misapplied. The checkpoint now lives in the active slot's own cell
-        // (#194), so it can never bleed between slots.
-        const cp: MidDayCheckpoint | null = await slotStore.readCheckpoint();
-        if (cp && cp.day === w.clock.currentDay) {
-          w.dayLoop.resume(cp);
-          bump();
-        } else if (cp) {
-          await slotStore.clearCheckpoint();
-        }
-      } else {
-        nav.reset('character-creation');
-      }
+  // Build (and route into) the game from whichever slot is currently active.
+  // Called by the start menu's Continue/Load after it has selected the slot
+  // (#195). The slot must already hold a character; the menu never offers an
+  // empty/character-less slot for resume.
+  const loadActiveSlotIntoGame = async () => {
+    const state = await saveStore.load();
+    if (!state?.character) return;
+    // Per-save masterSeed (#96): the SaveStore v1→v2 migration backfills the
+    // fixed legacy 42 for pre-#96 saves, so a number is guaranteed here; the
+    // ?? 42 is a defensive belt only.
+    const seed = typeof state.masterSeed === 'number' ? state.masterSeed : 42;
+    const character = state.character as CharacterProfile;
+    // Restore the persisted per-slot trade policy (#172) before any trade can
+    // resolve. The ref backs the live multiplier getter handed to createWorld.
+    if (typeof state.tradePolicy === 'string') {
+      tradePolicyIdRef.current = state.tradePolicy;
+      setTradePolicyId(state.tradePolicy);
+    }
+    // Restore the persisted per-slot list-price strategy (#154).
+    if (typeof state.pricingStrategy === 'string') {
+      setPricingStrategyId(state.pricingStrategy);
+    }
+    const w = createWorld({
+      bus,
+      masterSeed: seed,
+      characterProfile: character,
+      getTradePolicyMultiplier,
     });
+    // World-state restore (#188 tracer): rehydrate the persisted world
+    // snapshot (day + cash) onto the freshly-built World instead of leaving it
+    // reset to "night before Day 1". Done before the checkpoint-resume block
+    // below so the mid-day guard (`cp.day === clock.currentDay`) compares
+    // against the restored day. Fan-out modules (#186 slices 2–6) extend the
+    // snapshot; this call site never changes.
+    if (state.world) {
+      restoreWorld(state.world as unknown as WorldSnapshot, w);
+    }
+    setWorld(w);
+    setCash(w.economy.cash);
+    setProfile(character);
+    nav.reset('game');
+    // Mid-day cold-start resume (#122): if a checkpoint exists for the day the
+    // clock currently sits on, recreate the FloorSim and replay its action log
+    // to land in the byte-exact pre-background state. A stale checkpoint (the
+    // clock can't honor it) is discarded, never misapplied. The checkpoint
+    // lives in the active slot's own cell (#194), so it never bleeds slots.
+    const cp: MidDayCheckpoint | null = await slotStore.readCheckpoint();
+    if (cp && cp.day === w.clock.currentDay) {
+      w.dayLoop.resume(cp);
+      bump();
+    } else if (cp) {
+      await slotStore.clearCheckpoint();
+    }
+  };
+
+  // Boot to the start menu (#195). No auto-load into the last game — the
+  // player chooses New Game / Continue / Load. Continue resumes the
+  // most-recently-played slot; both Continue and Load route through
+  // loadActiveSlotIntoGame once the menu has selected the slot.
+  useEffect(() => {
+    nav.reset('main-menu');
   }, []);
 
   // Lifecycle + Auction-relevant state stay in sync with the EventBus.
@@ -488,9 +490,14 @@ export default function App() {
     nav.navigate('department', { dept });
   };
 
+  // After a save is wiped (EndCard "New Career" or the dev AdminConsole), the
+  // active slot is gone — return to the start menu (#195) rather than straight
+  // into character-creation, which would have no slot to write into. The
+  // player picks New Game from there.
   const handleSaveCleared = () => {
     setProfile(null);
-    nav.reset('character-creation');
+    setWorld(null);
+    nav.reset('main-menu');
   };
 
   // Persist the trade-policy choice into the active slot (#172). Mirrors
@@ -520,19 +527,37 @@ export default function App() {
 
   let content: React.ReactNode = <View style={styles.container} />;
 
-  if (screen === 'character-creation') {
+  if (screen === 'main-menu') {
+    content = (
+      <>
+        <StatusBar style="light" />
+        <MainMenu
+          saveStore={slotStore}
+          onNewGame={() => {
+            // The menu already created + selected the fresh slot. Mint a new
+            // root seed for this game (so back-to-back new games don't clone),
+            // then collect the character — it persists into the active slot.
+            setNewGameSeed(makeSeed());
+            nav.reset('character-creation');
+          }}
+          onContinue={() => void loadActiveSlotIntoGame()}
+          onLoadGame={() => void loadActiveSlotIntoGame()}
+        />
+      </>
+    );
+  } else if (screen === 'character-creation') {
     content = (
       <>
         <StatusBar style="light" />
         <CharacterCreation
           saveStore={saveStore}
-          masterSeed={NEW_GAME_SEED}
+          masterSeed={newGameSeed}
           onComplete={(p: CharacterProfile) => {
             // New game → build the World from the freshly-minted seed that
             // CharacterCreation just persisted (#96).
             const w = createWorld({
               bus,
-              masterSeed: NEW_GAME_SEED,
+              masterSeed: newGameSeed,
               characterProfile: p,
               getTradePolicyMultiplier,
             });
@@ -820,8 +845,9 @@ export default function App() {
     );
   } else if (screen === 'end-card' && endCard) {
     // Terminal EndCard (#127 decision 2/5). The only Navigator-reset target of
-    // the interrupt channel; "New Career" wipes the save and returns to
-    // character-creation (a fresh unreachable start).
+    // the interrupt channel; "New Career" wipes the slot and returns to the
+    // start menu (#195), where the player picks New Game (handleSaveCleared
+    // clears profile/world and resets to main-menu).
     content = (
       <>
         <StatusBar style="light" />
@@ -831,7 +857,6 @@ export default function App() {
           onDismiss={() => {
             void saveStore.clear();
             setEndCard(null);
-            setWorld(null);
             handleSaveCleared();
           }}
         />

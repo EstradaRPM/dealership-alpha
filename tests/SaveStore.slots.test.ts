@@ -20,6 +20,7 @@ describe('MultiSlotSaveStore', () => {
       id: 'slot-1',
       name: 'Alice',
       day: 0,
+      tier: 1,
       lastPlayed: '2026-05-17T00:00:00.000Z',
     });
     expect(await store.getActiveSlotId()).toBe('slot-1');
@@ -55,17 +56,18 @@ describe('MultiSlotSaveStore', () => {
     });
     await store.createSlot('Alice');
     clock = '2026-05-18T09:30:00.000Z';
-    await store.save({ cash: 50_000 }, { day: 4 });
+    await store.save({ cash: 50_000 }, { day: 4, tier: 2 });
 
     expect(await store.load()).toEqual({ cash: 50_000 });
     const [meta] = await store.listSlots();
     expect(meta.day).toBe(4);
+    expect(meta.tier).toBe(2);
     expect(meta.lastPlayed).toBe('2026-05-18T09:30:00.000Z');
   });
 
   it('throws when saving with no active slot', async () => {
     const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
-    await expect(store.save({ x: 1 }, { day: 1 })).rejects.toThrow(
+    await expect(store.save({ x: 1 }, { day: 1, tier: 1 })).rejects.toThrow(
       /no active slot/,
     );
   });
@@ -75,9 +77,9 @@ describe('MultiSlotSaveStore', () => {
     const a = await store.createSlot('Alice');
     const b = await store.createSlot('Bob');
 
-    await store.save({ who: 'alice' }, { day: 1 });
+    await store.save({ who: 'alice' }, { day: 1, tier: 1 });
     await store.selectSlot(b.id);
-    await store.save({ who: 'bob' }, { day: 1 });
+    await store.save({ who: 'bob' }, { day: 1, tier: 1 });
 
     expect(await store.load()).toEqual({ who: 'bob' });
     await store.selectSlot(a.id);
@@ -95,15 +97,17 @@ describe('MultiSlotSaveStore', () => {
     const b = await store.createSlot('Bob');
 
     await store.selectSlot(a.id);
-    await store.save({ progress: 'a-deep' }, { day: 30 });
+    await store.save({ progress: 'a-deep' }, { day: 30, tier: 3 });
     await store.selectSlot(b.id);
-    await store.save({ progress: 'b-early' }, { day: 2 });
+    await store.save({ progress: 'b-early' }, { day: 2, tier: 1 });
 
     await store.selectSlot(a.id);
     expect(await store.load()).toEqual({ progress: 'a-deep' });
     const slots = await store.listSlots();
     expect(slots.find((s) => s.id === a.id)?.day).toBe(30);
+    expect(slots.find((s) => s.id === a.id)?.tier).toBe(3);
     expect(slots.find((s) => s.id === b.id)?.day).toBe(2);
+    expect(slots.find((s) => s.id === b.id)?.tier).toBe(1);
   });
 
   it('deletes a slot in isolation without corrupting siblings', async () => {
@@ -113,9 +117,9 @@ describe('MultiSlotSaveStore', () => {
     const b = await store.createSlot('Bob');
 
     await store.selectSlot(a.id);
-    await store.save({ keep: true }, { day: 5 });
+    await store.save({ keep: true }, { day: 5, tier: 1 });
     await store.selectSlot(b.id);
-    await store.save({ doomed: true }, { day: 9 });
+    await store.save({ doomed: true }, { day: 9, tier: 1 });
 
     await store.deleteSlot(b.id);
 
@@ -148,7 +152,7 @@ describe('MultiSlotSaveStore', () => {
     const factory = createInMemoryDriverFactory();
     const store = createMultiSlotSaveStore(factory);
     const a = await store.createSlot('Alice');
-    await store.save({ stale: true }, { day: 1 });
+    await store.save({ stale: true }, { day: 1, tier: 1 });
     await store.deleteSlot(a.id);
 
     const fresh = await store.createSlot('Alice2');
@@ -163,7 +167,7 @@ describe('MultiSlotSaveStore', () => {
     const a = await first.createSlot('Alice');
     const b = await first.createSlot('Bob');
     await first.selectSlot(b.id);
-    await first.save({ resumed: 'bob' }, { day: 12 });
+    await first.save({ resumed: 'bob' }, { day: 12, tier: 1 });
 
     // Simulate a process restart over the same backing storage.
     const reloaded = createMultiSlotSaveStore(factory);

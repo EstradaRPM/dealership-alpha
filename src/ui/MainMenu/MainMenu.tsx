@@ -18,7 +18,20 @@ interface Props {
   maxSlots?: number;
   onNewGame: (slotId: string) => void;
   onLoadGame: (slotId: string) => void;
-  onSettings: () => void;
+  /** Resume the most-recently-played slot. */
+  onContinue: (slotId: string) => void;
+  /** Optional — the Settings entry is hidden when not provided. */
+  onSettings?: () => void;
+}
+
+/** Most-recently-played slot by lastPlayed timestamp (ISO 8601 sorts lexically). */
+function mostRecentSlot(
+  slots: readonly SlotMetadata[],
+): SlotMetadata | undefined {
+  return slots.reduce<SlotMetadata | undefined>(
+    (best, s) => (!best || s.lastPlayed > best.lastPlayed ? s : best),
+    undefined,
+  );
 }
 
 function formatLastPlayed(iso: string): string {
@@ -31,6 +44,7 @@ export function MainMenu({
   maxSlots = 3,
   onNewGame,
   onLoadGame,
+  onContinue,
   onSettings,
 }: Props) {
   const [mode, setMode] = useState<Mode>('menu');
@@ -87,6 +101,13 @@ export function MainMenu({
     onLoadGame(slot.id);
   }
 
+  async function handleContinue() {
+    const recent = mostRecentSlot(slots);
+    if (!recent) return;
+    await saveStore.selectSlot(recent.id);
+    onContinue(recent.id);
+  }
+
   if (mode === 'menu') {
     return (
       <View style={styles.root}>
@@ -98,15 +119,22 @@ export function MainMenu({
           >
             <Text style={styles.primaryText}>New Game</Text>
           </TouchableOpacity>
+          {slots.length > 0 ? (
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleContinue}>
+              <Text style={styles.secondaryText}>Continue</Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
             style={styles.secondaryBtn}
             onPress={() => { setMode('load'); setError(''); }}
           >
             <Text style={styles.secondaryText}>Load</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={onSettings}>
-            <Text style={styles.secondaryText}>Settings</Text>
-          </TouchableOpacity>
+          {onSettings ? (
+            <TouchableOpacity style={styles.secondaryBtn} onPress={onSettings}>
+              <Text style={styles.secondaryText}>Settings</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
     );
@@ -143,7 +171,7 @@ export function MainMenu({
               >
                 <Text style={styles.slotName}>{slot.name}</Text>
                 <Text style={styles.slotMeta}>
-                  Day {slot.day}  ·  {formatLastPlayed(slot.lastPlayed)}
+                  Day {slot.day}  ·  T{slot.tier}  ·  {formatLastPlayed(slot.lastPlayed)}
                 </Text>
               </TouchableOpacity>
               {mode === 'new' ? (

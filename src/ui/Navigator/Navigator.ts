@@ -10,6 +10,10 @@ import type { DeptKey } from '../../game/DepartmentQueue';
 // there is no string-keyed navigation anywhere in the app.
 export type RouteParamMap = {
   loading: undefined;
+  // Start menu shown on app launch (#195): New Game / Continue / Load. The
+  // root of the boot flow — character-creation and game are reached from here
+  // via reset (so back() never resurrects the menu mid-game).
+  'main-menu': undefined;
   'character-creation': undefined;
   game: undefined;
   auction: undefined;

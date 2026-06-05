@@ -45,6 +45,8 @@ export interface SlotMetadata {
   id: string;
   name: string;
   day: number;
+  /** Career tier reached (1-based); surfaced on the slot card. Starts at 1. */
+  tier: number;
   lastPlayed: string; // ISO 8601 timestamp
 }
 
@@ -91,7 +93,7 @@ export interface MultiSlotSaveStore {
   getActiveSlotId(): Promise<string | null>;
   deleteSlot(id: string): Promise<void>;
   /** Persist game state into the active slot and refresh its metadata. */
-  save(state: SaveState, meta: { day: number }): Promise<void>;
+  save(state: SaveState, meta: { day: number; tier: number }): Promise<void>;
   /** Load the active slot's game state, or null if none / not selected. */
   load(): Promise<SaveState | null>;
   /** Write the mid-day checkpoint for the active slot (overwrites prior). */
