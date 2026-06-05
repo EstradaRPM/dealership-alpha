@@ -16,6 +16,11 @@ import {
 import { loadInventoryConfig } from './src/game/Inventory';
 import { loadStaffTaxonomy } from './src/game/NPC';
 import { createWorld, makeSeed, type World } from './src/createWorld';
+import {
+  snapshotWorld,
+  restoreWorld,
+  type WorldSnapshot,
+} from './src/worldSnapshot';
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { DayLoopShell } from './src/ui/DayLoopShell';
 import type { DayRecapModel } from './src/ui/DayRecap';
@@ -269,6 +274,15 @@ export default function App() {
           characterProfile: character,
           getTradePolicyMultiplier,
         });
+        // World-state restore (#188 tracer): rehydrate the persisted world
+        // snapshot (day + cash) onto the freshly-built World instead of leaving
+        // it reset to "night before Day 1". Done before the checkpoint-resume
+        // block below so the mid-day guard (`cp.day === clock.currentDay`)
+        // compares against the restored day. Fan-out modules (#186 slices 2–6)
+        // extend the snapshot; this call site never changes.
+        if (state.world) {
+          restoreWorld(state.world as unknown as WorldSnapshot, w);
+        }
         setWorld(w);
         setCash(w.economy.cash);
         setProfile(character);
@@ -301,6 +315,15 @@ export default function App() {
       if (w) {
         setLotVehicles(w.inventory.getLotVehicles());
         setCash(w.economy.cash);
+        // Cross-day autosave (#188 tracer): persist the world snapshot at the
+        // day boundary, merged into the active single-slot blob (same
+        // merge-with-existing write the policy/strategy setters use). The
+        // single→multi-slot switch + per-slot autosave is #194.
+        void saveStore
+          .load()
+          .then((existing) =>
+            saveStore.save({ ...(existing ?? {}), world: snapshotWorld(w) }),
+          );
       }
       // Day closed → the mid-day checkpoint is obsolete (#122 / #109: caller
       // clears it on day-complete).

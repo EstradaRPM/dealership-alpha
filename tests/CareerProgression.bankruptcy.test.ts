@@ -36,6 +36,8 @@ function makeEconomy(initialCash: number): MutableEconomy {
       netIncome: 0,
       entries: [],
     }),
+    snapshot: jest.fn().mockReturnValue({ schemaVersion: 1, cash }),
+    restore: jest.fn(),
     debits,
   };
 }

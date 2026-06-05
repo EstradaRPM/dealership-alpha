@@ -3,11 +3,25 @@ import { loadTunables } from '../data';
 
 export type Season = 'spring' | 'summer' | 'fall' | 'winter';
 
+/**
+ * Persistence surface for GameClock (#188). `schemaVersion` is the module's own
+ * snapshot version, independent of the world-snapshot envelope — a module can
+ * migrate its blob without forcing a world-wide version bump. The clock's whole
+ * persistent state is the current day; season + day-of-week derive from it.
+ */
+export interface GameClockSnapshot {
+  readonly schemaVersion: 1;
+  readonly day: number;
+}
+
 export interface GameClock {
   readonly currentDay: number;
   readonly dayOfWeek: number; // 0 = Monday … 6 = Sunday
   readonly currentSeason: Season;
   advanceDay(): void;
+  /** #188 SaveStore seam: capture/rehydrate the current day. */
+  snapshot(): GameClockSnapshot;
+  restore(snap: GameClockSnapshot): void;
 }
 
 // Overnight phase event order — consumed by subscribers in deterministic sequence:
@@ -63,6 +77,14 @@ export function createGameClock(deps: {
       if (endingDay % daysPerMonth === 0) {
         bus.publish('clock:month_ended', { day: endingDay });
       }
+    },
+
+    snapshot() {
+      return { schemaVersion: 1, day };
+    },
+
+    restore(snap) {
+      day = snap.day;
     },
   };
 }

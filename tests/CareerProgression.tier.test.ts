@@ -40,6 +40,8 @@ function makeEconomy(cash: number): Economy {
     postExpense: jest.fn(),
     forceDebit: jest.fn(),
     getPnL: jest.fn().mockReturnValue({ totalRevenue: 0, totalExpenses: 0, netIncome: 0, entries: [] }),
+    snapshot: jest.fn().mockReturnValue({ schemaVersion: 1, cash }),
+    restore: jest.fn(),
   };
 }
 

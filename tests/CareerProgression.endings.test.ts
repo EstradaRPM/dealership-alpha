@@ -37,6 +37,8 @@ function makeEconomy(initialCash: number): Economy {
       netIncome: 0,
       entries: [],
     }),
+    snapshot: jest.fn().mockReturnValue({ schemaVersion: 1, cash }),
+    restore: jest.fn(),
   };
 }
 
