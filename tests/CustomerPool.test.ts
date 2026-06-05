@@ -34,6 +34,8 @@ const emptyStaffOrg: StaffOrg = {
   hire: () => {},
   fire: () => {},
     assessCondition: () => null,
+    snapshot: () => ({ schemaVersion: 1 as const, currentDay: 1, roster: [] }),
+    restore: () => {},
 };
 
 function makeSetup(initialDay = 0, skill?: Parameters<typeof createCustomerPool>[0]['skill']) {

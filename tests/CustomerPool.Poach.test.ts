@@ -87,6 +87,8 @@ const emptyStaffOrg: StaffOrg = {
   hire: () => {},
   fire: () => {},
     assessCondition: () => null,
+    snapshot: () => ({ schemaVersion: 1 as const, currentDay: 1, roster: [] }),
+    restore: () => {},
 };
 
 // ── PoachEngine unit tests ────────────────────────────────────────────────────

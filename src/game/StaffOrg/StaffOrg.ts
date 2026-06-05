@@ -2,7 +2,12 @@ import type { EventBus } from '../EventBus';
 import type { Economy } from '../Economy';
 import type { StaffTaxonomy } from '../NPC/StaffTaxonomy';
 import type { StaffArchetypeCatalog } from '../NPC/schemas/staff-archetype';
-import { createStaff, type StaffWithComposites } from '../NPC/factories/StaffFactory';
+import {
+  createStaff,
+  rehydrateStaff,
+  type StaffWithComposites,
+} from '../NPC/factories/StaffFactory';
+import type { Staff } from '../NPC/schemas/staff';
 import { loadStaffOrgConfig, type StaffOrgConfig } from './staffOrgData';
 import type { CandidateListing } from './types';
 import {
@@ -45,8 +50,28 @@ export interface StaffOrgDeps {
   realizedReconFor?: (vehicle: ConditionAssessInput) => number;
 }
 
+/**
+ * Persistence surface for StaffOrg (#190, parent #186). Captures the hired
+ * roster (source of truth for "who is on payroll") plus `currentDay` so the
+ * candidate-id namespace stays stable across a reload. The candidate pool is
+ * intentionally NOT persisted — it is cleared every `clock:day_started` and
+ * regenerated deterministically from `masterSeed`, so the seed + catalog stay
+ * the canonical artifact (same pattern as Inventory's auction board, #189).
+ * Roster entries are stored as plain `Staff`: the `effectiveness` /
+ * `trustworthiness` composites are non-enumerable derived getters that JSON
+ * drops, then `restore` re-attaches via `rehydrateStaff`.
+ */
+export interface StaffOrgSnapshot {
+  readonly schemaVersion: 1;
+  readonly currentDay: number;
+  readonly roster: readonly Staff[];
+}
+
 export interface StaffOrg {
   readonly currentRoster: readonly StaffWithComposites[];
+  /** #190 SaveStore seam: capture/rehydrate the hired roster. */
+  snapshot(): StaffOrgSnapshot;
+  restore(snap: StaffOrgSnapshot): void;
   getCandidates(roleId: string): readonly CandidateListing[];
   hire(candidateId: string): void;
   fire(staffId: string): void;
@@ -131,6 +156,22 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   return {
     get currentRoster(): readonly StaffWithComposites[] {
       return roster;
+    },
+
+    snapshot(): StaffOrgSnapshot {
+      return {
+        schemaVersion: 1,
+        currentDay,
+        roster: [...roster],
+      };
+    },
+
+    restore(snap: StaffOrgSnapshot): void {
+      currentDay = snap.currentDay;
+      roster.length = 0;
+      for (const s of snap.roster) {
+        roster.push(rehydrateStaff(s, taxonomy));
+      }
     },
 
     getCandidates(roleId: string): readonly CandidateListing[] {

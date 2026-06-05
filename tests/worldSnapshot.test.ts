@@ -138,6 +138,67 @@ describe('Inventory snapshot/restore (#189)', () => {
   });
 });
 
+describe('StaffOrg + StaffMorale snapshot/restore (#190)', () => {
+  function build(masterSeed: number) {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed, characterProfile: PROFILE });
+    return { bus, world };
+  }
+
+  // The AC: hire staff + shift morale → snapshot → restore on a fresh same-seed
+  // World → roster + morale match exactly (composites rehydrated, not recomputed
+  // from a cold roster).
+  it('round-trips the hired roster + morale through the world seam', () => {
+    const seed = 909;
+    const { bus, world: original } = build(seed);
+
+    // Hire a salesperson off the candidate board.
+    const candidate = original.staffOrg.getCandidates('salesperson')[0];
+    expect(candidate).toBeDefined();
+    original.staffOrg.hire(candidate.candidateId);
+    const staffId = candidate.staff.id;
+
+    // Shift morale away from the default via a recognized close.
+    const baseline = original.staffMorale.getMorale(staffId);
+    bus.publish('staff:auto_resolved', {
+      customerId: 'c1',
+      staffId,
+      day: 1,
+      outcome: 'closed',
+      grossImpact: 2500,
+    });
+    const shifted = original.staffMorale.getMorale(staffId);
+    expect(shifted).toBeGreaterThan(baseline);
+
+    const snap = snapshotWorld(original);
+    // SaveStore persists plain data — the blob must survive JSON.
+    const reparsed = JSON.parse(JSON.stringify(snap)) as WorldSnapshot;
+    expect(reparsed).toEqual(snap);
+
+    // A brand-new same-seed World boots with an empty roster...
+    const { world: rebuilt } = build(seed);
+    expect(rebuilt.staffOrg.currentRoster).toEqual([]);
+
+    // ...until we restore the snapshot onto it.
+    restoreWorld(reparsed, rebuilt);
+
+    const restored = rebuilt.staffOrg.currentRoster;
+    expect(restored).toHaveLength(1);
+    expect(restored[0].id).toBe(staffId);
+    // Enumerable record matches the original exactly.
+    expect({ ...restored[0] }).toEqual({ ...original.staffOrg.currentRoster[0] });
+    // The non-enumerable composites are re-derived, not lost in the JSON trip.
+    expect(restored[0].effectiveness).toBe(
+      original.staffOrg.currentRoster[0].effectiveness,
+    );
+    expect(restored[0].trustworthiness).toBe(
+      original.staffOrg.currentRoster[0].trustworthiness,
+    );
+    // Morale restored to the shifted value, not reset to the default.
+    expect(rebuilt.staffMorale.getMorale(staffId)).toBe(shifted);
+  });
+});
+
 describe('snapshotWorld / restoreWorld seam (#188)', () => {
   function build(masterSeed: number) {
     const bus = createEventBus();
@@ -154,6 +215,10 @@ describe('snapshotWorld / restoreWorld seam (#188)', () => {
     expect(typeof snap.modules.economy.cash).toBe('number');
     expect(snap.modules.inventory.schemaVersion).toBe(1);
     expect(Array.isArray(snap.modules.inventory.lotVehicles)).toBe(true);
+    expect(snap.modules.staffOrg.schemaVersion).toBe(1);
+    expect(Array.isArray(snap.modules.staffOrg.roster)).toBe(true);
+    expect(snap.modules.staffMorale.schemaVersion).toBe(1);
+    expect(Array.isArray(snap.modules.staffMorale.morale)).toBe(true);
   });
 
   it('round-trips a bought + aged lot through the world seam', () => {

@@ -35,6 +35,18 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 - `data/staff-roles.json` — role definitions, salaries.
 - `data/staff-archetypes.json`, `data/staff-skills.json` — used via `NPC` for candidate generation.
 
+## Persistence (#190)
+- `snapshot()/restore()` (barrel-exported `StaffOrgSnapshot`) capture the hired
+  roster + `currentDay` for save/load. The candidate pool is NOT persisted — it
+  is cleared every `clock:day_started` and regenerated deterministically from
+  `masterSeed` (same pattern as Inventory's auction board, #189).
+- Roster entries serialize as plain `Staff`; the `effectiveness` /
+  `trustworthiness` composites are non-enumerable derived getters that JSON
+  drops, then `restore` re-attaches them via `NPC.rehydrateStaff(staff, taxonomy)`
+  — pure re-derivation, identical to what `createStaff` produces.
+- Wired into `snapshotWorld`/`restoreWorld` under the `staffOrg` key, restored
+  before `staffMorale` so morale rehydrates onto the same staff ids.
+
 ## Collaborators
 - `NPC.createStaff` / `NPC.promoteStaff` produce the underlying `Staff` records.
 - `StaffMorale` tracks state for active roster members.

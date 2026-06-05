@@ -12,10 +12,23 @@ export interface StaffMoraleDeps {
   config?: StaffMoraleConfig;
 }
 
+/**
+ * Persistence surface for StaffMorale (#190, parent #186). The per-staff
+ * morale map flattened to `[staffId, morale]` pairs for JSON. StaffOrg owns
+ * the roster; this captures only the morale dimension layered over it, keyed
+ * by the same staff ids — so it restores cleanly after StaffOrg's roster does.
+ */
+export interface StaffMoraleSnapshot {
+  readonly schemaVersion: 1;
+  readonly morale: readonly (readonly [string, number])[];
+}
+
 export interface StaffMorale {
   getMorale(staffId: string): number;
   getMoraleMultiplier(staffId: string): number;
-  readonly snapshot: ReadonlyMap<string, number>;
+  /** #190 SaveStore seam: capture/rehydrate the per-staff morale map. */
+  snapshot(): StaffMoraleSnapshot;
+  restore(snap: StaffMoraleSnapshot): void;
 }
 
 function lerp(a: number, b: number, t: number): number {
@@ -109,8 +122,15 @@ export function createStaffMorale(deps: StaffMoraleDeps): StaffMorale {
       return lerp(config.moraleMultiplierMin, config.moraleMultiplierMax, get(staffId) / 100);
     },
 
-    get snapshot() {
-      return moraleMap as ReadonlyMap<string, number>;
+    snapshot(): StaffMoraleSnapshot {
+      return { schemaVersion: 1, morale: [...moraleMap.entries()] };
+    },
+
+    restore(snap: StaffMoraleSnapshot): void {
+      moraleMap.clear();
+      for (const [staffId, morale] of snap.morale) {
+        moraleMap.set(staffId, morale);
+      }
     },
   };
 }

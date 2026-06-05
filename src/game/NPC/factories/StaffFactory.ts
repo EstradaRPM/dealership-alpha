@@ -92,6 +92,20 @@ function attachComposites(
   return plain as StaffWithComposites;
 }
 
+/**
+ * Re-attach the non-enumerable composite getters (`effectiveness`,
+ * `trustworthiness`) to a plain `Staff` record that lost them in transit —
+ * e.g. a roster rehydrated from a JSON save (#190). Pure derivation from the
+ * record's `skills` + the taxonomy, identical to the math `createStaff` runs,
+ * so a rehydrated record is indistinguishable from a freshly-rolled one.
+ */
+export function rehydrateStaff(
+  staff: Staff,
+  taxonomy: StaffTaxonomy,
+): StaffWithComposites {
+  return attachComposites(staff, taxonomy.skills);
+}
+
 export function createStaff(
   ctx: CreateStaffContext,
   deps: CreateStaffDeps,

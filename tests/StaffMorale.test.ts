@@ -31,6 +31,8 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
     hire: () => {},
     fire: () => {},
     assessCondition: () => null,
+    snapshot: () => ({ schemaVersion: 1 as const, currentDay: 1, roster: [] }),
+    restore: () => {},
   };
 }
 
@@ -89,7 +91,7 @@ describe('StaffMorale — hire and fire events', () => {
     bus.publish('staff:hired', { staffId: 's2', roleId: 'salesperson', day: 1, hiringCost: 0 });
     bus.publish('staff:fired', { staffId: 's2', roleId: 'salesperson', day: 2 });
     // After firing, snapshot should not contain the staffId
-    expect(morale.snapshot.has('s2')).toBe(false);
+    expect(morale.snapshot().morale.some(([id]) => id === 's2')).toBe(false);
   });
 });
 

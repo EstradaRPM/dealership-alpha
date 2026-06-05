@@ -7,7 +7,7 @@ export { loadStaffTaxonomy } from './StaffTaxonomy';
 
 export { loadStaffArchetypes } from './StaffArchetypes';
 
-export { createStaff, promoteStaff } from './factories/StaffFactory';
+export { createStaff, promoteStaff, rehydrateStaff } from './factories/StaffFactory';
 export type {
   CreateStaffContext,
   CreateStaffDeps,

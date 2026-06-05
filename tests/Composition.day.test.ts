@@ -30,6 +30,8 @@ const emptyStaffOrg: StaffOrg = {
   hire: () => {},
   fire: () => {},
     assessCondition: () => null,
+    snapshot: () => ({ schemaVersion: 1 as const, currentDay: 1, roster: [] }),
+    restore: () => {},
 };
 
 /** Mirrors App.tsx's #114 composition root: CapacityManager / StaffDispatch /
@@ -130,6 +132,8 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
     hire: () => {},
     fire: () => {},
     assessCondition: () => null,
+    snapshot: () => ({ schemaVersion: 1 as const, currentDay: 1, roster: [] }),
+    restore: () => {},
   };
 }
 
