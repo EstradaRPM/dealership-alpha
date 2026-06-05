@@ -136,5 +136,17 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   carrying.agedThresholdDays`) — the lot view (`OwnershipLevers` Pricing card)
   reads all three. Tunables live in `data/tunables.json#inventory.carrying`.
 
+## Persistence (#189)
+- `snapshot()/restore()` (barrel-exported `InventorySnapshot`) capture the full
+  mutable lot state for save/load: lot vehicles (with their aging clocks +
+  accrued `carryingCostToDate`), the live auction board, held (paid) inspection
+  listings, and the `currentDay`/`lastPreparedDay` regen guard. Maps are
+  flattened to arrays; `LotVehicle`/`AuctionListing` are plain data.
+- The per-save auction-source reliability is NOT persisted — it is rolled
+  deterministically from `masterSeed`, so the seed + catalog stay the canonical
+  artifact (same pattern as the #156 personality vector). Restore rehydrates
+  onto a fresh same-seed module without recomputing aging/carrying.
+- Wired into `snapshotWorld`/`restoreWorld` under the `inventory` key.
+
 ## Notes
 - The auction generator is intentionally simple in v1 (random draw weighted by brand share). It is exposed via interface so a v2 replacement drops in cleanly.

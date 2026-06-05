@@ -20,6 +20,26 @@ import { computeDailyCarryingCost, floorplanAprForTier } from './carryingCost';
 import type { VehicleData } from './vehicleData';
 import type { AuctionListing, LotVehicle, TradeAcquisitionInput } from './types';
 
+/**
+ * Persistence surface for Inventory (#189, parent #186). Module-owned
+ * `schemaVersion`, same convention as GameClock/Economy. Captures the full
+ * mutable lot state so a load restores the exact lot the player left — lot
+ * vehicles (with their aging clocks + accrued carrying cost), the live auction
+ * board, and any held inspection listings — rather than recomputing from
+ * scratch. The hidden per-save auction-source reliability is NOT persisted: it
+ * is rolled deterministically from `masterSeed`, so the seed + catalog stay the
+ * canonical artifact (same pattern as the #156 personality vector). Maps are
+ * flattened to arrays for JSON; `LotVehicle`/`AuctionListing` are plain data.
+ */
+export interface InventorySnapshot {
+  readonly schemaVersion: 1;
+  readonly currentDay: number;
+  readonly lastPreparedDay: number;
+  readonly auctionListings: readonly AuctionListing[];
+  readonly pendingInspections: readonly AuctionListing[];
+  readonly lotVehicles: readonly LotVehicle[];
+}
+
 export interface Inventory {
   getAuctionListings(): readonly AuctionListing[];
   getLotVehicles(): readonly LotVehicle[];
@@ -71,6 +91,9 @@ export interface Inventory {
    * unknown.
    */
   requestInspection(listingId: string): void;
+  /** #189 SaveStore seam: capture/rehydrate the full lot + auction-board state. */
+  snapshot(): InventorySnapshot;
+  restore(snap: InventorySnapshot): void;
 }
 
 export interface InventoryDeps {
@@ -541,6 +564,31 @@ export function createInventory(deps: InventoryDeps): Inventory {
       };
       auctionListings = auctionListings.filter((_, i) => i !== idx);
       pendingInspections.set(listingId, updated);
+    },
+
+    snapshot() {
+      return {
+        schemaVersion: 1,
+        currentDay,
+        lastPreparedDay,
+        auctionListings: [...auctionListings],
+        pendingInspections: [...pendingInspections.values()],
+        lotVehicles: [...lotVehicles.values()],
+      };
+    },
+
+    restore(snap) {
+      currentDay = snap.currentDay;
+      lastPreparedDay = snap.lastPreparedDay;
+      auctionListings = [...snap.auctionListings];
+      pendingInspections.clear();
+      for (const listing of snap.pendingInspections) {
+        pendingInspections.set(listing.id, listing);
+      }
+      lotVehicles.clear();
+      for (const vehicle of snap.lotVehicles) {
+        lotVehicles.set(vehicle.id, vehicle);
+      }
     },
 
     abandonRecon(vehicleId) {

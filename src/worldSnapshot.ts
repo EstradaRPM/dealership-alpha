@@ -26,6 +26,7 @@
 import type { World } from './createWorld';
 import type { GameClockSnapshot } from './game/GameClock';
 import type { EconomySnapshot } from './game/Economy';
+import type { InventorySnapshot } from './game/Inventory';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
@@ -37,8 +38,9 @@ export interface WorldSnapshot {
   readonly modules: {
     readonly gameClock: GameClockSnapshot;
     readonly economy: EconomySnapshot;
-    // Later #186 slices add keys here (inventory, staffOrg, reputation,
-    // marketEconomy, …) — each a module's own self-versioned snapshot.
+    readonly inventory: InventorySnapshot;
+    // Later #186 slices add keys here (staffOrg, reputation, marketEconomy, …)
+    // — each a module's own self-versioned snapshot.
   };
 }
 
@@ -48,6 +50,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
     modules: {
       gameClock: world.clock.snapshot(),
       economy: world.economy.snapshot(),
+      inventory: world.inventory.snapshot(),
     },
   };
 }
@@ -55,4 +58,5 @@ export function snapshotWorld(world: World): WorldSnapshot {
 export function restoreWorld(snap: WorldSnapshot, world: World): void {
   world.clock.restore(snap.modules.gameClock);
   world.economy.restore(snap.modules.economy);
+  world.inventory.restore(snap.modules.inventory);
 }

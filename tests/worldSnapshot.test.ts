@@ -1,6 +1,7 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createGameClock } from '../src/game/GameClock';
 import { createEconomy } from '../src/game/Economy';
+import { createInventory } from '../src/game/Inventory';
 import { createWorld } from '../src/createWorld';
 import {
   snapshotWorld,
@@ -65,6 +66,78 @@ describe('Economy snapshot/restore (#188)', () => {
   });
 });
 
+describe('Inventory snapshot/restore (#189)', () => {
+  function build(masterSeed = 7) {
+    const bus = createEventBus();
+    const economy = createEconomy({ bus, startingCash: 500_000 });
+    const inventory = createInventory({ bus, masterSeed, economy });
+    return { bus, economy, inventory };
+  }
+
+  // The AC: stock a lot, age the units + accrue carrying cost, then prove a
+  // restore onto a fresh same-seed module reproduces the lot, aging clocks, and
+  // carrying-cost accumulators exactly — not a recompute from scratch.
+  it('round-trips lot vehicles, aging, and accrued carrying cost exactly', () => {
+    const seed = 7;
+    const { bus, inventory } = build(seed);
+
+    // Open Day 1: the auction board generates, then buy a unit so it ages.
+    bus.publish('clock:day_started', { day: 1 });
+    const listing = inventory.getAuctionListings()[0];
+    expect(listing).toBeDefined();
+    inventory.buyFromAuction(listing.id);
+
+    // Run several daily passes so the unit accrues recon + carrying cost.
+    for (let day = 2; day <= 6; day++) {
+      bus.publish('clock:day_started', { day });
+    }
+
+    const lotBefore = inventory.getLotVehicles();
+    const boardBefore = inventory.getAuctionListings();
+    const unit = lotBefore.find((v) => v.id === listing.id)!;
+    expect(unit.daysInInventory).toBeGreaterThan(0);
+    expect(unit.carryingCostToDate).toBeGreaterThan(0);
+
+    const snap = inventory.snapshot();
+    // SaveStore persists plain data — the blob must survive JSON.
+    const reparsed = JSON.parse(JSON.stringify(snap)) as typeof snap;
+    expect(reparsed).toEqual(snap);
+
+    // A brand-new same-seed module boots with an empty lot...
+    const { inventory: fresh } = build(seed);
+    expect(fresh.getLotVehicles()).toEqual([]);
+    expect(fresh.getAuctionListings()).toEqual([]);
+
+    // ...until we restore the snapshot onto it.
+    fresh.restore(reparsed);
+    expect(fresh.getLotVehicles()).toEqual(lotBefore);
+    expect(fresh.getAuctionListings()).toEqual(boardBefore);
+  });
+
+  it('round-trips a held (paid) inspection listing', () => {
+    const seed = 7;
+    const { bus, inventory } = build(seed);
+    bus.publish('clock:day_started', { day: 1 });
+
+    const target = inventory.getAuctionListings()[0];
+    inventory.requestInspection(target.id);
+    const held = inventory
+      .getAuctionListings()
+      .find((l) => l.id === target.id)!;
+    expect(held.inspectionStatus).toBe('pending');
+
+    const snap = inventory.snapshot();
+    expect(snap.pendingInspections).toContainEqual(held);
+
+    const { inventory: fresh } = build(seed);
+    fresh.restore(snap);
+    const restoredHeld = fresh
+      .getAuctionListings()
+      .find((l) => l.id === target.id)!;
+    expect(restoredHeld).toEqual(held);
+  });
+});
+
 describe('snapshotWorld / restoreWorld seam (#188)', () => {
   function build(masterSeed: number) {
     const bus = createEventBus();
@@ -79,6 +152,29 @@ describe('snapshotWorld / restoreWorld seam (#188)', () => {
     expect(snap.modules.gameClock).toEqual({ schemaVersion: 1, day: 1 });
     expect(snap.modules.economy.schemaVersion).toBe(1);
     expect(typeof snap.modules.economy.cash).toBe('number');
+    expect(snap.modules.inventory.schemaVersion).toBe(1);
+    expect(Array.isArray(snap.modules.inventory.lotVehicles)).toBe(true);
+  });
+
+  it('round-trips a bought + aged lot through the world seam', () => {
+    const seed = 4321;
+    const { bus, world: original } = build(seed);
+
+    // Open Day 1, buy a unit, then age it across a few daily passes.
+    bus.publish('clock:day_started', { day: 1 });
+    const listing = original.inventory.getAuctionListings()[0];
+    original.inventory.buyFromAuction(listing.id);
+    for (let day = 2; day <= 5; day++) {
+      bus.publish('clock:day_started', { day });
+    }
+    const lotBefore = original.inventory.getLotVehicles();
+    expect(lotBefore.length).toBeGreaterThan(0);
+
+    const snap = snapshotWorld(original);
+
+    const { world: rebuilt } = build(seed);
+    restoreWorld(snap, rebuilt);
+    expect(rebuilt.inventory.getLotVehicles()).toEqual(lotBefore);
   });
 
   it('is JSON-serializable round-trip (SaveStore persists plain data)', () => {
