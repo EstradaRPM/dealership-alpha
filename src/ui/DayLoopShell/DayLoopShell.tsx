@@ -10,6 +10,7 @@ import {
 } from '../FloorDashboard';
 import { DayRecap, type DayRecapModel } from '../DayRecap';
 import { OwnershipLevers, type OwnershipLeversProps } from '../OwnershipLevers';
+import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { colors } from '../theme';
 
 const TIER_CONFIG = loadTierConfig();
@@ -44,6 +45,11 @@ interface Props {
    * composition root. Omitted ⇒ no lever panel (the pre-#120 shell).
    */
   leverProps?: OwnershipLeversProps;
+  /**
+   * Observed persona-mix readout (#198), assembled by the composition root from
+   * `DemandShaper.getObservedMix()`. Shown on MANAGERIAL. Omitted ⇒ hidden.
+   */
+  demandReadout?: DemandReadoutModel;
 }
 
 /**
@@ -68,6 +74,7 @@ export function DayLoopShell({
   onCherryPick,
   recap,
   leverProps,
+  demandReadout,
 }: Props) {
   if (state.phase === 'FLOOR_OPEN' && floorModel) {
     return (
@@ -141,6 +148,10 @@ export function DayLoopShell({
           </TouchableOpacity>
         ) : (
           <Text style={styles.floorOpen}>Floor open — running the day…</Text>
+        )}
+
+        {state.phase === 'MANAGERIAL' && demandReadout && (
+          <DemandReadout model={demandReadout} />
         )}
 
         {state.phase === 'MANAGERIAL' &&

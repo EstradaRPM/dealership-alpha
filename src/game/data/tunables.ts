@@ -44,6 +44,15 @@ export const TunablesSchema = z.object({
     // Hard clamp on the composite demandFactor (outlier guard).
     demandFactorMax: z.number().positive(),
   }),
+  // Demand-shaping persona mix (#198). DemandShaper turns a per-day persona
+  // weight vector into a deterministic weighted spawn draw and tracks realized
+  // arrivals in a trailing window for the MANAGERIAL "who's been walking in"
+  // readout. windowSize = arrivals retained; trendEpsilon = share delta below
+  // which a persona reads 'steady' (damps single-arrival jitter).
+  demandShaper: z.object({
+    windowSize: z.number().int().positive(),
+    trendEpsilon: z.number().min(0).max(1),
+  }),
   // Live render loop (#121, design #107). UI-only: a wall-clock interval
   // drives FloorSim.step() at `baseTickIntervalMs / speed`. Game logic never
   // sees these — speed/cadence are pure render multipliers over step().

@@ -1,0 +1,30 @@
+import React from 'react';
+import { render } from '@testing-library/react-native';
+import { DemandReadout, type DemandReadoutModel } from '../src/ui/DemandReadout';
+
+const MODEL: DemandReadoutModel = {
+  totalObserved: 10,
+  entries: [
+    { persona: 'young_family', label: 'Young Family', share: 0.5, count: 5, trend: 'rising' },
+    { persona: 'enthusiast', label: 'Enthusiast', share: 0.3, count: 3, trend: 'falling' },
+    { persona: 'commuter', label: 'Commuter', share: 0.2, count: 2, trend: 'steady' },
+  ],
+};
+
+describe('DemandReadout smoke', () => {
+  it('renders the title, persona labels, shares, and trend glyphs', () => {
+    const { getByText } = render(<DemandReadout model={MODEL} />);
+    expect(getByText("Who's Been Walking In")).toBeTruthy();
+    expect(getByText('Young Family')).toBeTruthy();
+    expect(getByText('50%')).toBeTruthy();
+    expect(getByText('▲')).toBeTruthy(); // rising
+    expect(getByText('▼')).toBeTruthy(); // falling
+  });
+
+  it('shows an empty hint before any traffic is observed', () => {
+    const { getByText } = render(
+      <DemandReadout model={{ totalObserved: 0, entries: MODEL.entries }} />,
+    );
+    expect(getByText('No traffic yet — open the lot to see the mix.')).toBeTruthy();
+  });
+});

@@ -88,7 +88,8 @@ import {
   loadBrands,
   type CompetitorMarket,
 } from './game/CompetitorMarket';
-import { deriveSeed } from './game/NPC/Rng';
+import { deriveSeed, createRng } from './game/NPC/Rng';
+import { createDemandShaper, type DemandShaper } from './game/DemandShaper';
 
 export type StaffTaxonomy = ReturnType<typeof loadStaffTaxonomy>;
 
@@ -114,6 +115,7 @@ export interface World {
   staffTaxonomy: StaffTaxonomy;
   marketEconomy: MarketEconomy;
   competitorMarket: CompetitorMarket;
+  demandShaper: DemandShaper;
 }
 
 /**
@@ -368,11 +370,32 @@ export function createWorld(deps: {
   // the id is minted and before `floor:tick` (canonical #99 order) — so
   // DepartmentQueue enqueues a `workspace` item and the staff floor drain has
   // someone to hold.
+  // #198: DemandShaper owns the per-day persona mix. The spawn draw below is
+  // weighted by it on the existing seeded per-spawn stream (replay/#122-safe),
+  // replacing the prior uniform round-robin. Baseline mix is uniform, so this
+  // is behavior-neutral until a lever (#211/#212) drives `setMix`. Personas are
+  // the SALES_ARCHETYPES ids so the shaper stays free of a CustomerPool dep.
+  const demandShaper = createDemandShaper({
+    personas: SALES_ARCHETYPES.map((a) => a.personId),
+    config: loadTunables().demandShaper,
+  });
+  const archetypeByPersona = new Map(
+    SALES_ARCHETYPES.map((a) => [a.personId, a]),
+  );
+
   const customerSource: CustomerSource = {
     spawn({ day, tick, count }): readonly CustomerRef[] {
       const refs: CustomerRef[] = [];
       for (let i = 0; i < count; i++) {
-        const a = SALES_ARCHETYPES[(day + tick + i) % SALES_ARCHETYPES.length];
+        // Deterministic per-spawn RNG: same (day, tick, i) ⇒ same draw on
+        // replay. The persona is weighted by the live mix; segment/body-style
+        // demand stays emergent downstream of the chosen persona.
+        const drawRng = createRng(
+          deriveSeed(masterSeed, 'demand.shaper.spawn', { day, tick, i }),
+        );
+        const persona = demandShaper.drawPersona(drawRng);
+        const a = archetypeByPersona.get(persona) ?? SALES_ARCHETYPES[0];
+        demandShaper.recordArrival(persona);
         const id = customerPool.spawnCustomer(a.personId, a.visitId, a.label);
         const ref: CustomerRef = {
           id,
@@ -528,5 +551,6 @@ export function createWorld(deps: {
     staffTaxonomy,
     marketEconomy,
     competitorMarket,
+    demandShaper,
   };
 }

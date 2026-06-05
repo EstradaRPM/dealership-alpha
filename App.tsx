@@ -29,6 +29,8 @@ import { CharacterCreation } from './src/ui/CharacterCreation';
 import { MainMenu } from './src/ui/MainMenu';
 import { DayLoopShell } from './src/ui/DayLoopShell';
 import type { DayRecapModel } from './src/ui/DayRecap';
+import type { DemandReadoutModel } from './src/ui/DemandReadout';
+import { SALES_ARCHETYPES } from './src/game/CustomerPool';
 import type {
   FloorDashboardModel,
   FloorEvent,
@@ -157,6 +159,13 @@ function humanizeRole(roleId: string): string {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
 }
+
+// persona id → human label for the #198 observed-mix readout. Sourced from the
+// same SALES_ARCHETYPES table the spawn draw resolves against — never a magic
+// string list.
+const PERSONA_LABELS: Record<string, string> = Object.fromEntries(
+  SALES_ARCHETYPES.map((a) => [a.personId, a.label]),
+);
 
 // Month-close cadence — sourced from the same tunable GameClock uses, never
 // a magic number. clock:month_ended fires on endingDay % daysPerMonth === 0.
@@ -806,6 +815,19 @@ export default function App() {
       tradePolicyId,
       onSelectTradePolicy: handleSelectTradePolicy,
     };
+    // Observed persona-mix readout (#198). Read live off DemandShaper each
+    // render; reflects the trailing arrival window at MANAGERIAL time.
+    const observed = world.demandShaper.getObservedMix();
+    const demandReadout: DemandReadoutModel = {
+      entries: observed.map((e) => ({
+        persona: e.persona,
+        label: PERSONA_LABELS[e.persona] ?? e.persona,
+        share: e.share,
+        count: e.count,
+        trend: e.trend,
+      })),
+      totalObserved: observed.reduce((sum, e) => sum + e.count, 0),
+    };
     content = (
       <View style={styles.container}>
         <StatusBar style="light" />
@@ -838,6 +860,7 @@ export default function App() {
           onExceptionPress={openHandPlay}
           onCherryPick={floor && floor.canGrab() ? cherryPick : undefined}
           leverProps={leverProps}
+          demandReadout={demandReadout}
         />
         </View>
         <BottomNav
