@@ -1,5 +1,9 @@
 export { createMarketEconomy } from './MarketEconomy';
-export type { MarketEconomy, MarketEconomyDeps } from './MarketEconomy';
+export type {
+  MarketEconomy,
+  MarketEconomyDeps,
+  MarketEconomySnapshot,
+} from './MarketEconomy';
 
 export { computeAnchor } from './anchor';
 export type { AnchorVehicleInput, AnchorDeps } from './anchor';

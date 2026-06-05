@@ -219,12 +219,12 @@ export function createWorld(deps: {
   // `competitor:price_changed` (one of emergent-C's four demand fuels) never
   // fired in a running game. Wired here so both go live.
   //
-  // Determinism: like every other module, CompetitorMarket is reconstructed
-  // from `masterSeed` at construction — no snapshot/restore. Drift is a pure
-  // function of its derived seed + the count of weekly `clock:day_ended` ticks,
-  // and the #122 mid-day replay never advances `day_ended`, so drift state is
-  // invariant across a checkpoint resume by construction. No module persists
-  // drift across a cold start today; full world-state persistence is #186.
+  // Determinism: CompetitorMarket is reconstructed from `masterSeed` at
+  // construction, and its drift is persisted via snapshot/restore (#191, part
+  // of the #186 world seam) — the seam restores onto a fresh World and never
+  // replays `clock:day_ended`, so drift can't be re-derived from day count and
+  // is captured (live stats + RNG cursor) instead. The #122 mid-day replay
+  // never advances `day_ended`, so drift is invariant across a checkpoint.
   const brands = loadBrands();
   const competitorMarket = createCompetitorMarket({
     bus,

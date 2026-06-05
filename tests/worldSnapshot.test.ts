@@ -199,6 +199,95 @@ describe('StaffOrg + StaffMorale snapshot/restore (#190)', () => {
   });
 });
 
+describe('MarketEconomy + CompetitorMarket snapshot/restore (#191)', () => {
+  function build(masterSeed: number) {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed, characterProfile: PROFILE });
+    return { bus, world };
+  }
+
+  // The AC: drift the economy (a comp via a real auction buy) + competitors
+  // (weekly day_ended ticks) over N days → snapshot → restore on a fresh
+  // same-seed World → market + competitor state match exactly.
+  it('round-trips comp-history, shocks, and competitor drift through the world seam', () => {
+    const seed = 5150;
+    const { bus, world: original } = build(seed);
+
+    // Day 1: open the lot and buy a unit → records a wholesale comp.
+    bus.publish('clock:day_started', { day: 1 });
+    const listing = original.inventory.getAuctionListings()[0];
+    original.inventory.buyFromAuction(listing.id);
+
+    // Run days 2..30 with both edges so competitors drift on each %7 tick and
+    // the shock scheduler gets its daily roll.
+    for (let day = 2; day <= 30; day++) {
+      bus.publish('clock:day_started', { day });
+      bus.publish('clock:day_ended', { day });
+    }
+
+    const snap = snapshotWorld(original);
+    // SaveStore persists plain data — the blob must survive JSON.
+    const reparsed = JSON.parse(JSON.stringify(snap)) as WorldSnapshot;
+    expect(reparsed).toEqual(snap);
+
+    // The drift actually moved state off the cold baseline (test is meaningful).
+    const { world: cold } = build(seed);
+    const coldSnap = snapshotWorld(cold);
+    expect(snap.modules.competitorMarket).not.toEqual(
+      coldSnap.modules.competitorMarket,
+    );
+    expect(snap.modules.marketEconomy).not.toEqual(
+      coldSnap.modules.marketEconomy,
+    );
+
+    // Restore onto a fresh same-seed World...
+    const { world: rebuilt } = build(seed);
+    restoreWorld(reparsed, rebuilt);
+
+    // ...market + competitor state match the original exactly.
+    const restoredSnap = snapshotWorld(rebuilt);
+    expect(restoredSnap.modules.marketEconomy).toEqual(
+      snap.modules.marketEconomy,
+    );
+    expect(restoredSnap.modules.competitorMarket).toEqual(
+      snap.modules.competitorMarket,
+    );
+    // The live competitor view (handed out by reference) reflects the restore.
+    expect(rebuilt.competitorMarket.getCompetitors()).toEqual(
+      original.competitorMarket.getCompetitors(),
+    );
+  });
+
+  // Persisting the drift RNG cursor (not just the stats) keeps *future* drift
+  // on the exact same trajectory the original world was on — so a save/load
+  // never diverges the competitor world from a no-save playthrough.
+  it('keeps competitor drift deterministic after restore (rng cursor persisted)', () => {
+    const seed = 24601;
+    const { bus, world: original } = build(seed);
+    for (let day = 1; day <= 21; day++) {
+      bus.publish('clock:day_started', { day });
+      bus.publish('clock:day_ended', { day });
+    }
+
+    const snap = snapshotWorld(original);
+    const { bus: busR, world: rebuilt } = build(seed);
+    restoreWorld(snap, rebuilt);
+
+    // Drive both worlds one more weekly tick from the snapshot point. With the
+    // rng cursor restored, the day-28 drift consumes the same random draws.
+    for (let day = 22; day <= 28; day++) {
+      bus.publish('clock:day_started', { day });
+      bus.publish('clock:day_ended', { day });
+      busR.publish('clock:day_started', { day });
+      busR.publish('clock:day_ended', { day });
+    }
+
+    expect(rebuilt.competitorMarket.getCompetitors()).toEqual(
+      original.competitorMarket.getCompetitors(),
+    );
+  });
+});
+
 describe('snapshotWorld / restoreWorld seam (#188)', () => {
   function build(masterSeed: number) {
     const bus = createEventBus();
@@ -219,6 +308,12 @@ describe('snapshotWorld / restoreWorld seam (#188)', () => {
     expect(Array.isArray(snap.modules.staffOrg.roster)).toBe(true);
     expect(snap.modules.staffMorale.schemaVersion).toBe(1);
     expect(Array.isArray(snap.modules.staffMorale.morale)).toBe(true);
+    expect(snap.modules.marketEconomy.schemaVersion).toBe(1);
+    expect(snap.modules.marketEconomy.compHistory.schemaVersion).toBe(1);
+    expect(snap.modules.marketEconomy.shocks.schemaVersion).toBe(1);
+    expect(snap.modules.competitorMarket.schemaVersion).toBe(1);
+    expect(Array.isArray(snap.modules.competitorMarket.competitors)).toBe(true);
+    expect(typeof snap.modules.competitorMarket.rngState).toBe('number');
   });
 
   it('round-trips a bought + aged lot through the world seam', () => {

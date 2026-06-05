@@ -10,10 +10,14 @@ Design record: issue **#182** (locked). Read that before working any slice.
 ## Public API (`index.ts`)
 
 - `createMarketEconomy(deps?)` → `MarketEconomy`. Extends `LiveProviders` +
-  exposes `personality`, `compHistory` (snapshot/restore/segmentDrift), and
-  `dispose()`. Pass `bus` + `getCurrentDay` to wire the comp-history
-  subscriptions (#157); omit both for the pure-engine path used by the #94
-  calibration test and fixtures.
+  exposes `personality`, `compHistory` (snapshot/restore/segmentDrift),
+  `shocks`, a bundled `snapshot/restore` (#191), and `dispose()`. Pass `bus` +
+  `getCurrentDay` to wire the comp-history subscriptions (#157); omit both for
+  the pure-engine path used by the #94 calibration test and fixtures.
+- `marketEconomy.snapshot()` → `MarketEconomySnapshot = { schemaVersion,
+  compHistory, shocks }` (#191). Bundles the two emergent accumulators for the
+  #186 world seam; `personality` is seed-derived so it's deliberately not
+  persisted (a same-seed restore reproduces it). `restore` fans both back out.
 - `createProviders(deps?)` → `LiveProviders` = `{ bookValueFn, marketPriceFn, vehicleCostFn }`.
   These match SalesProcess seam shapes (`BookValueFn`, `MarketPriceFn`,
   `VehicleCostFn`) and slot into `StaffDispatch.salesProcessDeps` /

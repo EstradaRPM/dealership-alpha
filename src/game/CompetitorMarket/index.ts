@@ -8,4 +8,4 @@ export { aggregateShare } from './AggregateShare';
 export { loadPersonalityDrift } from './PersonalityDrift';
 export type { DriftSigma, PersonalityDriftCatalog } from './PersonalityDrift';
 export { createCompetitorMarket } from './CompetitorMarket';
-export type { CompetitorMarket } from './CompetitorMarket';
+export type { CompetitorMarket, CompetitorMarketSnapshot } from './CompetitorMarket';

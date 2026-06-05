@@ -29,6 +29,8 @@ import type { EconomySnapshot } from './game/Economy';
 import type { InventorySnapshot } from './game/Inventory';
 import type { StaffOrgSnapshot } from './game/StaffOrg';
 import type { StaffMoraleSnapshot } from './game/StaffMorale';
+import type { MarketEconomySnapshot } from './game/MarketEconomy';
+import type { CompetitorMarketSnapshot } from './game/CompetitorMarket';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
@@ -43,7 +45,9 @@ export interface WorldSnapshot {
     readonly inventory: InventorySnapshot;
     readonly staffOrg: StaffOrgSnapshot;
     readonly staffMorale: StaffMoraleSnapshot;
-    // Later #186 slices add keys here (reputation, marketEconomy, …)
+    readonly marketEconomy: MarketEconomySnapshot;
+    readonly competitorMarket: CompetitorMarketSnapshot;
+    // Later #186 slices add keys here (reputation, …)
     // — each a module's own self-versioned snapshot.
   };
 }
@@ -57,6 +61,8 @@ export function snapshotWorld(world: World): WorldSnapshot {
       inventory: world.inventory.snapshot(),
       staffOrg: world.staffOrg.snapshot(),
       staffMorale: world.staffMorale.snapshot(),
+      marketEconomy: world.marketEconomy.snapshot(),
+      competitorMarket: world.competitorMarket.snapshot(),
     },
   };
 }
@@ -68,4 +74,6 @@ export function restoreWorld(snap: WorldSnapshot, world: World): void {
   // StaffOrg roster restores first so StaffMorale rehydrates onto the same ids.
   world.staffOrg.restore(snap.modules.staffOrg);
   world.staffMorale.restore(snap.modules.staffMorale);
+  world.marketEconomy.restore(snap.modules.marketEconomy);
+  world.competitorMarket.restore(snap.modules.competitorMarket);
 }

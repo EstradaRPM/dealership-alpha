@@ -3,7 +3,7 @@
 Static (v1) competitor roster. Each competitor has a personality, price point, and weekly stat drift. Publishes daily competitive pressure that `CustomerPool` consumes for poach decisions.
 
 ## Public API (`index.ts`)
-- `createCompetitorMarket()` → `CompetitorMarket`.
+- `createCompetitorMarket()` → `CompetitorMarket`. Exposes `getCompetitors`, `getCompetitor`, `snapshot/restore` (#191), `dispose`.
 - Loaders: `loadBrands`, `loadCompetitors`, `loadPersonalityDrift`.
 - Scoring: `scoreCompetitor`, `aggregateShare`.
 - Schemas: `CompetitorSchema`, `CompetitorCatalogSchema`.
@@ -19,8 +19,10 @@ Static (v1) competitor roster. Each competitor has a personality, price point, a
 ## v1 simplification
 Static roster; weekly drift only. ADR-0001 §10 documents the pressure-publish contract — read it before changing the publish/consume shape.
 
-## Persistence & determinism (#183)
-Wired into the world in `createWorld` from `seed: deriveSeed(masterSeed, 'competitor_market.drift', {})`. **No snapshot/restore surface, by decision:**
-- Drift state is a pure function of that derived seed + the count of weekly `clock:day_ended` ticks elapsed, so a same-seed world reproduces the identical drift trajectory on reconstruction — `createCompetitorMarket` *is* the deterministic re-derivation.
-- The only live persistence path, the #122 mid-day FloorSim checkpoint, replays the in-day action log and **never advances `clock:day_ended`**, so competitor drift cannot change during a replay — it is invariant across a checkpoint resume by construction.
-- No module persists runtime drift across a cold start today (the clock itself rebuilds to "night before Day 1"); adding a snapshot surface here alone would be premature and inconsistent. Full world-state persistence (multi-slot, restore-on-load) is tracked in **issue #186** — when that lands, this module joins the world-snapshot contract like the rest.
+## Persistence & determinism (#183 → #191)
+Wired into the world in `createWorld` from `seed: deriveSeed(masterSeed, 'competitor_market.drift', {})`.
+
+**Drift is persisted via `snapshot/restore` (#191), not reconstructed.** The earlier #183 plan (re-derive drift from seed + elapsed day count) assumed something replays the weekly `clock:day_ended` ticks on reconstruction. The #186 world seam (`restoreWorld`) does the opposite: it builds a fresh World (competitors at the cold `loadCompetitors()` baseline) and overwrites state in place — it never re-runs the day-by-day rebuild. So the drift must be captured:
+- `CompetitorMarketSnapshot = { schemaVersion, competitors, rngState }`. `competitors` is the live (post-drift) stats; `rngState` is the drift RNG cursor.
+- `restore` overwrites stats *in place* onto the existing `live`/`byId` objects (so the references handed out by `getCompetitors()` and published in `market:competitive_pressure` stay stable), then rewinds the RNG cursor. Persisting `rngState` keeps *future* drift on the exact trajectory the original world was on, so a save/load never diverges from a no-save playthrough.
+- #122 mid-day FloorSim replay still never advances `clock:day_ended`, so competitor drift is invariant across a checkpoint resume regardless.

@@ -49,6 +49,21 @@ import { loadTunables, type Tunables } from '../data';
  * personality-only world (the path used by the #94 calibration test and by
  * tests that don't care about emergent drift).
  */
+/**
+ * Persisted MarketEconomy state (#191, parent #186). The two emergent, live
+ * accumulators — the comp-history rolling window (#157) and the active-shock
+ * list (#159). The per-save `personality` vector is seed-derived
+ * (`rollPersonalityVector(masterSeed)`), so a same-seed restore reproduces it
+ * for free and it is deliberately *not* persisted. Bundles each sub-module's
+ * own self-versioned blob so MarketEconomy owns one cohesive snapshot the
+ * world seam wires with a single `modules` key.
+ */
+export interface MarketEconomySnapshot {
+  readonly schemaVersion: 1;
+  readonly compHistory: CompHistorySnapshot;
+  readonly shocks: ShocksSnapshot;
+}
+
 export interface MarketEconomy extends LiveProviders {
   readonly personality: MarketPersonalityVector;
   /** Read-only view of the live comp window (snapshot/restore for persistence). */
@@ -93,6 +108,12 @@ export interface MarketEconomy extends LiveProviders {
    * mismatch, not a runtime crash).
    */
   sourceLabelFor(sourceId: string): string;
+  /**
+   * Persistence surface (#191). Bundles the comp-history + shock snapshots
+   * into one self-versioned blob; personality is seed-derived and omitted.
+   */
+  snapshot(): MarketEconomySnapshot;
+  restore(snap: MarketEconomySnapshot): void;
   /** Tear down event subscriptions. Idempotent. */
   dispose(): void;
 }
@@ -298,6 +319,15 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
     },
     sourceLabelFor(sourceId: string) {
       return sourceLabels[sourceId] ?? sourceId;
+    },
+    snapshot: (): MarketEconomySnapshot => ({
+      schemaVersion: 1,
+      compHistory: compHistory.snapshot(),
+      shocks: shockScheduler?.snapshot() ?? { schemaVersion: 1, active: [] },
+    }),
+    restore: (snap: MarketEconomySnapshot) => {
+      compHistory.restore(snap.compHistory);
+      shockScheduler?.restore(snap.shocks);
     },
     compHistory: {
       segmentDrift: (segment, day) => compHistory.segmentDrift(segment, day),

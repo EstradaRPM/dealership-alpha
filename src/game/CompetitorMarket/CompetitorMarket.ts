@@ -4,20 +4,64 @@ import type { Competitor, CompetitorCatalog } from './Competitor';
 import type { PersonalityDriftCatalog } from './PersonalityDrift';
 import type { BrandCatalog } from './schemas/brand';
 
+/**
+ * Persisted drift state (#191, parent #186). The live competitor stats *and*
+ * the drift RNG cursor — the two things that have moved away from the cold
+ * `loadCompetitors()` baseline since Day 1. Personality/clamp bounds are
+ * static catalog data, so restoring the drift fields onto a fresh same-seed
+ * module reproduces the exact state; persisting `rngState` keeps *future*
+ * drift on the same deterministic trajectory the original world was on.
+ *
+ * NOTE: the earlier #183 claim that drift is reconstructable from seed + day
+ * count held only while no save/load existed — the #188 world seam restores
+ * onto a fresh World and never replays `clock:day_ended`, so the drift is
+ * persisted, not recomputed.
+ */
+export interface CompetitorMarketSnapshot {
+  readonly schemaVersion: 1;
+  readonly competitors: readonly Competitor[];
+  readonly rngState: number;
+}
+
 export interface CompetitorMarket {
   getCompetitors(): ReadonlyArray<Competitor>;
   getCompetitor(id: string): Competitor | undefined;
+  snapshot(): CompetitorMarketSnapshot;
+  restore(snap: CompetitorMarketSnapshot): void;
   dispose: () => void;
 }
 
-function makeRng(seed: number): () => number {
+interface StatefulRng {
+  next(): number;
+  getState(): number;
+  setState(state: number): void;
+}
+
+function makeRng(seed: number): StatefulRng {
   let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  return {
+    next() {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    },
+    getState: () => a,
+    setState: (state) => {
+      a = state >>> 0;
+    },
+  };
+}
+
+function cloneCompetitor(c: Competitor): Competitor {
+  return {
+    ...c,
+    clamp: {
+      rep: { ...c.clamp.rep },
+      inventory: { ...c.clamp.inventory },
+      pricing: { ...c.clamp.pricing },
+    },
   };
 }
 
@@ -65,11 +109,11 @@ export function createCompetitorMarket(deps: {
     for (const c of live) {
       const sigma = personalityDrift[c.personality];
       if (!sigma) continue;
-      c.rep      = clampStat(c.rep      + (rng() * 2 - 1) * sigma.rep,      c.clamp.rep.lo,      c.clamp.rep.hi);
-      c.inventory = clampStat(c.inventory + (rng() * 2 - 1) * sigma.inventory, c.clamp.inventory.lo, c.clamp.inventory.hi);
+      c.rep      = clampStat(c.rep      + (rng.next() * 2 - 1) * sigma.rep,      c.clamp.rep.lo,      c.clamp.rep.hi);
+      c.inventory = clampStat(c.inventory + (rng.next() * 2 - 1) * sigma.inventory, c.clamp.inventory.lo, c.clamp.inventory.hi);
       const oldPricing = c.pricing;
       const newPricing = clampStat(
-        c.pricing + (rng() * 2 - 1) * sigma.pricing,
+        c.pricing + (rng.next() * 2 - 1) * sigma.pricing,
         c.clamp.pricing.lo,
         c.clamp.pricing.hi,
       );
@@ -101,6 +145,20 @@ export function createCompetitorMarket(deps: {
   return {
     getCompetitors: () => live,
     getCompetitor: (id) => byId.get(id),
+    snapshot: () => ({
+      schemaVersion: 1,
+      competitors: live.map(cloneCompetitor),
+      rngState: rng.getState(),
+    }),
+    restore: (snap) => {
+      // Overwrite stats in place so the `live` array + `byId` references the
+      // pressure publisher and getCompetitors() hand out stay stable.
+      for (const saved of snap.competitors) {
+        const target = byId.get(saved.id);
+        if (target) Object.assign(target, cloneCompetitor(saved));
+      }
+      rng.setState(snap.rngState);
+    },
     dispose: () => {
       bus.unsubscribe('clock:day_ended', onDayEnded);
       bus.unsubscribe('clock:day_started', onDayStarted);
