@@ -61,12 +61,14 @@ export interface StaffStripEntry {
 }
 
 /**
- * One event-log row. A `walk` is a transient informational line; an
- * `exception` is a tappable alert row whose `id` is the grabbable
- * CustomerRef — tapping it surfaces the hand-play modal (wired next slice).
+ * One event-log row. A `walk` is a transient informational line; a `match` is
+ * the inventory-buyer match-payoff toast (#199), a highlighted reward line; an
+ * `exception` is a tappable alert row whose `id` is the grabbable CustomerRef —
+ * tapping it surfaces the hand-play modal (wired next slice).
  */
 export type FloorEvent =
   | { kind: 'walk'; key: string; text: string }
+  | { kind: 'match'; key: string; text: string }
   | { kind: 'exception'; key: string; customerId: string; text: string };
 
 export interface InventoryStats {
@@ -302,6 +304,10 @@ export function FloorDashboard({
                 <Text style={styles.alertPip}>●</Text>
                 <Text style={styles.alertText}>{e.text}</Text>
               </TouchableOpacity>
+            ) : e.kind === 'match' ? (
+              <Text key={e.key} style={styles.matchLine}>
+                {e.text}
+              </Text>
             ) : (
               <Text key={e.key} style={styles.walkLine}>
                 {e.text}
@@ -428,6 +434,13 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     fontSize: 12,
     color: colors.borderMuted,
+    paddingVertical: 4,
+  },
+  matchLine: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    color: colors.reward,
+    fontWeight: '600',
     paddingVertical: 4,
   },
   alertRow: {

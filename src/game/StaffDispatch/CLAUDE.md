@@ -8,8 +8,9 @@ DealEngine, posts the outcome.
 The dispatch resolver no longer synthesizes a gross — it delegates the close
 to the real machinery. Per customer (after exception roll + hold-floor):
 
-1. `pickVehicleFor(customer, inventory.getLotVehicles(), { tier })` — pure
-   match against the live lot. No fit ⇒ `no_sale`/`no_fit`.
+1. `pickVehicleForMatch(customer, inventory.getLotVehicles(), { tier })` — pure
+   match against the live lot, returning the matched id + want-axis match
+   quality (#199). No fit ⇒ `no_sale`/`no_fit`.
 2. `resolveSalesProcess(...)` against the matched vehicle, using the
    salesperson's effectiveness/trustworthiness composite via
    `makeSalespersonProfile`. Walk ⇒ `no_sale`/`<WalkCause>`.
@@ -35,8 +36,9 @@ to the real machinery. Per customer (after exception roll + hold-floor):
    five deal-structuring fields (paymentMethod / downPayment / loanAmount /
    term / apr) derived from the customer's Visit + classified credit tier, with
    net trade equity subtracted from the financed amount (or cash down).
-6. Emit `staff:auto_resolved` with `outcome='closed'` and
-   `grossImpact = frontGross + backGross` from the DealEngine result.
+6. Emit `staff:auto_resolved` with `outcome='closed'`,
+   `grossImpact = frontGross + backGross` from the DealEngine result, and
+   `matchQuality` from step 1 (#199).
 
 `trade:resolved` (#169) precedes the matching `deal:closed` for that customer.
 It carries `staffConfidence` (the UCM condition-read confidence behind the
@@ -99,7 +101,10 @@ with #147.
 
 ## Events
 - **Emits:** `staff:auto_resolved` (outcome `closed` or `no_sale`, with
-  `grossImpact` and on `no_sale` an optional `reason`). On a successful close
+  `grossImpact`, on `closed` an optional `matchQuality` — the want-axis fit of
+  the `pickVehicleForMatch`-selected unit ∈ [0,1], the #199 match-payoff signal
+  the floor toast + DayRecap tally threshold — and on `no_sale` an optional
+  `reason`). On a successful close
   the resolver delegates to `DealEngine.closeDeal`, so the canonical
   `deal:closed` (with the five deal-structuring fields) and
   `inventory:vehicle_sold` fire too. On a routine/manager-approved trade (#169)

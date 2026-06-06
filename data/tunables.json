@@ -50,6 +50,9 @@
       { "id": "pressure", "label": "Apply pressure", "fitModifier": -0.05, "difficultyModifier": 0.1 }
     ]
   },
+  "matchPayoff": {
+    "strongMatchThreshold": 0.8
+  },
   "economy": {
     "startingCash": 50000,
     "dailyOverheadBase": 350,

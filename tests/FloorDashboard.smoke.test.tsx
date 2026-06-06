@@ -75,6 +75,20 @@ describe('FloorDashboard smoke tests', () => {
     ).not.toThrow();
   });
 
+  it('renders the inventory-buyer match toast (#199)', () => {
+    const { getByText } = render(
+      <FloorDashboard
+        model={{
+          ...MODEL,
+          events: [
+            { kind: 'match', key: 'm0', text: 'Easy sale — you had what they wanted.' },
+          ],
+        }}
+      />,
+    );
+    expect(getByText('Easy sale — you had what they wanted.')).toBeTruthy();
+  });
+
   it('renders the live-clock control bar (#121), running and paused', () => {
     const controls = {
       speed: 2,

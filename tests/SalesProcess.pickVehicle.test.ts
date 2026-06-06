@@ -1,4 +1,8 @@
-import { pickVehicleFor } from '../src/game/SalesProcess';
+import {
+  pickVehicleFor,
+  pickVehicleForMatch,
+  vehicleSpaced,
+} from '../src/game/SalesProcess';
 import type {
   MatchableVehicle,
   MatchCustomer,
@@ -136,5 +140,61 @@ describe('SalesProcess pickVehicleFor', () => {
     // want-fit, both score the same and V-001 wins by stable order.
     const insensitive: MatchCustomer = { ...baseCustomer, priceSensitivity: 0 };
     expect(pickVehicleFor(insensitive, [vehicleB, vehicleA])).toBe('V-001');
+  });
+});
+
+// #199: the match-quality variant carries the want-axis fit of the winner —
+// the signal the floor toast + recap "strong match" tally threshold against.
+describe('SalesProcess pickVehicleForMatch', () => {
+  // Real SPACED of the stocked unit, so the want axis can be aimed dead-on
+  // (strong match) or far off (mismatch) deterministically.
+  const spacedA = vehicleSpaced(vehicleA);
+
+  const wantEconomyProfile: CustomerAxisProfile = {
+    classes: {
+      safety: 'pass',
+      performance: 'pass',
+      appearance: 'pass',
+      comfort: 'pass',
+      economy: 'want',
+      dependability: 'pass',
+    },
+    nonnegotiables: [],
+    wants: ['economy'],
+  };
+
+  it('returns null on an empty lot', () => {
+    expect(pickVehicleForMatch(baseCustomer, [])).toBeNull();
+  });
+
+  it('a buyer whose want is dead-on the stock fires a strong match (quality ≥ 0.8)', () => {
+    const matched: MatchCustomer = {
+      ...baseCustomer,
+      customerSpaced: { ...neutralSpaced, economy: spacedA.economy },
+      axisProfile: wantEconomyProfile,
+    };
+    const result = pickVehicleForMatch(matched, [vehicleA]);
+    expect(result?.vehicleId).toBe('V-001');
+    expect(result?.matchQuality).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it('a buyer whose want is far off the stock does not (quality < 0.8)', () => {
+    // Aim the want to the opposite extreme of the unit's actual economy level —
+    // a guaranteed gap ≥ 0.5, so fit ≤ 0.5.
+    const off = spacedA.economy >= 0.5 ? 0 : 1;
+    const mismatched: MatchCustomer = {
+      ...baseCustomer,
+      customerSpaced: { ...neutralSpaced, economy: off },
+      axisProfile: wantEconomyProfile,
+    };
+    const result = pickVehicleForMatch(mismatched, [vehicleA]);
+    expect(result?.vehicleId).toBe('V-001');
+    expect(result?.matchQuality).toBeLessThan(0.8);
+  });
+
+  it('is deterministic — same inputs → same quality', () => {
+    const a = pickVehicleForMatch(baseCustomer, [vehicleA, vehicleB]);
+    const b = pickVehicleForMatch(baseCustomer, [vehicleA, vehicleB]);
+    expect(a).toEqual(b);
   });
 });

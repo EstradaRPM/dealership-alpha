@@ -401,6 +401,14 @@ export interface EventMap {
     outcome: 'closed' | 'no_sale';
     grossImpact: number;
     /**
+     * Inventory-buyer match quality of the closed deal (#199): the want-axis
+     * `fit` ∈ [0,1] of the vehicle `pickVehicleForMatch` selected — how well
+     * the stocked unit met what the buyer wanted. Present only on
+     * `outcome: 'closed'`; the loop's match-payoff beat (floor toast + recap
+     * tally) thresholds this into "strong match". Omitted on `no_sale`.
+     */
+    matchQuality?: number;
+    /**
      * Named reason for a `no_sale` outcome (#147 tracer): `'no_session'`,
      * `'not_sales'`, `'no_fit'`, `'no_close'`, the trade walks
      * (`'trade_negative_equity'` — underwater trade (#169);

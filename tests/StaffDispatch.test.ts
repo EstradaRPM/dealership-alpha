@@ -215,7 +215,13 @@ interface Wired {
   inventory: Pick<Inventory, 'getLotVehicles' | 'getLotVehicle' | 'sellVehicle'>;
   dealEngine: DealEngine;
   sessions: Map<string, StaffDispatchCustomerSession>;
-  events: Array<{ outcome: string; reason?: string; grossImpact: number; customerId: string }>;
+  events: Array<{
+    outcome: string;
+    reason?: string;
+    grossImpact: number;
+    customerId: string;
+    matchQuality?: number;
+  }>;
   closedDeals: ClosedDealPayload[];
   trades: TradeResolvedPayload[];
   escalations: TradeEscalatedPayload[];
@@ -364,6 +370,29 @@ describe('StaffDispatch — real close path (#147)', () => {
     expect(inventory.getLotVehicles()).toHaveLength(0);
     // Cash delta tracks the real DealEngine posting, not a synthetic poke.
     expect(economy.cash - cashBefore).toBeGreaterThan(0);
+  });
+
+  it('a closed deal carries the inventory-buyer match quality on staff:auto_resolved (#199)', () => {
+    const { bus, sessions, events } = setup([makeStaff(0.9)]);
+    sessions.set('cust:1', makeSession('cust:1', makeFinanceVisit('cust:1')));
+    admit(bus, 'cust:1');
+    expect(events).toHaveLength(1);
+    expect(events[0].outcome).toBe('closed');
+    // The want-axis fit of the matched unit rides the close event so the loop's
+    // match-payoff beat can threshold it without reaching into SalesProcess.
+    expect(typeof events[0].matchQuality).toBe('number');
+    expect(events[0].matchQuality).toBeGreaterThanOrEqual(0);
+    expect(events[0].matchQuality).toBeLessThanOrEqual(1);
+  });
+
+  it('a no_sale carries no match quality (#199)', () => {
+    const { bus, sessions, events } = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+      lot: [],
+    });
+    sessions.set('cust:1', makeSession('cust:1', makeFinanceVisit('cust:1')));
+    admit(bus, 'cust:1');
+    expect(events[0].outcome).toBe('no_sale');
+    expect(events[0].matchQuality).toBeUndefined();
   });
 
   it('per-tick drain: N customers + < N inventory closes exactly inventory.length', () => {

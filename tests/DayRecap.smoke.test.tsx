@@ -10,6 +10,8 @@ const MODEL: DayRecapModel = {
   sold: 3,
   gross: 7_650,
   leakCause: 'closing',
+  strongMatches: 2,
+  matchedSales: 3,
 };
 
 describe('DayRecap smoke tests', () => {
@@ -38,9 +40,16 @@ describe('DayRecap smoke tests', () => {
             sold: 0,
             gross: -1_200,
             leakCause: 'none',
+            strongMatches: 0,
+            matchedSales: 0,
           }}
         />,
       ),
     ).not.toThrow();
+  });
+
+  it('renders the strong-match tally when deals closed (#199)', () => {
+    const { getByText } = render(<DayRecap model={MODEL} />);
+    expect(getByText(/2 of 3 sales were strong matches/)).toBeTruthy();
   });
 });

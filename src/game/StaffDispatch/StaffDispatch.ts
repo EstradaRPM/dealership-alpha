@@ -19,7 +19,7 @@ import { loadStaffDispatchConfig, type StaffDispatchConfig } from './staffDispat
 import {
   closeAndPrice,
   makeSalespersonProfile,
-  pickVehicleFor,
+  pickVehicleForMatch,
   resolveSalesProcess,
   vehicleSpaced,
   type MatchCustomer,
@@ -228,12 +228,12 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       tier,
     };
     const lot = deps.inventory.getLotVehicles();
-    const vehicleId = pickVehicleFor(matchCustomer, lot, pickDeps);
-    if (!vehicleId) {
+    const match = pickVehicleForMatch(matchCustomer, lot, pickDeps);
+    if (!match) {
       emitNoSale(customerId, salesperson.id, day, 'no_fit');
       return 'resolved';
     }
-    const vehicle = lot.find(v => v.id === vehicleId);
+    const vehicle = lot.find(v => v.id === match.vehicleId);
     if (!vehicle) {
       // pickVehicleFor only returns ids from the lot snapshot, so this is
       // unreachable; the guard satisfies the type and is defensive vs. future
@@ -391,6 +391,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       day,
       outcome: 'closed',
       grossImpact: result.frontGross + result.backGross,
+      matchQuality: match.matchQuality,
     });
     return 'resolved';
   };

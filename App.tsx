@@ -79,6 +79,10 @@ const HAND_PLAY_LIVE = loadTunables().handPlay.playtestLiveDefault;
 // Representative open-hours window for the FLOOR-OPEN HUD clock (#121).
 const RENDER_LOOP = loadTunables().renderLoop;
 
+// Want-axis fit a closed deal must clear to count as a "strong match" (#199) —
+// drives the floor toast + DayRecap tally. Tunable, never a magic number.
+const STRONG_MATCH_THRESHOLD = loadTunables().matchPayoff.strongMatchThreshold;
+
 // Hours-of-op lever options (#120). "Wired only": the lever selects an id and
 // the composition root holds the scaled ticksPerDay. Feeding it into FloorSim
 // is a downstream slice (FloorSim/#99 is locked and reads its own value).
@@ -214,6 +218,11 @@ export default function App() {
   // forced exceptions as tappable alert rows. Reset each "Next Day".
   const [floorEvents, setFloorEvents] = useState<readonly FloorEvent[]>([]);
   const eventSeq = useRef(0);
+  // Per-day inventory-buyer match tally (#199): closed deals scored for
+  // stock-vs-buyer fit, and how many cleared the strong-match threshold. Feeds
+  // the floor toast (live) + the DayRecap tally (MANAGERIAL). Reset each
+  // "Next Day" alongside grossToday/floorEvents.
+  const [matchTally, setMatchTally] = useState({ strong: 0, matched: 0 });
   // Re-render trigger for the headless DayLoopController lifecycle.
   const [, setTick] = useState(0);
   const bump = () => setTick((n) => n + 1);
@@ -396,6 +405,33 @@ export default function App() {
       frontGross: number;
       backGross: number;
     }) => setGrossToday((g) => g + frontGross + backGross);
+    // Match-payoff beat (#199): every closed deal carries the want-axis fit of
+    // the stocked unit. Tally all closes; a strong match also drops a live
+    // floor toast ("you had what they wanted") into the event log.
+    const onAutoResolved = ({
+      outcome,
+      matchQuality,
+    }: {
+      outcome: 'closed' | 'no_sale';
+      matchQuality?: number;
+    }) => {
+      if (outcome !== 'closed') return;
+      const strong = (matchQuality ?? 0) >= STRONG_MATCH_THRESHOLD;
+      setMatchTally((t) => ({
+        strong: t.strong + (strong ? 1 : 0),
+        matched: t.matched + 1,
+      }));
+      if (strong) {
+        setFloorEvents((log) => [
+          ...log,
+          {
+            kind: 'match',
+            key: `m${eventSeq.current++}`,
+            text: 'Easy sale — you had what they wanted.',
+          },
+        ]);
+      }
+    };
     const onExceptionRaised = ({
       tick,
       customerId,
@@ -447,6 +483,7 @@ export default function App() {
     bus.subscribe('inventory:vehicle_sold', onVehicleSold);
     bus.subscribe('economy:revenue_posted', onRevenue);
     bus.subscribe('deal:closed', onDealClosed);
+    bus.subscribe('staff:auto_resolved', onAutoResolved);
     bus.subscribe('floor:exception_raised', onExceptionRaised);
     return () => {
       bus.unsubscribe('floor:day_complete', onDayComplete);
@@ -457,6 +494,7 @@ export default function App() {
       bus.unsubscribe('inventory:vehicle_sold', onVehicleSold);
       bus.unsubscribe('economy:revenue_posted', onRevenue);
       bus.unsubscribe('deal:closed', onDealClosed);
+      bus.unsubscribe('staff:auto_resolved', onAutoResolved);
       bus.unsubscribe('floor:exception_raised', onExceptionRaised);
     };
   }, []);
@@ -486,6 +524,7 @@ export default function App() {
     if (!world) return;
     setGrossToday(0);
     setFloorEvents([]);
+    setMatchTally({ strong: 0, matched: 0 });
     world.dayLoop.nextDay();
     bump();
   };
@@ -772,6 +811,8 @@ export default function App() {
           sold: funnel.sold,
           gross: grossToday,
           leakCause: funnel.leakCause,
+          strongMatches: matchTally.strong,
+          matchedSales: matchTally.matched,
         }
       : undefined;
     // MANAGERIAL pre-open ownership levers (#120). Assembled here in the

@@ -76,15 +76,29 @@ function pricePenalty(listPrice: number, headroom: number): number {
 }
 
 /**
- * Pure customer→vehicle matcher (#145). Filters the lot by affordability and
- * nonnegotiables, then argmax-scores survivors. Deterministic: ties break by
- * stable ascending `vehicleId` order, no RNG.
+ * The chosen vehicle plus the loop's match-payoff signal (#199): the want-axis
+ * `fit` of the winner ∈ [0,1]. "Strong match" = the stocked unit closely met
+ * what the buyer wanted — the dopamine beat the floor toast + recap tally fire
+ * on. Distinct from the argmax `score` (which also folds in price + reputation):
+ * the player-facing payoff is "you had what they wanted," i.e. want-axis fit.
  */
-export function pickVehicleFor(
+export interface VehicleMatch {
+  readonly vehicleId: string;
+  /** Want-axis fit of the chosen vehicle ∈ [0,1]. */
+  readonly matchQuality: number;
+}
+
+/**
+ * Pure customer→vehicle matcher (#145), match-quality variant (#199). Filters
+ * the lot by affordability and nonnegotiables, argmax-scores survivors, and
+ * returns the winner's id alongside its want-axis fit. Deterministic: ties
+ * break by stable ascending `vehicleId` order, no RNG.
+ */
+export function pickVehicleForMatch(
   customer: MatchCustomer,
   lot: readonly MatchableVehicle[],
   deps: PickVehicleDeps = {},
-): string | null {
+): VehicleMatch | null {
   if (lot.length === 0) return null;
 
   const marketPriceFn = deps.marketPriceFn ?? staticMarketPrice;
@@ -108,6 +122,7 @@ export function pickVehicleFor(
 
   let bestId: string | null = null;
   let bestScore = -Infinity;
+  let bestFit = 0;
 
   for (const v of sorted) {
     if (!isEligible(customer, v, { ...deps, marketPriceFn })) continue;
@@ -127,8 +142,21 @@ export function pickVehicleFor(
     if (score > bestScore) {
       bestScore = score;
       bestId = v.id;
+      bestFit = fit;
     }
   }
 
-  return bestId;
+  return bestId === null ? null : { vehicleId: bestId, matchQuality: bestFit };
+}
+
+/**
+ * Id-only matcher (#145). Thin wrapper over `pickVehicleForMatch` for callers
+ * that don't need the match-quality signal.
+ */
+export function pickVehicleFor(
+  customer: MatchCustomer,
+  lot: readonly MatchableVehicle[],
+  deps: PickVehicleDeps = {},
+): string | null {
+  return pickVehicleForMatch(customer, lot, deps)?.vehicleId ?? null;
 }

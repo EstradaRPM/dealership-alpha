@@ -24,11 +24,26 @@ export interface DayRecapModel {
   gross: number;
   /** The single biggest-leak transition for the plain-language callout. */
   leakCause: FunnelLeakCause;
+  /** Closed deals where the stocked unit strongly matched the buyer's wants (#199). */
+  strongMatches: number;
+  /** Total closed deals scored for inventory-buyer match (== units sold). */
+  matchedSales: number;
 }
 
 function money(n: number): string {
   const sign = n < 0 ? '-' : '';
   return `${sign}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
+}
+
+/**
+ * Inventory-buyer match-payoff line (#199): the share of today's closes where
+ * the lot had what the buyer wanted. Null when nothing sold (nothing to tally).
+ */
+function matchTally(m: DayRecapModel): string | null {
+  if (m.matchedSales <= 0) return null;
+  return `${m.strongMatches} of ${m.matchedSales} ${
+    m.matchedSales === 1 ? 'sale was a strong match' : 'sales were strong matches'
+  } — you had what they wanted.`;
 }
 
 function leakCallout(m: DayRecapModel): string {
@@ -97,6 +112,10 @@ export function DayRecap({ model }: { model: DayRecapModel }) {
       </View>
 
       <Text style={styles.callout}>{leakCallout(model)}</Text>
+
+      {matchTally(model) != null && (
+        <Text style={styles.matchTally}>{matchTally(model)}</Text>
+      )}
     </View>
   );
 }
@@ -143,5 +162,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 20,
     fontStyle: 'italic',
+  },
+  matchTally: {
+    fontSize: 14,
+    color: colors.reward,
+    lineHeight: 20,
+    fontWeight: '600',
+    marginTop: 10,
   },
 });

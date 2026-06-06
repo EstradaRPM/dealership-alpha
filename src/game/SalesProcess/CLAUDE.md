@@ -48,6 +48,8 @@ Quadrant close + price formation (#90):
   - **Low-trust forced close:** `outcome=buy AND unconditional AND trust < trustFloor` → `badReview=true + highFiResistance=true` (signals downstream).
   - `closingComposite` = `skill.skillFor('NEGOTIATE')` — the NEGOTIATE gate skill drives price hold.
 
+Customer→vehicle match-payoff (#199) — `pickVehicleForMatch(customer, lot, deps?) → { vehicleId, matchQuality } | null`. Same argmax pipeline as `pickVehicleFor`; additionally returns the winner's want-axis `fit` ∈ [0,1] as `matchQuality` — the loop's match-payoff signal ("you had what they wanted"), distinct from the composite `score` (which folds price + reputation). `pickVehicleFor` is now a thin id-only wrapper over it. StaffDispatch carries `matchQuality` onto `staff:auto_resolved` (closed); the floor toast + DayRecap tally threshold it (`data/tunables.json` `matchPayoff.strongMatchThreshold`).
+
 Customer→vehicle matcher (#145) — `pickVehicleFor(customer, lot, deps?) → vehicleId | null`. Filters the lot by `isEligible` then `nonnegotiablesSatisfied`, argmax-scores survivors as `wantAxisFit·WANT_WEIGHT − pricePenalty·priceSensitivity + reputationBonus(make)`. Reputation hook is a stub (`() => 0`); real surface is a follow-on. Headroom: cash = `wealth × cashSpendFraction`, finance = `annualIncome`. Pure, deterministic — ties break by ascending `vehicleId` (no RNG). `MatchableVehicle` is `SpacedVehicleInput & PricedVehicleInput & { id }` (Inventory's `LotVehicle` satisfies it structurally); `MatchCustomer` accepts an optional pre-classified `axisProfile` to skip the seeded `classifyAxes` call.
 
 Affordability eligibility (#144) — pure, deterministic helpers for whether a deal can structure:

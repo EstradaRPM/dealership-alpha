@@ -94,10 +94,11 @@ export type {
   FinanceFailReason,
 } from './affordability';
 
-export { pickVehicleFor } from './pickVehicle';
+export { pickVehicleFor, pickVehicleForMatch } from './pickVehicle';
 export type {
   MatchableVehicle,
   MatchCustomer,
   PickVehicleDeps,
   ReputationBonusFn,
+  VehicleMatch,
 } from './pickVehicle';

@@ -86,6 +86,13 @@ export const TunablesSchema = z.object({
       )
       .nonempty(),
   }),
+  // Inventory-buyer match-payoff beat (#199). Presentation-only: the want-axis
+  // fit a closed deal must clear for the floor toast ("you had what they
+  // wanted") + the DayRecap "strong match" tally to count it. Game logic never
+  // reads this — it thresholds the `matchQuality` carried on staff:auto_resolved.
+  matchPayoff: z.object({
+    strongMatchThreshold: z.number().min(0).max(1),
+  }),
   economy: z.object({
     startingCash: z.number().nonnegative(),
     dailyOverheadBase: z.number().nonnegative(),
