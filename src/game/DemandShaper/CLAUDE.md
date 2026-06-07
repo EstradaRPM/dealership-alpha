@@ -25,6 +25,10 @@ player-influenceable demand-shaping loop).
     replays (#122) reproduce the persona sequence.
   - `recordArrival(persona)` — append a realized arrival to the trailing window.
   - `getObservedMix()` — per-persona `{ count, share, trend }` over the window.
+  - `snapshot()/restore()` (barrel-exported `DemandShaperSnapshot`) persist
+    `{ baselineMix, activeInputs, observedHistory }`. `activeInputs` is the
+    reserved attributed-lever seam for the targeting slices; it is empty in the
+    #198 behavior-neutral baseline.
 
 ## Events
 None — a library/factory module. The composition root drives it from inside the
@@ -38,4 +42,6 @@ assemble the MANAGERIAL readout model.
 - Persona-mix only. **Does NOT** touch the locked #125 `DemandContext` (the
   volume projection FloorSim consumes) — segment/body-style demand stays
   emergent via persona → preference → `pickVehicleFor` → segment taxonomy.
-- Not yet persisted; save/load of the mix + observed window is #210.
+- Persisted through `worldSnapshot` v2 (#210). The v1→v2 migration materializes
+  a behavior-neutral uniform baseline, empty active inputs, and empty observed
+  history for pre-#210 saves.

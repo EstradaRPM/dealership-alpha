@@ -38,11 +38,16 @@ import type { ServiceQueueSnapshot } from './game/ServiceQueue';
 import type { DepartmentQueueSnapshot } from './game/DepartmentQueue';
 import type { KPIDashboardSnapshot } from './game/KPIDashboard';
 import type { TelemetrySnapshot } from './game/Telemetry';
+import { SALES_ARCHETYPES } from './game/CustomerPool';
+import {
+  createDefaultDemandShaperSnapshot,
+  type DemandShaperSnapshot,
+} from './game/DemandShaper';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 1;
+export const WORLD_SNAPSHOT_VERSION = 2;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -67,6 +72,7 @@ export type WorldSnapshot = {
     readonly departmentQueue: DepartmentQueueSnapshot;
     readonly kpiDashboard: KPIDashboardSnapshot;
     readonly telemetry: TelemetrySnapshot;
+    readonly demandShaper: DemandShaperSnapshot;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -94,13 +100,22 @@ export type WorldSnapshotMigration = (
 ) => PersistedWorldSnapshot;
 
 /**
- * Registered world-snapshot migrations, keyed by source version. Empty while
- * the envelope sits at v1 (the first versioned shape, #188): there is no prior
- * shape to upgrade from yet. When a future slice adds/restructures module keys,
- * it bumps `WORLD_SNAPSHOT_VERSION` and registers the v1→v2 step here.
+ * Registered world-snapshot migrations, keyed by source version. Each module-key
+ * addition/restructure bumps `WORLD_SNAPSHOT_VERSION` and materializes the
+ * behavior-neutral default for older saves.
  */
 export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
-  {};
+  {
+    1: (snap) => ({
+      version: 2,
+      modules: {
+        ...snap.modules,
+        demandShaper: createDefaultDemandShaperSnapshot(
+          SALES_ARCHETYPES.map((a) => a.personId),
+        ),
+      },
+    }),
+  };
 
 /**
  * Upgrade a persisted world snapshot to the current envelope shape, running
@@ -152,6 +167,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       departmentQueue: world.departmentQueue.snapshot(),
       kpiDashboard: world.kpiDashboard.snapshot(),
       telemetry: world.telemetry.snapshot(),
+      demandShaper: world.demandShaper.snapshot(),
     },
   };
 }
@@ -180,4 +196,5 @@ export function restoreWorld(
   world.departmentQueue.restore(snap.modules.departmentQueue);
   world.kpiDashboard.restore(snap.modules.kpiDashboard);
   world.telemetry.restore(snap.modules.telemetry);
+  world.demandShaper.restore(snap.modules.demandShaper);
 }
