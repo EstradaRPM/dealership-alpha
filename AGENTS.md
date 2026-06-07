@@ -14,6 +14,8 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 
 **Cross-agent handoff:** follow `docs/agent-handoff.md`. Do not rely on private agent memory for load-bearing context; put task intent, acceptance criteria, implementation decisions, and closeout notes in GitHub issues and repo docs.
 
+**Known setup/doc work:** if you create a coherent setup, documentation, recipe, template, or handoff change for future agents, commit that known-intent work as its own narrow commit before ending unless the user explicitly says not to commit. Leave unrelated pre-existing implementation edits unstaged and call them out separately.
+
 **Context discipline:** Read a module's `AGENTS.md` before its code; prefer `Grep` + ranged `Read` over whole-file reads. Treat design-record issues (#95/#99/#107) as locked — don't re-grill or re-derive them.
 
 **Before implementing a slice, do NOT cold-read 10+ files into this context to relearn where things live.** That exploration is repeated, stable knowledge and burns the main context (a recent slice spent ~90k tokens this way before writing any code). Instead:

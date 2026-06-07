@@ -55,6 +55,15 @@ Next action:
 
 Do not rely on private chat memory for any of these fields.
 
+## Commit Known Setup Work
+
+When an agent creates a coherent setup, documentation, recipe, template, or
+handoff change intended to help future sessions, commit that known-intent work
+as its own narrow commit before ending the session unless the user explicitly
+says not to commit. Leave unrelated pre-existing implementation edits unstaged
+and identify them separately. Do not leave known setup work mixed with unrelated
+local changes.
+
 ## Agent Rules
 
 - Treat GitHub issue bodies and committed docs as authoritative over private memory or prior chat context.
