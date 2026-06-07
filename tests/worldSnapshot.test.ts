@@ -584,6 +584,54 @@ describe('FollowUpPool + queues + KPIDashboard + Telemetry through the world sea
   });
 });
 
+describe('DemandShaper through the world seam (#210)', () => {
+  function build(masterSeed: number) {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed, characterProfile: PROFILE });
+    return { world };
+  }
+
+  // The AC: save/load reproduces the demand "weather" the player was reading:
+  // current baseline mix, active influence inputs, and trailing observed history.
+  it('round-trips the mix and observed arrival history exactly', () => {
+    const seed = 9876;
+    const { world: original } = build(seed);
+    original.demandShaper.setMix({
+      young_family: 4,
+      enthusiast: 1,
+      commuter: 2,
+      retiree: 0,
+      tradesperson: 3,
+    });
+    original.demandShaper.recordArrival('tradesperson');
+    original.demandShaper.recordArrival('young_family');
+    original.demandShaper.recordArrival('tradesperson');
+    original.demandShaper.recordArrival('commuter');
+
+    const snap = snapshotWorld(original);
+    const reparsed = JSON.parse(JSON.stringify(snap)) as WorldSnapshot;
+    expect(reparsed).toEqual(snap);
+    expect(reparsed.modules.demandShaper).toEqual(
+      original.demandShaper.snapshot(),
+    );
+
+    const { world: rebuilt } = build(seed);
+    expect(rebuilt.demandShaper.getMix()).not.toEqual(
+      original.demandShaper.getMix(),
+    );
+    expect(rebuilt.demandShaper.snapshot().observedHistory).toEqual([]);
+
+    restoreWorld(reparsed, rebuilt);
+
+    expect(rebuilt.demandShaper.snapshot()).toEqual(
+      original.demandShaper.snapshot(),
+    );
+    expect(rebuilt.demandShaper.getObservedMix()).toEqual(
+      original.demandShaper.getObservedMix(),
+    );
+  });
+});
+
 describe('Multi-slot world persistence (#194)', () => {
   function build(masterSeed: number) {
     const bus = createEventBus();
@@ -685,6 +733,33 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     expect(snapshotWorld(world).version).toBe(WORLD_SNAPSHOT_VERSION);
   });
 
+  it('migrates pre-DemandShaper snapshots by adding a default shaper blob', () => {
+    const { world } = build(4242);
+    const current = snapshotWorld(world);
+    const { demandShaper, ...legacyModules } = current.modules;
+    expect(demandShaper.schemaVersion).toBe(1);
+    const persisted: PersistedWorldSnapshot = {
+      version: 1,
+      modules: legacyModules,
+    };
+
+    const migrated = migrateWorldSnapshot(persisted);
+
+    expect(migrated.version).toBe(WORLD_SNAPSHOT_VERSION);
+    expect(migrated.modules.demandShaper).toEqual({
+      schemaVersion: 1,
+      baselineMix: {
+        young_family: 1,
+        enthusiast: 1,
+        commuter: 1,
+        retiree: 1,
+        tradesperson: 1,
+      },
+      activeInputs: [],
+      observedHistory: [],
+    });
+  });
+
   // The AC round-trip: write a save at version N, bump the runtime to N+1 with a
   // registered migration, load → the older snapshot upgrades correctly.
   it('upgrades an older snapshot through a registered migration on load', () => {
@@ -693,25 +768,25 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     world.clock.advanceDay();
     world.economy.postRevenue(3_000, 'Sale');
 
-    // A current (v1) snapshot persisted to "disk" and read back as plain data.
-    const v1 = snapshotWorld(world);
-    const persisted = JSON.parse(JSON.stringify(v1)) as PersistedWorldSnapshot;
-    expect(persisted.version).toBe(1);
+    // A current snapshot persisted to "disk" and read back as plain data.
+    const v2 = snapshotWorld(world);
+    const persisted = JSON.parse(JSON.stringify(v2)) as PersistedWorldSnapshot;
+    expect(persisted.version).toBe(WORLD_SNAPSHOT_VERSION);
 
-    // Simulate a future schema change: v2 adds a module key. The runtime is now
-    // at v2 with a registered v1→v2 step (injected so we needn't ship a real v2).
+    // Simulate a future schema change: v3 adds a module key. The runtime is now
+    // at v3 with a registered v2→v3 step (injected so we needn't ship a real v3).
     const migrations: Record<number, WorldSnapshotMigration> = {
-      1: (snap) => ({
-        version: 2,
+      2: (snap) => ({
+        version: 3,
         modules: { ...snap.modules, widgets: { schemaVersion: 1, count: 0 } },
       }),
     };
 
-    const migrated = migrateWorldSnapshot(persisted, migrations, 2);
-    expect(migrated.version).toBe(2);
+    const migrated = migrateWorldSnapshot(persisted, migrations, 3);
+    expect(migrated.version).toBe(3);
     // Pre-existing module blobs survive the bump untouched...
-    expect(migrated.modules.gameClock).toEqual(v1.modules.gameClock);
-    expect(migrated.modules.economy).toEqual(v1.modules.economy);
+    expect(migrated.modules.gameClock).toEqual(v2.modules.gameClock);
+    expect(migrated.modules.economy).toEqual(v2.modules.economy);
     // ...and the new key is materialized at its default.
     expect((migrated.modules as Record<string, unknown>).widgets).toEqual({
       schemaVersion: 1,
@@ -741,13 +816,13 @@ describe('world-snapshot versioning + migrations (#196)', () => {
   it('fails safe when a migration step is missing (no silent corruption)', () => {
     const { world } = build(7);
     const v1 = snapshotWorld(world);
-    // Runtime claims v3 but only a v2→v3 step exists; the v1→v2 gap must throw
+    // Runtime claims v4 but only a v3→v4 step exists; the v2→v3 gap must throw
     // rather than restore a shape mismatched to the current modules.
     const migrations: Record<number, WorldSnapshotMigration> = {
-      2: (snap) => ({ ...snap, version: 3 }),
+      3: (snap) => ({ ...snap, version: 4 }),
     };
-    expect(() => migrateWorldSnapshot(v1, migrations, 3)).toThrow(
-      /No world-snapshot migration registered from v1/,
+    expect(() => migrateWorldSnapshot(v1, migrations, 4)).toThrow(
+      /No world-snapshot migration registered from v2/,
     );
   });
 });
@@ -778,6 +853,9 @@ describe('snapshotWorld / restoreWorld seam (#188)', () => {
     expect(snap.modules.competitorMarket.schemaVersion).toBe(1);
     expect(Array.isArray(snap.modules.competitorMarket.competitors)).toBe(true);
     expect(typeof snap.modules.competitorMarket.rngState).toBe('number');
+    expect(snap.modules.demandShaper.schemaVersion).toBe(1);
+    expect(Array.isArray(snap.modules.demandShaper.activeInputs)).toBe(true);
+    expect(Array.isArray(snap.modules.demandShaper.observedHistory)).toBe(true);
   });
 
   it('round-trips a bought + aged lot through the world seam', () => {

@@ -18,6 +18,20 @@ export type PersonaMix = Record<string, number>;
 
 export type DemandTrend = 'rising' | 'steady' | 'falling';
 
+export interface DemandInfluenceInput {
+  readonly id: string;
+  readonly label: string;
+  readonly weights: PersonaMix;
+}
+
+export interface DemandShaperSnapshot {
+  readonly schemaVersion: 1;
+  readonly baselineMix: PersonaMix;
+  readonly activeInputs: readonly DemandInfluenceInput[];
+  /** Oldest first, capped by config.windowSize on restore. */
+  readonly observedHistory: readonly string[];
+}
+
 export interface ObservedMixEntry {
   persona: string;
   /** Raw arrival count inside the current trailing window. */
@@ -55,6 +69,19 @@ export interface DemandShaper {
   recordArrival(persona: string): void;
   /** Per-persona count + share + trend over the current trailing window. */
   getObservedMix(): readonly ObservedMixEntry[];
+  snapshot(): DemandShaperSnapshot;
+  restore(snap: DemandShaperSnapshot): void;
+}
+
+export function createDefaultDemandShaperSnapshot(
+  personas: readonly string[],
+): DemandShaperSnapshot {
+  return {
+    schemaVersion: 1,
+    baselineMix: Object.fromEntries(personas.map((p) => [p, 1])),
+    activeInputs: [],
+    observedHistory: [],
+  };
 }
 
 export function createDemandShaper(deps: {
@@ -71,7 +98,8 @@ export function createDemandShaper(deps: {
   const { windowSize, trendEpsilon } = deps.config;
 
   // Raw weights; normalized lazily on read/draw so set/normalize stay consistent.
-  let weights: PersonaMix = {};
+  let baselineWeights: PersonaMix = {};
+  let activeInputs: DemandInfluenceInput[] = [];
   const setWeights = (raw: PersonaMix): void => {
     const next: PersonaMix = {};
     for (const p of personas) {
@@ -86,16 +114,16 @@ export function createDemandShaper(deps: {
     }
     const sum = personas.reduce((s, p) => s + next[p], 0);
     if (sum <= 0) throw new Error('DemandShaper mix sums to 0 — no persona can spawn');
-    weights = next;
+    baselineWeights = next;
   };
   setWeights(
     deps.initialMix ?? Object.fromEntries(personas.map((p) => [p, 1])),
   );
 
   const normalized = (): PersonaMix => {
-    const sum = personas.reduce((s, p) => s + weights[p], 0);
+    const sum = personas.reduce((s, p) => s + baselineWeights[p], 0);
     const mix: PersonaMix = {};
-    for (const p of personas) mix[p] = weights[p] / sum;
+    for (const p of personas) mix[p] = baselineWeights[p] / sum;
     return mix;
   };
 
@@ -148,6 +176,39 @@ export function createDemandShaper(deps: {
         share: total === 0 ? 0 : countIn(window, persona) / total,
         trend: trendFor(persona),
       }));
+    },
+    snapshot: () => ({
+      schemaVersion: 1,
+      baselineMix: { ...baselineWeights },
+      activeInputs: activeInputs.map((input) => ({
+        ...input,
+        weights: { ...input.weights },
+      })),
+      observedHistory: [...window],
+    }),
+    restore: (snap) => {
+      if (snap.schemaVersion !== 1) {
+        throw new Error(
+          `DemandShaper snapshot schema ${snap.schemaVersion} is not supported`,
+        );
+      }
+      setWeights(snap.baselineMix);
+      activeInputs = snap.activeInputs.map((input) => {
+        for (const key of Object.keys(input.weights)) {
+          if (!personaSet.has(key)) {
+            throw new Error(`DemandShaper: unknown persona "${key}"`);
+          }
+        }
+        return { ...input, weights: { ...input.weights } };
+      });
+      window.length = 0;
+      for (const persona of snap.observedHistory) {
+        if (!personaSet.has(persona)) {
+          throw new Error(`DemandShaper: cannot restore unknown persona "${persona}"`);
+        }
+        window.push(persona);
+      }
+      while (window.length > windowSize) window.shift();
     },
   };
 }

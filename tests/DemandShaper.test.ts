@@ -1,4 +1,7 @@
-import { createDemandShaper } from '../src/game/DemandShaper';
+import {
+  createDemandShaper,
+  type DemandShaperSnapshot,
+} from '../src/game/DemandShaper';
 import { createRng } from '../src/game/NPC/Rng';
 
 const PERSONAS = [
@@ -116,5 +119,55 @@ describe('DemandShaper — observed mix + trend', () => {
     expect(observed.find((e) => e.persona === 'enthusiast')!.trend).toBe('rising');
     expect(observed.find((e) => e.persona === 'commuter')!.trend).toBe('falling');
     expect(observed.find((e) => e.persona === 'retiree')!.trend).toBe('steady');
+  });
+});
+
+describe('DemandShaper — snapshot/restore', () => {
+  it('round-trips baseline, active inputs, and observed history exactly', () => {
+    const original = makeShaper();
+    original.setMix({
+      young_family: 5,
+      enthusiast: 1,
+      commuter: 3,
+      retiree: 0,
+      tradesperson: 1,
+    });
+    original.recordArrival('young_family');
+    original.recordArrival('commuter');
+    original.recordArrival('young_family');
+
+    const snap: DemandShaperSnapshot = {
+      ...original.snapshot(),
+      activeInputs: [
+        {
+          id: 'test-inventory',
+          label: 'Inventory lean',
+          weights: { commuter: 0.25, tradesperson: 0.15 },
+        },
+      ],
+    };
+    const reparsed = JSON.parse(JSON.stringify(snap)) as DemandShaperSnapshot;
+
+    const rebuilt = makeShaper();
+    rebuilt.restore(reparsed);
+
+    expect(rebuilt.snapshot()).toEqual(reparsed);
+    expect(rebuilt.getMix()).toEqual(original.getMix());
+    expect(rebuilt.getObservedMix()).toEqual(original.getObservedMix());
+  });
+
+  it('caps restored observed history to the configured trailing window', () => {
+    const shaper = createDemandShaper({
+      personas: PERSONAS,
+      config: { windowSize: 2, trendEpsilon: 0.08 },
+    });
+    shaper.restore({
+      schemaVersion: 1,
+      baselineMix: { young_family: 1, enthusiast: 1, commuter: 1, retiree: 1, tradesperson: 1 },
+      activeInputs: [],
+      observedHistory: ['young_family', 'commuter', 'tradesperson'],
+    });
+
+    expect(shaper.snapshot().observedHistory).toEqual(['commuter', 'tradesperson']);
   });
 });
