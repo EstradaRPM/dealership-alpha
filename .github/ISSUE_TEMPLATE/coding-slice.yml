@@ -1,0 +1,109 @@
+name: Coding slice
+description: Implementation issue with enough context for future Codex/Claude sessions.
+title: "[Slice] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for implementation work. The issue should carry enough context that a future agent can resume without private memory.
+
+  - type: textarea
+    id: parent_dependencies
+    attributes:
+      label: Parent / Dependencies
+      description: Link the parent PRD/design issue and list blockers or prerequisite issues.
+      placeholder: |
+        Parent: #123
+        Blocked by: #120, #121
+    validations:
+      required: false
+
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent
+      description: State the user/player/developer outcome this slice should produce.
+      placeholder: What should be true after this issue is complete?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / Source of Truth
+      description: Link the durable context a future agent should read before coding.
+      placeholder: |
+        - docs/spec-condensed.md
+        - docs/agent-handoff.md
+        - src/game/ModuleName/CLAUDE.md
+        - Related issue comments / commit SHAs
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation_decisions
+    attributes:
+      label: Implementation Decisions
+      description: Record constraints or decisions that future work depends on. Put durable design decisions in docs/ADRs too.
+      placeholder: |
+        - Use the existing EventBus contract; no direct cross-module imports.
+        - Persist via worldSnapshot; do not touch SaveStore storage drivers.
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Concrete, testable completion criteria.
+      placeholder: |
+        - [ ] Player-visible behavior is reachable in the live flow.
+        - [ ] State round-trips through save/load.
+        - [ ] Existing tests still pass.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tests
+    attributes:
+      label: Test Plan
+      description: Name the expected tests or verification commands.
+      placeholder: |
+        - npm run typecheck
+        - npm test -- tests/Example.test.ts
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      description: Guardrails that prevent scope creep.
+      placeholder: What should this issue explicitly not change?
+    validations:
+      required: false
+
+  - type: textarea
+    id: docs
+    attributes:
+      label: Documentation Updates
+      description: List repo docs/module docs/ADRs that must be updated if this issue changes durable behavior.
+      placeholder: |
+        - src/game/ModuleName/CLAUDE.md
+        - docs/spec-condensed.md
+    validations:
+      required: false
+
+  - type: textarea
+    id: closeout
+    attributes:
+      label: Closeout Note
+      description: Fill this in when closing the issue so GitHub carries the handoff.
+      placeholder: |
+        Done in <commit SHA>.
+        Changed: ...
+        Tests: ...
+        Follow-ups: ...
+    validations:
+      required: false
