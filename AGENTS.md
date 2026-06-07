@@ -18,6 +18,7 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 
 **Before implementing a slice, do NOT cold-read 10+ files into this context to relearn where things live.** That exploration is repeated, stable knowledge and burns the main context (a recent slice spent ~90k tokens this way before writing any code). Instead:
 - **Generation seams** (a value generated per customer/visit from `data/`, injected through a factory, composed in `createWorld`) follow a fixed recipe — read `docs/generation-seam-recipe.md`, not the prior slices' source. Most remaining MarketEconomy slices (#155–#181) are generation seams.
+- **Demand-shaping slices** (parent #197, including #211/#212 and descendants) follow `docs/demand-shaping-recipe.md`. Read the issue body, that recipe, `src/game/DemandShaper/CLAUDE.md`, and the one target test/component before source exploration.
 - **For anything else** that needs broad multi-file orientation, delegate it to an `Explore` subagent ("where does X live, how was Y wired, what's the shape of Z"). The fan-out reads stay in the subagent's context; you get back only the conclusions + `file:line` pointers. This is the default, not a fallback.
 - When you learn a reusable wiring pattern that isn't yet written down, capture it as a short `docs/*-recipe.md` so the next slice reads one doc instead of re-deriving it.
 

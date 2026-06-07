@@ -36,10 +36,31 @@ body:
       placeholder: |
         - docs/spec-condensed.md
         - docs/agent-handoff.md
+        - docs/<epic-or-module>-recipe.md
         - src/game/ModuleName/CLAUDE.md
         - Related issue comments / commit SHAs
     validations:
       required: true
+
+  - type: textarea
+    id: startup_packet
+    attributes:
+      label: Agent Startup Packet
+      description: Keep this small. Name the exact files/tests to read first and any files not to cold-read.
+      placeholder: |
+        First reads:
+        - docs/<epic-or-module>-recipe.md
+        - src/game/ModuleName/CLAUDE.md
+        - tests/Target.test.ts
+
+        Use rg for:
+        - symbolName
+
+        Do not cold-read:
+        - unrelated prior slices
+        - broad source directories
+    validations:
+      required: false
 
   - type: textarea
     id: implementation_decisions
@@ -104,6 +125,7 @@ body:
         Done in <commit SHA>.
         Changed: ...
         Tests: ...
+        Context packet updated: yes/no
         Follow-ups: ...
     validations:
       required: false
