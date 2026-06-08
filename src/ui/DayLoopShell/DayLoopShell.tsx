@@ -65,6 +65,8 @@ interface Props {
    * `DemandShaper.getObservedMix()`. Shown on MANAGERIAL. Omitted ⇒ hidden.
    */
   demandReadout?: DemandReadoutModel;
+  /** Open the in-session save/load/menu surface. */
+  onOpenGameMenu?: () => void;
   /**
    * Non-blocking manager summaries for issues that need attention but do not
    * interrupt the day boundary. Must-answer beats stay in overlay components.
@@ -97,6 +99,7 @@ export function DayLoopShell({
   recap,
   leverProps,
   demandReadout,
+  onOpenGameMenu,
   managerAlerts = [],
 }: Props) {
   if (state.phase === 'FLOOR_OPEN' && floorModel) {
@@ -106,6 +109,7 @@ export function DayLoopShell({
         controls={floorControls}
         onExceptionPress={onExceptionPress}
         onCherryPick={onCherryPick}
+        onOpenGameMenu={onOpenGameMenu}
       />
     );
   }
@@ -121,12 +125,26 @@ export function DayLoopShell({
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={[styles.dealershipName, { color: displayAccent }]}>
-          {displayName}
-        </Text>
-        <Text style={styles.tierLabel}>
-          Tier {tier} — {tierEntry.label}
-        </Text>
+        <View style={styles.titleRow}>
+          <View style={styles.titleBlock}>
+            <Text style={[styles.dealershipName, { color: displayAccent }]}>
+              {displayName}
+            </Text>
+            <Text style={styles.tierLabel}>
+              Tier {tier} — {tierEntry.label}
+            </Text>
+          </View>
+          {onOpenGameMenu ? (
+            <TouchableOpacity
+              style={styles.menuBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Open game menu"
+              onPress={onOpenGameMenu}
+            >
+              <Text style={styles.menuBtnText}>Menu</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
         {(cash != null || reputation != null) && (
           <View style={styles.statStrip}>
             {cash != null && (
@@ -303,6 +321,13 @@ export function DayLoopShell({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.base },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  titleBlock: { flex: 1 },
   dealershipName: { fontSize: 22, fontWeight: '700' },
   tierLabel: {
     fontSize: 13,
@@ -317,6 +342,20 @@ const styles = StyleSheet.create({
     gap: 28,
   },
   stat: {},
+  menuBtn: {
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  menuBtnText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
   statLabel: {
     fontSize: 11,
     color: colors.textMuted,

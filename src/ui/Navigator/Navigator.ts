@@ -17,6 +17,9 @@ export type RouteParamMap = {
   // Settings / snapshot rollback is a closeable route: reachable from the
   // start menu and closed with back() to the prior screen.
   settings: undefined;
+  // In-session pause/save/load surface. Pushed over the live game and closed
+  // with back(); save/load side effects stay in the composition root.
+  'in-game-menu': undefined;
   'character-creation': undefined;
   game: undefined;
   auction: undefined;

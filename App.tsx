@@ -28,6 +28,7 @@ import {
 } from './src/worldSnapshot';
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { MainMenu } from './src/ui/MainMenu';
+import { InGameMenu } from './src/ui/InGameMenu';
 import { DayLoopShell } from './src/ui/DayLoopShell';
 import { SettingsScreen } from './src/ui/SettingsScreen';
 import type { DayRecapModel } from './src/ui/DayRecap';
@@ -59,6 +60,7 @@ import type {
   MultiSlotSaveStore,
   MidDayCheckpoint,
   SnapshotStore,
+  SlotMetadata,
   WeeklySnapshot,
 } from './src/game/SaveStore';
 import type { LotVehicle } from './src/game/Inventory';
@@ -311,6 +313,9 @@ export default function App() {
   const [settingsSnapshots, setSettingsSnapshots] = useState<
     readonly WeeklySnapshot[]
   >([]);
+  const [inGameSlots, setInGameSlots] = useState<readonly SlotMetadata[]>([]);
+  const [activeSlotId, setActiveSlotId] = useState<string | null>(null);
+  const [inGameMenuStatus, setInGameMenuStatus] = useState('');
   // Event-interrupt overlay channel (#84 / design record #127). Lives in the
   // composition root, layered ABOVE the Navigator — NOT a RouteParamMap route.
   // Non-terminal beats (career:tier_up / chapter rebrand) enqueue silently
@@ -338,6 +343,8 @@ export default function App() {
     onTick: bump,
     hold:
       (handSession != null && !HAND_PLAY_LIVE) ||
+      screen === 'in-game-menu' ||
+      (screen === 'settings' && world != null) ||
       monthClose != null ||
       chapterQueue.length > 0 ||
       endCard != null,
@@ -434,6 +441,75 @@ export default function App() {
     setSettingsSnapshots(
       snapshotStore ? await snapshotStore.listSnapshots() : [],
     );
+  };
+
+  const refreshInGameSlots = async () => {
+    const [slots, active] = await Promise.all([
+      slotStore.listSlots(),
+      slotStore.getActiveSlotId(),
+    ]);
+    setInGameSlots(slots);
+    setActiveSlotId(active);
+  };
+
+  const saveCurrentGame = async () => {
+    const w = worldRef.current;
+    if (!w) return;
+    const worldSnapshot = snapshotWorld(w);
+    const existing = await saveStore.load();
+    const nextState = { ...(existing ?? {}), world: worldSnapshot };
+    await saveStore.save(nextState);
+    const cp = w.dayLoop.checkpoint();
+    if (cp) {
+      await slotStore.writeCheckpoint(cp);
+    } else {
+      await slotStore.clearCheckpoint();
+    }
+    await refreshInGameSlots();
+  };
+
+  const openInGameMenu = () => {
+    setInGameMenuStatus('');
+    void refreshInGameSlots();
+    nav.navigate('in-game-menu');
+  };
+
+  const handleManualSave = async () => {
+    setInGameMenuStatus('Saving...');
+    await saveCurrentGame();
+    setInGameMenuStatus('Saved.');
+  };
+
+  const handleInGameLoadSlot = async (slotId: string) => {
+    setInGameMenuStatus('Saving current game...');
+    await saveCurrentGame();
+    setInGameMenuStatus('Loading save...');
+    await slotStore.selectSlot(slotId);
+    await loadActiveSlotIntoGame();
+    setInGameMenuStatus('');
+  };
+
+  const resetSessionState = () => {
+    setProfile(null);
+    setWorld(null);
+    setLotVehicles([]);
+    setCash(0);
+    setGrossToday(0);
+    setFloorEvents([]);
+    setMatchTally({ strong: 0, matched: 0 });
+    setHandSession(null);
+    setHandResult(null);
+    setMonthClose(null);
+    setChapterQueue([]);
+    setEndCard(null);
+  };
+
+  const handleReturnToMainMenu = async () => {
+    setInGameMenuStatus('Saving current game...');
+    await saveCurrentGame();
+    resetSessionState();
+    setInGameMenuStatus('');
+    nav.reset('main-menu');
   };
 
   const openSettings = () => {
@@ -655,8 +731,7 @@ export default function App() {
   // into character-creation, which would have no slot to write into. The
   // player picks New Game from there.
   const handleSaveCleared = () => {
-    setProfile(null);
-    setWorld(null);
+    resetSessionState();
     nav.reset('main-menu');
   };
 
@@ -726,6 +801,22 @@ export default function App() {
           snapshots={settingsSnapshots}
           onRollback={(index) => void handleRollback(index)}
           onClose={() => nav.back()}
+        />
+      </>
+    );
+  } else if (screen === 'in-game-menu') {
+    content = (
+      <>
+        <StatusBar style="light" />
+        <InGameMenu
+          slots={inGameSlots}
+          activeSlotId={activeSlotId}
+          status={inGameMenuStatus}
+          onClose={() => nav.back()}
+          onSave={() => void handleManualSave()}
+          onLoadSlot={(slotId) => void handleInGameLoadSlot(slotId)}
+          onReturnToMainMenu={() => void handleReturnToMainMenu()}
+          onSettings={openSettings}
         />
       </>
     );
@@ -1043,6 +1134,7 @@ export default function App() {
           onCherryPick={floor && floor.canGrab() ? cherryPick : undefined}
           leverProps={leverProps}
           demandReadout={demandReadout}
+          onOpenGameMenu={openInGameMenu}
         />
         </View>
         <BottomNav

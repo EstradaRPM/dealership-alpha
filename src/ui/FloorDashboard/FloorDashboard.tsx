@@ -109,6 +109,8 @@ interface Props {
    * (e.g. nothing grabbable, or tick-budget exhausted).
    */
   onCherryPick?: () => void;
+  /** Open the in-session save/load/menu surface. */
+  onOpenGameMenu?: () => void;
 }
 
 function money(n: number): string {
@@ -156,6 +158,7 @@ export function FloorDashboard({
   controls,
   onExceptionPress,
   onCherryPick,
+  onOpenGameMenu,
 }: Props) {
   const {
     day,
@@ -196,6 +199,16 @@ export function FloorDashboard({
         >
           {exceptionPending ? '●' : '○'}
         </Text>
+        {onOpenGameMenu ? (
+          <TouchableOpacity
+            style={styles.menuBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Open game menu"
+            onPress={onOpenGameMenu}
+          >
+            <Text style={styles.menuBtnText}>Menu</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Live-clock controls (#121) */}
@@ -340,6 +353,19 @@ const styles = StyleSheet.create({
   },
   hudPip: { fontSize: 14, color: colors.border },
   hudPipActive: { color: colors.reward },
+  menuBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  menuBtnText: {
+    fontFamily: 'monospace',
+    fontSize: 11,
+    color: colors.textSecondary,
+    letterSpacing: 1,
+  },
   controlBar: {
     flexDirection: 'row',
     alignItems: 'center',

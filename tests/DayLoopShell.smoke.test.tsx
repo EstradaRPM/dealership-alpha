@@ -353,4 +353,19 @@ describe('DayLoopShell Manager Desk smoke', () => {
 
     expect(getByText('Open Floor →')).toBeTruthy();
   });
+
+  it('surfaces the game menu command on the Manager Desk', () => {
+    const onOpenGameMenu = jest.fn();
+    const { getByLabelText } = render(
+      <DayLoopShell
+        profile={PROFILE}
+        state={MANAGERIAL_AFTER_CLOSE}
+        onNextDay={() => {}}
+        onOpenGameMenu={onOpenGameMenu}
+      />,
+    );
+
+    fireEvent.press(getByLabelText('Open game menu'));
+    expect(onOpenGameMenu).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import {
   FloorDashboard,
   type FloorDashboardModel,
@@ -109,5 +109,15 @@ describe('FloorDashboard smoke tests', () => {
         />,
       ),
     ).not.toThrow();
+  });
+
+  it('surfaces the game menu command on the live floor HUD', () => {
+    const onOpenGameMenu = jest.fn();
+    const { getByLabelText } = render(
+      <FloorDashboard model={MODEL} onOpenGameMenu={onOpenGameMenu} />,
+    );
+
+    fireEvent.press(getByLabelText('Open game menu'));
+    expect(onOpenGameMenu).toHaveBeenCalledTimes(1);
   });
 });
