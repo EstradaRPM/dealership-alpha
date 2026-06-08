@@ -30,7 +30,12 @@ import { computeDemandFactor } from './computeDemandFactor';
 import { createStaffOrg, type StaffOrg } from './game/StaffOrg';
 import { createCapacityManager } from './game/CapacityManager';
 import type { CapacityManager } from './game/CapacityManager';
-import { createStaffFloorDrain } from './game/StaffDispatch';
+import {
+  createStaffFloorDrain,
+  type HeldTradeReview,
+  type PlayerTradeDecision,
+  type PlayerTradeDecisionResult,
+} from './game/StaffDispatch';
 import {
   createMarketEconomy,
   rollAuctionSourceReliability,
@@ -126,6 +131,10 @@ export interface World {
     getAdvertisingCampaignId(): string;
     setAdvertisingCampaign(id: string): void;
   };
+  resolvePlayerTradeDecision(
+    customerId: string,
+    decision: PlayerTradeDecision,
+  ): PlayerTradeDecisionResult | null;
 }
 
 /**
@@ -589,6 +598,11 @@ export function createWorld(deps: {
     },
   };
 
+  // Player-review trades (#201): StaffDispatch owns the held close context and
+  // hands this composition root a closure. UI submits a decision through the
+  // World seam; App never replays close math or reaches into game internals.
+  const heldTradeReviews = new Map<string, HeldTradeReview>();
+
   // Per-day FloorSim seam set: CapacityManager / StaffDispatch / CustomerPool
   // behind the locked #99 seams. Invoked once per day → fresh per-day
   // instances.
@@ -664,6 +678,7 @@ export function createWorld(deps: {
         // #172: per-slot trade-acquisition policy. Live getter so a Settings
         // change applies on the next trade. Omitted ⇒ 1.0 (market).
         getTradePolicyMultiplier,
+        onTradeReviewHeld: (held) => heldTradeReviews.set(held.customerId, held),
       }),
     ],
     customerSource,
@@ -730,5 +745,14 @@ export function createWorld(deps: {
     competitorMarket,
     demandShaper,
     demandControls,
+    resolvePlayerTradeDecision(customerId, decision) {
+      const held = heldTradeReviews.get(customerId);
+      if (!held) return null;
+      const result = held.decide(decision);
+      if (result.status !== 'counter_rejected') {
+        heldTradeReviews.delete(customerId);
+      }
+      return result;
+    },
   };
 }

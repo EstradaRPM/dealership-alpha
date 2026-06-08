@@ -66,8 +66,14 @@ export function createSqliteDriver(options: SqliteDriverOptions = {}): StorageDr
  */
 export function createSqliteDriverFactory(options: SqliteDriverOptions = {}): DriverFactory {
   const base = (options.databaseName ?? DEFAULT_DB_NAME).replace(/\.db$/, '');
+  const drivers = new Map<string, StorageDriver>();
   return (key: string) => {
     const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, '_');
-    return createSqliteDriver({ databaseName: `${base}.${safeKey}.db` });
+    let driver = drivers.get(safeKey);
+    if (!driver) {
+      driver = createSqliteDriver({ databaseName: `${base}.${safeKey}.db` });
+      drivers.set(safeKey, driver);
+    }
+    return driver;
   };
 }

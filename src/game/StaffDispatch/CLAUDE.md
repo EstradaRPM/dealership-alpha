@@ -30,6 +30,12 @@ to the real machinery. Per customer (after exception roll + hold-floor):
      **`escalated`** from the resolver: the deal is HELD for the player and
      FloorSim raises a grabbable exception. No `deal:closed` / `trade:resolved`
      fires for this customer this pass.
+     With `onTradeReviewHeld` wired (#201), StaffDispatch also hands the
+     composition root a closure that resolves the held close after the player's
+     modal decision; accepted asks/counters emit `trade:resolved` and continue
+     through the same `deal:closed` / `staff:auto_resolved` path, declined trades
+     emit `staff:auto_resolved` with `trade_player_declined`, and rejected player
+     counters leave the review open.
    No trade / no book seam → closes without a trade.
 5. `dealEngine.computeAutoFni(effectiveness×100, unlockedRoles, fniRng)` →
    `dealEngine.closeDeal(...)` with the realized price, F&I attaches, and the
@@ -50,9 +56,10 @@ deal structure.
 
 `staff:auto_resolved` now carries an optional `reason` field on `no_sale`
 outcomes (`no_session | not_sales | no_fit | no_close | trade_negative_equity |
-trade_manager_declined | <WalkCause>`). A `player_review` trade emits no
-`staff:auto_resolved` — it surfaces via `trade:escalated` + an `escalated`
-resolver result. The sole `declined` path is an unstaffed floor.
+trade_manager_declined | trade_player_declined | <WalkCause>`). A pending
+`player_review` trade emits no `staff:auto_resolved` until the player declines
+or accepts a trade decision through the held-review closure. The sole `declined`
+path is an unstaffed floor.
 
 ### Required deps for the close
 `inventory` (lot snapshot), `dealEngine` (closeDeal + classifyCredit +
@@ -68,7 +75,8 @@ overlay), `getTradeEscalationOverride` (#170 — per-slot "always escalate above
 $X"; defaults to the trade-evaluation config default), `getTradePolicyMultiplier`
 (#172 — per-slot trade-acquisition policy multiplier passed to `resolveTradeIn`'s
 `policyMultiplier`; live getter so a Settings change applies on the next trade;
-omitted ⇒ `1.0` market).
+omitted ⇒ `1.0` market), `onTradeReviewHeld` (#201 — composition-root handoff
+for the player decision closure).
 
 ### Known gaps
 Cash buyers don't carry a stamped behavioral `cashSpendFraction` on the

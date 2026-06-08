@@ -10,6 +10,7 @@ import {
 import type {
   StaffDispatchConfig,
   StaffDispatchCustomerSession,
+  HeldTradeReview,
 } from '../src/game/StaffDispatch';
 import type { Inventory, LotVehicle } from '../src/game/Inventory';
 import { createDealEngine, loadCreditTiers } from '../src/game/DealEngine';
@@ -225,6 +226,7 @@ interface Wired {
   closedDeals: ClosedDealPayload[];
   trades: TradeResolvedPayload[];
   escalations: TradeEscalatedPayload[];
+  heldTradeReviews: HeldTradeReview[];
   inventorySold: string[];
 }
 
@@ -277,6 +279,7 @@ function setup(
   bus.subscribe('trade:resolved', (e) => trades.push(e as TradeResolvedPayload));
   const escalations: TradeEscalatedPayload[] = [];
   bus.subscribe('trade:escalated', (e) => escalations.push(e as TradeEscalatedPayload));
+  const heldTradeReviews: HeldTradeReview[] = [];
 
   createStaffDispatch({
     bus,
@@ -299,6 +302,7 @@ function setup(
     getTradeEscalationOverride: opts.tradeEscalationOverride,
     // #172: per-slot trade-acquisition policy multiplier.
     getTradePolicyMultiplier: opts.tradePolicyMultiplier,
+    onTradeReviewHeld: (held) => heldTradeReviews.push(held),
   });
 
   return {
@@ -310,6 +314,7 @@ function setup(
     closedDeals,
     trades,
     escalations,
+    heldTradeReviews,
     inventorySold: sold,
     economy,
   };
@@ -610,6 +615,29 @@ describe('StaffDispatch — trade escalation (#170)', () => {
     expect(e.target).toBe(TRADE_TARGET);
     expect(e.recommendedCounter).toBeGreaterThanOrEqual(TRADE_TARGET);
     expect(e.recommendedCounter).toBeLessThanOrEqual(9_000);
+  });
+
+  it('player accepting the staff counter completes the held close through the trade path', () => {
+    const w = setup([makeStaff(0.9)]);
+    unusualAsk(w);
+    admit(w.bus, 'cust:1');
+
+    expect(w.heldTradeReviews).toHaveLength(1);
+    const result = w.heldTradeReviews[0].decide({ kind: 'accept_counter' });
+
+    expect(result).toEqual({ status: 'closed' });
+    expect(w.trades).toHaveLength(1);
+    expect(w.trades[0]).toMatchObject({
+      customerId: 'cust:1',
+      action: 'counter',
+      hadCounter: true,
+    });
+    expect(w.closedDeals).toHaveLength(1);
+    expect(w.events).toHaveLength(1);
+    expect(w.events[0]).toMatchObject({
+      customerId: 'cust:1',
+      outcome: 'closed',
+    });
   });
 
   it('a GM resolves the escalated trade silently ⇒ deal closes, trade:resolved, no escalation', () => {

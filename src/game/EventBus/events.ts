@@ -412,7 +412,8 @@ export interface EventMap {
      * Named reason for a `no_sale` outcome (#147 tracer): `'no_session'`,
      * `'not_sales'`, `'no_fit'`, `'no_close'`, the trade walks
      * (`'trade_negative_equity'` — underwater trade (#169);
-     * `'trade_manager_declined'` — escalation manager refused (#170)), or a
+     * `'trade_manager_declined'` — escalation manager refused (#170);
+     * `'trade_player_declined'` — player refused a held trade (#201)), or a
      * SalesProcess `WalkCause` (`'patience_drain' | 'trust_collapse' |
      * 'demo_nonnegotiable_miss'`). Omitted on `outcome: 'closed'`. An *unusual*
      * trade escalated to the player emits `trade:escalated` instead (#170).

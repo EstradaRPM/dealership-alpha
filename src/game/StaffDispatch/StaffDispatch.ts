@@ -10,8 +10,9 @@ import type {
   TradeBookValueFn,
   TradeConditionRead,
   TradeApprover,
+  TradeReviewPayload,
 } from '../DealEngine';
-import { resolveTradeIn } from '../DealEngine';
+import { resolveTradeIn, rollCustomerCounterResponse } from '../DealEngine';
 import type { Person, Visit } from '../NPC';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import { EXCEPTION_FLAGS } from './types';
@@ -91,10 +92,38 @@ export interface StaffDispatchDeps {
    * path is unaffected.
    */
   getTradePolicyMultiplier?: () => number;
+  /**
+   * Player-review handoff (#201). StaffDispatch owns the held close context;
+   * the composition root stores the returned closure and calls it when the UI
+   * submits a player decision.
+   */
+  onTradeReviewHeld?: (held: HeldTradeReview) => void;
 }
 
 // Intentionally empty — dispatch is fully autonomous.
 export interface StaffDispatch {}
+
+export type PlayerTradeDecision =
+  | { readonly kind: 'accept_ask' }
+  | { readonly kind: 'accept_counter' }
+  | { readonly kind: 'propose_counter'; readonly amount: number }
+  | { readonly kind: 'decline' };
+
+export type PlayerTradeDecisionResult =
+  | { readonly status: 'closed' }
+  | { readonly status: 'abandoned' }
+  | {
+      readonly status: 'counter_rejected';
+      readonly amount: number;
+      readonly accepted: false;
+    };
+
+export interface HeldTradeReview {
+  readonly customerId: string;
+  readonly day: number;
+  readonly review: TradeReviewPayload;
+  decide(decision: PlayerTradeDecision): PlayerTradeDecisionResult;
+}
 
 /** Outcome of a single auto-resolution attempt against one sales customer. */
 type ResolveResult = 'resolved' | 'escalated' | 'declined';
@@ -276,6 +305,56 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       return 'resolved';
     }
 
+    const closeWithTrade = (tradeEquity: number): ResolveResult => {
+      const unlockedRoles =
+        deps.unlockedRolesFn?.() ??
+        Array.from(new Set(staffOrg.currentRoster.map(s => s.role_id)));
+      const fni = deps.dealEngine.computeAutoFni(
+        effectiveness * 100,
+        unlockedRoles,
+        deps.fniRng,
+      );
+
+      const agreedPrice = close.realizedPrice;
+      let downPayment = 0;
+      let loanAmount = 0;
+      let term = 0;
+      let apr = 0;
+      if (visit.paymentMethod === 'cash') {
+        // Net trade equity reduces the cash the customer brings to close.
+        downPayment = Math.max(0, agreedPrice - tradeEquity);
+      } else {
+        const policy = tier!;
+        apr = policy.apr;
+        term = policy.maxTerm;
+        downPayment = agreedPrice * (visit.downPaymentBehavior ?? 0);
+        // Net trade equity acts as additional cap reduction, shrinking the note.
+        loanAmount = Math.max(0, agreedPrice - downPayment - tradeEquity);
+      }
+
+      const result = deps.dealEngine.closeDeal({
+        customerId,
+        vehicleId: vehicle.id,
+        agreedPrice,
+        fniProducts: fni,
+        paymentMethod: visit.paymentMethod,
+        downPayment,
+        loanAmount,
+        term,
+        apr,
+      });
+
+      bus.publish('staff:auto_resolved', {
+        customerId,
+        staffId: salesperson.id,
+        day,
+        outcome: 'closed',
+        grossImpact: result.frontGross + result.backGross,
+        matchQuality: match.matchQuality,
+      });
+      return 'resolved';
+    };
+
     // Trade resolution (#169, escalation #170): a visit that arrived with a
     // trade resolves the allowance after the deal reaches close but before it
     // structures. Routine trades auto-resolve silently (emit `trade:resolved`,
@@ -310,6 +389,68 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         },
       );
       if (tradeRes.status === 'player_review') {
+        const review = tradeRes.review;
+        deps.onTradeReviewHeld?.({
+          customerId,
+          day,
+          review,
+          decide(decision) {
+            const settlePlayerTrade = (
+              agreedAllowance: number,
+              action: 'accept' | 'counter',
+              hadCounter: boolean,
+            ): PlayerTradeDecisionResult => {
+              if (agreedAllowance < review.payoff) {
+                emitNoSale(
+                  customerId,
+                  salesperson.id,
+                  day,
+                  'trade_negative_equity',
+                );
+                return { status: 'abandoned' };
+              }
+
+              bus.publish('trade:resolved', {
+                customerId,
+                currentVehicle: person.currentVehicle!,
+                agreedAllowance,
+                action,
+                hadCounter,
+                staffConfidence: tradeConditionRead?.confidence ?? 0,
+              });
+              closeWithTrade(agreedAllowance - review.payoff);
+              return { status: 'closed' };
+            };
+
+            if (decision.kind === 'decline') {
+              emitNoSale(customerId, salesperson.id, day, 'trade_player_declined');
+              return { status: 'abandoned' };
+            }
+            if (decision.kind === 'accept_ask') {
+              return settlePlayerTrade(review.allowanceAsk, 'accept', false);
+            }
+            if (decision.kind === 'accept_counter') {
+              return settlePlayerTrade(review.recommendedCounter, 'counter', true);
+            }
+
+            const accepted = rollCustomerCounterResponse(
+              {
+                allowanceAsk: review.allowanceAsk,
+                counterAmount: decision.amount,
+                priceSensitivity,
+              },
+              deriveSeed(masterSeed, 'trade_counter_response', { customerId, day }),
+            );
+            if (!accepted) {
+              return {
+                status: 'counter_rejected',
+                amount: decision.amount,
+                accepted: false,
+              };
+            }
+            return settlePlayerTrade(decision.amount, 'counter', true);
+          },
+        });
         // Hand the manager-attention overlay everything it needs, then hold the
         // deal for the player by surfacing this as a floor exception.
         bus.publish('trade:escalated', {
@@ -347,53 +488,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       });
     }
 
-    const unlockedRoles =
-      deps.unlockedRolesFn?.() ??
-      Array.from(new Set(staffOrg.currentRoster.map(s => s.role_id)));
-    const fni = deps.dealEngine.computeAutoFni(
-      effectiveness * 100,
-      unlockedRoles,
-      deps.fniRng,
-    );
-
-    const agreedPrice = close.realizedPrice;
-    let downPayment = 0;
-    let loanAmount = 0;
-    let term = 0;
-    let apr = 0;
-    if (visit.paymentMethod === 'cash') {
-      // Net trade equity reduces the cash the customer brings to close.
-      downPayment = Math.max(0, agreedPrice - tradeEquity);
-    } else {
-      const policy = tier!;
-      apr = policy.apr;
-      term = policy.maxTerm;
-      downPayment = agreedPrice * (visit.downPaymentBehavior ?? 0);
-      // Net trade equity acts as additional cap reduction, shrinking the note.
-      loanAmount = Math.max(0, agreedPrice - downPayment - tradeEquity);
-    }
-
-    const result = deps.dealEngine.closeDeal({
-      customerId,
-      vehicleId: vehicle.id,
-      agreedPrice,
-      fniProducts: fni,
-      paymentMethod: visit.paymentMethod,
-      downPayment,
-      loanAmount,
-      term,
-      apr,
-    });
-
-    bus.publish('staff:auto_resolved', {
-      customerId,
-      staffId: salesperson.id,
-      day,
-      outcome: 'closed',
-      grossImpact: result.frontGross + result.backGross,
-      matchQuality: match.matchQuality,
-    });
-    return 'resolved';
+    return closeWithTrade(tradeEquity);
   };
 }
 

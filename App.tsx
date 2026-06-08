@@ -44,6 +44,11 @@ import type {
   FloorEvent,
 } from './src/ui/FloorDashboard';
 import { HandPlayModal, type HandPlayOutcome } from './src/ui/HandPlayModal';
+import {
+  TradeEscalationModal,
+  type TradeDecision,
+  type TradeReview,
+} from './src/ui/TradeEscalationModal';
 import { useFloorRenderLoop } from './src/ui/FloorRenderLoop';
 import { AuctionMenu } from './src/ui/AuctionMenu';
 import {
@@ -60,7 +65,9 @@ import {
 import type { CharacterProfile } from './src/game/CareerProgression';
 import type {
   SaveStore,
+  SaveState,
   MultiSlotSaveStore,
+  DriverFactory,
   MidDayCheckpoint,
   SnapshotStore,
   SlotMetadata,
@@ -133,42 +140,52 @@ const DEFAULT_HIRING_ROLE_ID = 'salesperson';
 // trajectory; the per-slot checkpoint cell (#109/#122) lives beside it,
 // isolated, so the in-progress FloorSim checkpoint can never collide with the
 // main save blob and never bleeds between slots.
-const storageDriverFactory = createSqliteDriverFactory();
-const slotStore: MultiSlotSaveStore = createMultiSlotSaveStore(
-  storageDriverFactory,
-);
-
 function snapshotKey(slotId: string): string {
   return `snapshot:${slotId}`;
 }
 
-async function snapshotStoreForActiveSlot(): Promise<SnapshotStore | null> {
-  const activeSlotId = await slotStore.getActiveSlotId();
-  return activeSlotId === null
-    ? null
-    : createSnapshotStore(storageDriverFactory(snapshotKey(activeSlotId)));
+interface AppServices {
+  bus: ReturnType<typeof createEventBus>;
+  saveStore: SaveStore;
+  slotStore: MultiSlotSaveStore;
+  snapshotStoreForActiveSlot(): Promise<SnapshotStore | null>;
 }
-// Active-slot-backed SaveStore adapter (#194). The character/admin/end-card
-// flows depend on the narrow single-blob SaveStore surface (save/load/clear);
-// this presents exactly that, always addressing whichever slot is active.
-// Slot creation/selection is owned entirely by the start menu (#195) — by the
-// time anything saves, the MainMenu has already created+selected the active
-// slot, so there is no lazy auto-create here. The slot-picker `day`/`tier`
-// metadata is read off the persisted world snapshot when present, else 0/1.
-const saveStore: SaveStore = {
-  async save(state) {
-    const snap = state.world as WorldSnapshot | undefined;
-    const day = snap?.modules.gameClock.day ?? 0;
-    const tier = snap?.modules.tierManager.currentTier ?? 1;
-    await slotStore.save(state, { day, tier });
-  },
-  load: () => slotStore.load(),
-  async clear() {
-    const id = await slotStore.getActiveSlotId();
-    if (id !== null) await slotStore.deleteSlot(id);
-  },
-};
-const bus = createEventBus();
+
+function createAppServices(driverFactory: DriverFactory): AppServices {
+  const slotStore: MultiSlotSaveStore = createMultiSlotSaveStore(driverFactory);
+  // Active-slot-backed SaveStore adapter (#194). The character/admin/end-card
+  // flows depend on the narrow single-blob SaveStore surface (save/load/clear);
+  // this presents exactly that, always addressing whichever slot is active.
+  // Slot creation/selection is owned entirely by the start menu (#195) — by the
+  // time anything saves, the MainMenu has already created+selected the active
+  // slot, so there is no lazy auto-create here. The slot-picker `day`/`tier`
+  // metadata is read off the persisted world snapshot when present, else 0/1.
+  const saveStore: SaveStore = {
+    async save(state) {
+      const snap = state.world as WorldSnapshot | undefined;
+      const day = snap?.modules.gameClock.day ?? 0;
+      const tier = snap?.modules.tierManager.currentTier ?? 1;
+      await slotStore.save(state, { day, tier });
+    },
+    load: () => slotStore.load(),
+    async clear() {
+      const id = await slotStore.getActiveSlotId();
+      if (id !== null) await slotStore.deleteSlot(id);
+    },
+  };
+
+  return {
+    bus: createEventBus(),
+    saveStore,
+    slotStore,
+    async snapshotStoreForActiveSlot() {
+      const activeSlotId = await slotStore.getActiveSlotId();
+      return activeSlotId === null
+        ? null
+        : createSnapshotStore(driverFactory(snapshotKey(activeSlotId)));
+    },
+  };
+}
 
 // staffTaxonomy is seed-free: kept module-level so SKILL_CAPS (PersonnelScreen
 // bars, #120) and the FLOOR-OPEN staff-strip department lookup don't depend on
@@ -277,7 +294,26 @@ function buildCoverageGap(
 // a magic number. clock:month_ended fires on endingDay % daysPerMonth === 0.
 const DAYS_PER_MONTH = loadTunables().clock.daysPerMonth;
 
-export default function App() {
+export interface DealershipAppProps {
+  driverFactory?: DriverFactory;
+  onServicesReady?: (services: AppServices) => void;
+}
+
+export function DealershipApp({
+  driverFactory,
+  onServicesReady,
+}: DealershipAppProps) {
+  const servicesRef = useRef<AppServices | null>(null);
+  if (servicesRef.current === null) {
+    servicesRef.current = createAppServices(
+      driverFactory ?? createSqliteDriverFactory(),
+    );
+  }
+  const { bus, saveStore, slotStore, snapshotStoreForActiveSlot } =
+    servicesRef.current;
+  useEffect(() => {
+    onServicesReady?.(servicesRef.current as AppServices);
+  }, [onServicesReady]);
   const nav = useNavigator('loading');
   const screen = nav.current.route;
   const [profile, setProfile] = useState<CharacterProfile | null>(null);
@@ -336,6 +372,11 @@ export default function App() {
   // and dispatches the picked approach back through advance().
   const [handSession, setHandSession] = useState<HandPlaySession | null>(null);
   const [handResult, setHandResult] = useState<AdvanceResult | null>(null);
+  const [tradeReview, setTradeReview] = useState<TradeReview | null>(null);
+  const [tradeCounterResult, setTradeCounterResult] = useState<{
+    readonly amount: number;
+    readonly accepted: boolean;
+  } | null>(null);
   // Month-close interstitial (#123): the 1-based month that just closed, or
   // null when none is pending. Set on clock:month_ended, cleared on dismiss —
   // the MANAGERIAL interrupt point between the day-recap and next-day prep.
@@ -373,6 +414,7 @@ export default function App() {
     onTick: bump,
     hold:
       (handSession != null && !HAND_PLAY_LIVE) ||
+      tradeReview != null ||
       screen === 'in-game-menu' ||
       (screen === 'settings' && world != null) ||
       monthClose != null ||
@@ -408,6 +450,29 @@ export default function App() {
     setHandSession(null);
     setHandResult(null);
   };
+  const decideTrade = (decision: TradeDecision) => {
+    if (!tradeReview) return;
+    const result = worldRef.current?.resolvePlayerTradeDecision(
+      tradeReview.customerId,
+      decision,
+    );
+    if (!result) return;
+    if (result.status === 'counter_rejected') {
+      setTradeCounterResult({
+        amount: result.amount,
+        accepted: result.accepted,
+      });
+      return;
+    }
+    setTradeReview(null);
+    setTradeCounterResult(null);
+    const w = worldRef.current;
+    if (w) {
+      setLotVehicles(w.inventory.getLotVehicles());
+      setCash(w.economy.cash);
+    }
+    bump();
+  };
 
   // Build (and route into) the game from whichever slot is currently active.
   // Called by the start menu's Continue/Load after it has selected the slot
@@ -426,10 +491,20 @@ export default function App() {
     if (typeof state.tradePolicy === 'string') {
       tradePolicyIdRef.current = state.tradePolicy;
       setTradePolicyId(state.tradePolicy);
+    } else {
+      tradePolicyIdRef.current = TRADE_POLICY.defaultId;
+      setTradePolicyId(TRADE_POLICY.defaultId);
     }
     // Restore the persisted per-slot list-price strategy (#154).
     if (typeof state.pricingStrategy === 'string') {
       setPricingStrategyId(state.pricingStrategy);
+    } else {
+      setPricingStrategyId(PRICING_STRATEGIES.defaultStrategy);
+    }
+    if (typeof state.hoursOfOp === 'string') {
+      setHoursOfOpId(state.hoursOfOp);
+    } else {
+      setHoursOfOpId(HOURS_OF_OP.defaultId);
     }
     const w = createWorld({
       bus,
@@ -450,6 +525,7 @@ export default function App() {
     }
     setWorld(w);
     setCash(w.economy.cash);
+    setLotVehicles(w.inventory.getLotVehicles());
     setProfile(character);
     nav.reset('game');
     // Mid-day cold-start resume (#122): if a checkpoint exists for the day the
@@ -482,12 +558,32 @@ export default function App() {
     setActiveSlotId(active);
   };
 
+  const buildCurrentSaveState = async (
+    overrides: SaveState = {},
+    worldSnapshot?: WorldSnapshot,
+  ): Promise<SaveState> => {
+    const existing = await saveStore.load();
+    const liveWorld = worldSnapshot ?? (worldRef.current
+      ? snapshotWorld(worldRef.current)
+      : undefined);
+    return {
+      ...(existing ?? {}),
+      ...(liveWorld ? { world: liveWorld } : {}),
+      ...overrides,
+    };
+  };
+
+  const persistCurrentSave = (overrides: SaveState = {}) => {
+    void (async () => {
+      await saveStore.save(await buildCurrentSaveState(overrides));
+    })();
+  };
+
   const saveCurrentGame = async () => {
     const w = worldRef.current;
     if (!w) return;
     const worldSnapshot = snapshotWorld(w);
-    const existing = await saveStore.load();
-    const nextState = { ...(existing ?? {}), world: worldSnapshot };
+    const nextState = await buildCurrentSaveState({}, worldSnapshot);
     await saveStore.save(nextState);
     const cp = w.dayLoop.checkpoint();
     if (cp) {
@@ -506,17 +602,27 @@ export default function App() {
 
   const handleManualSave = async () => {
     setInGameMenuStatus('Saving...');
-    await saveCurrentGame();
-    setInGameMenuStatus('Saved.');
+    try {
+      await saveCurrentGame();
+      setInGameMenuStatus('Saved.');
+    } catch (err) {
+      console.error('Save current game failed', err);
+      setInGameMenuStatus('Save failed. Check the Expo console.');
+    }
   };
 
   const handleInGameLoadSlot = async (slotId: string) => {
-    setInGameMenuStatus('Saving current game...');
-    await saveCurrentGame();
-    setInGameMenuStatus('Loading save...');
-    await slotStore.selectSlot(slotId);
-    await loadActiveSlotIntoGame();
-    setInGameMenuStatus('');
+    try {
+      setInGameMenuStatus('Saving current game...');
+      await saveCurrentGame();
+      setInGameMenuStatus('Loading save...');
+      await slotStore.selectSlot(slotId);
+      await loadActiveSlotIntoGame();
+      setInGameMenuStatus('');
+    } catch (err) {
+      console.error('Save and load failed', err);
+      setInGameMenuStatus('Save/load failed. Check the Expo console.');
+    }
   };
 
   const resetSessionState = () => {
@@ -535,11 +641,16 @@ export default function App() {
   };
 
   const handleReturnToMainMenu = async () => {
-    setInGameMenuStatus('Saving current game...');
-    await saveCurrentGame();
-    resetSessionState();
-    setInGameMenuStatus('');
-    nav.reset('main-menu');
+    try {
+      setInGameMenuStatus('Saving current game...');
+      await saveCurrentGame();
+      resetSessionState();
+      setInGameMenuStatus('');
+      nav.reset('main-menu');
+    } catch (err) {
+      console.error('Save and return to main menu failed', err);
+      setInGameMenuStatus('Save failed. Check the Expo console.');
+    }
   };
 
   const openSettings = () => {
@@ -583,8 +694,7 @@ export default function App() {
         // slot's `day` metadata from this snapshot.
         void (async () => {
           const worldSnapshot = snapshotWorld(w);
-          const existing = await saveStore.load();
-          const nextState = { ...(existing ?? {}), world: worldSnapshot };
+          const nextState = await buildCurrentSaveState({}, worldSnapshot);
           await saveStore.save(nextState);
           if (worldSnapshot.modules.gameClock.day % 7 === 0) {
             const snapshotStore = await snapshotStoreForActiveSlot();
@@ -667,6 +777,38 @@ export default function App() {
         },
       ]);
 
+    const onTradeEscalated = ({
+      customerId,
+      currentVehicle,
+      book,
+      allowanceAsk,
+      payoff,
+      target,
+      recommendedCounter,
+      staffConfidence,
+    }: {
+      customerId: string;
+      currentVehicle: TradeReview['currentVehicle'];
+      book: number;
+      allowanceAsk: number;
+      payoff: number;
+      target: number;
+      recommendedCounter: number;
+      staffConfidence: number;
+    }) => {
+      setTradeCounterResult(null);
+      setTradeReview({
+        customerId,
+        currentVehicle,
+        book,
+        allowanceAsk,
+        payoff,
+        target,
+        recommendedCounter,
+        staffConfidence,
+      });
+    };
+
     // Month-close hook (#123): clock:month_ended fans out during the Next Day
     // transition (advanceDay) when the ending day completes a month. Latching
     // the interstitial here interrupts at MANAGERIAL — the render loop holds
@@ -695,22 +837,26 @@ export default function App() {
     bus.subscribe('career:tier_up', onTierUp);
     bus.subscribe('career:game_over', onGameOver);
     bus.subscribe('inventory:vehicle_purchased', onVehiclePurchased);
+    bus.subscribe('inventory:vehicle_acquired_via_trade', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_sold', onVehicleSold);
     bus.subscribe('economy:revenue_posted', onRevenue);
     bus.subscribe('deal:closed', onDealClosed);
     bus.subscribe('staff:auto_resolved', onAutoResolved);
     bus.subscribe('floor:exception_raised', onExceptionRaised);
+    bus.subscribe('trade:escalated', onTradeEscalated);
     return () => {
       bus.unsubscribe('floor:day_complete', onDayComplete);
       bus.unsubscribe('clock:month_ended', onMonthEnded);
       bus.unsubscribe('career:tier_up', onTierUp);
       bus.unsubscribe('career:game_over', onGameOver);
       bus.unsubscribe('inventory:vehicle_purchased', onVehiclePurchased);
+      bus.unsubscribe('inventory:vehicle_acquired_via_trade', onVehiclePurchased);
       bus.unsubscribe('inventory:vehicle_sold', onVehicleSold);
       bus.unsubscribe('economy:revenue_posted', onRevenue);
       bus.unsubscribe('deal:closed', onDealClosed);
       bus.unsubscribe('staff:auto_resolved', onAutoResolved);
       bus.unsubscribe('floor:exception_raised', onExceptionRaised);
+      bus.unsubscribe('trade:escalated', onTradeEscalated);
     };
   }, []);
 
@@ -772,11 +918,7 @@ export default function App() {
   const handleSelectTradePolicy = (id: string) => {
     tradePolicyIdRef.current = id;
     setTradePolicyId(id);
-    void saveStore
-      .load()
-      .then((existing) =>
-        saveStore.save({ ...(existing ?? {}), tradePolicy: id }),
-      );
+    persistCurrentSave({ tradePolicy: id });
   };
 
   const handleSelectAdvertisingCampaign = (id: string) => {
@@ -784,22 +926,19 @@ export default function App() {
     if (!w) return;
     w.demandControls.setAdvertisingCampaign(id);
     bump();
-    void saveStore
-      .load()
-      .then((existing) =>
-        saveStore.save({ ...(existing ?? {}), world: snapshotWorld(w) }),
-      );
+    persistCurrentSave();
   };
 
   // Persist the list-price strategy choice into the active slot (#154). Same
   // merge-with-existing write as the trade policy above.
   const handleSelectPricingStrategy = (id: string) => {
     setPricingStrategyId(id);
-    void saveStore
-      .load()
-      .then((existing) =>
-        saveStore.save({ ...(existing ?? {}), pricingStrategy: id }),
-      );
+    persistCurrentSave({ pricingStrategy: id });
+  };
+
+  const handleSelectHours = (id: string) => {
+    setHoursOfOpId(id);
+    persistCurrentSave({ hoursOfOp: id });
   };
 
   let content: React.ReactNode = <View style={styles.container} />;
@@ -815,6 +954,10 @@ export default function App() {
             // root seed for this game (so back-to-back new games don't clone),
             // then collect the character — it persists into the active slot.
             setNewGameSeed(makeSeed());
+            setHoursOfOpId(HOURS_OF_OP.defaultId);
+            tradePolicyIdRef.current = TRADE_POLICY.defaultId;
+            setTradePolicyId(TRADE_POLICY.defaultId);
+            setPricingStrategyId(PRICING_STRATEGIES.defaultStrategy);
             nav.reset('character-creation');
           }}
           onContinue={() => void loadActiveSlotIntoGame()}
@@ -895,10 +1038,14 @@ export default function App() {
           }
           bus={bus}
           inspectionCost={INSPECTION_COST}
-          onBuy={(listingId) => world.inventory.buyFromAuction(listingId)}
+          onBuy={(listingId) => {
+            world.inventory.buyFromAuction(listingId);
+            persistCurrentSave();
+          }}
           onRequestInspection={(listingId) => {
             world.inventory.requestInspection(listingId);
             setCash(world.economy.cash);
+            persistCurrentSave();
           }}
           onClose={() => nav.back()}
         />
@@ -972,6 +1119,7 @@ export default function App() {
             onCommit={(price) => {
               world.inventory.setAskingPrice(v.id, price);
               setLotVehicles(world.inventory.getLotVehicles());
+              persistCurrentSave();
             }}
             onClose={() => nav.back()}
           />
@@ -1103,6 +1251,7 @@ export default function App() {
       onSetAskingPrice: (vehicleId: string, price: number) => {
         world.inventory.setAskingPrice(vehicleId, price);
         setLotVehicles(world.inventory.getLotVehicles());
+        persistCurrentSave();
       },
       onOpenPricing: (vehicleId: string) => nav.navigate('pricing', { vehicleId }),
       pricingStrategyOptions: PRICING_STRATEGY_OPTIONS,
@@ -1113,7 +1262,7 @@ export default function App() {
       rosterCount: world.staffOrg.currentRoster.length,
       hoursOptions: HOURS_OF_OP.options,
       hoursOfOpId,
-      onSelectHours: setHoursOfOpId,
+      onSelectHours: handleSelectHours,
       // Trade-policy lever (#172): strip the multiplier from the catalog (the
       // UI only needs id/label/blurb) and persist the choice per slot.
       tradePolicyOptions: TRADE_POLICY.policies.map((p) => ({
@@ -1248,6 +1397,12 @@ export default function App() {
           onChoose={chooseApproach}
           onClose={closeHandPlay}
         />
+        <TradeEscalationModal
+          visible={tradeReview != null}
+          review={tradeReview}
+          onDecide={decideTrade}
+          counterResult={tradeCounterResult}
+        />
         {monthClose != null && world && (
           <MonthCloseInterstitial
             model={{
@@ -1296,6 +1451,10 @@ export default function App() {
       </View>
     </SafeAreaProvider>
   );
+}
+
+export default function App() {
+  return <DealershipApp />;
 }
 
 const styles = StyleSheet.create({
