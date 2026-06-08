@@ -1,8 +1,11 @@
 import React from 'react';
+import { View } from 'react-native';
 import { fireEvent, render, within } from '@testing-library/react-native';
 import { DayLoopShell, type ManagerDeskAlertModel } from '../src/ui/DayLoopShell';
+import { BottomNav } from '../src/ui/BottomNav';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 import type { DayLoopState } from '../src/game/DayLoopController';
+import type { DeptKey } from '../src/game/DepartmentQueue';
 import type { DayRecapModel } from '../src/ui/DayRecap';
 import type { DemandReadoutModel } from '../src/ui/DemandReadout';
 import type { OwnershipLeversProps } from '../src/ui/OwnershipLevers';
@@ -24,6 +27,14 @@ const MANAGERIAL_AFTER_CLOSE: DayLoopState = {
   day: 1,
   ownershipUnlocked: true,
   hasRecap: true,
+};
+
+const ZERO_BADGES: Record<DeptKey, number> = {
+  sales: 0,
+  service: 0,
+  bdc: 0,
+  office: 0,
+  lot: 0,
 };
 
 const RECAP: DayRecapModel = {
@@ -139,6 +150,71 @@ function buildLeverProps(
 }
 
 describe('DayLoopShell Manager Desk smoke', () => {
+  it('keeps all Manager Desk regions, the day action, and Department Dock reachable on a small screen', () => {
+    const onNextDay = jest.fn();
+    const onDeptPress = jest.fn();
+    const managerAlerts: ManagerDeskAlertModel[] = [
+      {
+        id: 'office-needs-review',
+        title: 'Office needs review',
+        body: 'Two contracts are waiting before month close.',
+        severity: 'warning',
+      },
+      {
+        id: 'service-backlog',
+        title: 'Service backlog',
+        body: 'Three repair orders need manager attention.',
+      },
+    ];
+    const { getByLabelText, getByTestId } = render(
+      <View style={{ width: 360, height: 640 }}>
+        <View style={{ flex: 1 }}>
+          <DayLoopShell
+            profile={PROFILE}
+            state={MANAGERIAL_AFTER_CLOSE}
+            onNextDay={onNextDay}
+            recap={RECAP}
+            demandReadout={DEMAND_READOUT}
+            leverProps={buildLeverProps()}
+            managerAlerts={managerAlerts}
+          />
+        </View>
+        <BottomNav badges={ZERO_BADGES} onPress={onDeptPress} />
+      </View>,
+    );
+
+    const scroll = within(getByTestId('manager-desk-scroll'));
+    expect(scroll.getByText('Manager Desk')).toBeTruthy();
+    expect(
+      within(scroll.getByTestId('manager-desk-region-today')).getByText('Day 1 Recap'),
+    ).toBeTruthy();
+    expect(
+      within(scroll.getByTestId('manager-desk-region-market')).getByText(
+        "Who's Been Walking In",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(scroll.getByTestId('manager-desk-region-prep')).getByTestId(
+        'ownership-levers',
+      ),
+    ).toBeTruthy();
+    expect(
+      within(scroll.getByTestId('manager-desk-region-alerts')).getByText(
+        'Office needs review',
+      ),
+    ).toBeTruthy();
+    expect(scroll.queryByText('Next Day →')).toBeNull();
+    expect(scroll.queryByText('Sales')).toBeNull();
+
+    fireEvent.press(
+      within(getByTestId('manager-desk-action-footer')).getByText('Next Day →'),
+    );
+    fireEvent.press(getByLabelText('Office'));
+
+    expect(onNextDay).toHaveBeenCalledTimes(1);
+    expect(onDeptPress).toHaveBeenCalledWith('office');
+  });
+
   it('renders recap content in Today and keeps the primary day action reachable', () => {
     const onNextDay = jest.fn();
     const { getByTestId, getByText } = render(

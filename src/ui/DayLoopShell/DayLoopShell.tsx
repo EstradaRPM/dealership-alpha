@@ -157,6 +157,7 @@ export function DayLoopShell({
             style={styles.managerScroll}
             contentContainerStyle={styles.managerContent}
             keyboardShouldPersistTaps="handled"
+            testID="manager-desk-scroll"
           >
             <View style={styles.deskTitleRow}>
               <View>
@@ -279,7 +280,7 @@ export function DayLoopShell({
             </View>
           </ScrollView>
 
-          <View style={styles.actionFooter}>
+          <View style={styles.actionFooter} testID="manager-desk-action-footer">
             <TouchableOpacity
               style={[styles.primaryBtn, { backgroundColor: displayAccent }]}
               onPress={onNextDay}
