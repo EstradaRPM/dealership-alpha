@@ -11,6 +11,8 @@ import type {
   StaffDispatchConfig,
   StaffDispatchCustomerSession,
   HeldTradeReview,
+  HeldDiscountReview,
+  StaffDispatchDeps,
 } from '../src/game/StaffDispatch';
 import type { Inventory, LotVehicle } from '../src/game/Inventory';
 import { createDealEngine, loadCreditTiers } from '../src/game/DealEngine';
@@ -24,15 +26,20 @@ import type {
   CurrentVehicle,
 } from '../src/game/NPC';
 import type { TradeConditionRead, TradeApprover } from '../src/game/DealEngine';
+import type { SalesProcessConfig } from '../src/game/SalesProcess';
 
 const MASTER_SEED = 42;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeStaff(effectiveness: number, id = `staff:mock:${effectiveness}`): StaffWithComposites {
+function makeStaff(
+  effectiveness: number,
+  id = `staff:mock:${effectiveness}`,
+  roleId = 'salesperson',
+): StaffWithComposites {
   const plain: Staff = {
     id,
-    role_id: 'salesperson',
+    role_id: roleId,
     trait_ids: [],
     skills: {},
     resources: { stamina: 80 },
@@ -83,6 +90,39 @@ const NO_EXCEPTION_CONFIG: StaffDispatchConfig = {
 const ALL_EXCEPTION_CONFIG: StaffDispatchConfig = {
   ...NO_EXCEPTION_CONFIG,
   exceptionFlagRates: ALL_FLAGS,
+};
+
+const DISCOUNT_EXCEPTION_CONFIG: SalesProcessConfig = {
+  schemaVersion: 1,
+  gates: ['GREET', 'QUALIFY', 'DEMO', 'NEGOTIATE'],
+  rng: { seedNamespace: 'customer_pool.sales_gate', jitterBand: 0 },
+  core: { skillWeight: 1, fitWeight: 0, easeWeight: 0 },
+  meters: {
+    GREET: { trust: 1, value: 1 },
+    QUALIFY: { trust: 1, value: 1 },
+    DEMO: { trust: 1, value: 1 },
+    NEGOTIATE: { trust: 1, value: 1 },
+  },
+  walk: { trustCollapseFloor: 0, patienceFloor: -1 },
+  nonnegotiables: { qualifyRevealThreshold: 0, tolerance: 1 },
+  close: { buyThreshold: 0, softThreshold: 0, trustFloor: 0 },
+  price: {
+    base: 500,
+    valueGapWeight: 0,
+    sensitivityWeight: 5000,
+    skillHoldWeight: 2500,
+    trustHoldWeight: 1500,
+    minGross: 800,
+    overageAllowed: 1500,
+    framingWeight: 0,
+  },
+  calibration: {
+    positiveMin: 0,
+    apatheticMin: 0,
+    apatheticMax: 1,
+    negativeDealMin: 0,
+    negativeDealMax: 1,
+  },
 };
 
 // ── Bundle + lot factories ──────────────────────────────────────────────────
@@ -211,6 +251,17 @@ interface TradeEscalatedPayload {
   staffConfidence: number;
 }
 
+interface DiscountEscalatedPayload {
+  customerId: string;
+  day: number;
+  marketPrice: number;
+  customerAskPrice: number;
+  salespersonFloorPrice: number;
+  recommendedCounter: number;
+  minimumAcceptablePrice: number;
+  canAcceptAsk: boolean;
+}
+
 interface Wired {
   bus: EventBus;
   inventory: Pick<Inventory, 'getLotVehicles' | 'getLotVehicle' | 'sellVehicle'>;
@@ -227,6 +278,8 @@ interface Wired {
   trades: TradeResolvedPayload[];
   escalations: TradeEscalatedPayload[];
   heldTradeReviews: HeldTradeReview[];
+  discountEscalations: DiscountEscalatedPayload[];
+  heldDiscountReviews: HeldDiscountReview[];
   inventorySold: string[];
 }
 
@@ -243,6 +296,7 @@ function setup(
     tradeApprover?: () => TradeApprover | null;
     tradeEscalationOverride?: () => number;
     tradePolicyMultiplier?: () => number;
+    salesProcessDeps?: StaffDispatchDeps['salesProcessDeps'];
   } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
@@ -280,6 +334,11 @@ function setup(
   const escalations: TradeEscalatedPayload[] = [];
   bus.subscribe('trade:escalated', (e) => escalations.push(e as TradeEscalatedPayload));
   const heldTradeReviews: HeldTradeReview[] = [];
+  const discountEscalations: DiscountEscalatedPayload[] = [];
+  bus.subscribe('discount:escalated', (e) =>
+    discountEscalations.push(e as DiscountEscalatedPayload),
+  );
+  const heldDiscountReviews: HeldDiscountReview[] = [];
 
   createStaffDispatch({
     bus,
@@ -292,6 +351,7 @@ function setup(
     creditTiers: loadCreditTiers(),
     getCustomerSession: (id) => sessions.get(id),
     getHasGm: opts.getHasGm,
+    salesProcessDeps: opts.salesProcessDeps,
     // Deterministic FNI: never attach (keeps backGross = 0 so per-test math is exact).
     fniRng: () => 1.0,
     // #169: constant book seam + optional UCM condition read.
@@ -303,6 +363,7 @@ function setup(
     // #172: per-slot trade-acquisition policy multiplier.
     getTradePolicyMultiplier: opts.tradePolicyMultiplier,
     onTradeReviewHeld: (held) => heldTradeReviews.push(held),
+    onDiscountReviewHeld: (held) => heldDiscountReviews.push(held),
   });
 
   return {
@@ -315,6 +376,8 @@ function setup(
     trades,
     escalations,
     heldTradeReviews,
+    discountEscalations,
+    heldDiscountReviews,
     inventorySold: sold,
     economy,
   };
@@ -436,6 +499,107 @@ describe('StaffDispatch — real close path (#147)', () => {
     admit(bus, 'cust:1');
     expect(events[0].outcome).toBe('no_sale');
     expect(['patience_drain', 'trust_collapse', 'demo_nonnegotiable_miss']).toContain(events[0].reason);
+  });
+});
+
+describe('StaffDispatch — discount escalation (#222)', () => {
+  const discountDeps = {
+    config: DISCOUNT_EXCEPTION_CONFIG,
+    bookValueFn: () => 20_000,
+  };
+
+  it('no sales manager ⇒ discount:escalated fires with payload and held close', () => {
+    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+      salesProcessDeps: discountDeps,
+    });
+    w.sessions.set(
+      'cust:discount',
+      makeSession('cust:discount', makeFinanceVisit('cust:discount'), {
+        wealth: 15_000,
+        agreeableness: 100,
+      }),
+    );
+
+    admit(w.bus, 'cust:discount');
+
+    expect(w.discountEscalations).toHaveLength(1);
+    expect(w.heldDiscountReviews).toHaveLength(1);
+    expect(w.closedDeals).toHaveLength(0);
+    expect(w.events).toHaveLength(0);
+    expect(w.discountEscalations[0]).toMatchObject({
+      customerId: 'cust:discount',
+      day: 1,
+      canAcceptAsk: true,
+    });
+
+    const result = w.heldDiscountReviews[0].decide({ kind: 'accept_ask' });
+
+    expect(result).toEqual({ status: 'closed' });
+    expect(w.closedDeals).toHaveLength(1);
+    expect(w.events).toHaveLength(1);
+    expect(w.events[0]).toMatchObject({
+      customerId: 'cust:discount',
+      outcome: 'closed',
+    });
+    expect(w.closedDeals[0].agreedPrice).toBe(
+      w.discountEscalations[0].customerAskPrice,
+    );
+  });
+
+  it('hired sales-manager auto-resolves the same discount exception', () => {
+    const w = setup(
+      [
+        makeStaff(0.9, 'staff:sales'),
+        makeStaff(1.0, 'staff:sales-manager', 'sales-manager'),
+      ],
+      NO_EXCEPTION_CONFIG,
+      { salesProcessDeps: discountDeps },
+    );
+    w.sessions.set(
+      'cust:manager-discount',
+      makeSession(
+        'cust:manager-discount',
+        makeFinanceVisit('cust:manager-discount'),
+        { wealth: 15_000, agreeableness: 100 },
+      ),
+    );
+
+    admit(w.bus, 'cust:manager-discount');
+
+    expect(w.discountEscalations).toHaveLength(0);
+    expect(w.heldDiscountReviews).toHaveLength(0);
+    expect(w.closedDeals).toHaveLength(1);
+    expect(w.events).toHaveLength(1);
+    expect(w.events[0]).toMatchObject({
+      customerId: 'cust:manager-discount',
+      outcome: 'closed',
+    });
+  });
+
+  it('player decline records discount_player_declined, distinct from no_close', () => {
+    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+      salesProcessDeps: discountDeps,
+    });
+    w.sessions.set(
+      'cust:decline-discount',
+      makeSession(
+        'cust:decline-discount',
+        makeFinanceVisit('cust:decline-discount'),
+        { wealth: 15_000, agreeableness: 100 },
+      ),
+    );
+    admit(w.bus, 'cust:decline-discount');
+
+    const result = w.heldDiscountReviews[0].decide({ kind: 'decline' });
+
+    expect(result).toEqual({ status: 'abandoned' });
+    expect(w.closedDeals).toHaveLength(0);
+    expect(w.events).toHaveLength(1);
+    expect(w.events[0]).toMatchObject({
+      customerId: 'cust:decline-discount',
+      outcome: 'no_sale',
+      reason: 'discount_player_declined',
+    });
   });
 });
 

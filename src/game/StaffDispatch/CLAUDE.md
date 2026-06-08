@@ -15,7 +15,12 @@ to the real machinery. Per customer (after exception roll + hold-floor):
    salesperson's effectiveness/trustworthiness composite via
    `makeSalespersonProfile`. Walk ⇒ `no_sale`/`<WalkCause>`.
 3. `closeAndPrice(...)` with the resolved meters + skill + priceSensitivity.
-   `outcome !== 'buy'` ⇒ `no_sale`/`no_close`.
+   `outcome !== 'buy'` with a normal closeable price ⇒ `no_sale`/`no_close`.
+   If the customer would buy only below the salesperson margin floor
+   (`closeable=false`), this becomes the discount-escalation branch (#222):
+   a hired `sales-manager` auto-resolves the exception through the same close
+   path; without one, StaffDispatch emits `discount:escalated`, holds the deal,
+   and waits for the composition root's player decision closure.
 4. **Trade resolution (#169) + escalation (#170).** If the visit `hasTrade`
    (and the book seam is wired), `resolveTradeIn(...)` runs after the buy
    decision but before structuring, fed the escalation approver
@@ -56,10 +61,10 @@ deal structure.
 
 `staff:auto_resolved` now carries an optional `reason` field on `no_sale`
 outcomes (`no_session | not_sales | no_fit | no_close | trade_negative_equity |
-trade_manager_declined | trade_player_declined | <WalkCause>`). A pending
-`player_review` trade emits no `staff:auto_resolved` until the player declines
-or accepts a trade decision through the held-review closure. The sole `declined`
-path is an unstaffed floor.
+trade_manager_declined | trade_player_declined | discount_player_declined |
+discount_below_cost | <WalkCause>`). A pending `player_review` trade or discount
+emits no `staff:auto_resolved` until the player declines or accepts a decision
+through the held-review closure. The sole `declined` path is an unstaffed floor.
 
 ### Required deps for the close
 `inventory` (lot snapshot), `dealEngine` (closeDeal + classifyCredit +
@@ -76,7 +81,8 @@ $X"; defaults to the trade-evaluation config default), `getTradePolicyMultiplier
 (#172 — per-slot trade-acquisition policy multiplier passed to `resolveTradeIn`'s
 `policyMultiplier`; live getter so a Settings change applies on the next trade;
 omitted ⇒ `1.0` market), `onTradeReviewHeld` (#201 — composition-root handoff
-for the player decision closure).
+for the player decision closure), `onDiscountReviewHeld` (#222 —
+composition-root handoff for held discount decisions).
 
 ### Known gaps
 Cash buyers don't carry a stamped behavioral `cashSpendFraction` on the
@@ -118,7 +124,9 @@ with #147.
   `inventory:vehicle_sold` fire too. On a routine/manager-approved trade (#169)
   it emits `trade:resolved` just before `deal:closed`. On a trade escalated to
   the player (#170) it emits `trade:escalated` (full overlay payload) and holds
-  the deal (resolver returns `escalated`).
+  the deal (resolver returns `escalated`). On an unstaffed discount exception
+  (#222) it emits `discount:escalated` (full overlay payload) and holds the
+  deal until the player accepts, counters, or declines.
 - **Consumes:** Sales queue items via `DepartmentQueue` (legacy path on
   `capacity:customer_admitted`; floor-drain path per FloorSim tick).
 

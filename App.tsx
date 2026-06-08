@@ -49,6 +49,11 @@ import {
   type TradeDecision,
   type TradeReview,
 } from './src/ui/TradeEscalationModal';
+import {
+  DiscountEscalationModal,
+  type DiscountDecision,
+  type DiscountReview,
+} from './src/ui/DiscountEscalationModal';
 import { useFloorRenderLoop } from './src/ui/FloorRenderLoop';
 import { AuctionMenu } from './src/ui/AuctionMenu';
 import {
@@ -377,6 +382,13 @@ export function DealershipApp({
     readonly amount: number;
     readonly accepted: boolean;
   } | null>(null);
+  const [discountReview, setDiscountReview] = useState<DiscountReview | null>(
+    null,
+  );
+  const [discountCounterResult, setDiscountCounterResult] = useState<{
+    readonly amount: number;
+    readonly accepted: boolean;
+  } | null>(null);
   // Month-close interstitial (#123): the 1-based month that just closed, or
   // null when none is pending. Set on clock:month_ended, cleared on dismiss —
   // the MANAGERIAL interrupt point between the day-recap and next-day prep.
@@ -415,6 +427,7 @@ export function DealershipApp({
     hold:
       (handSession != null && !HAND_PLAY_LIVE) ||
       tradeReview != null ||
+      discountReview != null ||
       screen === 'in-game-menu' ||
       (screen === 'settings' && world != null) ||
       monthClose != null ||
@@ -466,6 +479,29 @@ export function DealershipApp({
     }
     setTradeReview(null);
     setTradeCounterResult(null);
+    const w = worldRef.current;
+    if (w) {
+      setLotVehicles(w.inventory.getLotVehicles());
+      setCash(w.economy.cash);
+    }
+    bump();
+  };
+  const decideDiscount = (decision: DiscountDecision) => {
+    if (!discountReview) return;
+    const result = worldRef.current?.resolvePlayerDiscountDecision(
+      discountReview.customerId,
+      decision,
+    );
+    if (!result) return;
+    if (result.status === 'counter_rejected') {
+      setDiscountCounterResult({
+        amount: result.amount,
+        accepted: result.accepted,
+      });
+      return;
+    }
+    setDiscountReview(null);
+    setDiscountCounterResult(null);
     const w = worldRef.current;
     if (w) {
       setLotVehicles(w.inventory.getLotVehicles());
@@ -635,6 +671,10 @@ export function DealershipApp({
     setMatchTally({ strong: 0, matched: 0 });
     setHandSession(null);
     setHandResult(null);
+    setTradeReview(null);
+    setTradeCounterResult(null);
+    setDiscountReview(null);
+    setDiscountCounterResult(null);
     setMonthClose(null);
     setChapterQueue([]);
     setEndCard(null);
@@ -809,6 +849,41 @@ export function DealershipApp({
       });
     };
 
+    const onDiscountEscalated = ({
+      customerId,
+      vehicle,
+      marketPrice,
+      customerAskPrice,
+      salespersonFloorPrice,
+      recommendedCounter,
+      minimumAcceptablePrice,
+      frontGrossAtFloor,
+      canAcceptAsk,
+    }: {
+      customerId: string;
+      vehicle: DiscountReview['vehicle'];
+      marketPrice: number;
+      customerAskPrice: number;
+      salespersonFloorPrice: number;
+      recommendedCounter: number;
+      minimumAcceptablePrice: number;
+      frontGrossAtFloor: number;
+      canAcceptAsk: boolean;
+    }) => {
+      setDiscountCounterResult(null);
+      setDiscountReview({
+        customerId,
+        vehicle,
+        marketPrice,
+        customerAskPrice,
+        salespersonFloorPrice,
+        recommendedCounter,
+        minimumAcceptablePrice,
+        frontGrossAtFloor,
+        canAcceptAsk,
+      });
+    };
+
     // Month-close hook (#123): clock:month_ended fans out during the Next Day
     // transition (advanceDay) when the ending day completes a month. Latching
     // the interstitial here interrupts at MANAGERIAL — the render loop holds
@@ -844,6 +919,7 @@ export function DealershipApp({
     bus.subscribe('staff:auto_resolved', onAutoResolved);
     bus.subscribe('floor:exception_raised', onExceptionRaised);
     bus.subscribe('trade:escalated', onTradeEscalated);
+    bus.subscribe('discount:escalated', onDiscountEscalated);
     return () => {
       bus.unsubscribe('floor:day_complete', onDayComplete);
       bus.unsubscribe('clock:month_ended', onMonthEnded);
@@ -857,6 +933,7 @@ export function DealershipApp({
       bus.unsubscribe('staff:auto_resolved', onAutoResolved);
       bus.unsubscribe('floor:exception_raised', onExceptionRaised);
       bus.unsubscribe('trade:escalated', onTradeEscalated);
+      bus.unsubscribe('discount:escalated', onDiscountEscalated);
     };
   }, []);
 
@@ -1402,6 +1479,12 @@ export function DealershipApp({
           review={tradeReview}
           onDecide={decideTrade}
           counterResult={tradeCounterResult}
+        />
+        <DiscountEscalationModal
+          visible={discountReview != null}
+          review={discountReview}
+          onDecide={decideDiscount}
+          counterResult={discountCounterResult}
         />
         {monthClose != null && world && (
           <MonthCloseInterstitial

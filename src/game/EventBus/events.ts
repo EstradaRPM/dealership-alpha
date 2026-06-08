@@ -389,6 +389,33 @@ export interface EventMap {
     staffConfidence: number;
   };
 
+  // SalesProcess/StaffDispatch — the customer would buy only below the
+  // salesperson's margin floor, and no sales manager is on roster to adjudicate
+  // the discount exception (#222). Published by StaffDispatch after the pure
+  // SalesProcess evaluator returns an uncloseable price formation; the deal is
+  // held for the player and resumes through the same close path after an
+  // accepted ask/counter. Carries the full review surface so the overlay needs
+  // no further lookups.
+  'discount:escalated': {
+    customerId: string;
+    day: number;
+    vehicle: {
+      id: string;
+      make: string;
+      model: string;
+      year: number;
+      mileage: number;
+      category: string;
+    };
+    marketPrice: number;
+    customerAskPrice: number;
+    salespersonFloorPrice: number;
+    recommendedCounter: number;
+    minimumAcceptablePrice: number;
+    frontGrossAtFloor: number;
+    canAcceptAsk: boolean;
+  };
+
   // StaffOrg — roster changes
   'staff:hired': { staffId: string; roleId: string; day: number; hiringCost: number };
   'staff:fired': { staffId: string; roleId: string; day: number };
@@ -413,10 +440,13 @@ export interface EventMap {
      * `'not_sales'`, `'no_fit'`, `'no_close'`, the trade walks
      * (`'trade_negative_equity'` — underwater trade (#169);
      * `'trade_manager_declined'` — escalation manager refused (#170);
-     * `'trade_player_declined'` — player refused a held trade (#201)), or a
+     * `'trade_player_declined'` — player refused a held trade (#201)), the
+     * discount-review walks (`'discount_player_declined'` — player refused a
+     * held discount; `'discount_below_cost'` — accepted price below cost), or a
      * SalesProcess `WalkCause` (`'patience_drain' | 'trust_collapse' |
      * 'demo_nonnegotiable_miss'`). Omitted on `outcome: 'closed'`. An *unusual*
-     * trade escalated to the player emits `trade:escalated` instead (#170).
+     * trade or discount escalated to the player emits its escalation event
+     * instead (#170/#222).
      */
     reason?: string;
   };

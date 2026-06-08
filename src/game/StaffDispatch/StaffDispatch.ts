@@ -98,6 +98,12 @@ export interface StaffDispatchDeps {
    * submits a player decision.
    */
   onTradeReviewHeld?: (held: HeldTradeReview) => void;
+  /**
+   * Player-review handoff (#222). StaffDispatch owns the held discount context;
+   * the composition root stores the returned closure and calls it when the UI
+   * submits a player decision.
+   */
+  onDiscountReviewHeld?: (held: HeldDiscountReview) => void;
 }
 
 // Intentionally empty — dispatch is fully autonomous.
@@ -125,6 +131,48 @@ export interface HeldTradeReview {
   decide(decision: PlayerTradeDecision): PlayerTradeDecisionResult;
 }
 
+export interface DiscountReviewPayload {
+  readonly customerId: string;
+  readonly day: number;
+  readonly vehicle: {
+    readonly id: string;
+    readonly make: string;
+    readonly model: string;
+    readonly year: number;
+    readonly mileage: number;
+    readonly category: string;
+  };
+  readonly marketPrice: number;
+  readonly customerAskPrice: number;
+  readonly salespersonFloorPrice: number;
+  readonly recommendedCounter: number;
+  readonly minimumAcceptablePrice: number;
+  readonly frontGrossAtFloor: number;
+  readonly canAcceptAsk: boolean;
+}
+
+export type PlayerDiscountDecision =
+  | { readonly kind: 'accept_ask' }
+  | { readonly kind: 'accept_counter' }
+  | { readonly kind: 'propose_counter'; readonly amount: number }
+  | { readonly kind: 'decline' };
+
+export type PlayerDiscountDecisionResult =
+  | { readonly status: 'closed' }
+  | { readonly status: 'abandoned' }
+  | {
+      readonly status: 'counter_rejected';
+      readonly amount: number;
+      readonly accepted: false;
+    };
+
+export interface HeldDiscountReview {
+  readonly customerId: string;
+  readonly day: number;
+  readonly review: DiscountReviewPayload;
+  decide(decision: PlayerDiscountDecision): PlayerDiscountDecisionResult;
+}
+
 /** Outcome of a single auto-resolution attempt against one sales customer. */
 type ResolveResult = 'resolved' | 'escalated' | 'declined';
 
@@ -134,6 +182,18 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 const clampUnit = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
+
+function rollDiscountCounterResponse(
+  customerAskPrice: number,
+  counterPrice: number,
+  priceSensitivity: number,
+  seed: number,
+): boolean {
+  if (counterPrice <= customerAskPrice) return true;
+  const gapFraction = (counterPrice - customerAskPrice) / Math.max(customerAskPrice, 1);
+  const acceptProb = clampUnit(1 - gapFraction * 1.6 * (1 + priceSensitivity));
+  return createRng(seed)() < acceptProb;
+}
 
 // Per-gate patience drain rate: v1 balanced default (matches CustomerPool).
 const ARCHETYPE_IMPATIENCE = 0.25;
@@ -300,12 +360,11 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       },
       deps.salesProcessDeps,
     );
-    if (close.outcome !== 'buy') {
-      emitNoSale(customerId, salesperson.id, day, 'no_close');
-      return 'resolved';
-    }
 
-    const closeWithTrade = (tradeEquity: number): ResolveResult => {
+    const closeDealAtPrice = (
+      agreedPrice: number,
+      tradeEquity: number,
+    ): ResolveResult => {
       const unlockedRoles =
         deps.unlockedRolesFn?.() ??
         Array.from(new Set(staffOrg.currentRoster.map(s => s.role_id)));
@@ -315,7 +374,6 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         deps.fniRng,
       );
 
-      const agreedPrice = close.realizedPrice;
       let downPayment = 0;
       let loanAmount = 0;
       let term = 0;
@@ -355,91 +413,218 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       return 'resolved';
     };
 
-    // Trade resolution (#169, escalation #170): a visit that arrived with a
-    // trade resolves the allowance after the deal reaches close but before it
-    // structures. Routine trades auto-resolve silently (emit `trade:resolved`,
-    // net the equity into the structure). Unusual trades escalate: a manager on
-    // staff (GM > UCM) resolves them silently too; with none (or an ask over the
-    // player override) the trade routes to the #84 overlay via `trade:escalated`
-    // and the deal is HELD (this resolver returns 'escalated' so FloorSim raises
-    // a grabbable exception). An underwater allowance / manager-declined trade
-    // abandons. Requires the book provider; without it (legacy/test harness) a
-    // `hasTrade` visit just closes without a trade.
-    let tradeEquity = 0;
-    if (
-      visit.hasTrade &&
-      person.currentVehicle &&
-      visit.allowanceAsk !== undefined &&
-      deps.tradeBookValueFn
-    ) {
-      const tradeConditionRead = deps.getTradeConditionRead?.() ?? null;
-      const tradeRes = resolveTradeIn(
-        {
+    const resolveTradeThenClose = (agreedPrice: number): ResolveResult => {
+      // Trade resolution (#169, escalation #170): a visit that arrived with a
+      // trade resolves the allowance after the deal reaches close but before it
+      // structures. Routine trades auto-resolve silently (emit `trade:resolved`,
+      // net the equity into the structure). Unusual trades escalate: a manager on
+      // staff (GM > UCM) resolves them silently too; with none (or an ask over the
+      // player override) the trade routes to the #84 overlay via `trade:escalated`
+      // and the deal is HELD (this resolver returns 'escalated' so FloorSim raises
+      // a grabbable exception). An underwater allowance / manager-declined trade
+      // abandons. Requires the book provider; without it (legacy/test harness) a
+      // `hasTrade` visit just closes without a trade.
+      let tradeEquity = 0;
+      if (
+        visit.hasTrade &&
+        person.currentVehicle &&
+        visit.allowanceAsk !== undefined &&
+        deps.tradeBookValueFn
+      ) {
+        const tradeConditionRead = deps.getTradeConditionRead?.() ?? null;
+        const tradeRes = resolveTradeIn(
+          {
+            currentVehicle: person.currentVehicle,
+            loanPayoff: person.currentVehicle.loanPayoff,
+            allowanceAsk: visit.allowanceAsk,
+            skill: { effectiveness, trustworthiness },
+            conditionRead: tradeConditionRead,
+          },
+          {
+            bookValueFn: deps.tradeBookValueFn,
+            approver: deps.getTradeApprover?.() ?? null,
+            playerOverrideThreshold: deps.getTradeEscalationOverride?.(),
+            policyMultiplier: deps.getTradePolicyMultiplier?.(),
+          },
+        );
+        if (tradeRes.status === 'player_review') {
+          const review = tradeRes.review;
+          deps.onTradeReviewHeld?.({
+            customerId,
+            day,
+            review,
+            decide(decision) {
+              const settlePlayerTrade = (
+                agreedAllowance: number,
+                action: 'accept' | 'counter',
+                hadCounter: boolean,
+              ): PlayerTradeDecisionResult => {
+                if (agreedAllowance < review.payoff) {
+                  emitNoSale(
+                    customerId,
+                    salesperson.id,
+                    day,
+                    'trade_negative_equity',
+                  );
+                  return { status: 'abandoned' };
+                }
+
+                bus.publish('trade:resolved', {
+                  customerId,
+                  currentVehicle: person.currentVehicle!,
+                  agreedAllowance,
+                  action,
+                  hadCounter,
+                  staffConfidence: tradeConditionRead?.confidence ?? 0,
+                });
+                closeDealAtPrice(agreedPrice, agreedAllowance - review.payoff);
+                return { status: 'closed' };
+              };
+
+              if (decision.kind === 'decline') {
+                emitNoSale(customerId, salesperson.id, day, 'trade_player_declined');
+                return { status: 'abandoned' };
+              }
+              if (decision.kind === 'accept_ask') {
+                return settlePlayerTrade(review.allowanceAsk, 'accept', false);
+              }
+              if (decision.kind === 'accept_counter') {
+                return settlePlayerTrade(review.recommendedCounter, 'counter', true);
+              }
+
+              const accepted = rollCustomerCounterResponse(
+                {
+                  allowanceAsk: review.allowanceAsk,
+                  counterAmount: decision.amount,
+                  priceSensitivity,
+                },
+                deriveSeed(masterSeed, 'trade_counter_response', { customerId, day }),
+              );
+              if (!accepted) {
+                return {
+                  status: 'counter_rejected',
+                  amount: decision.amount,
+                  accepted: false,
+                };
+              }
+              return settlePlayerTrade(decision.amount, 'counter', true);
+            },
+          });
+          // Hand the manager-attention overlay everything it needs, then hold the
+          // deal for the player by surfacing this as a floor exception.
+          bus.publish('trade:escalated', {
+            customerId,
+            day,
+            currentVehicle: person.currentVehicle,
+            book: tradeRes.review.book,
+            allowanceAsk: tradeRes.review.allowanceAsk,
+            payoff: tradeRes.review.payoff,
+            target: tradeRes.review.target,
+            recommendedCounter: tradeRes.review.recommendedCounter,
+            staffConfidence: tradeRes.review.staffConfidence,
+          });
+          return 'escalated';
+        }
+        if (tradeRes.status === 'abandoned') {
+          emitNoSale(
+            customerId,
+            salesperson.id,
+            day,
+            tradeRes.reason === 'negative_equity'
+              ? 'trade_negative_equity'
+              : 'trade_manager_declined',
+          );
+          return 'resolved';
+        }
+        tradeEquity = tradeRes.tradeEquity;
+        bus.publish('trade:resolved', {
+          customerId,
           currentVehicle: person.currentVehicle,
-          loanPayoff: person.currentVehicle.loanPayoff,
-          allowanceAsk: visit.allowanceAsk,
-          skill: { effectiveness, trustworthiness },
-          conditionRead: tradeConditionRead,
-        },
-        {
-          bookValueFn: deps.tradeBookValueFn,
-          approver: deps.getTradeApprover?.() ?? null,
-          playerOverrideThreshold: deps.getTradeEscalationOverride?.(),
-          policyMultiplier: deps.getTradePolicyMultiplier?.(),
-        },
-      );
-      if (tradeRes.status === 'player_review') {
-        const review = tradeRes.review;
-        deps.onTradeReviewHeld?.({
+          agreedAllowance: tradeRes.agreedAllowance,
+          action: tradeRes.action,
+          hadCounter: tradeRes.hadCounter,
+          staffConfidence: tradeConditionRead?.confidence ?? 0,
+        });
+      }
+
+      return closeDealAtPrice(agreedPrice, tradeEquity);
+    };
+
+    if (close.outcome !== 'buy') {
+      if (!close.closeable) {
+        const customerAskPrice = Math.max(0, Math.round(close.priceFormation.rawPrice));
+        const salespersonFloorPrice = Math.round(close.priceFormation.marginFloorPrice);
+        const minimumAcceptablePrice = Math.round(close.priceFormation.vehicleCost);
+        const salesManagers = staffOrg.currentRoster.filter(
+          s => s.role_id === 'sales-manager',
+        );
+        const manager = salesManagers.reduce<typeof salesManagers[number] | null>(
+          (best, s) => (!best || s.effectiveness > best.effectiveness ? s : best),
+          null,
+        );
+        const managerGive = manager
+          ? lerp(0.25, 0.75, clampUnit(manager.effectiveness))
+          : 0;
+        const recommendedCounter = Math.round(
+          salespersonFloorPrice -
+            (salespersonFloorPrice - customerAskPrice) * managerGive,
+        );
+        const review: DiscountReviewPayload = {
+          customerId,
+          day,
+          vehicle: {
+            id: vehicle.id,
+            make: vehicle.make,
+            model: vehicle.model,
+            year: vehicle.year,
+            mileage: vehicle.mileage,
+            category: vehicle.category,
+          },
+          marketPrice: Math.round(close.priceFormation.marketPrice),
+          customerAskPrice,
+          salespersonFloorPrice,
+          recommendedCounter: Math.max(minimumAcceptablePrice, recommendedCounter),
+          minimumAcceptablePrice,
+          frontGrossAtFloor: Math.round(salespersonFloorPrice - close.priceFormation.vehicleCost),
+          canAcceptAsk: customerAskPrice >= minimumAcceptablePrice,
+        };
+
+        if (manager) {
+          return resolveTradeThenClose(review.recommendedCounter);
+        }
+
+        deps.onDiscountReviewHeld?.({
           customerId,
           day,
           review,
           decide(decision) {
-            const settlePlayerTrade = (
-              agreedAllowance: number,
-              action: 'accept' | 'counter',
-              hadCounter: boolean,
-            ): PlayerTradeDecisionResult => {
-              if (agreedAllowance < review.payoff) {
-                emitNoSale(
-                  customerId,
-                  salesperson.id,
-                  day,
-                  'trade_negative_equity',
-                );
+            const settleDiscount = (
+              agreedPrice: number,
+            ): PlayerDiscountDecisionResult => {
+              if (agreedPrice < review.minimumAcceptablePrice) {
+                emitNoSale(customerId, salesperson.id, day, 'discount_below_cost');
                 return { status: 'abandoned' };
               }
-
-              bus.publish('trade:resolved', {
-                customerId,
-                currentVehicle: person.currentVehicle!,
-                agreedAllowance,
-                action,
-                hadCounter,
-                staffConfidence: tradeConditionRead?.confidence ?? 0,
-              });
-              closeWithTrade(agreedAllowance - review.payoff);
+              resolveTradeThenClose(agreedPrice);
               return { status: 'closed' };
             };
 
             if (decision.kind === 'decline') {
-              emitNoSale(customerId, salesperson.id, day, 'trade_player_declined');
+              emitNoSale(customerId, salesperson.id, day, 'discount_player_declined');
               return { status: 'abandoned' };
             }
             if (decision.kind === 'accept_ask') {
-              return settlePlayerTrade(review.allowanceAsk, 'accept', false);
+              return settleDiscount(review.customerAskPrice);
             }
             if (decision.kind === 'accept_counter') {
-              return settlePlayerTrade(review.recommendedCounter, 'counter', true);
+              return settleDiscount(review.recommendedCounter);
             }
 
-            const accepted = rollCustomerCounterResponse(
-              {
-                allowanceAsk: review.allowanceAsk,
-                counterAmount: decision.amount,
-                priceSensitivity,
-              },
-              deriveSeed(masterSeed, 'trade_counter_response', { customerId, day }),
+            const accepted = rollDiscountCounterResponse(
+              review.customerAskPrice,
+              decision.amount,
+              priceSensitivity,
+              deriveSeed(masterSeed, 'discount_counter_response', { customerId, day }),
             );
             if (!accepted) {
               return {
@@ -448,47 +633,18 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                 accepted: false,
               };
             }
-            return settlePlayerTrade(decision.amount, 'counter', true);
+            return settleDiscount(decision.amount);
           },
         });
-        // Hand the manager-attention overlay everything it needs, then hold the
-        // deal for the player by surfacing this as a floor exception.
-        bus.publish('trade:escalated', {
-          customerId,
-          day,
-          currentVehicle: person.currentVehicle,
-          book: tradeRes.review.book,
-          allowanceAsk: tradeRes.review.allowanceAsk,
-          payoff: tradeRes.review.payoff,
-          target: tradeRes.review.target,
-          recommendedCounter: tradeRes.review.recommendedCounter,
-          staffConfidence: tradeRes.review.staffConfidence,
-        });
+        bus.publish('discount:escalated', review);
         return 'escalated';
       }
-      if (tradeRes.status === 'abandoned') {
-        emitNoSale(
-          customerId,
-          salesperson.id,
-          day,
-          tradeRes.reason === 'negative_equity'
-            ? 'trade_negative_equity'
-            : 'trade_manager_declined',
-        );
-        return 'resolved';
-      }
-      tradeEquity = tradeRes.tradeEquity;
-      bus.publish('trade:resolved', {
-        customerId,
-        currentVehicle: person.currentVehicle,
-        agreedAllowance: tradeRes.agreedAllowance,
-        action: tradeRes.action,
-        hadCounter: tradeRes.hadCounter,
-        staffConfidence: tradeConditionRead?.confidence ?? 0,
-      });
+
+      emitNoSale(customerId, salesperson.id, day, 'no_close');
+      return 'resolved';
     }
 
-    return closeWithTrade(tradeEquity);
+    return resolveTradeThenClose(close.realizedPrice);
   };
 }
 

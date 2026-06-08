@@ -33,8 +33,11 @@ import type { CapacityManager } from './game/CapacityManager';
 import {
   createStaffFloorDrain,
   type HeldTradeReview,
+  type HeldDiscountReview,
   type PlayerTradeDecision,
   type PlayerTradeDecisionResult,
+  type PlayerDiscountDecision,
+  type PlayerDiscountDecisionResult,
 } from './game/StaffDispatch';
 import {
   createMarketEconomy,
@@ -135,6 +138,10 @@ export interface World {
     customerId: string,
     decision: PlayerTradeDecision,
   ): PlayerTradeDecisionResult | null;
+  resolvePlayerDiscountDecision(
+    customerId: string,
+    decision: PlayerDiscountDecision,
+  ): PlayerDiscountDecisionResult | null;
 }
 
 /**
@@ -602,6 +609,7 @@ export function createWorld(deps: {
   // hands this composition root a closure. UI submits a decision through the
   // World seam; App never replays close math or reaches into game internals.
   const heldTradeReviews = new Map<string, HeldTradeReview>();
+  const heldDiscountReviews = new Map<string, HeldDiscountReview>();
 
   // Per-day FloorSim seam set: CapacityManager / StaffDispatch / CustomerPool
   // behind the locked #99 seams. Invoked once per day → fresh per-day
@@ -679,6 +687,8 @@ export function createWorld(deps: {
         // change applies on the next trade. Omitted ⇒ 1.0 (market).
         getTradePolicyMultiplier,
         onTradeReviewHeld: (held) => heldTradeReviews.set(held.customerId, held),
+        onDiscountReviewHeld: (held) =>
+          heldDiscountReviews.set(held.customerId, held),
       }),
     ],
     customerSource,
@@ -751,6 +761,15 @@ export function createWorld(deps: {
       const result = held.decide(decision);
       if (result.status !== 'counter_rejected') {
         heldTradeReviews.delete(customerId);
+      }
+      return result;
+    },
+    resolvePlayerDiscountDecision(customerId, decision) {
+      const held = heldDiscountReviews.get(customerId);
+      if (!held) return null;
+      const result = held.decide(decision);
+      if (result.status !== 'counter_rejected') {
+        heldDiscountReviews.delete(customerId);
       }
       return result;
     },
