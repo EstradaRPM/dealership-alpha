@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, within } from '@testing-library/react-native';
-import { DayLoopShell } from '../src/ui/DayLoopShell';
+import { DayLoopShell, type ManagerDeskAlertModel } from '../src/ui/DayLoopShell';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 import type { DayLoopState } from '../src/game/DayLoopController';
 import type { DayRecapModel } from '../src/ui/DayRecap';
@@ -157,9 +157,41 @@ describe('DayLoopShell Manager Desk smoke', () => {
     expect(getByTestId('manager-desk-region-market')).toBeTruthy();
     expect(getByTestId('manager-desk-region-prep')).toBeTruthy();
     expect(getByTestId('manager-desk-region-alerts')).toBeTruthy();
+    expect(
+      within(getByTestId('manager-desk-region-alerts')).getByText('No manager alerts.'),
+    ).toBeTruthy();
 
     fireEvent.press(getByText('Next Day →'));
     expect(onNextDay).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders non-blocking manager alerts inside Alerts and preserves callbacks', () => {
+    const onPress = jest.fn();
+    const managerAlerts: ManagerDeskAlertModel[] = [
+      {
+        id: 'office-needs-review',
+        title: 'Office needs review',
+        body: 'Two contracts are waiting before month close.',
+        severity: 'warning',
+        actionLabel: 'Open office',
+        onPress,
+      },
+    ];
+    const { getByTestId } = render(
+      <DayLoopShell
+        profile={PROFILE}
+        state={MANAGERIAL_AFTER_CLOSE}
+        onNextDay={() => {}}
+        recap={RECAP}
+        managerAlerts={managerAlerts}
+      />,
+    );
+
+    const alerts = within(getByTestId('manager-desk-region-alerts'));
+    expect(alerts.getByText('Office needs review')).toBeTruthy();
+    expect(alerts.getByText('Two contracts are waiting before month close.')).toBeTruthy();
+    fireEvent.press(alerts.getByText('Open office →'));
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 
   it('renders demand content inside Market while keeping the day action reachable', () => {

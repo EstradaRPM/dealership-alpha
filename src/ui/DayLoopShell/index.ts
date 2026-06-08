@@ -1,1 +1,1 @@
-export { DayLoopShell } from './DayLoopShell';
+export { DayLoopShell, type ManagerDeskAlertModel } from './DayLoopShell';

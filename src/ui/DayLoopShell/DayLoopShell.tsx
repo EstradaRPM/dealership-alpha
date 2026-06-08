@@ -21,6 +21,15 @@ import { colors } from '../theme';
 
 const TIER_CONFIG = loadTierConfig();
 
+export interface ManagerDeskAlertModel {
+  id: string;
+  title: string;
+  body?: string;
+  severity?: 'info' | 'warning' | 'critical';
+  actionLabel?: string;
+  onPress?: () => void;
+}
+
 interface Props {
   profile: CharacterProfile;
   state: DayLoopState;
@@ -56,6 +65,11 @@ interface Props {
    * `DemandShaper.getObservedMix()`. Shown on MANAGERIAL. Omitted ⇒ hidden.
    */
   demandReadout?: DemandReadoutModel;
+  /**
+   * Non-blocking manager summaries for issues that need attention but do not
+   * interrupt the day boundary. Must-answer beats stay in overlay components.
+   */
+  managerAlerts?: readonly ManagerDeskAlertModel[];
 }
 
 /**
@@ -63,6 +77,8 @@ interface Props {
  * dashboard (#116) and hand-play modal (#118) are later slices — this only
  * proves the composed day boots, runs end-to-end through the injected seams,
  * and returns to MANAGERIAL.
+ *
+ * Manager Desk region rules live in docs/manager-desk-shell-contract.md.
  */
 export function DayLoopShell({
   profile,
@@ -81,6 +97,7 @@ export function DayLoopShell({
   recap,
   leverProps,
   demandReadout,
+  managerAlerts = [],
 }: Props) {
   if (state.phase === 'FLOOR_OPEN' && floorModel) {
     return (
@@ -99,6 +116,7 @@ export function DayLoopShell({
 
   const showRecap = state.phase === 'MANAGERIAL' && state.hasRecap && !!recap;
   const primaryActionLabel = state.hasRecap ? 'Next Day' : 'Open Floor';
+  const hasManagerAlerts = managerAlerts.length > 0;
 
   return (
     <View style={styles.root}>
@@ -202,12 +220,62 @@ export function DayLoopShell({
             </View>
 
             <View
-              style={styles.region}
+              style={[styles.region, !hasManagerAlerts && styles.compactRegion]}
               accessibilityLabel="Manager Desk Alerts region"
               testID="manager-desk-region-alerts"
             >
-              <Text style={styles.regionTitle}>Alerts</Text>
-              <Text style={styles.placeholder}>No manager alerts.</Text>
+              <View style={styles.regionHeaderRow}>
+                <Text style={styles.regionTitle}>Alerts</Text>
+                {!hasManagerAlerts && (
+                  <Text style={styles.clearBadge}>Clear</Text>
+                )}
+              </View>
+              {hasManagerAlerts ? (
+                <View style={styles.alertList}>
+                  {managerAlerts.map((alert) => {
+                    const content = (
+                      <>
+                        <Text style={styles.alertTitle}>{alert.title}</Text>
+                        {alert.body ? (
+                          <Text style={styles.alertBody}>{alert.body}</Text>
+                        ) : null}
+                        {alert.actionLabel ? (
+                          <Text style={styles.alertAction}>
+                            {alert.actionLabel} →
+                          </Text>
+                        ) : null}
+                      </>
+                    );
+                    return alert.onPress ? (
+                      <TouchableOpacity
+                        key={alert.id}
+                        style={[
+                          styles.alertRow,
+                          alert.severity === 'critical' && styles.alertCritical,
+                          alert.severity === 'warning' && styles.alertWarning,
+                        ]}
+                        onPress={alert.onPress}
+                        accessibilityRole="button"
+                      >
+                        {content}
+                      </TouchableOpacity>
+                    ) : (
+                      <View
+                        key={alert.id}
+                        style={[
+                          styles.alertRow,
+                          alert.severity === 'critical' && styles.alertCritical,
+                          alert.severity === 'warning' && styles.alertWarning,
+                        ]}
+                      >
+                        {content}
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <Text style={styles.compactPlaceholder}>No manager alerts.</Text>
+              )}
             </View>
           </ScrollView>
 
@@ -304,8 +372,49 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 10,
   },
+  compactRegion: { paddingVertical: 10 },
+  regionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  clearBadge: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
   recap: { fontSize: 15, color: colors.textSecondary },
   placeholder: { fontSize: 14, color: colors.textMuted, fontStyle: 'italic' },
+  compactPlaceholder: {
+    fontSize: 13,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    marginTop: -4,
+  },
+  alertList: { gap: 8 },
+  alertRow: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
+    backgroundColor: colors.surface,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  alertWarning: { borderLeftColor: colors.reward },
+  alertCritical: { borderLeftColor: colors.danger },
+  alertTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
+  alertBody: { color: colors.textSecondary, fontSize: 13, marginTop: 3 },
+  alertAction: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
   floorOpen: { fontSize: 15, color: colors.textMuted, fontStyle: 'italic' },
   actionFooter: {
     paddingHorizontal: 16,
