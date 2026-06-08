@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import { loadTierConfig } from '../../game/CareerProgression';
 import type { DayLoopState } from '../../game/DayLoopController';
@@ -92,6 +98,7 @@ export function DayLoopShell({
   const displayAccent = accentColor ?? colors.primary;
 
   const showRecap = state.phase === 'MANAGERIAL' && state.hasRecap && !!recap;
+  const primaryActionLabel = state.hasRecap ? 'Next Day' : 'Open Floor';
 
   return (
     <View style={styles.root}>
@@ -126,49 +133,100 @@ export function DayLoopShell({
         )}
       </View>
 
-      <View style={styles.body}>
-        <Text style={styles.phase}>{state.phase}</Text>
-
-        {showRecap && recap ? (
-          <DayRecap model={recap} />
-        ) : (
-          state.phase === 'MANAGERIAL' && (
-            <Text style={styles.recap}>Night before Day 1.</Text>
-          )
-        )}
-
-        {state.phase === 'MANAGERIAL' ? (
-          <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: displayAccent }]}
-            onPress={onNextDay}
-            accessibilityRole="button"
-            accessibilityLabel="Next day"
+      {state.phase === 'MANAGERIAL' ? (
+        <View style={styles.managerDesk}>
+          <ScrollView
+            style={styles.managerScroll}
+            contentContainerStyle={styles.managerContent}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.primaryBtnText}>Next Day →</Text>
-          </TouchableOpacity>
-        ) : (
+            <View style={styles.deskTitleRow}>
+              <View>
+                <Text style={styles.phase}>Manager Desk</Text>
+                <Text style={styles.deskSubhead}>
+                  Between-day plan for Day {state.day}
+                </Text>
+              </View>
+              <Text style={styles.phaseBadge}>MANAGERIAL</Text>
+            </View>
+
+            <View
+              style={styles.region}
+              accessibilityLabel="Manager Desk Today region"
+              testID="manager-desk-region-today"
+            >
+              <Text style={styles.regionTitle}>Today</Text>
+              {showRecap && recap ? (
+                <DayRecap model={recap} />
+              ) : (
+                <Text style={styles.recap}>Night before Day 1.</Text>
+              )}
+            </View>
+
+            <View
+              style={styles.region}
+              accessibilityLabel="Manager Desk Market region"
+              testID="manager-desk-region-market"
+            >
+              <Text style={styles.regionTitle}>Market</Text>
+              {demandReadout ? (
+                <DemandReadout model={demandReadout} />
+              ) : (
+                <Text style={styles.placeholder}>
+                  Open the lot to build the demand readout.
+                </Text>
+              )}
+            </View>
+
+            <View
+              style={styles.region}
+              accessibilityLabel="Manager Desk Prep region"
+              testID="manager-desk-region-prep"
+            >
+              <Text style={styles.regionTitle}>Prep</Text>
+              {leverProps ? (
+                <OwnershipLevers {...leverProps} />
+              ) : onOpenAuction ? (
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={onOpenAuction}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.secondaryBtnText}>Visit Auction →</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.placeholder}>
+                  Prep levers will mount here as they unlock.
+                </Text>
+              )}
+            </View>
+
+            <View
+              style={styles.region}
+              accessibilityLabel="Manager Desk Alerts region"
+              testID="manager-desk-region-alerts"
+            >
+              <Text style={styles.regionTitle}>Alerts</Text>
+              <Text style={styles.placeholder}>No manager alerts.</Text>
+            </View>
+          </ScrollView>
+
+          <View style={styles.actionFooter}>
+            <TouchableOpacity
+              style={[styles.primaryBtn, { backgroundColor: displayAccent }]}
+              onPress={onNextDay}
+              accessibilityRole="button"
+              accessibilityLabel={primaryActionLabel}
+            >
+              <Text style={styles.primaryBtnText}>{primaryActionLabel} →</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.body}>
           <Text style={styles.floorOpen}>Floor open — running the day…</Text>
-        )}
-
-        {state.phase === 'MANAGERIAL' && demandReadout && (
-          <DemandReadout model={demandReadout} />
-        )}
-
-        {state.phase === 'MANAGERIAL' &&
-          (leverProps ? (
-            <OwnershipLevers {...leverProps} />
-          ) : (
-            onOpenAuction && (
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                onPress={onOpenAuction}
-                accessibilityRole="button"
-              >
-                <Text style={styles.secondaryBtnText}>Visit Auction →</Text>
-              </TouchableOpacity>
-            )
-          ))}
-      </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -203,29 +261,74 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  managerDesk: { flex: 1 },
+  managerScroll: { flex: 1 },
+  managerContent: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 20 },
+  deskTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'flex-start',
+    paddingBottom: 12,
+  },
   phase: {
     fontSize: 13,
-    color: colors.borderMuted,
+    color: colors.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
-    marginBottom: 8,
   },
-  recap: { fontSize: 17, color: colors.textSecondary, marginBottom: 28, textAlign: 'center' },
+  deskSubhead: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    marginTop: 4,
+  },
+  phaseBadge: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: colors.primaryDim,
+  },
+  region: {
+    paddingVertical: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderMuted,
+  },
+  regionTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  recap: { fontSize: 15, color: colors.textSecondary },
+  placeholder: { fontSize: 14, color: colors.textMuted, fontStyle: 'italic' },
   floorOpen: { fontSize: 15, color: colors.textMuted, fontStyle: 'italic' },
+  actionFooter: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderMuted,
+    backgroundColor: colors.base,
+  },
   primaryBtn: {
     paddingVertical: 14,
-    paddingHorizontal: 36,
+    paddingHorizontal: 24,
     borderRadius: 8,
+    alignItems: 'center',
   },
   primaryBtnText: {
-    color: colors.base,
+    color: colors.onAccent,
     fontSize: 16,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   secondaryBtn: {
-    marginTop: 16,
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 8,
