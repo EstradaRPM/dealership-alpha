@@ -44,6 +44,82 @@ describe('DemandShaper — mix normalization', () => {
       shaper.setMix({ young_family: 0, enthusiast: 0, commuter: 0, retiree: 0, tradesperson: 0 }),
     ).toThrow();
   });
+
+  it('layers active influence inputs over the baseline mix', () => {
+    const shaper = makeShaper({
+      young_family: 1,
+      enthusiast: 1,
+      commuter: 1,
+      retiree: 1,
+      tradesperson: 1,
+    });
+    const before = shaper.getMix();
+    shaper.setInfluenceInputs([
+      {
+        id: 'inventory-composition',
+        label: 'Inventory composition',
+        producer: 'inventory',
+        weights: { tradesperson: 2 },
+        lagDays: 0,
+      },
+    ]);
+    const after = shaper.getMix();
+    expect(after.tradesperson).toBeGreaterThan(before.tradesperson);
+    expect(after.young_family).toBeLessThan(before.young_family);
+    const [input] = shaper.getInfluenceInputs();
+    expect(input).toMatchObject({
+      id: 'inventory-composition',
+      label: 'Inventory composition',
+      producer: 'inventory',
+      lagDays: 0,
+      decayDays: 0,
+      elapsedDays: 0,
+      removing: false,
+    });
+    expect(input.weights.tradesperson).toBe(2);
+    expect(input.targetWeights.tradesperson).toBe(2);
+  });
+
+  it('ramps changed influence targets over whole days', () => {
+    const shaper = makeShaper({
+      young_family: 1,
+      enthusiast: 1,
+      commuter: 1,
+      retiree: 1,
+      tradesperson: 1,
+    });
+    const before = shaper.getMix();
+    shaper.upsertInfluenceInput({
+      id: 'advertising:local-radio',
+      label: 'Advertising: Local radio',
+      producer: 'advertising',
+      weights: { young_family: 1.2, enthusiast: -0.2 },
+      lagDays: 3,
+      decayDays: 2,
+    });
+
+    expect(shaper.getMix()).toEqual(before);
+    shaper.advanceInfluenceDay();
+    const dayOne = shaper.getMix();
+    expect(dayOne.young_family).toBeGreaterThan(before.young_family);
+    expect(dayOne.young_family).toBeLessThan(
+      makeShaper({
+        young_family: 1,
+        enthusiast: 1,
+        commuter: 1,
+        retiree: 1,
+        tradesperson: 1,
+      }).getMix().young_family + 0.2,
+    );
+    const partialWeight = shaper.getInfluenceInputs()[0].weights.young_family;
+    expect(partialWeight).toBeGreaterThan(0);
+    expect(partialWeight).toBeLessThan(1.2);
+
+    shaper.advanceInfluenceDay(2);
+    const full = shaper.getInfluenceInputs()[0];
+    expect(full.weights.young_family).toBeCloseTo(1.2, 10);
+    expect(full.weights.enthusiast).toBeCloseTo(-0.2, 10);
+  });
 });
 
 describe('DemandShaper — deterministic weighted draw', () => {
@@ -135,17 +211,15 @@ describe('DemandShaper — snapshot/restore', () => {
     original.recordArrival('young_family');
     original.recordArrival('commuter');
     original.recordArrival('young_family');
+    original.upsertInfluenceInput({
+      id: 'test-inventory',
+      label: 'Inventory lean',
+      producer: 'test',
+      weights: { commuter: 0.25, tradesperson: 0.15 },
+      lagDays: 0,
+    });
 
-    const snap: DemandShaperSnapshot = {
-      ...original.snapshot(),
-      activeInputs: [
-        {
-          id: 'test-inventory',
-          label: 'Inventory lean',
-          weights: { commuter: 0.25, tradesperson: 0.15 },
-        },
-      ],
-    };
+    const snap: DemandShaperSnapshot = original.snapshot();
     const reparsed = JSON.parse(JSON.stringify(snap)) as DemandShaperSnapshot;
 
     const rebuilt = makeShaper();
@@ -153,6 +227,7 @@ describe('DemandShaper — snapshot/restore', () => {
 
     expect(rebuilt.snapshot()).toEqual(reparsed);
     expect(rebuilt.getMix()).toEqual(original.getMix());
+    expect(rebuilt.getInfluenceInputs()[0].targetWeights.commuter).toBe(0.25);
     expect(rebuilt.getObservedMix()).toEqual(original.getObservedMix());
   });
 

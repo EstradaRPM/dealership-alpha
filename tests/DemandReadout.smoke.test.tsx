@@ -9,6 +9,14 @@ const MODEL: DemandReadoutModel = {
     { persona: 'enthusiast', label: 'Enthusiast', share: 0.3, count: 3, trend: 'falling' },
     { persona: 'commuter', label: 'Commuter', share: 0.2, count: 2, trend: 'steady' },
   ],
+  targetingLevers: [
+    {
+      id: 'inventory-composition',
+      label: 'Inventory composition',
+      lean: [{ persona: 'young_family', label: 'Young Family', weight: 0.42 }],
+    },
+  ],
+  coverageGap: { category: 'truck', label: 'trucks', wantedCount: 2, stockCount: 0 },
 };
 
 describe('DemandReadout smoke', () => {
@@ -19,6 +27,10 @@ describe('DemandReadout smoke', () => {
     expect(getByText('50%')).toBeTruthy();
     expect(getByText('▲')).toBeTruthy(); // rising
     expect(getByText('▼')).toBeTruthy(); // falling
+    expect(getByText("Who You're Targeting")).toBeTruthy();
+    expect(getByText('Inventory composition')).toBeTruthy();
+    expect(getByText('Young Family +42')).toBeTruthy();
+    expect(getByText(/recent buyers wanted trucks; you\s*stock 0/i)).toBeTruthy();
   });
 
   it('shows an empty hint before any traffic is observed', () => {

@@ -7,6 +7,7 @@ export type {
   DemandShaperConfig,
   DemandShaperSnapshot,
   DemandInfluenceInput,
+  DemandInfluenceState,
   PersonaMix,
   DemandTrend,
   ObservedMixEntry,

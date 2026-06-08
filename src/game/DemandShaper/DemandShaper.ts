@@ -21,13 +21,34 @@ export type DemandTrend = 'rising' | 'steady' | 'falling';
 export interface DemandInfluenceInput {
   readonly id: string;
   readonly label: string;
+  readonly producer: 'inventory' | 'reputation' | 'advertising' | 'test';
+  /**
+   * Target additive persona deltas. Positive values make that persona likelier;
+   * negative values lean demand away from that persona. The effective
+   * contribution ramps toward this target over lagDays.
+   */
   readonly weights: PersonaMix;
+  /** Days for a changed target to ramp in. 0 means immediate. */
+  readonly lagDays: number;
+  /** Days for the lever to ramp out after removal. Defaults to lagDays. */
+  readonly decayDays?: number;
+}
+
+export interface DemandInfluenceState extends DemandInfluenceInput {
+  /** Current effective additive deltas used by getMix/drawPersona/readout. */
+  readonly weights: PersonaMix;
+  /** Requested target deltas; may differ from weights while lagging/decaying. */
+  readonly targetWeights: PersonaMix;
+  readonly lagDays: number;
+  readonly decayDays: number;
+  readonly elapsedDays: number;
+  readonly removing: boolean;
 }
 
 export interface DemandShaperSnapshot {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 1 | 2;
   readonly baselineMix: PersonaMix;
-  readonly activeInputs: readonly DemandInfluenceInput[];
+  readonly activeInputs: readonly (DemandInfluenceInput | DemandInfluenceState)[];
   /** Oldest first, capped by config.windowSize on restore. */
   readonly observedHistory: readonly string[];
 }
@@ -60,9 +81,19 @@ export interface DemandShaper {
   /**
    * Replace the mix. Weights are stored raw (re-normalized on read/draw); keys
    * must be a subset of `personas`; missing personas default to weight 0.
-   * Levers (#211/#212) drive this; the spine ships uniform + behavior-neutral.
+   * This is the baseline; active influence inputs are layered on top.
    */
   setMix(weights: PersonaMix): void;
+  /** Replace the live influence inputs layered over the baseline mix. */
+  setInfluenceInputs(inputs: readonly DemandInfluenceInput[]): void;
+  /** Add/update one producer without disturbing other producers. */
+  upsertInfluenceInput(input: DemandInfluenceInput): void;
+  /** Ramp one producer back to zero, preserving attribution while decaying. */
+  removeInfluenceInput(id: string): void;
+  /** Advance lag/decay state by whole days. */
+  advanceInfluenceDay(days?: number): void;
+  /** Live influence inputs with defensive copies for readout attribution. */
+  getInfluenceInputs(): readonly DemandInfluenceState[];
   /** Deterministic weighted persona draw from the current mix. */
   drawPersona(rng: () => number): string;
   /** Append a realized arrival to the trailing window. */
@@ -77,7 +108,7 @@ export function createDefaultDemandShaperSnapshot(
   personas: readonly string[],
 ): DemandShaperSnapshot {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     baselineMix: Object.fromEntries(personas.map((p) => [p, 1])),
     activeInputs: [],
     observedHistory: [],
@@ -99,8 +130,8 @@ export function createDemandShaper(deps: {
 
   // Raw weights; normalized lazily on read/draw so set/normalize stay consistent.
   let baselineWeights: PersonaMix = {};
-  let activeInputs: DemandInfluenceInput[] = [];
-  const setWeights = (raw: PersonaMix): void => {
+  let activeInputs: DemandInfluenceState[] = [];
+  const validateWeights = (raw: PersonaMix): PersonaMix => {
     const next: PersonaMix = {};
     for (const p of personas) {
       const w = raw[p] ?? 0;
@@ -114,16 +145,186 @@ export function createDemandShaper(deps: {
     }
     const sum = personas.reduce((s, p) => s + next[p], 0);
     if (sum <= 0) throw new Error('DemandShaper mix sums to 0 — no persona can spawn');
+    return next;
+  };
+  const validateInfluenceWeights = (raw: PersonaMix): PersonaMix => {
+    const next: PersonaMix = {};
+    for (const p of personas) {
+      const w = raw[p] ?? 0;
+      if (!Number.isFinite(w)) {
+        throw new Error(`DemandShaper influence weight for "${p}" is not finite`);
+      }
+      next[p] = w;
+    }
+    for (const key of Object.keys(raw)) {
+      if (!personaSet.has(key)) {
+        throw new Error(`DemandShaper: unknown persona "${key}"`);
+      }
+    }
+    return next;
+  };
+  const setWeights = (raw: PersonaMix): void => {
+    const next = validateWeights(raw);
     baselineWeights = next;
   };
   setWeights(
     deps.initialMix ?? Object.fromEntries(personas.map((p) => [p, 1])),
   );
 
+  const zeroWeights = (): PersonaMix =>
+    Object.fromEntries(personas.map((p) => [p, 0]));
+
+  const copyWeights = (weights: PersonaMix): PersonaMix =>
+    Object.fromEntries(personas.map((p) => [p, weights[p] ?? 0]));
+
+  const hasDelta = (weights: PersonaMix): boolean =>
+    personas.some((p) => Math.abs(weights[p] ?? 0) > 1e-9);
+
+  const sameWeights = (a: PersonaMix, b: PersonaMix): boolean =>
+    personas.every((p) => Math.abs((a[p] ?? 0) - (b[p] ?? 0)) <= 1e-9);
+
+  const lerpWeights = (
+    from: PersonaMix,
+    to: PersonaMix,
+    progress: number,
+  ): PersonaMix =>
+    Object.fromEntries(
+      personas.map((p) => [
+        p,
+        (from[p] ?? 0) + ((to[p] ?? 0) - (from[p] ?? 0)) * progress,
+      ]),
+    );
+
+  const normalizeDuration = (days: number | undefined, fallback = 0): number => {
+    const value = days ?? fallback;
+    if (!Number.isFinite(value) || value < 0) {
+      throw new Error('DemandShaper influence lag/decay days must be nonnegative');
+    }
+    return Math.floor(value);
+  };
+
+  const materializeInput = (
+    input: DemandInfluenceInput,
+    existing?: DemandInfluenceState,
+  ): DemandInfluenceState => {
+    const targetWeights = validateInfluenceWeights(input.weights);
+    const lagDays = normalizeDuration(input.lagDays);
+    const decayDays = normalizeDuration(input.decayDays, lagDays);
+    const startWeights = existing ? copyWeights(existing.weights) : zeroWeights();
+    const targetUnchanged =
+      existing &&
+      sameWeights(existing.targetWeights, targetWeights) &&
+      existing.label === input.label &&
+      existing.producer === input.producer &&
+      existing.lagDays === lagDays &&
+      existing.decayDays === decayDays &&
+      !existing.removing;
+    if (targetUnchanged) return existing;
+
+    return {
+      id: input.id,
+      label: input.label,
+      producer: input.producer,
+      weights: lagDays === 0 ? copyWeights(targetWeights) : startWeights,
+      targetWeights,
+      lagDays,
+      decayDays,
+      elapsedDays: lagDays === 0 ? lagDays : 0,
+      removing: false,
+    };
+  };
+
+  const snapshotInput = (input: DemandInfluenceState): DemandInfluenceState => ({
+    id: input.id,
+    label: input.label,
+    producer: input.producer,
+    weights: copyWeights(input.weights),
+    targetWeights: copyWeights(input.targetWeights),
+    lagDays: input.lagDays,
+    decayDays: input.decayDays,
+    elapsedDays: input.elapsedDays,
+    removing: input.removing,
+  });
+
+  const restoreInput = (
+    input: DemandInfluenceInput | DemandInfluenceState,
+  ): DemandInfluenceState => {
+    if ('targetWeights' in input) {
+      return {
+        id: input.id,
+        label: input.label,
+        producer: input.producer,
+        weights: validateInfluenceWeights(input.weights),
+        targetWeights: validateInfluenceWeights(input.targetWeights),
+        lagDays: normalizeDuration(input.lagDays),
+        decayDays: normalizeDuration(input.decayDays, input.lagDays),
+        elapsedDays: normalizeDuration(input.elapsedDays),
+        removing: input.removing,
+      };
+    }
+    // v1 snapshots stored already-effective additive weights only.
+    return materializeInput({
+      id: input.id,
+      label: input.label,
+      producer: input.producer ?? 'test',
+      weights: input.weights,
+      lagDays: 0,
+      decayDays: 0,
+    });
+  };
+
+  const upsertInput = (input: DemandInfluenceInput): void => {
+    const existing = activeInputs.find((i) => i.id === input.id);
+    const next = materializeInput(input, existing);
+    activeInputs = existing
+      ? activeInputs.map((i) => (i.id === input.id ? next : i))
+      : [...activeInputs, next];
+  };
+
+  const removeInput = (id: string): void => {
+    activeInputs = activeInputs.flatMap((input) => {
+      if (input.id !== id) return [input];
+      if (!hasDelta(input.weights) && !hasDelta(input.targetWeights)) return [];
+      if (input.decayDays === 0) return [];
+      return [
+        {
+          ...input,
+          targetWeights: zeroWeights(),
+          elapsedDays: 0,
+          removing: true,
+        },
+      ];
+    });
+  };
+
+  const advanceInfluences = (days = 1): void => {
+    const wholeDays = normalizeDuration(days);
+    for (let day = 0; day < wholeDays; day++) {
+      activeInputs = activeInputs.flatMap((input) => {
+        const duration = input.removing ? input.decayDays : input.lagDays;
+        const elapsedDays = input.elapsedDays + 1;
+        const progress = duration === 0 ? 1 : Math.min(1, elapsedDays / duration);
+        const weights = lerpWeights(input.weights, input.targetWeights, progress);
+        const next = { ...input, weights, elapsedDays };
+        if (next.removing && progress >= 1 && !hasDelta(next.weights)) return [];
+        return [next];
+      });
+    }
+  };
+
   const normalized = (): PersonaMix => {
-    const sum = personas.reduce((s, p) => s + baselineWeights[p], 0);
+    const combined: PersonaMix = {};
+    for (const p of personas) {
+      combined[p] = Math.max(
+        0,
+        baselineWeights[p] +
+          activeInputs.reduce((sum, input) => sum + (input.weights[p] ?? 0), 0),
+      );
+    }
+    const sum = personas.reduce((s, p) => s + combined[p], 0);
+    if (sum <= 0) throw new Error('DemandShaper mix sums to 0 — no persona can spawn');
     const mix: PersonaMix = {};
-    for (const p of personas) mix[p] = baselineWeights[p] / sum;
+    for (const p of personas) mix[p] = combined[p] / sum;
     return mix;
   };
 
@@ -178,29 +379,30 @@ export function createDemandShaper(deps: {
       }));
     },
     snapshot: () => ({
-      schemaVersion: 1,
+      schemaVersion: 2,
       baselineMix: { ...baselineWeights },
-      activeInputs: activeInputs.map((input) => ({
-        ...input,
-        weights: { ...input.weights },
-      })),
+      activeInputs: activeInputs.map(snapshotInput),
       observedHistory: [...window],
     }),
+    setInfluenceInputs: (inputs) => {
+      const incomingIds = new Set(inputs.map((input) => input.id));
+      for (const input of inputs) upsertInput(input);
+      for (const input of activeInputs) {
+        if (!incomingIds.has(input.id)) removeInput(input.id);
+      }
+    },
+    upsertInfluenceInput: upsertInput,
+    removeInfluenceInput: removeInput,
+    advanceInfluenceDay: advanceInfluences,
+    getInfluenceInputs: () => activeInputs.map(snapshotInput),
     restore: (snap) => {
-      if (snap.schemaVersion !== 1) {
+      if (snap.schemaVersion !== 1 && snap.schemaVersion !== 2) {
         throw new Error(
           `DemandShaper snapshot schema ${snap.schemaVersion} is not supported`,
         );
       }
       setWeights(snap.baselineMix);
-      activeInputs = snap.activeInputs.map((input) => {
-        for (const key of Object.keys(input.weights)) {
-          if (!personaSet.has(key)) {
-            throw new Error(`DemandShaper: unknown persona "${key}"`);
-          }
-        }
-        return { ...input, weights: { ...input.weights } };
-      });
+      activeInputs = snap.activeInputs.map(restoreInput);
       window.length = 0;
       for (const persona of snap.observedHistory) {
         if (!personaSet.has(persona)) {

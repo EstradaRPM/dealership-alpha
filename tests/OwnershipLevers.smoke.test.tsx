@@ -47,6 +47,12 @@ const BASE: OwnershipLeversProps = {
   ],
   tradePolicyId: 'market',
   onSelectTradePolicy: jest.fn(),
+  advertisingOptions: [
+    { id: 'none', label: 'No campaign', blurb: 'No paid advertising push.' },
+    { id: 'local-radio', label: 'Local radio', blurb: 'Aim at practical shoppers.' },
+  ],
+  advertisingCampaignId: 'none',
+  onSelectAdvertisingCampaign: jest.fn(),
 };
 
 describe('OwnershipLevers smoke tests', () => {
@@ -121,5 +127,18 @@ describe('OwnershipLevers smoke tests', () => {
     );
     fireEvent.press(getByText('8 hrs'));
     expect(onSelectHours).toHaveBeenCalledWith('short');
+  });
+
+  it('selecting an advertising campaign dispatches its id', () => {
+    const onSelectAdvertisingCampaign = jest.fn();
+    const { getByText } = render(
+      <OwnershipLevers
+        {...BASE}
+        onSelectAdvertisingCampaign={onSelectAdvertisingCampaign}
+      />,
+    );
+    expect(getByText('No paid advertising push.')).toBeTruthy();
+    fireEvent.press(getByText('Local radio'));
+    expect(onSelectAdvertisingCampaign).toHaveBeenCalledWith('local-radio');
   });
 });

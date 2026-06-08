@@ -18,10 +18,32 @@ export interface DemandReadoutEntry {
   trend: DemandTrend;
 }
 
+export interface DemandTargetingLean {
+  persona: string;
+  label: string;
+  /** Raw additive influence weight from the lever. */
+  weight: number;
+}
+
+export interface DemandTargetingLever {
+  id: string;
+  label: string;
+  lean: readonly DemandTargetingLean[];
+}
+
+export interface DemandCoverageGap {
+  category: string;
+  label: string;
+  wantedCount: number;
+  stockCount: number;
+}
+
 export interface DemandReadoutModel {
   entries: readonly DemandReadoutEntry[];
   /** Total arrivals in the trailing window (0 ⇒ "no data yet"). */
   totalObserved: number;
+  targetingLevers?: readonly DemandTargetingLever[];
+  coverageGap?: DemandCoverageGap | null;
 }
 
 const TREND_GLYPH: Record<DemandTrend, string> = {
@@ -63,6 +85,23 @@ function DemandRow({ entry }: { entry: DemandReadoutEntry }) {
   );
 }
 
+function TargetingLeverRow({ lever }: { lever: DemandTargetingLever }) {
+  const leanText =
+    lever.lean.length === 0
+      ? 'Neutral'
+      : lever.lean
+          .map((item) => `${item.label} +${Math.round(item.weight * 100)}`)
+          .join(' / ');
+  return (
+    <View style={styles.targetingRow} accessibilityRole="text">
+      <Text style={styles.targetingLabel} numberOfLines={1}>
+        {lever.label}
+      </Text>
+      <Text style={styles.targetingLean}>{leanText}</Text>
+    </View>
+  );
+}
+
 /**
  * Observed persona-mix card: per-persona share bars + rising/steady/falling
  * trend arrows over the trailing arrival window. Read-only; smoke tests only.
@@ -77,6 +116,26 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
         model.entries.map((entry) => (
           <DemandRow key={entry.persona} entry={entry} />
         ))
+      )}
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Who You're Targeting</Text>
+        {model.targetingLevers && model.targetingLevers.length > 0 ? (
+          model.targetingLevers.map((lever) => (
+            <TargetingLeverRow key={lever.id} lever={lever} />
+          ))
+        ) : (
+          <Text style={styles.empty}>No active targeting levers.</Text>
+        )}
+      </View>
+
+      {model.coverageGap && (
+        <View style={styles.coverageLine} accessibilityRole="text">
+          <Text style={styles.coverageText}>
+            Lot coverage: recent buyers wanted {model.coverageGap.label}; you
+            stock {model.coverageGap.stockCount}.
+          </Text>
+        </View>
       )}
     </View>
   );
@@ -117,4 +176,27 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   rowTrend: { width: 20, fontSize: 14, textAlign: 'center', marginLeft: 6 },
+  section: {
+    marginTop: 18,
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderMuted,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginBottom: 10,
+  },
+  targetingRow: { paddingVertical: 4 },
+  targetingLabel: { fontSize: 14, color: colors.textSecondary },
+  targetingLean: { marginTop: 2, fontSize: 13, color: colors.textMuted },
+  coverageLine: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.borderMuted,
+  },
+  coverageText: { fontSize: 13, color: colors.textSecondary },
 });

@@ -51,16 +51,21 @@ Segment/body-style demand is emergent through the existing persona -> preference
 - Logic module: `src/game/DemandShaper/`
   - Public surface through `src/game/DemandShaper/index.ts`.
   - `createDemandShaper({ personas, config, initialMix? })`.
-  - `getMix()`, `setMix()`, `setInfluenceInputs()`, `getInfluenceInputs()`.
+  - `getMix()`, `setMix()`, `setInfluenceInputs()`, `upsertInfluenceInput()`,
+    `removeInfluenceInput()`, `advanceInfluenceDay()`, `getInfluenceInputs()`.
   - `drawPersona(rng)` must stay deterministic from the injected RNG.
   - `recordArrival(persona)`, `getObservedMix()`.
-  - `snapshot()` / `restore()` persist baseline, active inputs, observed history.
+  - `snapshot()` / `restore()` persist baseline, lagged active input state,
+    observed history.
 
 - Composition root: `src/createWorld.ts`
   - Builds `DemandShaper` from `SALES_ARCHETYPES.map(a => a.personId)`.
   - Loads `data/tunables.json` -> `demandShaper`.
   - Builds location baseline for new worlds.
-  - Syncs influence inputs from live game state.
+  - Syncs inventory/reputation influence inputs from live game state.
+  - Owns the reserved advertising control (`world.demandControls`) and stores
+    that lever's target/current lag state inside DemandShaper.
+  - Advances influence lag/decay on `clock:day_started`.
   - Draws persona inside the customer spawn seam and records the arrival.
 
 - UI readout: `src/ui/DemandReadout/`
@@ -79,21 +84,24 @@ Segment/body-style demand is emergent through the existing persona -> preference
 
 ## Influence Inputs
 
-Current input shape is additive persona weights with attribution:
+Current input shape is typed target deltas with attribution and lag:
 
 ```text
 DemandInfluenceInput = {
   id: string
   label: string
-  weights: Partial<Record<personaId, number>>
+  producer: 'inventory' | 'reputation' | 'advertising' | 'test'
+  weights: Partial<Record<personaId, number>> // target deltas, +/- allowed
+  lagDays: number
+  decayDays?: number
 }
 ```
 
-Expected evolution for #212:
-
-```text
-baseline +/- attributed lever deltas, with lag/decay state
-```
+`getInfluenceInputs()` returns lag state for readout/persistence: current
+effective `weights`, `targetWeights`, `lagDays`, `decayDays`, `elapsedDays`,
+`producer`, and `removing`. `getMix()` normalizes
+`baselineMix + current effective deltas`; over-subtracted persona weights clamp
+to zero, but the all-zero mix still throws.
 
 Preserve the readout contract: every active lever must remain attributable in
 "Who You're Targeting." Advertising/marketing should attach as another producer
@@ -111,6 +119,7 @@ Known groups:
 - `locationProfiles`
 - `inventoryInfluence`
 - `reputationInfluence`
+- `advertisingInfluence`
 - `coverageCategoryByPersona`
 
 Add new values here when they are balance/content knobs. Do not bury balance

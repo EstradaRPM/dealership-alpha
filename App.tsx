@@ -29,7 +29,12 @@ import { CharacterCreation } from './src/ui/CharacterCreation';
 import { MainMenu } from './src/ui/MainMenu';
 import { DayLoopShell } from './src/ui/DayLoopShell';
 import type { DayRecapModel } from './src/ui/DayRecap';
-import type { DemandReadoutModel } from './src/ui/DemandReadout';
+import type {
+  DemandCoverageGap,
+  DemandReadoutEntry,
+  DemandReadoutModel,
+  DemandTargetingLever,
+} from './src/ui/DemandReadout';
 import { SALES_ARCHETYPES } from './src/game/CustomerPool';
 import type {
   FloorDashboardModel,
@@ -170,6 +175,58 @@ function humanizeRole(roleId: string): string {
 const PERSONA_LABELS: Record<string, string> = Object.fromEntries(
   SALES_ARCHETYPES.map((a) => [a.personId, a.label]),
 );
+const DEMAND_SHAPER = loadTunables().demandShaper;
+const COVERAGE_CATEGORY_LABELS: Record<string, string> = {
+  sedan: 'sedans',
+  truck: 'trucks',
+  suv: 'SUVs',
+};
+
+function buildTargetingLevers(world: World): DemandTargetingLever[] {
+  return world.demandShaper.getInfluenceInputs().map((input) => ({
+    id: input.id,
+    label: input.label,
+    lean: Object.entries(input.weights)
+      .filter(([, weight]) => weight > 0)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([persona, weight]) => ({
+        persona,
+        label: PERSONA_LABELS[persona] ?? persona,
+        weight,
+      })),
+  }));
+}
+
+function buildCoverageGap(
+  entries: readonly DemandReadoutEntry[],
+  lotVehicles: readonly LotVehicle[],
+): DemandCoverageGap | null {
+  const personaCategory = DEMAND_SHAPER.coverageCategoryByPersona ?? {};
+  const wantedByCategory: Record<string, number> = {};
+  for (const entry of entries) {
+    const category = personaCategory[entry.persona];
+    if (!category) continue;
+    wantedByCategory[category] = (wantedByCategory[category] ?? 0) + entry.count;
+  }
+  const stockedByCategory: Record<string, number> = {};
+  for (const vehicle of lotVehicles) {
+    stockedByCategory[vehicle.category] =
+      (stockedByCategory[vehicle.category] ?? 0) + 1;
+  }
+  const [category, wantedCount] =
+    Object.entries(wantedByCategory)
+      .filter(([, wanted]) => wanted > 0)
+      .sort(([, a], [, b]) => b - a)
+      .find(([category]) => (stockedByCategory[category] ?? 0) === 0) ?? [];
+  if (!category || wantedCount == null) return null;
+  return {
+    category,
+    label: COVERAGE_CATEGORY_LABELS[category] ?? category,
+    wantedCount,
+    stockCount: stockedByCategory[category] ?? 0,
+  };
+}
 
 // Month-close cadence — sourced from the same tunable GameClock uses, never
 // a magic number. clock:month_ended fires on endingDay % daysPerMonth === 0.
@@ -565,6 +622,18 @@ export default function App() {
       );
   };
 
+  const handleSelectAdvertisingCampaign = (id: string) => {
+    const w = worldRef.current;
+    if (!w) return;
+    w.demandControls.setAdvertisingCampaign(id);
+    bump();
+    void saveStore
+      .load()
+      .then((existing) =>
+        saveStore.save({ ...(existing ?? {}), world: snapshotWorld(w) }),
+      );
+  };
+
   // Persist the list-price strategy choice into the active slot (#154). Same
   // merge-with-existing write as the trade policy above.
   const handleSelectPricingStrategy = (id: string) => {
@@ -855,19 +924,27 @@ export default function App() {
       })),
       tradePolicyId,
       onSelectTradePolicy: handleSelectTradePolicy,
+      advertisingOptions: world.demandControls.advertisingOptions,
+      advertisingCampaignId: world.demandControls.getAdvertisingCampaignId(),
+      onSelectAdvertisingCampaign: handleSelectAdvertisingCampaign,
     };
     // Observed persona-mix readout (#198). Read live off DemandShaper each
-    // render; reflects the trailing arrival window at MANAGERIAL time.
+    // render; reflects the trailing arrival window at MANAGERIAL time. #211
+    // layers the active influence producers and the lot-coverage gap onto the
+    // same read model so the mechanic stays reachable in the live flow.
     const observed = world.demandShaper.getObservedMix();
+    const demandEntries: DemandReadoutEntry[] = observed.map((e) => ({
+      persona: e.persona,
+      label: PERSONA_LABELS[e.persona] ?? e.persona,
+      share: e.share,
+      count: e.count,
+      trend: e.trend,
+    }));
     const demandReadout: DemandReadoutModel = {
-      entries: observed.map((e) => ({
-        persona: e.persona,
-        label: PERSONA_LABELS[e.persona] ?? e.persona,
-        share: e.share,
-        count: e.count,
-        trend: e.trend,
-      })),
+      entries: demandEntries,
       totalObserved: observed.reduce((sum, e) => sum + e.count, 0),
+      targetingLevers: buildTargetingLevers(world),
+      coverageGap: buildCoverageGap(demandEntries, lotVehicles),
     };
     content = (
       <View style={styles.container}>

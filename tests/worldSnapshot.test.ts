@@ -588,7 +588,7 @@ describe('DemandShaper through the world seam (#210)', () => {
   function build(masterSeed: number) {
     const bus = createEventBus();
     const world = createWorld({ bus, masterSeed, characterProfile: PROFILE });
-    return { world };
+    return { bus, world };
   }
 
   // The AC: save/load reproduces the demand "weather" the player was reading:
@@ -629,6 +629,37 @@ describe('DemandShaper through the world seam (#210)', () => {
     expect(rebuilt.demandShaper.getObservedMix()).toEqual(
       original.demandShaper.getObservedMix(),
     );
+  });
+
+  it('round-trips advertising lever target and lag state through the world seam', () => {
+    const seed = 9876;
+    const { bus, world: original } = build(seed);
+    original.demandControls.setAdvertisingCampaign('local-radio');
+    bus.publish('clock:day_started', { day: 1 });
+
+    const originalInput = original.demandShaper
+      .getInfluenceInputs()
+      .find((input) => input.producer === 'advertising')!;
+    expect(originalInput).toBeDefined();
+    expect(originalInput.weights.young_family).toBeGreaterThan(0);
+    expect(originalInput.weights.young_family).toBeLessThan(
+      originalInput.targetWeights.young_family,
+    );
+
+    const snap = snapshotWorld(original);
+    const reparsed = JSON.parse(JSON.stringify(snap)) as WorldSnapshot;
+    expect(reparsed).toEqual(snap);
+
+    const { world: rebuilt } = build(seed);
+    expect(rebuilt.demandControls.getAdvertisingCampaignId()).toBe('none');
+    restoreWorld(reparsed, rebuilt);
+
+    expect(rebuilt.demandControls.getAdvertisingCampaignId()).toBe('local-radio');
+    expect(
+      rebuilt.demandShaper
+        .getInfluenceInputs()
+        .find((input) => input.producer === 'advertising'),
+    ).toEqual(originalInput);
   });
 });
 
@@ -737,7 +768,7 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     const { world } = build(4242);
     const current = snapshotWorld(world);
     const { demandShaper, ...legacyModules } = current.modules;
-    expect(demandShaper.schemaVersion).toBe(1);
+    expect(demandShaper.schemaVersion).toBe(2);
     const persisted: PersistedWorldSnapshot = {
       version: 1,
       modules: legacyModules,
@@ -747,7 +778,7 @@ describe('world-snapshot versioning + migrations (#196)', () => {
 
     expect(migrated.version).toBe(WORLD_SNAPSHOT_VERSION);
     expect(migrated.modules.demandShaper).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       baselineMix: {
         young_family: 1,
         enthusiast: 1,
@@ -853,7 +884,7 @@ describe('snapshotWorld / restoreWorld seam (#188)', () => {
     expect(snap.modules.competitorMarket.schemaVersion).toBe(1);
     expect(Array.isArray(snap.modules.competitorMarket.competitors)).toBe(true);
     expect(typeof snap.modules.competitorMarket.rngState).toBe('number');
-    expect(snap.modules.demandShaper.schemaVersion).toBe(1);
+    expect(snap.modules.demandShaper.schemaVersion).toBe(2);
     expect(Array.isArray(snap.modules.demandShaper.activeInputs)).toBe(true);
     expect(Array.isArray(snap.modules.demandShaper.observedHistory)).toBe(true);
   });

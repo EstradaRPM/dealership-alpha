@@ -48,6 +48,13 @@ export interface PricingStrategyLeverOption {
   readonly blurb: string;
 }
 
+/** Reserved advertising campaign lever (#212). */
+export interface AdvertisingLeverOption {
+  readonly id: string;
+  readonly label: string;
+  readonly blurb: string;
+}
+
 export interface OwnershipLeversProps {
   /** ⇔ DayLoopState.ownershipUnlocked. All levers greyed + inert when false
    *  (#107 d11: levers greyed while the floor is live). */
@@ -70,6 +77,10 @@ export interface OwnershipLeversProps {
   tradePolicyOptions: readonly TradePolicyLeverOption[];
   tradePolicyId: string;
   onSelectTradePolicy: (id: string) => void;
+  /** Advertising lever (#212): reserved campaign seam + setter. */
+  advertisingOptions: readonly AdvertisingLeverOption[];
+  advertisingCampaignId: string;
+  onSelectAdvertisingCampaign: (id: string) => void;
 }
 
 const ACCENT = colors.primary;
@@ -131,8 +142,8 @@ function PriceRow({
  * MANAGERIAL pre-open ownership levers (#120, design #107 d11). Thin input
  * forms only — Pricing → Inventory, Stock/Auction → existing AuctionMenu,
  * Hiring → StaffOrg via PersonnelScreen, Hours-of-op → scaled ticksPerDay
- * (stored by the composition root; FloorSim feed is downstream). No
- * marketing UI (its economy module does not exist yet).
+ * (stored by the composition root; FloorSim feed is downstream), Advertising
+ * → reserved DemandShaper influence seam (#212).
  */
 export function OwnershipLevers({
   enabled,
@@ -151,6 +162,9 @@ export function OwnershipLevers({
   tradePolicyOptions,
   tradePolicyId,
   onSelectTradePolicy,
+  advertisingOptions,
+  advertisingCampaignId,
+  onSelectAdvertisingCampaign,
 }: OwnershipLeversProps) {
   const selectedPolicy =
     tradePolicyOptions.find((p) => p.id === tradePolicyId) ??
@@ -158,6 +172,9 @@ export function OwnershipLevers({
   const selectedStrategy =
     pricingStrategyOptions.find((p) => p.id === pricingStrategyId) ??
     pricingStrategyOptions[0];
+  const selectedAdvertising =
+    advertisingOptions.find((p) => p.id === advertisingCampaignId) ??
+    advertisingOptions[0];
   return (
     <ScrollView
       style={styles.root}
@@ -262,6 +279,36 @@ export function OwnershipLevers({
             );
           })}
         </View>
+      </View>
+
+      <View style={[styles.card, !enabled && styles.cardDisabled]}>
+        <Text style={styles.cardTitle}>Advertising</Text>
+        <View style={styles.hoursRow}>
+          {advertisingOptions.map((o) => {
+            const sel = o.id === advertisingCampaignId;
+            return (
+              <TouchableOpacity
+                key={o.id}
+                style={[
+                  styles.hoursOpt,
+                  sel && styles.hoursOptSel,
+                  !enabled && styles.btnDisabled,
+                ]}
+                disabled={!enabled}
+                onPress={() => onSelectAdvertisingCampaign(o.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: sel }}
+              >
+                <Text style={[styles.hoursOptText, sel && styles.hoursOptTextSel]}>
+                  {o.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {selectedAdvertising && (
+          <Text style={styles.policyBlurb}>{selectedAdvertising.blurb}</Text>
+        )}
       </View>
 
       <View style={[styles.card, !enabled && styles.cardDisabled]}>

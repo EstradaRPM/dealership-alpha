@@ -31,7 +31,95 @@
   },
   "demandShaper": {
     "windowSize": 60,
-    "trendEpsilon": 0.08
+    "trendEpsilon": 0.08,
+    "locationProfiles": [
+      {
+        "id": "north-industrial",
+        "label": "North industrial corridor",
+        "weights": {
+          "young_family": 1.0,
+          "enthusiast": 0.85,
+          "commuter": 1.05,
+          "retiree": 0.7,
+          "tradesperson": 1.4
+        }
+      },
+      {
+        "id": "suburban-schoolbelt",
+        "label": "Suburban schoolbelt",
+        "weights": {
+          "young_family": 1.35,
+          "enthusiast": 0.75,
+          "commuter": 1.15,
+          "retiree": 0.9,
+          "tradesperson": 0.85
+        }
+      },
+      {
+        "id": "retirement-lake",
+        "label": "Retirement lake towns",
+        "weights": {
+          "young_family": 0.85,
+          "enthusiast": 0.8,
+          "commuter": 0.95,
+          "retiree": 1.45,
+          "tradesperson": 0.95
+        }
+      }
+    ],
+    "inventoryInfluence": {
+      "maxWeight": 0.9,
+      "categoryWeights": {
+        "sedan": {
+          "commuter": 0.8,
+          "retiree": 0.35
+        },
+        "truck": {
+          "tradesperson": 1.0,
+          "enthusiast": 0.25
+        },
+        "suv": {
+          "young_family": 0.85,
+          "retiree": 0.25
+        }
+      }
+    },
+    "reputationInfluence": {
+      "neutralReviewScore": 50,
+      "maxWeight": 0.7,
+      "highWeights": {
+        "young_family": 0.65,
+        "retiree": 0.55,
+        "commuter": 0.25
+      },
+      "lowWeights": {
+        "enthusiast": 0.55,
+        "tradesperson": 0.35
+      }
+    },
+    "advertisingInfluence": {
+      "campaigns": [
+        {
+          "id": "local-radio",
+          "label": "Local radio",
+          "blurb": "Run a modest radio push aimed at practical family and commute shoppers.",
+          "lagDays": 3,
+          "decayDays": 2,
+          "weights": {
+            "young_family": 0.85,
+            "commuter": 0.55,
+            "enthusiast": -0.2
+          }
+        }
+      ]
+    },
+    "coverageCategoryByPersona": {
+      "young_family": "suv",
+      "enthusiast": "sedan",
+      "commuter": "sedan",
+      "retiree": "suv",
+      "tradesperson": "truck"
+    }
   },
   "renderLoop": {
     "baseTickIntervalMs": 400,

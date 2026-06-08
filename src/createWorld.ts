@@ -89,7 +89,12 @@ import {
   type CompetitorMarket,
 } from './game/CompetitorMarket';
 import { deriveSeed, createRng } from './game/NPC/Rng';
-import { createDemandShaper, type DemandShaper } from './game/DemandShaper';
+import {
+  createDemandShaper,
+  type DemandInfluenceInput,
+  type DemandShaper,
+  type PersonaMix,
+} from './game/DemandShaper';
 
 export type StaffTaxonomy = ReturnType<typeof loadStaffTaxonomy>;
 
@@ -116,6 +121,11 @@ export interface World {
   marketEconomy: MarketEconomy;
   competitorMarket: CompetitorMarket;
   demandShaper: DemandShaper;
+  demandControls: {
+    readonly advertisingOptions: readonly { id: string; label: string; blurb: string }[];
+    getAdvertisingCampaignId(): string;
+    setAdvertisingCampaign(id: string): void;
+  };
 }
 
 /**
@@ -125,6 +135,117 @@ export interface World {
  */
 export function makeSeed(): number {
   return Math.floor(Math.random() * 0x1_0000_0000);
+}
+
+type DemandShaperTunables = ReturnType<typeof loadTunables>['demandShaper'];
+
+function hasInfluence(weights: PersonaMix): boolean {
+  return Object.values(weights).some((w) => Math.abs(w) > 0);
+}
+
+function selectLocationBaseline(
+  masterSeed: number,
+  personas: readonly string[],
+  config: DemandShaperTunables,
+): PersonaMix | undefined {
+  const profiles = config.locationProfiles ?? [];
+  if (profiles.length === 0) return undefined;
+  const rng = createRng(deriveSeed(masterSeed, 'demand.shaper.location', {}));
+  const profile = profiles[Math.floor(rng() * profiles.length) % profiles.length];
+  return Object.fromEntries(personas.map((p) => [p, profile.weights[p] ?? 0]));
+}
+
+function scaledWeights(
+  profile: Readonly<Record<string, number>>,
+  scale: number,
+): PersonaMix {
+  return Object.fromEntries(
+    Object.entries(profile).map(([persona, weight]) => [persona, weight * scale]),
+  );
+}
+
+function buildInventoryInfluence(
+  lot: readonly { category: string }[],
+  config: DemandShaperTunables,
+): DemandInfluenceInput | null {
+  const inventoryConfig = config.inventoryInfluence;
+  if (!inventoryConfig || lot.length === 0) return null;
+  const categoryCounts: Record<string, number> = {};
+  for (const vehicle of lot) {
+    categoryCounts[vehicle.category] = (categoryCounts[vehicle.category] ?? 0) + 1;
+  }
+  const weights: PersonaMix = {};
+  for (const [category, count] of Object.entries(categoryCounts)) {
+    const categoryWeights = inventoryConfig.categoryWeights[category];
+    if (!categoryWeights) continue;
+    const scale = (count / lot.length) * inventoryConfig.maxWeight;
+    for (const [persona, weight] of Object.entries(categoryWeights)) {
+      weights[persona] = (weights[persona] ?? 0) + weight * scale;
+    }
+  }
+  if (!hasInfluence(weights)) return null;
+  return {
+    id: 'inventory-composition',
+    label: `Inventory composition (${lot.length} units)`,
+    producer: 'inventory',
+    weights,
+    lagDays: inventoryConfig.lagDays ?? 0,
+    decayDays: inventoryConfig.decayDays ?? inventoryConfig.lagDays ?? 0,
+  };
+}
+
+function buildReputationInfluence(
+  reviewScore: number,
+  config: DemandShaperTunables,
+): DemandInfluenceInput | null {
+  const reputationConfig = config.reputationInfluence;
+  if (!reputationConfig) return null;
+  const neutral = reputationConfig.neutralReviewScore;
+  const aboveNeutral = Math.max(0, reviewScore - neutral);
+  const belowNeutral = Math.max(0, neutral - reviewScore);
+  if (aboveNeutral === 0 && belowNeutral === 0) return null;
+  const highDenom = Math.max(1, 100 - neutral);
+  const lowDenom = Math.max(1, neutral);
+  const scale =
+    aboveNeutral > 0
+      ? (aboveNeutral / highDenom) * reputationConfig.maxWeight
+      : (belowNeutral / lowDenom) * reputationConfig.maxWeight;
+  const profile =
+    aboveNeutral > 0
+      ? reputationConfig.highWeights
+      : reputationConfig.lowWeights;
+  const weights = scaledWeights(profile, scale);
+  if (!hasInfluence(weights)) return null;
+  return {
+    id: 'reputation',
+    label: `Reputation ${Math.round(reviewScore)}`,
+    producer: 'reputation',
+    weights,
+    lagDays: reputationConfig.lagDays ?? 0,
+    decayDays: reputationConfig.decayDays ?? reputationConfig.lagDays ?? 0,
+  };
+}
+
+function advertisingInputId(campaignId: string): string {
+  return `advertising:${campaignId}`;
+}
+
+function buildAdvertisingInfluence(
+  campaignId: string,
+  config: DemandShaperTunables,
+): DemandInfluenceInput | null {
+  const campaign = config.advertisingInfluence?.campaigns.find(
+    (entry) => entry.id === campaignId,
+  );
+  if (!campaign || !hasInfluence(campaign.weights)) return null;
+  return {
+    id: advertisingInputId(campaign.id),
+    label: `Advertising: ${campaign.label}`,
+    producer: 'advertising',
+    weights: campaign.weights,
+    lagDays: campaign.lagDays,
+    decayDays: campaign.decayDays ?? campaign.lagDays,
+  };
 }
 
 export function createWorld(deps: {
@@ -372,13 +493,68 @@ export function createWorld(deps: {
   // someone to hold.
   // #198: DemandShaper owns the per-day persona mix. The spawn draw below is
   // weighted by it on the existing seeded per-spawn stream (replay/#122-safe),
-  // replacing the prior uniform round-robin. Baseline mix is uniform, so this
-  // is behavior-neutral until a lever (#211/#212) drives `setMix`. Personas are
-  // the SALES_ARCHETYPES ids so the shaper stays free of a CustomerPool dep.
+  // replacing the prior uniform round-robin. #211 selects a seeded
+  // location-profile baseline, then layers active influence producers
+  // (inventory composition + reputation) over it. Personas are the
+  // SALES_ARCHETYPES ids so the shaper stays free of a CustomerPool dep.
+  const demandShaperPersonas = SALES_ARCHETYPES.map((a) => a.personId);
+  const demandShaperConfig = loadTunables().demandShaper;
   const demandShaper = createDemandShaper({
-    personas: SALES_ARCHETYPES.map((a) => a.personId),
-    config: loadTunables().demandShaper,
+    personas: demandShaperPersonas,
+    config: demandShaperConfig,
+    initialMix: selectLocationBaseline(
+      masterSeed,
+      demandShaperPersonas,
+      demandShaperConfig,
+    ),
   });
+  const syncDemandInfluence = (id: string, input: DemandInfluenceInput | null) => {
+    if (input) demandShaper.upsertInfluenceInput(input);
+    else demandShaper.removeInfluenceInput(id);
+  };
+  const syncDemandInfluences = () => {
+    syncDemandInfluence(
+      'inventory-composition',
+      buildInventoryInfluence(inventory.getLotVehicles(), demandShaperConfig),
+    );
+    syncDemandInfluence(
+      'reputation',
+      buildReputationInfluence(reputation.reviewScore, demandShaperConfig),
+    );
+  };
+  syncDemandInfluences();
+  const demandControls = {
+    advertisingOptions: [
+      { id: 'none', label: 'No campaign', blurb: 'No paid advertising push.' },
+      ...(demandShaperConfig.advertisingInfluence?.campaigns.map((campaign) => ({
+        id: campaign.id,
+        label: campaign.label,
+        blurb: campaign.blurb,
+      })) ?? []),
+    ],
+    getAdvertisingCampaignId: () => {
+      const active = demandShaper
+        .getInfluenceInputs()
+        .find((input) => input.producer === 'advertising' && hasInfluence(input.targetWeights));
+      return active ? active.id.replace(/^advertising:/, '') : 'none';
+    },
+    setAdvertisingCampaign: (id: string) => {
+      const existingIds = demandShaper
+        .getInfluenceInputs()
+        .filter((input) => input.producer === 'advertising')
+        .map((input) => input.id);
+      for (const existingId of existingIds) demandShaper.removeInfluenceInput(existingId);
+      if (id === 'none') return;
+      const input = buildAdvertisingInfluence(id, demandShaperConfig);
+      if (input) demandShaper.upsertInfluenceInput(input);
+    },
+  };
+  bus.subscribe('inventory:vehicle_purchased', syncDemandInfluences);
+  bus.subscribe('inventory:vehicle_sold', syncDemandInfluences);
+  bus.subscribe('reputation:satisfaction_hit', syncDemandInfluences);
+  bus.subscribe('deal:closed', syncDemandInfluences);
+  bus.subscribe('clock:overnight_reputation_drift', syncDemandInfluences);
+  bus.subscribe('clock:day_started', () => demandShaper.advanceInfluenceDay());
   const archetypeByPersona = new Map(
     SALES_ARCHETYPES.map((a) => [a.personId, a]),
   );
@@ -393,6 +569,7 @@ export function createWorld(deps: {
         const drawRng = createRng(
           deriveSeed(masterSeed, 'demand.shaper.spawn', { day, tick, i }),
         );
+        syncDemandInfluences();
         const persona = demandShaper.drawPersona(drawRng);
         const a = archetypeByPersona.get(persona) ?? SALES_ARCHETYPES[0];
         demandShaper.recordArrival(persona);
@@ -552,5 +729,6 @@ export function createWorld(deps: {
     marketEconomy,
     competitorMarket,
     demandShaper,
+    demandControls,
   };
 }

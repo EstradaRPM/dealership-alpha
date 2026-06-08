@@ -52,6 +52,53 @@ export const TunablesSchema = z.object({
   demandShaper: z.object({
     windowSize: z.number().int().positive(),
     trendEpsilon: z.number().min(0).max(1),
+    locationProfiles: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          label: z.string().min(1),
+          weights: z.record(z.string().min(1), z.number().nonnegative()),
+        }),
+      )
+      .optional(),
+    inventoryInfluence: z
+      .object({
+        maxWeight: z.number().nonnegative(),
+        lagDays: z.number().int().nonnegative().optional(),
+        decayDays: z.number().int().nonnegative().optional(),
+        categoryWeights: z.record(
+          z.string().min(1),
+          z.record(z.string().min(1), z.number().nonnegative()),
+        ),
+      })
+      .optional(),
+    reputationInfluence: z
+      .object({
+        neutralReviewScore: z.number().min(0).max(100),
+        maxWeight: z.number().nonnegative(),
+        lagDays: z.number().int().nonnegative().optional(),
+        decayDays: z.number().int().nonnegative().optional(),
+        highWeights: z.record(z.string().min(1), z.number().nonnegative()),
+        lowWeights: z.record(z.string().min(1), z.number().nonnegative()),
+      })
+      .optional(),
+    advertisingInfluence: z
+      .object({
+        campaigns: z.array(
+          z.object({
+            id: z.string().min(1),
+            label: z.string().min(1),
+            blurb: z.string().min(1),
+            lagDays: z.number().int().nonnegative(),
+            decayDays: z.number().int().nonnegative().optional(),
+            weights: z.record(z.string().min(1), z.number()),
+          }),
+        ),
+      })
+      .optional(),
+    coverageCategoryByPersona: z
+      .record(z.string().min(1), z.string().min(1))
+      .optional(),
   }),
   // Live render loop (#121, design #107). UI-only: a wall-clock interval
   // drives FloorSim.step() at `baseTickIntervalMs / speed`. Game logic never
