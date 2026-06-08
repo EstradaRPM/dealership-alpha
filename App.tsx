@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   createMultiSlotSaveStore,
+  createSnapshotStore,
   createSqliteDriverFactory,
 } from './src/game/SaveStore';
 import { createEventBus } from './src/game/EventBus';
@@ -28,6 +29,7 @@ import {
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { MainMenu } from './src/ui/MainMenu';
 import { DayLoopShell } from './src/ui/DayLoopShell';
+import { SettingsScreen } from './src/ui/SettingsScreen';
 import type { DayRecapModel } from './src/ui/DayRecap';
 import type {
   DemandCoverageGap,
@@ -56,6 +58,8 @@ import type {
   SaveStore,
   MultiSlotSaveStore,
   MidDayCheckpoint,
+  SnapshotStore,
+  WeeklySnapshot,
 } from './src/game/SaveStore';
 import type { LotVehicle } from './src/game/Inventory';
 import { AdminConsole } from './src/ui/AdminConsole';
@@ -126,9 +130,21 @@ const HIRING_ROLE_ID = 'salesperson';
 // trajectory; the per-slot checkpoint cell (#109/#122) lives beside it,
 // isolated, so the in-progress FloorSim checkpoint can never collide with the
 // main save blob and never bleeds between slots.
+const storageDriverFactory = createSqliteDriverFactory();
 const slotStore: MultiSlotSaveStore = createMultiSlotSaveStore(
-  createSqliteDriverFactory(),
+  storageDriverFactory,
 );
+
+function snapshotKey(slotId: string): string {
+  return `snapshot:${slotId}`;
+}
+
+async function snapshotStoreForActiveSlot(): Promise<SnapshotStore | null> {
+  const activeSlotId = await slotStore.getActiveSlotId();
+  return activeSlotId === null
+    ? null
+    : createSnapshotStore(storageDriverFactory(snapshotKey(activeSlotId)));
+}
 // Active-slot-backed SaveStore adapter (#194). The character/admin/end-card
 // flows depend on the narrow single-blob SaveStore surface (save/load/clear);
 // this presents exactly that, always addressing whichever slot is active.
@@ -292,6 +308,9 @@ export default function App() {
   // null when none is pending. Set on clock:month_ended, cleared on dismiss —
   // the MANAGERIAL interrupt point between the day-recap and next-day prep.
   const [monthClose, setMonthClose] = useState<number | null>(null);
+  const [settingsSnapshots, setSettingsSnapshots] = useState<
+    readonly WeeklySnapshot[]
+  >([]);
   // Event-interrupt overlay channel (#84 / design record #127). Lives in the
   // composition root, layered ABOVE the Navigator — NOT a RouteParamMap route.
   // Non-terminal beats (career:tier_up / chapter rebrand) enqueue silently
@@ -410,6 +429,31 @@ export default function App() {
     }
   };
 
+  const refreshSettingsSnapshots = async () => {
+    const snapshotStore = await snapshotStoreForActiveSlot();
+    setSettingsSnapshots(
+      snapshotStore ? await snapshotStore.listSnapshots() : [],
+    );
+  };
+
+  const openSettings = () => {
+    setSettingsSnapshots([]);
+    void refreshSettingsSnapshots();
+    nav.navigate('settings');
+  };
+
+  const handleRollback = async (index: number) => {
+    const snapshotStore = await snapshotStoreForActiveSlot();
+    const state = await snapshotStore?.rollbackToSnapshot(index);
+    if (!state) {
+      await refreshSettingsSnapshots();
+      return;
+    }
+    await saveStore.save(state);
+    await slotStore.clearCheckpoint();
+    await loadActiveSlotIntoGame();
+  };
+
   // Boot to the start menu (#195). No auto-load into the last game — the
   // player chooses New Game / Continue / Load. Continue resumes the
   // most-recently-played slot; both Continue and Load route through
@@ -431,11 +475,19 @@ export default function App() {
         // blob (preserving character/seed/policy — the same merge-with-existing
         // write the policy/strategy setters use). The adapter derives the
         // slot's `day` metadata from this snapshot.
-        void saveStore
-          .load()
-          .then((existing) =>
-            saveStore.save({ ...(existing ?? {}), world: snapshotWorld(w) }),
-          );
+        void (async () => {
+          const worldSnapshot = snapshotWorld(w);
+          const existing = await saveStore.load();
+          const nextState = { ...(existing ?? {}), world: worldSnapshot };
+          await saveStore.save(nextState);
+          if (worldSnapshot.modules.gameClock.day % 7 === 0) {
+            const snapshotStore = await snapshotStoreForActiveSlot();
+            await snapshotStore?.saveSnapshot(nextState, {
+              day: worldSnapshot.modules.gameClock.day,
+              tier: worldSnapshot.modules.tierManager.currentTier,
+            });
+          }
+        })();
       }
       // Day closed → the active slot's mid-day checkpoint is obsolete (#122 /
       // #109: caller clears it on day-complete).
@@ -662,6 +714,18 @@ export default function App() {
           }}
           onContinue={() => void loadActiveSlotIntoGame()}
           onLoadGame={() => void loadActiveSlotIntoGame()}
+          onSettings={openSettings}
+        />
+      </>
+    );
+  } else if (screen === 'settings') {
+    content = (
+      <>
+        <StatusBar style="light" />
+        <SettingsScreen
+          snapshots={settingsSnapshots}
+          onRollback={(index) => void handleRollback(index)}
+          onClose={() => nav.back()}
         />
       </>
     );

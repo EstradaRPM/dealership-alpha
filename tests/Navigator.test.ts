@@ -29,6 +29,10 @@ describe('Navigator', () => {
     const nav = createNavigator('loading');
     nav.navigate('character-creation');
     nav.navigate('game');
+    nav.navigate('settings');
+    expect(nav.current.route).toBe('settings');
+    nav.back();
+    expect(nav.current.route).toBe('game');
     nav.navigate('personnel');
     expect(nav.current.route).toBe('personnel');
 

@@ -65,6 +65,22 @@ describe('MainMenu smoke tests', () => {
     await waitFor(() => expect(filled.getByText('Continue')).toBeTruthy());
   });
 
+  it('shows Settings when the live menu supplies the handler', () => {
+    const onSettings = jest.fn();
+    const screen = render(
+      <MainMenu
+        saveStore={makeStore()}
+        onNewGame={jest.fn()}
+        onLoadGame={jest.fn()}
+        onContinue={jest.fn()}
+        onSettings={onSettings}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Settings'));
+    expect(onSettings).toHaveBeenCalledTimes(1);
+  });
+
   it('Continue resumes the most-recently-played slot', async () => {
     // Monotonic clock so the two slots get strictly-ordered lastPlayed stamps.
     let tick = 0;

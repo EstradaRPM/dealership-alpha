@@ -14,6 +14,9 @@ export type RouteParamMap = {
   // root of the boot flow — character-creation and game are reached from here
   // via reset (so back() never resurrects the menu mid-game).
   'main-menu': undefined;
+  // Settings / snapshot rollback is a closeable route: reachable from the
+  // start menu and closed with back() to the prior screen.
+  settings: undefined;
   'character-creation': undefined;
   game: undefined;
   auction: undefined;
