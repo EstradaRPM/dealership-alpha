@@ -11,6 +11,11 @@ import type { CandidateListing } from '../../game/StaffOrg';
 import type { StaffWithComposites } from '../../game/StaffOrg/types';
 import { colors } from '../theme';
 
+export interface PersonnelRoleOption {
+  id: string;
+  label: string;
+}
+
 function SkillRow({ label, value, cap }: { label: string; value: number; cap: number }) {
   const ratio = Math.max(0, Math.min(1, value / cap));
   return (
@@ -135,21 +140,56 @@ function CandidateRow({ listing, onPress }: CandidateRowProps) {
   );
 }
 
+interface StaffRowProps {
+  staff: StaffWithComposites;
+  onFire: () => void;
+}
+
+function StaffRow({ staff, onFire }: StaffRowProps) {
+  return (
+    <View style={styles.staffRow}>
+      <View style={styles.rowMain}>
+        <Text style={styles.rowTitle}>{staff.role_id.replace(/-/g, ' ')}</Text>
+        <Text style={styles.rowSub}>
+          {Math.round(staff.effectiveness * 100)}% eff /{' '}
+          {Math.round(staff.trustworthiness * 100)}% trust
+        </Text>
+      </View>
+      <TouchableOpacity
+        style={styles.fireBtn}
+        accessibilityRole="button"
+        accessibilityLabel={`Fire ${staff.role_id.replace(/-/g, ' ')}`}
+        onPress={onFire}
+      >
+        <Text style={styles.fireBtnText}>Fire</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export interface PersonnelScreenProps {
-  roleId: string;
+  roleOptions: readonly PersonnelRoleOption[];
+  selectedRoleId: string;
   candidates: readonly CandidateListing[];
+  roster: readonly StaffWithComposites[];
   skillCaps: Record<string, number>;
   cash: number;
+  onSelectRole: (roleId: string) => void;
   onHire: (candidateId: string) => void;
+  onFire: (staffId: string) => void;
   onClose: () => void;
 }
 
 export function PersonnelScreen({
-  roleId,
+  roleOptions,
+  selectedRoleId,
   candidates,
+  roster,
   skillCaps,
   cash,
+  onSelectRole,
   onHire,
+  onFire,
   onClose,
 }: PersonnelScreenProps) {
   const [selected, setSelected] = useState<CandidateListing | null>(null);
@@ -167,12 +207,52 @@ export function PersonnelScreen({
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.title}>Hire {roleId.replace(/-/g, ' ')}</Text>
+          <Text style={styles.title}>Personnel</Text>
           <Text style={styles.cashLabel}>Cash: ${cash.toLocaleString()}</Text>
         </View>
       </View>
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listInner}>
+        {roster.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Roster</Text>
+            {roster.map((staff) => (
+              <StaffRow
+                key={staff.id}
+                staff={staff}
+                onFire={() => onFire(staff.id)}
+              />
+            ))}
+          </View>
+        ) : null}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Hire</Text>
+          <View style={styles.rolePicker}>
+            {roleOptions.map((role) => {
+              const selected = role.id === selectedRoleId;
+              return (
+                <TouchableOpacity
+                  key={role.id}
+                  style={[styles.roleBtn, selected && styles.roleBtnSelected]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => onSelectRole(role.id)}
+                >
+                  <Text
+                    style={[
+                      styles.roleBtnText,
+                      selected && styles.roleBtnTextSelected,
+                    ]}
+                  >
+                    {role.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {candidates.length === 0 ? (
           <Text style={styles.empty}>No candidates available.</Text>
         ) : (
@@ -236,6 +316,42 @@ const styles = StyleSheet.create({
   listInner: {
     padding: 16,
   },
+  section: {
+    marginBottom: 14,
+  },
+  sectionLabel: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  rolePicker: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  roleBtn: {
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: colors.surface,
+  },
+  roleBtnSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryDim,
+  },
+  roleBtnText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  roleBtnTextSelected: {
+    color: colors.textPrimary,
+  },
   empty: {
     color: colors.borderMuted,
     fontSize: 15,
@@ -249,6 +365,17 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
     alignItems: 'center',
+  },
+  staffRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.surfaceRaised,
+    padding: 14,
+    marginBottom: 10,
+    alignItems: 'center',
+    gap: 12,
   },
   rowMain: {
     flex: 1,
@@ -277,6 +404,18 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '600',
+  },
+  fireBtn: {
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  fireBtnText: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: '700',
   },
   // Modal
   modalOverlay: {

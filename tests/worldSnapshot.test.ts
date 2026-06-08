@@ -206,6 +206,38 @@ describe('StaffOrg + StaffMorale snapshot/restore (#190)', () => {
     // Morale restored to the shifted value, not reset to the default.
     expect(rebuilt.staffMorale.getMorale(staffId)).toBe(shifted);
   });
+
+  it('round-trips newly hireable manager roles and keeps fired staff removed', () => {
+    const seed = 204;
+    const { world: original } = build(seed);
+    original.tierManager.restoreState({
+      currentTier: 2,
+      businessName: '',
+      accentColor: '#38bdf8',
+      fontId: 'prestige',
+      customersServed: 0,
+    });
+
+    const fniCandidate = original.staffOrg.getCandidates('f&i-manager')[0];
+    const ucmCandidate = original.staffOrg.getCandidates('used-car-manager')[0];
+    expect(fniCandidate).toBeDefined();
+    expect(ucmCandidate).toBeDefined();
+
+    original.staffOrg.hire(fniCandidate.candidateId);
+    original.staffOrg.hire(ucmCandidate.candidateId);
+    original.staffOrg.fire(fniCandidate.staff.id);
+
+    const snap = JSON.parse(JSON.stringify(snapshotWorld(original))) as WorldSnapshot;
+    const { world: rebuilt } = build(seed);
+    restoreWorld(snap, rebuilt);
+
+    expect(rebuilt.staffOrg.currentRoster.map((s) => s.role_id)).toEqual([
+      'used-car-manager',
+    ]);
+    expect(
+      rebuilt.staffOrg.currentRoster.some((s) => s.id === fniCandidate.staff.id),
+    ).toBe(false);
+  });
 });
 
 describe('MarketEconomy + CompetitorMarket snapshot/restore (#191)', () => {

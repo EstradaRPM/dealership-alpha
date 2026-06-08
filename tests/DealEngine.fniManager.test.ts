@@ -1,5 +1,8 @@
 import { createDealEngine, loadFniProducts, loadFniAutoAttachConfig } from '../src/game/DealEngine';
 import type { FniAutoAttachConfig, FniProductCatalog } from '../src/game/DealEngine';
+import { createEventBus } from '../src/game/EventBus';
+import { createWorld } from '../src/createWorld';
+import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // Catalog with all 6 products — 2 open + 4 requiring f&i-manager
 const FULL_CATALOG: FniProductCatalog = {
@@ -24,6 +27,18 @@ const AUTO_ATTACH_CONFIG: FniAutoAttachConfig = {
     keyReplacement:    0.40,
   },
   skillMultiplierRange: [0.4, 1.1],
+};
+
+const PROFILE: CharacterProfile = {
+  name: 'Ray Estrada',
+  backstoryId: 'ex-mechanic',
+  day1Modifier: {
+    backstoryId: 'ex-mechanic',
+    reconJudgmentBonus: 0.15,
+    startingCreditLine: 0,
+    startingCapitalBonus: 0,
+    grudgesFlag: false,
+  },
 };
 
 function makeEngine(catalog = FULL_CATALOG, autoAttachConfig = AUTO_ATTACH_CONFIG) {
@@ -99,6 +114,37 @@ describe('DealEngine.computeAutoFni — attach rate skill scaling', () => {
     expect(ids).toContain('vsc');
     expect(ids).toContain('gap');
     expect(result).toHaveLength(2);
+  });
+
+  it('hiring an f&i-manager unlocks gated auto-F&I products', () => {
+    const world = createWorld({
+      bus: createEventBus(),
+      masterSeed: 204,
+      characterProfile: PROFILE,
+    });
+    world.tierManager.restoreState({
+      currentTier: 2,
+      businessName: '',
+      accentColor: '#38bdf8',
+      fontId: 'prestige',
+      customersServed: 0,
+    });
+
+    const beforeRoles = world.staffOrg.currentRoster.map((s) => s.role_id);
+    expect(
+      world.dealEngine.computeAutoFni(100, beforeRoles, () => 0),
+    ).toHaveLength(2);
+
+    const fniCandidate = world.staffOrg.getCandidates('f&i-manager')[0];
+    expect(fniCandidate).toBeDefined();
+    world.staffOrg.hire(fniCandidate.candidateId);
+
+    const afterRoles = world.staffOrg.currentRoster.map((s) => s.role_id);
+    const attached = world.dealEngine.computeAutoFni(100, afterRoles, () => 0);
+    expect(attached.map((p) => p.productId)).toEqual(
+      expect.arrayContaining(['tireWheel', 'etch', 'prepaidMaintenance', 'keyReplacement']),
+    );
+    expect(attached).toHaveLength(6);
   });
 
   it('higher skill → higher effective attach rate (vsc: 0.55 base)', () => {

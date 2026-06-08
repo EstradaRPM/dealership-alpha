@@ -18,7 +18,7 @@ import {
   resolveTradePolicyMultiplier,
 } from './src/game/DealEngine';
 import { loadInventoryConfig } from './src/game/Inventory';
-import { loadStaffTaxonomy } from './src/game/NPC';
+import { loadStaffArchetypes, loadStaffTaxonomy } from './src/game/NPC';
 import { createWorld, makeSeed, type World } from './src/createWorld';
 import {
   snapshotWorld,
@@ -46,7 +46,10 @@ import type {
 import { HandPlayModal, type HandPlayOutcome } from './src/ui/HandPlayModal';
 import { useFloorRenderLoop } from './src/ui/FloorRenderLoop';
 import { AuctionMenu } from './src/ui/AuctionMenu';
-import { PersonnelScreen } from './src/ui/PersonnelScreen';
+import {
+  PersonnelScreen,
+  type PersonnelRoleOption,
+} from './src/ui/PersonnelScreen';
 import { PricingScreen } from './src/ui/PricingScreen';
 import {
   loadPricingStrategiesConfig,
@@ -118,9 +121,7 @@ const PRICING_STRATEGY_OPTIONS = Object.entries(PRICING_STRATEGIES.strategies).m
   ([id, s]) => ({ id, label: s.label, blurb: s.blurb }),
 );
 
-// Primary customer-facing role the Hiring lever recruits for (v1 slice is
-// sales-only; multi-role hiring is downstream).
-const HIRING_ROLE_ID = 'salesperson';
+const DEFAULT_HIRING_ROLE_ID = 'salesperson';
 
 // ── Composition root (#114) ──────────────────────────────────────────────────
 // Seed-free, must outlive world (re)construction. The store reads the
@@ -173,6 +174,7 @@ const bus = createEventBus();
 // bars, #120) and the FLOOR-OPEN staff-strip department lookup don't depend on
 // a built World.
 const staffTaxonomy = loadStaffTaxonomy();
+const staffArchetypes = loadStaffArchetypes();
 // skill_id → cap, for the PersonnelScreen skill bars (Hiring lever, #120).
 const SKILL_CAPS: Record<string, number> = Object.fromEntries(
   Object.entries(staffTaxonomy.skills).map(([id, s]) => [id, s.cap]),
@@ -185,6 +187,31 @@ function humanizeRole(roleId: string): string {
     .split('-')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
+}
+
+const HIRABLE_ROLE_IDS = new Set(
+  Object.values(staffArchetypes).map((a) => a.role_id),
+);
+
+function buildHiringRoleOptions(tier: number): PersonnelRoleOption[] {
+  return Object.entries(staffTaxonomy.roles)
+    .filter(([roleId, role]) => {
+      if (!HIRABLE_ROLE_IDS.has(roleId)) return false;
+      if (
+        roleId !== DEFAULT_HIRING_ROLE_ID &&
+        role.tier !== 'manager' &&
+        role.tier !== 'gm'
+      ) {
+        return false;
+      }
+      return (role.hireTier ?? 1) <= tier;
+    })
+    .map(([id]) => ({ id, label: humanizeRole(id) }))
+    .sort((a, b) => {
+      if (a.id === DEFAULT_HIRING_ROLE_ID) return -1;
+      if (b.id === DEFAULT_HIRING_ROLE_ID) return 1;
+      return a.label.localeCompare(b.label);
+    });
 }
 
 // persona id → human label for the #198 observed-mix readout. Sourced from the
@@ -285,6 +312,9 @@ export default function App() {
   // setting on load; drives the pricing screen's staff suggestion (#175).
   const [pricingStrategyId, setPricingStrategyId] = useState(
     PRICING_STRATEGIES.defaultStrategy,
+  );
+  const [selectedHiringRoleId, setSelectedHiringRoleId] = useState(
+    DEFAULT_HIRING_ROLE_ID,
   );
   // Running today's gross (front + back) summed from closed deals — the
   // composed-state source for the FLOOR-OPEN HUD / stat grid (#116).
@@ -965,17 +995,31 @@ export default function App() {
       </>
     );
   } else if (screen === 'personnel' && world) {
+    const roleOptions = buildHiringRoleOptions(world.tierManager.currentTier);
+    const selectedRoleId = roleOptions.some(
+      (role) => role.id === selectedHiringRoleId,
+    )
+      ? selectedHiringRoleId
+      : roleOptions[0]?.id ?? DEFAULT_HIRING_ROLE_ID;
     content = (
       <>
         <StatusBar style="light" />
         <PersonnelScreen
-          roleId={HIRING_ROLE_ID}
-          candidates={world.staffOrg.getCandidates(HIRING_ROLE_ID)}
+          roleOptions={roleOptions}
+          selectedRoleId={selectedRoleId}
+          candidates={world.staffOrg.getCandidates(selectedRoleId)}
+          roster={world.staffOrg.currentRoster}
           skillCaps={SKILL_CAPS}
           cash={cash}
+          onSelectRole={setSelectedHiringRoleId}
           onHire={(candidateId) => {
             world.staffOrg.hire(candidateId);
             setCash(world.economy.cash);
+            bump();
+          }}
+          onFire={(staffId) => {
+            world.staffOrg.fire(staffId);
+            bump();
           }}
           onClose={() => nav.back()}
         />

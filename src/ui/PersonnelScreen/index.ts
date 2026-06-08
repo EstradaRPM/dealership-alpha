@@ -1,2 +1,2 @@
 export { PersonnelScreen } from './PersonnelScreen';
-export type { PersonnelScreenProps } from './PersonnelScreen';
+export type { PersonnelRoleOption, PersonnelScreenProps } from './PersonnelScreen';
