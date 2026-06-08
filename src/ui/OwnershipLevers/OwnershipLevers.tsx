@@ -5,7 +5,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
   StyleSheet,
 } from 'react-native';
 
@@ -176,9 +175,8 @@ export function OwnershipLevers({
     advertisingOptions.find((p) => p.id === advertisingCampaignId) ??
     advertisingOptions[0];
   return (
-    <ScrollView
+    <View
       style={styles.root}
-      contentContainerStyle={styles.content}
       testID="ownership-levers"
     >
       <Text style={styles.heading}>Next-Day Prep</Text>
@@ -340,13 +338,12 @@ export function OwnershipLevers({
           <Text style={styles.policyBlurb}>{selectedPolicy.blurb}</Text>
         )}
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignSelf: 'stretch' },
-  content: { padding: 16, paddingBottom: 32 },
+  root: { alignSelf: 'stretch' },
   heading: {
     fontSize: 13,
     color: colors.textMuted,
