@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { KPIDashboard } from '../src/ui/KPIDashboard';
 import type { KPISnapshot } from '../src/game/KPIDashboard';
 
@@ -35,30 +35,25 @@ const LIVE_SNAPSHOT: KPISnapshot = {
   ...ZERO_SPLITS,
 };
 
-describe('KPIDashboard UI — locked state', () => {
-  it('renders without crashing when locked', () => {
-    const { getByText } = render(
-      <KPIDashboard isUnlocked={false} snapshot={ZERO_SNAPSHOT} />,
-    );
-    expect(getByText('KPI Dashboard Locked')).toBeTruthy();
-    expect(getByText(/Hire a General Manager/i)).toBeTruthy();
-  });
-});
-
-describe('KPIDashboard UI — unlocked state', () => {
-  it('renders without crashing when unlocked with zero data', () => {
-    const { getByText } = render(
-      <KPIDashboard isUnlocked={true} snapshot={ZERO_SNAPSHOT} />,
-    );
+describe('KPIDashboard UI', () => {
+  it('renders without crashing with zero data', () => {
+    const { getByText } = render(<KPIDashboard snapshot={ZERO_SNAPSHOT} />);
     expect(getByText('KPI Dashboard')).toBeTruthy();
     expect(getByText('PVR (Per Vehicle Retailed)')).toBeTruthy();
   });
 
   it('renders KPI values from snapshot', () => {
-    const { getByText } = render(
-      <KPIDashboard isUnlocked={true} snapshot={LIVE_SNAPSHOT} />,
-    );
+    const { getByText } = render(<KPIDashboard snapshot={LIVE_SNAPSHOT} />);
     expect(getByText('10')).toBeTruthy();
     expect(getByText('18 days')).toBeTruthy();
+  });
+
+  it('supports an optional close action', () => {
+    const onClose = jest.fn();
+    const { getByLabelText } = render(
+      <KPIDashboard snapshot={ZERO_SNAPSHOT} onClose={onClose} />,
+    );
+    fireEvent.press(getByLabelText('Close KPI dashboard'));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

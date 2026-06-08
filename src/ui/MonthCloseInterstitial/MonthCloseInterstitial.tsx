@@ -26,8 +26,6 @@ export interface MonthCloseModel {
   month: number;
   /** Player career tier — drives the chapter strip off CareerProgression. */
   tier: number;
-  /** KPIDashboard gate (GM hired) — passed straight through. */
-  isUnlocked: boolean;
   /** KPIDashboard snapshot — passed straight through, no reshaping here. */
   snapshot: KPISnapshot;
 }
@@ -64,10 +62,7 @@ export function MonthCloseInterstitial({
           </View>
 
           <ScrollView style={styles.kpi} contentContainerStyle={styles.kpiInner}>
-            <KPIDashboard
-              isUnlocked={model.isUnlocked}
-              snapshot={model.snapshot}
-            />
+            <KPIDashboard snapshot={model.snapshot} />
           </ScrollView>
 
           <TouchableOpacity

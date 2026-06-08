@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
 import type { KPISnapshot } from '../../game/KPIDashboard';
 import { colors } from '../theme';
 
@@ -12,16 +18,6 @@ function KPIRow({ label, value }: { label: string; value: string }) {
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
       <Text style={styles.rowValue}>{value}</Text>
-    </View>
-  );
-}
-
-function LockedState() {
-  return (
-    <View style={styles.lockedContainer}>
-      <Text style={styles.lockIcon}>🔒</Text>
-      <Text style={styles.lockedTitle}>KPI Dashboard Locked</Text>
-      <Text style={styles.lockedSub}>Hire a General Manager to unlock industry KPIs.</Text>
     </View>
   );
 }
@@ -77,17 +73,27 @@ function UnlockedState({ snapshot }: { snapshot: KPISnapshot }) {
 }
 
 export interface KPIDashboardProps {
-  isUnlocked: boolean;
   snapshot: KPISnapshot;
+  onClose?: () => void;
 }
 
-export function KPIDashboard({ isUnlocked, snapshot }: KPIDashboardProps) {
+export function KPIDashboard({ snapshot, onClose }: KPIDashboardProps) {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
         <Text style={styles.title}>KPI Dashboard</Text>
+        {onClose ? (
+          <TouchableOpacity
+            style={styles.closeBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Close KPI dashboard"
+            onPress={onClose}
+          >
+            <Text style={styles.closeText}>Close</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
-      {isUnlocked ? <UnlockedState snapshot={snapshot} /> : <LockedState />}
+      <UnlockedState snapshot={snapshot} />
     </View>
   );
 }
@@ -98,6 +104,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.base,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
@@ -109,28 +118,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  lockedContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
+  closeBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  lockIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  lockedTitle: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  lockedSub: {
-    color: colors.borderMuted,
+  closeText: {
+    color: colors.textSecondary,
     fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
+    fontWeight: '600',
   },
   scroll: {
     flex: 1,

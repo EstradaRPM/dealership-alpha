@@ -20,6 +20,9 @@ export type RouteParamMap = {
   // In-session pause/save/load surface. Pushed over the live game and closed
   // with back(); save/load side effects stay in the composition root.
   'in-game-menu': undefined;
+  // On-demand KPI readout (#202), reachable from the in-game menu and backed by
+  // the live KPIDashboard module snapshot.
+  'kpi-dashboard': undefined;
   'character-creation': undefined;
   game: undefined;
   auction: undefined;

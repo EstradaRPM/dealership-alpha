@@ -81,6 +81,7 @@ import type {
 import type { LotVehicle } from './src/game/Inventory';
 import { AdminConsole } from './src/ui/AdminConsole';
 import { MonthCloseInterstitial } from './src/ui/MonthCloseInterstitial';
+import { KPIDashboard } from './src/ui/KPIDashboard';
 import { ChapterCard } from './src/ui/NarrativeBeat';
 import { EndCard } from './src/ui/EndCard';
 import type { EndCardData } from './src/game/EndCard';
@@ -429,6 +430,7 @@ export function DealershipApp({
       tradeReview != null ||
       discountReview != null ||
       screen === 'in-game-menu' ||
+      screen === 'kpi-dashboard' ||
       (screen === 'settings' && world != null) ||
       monthClose != null ||
       chapterQueue.length > 0 ||
@@ -697,6 +699,10 @@ export function DealershipApp({
     setSettingsSnapshots([]);
     void refreshSettingsSnapshots();
     nav.navigate('settings');
+  };
+
+  const openKPIDashboard = () => {
+    nav.navigate('kpi-dashboard');
   };
 
   const handleRollback = async (index: number) => {
@@ -1067,6 +1073,7 @@ export function DealershipApp({
           onLoadSlot={(slotId) => void handleInGameLoadSlot(slotId)}
           onReturnToMainMenu={() => void handleReturnToMainMenu()}
           onSettings={openSettings}
+          onKPIDashboard={openKPIDashboard}
         />
       </>
     );
@@ -1091,6 +1098,16 @@ export function DealershipApp({
             setProfile(p);
             nav.reset('game');
           }}
+        />
+      </>
+    );
+  } else if (screen === 'kpi-dashboard' && world) {
+    content = (
+      <>
+        <StatusBar style="light" />
+        <KPIDashboard
+          snapshot={world.kpiDashboard.getSnapshot()}
+          onClose={() => nav.back()}
         />
       </>
     );
@@ -1491,7 +1508,6 @@ export function DealershipApp({
             model={{
               month: monthClose,
               tier: 1,
-              isUnlocked: world.kpiDashboard.isUnlocked,
               snapshot: world.kpiDashboard.getSnapshot(),
             }}
             onDismiss={() => setMonthClose(null)}

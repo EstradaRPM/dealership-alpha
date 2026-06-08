@@ -30,7 +30,6 @@ const SNAPSHOT = {
 const MODEL: MonthCloseModel = {
   month: 1,
   tier: 1,
-  isUnlocked: true,
   snapshot: SNAPSHOT,
 };
 
@@ -41,24 +40,12 @@ describe('MonthCloseInterstitial smoke tests', () => {
     ).not.toThrow();
   });
 
-  it('renders the KPI-locked (no GM) variant', () => {
-    expect(() =>
-      render(
-        <MonthCloseInterstitial
-          model={{ ...MODEL, isUnlocked: false }}
-          onDismiss={() => {}}
-        />,
-      ),
-    ).not.toThrow();
-  });
-
-  it('dismisses via the Continue action', () => {
-    const onDismiss = jest.fn();
-    const { getByLabelText } = render(
-      <MonthCloseInterstitial model={MODEL} onDismiss={onDismiss} />,
+  it('renders KPI values without a GM unlock gate', () => {
+    const { getByText, queryByText } = render(
+      <MonthCloseInterstitial model={MODEL} onDismiss={() => {}} />,
     );
-    fireEvent.press(getByLabelText('Continue to next day'));
-    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(getByText('$2,350')).toBeTruthy();
+    expect(queryByText(/Hire a General Manager/i)).toBeNull();
   });
 
   it('renders a later month with a zero snapshot', () => {
@@ -68,7 +55,6 @@ describe('MonthCloseInterstitial smoke tests', () => {
           model={{
             month: 6,
             tier: 1,
-            isUnlocked: false,
             snapshot: {
               unitsRetailed: 0,
               pvr: 0,
@@ -83,5 +69,14 @@ describe('MonthCloseInterstitial smoke tests', () => {
         />,
       ),
     ).not.toThrow();
+  });
+
+  it('dismisses via the Continue action', () => {
+    const onDismiss = jest.fn();
+    const { getByLabelText } = render(
+      <MonthCloseInterstitial model={MODEL} onDismiss={onDismiss} />,
+    );
+    fireEvent.press(getByLabelText('Continue to next day'));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 });

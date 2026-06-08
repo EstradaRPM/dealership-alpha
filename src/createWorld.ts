@@ -495,7 +495,7 @@ export function createWorld(deps: {
   const telemetry = createTelemetry({ bus });
   // Month-close hook (#123): the KPIDashboard supplies the month-to-date
   // snapshot the interstitial composes.
-  const kpiDashboard = createKPIDashboard({ bus, staffOrg });
+  const kpiDashboard = createKPIDashboard({ bus });
 
   // CustomerPool behind FloorSim's #99 customer-source seam: FloorSim's own
   // arrival RNG decides the admitted count per tick; the adapter only mints

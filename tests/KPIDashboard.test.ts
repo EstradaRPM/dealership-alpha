@@ -1,20 +1,5 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createKPIDashboard } from '../src/game/KPIDashboard';
-import type { StaffOrg } from '../src/game/StaffOrg';
-import type { StaffWithComposites } from '../src/game/NPC/factories/StaffFactory';
-
-// Minimal StaffOrg stub — no real roster logic needed
-function makeStaffOrg(roster: StaffWithComposites[] = []): StaffOrg {
-  return {
-    get currentRoster() { return roster; },
-    getCandidates: () => [],
-    hire: () => {},
-    fire: () => {},
-    assessCondition: () => null,
-    snapshot: () => ({ schemaVersion: 1 as const, currentDay: 1, roster: [] }),
-    restore: () => {},
-  };
-}
 
 function publishDeal(
   bus: ReturnType<typeof createEventBus>,
@@ -84,46 +69,12 @@ function publishFinance(
   });
 }
 
-// ── isUnlocked ────────────────────────────────────────────────────────────────
-
-describe('KPIDashboard.isUnlocked', () => {
-  it('is false when roster has no GM', () => {
-    const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg([]) });
-    expect(dashboard.isUnlocked).toBe(false);
-  });
-
-  it('is true when roster contains a GM', () => {
-    const bus = createEventBus();
-    const gm = { role_id: 'gm' } as StaffWithComposites;
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg([gm]) });
-    expect(dashboard.isUnlocked).toBe(true);
-  });
-
-  it('is false when roster has staff but no GM', () => {
-    const bus = createEventBus();
-    const salesperson = { role_id: 'salesperson' } as StaffWithComposites;
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg([salesperson]) });
-    expect(dashboard.isUnlocked).toBe(false);
-  });
-
-  it('reflects roster changes dynamically', () => {
-    const bus = createEventBus();
-    const roster: StaffWithComposites[] = [];
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg(roster) });
-
-    expect(dashboard.isUnlocked).toBe(false);
-    roster.push({ role_id: 'gm' } as StaffWithComposites);
-    expect(dashboard.isUnlocked).toBe(true);
-  });
-});
-
 // ── getSnapshot — zero deals ──────────────────────────────────────────────────
 
 describe('KPIDashboard.getSnapshot — no deals', () => {
   it('returns zero snapshot when no deals have been closed', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
     const snap = dashboard.getSnapshot();
 
     expect(snap.unitsRetailed).toBe(0);
@@ -140,7 +91,7 @@ describe('KPIDashboard.getSnapshot — no deals', () => {
 describe('KPIDashboard.getSnapshot — single deal', () => {
   it('PVR equals frontGross + backGross for one deal', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishDeal(bus, 2_000, 500, 14);
     const snap = dashboard.getSnapshot();
@@ -155,7 +106,7 @@ describe('KPIDashboard.getSnapshot — single deal', () => {
 
   it('handles zero back gross (no F&I)', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishDeal(bus, 3_000, 0, 7);
     const snap = dashboard.getSnapshot();
@@ -167,7 +118,7 @@ describe('KPIDashboard.getSnapshot — single deal', () => {
 
   it('handles negative front gross (sold below cost)', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishDeal(bus, -800, 1_200, 45);
     const snap = dashboard.getSnapshot();
@@ -182,7 +133,7 @@ describe('KPIDashboard.getSnapshot — single deal', () => {
 describe('KPIDashboard.getSnapshot — multiple deals', () => {
   it('averages front gross correctly across three deals', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishDeal(bus, 1_000, 0, 10);
     publishDeal(bus, 3_000, 0, 20);
@@ -196,7 +147,7 @@ describe('KPIDashboard.getSnapshot — multiple deals', () => {
 
   it('F&I PPRU is total back gross divided by units', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     // Deal 1: $1500 back, Deal 2: $500 back, Deal 3: $0 back
     publishDeal(bus, 2_000, 1_500, 10);
@@ -209,7 +160,7 @@ describe('KPIDashboard.getSnapshot — multiple deals', () => {
 
   it('PVR equals (total front + total back) / units', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishDeal(bus, 1_000, 400, 5);
     publishDeal(bus, 3_000, 600, 15);
@@ -222,7 +173,7 @@ describe('KPIDashboard.getSnapshot — multiple deals', () => {
 
   it('avg DII is mean across all sold vehicles', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishDeal(bus, 1_000, 0, 5);
     publishDeal(bus, 1_000, 0, 15);
@@ -235,7 +186,7 @@ describe('KPIDashboard.getSnapshot — multiple deals', () => {
 
   it('snapshot updates as new deals are closed', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishDeal(bus, 2_000, 0, 10);
     expect(dashboard.getSnapshot().unitsRetailed).toBe(1);
@@ -251,7 +202,7 @@ describe('KPIDashboard.getSnapshot — multiple deals', () => {
 describe('KPIDashboard.getSnapshot — payment splits', () => {
   it('zero snapshot exposes all split fields as zero', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
     const snap = dashboard.getSnapshot();
 
     expect(snap.cashUnits).toBe(0);
@@ -266,7 +217,7 @@ describe('KPIDashboard.getSnapshot — payment splits', () => {
 
   it('cash deal increments cashUnits + cashGross only', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishCash(bus, { agreedPrice: 20_000, frontGross: 2_000, backGross: 300 });
     const snap = dashboard.getSnapshot();
@@ -284,7 +235,7 @@ describe('KPIDashboard.getSnapshot — payment splits', () => {
 
   it('finance deal with downPct ≥ 0.25 increments heavyDownUnits', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishFinance(bus, {
       agreedPrice: 20_000,
@@ -307,7 +258,7 @@ describe('KPIDashboard.getSnapshot — payment splits', () => {
 
   it('finance deal below threshold does not count as heavy-down', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishFinance(bus, {
       agreedPrice: 20_000,
@@ -322,7 +273,7 @@ describe('KPIDashboard.getSnapshot — payment splits', () => {
 
   it('APR / term / downPct are weighted by finance count only', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     // Mix: 1 cash, 2 finance. Cash should not influence finance averages.
     publishCash(bus, { agreedPrice: 30_000 });
@@ -342,7 +293,7 @@ describe('KPIDashboard.getSnapshot — payment splits', () => {
 
   it('mix of cash and heavy-down finance reports both correctly', () => {
     const bus = createEventBus();
-    const dashboard = createKPIDashboard({ bus, staffOrg: makeStaffOrg() });
+    const dashboard = createKPIDashboard({ bus });
 
     publishCash(bus, { agreedPrice: 20_000, frontGross: 1_000, backGross: 0 });
     publishCash(bus, { agreedPrice: 25_000, frontGross: 1_500, backGross: 200 });
@@ -364,3 +315,4 @@ describe('KPIDashboard.getSnapshot — payment splits', () => {
     expect(snap.unitsRetailed).toBe(3);
   });
 });
+

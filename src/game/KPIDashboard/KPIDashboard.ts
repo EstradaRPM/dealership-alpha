@@ -1,9 +1,7 @@
 import type { EventBus } from '../EventBus';
-import type { StaffOrg } from '../StaffOrg';
 import type { DealRecord, KPISnapshot, KPIDashboardSnapshot } from './types';
 
 export interface KPIDashboard {
-  readonly isUnlocked: boolean;
   getSnapshot(): KPISnapshot;
   snapshot(): KPIDashboardSnapshot;
   restore(snap: KPIDashboardSnapshot): void;
@@ -11,7 +9,6 @@ export interface KPIDashboard {
 
 export interface KPIDashboardDeps {
   bus: EventBus;
-  staffOrg: StaffOrg;
 }
 
 // Threshold above which a finance deal is bucketed as "heavy-down" (a
@@ -95,7 +92,7 @@ function computeSnapshot(
 }
 
 export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
-  const { bus, staffOrg } = deps;
+  const { bus } = deps;
   const deals: DealRecord[] = [];
   // Latest day's lot-wide floorplan + carrying burn (#173). Tracked off the
   // bus so the snapshot can surface it as a line item without Inventory access.
@@ -119,10 +116,6 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
   });
 
   return {
-    get isUnlocked(): boolean {
-      return staffOrg.currentRoster.some((s) => s.role_id === 'gm');
-    },
-
     getSnapshot(): KPISnapshot {
       return computeSnapshot(deals, dailyCarryingCost);
     },
