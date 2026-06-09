@@ -22,6 +22,8 @@ interface Props {
   onContinue: (slotId: string) => void;
   /** Optional — the Settings entry is hidden when not provided. */
   onSettings?: () => void;
+  /** Optional — the completed-careers wall is hidden when not provided. */
+  onLegacyWall?: () => void;
 }
 
 /** Most-recently-played slot by lastPlayed timestamp (ISO 8601 sorts lexically). */
@@ -46,6 +48,7 @@ export function MainMenu({
   onLoadGame,
   onContinue,
   onSettings,
+  onLegacyWall,
 }: Props) {
   const [mode, setMode] = useState<Mode>('menu');
   const [slots, setSlots] = useState<readonly SlotMetadata[]>([]);
@@ -133,6 +136,11 @@ export function MainMenu({
           {onSettings ? (
             <TouchableOpacity style={styles.secondaryBtn} onPress={onSettings}>
               <Text style={styles.secondaryText}>Settings</Text>
+            </TouchableOpacity>
+          ) : null}
+          {onLegacyWall ? (
+            <TouchableOpacity style={styles.secondaryBtn} onPress={onLegacyWall}>
+              <Text style={styles.secondaryText}>Legacy Wall</Text>
             </TouchableOpacity>
           ) : null}
         </View>

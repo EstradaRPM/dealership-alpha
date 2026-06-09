@@ -3,6 +3,7 @@ import { View, StyleSheet, AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
+  createLegacyStore,
   createMultiSlotSaveStore,
   createSnapshotStore,
   createSqliteDriverFactory,
@@ -31,6 +32,7 @@ import { MainMenu } from './src/ui/MainMenu';
 import { InGameMenu } from './src/ui/InGameMenu';
 import { DayLoopShell } from './src/ui/DayLoopShell';
 import { SettingsScreen } from './src/ui/SettingsScreen';
+import { LegacyWallView } from './src/ui/LegacyWall';
 import type { DayRecapModel } from './src/ui/DayRecap';
 import type {
   DemandCoverageGap,
@@ -73,6 +75,8 @@ import type {
   SaveState,
   MultiSlotSaveStore,
   DriverFactory,
+  LegacyEntry,
+  LegacyStore,
   MidDayCheckpoint,
   SnapshotStore,
   SlotMetadata,
@@ -154,11 +158,13 @@ interface AppServices {
   bus: ReturnType<typeof createEventBus>;
   saveStore: SaveStore;
   slotStore: MultiSlotSaveStore;
+  legacyStore: LegacyStore;
   snapshotStoreForActiveSlot(): Promise<SnapshotStore | null>;
 }
 
 function createAppServices(driverFactory: DriverFactory): AppServices {
   const slotStore: MultiSlotSaveStore = createMultiSlotSaveStore(driverFactory);
+  const legacyStore: LegacyStore = createLegacyStore(driverFactory('legacy-wall'));
   // Active-slot-backed SaveStore adapter (#194). The character/admin/end-card
   // flows depend on the narrow single-blob SaveStore surface (save/load/clear);
   // this presents exactly that, always addressing whichever slot is active.
@@ -184,6 +190,7 @@ function createAppServices(driverFactory: DriverFactory): AppServices {
     bus: createEventBus(),
     saveStore,
     slotStore,
+    legacyStore,
     async snapshotStoreForActiveSlot() {
       const activeSlotId = await slotStore.getActiveSlotId();
       return activeSlotId === null
@@ -315,7 +322,7 @@ export function DealershipApp({
       driverFactory ?? createSqliteDriverFactory(),
     );
   }
-  const { bus, saveStore, slotStore, snapshotStoreForActiveSlot } =
+  const { bus, saveStore, slotStore, legacyStore, snapshotStoreForActiveSlot } =
     servicesRef.current;
   useEffect(() => {
     onServicesReady?.(servicesRef.current as AppServices);
@@ -415,6 +422,9 @@ export function DealershipApp({
   // hard-stops the sim (held render loop) and routes to the EndCard via a
   // Navigator reset. Preempts the non-terminal queue (#127 decision 4).
   const [endCard, setEndCard] = useState<EndCardData | null>(null);
+  const [legacyWallLegacies, setLegacyWallLegacies] = useState<
+    readonly LegacyEntry[]
+  >([]);
 
   // The live clock (#121). Drives the owned FloorSim's step() at a tunable
   // cadence; speed/pause are pure render multipliers (game logic is
@@ -699,6 +709,14 @@ export function DealershipApp({
     setSettingsSnapshots([]);
     void refreshSettingsSnapshots();
     nav.navigate('settings');
+  };
+
+  const openLegacyWall = () => {
+    setLegacyWallLegacies([]);
+    void (async () => {
+      setLegacyWallLegacies(await legacyStore.listLegacies());
+    })();
+    nav.navigate('legacy-wall');
   };
 
   const openKPIDashboard = () => {
@@ -994,6 +1012,30 @@ export function DealershipApp({
     nav.reset('main-menu');
   };
 
+  const handleEndCardDismiss = () => {
+    const completed = endCard;
+    void (async () => {
+      try {
+        if (completed) {
+          await legacyStore.appendLegacy({
+            playerName: completed.playerName,
+            backstoryId: completed.backstoryId,
+            careerYear: completed.careerYear,
+            tierReached: completed.tierReached,
+            reason: completed.reason,
+            flavorText: completed.flavorText,
+            completedAt: new Date().toISOString(),
+          });
+        }
+        await saveStore.clear();
+        setEndCard(null);
+        handleSaveCleared();
+      } catch (err) {
+        console.error('End-card dismissal failed', err);
+      }
+    })();
+  };
+
   // Persist the trade-policy choice into the active slot (#172). Mirrors
   // CharacterCreation's merge-with-existing write so the character/seed blob is
   // preserved. The ref updates immediately so the live multiplier getter
@@ -1046,6 +1088,7 @@ export function DealershipApp({
           onContinue={() => void loadActiveSlotIntoGame()}
           onLoadGame={() => void loadActiveSlotIntoGame()}
           onSettings={openSettings}
+          onLegacyWall={openLegacyWall}
         />
       </>
     );
@@ -1056,6 +1099,17 @@ export function DealershipApp({
         <SettingsScreen
           snapshots={settingsSnapshots}
           onRollback={(index) => void handleRollback(index)}
+          onClose={() => nav.back()}
+        />
+      </>
+    );
+  } else if (screen === 'legacy-wall') {
+    content = (
+      <>
+        <StatusBar style="light" />
+        <LegacyWallView
+          visible
+          legacies={legacyWallLegacies}
           onClose={() => nav.back()}
         />
       </>
@@ -1441,11 +1495,7 @@ export function DealershipApp({
         <EndCard
           visible
           data={endCard}
-          onDismiss={() => {
-            void saveStore.clear();
-            setEndCard(null);
-            handleSaveCleared();
-          }}
+          onDismiss={handleEndCardDismiss}
         />
       </>
     );

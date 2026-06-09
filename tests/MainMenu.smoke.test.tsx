@@ -81,6 +81,22 @@ describe('MainMenu smoke tests', () => {
     expect(onSettings).toHaveBeenCalledTimes(1);
   });
 
+  it('shows Legacy Wall when the live menu supplies the handler', () => {
+    const onLegacyWall = jest.fn();
+    const screen = render(
+      <MainMenu
+        saveStore={makeStore()}
+        onNewGame={jest.fn()}
+        onLoadGame={jest.fn()}
+        onContinue={jest.fn()}
+        onLegacyWall={onLegacyWall}
+      />,
+    );
+
+    fireEvent.press(screen.getByText('Legacy Wall'));
+    expect(onLegacyWall).toHaveBeenCalledTimes(1);
+  });
+
   it('Continue resumes the most-recently-played slot', async () => {
     // Monotonic clock so the two slots get strictly-ordered lastPlayed stamps.
     let tick = 0;
