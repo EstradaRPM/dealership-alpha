@@ -116,9 +116,10 @@ const RENDER_LOOP = loadTunables().renderLoop;
 // drives the floor toast + DayRecap tally. Tunable, never a magic number.
 const STRONG_MATCH_THRESHOLD = loadTunables().matchPayoff.strongMatchThreshold;
 
-// Hours-of-op lever options (#120). "Wired only": the lever selects an id and
-// the composition root holds the scaled ticksPerDay. Feeding it into FloorSim
-// is a downstream slice (FloorSim/#99 is locked and reads its own value).
+// Hours-of-op lever options (#120/#207). The selected option's scaled
+// ticksPerDay is fed into FloorSim (via getHoursOfOpTicksPerDay → createWorld →
+// the floor seam → createFloorSim's additive ticksPerDay override), so a longer
+// shift literally runs more ticks — observable on the FLOOR-OPEN HUD clock.
 const HOURS_OF_OP = loadTunables().ownership.hoursOfOp;
 
 // Paid pre-purchase inspection cost shown on the auction-board action (#164).
@@ -348,9 +349,19 @@ export function DealershipApp({
   worldRef.current = world;
   const [lotVehicles, setLotVehicles] = useState<readonly LotVehicle[]>([]);
   const [cash, setCash] = useState(0);
-  // Hours-of-op lever selection (#120). Composition-root state only — the
-  // downstream slice wires HOURS_OF_OP.options[…].ticksPerDay into FloorSim.
+  // Hours-of-op lever selection (#120/#207). The selected option's scaled
+  // ticksPerDay is fed into FloorSim via a live getter (below), so a longer
+  // shift literally makes the day run more ticks. The ref keeps the getter
+  // reading the current selection without rebuilding the world; the lever is
+  // greyed during FLOOR_OPEN, so the value is stable for the whole day
+  // (replay-safe per the #99 determinism invariant).
   const [hoursOfOpId, setHoursOfOpId] = useState(HOURS_OF_OP.defaultId);
+  const hoursOfOpIdRef = useRef(HOURS_OF_OP.defaultId);
+  hoursOfOpIdRef.current = hoursOfOpId;
+  const getHoursOfOpTicksPerDay = () => {
+    const opt = HOURS_OF_OP.options.find((o) => o.id === hoursOfOpIdRef.current);
+    return (opt ?? HOURS_OF_OP.options[0]).ticksPerDay;
+  };
   // Per-slot trade-acquisition policy (#172). Initialized from the persisted
   // slot setting on load (or the catalog default for a fresh slot). The ref
   // feeds the live getter handed to createWorld so a mid-game change applies on
@@ -562,6 +573,7 @@ export function DealershipApp({
       masterSeed: seed,
       characterProfile: character,
       getTradePolicyMultiplier,
+      getHoursOfOpTicksPerDay,
     });
     // World-state restore (#188 tracer): rehydrate the persisted world
     // snapshot (day + cash) onto the freshly-built World instead of leaving it
@@ -1149,6 +1161,7 @@ export function DealershipApp({
               masterSeed: newGameSeed,
               characterProfile: p,
               getTradePolicyMultiplier,
+              getHoursOfOpTicksPerDay,
             });
             setWorld(w);
             setCash(w.economy.cash);

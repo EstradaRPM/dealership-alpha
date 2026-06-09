@@ -289,6 +289,16 @@ export function createWorld(deps: {
    * id through `resolveTradePolicyMultiplier`. Omitted ⇒ `1.0` (market).
    */
   getTradePolicyMultiplier?: () => number;
+  /**
+   * Per-slot hours-of-op day length in logical ticks (#207). A live getter (not
+   * a value) so a mid-game lever change applies on the next day without
+   * rebuilding the world — the composition root reads the persisted slot
+   * selection and resolves it to the option's `ticksPerDay`. Read once per day
+   * in `floorSeams` (the lever is greyed during FLOOR_OPEN, so the value is
+   * stable across a day → replay-safe). Omitted ⇒ FloorSim's `ticksPerDay`
+   * tunable default.
+   */
+  getHoursOfOpTicksPerDay?: () => number;
 }): World {
   const {
     bus,
@@ -296,6 +306,7 @@ export function createWorld(deps: {
     characterProfile,
     tradeEscalationOverride,
     getTradePolicyMultiplier,
+    getHoursOfOpTicksPerDay,
   } = deps;
 
   // Default initialDay = 1: the clock sits on "night before Day 1" so the
@@ -707,6 +718,9 @@ export function createWorld(deps: {
       }),
     ],
     customerSource,
+    // #207: the hours-of-op lever's scaled day length. Read per-day so a
+    // mid-game change applies on the next day; undefined ⇒ FloorSim default.
+    ticksPerDay: getHoursOfOpTicksPerDay?.(),
   });
 
   // Reputation → demand feedback (#82). The #125 slip stays the stub neutral

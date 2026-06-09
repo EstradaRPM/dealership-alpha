@@ -261,3 +261,62 @@ describe('DayLoopController — MANAGERIAL↔FLOOR_OPEN state machine (#112)', (
     expect(runOnce()).toEqual(runOnce());
   });
 });
+
+describe('DayLoopController — hours-of-op day length (#207)', () => {
+  // End-to-end: the hours-of-op lever scales the day length by feeding its
+  // option ticksPerDay through the floor seam into FloorSim. A longer shift ⇒
+  // more logical ticks ⇒ a longer day, observable as the effective ticksPerDay
+  // and the count of emitted floor:tick events.
+  const SHORT = 120;
+  const LONG = 240;
+
+  function lengthForLever(lever: number): { effective: number; emitted: number } {
+    const b = bus();
+    let emitted = 0;
+    b.subscribe('floor:tick', () => {
+      emitted++;
+    });
+    const dlc = createDayLoopController(
+      deps({ bus: b, seed: 4, floorSeams: () => ({ ticksPerDay: lever }) }),
+    );
+    const floor = dlc.nextDay();
+    const effective = floor.ticksPerDay;
+    floor.runDay();
+    return { effective, emitted };
+  }
+
+  it('a longer shift runs a longer day (more ticks)', () => {
+    const short = lengthForLever(SHORT);
+    const long = lengthForLever(LONG);
+
+    expect(short.effective).toBe(SHORT);
+    expect(short.emitted).toBe(SHORT);
+    expect(long.effective).toBe(LONG);
+    expect(long.emitted).toBe(LONG);
+    expect(long.effective).toBeGreaterThan(short.effective);
+  });
+
+  it('omitting the lever falls back to the FloorSim tunable default', () => {
+    const dlc = createDayLoopController(deps({ seed: 4 }));
+    const floor = dlc.beginDay({ day: 1 });
+    // Bare FloorSim default — not one of the lever options.
+    expect(floor.ticksPerDay).not.toBe(SHORT);
+    expect(floor.ticksPerDay).not.toBe(LONG);
+  });
+
+  it('the lever is replay-stable: same selection ⇒ identical arrival stream', () => {
+    const runOnce = () => {
+      const b = bus();
+      const arrivals: number[] = [];
+      b.subscribe('floor:tick', (p) => arrivals.push(p.arrivals));
+      const dlc = createDayLoopController(
+        deps({ bus: b, seed: 11, floorSeams: () => ({ ticksPerDay: LONG }) }),
+      );
+      dlc.nextDay().runDay();
+      return arrivals;
+    };
+    const first = runOnce();
+    expect(first).toHaveLength(LONG);
+    expect(runOnce()).toEqual(first);
+  });
+});

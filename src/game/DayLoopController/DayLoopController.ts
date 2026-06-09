@@ -256,6 +256,15 @@ export type FloorSeamProvider = (slip: DemandContext) => {
   capacity?: CapacityGate;
   drains?: readonly DeptDrain[];
   customerSource?: CustomerSource;
+  /**
+   * Day length in logical ticks (#207 hours-of-op lever). Omitted ⇒ FloorSim's
+   * `floorSim.ticksPerDay` tunable default. Forwarded verbatim into
+   * `createFloorSim` on both `beginDay` and `resume`, so a lever-scaled day
+   * length is recreated identically on cold-start mid-day resume. The provider
+   * must return a value that is stable for the whole day (the lever is greyed
+   * during FLOOR_OPEN) for replay determinism.
+   */
+  ticksPerDay?: number;
 };
 
 export interface DayLoopControllerDeps {

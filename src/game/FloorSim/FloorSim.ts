@@ -208,6 +208,15 @@ export function createFloorSim(deps: {
   customerSource?: CustomerSource;
   /** Acting staff skill fed to the #85 evaluator. Omitted ⇒ green profile. */
   skill?: SalespersonSkill;
+  /**
+   * Day length in logical ticks (#207 hours-of-op lever). Omitted ⇒ the
+   * `floorSim.ticksPerDay` tunable default, so every existing caller/test and
+   * `(seed,day,ctx)` replay stays byte-identical. The composition root supplies
+   * the lever-scaled value (a persisted per-slot selection, stable for the
+   * whole day) so determinism/replay is preserved: a longer day ⇒ more ticks ⇒
+   * more arrivals; the per-tick arrival probability rescales by it.
+   */
+  ticksPerDay?: number;
 }): FloorSim {
   const { bus, seed, ctx, capacity, drains, customerSource } = deps;
   const cfg = loadTunables().floorSim;
@@ -215,7 +224,7 @@ export function createFloorSim(deps: {
   const spConfig = loadSalesProcessConfig();
   const gates = spConfig.gates;
   const skill = deps.skill ?? GREEN_SALESPERSON;
-  const ticksPerDay = cfg.ticksPerDay;
+  const ticksPerDay = deps.ticksPerDay ?? cfg.ticksPerDay;
 
   const demandFactor = ctx.demandFactor ?? 1;
   const expectedArrivals =

@@ -144,10 +144,10 @@ export const TunablesSchema = z.object({
     startingCash: z.number().nonnegative(),
     dailyOverheadBase: z.number().nonnegative(),
   }),
-  // Pre-open ownership levers (#120, design #107 d11). v1 = "wired only":
-  // the hours-of-op lever selects an option and the composition root holds
-  // the scaled `ticksPerDay`; actually feeding it into FloorSim is a
-  // downstream slice (FloorSim/#99 is locked and reads its own ticksPerDay).
+  // Pre-open ownership levers (#120, design #107 d11). The hours-of-op lever
+  // selects an option and the composition root feeds its scaled `ticksPerDay`
+  // into FloorSim via the additive `createFloorSim` override (#207), so a
+  // longer shift runs a longer day.
   // MarketEconomy comp-history window (#157). Rolling window per segment of
   // realized wholesale + retail transactions; the mean of `(price/reference)
   // - 1` over the window is the emergent segment-drift term that layers on
