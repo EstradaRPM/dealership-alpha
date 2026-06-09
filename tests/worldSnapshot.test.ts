@@ -879,17 +879,19 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     const persisted = JSON.parse(JSON.stringify(v2)) as PersistedWorldSnapshot;
     expect(persisted.version).toBe(WORLD_SNAPSHOT_VERSION);
 
-    // Simulate a future schema change: v4 adds a module key. The runtime is now
-    // at v4 with a registered v3→v4 step (injected so we needn't ship a real v4).
+    // Simulate a future schema change one version past the current envelope: it
+    // adds a module key via a registered step (injected so we needn't ship a
+    // real future version).
+    const future = WORLD_SNAPSHOT_VERSION + 1;
     const migrations: Record<number, WorldSnapshotMigration> = {
-      3: (snap) => ({
-        version: 4,
+      [WORLD_SNAPSHOT_VERSION]: (snap) => ({
+        version: future,
         modules: { ...snap.modules, widgets: { schemaVersion: 1, count: 0 } },
       }),
     };
 
-    const migrated = migrateWorldSnapshot(persisted, migrations, 4);
-    expect(migrated.version).toBe(4);
+    const migrated = migrateWorldSnapshot(persisted, migrations, future);
+    expect(migrated.version).toBe(future);
     // Pre-existing module blobs survive the bump untouched...
     expect(migrated.modules.gameClock).toEqual(v2.modules.gameClock);
     expect(migrated.modules.economy).toEqual(v2.modules.economy);
@@ -922,13 +924,16 @@ describe('world-snapshot versioning + migrations (#196)', () => {
   it('fails safe when a migration step is missing (no silent corruption)', () => {
     const { world } = build(7);
     const v1 = snapshotWorld(world);
-    // Runtime claims v5 but only a v4→v5 step exists; the v3→v4 gap must throw
-    // rather than restore a shape mismatched to the current modules.
+    // Runtime claims two versions ahead but only the *upper* step exists; the
+    // gap at the current version must throw rather than restore a shape
+    // mismatched to the current modules.
+    const gap = WORLD_SNAPSHOT_VERSION; // missing step: gap → gap+1
+    const upper = WORLD_SNAPSHOT_VERSION + 1; // present step: upper → upper+1
     const migrations: Record<number, WorldSnapshotMigration> = {
-      4: (snap) => ({ ...snap, version: 5 }),
+      [upper]: (snap) => ({ ...snap, version: upper + 1 }),
     };
-    expect(() => migrateWorldSnapshot(v1, migrations, 5)).toThrow(
-      /No world-snapshot migration registered from v3/,
+    expect(() => migrateWorldSnapshot(v1, migrations, upper + 1)).toThrow(
+      new RegExp(`No world-snapshot migration registered from v${gap}`),
     );
   });
 });

@@ -38,6 +38,10 @@ import type { ServiceQueueSnapshot } from './game/ServiceQueue';
 import type { DepartmentQueueSnapshot } from './game/DepartmentQueue';
 import type { KPIDashboardSnapshot } from './game/KPIDashboard';
 import type { TelemetrySnapshot } from './game/Telemetry';
+import {
+  createDefaultHistoryLogSnapshot,
+  type HistoryLogSnapshot,
+} from './game/HistoryLog';
 import { SALES_ARCHETYPES } from './game/CustomerPool';
 import {
   createDefaultDemandShaperSnapshot,
@@ -47,7 +51,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 3;
+export const WORLD_SNAPSHOT_VERSION = 4;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -74,6 +78,8 @@ export type WorldSnapshot = {
     readonly kpiDashboard: KPIDashboardSnapshot;
     readonly telemetry: TelemetrySnapshot;
     readonly demandShaper: DemandShaperSnapshot;
+    // Durable player-facing history log (#208).
+    readonly historyLog: HistoryLogSnapshot;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -125,6 +131,13 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
           isTerminal: false,
           suspensionDaysRemaining: 0,
         },
+      },
+    }),
+    3: (snap) => ({
+      version: 4,
+      modules: {
+        ...snap.modules,
+        historyLog: createDefaultHistoryLogSnapshot(),
       },
     }),
   };
@@ -181,6 +194,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       kpiDashboard: world.kpiDashboard.snapshot(),
       telemetry: world.telemetry.snapshot(),
       demandShaper: world.demandShaper.snapshot(),
+      historyLog: world.historyLog.snapshot(),
     },
   };
 }
@@ -211,4 +225,5 @@ export function restoreWorld(
   world.kpiDashboard.restore(snap.modules.kpiDashboard);
   world.telemetry.restore(snap.modules.telemetry);
   world.demandShaper.restore(snap.modules.demandShaper);
+  world.historyLog.restore(snap.modules.historyLog);
 }

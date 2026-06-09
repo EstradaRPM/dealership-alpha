@@ -26,6 +26,9 @@ export type RouteParamMap = {
   // On-demand KPI readout (#202), reachable from the in-game menu and backed by
   // the live KPIDashboard module snapshot.
   'kpi-dashboard': undefined;
+  // Durable player-facing history log (#208), reachable from the in-game menu
+  // and backed by the live HistoryLog module entries.
+  history: undefined;
   'character-creation': undefined;
   game: undefined;
   auction: undefined;

@@ -87,6 +87,7 @@ import type { LotVehicle } from './src/game/Inventory';
 import { AdminConsole } from './src/ui/AdminConsole';
 import { MonthCloseInterstitial } from './src/ui/MonthCloseInterstitial';
 import { KPIDashboard } from './src/ui/KPIDashboard';
+import { HistoryScreen } from './src/ui/HistoryScreen';
 import { ChapterCard } from './src/ui/NarrativeBeat';
 import { EndCard } from './src/ui/EndCard';
 import type { EndCardData } from './src/game/EndCard';
@@ -455,6 +456,7 @@ export function DealershipApp({
       discountReview != null ||
       screen === 'in-game-menu' ||
       screen === 'kpi-dashboard' ||
+      screen === 'history' ||
       (screen === 'settings' && world != null) ||
       monthClose != null ||
       chapterQueue.length > 0 ||
@@ -736,6 +738,10 @@ export function DealershipApp({
 
   const openKPIDashboard = () => {
     nav.navigate('kpi-dashboard');
+  };
+
+  const openHistory = () => {
+    nav.navigate('history');
   };
 
   const handleRollback = async (index: number) => {
@@ -1143,6 +1149,7 @@ export function DealershipApp({
           onReturnToMainMenu={() => void handleReturnToMainMenu()}
           onSettings={openSettings}
           onKPIDashboard={openKPIDashboard}
+          onHistory={openHistory}
         />
       </>
     );
@@ -1177,6 +1184,16 @@ export function DealershipApp({
         <StatusBar style="light" />
         <KPIDashboard
           snapshot={world.kpiDashboard.getSnapshot()}
+          onClose={() => nav.back()}
+        />
+      </>
+    );
+  } else if (screen === 'history' && world) {
+    content = (
+      <>
+        <StatusBar style="light" />
+        <HistoryScreen
+          entries={world.historyLog.getEntries()}
           onClose={() => nav.back()}
         />
       </>

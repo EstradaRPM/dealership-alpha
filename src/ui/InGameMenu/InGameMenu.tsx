@@ -19,6 +19,7 @@ interface Props {
   onReturnToMainMenu: () => void;
   onSettings?: () => void;
   onKPIDashboard?: () => void;
+  onHistory?: () => void;
 }
 
 function formatLastPlayed(iso: string): string {
@@ -36,6 +37,7 @@ export function InGameMenu({
   onReturnToMainMenu,
   onSettings,
   onKPIDashboard,
+  onHistory,
 }: Props) {
   return (
     <View style={styles.root}>
@@ -88,6 +90,16 @@ export function InGameMenu({
             onPress={onKPIDashboard}
           >
             <Text style={styles.secondaryText}>KPI Dashboard</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {onHistory ? (
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            accessibilityRole="button"
+            onPress={onHistory}
+          >
+            <Text style={styles.secondaryText}>History</Text>
           </TouchableOpacity>
         ) : null}
 

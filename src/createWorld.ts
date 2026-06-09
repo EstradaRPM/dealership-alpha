@@ -94,6 +94,7 @@ import {
 import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
 import { createServiceFloorDrain } from './game/ServiceDispatch';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
+import { createHistoryLog, type HistoryLog } from './game/HistoryLog';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
 import {
   createCompetitorMarket,
@@ -130,6 +131,7 @@ export interface World {
   tierManager: TierManager;
   endCardManager: EndCardManager;
   telemetry: Telemetry;
+  historyLog: HistoryLog;
   kpiDashboard: KPIDashboard;
   dayLoop: DayLoopController;
   staffTaxonomy: StaffTaxonomy;
@@ -512,6 +514,12 @@ export function createWorld(deps: {
     tierManager,
   });
   const telemetry = createTelemetry({ bus });
+  // HistoryLog (#208): a durable, player-facing record of notable events
+  // (sales, escalations, market shocks, tier-ups) that survives the daily
+  // floorEvents reset. Wired in the live world (not just tests) so the
+  // in-game History screen reflects the running game; persisted via the
+  // world snapshot.
+  const historyLog = createHistoryLog({ bus });
   // Month-close hook (#123): the KPIDashboard supplies the month-to-date
   // snapshot the interstitial composes.
   const kpiDashboard = createKPIDashboard({ bus });
@@ -778,6 +786,7 @@ export function createWorld(deps: {
     tierManager,
     endCardManager,
     telemetry,
+    historyLog,
     kpiDashboard,
     dayLoop,
     staffTaxonomy,
