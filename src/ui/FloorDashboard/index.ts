@@ -5,4 +5,5 @@ export type {
   FloorEvent,
   InventoryStats,
   FloorControls,
+  RegulatoryPressureModel,
 } from './FloorDashboard';

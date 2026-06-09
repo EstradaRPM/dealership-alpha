@@ -44,6 +44,7 @@ import { SALES_ARCHETYPES } from './src/game/CustomerPool';
 import type {
   FloorDashboardModel,
   FloorEvent,
+  RegulatoryPressureModel,
 } from './src/ui/FloorDashboard';
 import { HandPlayModal, type HandPlayOutcome } from './src/ui/HandPlayModal';
 import {
@@ -89,6 +90,7 @@ import { KPIDashboard } from './src/ui/KPIDashboard';
 import { ChapterCard } from './src/ui/NarrativeBeat';
 import { EndCard } from './src/ui/EndCard';
 import type { EndCardData } from './src/game/EndCard';
+import { loadRegulatoryTunables } from './src/game/Reputation';
 import { useNavigator } from './src/ui/Navigator';
 import { BottomNav } from './src/ui/BottomNav';
 import { DepartmentScreen } from './src/ui/DepartmentScreen';
@@ -137,6 +139,7 @@ const PRICING_STRATEGIES = loadPricingStrategiesConfig();
 const PRICING_STRATEGY_OPTIONS = Object.entries(PRICING_STRATEGIES.strategies).map(
   ([id, s]) => ({ id, label: s.label, blurb: s.blurb }),
 );
+const REGULATORY_TUNABLES = loadRegulatoryTunables();
 
 const DEFAULT_HIRING_ROLE_ID = 'salesperson';
 
@@ -1334,6 +1337,10 @@ export function DealershipApp({
         ? 0
         : lotVehicles.reduce((sum, v) => sum + v.daysInInventory, 0) /
           lotVehicles.length;
+    const regulatoryPressure: RegulatoryPressureModel = {
+      pressure: world.regulatoryMeter.pressure,
+      max: REGULATORY_TUNABLES.pressureMax,
+    };
     const floorModel: FloorDashboardModel | undefined = floor
       ? {
           day: loopState.day,
@@ -1349,11 +1356,13 @@ export function DealershipApp({
           sold: funnel.sold,
           pendingWarm: Math.max(0, funnel.walkedIn - funnel.staffEngaged),
           gross: grossToday,
+          regulatoryPressure,
           staff: world.staffOrg.currentRoster.map((s) => ({
             id: s.id,
             role: humanizeRole(s.role_id),
             department:
               staffTaxonomy.roles[s.role_id]?.department ?? 'unassigned',
+            morale: world.staffMorale.getMorale(s.id),
           })),
           events: floorEvents,
           inventory: {
@@ -1452,6 +1461,7 @@ export function DealershipApp({
           tier={world.tierManager.currentTier}
           cash={world.economy.cash}
           reputation={world.reputation.reviewScore}
+          regulatoryPressure={regulatoryPressure}
           onNextDay={handleNextDay}
           onOpenAuction={() => nav.navigate('auction')}
           floorModel={floorModel}

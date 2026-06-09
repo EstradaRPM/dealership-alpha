@@ -13,6 +13,7 @@ import {
   FloorDashboard,
   type FloorDashboardModel,
   type FloorControls,
+  type RegulatoryPressureModel,
 } from '../FloorDashboard';
 import { DayRecap, type DayRecapModel } from '../DayRecap';
 import { OwnershipLevers, type OwnershipLeversProps } from '../OwnershipLevers';
@@ -20,6 +21,12 @@ import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { colors } from '../theme';
 
 const TIER_CONFIG = loadTierConfig();
+
+function pressureFillWidth(model: RegulatoryPressureModel): number {
+  const max = Math.max(1, model.max);
+  const pct = Math.max(0, Math.min(1, model.pressure / max));
+  return Math.round(pct * 78);
+}
 
 export interface ManagerDeskAlertModel {
   id: string;
@@ -42,6 +49,8 @@ interface Props {
   cash?: number;
   /** Player-facing reputation (review score, 0–100) for the Home strip (#77). */
   reputation?: number;
+  /** Regulatory pressure for the manager HUD/readout. */
+  regulatoryPressure?: RegulatoryPressureModel;
   /** FLOOR-OPEN read-model (#116), assembled by the composition root. */
   floorModel?: FloorDashboardModel;
   /** Live-clock speed/pause controls (#121), wired by the composition root. */
@@ -92,6 +101,7 @@ export function DayLoopShell({
   tier = 1,
   cash,
   reputation,
+  regulatoryPressure,
   floorModel,
   floorControls,
   onExceptionPress,
@@ -145,7 +155,7 @@ export function DayLoopShell({
             </TouchableOpacity>
           ) : null}
         </View>
-        {(cash != null || reputation != null) && (
+        {(cash != null || reputation != null || regulatoryPressure != null) && (
           <View style={styles.statStrip}>
             {cash != null && (
               <View style={styles.stat}>
@@ -159,6 +169,26 @@ export function DayLoopShell({
               <View style={styles.stat}>
                 <Text style={styles.statLabel}>REPUTATION</Text>
                 <Text style={styles.statValue}>{Math.round(reputation)}</Text>
+              </View>
+            )}
+            {regulatoryPressure != null && (
+              <View style={styles.stat}>
+                <Text style={styles.statLabel}>REG PRESSURE</Text>
+                <Text style={styles.statValue}>
+                  {Math.round(regulatoryPressure.pressure)}/
+                  {Math.round(regulatoryPressure.max)}
+                </Text>
+                <View
+                  style={styles.regTrack}
+                  accessibilityLabel={`Regulatory pressure ${Math.round(regulatoryPressure.pressure)} of ${Math.round(regulatoryPressure.max)}`}
+                >
+                  <View
+                    style={[
+                      styles.regFill,
+                      { width: pressureFillWidth(regulatoryPressure) },
+                    ]}
+                  />
+                </View>
               </View>
             )}
             <View style={styles.stat}>
@@ -367,6 +397,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
     marginTop: 2,
+  },
+  regTrack: {
+    width: 78,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.surfaceRaised,
+    overflow: 'hidden',
+    marginTop: 5,
+  },
+  regFill: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.reward,
   },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   managerDesk: { flex: 1 },

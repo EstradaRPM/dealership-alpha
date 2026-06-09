@@ -39,6 +39,8 @@ export interface FloorDashboardModel {
   pendingWarm: number;
   /** Running gross today (front + back, summed from closed deals). */
   gross: number;
+  /** Regulatory pressure readout for the live-floor HUD. */
+  regulatoryPressure?: RegulatoryPressureModel;
   /** Impressionistic staff strip — one entry per roster member (StaffOrg). */
   staff: readonly StaffStripEntry[];
   /** Scrolling event log, oldest→newest; the view caps what it shows. */
@@ -58,6 +60,15 @@ export interface StaffStripEntry {
   role: string;
   /** Department this role serves, or 'unassigned'. */
   department: string;
+  /** Live StaffMorale value on the 0-100 morale scale. */
+  morale?: number;
+}
+
+export interface RegulatoryPressureModel {
+  /** Current pressure accumulated by RegulatoryMeter. */
+  pressure: number;
+  /** Configured cap for pressure, from regulatory tunables. */
+  max: number;
 }
 
 /**
@@ -147,6 +158,28 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function pressureFillWidth(model: RegulatoryPressureModel): number {
+  const max = Math.max(1, model.max);
+  const pct = Math.max(0, Math.min(1, model.pressure / max));
+  return Math.round(pct * 72);
+}
+
+function RegulatoryGauge({ model }: { model: RegulatoryPressureModel }) {
+  return (
+    <View
+      style={styles.regGauge}
+      accessibilityLabel={`Regulatory pressure ${Math.round(model.pressure)} of ${Math.round(model.max)}`}
+    >
+      <Text style={styles.regGaugeLabel}>
+        REG {Math.round(model.pressure)}/{Math.round(model.max)}
+      </Text>
+      <View style={styles.regTrack}>
+        <View style={[styles.regFill, { width: pressureFillWidth(model) }]} />
+      </View>
+    </View>
+  );
+}
+
 /**
  * FLOOR-OPEN dashboard, part 1 (#116): persistent HUD top bar (per #95 user
  * story 14) + VINsolutions-style live stat grid. Deliberately plain
@@ -172,6 +205,7 @@ export function FloorDashboard({
     sold,
     pendingWarm,
     gross,
+    regulatoryPressure,
     staff,
     events,
     inventory,
@@ -188,6 +222,9 @@ export function FloorDashboard({
           {clockLabel(tick, ticksPerDay, openHour, closeHour)}
         </Text>
         <Text style={styles.hudCell}>{money(cash)}</Text>
+        {regulatoryPressure ? (
+          <RegulatoryGauge model={regulatoryPressure} />
+        ) : null}
         <Text style={styles.hudCell}>
           {sold}U · {money(gross)}
         </Text>
@@ -284,6 +321,11 @@ export function FloorDashboard({
               <View key={s.id} style={styles.staffChip}>
                 <Text style={styles.staffRole}>{s.role}</Text>
                 <Text style={styles.staffDept}>{s.department}</Text>
+                {s.morale != null ? (
+                  <Text style={styles.staffMorale}>
+                    MORALE {Math.round(s.morale)}
+                  </Text>
+                ) : null}
               </View>
             ))}
           </View>
@@ -353,6 +395,28 @@ const styles = StyleSheet.create({
   },
   hudPip: { fontSize: 14, color: colors.border },
   hudPipActive: { color: colors.reward },
+  regGauge: {
+    minWidth: 72,
+    gap: 3,
+  },
+  regGaugeLabel: {
+    fontFamily: 'monospace',
+    fontSize: 10,
+    color: colors.textSecondary,
+    letterSpacing: 1,
+  },
+  regTrack: {
+    width: 72,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.surfaceRaised,
+    overflow: 'hidden',
+  },
+  regFill: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.reward,
+  },
   menuBtn: {
     paddingVertical: 5,
     paddingHorizontal: 8,
@@ -455,6 +519,13 @@ const styles = StyleSheet.create({
     color: colors.borderMuted,
     letterSpacing: 1,
     marginTop: 3,
+  },
+  staffMorale: {
+    fontFamily: 'monospace',
+    fontSize: 9,
+    color: colors.textSecondary,
+    letterSpacing: 1,
+    marginTop: 5,
   },
   walkLine: {
     fontFamily: 'monospace',

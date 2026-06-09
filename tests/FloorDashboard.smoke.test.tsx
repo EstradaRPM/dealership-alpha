@@ -120,4 +120,21 @@ describe('FloorDashboard smoke tests', () => {
     fireEvent.press(getByLabelText('Open game menu'));
     expect(onOpenGameMenu).toHaveBeenCalledTimes(1);
   });
+
+  it('renders morale chips and regulatory pressure when bound', () => {
+    const { getByLabelText, getByText } = render(
+      <FloorDashboard
+        model={{
+          ...MODEL,
+          regulatoryPressure: { pressure: 24, max: 100 },
+          staff: [
+            { id: 's1', role: 'Salesperson', department: 'sales', morale: 72 },
+          ],
+        }}
+      />,
+    );
+
+    expect(getByText('MORALE 72')).toBeTruthy();
+    expect(getByLabelText('Regulatory pressure 24 of 100')).toBeTruthy();
+  });
 });

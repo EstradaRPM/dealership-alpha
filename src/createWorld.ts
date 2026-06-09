@@ -85,7 +85,12 @@ import {
   type CharacterProfile,
 } from './game/CareerProgression';
 import { createEndCardManager, type EndCardManager } from './game/EndCard';
-import { createReputation, type Reputation } from './game/Reputation';
+import {
+  createRegulatoryMeter,
+  createReputation,
+  type RegulatoryMeter,
+  type Reputation,
+} from './game/Reputation';
 import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
 import { createServiceFloorDrain } from './game/ServiceDispatch';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
@@ -120,6 +125,7 @@ export interface World {
   capacityManager: CapacityManager;
   followUpPool: FollowUpPool;
   reputation: Reputation;
+  regulatoryMeter: RegulatoryMeter;
   serviceQueue: ServiceQueue;
   tierManager: TierManager;
   endCardManager: EndCardManager;
@@ -316,6 +322,7 @@ export function createWorld(deps: {
   // evaluates tier-up on the payroll-night cadence.
   const reputation = createReputation({ bus, economy });
   const tierManager = createTierManager({ bus, economy, reputation });
+  const regulatoryMeter = createRegulatoryMeter({ bus, economy, tierManager });
   const inventory = createInventory({
     bus,
     masterSeed,
@@ -752,6 +759,7 @@ export function createWorld(deps: {
     capacityManager,
     followUpPool,
     reputation,
+    regulatoryMeter,
     serviceQueue,
     tierManager,
     endCardManager,

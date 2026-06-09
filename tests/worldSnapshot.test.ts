@@ -485,6 +485,43 @@ describe('Reputation + CareerProgression through the world seam (#192)', () => {
   });
 });
 
+describe('RegulatoryMeter through the world seam (#205)', () => {
+  function build(masterSeed: number) {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed, characterProfile: PROFILE });
+    return { bus, world };
+  }
+
+  it('round-trips regulatory pressure through the world seam', () => {
+    const seed = 205;
+    const { bus, world: original } = build(seed);
+
+    bus.publish('capacity:missed_opportunity', {
+      day: 1,
+      customerId: 'missed-1',
+      label: 'Missed buyer',
+    });
+    const pressureBefore = original.regulatoryMeter.pressure;
+    expect(pressureBefore).toBeGreaterThan(0);
+
+    const snap = snapshotWorld(original);
+    const reparsed = JSON.parse(JSON.stringify(snap)) as WorldSnapshot;
+    expect(reparsed).toEqual(snap);
+
+    const { world: rebuilt } = build(seed);
+    expect(rebuilt.regulatoryMeter.pressure).toBe(0);
+    restoreWorld(reparsed, rebuilt);
+
+    expect(rebuilt.regulatoryMeter.pressure).toBe(pressureBefore);
+    expect(rebuilt.regulatoryMeter.isTerminal).toBe(
+      original.regulatoryMeter.isTerminal,
+    );
+    expect(rebuilt.regulatoryMeter.suspensionDaysRemaining).toBe(
+      original.regulatoryMeter.suspensionDaysRemaining,
+    );
+  });
+});
+
 describe('FollowUpPool + queues + KPIDashboard + Telemetry through the world seam (#193)', () => {
   function build(masterSeed: number) {
     const bus = createEventBus();
@@ -799,8 +836,9 @@ describe('world-snapshot versioning + migrations (#196)', () => {
   it('migrates pre-DemandShaper snapshots by adding a default shaper blob', () => {
     const { world } = build(4242);
     const current = snapshotWorld(world);
-    const { demandShaper, ...legacyModules } = current.modules;
+    const { demandShaper, regulatoryMeter, ...legacyModules } = current.modules;
     expect(demandShaper.schemaVersion).toBe(2);
+    expect(regulatoryMeter.pressure).toBe(0);
     const persisted: PersistedWorldSnapshot = {
       version: 1,
       modules: legacyModules,
@@ -821,6 +859,11 @@ describe('world-snapshot versioning + migrations (#196)', () => {
       activeInputs: [],
       observedHistory: [],
     });
+    expect(migrated.modules.regulatoryMeter).toEqual({
+      pressure: 0,
+      isTerminal: false,
+      suspensionDaysRemaining: 0,
+    });
   });
 
   // The AC round-trip: write a save at version N, bump the runtime to N+1 with a
@@ -836,17 +879,17 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     const persisted = JSON.parse(JSON.stringify(v2)) as PersistedWorldSnapshot;
     expect(persisted.version).toBe(WORLD_SNAPSHOT_VERSION);
 
-    // Simulate a future schema change: v3 adds a module key. The runtime is now
-    // at v3 with a registered v2→v3 step (injected so we needn't ship a real v3).
+    // Simulate a future schema change: v4 adds a module key. The runtime is now
+    // at v4 with a registered v3→v4 step (injected so we needn't ship a real v4).
     const migrations: Record<number, WorldSnapshotMigration> = {
-      2: (snap) => ({
-        version: 3,
+      3: (snap) => ({
+        version: 4,
         modules: { ...snap.modules, widgets: { schemaVersion: 1, count: 0 } },
       }),
     };
 
-    const migrated = migrateWorldSnapshot(persisted, migrations, 3);
-    expect(migrated.version).toBe(3);
+    const migrated = migrateWorldSnapshot(persisted, migrations, 4);
+    expect(migrated.version).toBe(4);
     // Pre-existing module blobs survive the bump untouched...
     expect(migrated.modules.gameClock).toEqual(v2.modules.gameClock);
     expect(migrated.modules.economy).toEqual(v2.modules.economy);
@@ -879,13 +922,13 @@ describe('world-snapshot versioning + migrations (#196)', () => {
   it('fails safe when a migration step is missing (no silent corruption)', () => {
     const { world } = build(7);
     const v1 = snapshotWorld(world);
-    // Runtime claims v4 but only a v3→v4 step exists; the v2→v3 gap must throw
+    // Runtime claims v5 but only a v4→v5 step exists; the v3→v4 gap must throw
     // rather than restore a shape mismatched to the current modules.
     const migrations: Record<number, WorldSnapshotMigration> = {
-      3: (snap) => ({ ...snap, version: 4 }),
+      4: (snap) => ({ ...snap, version: 5 }),
     };
-    expect(() => migrateWorldSnapshot(v1, migrations, 4)).toThrow(
-      /No world-snapshot migration registered from v2/,
+    expect(() => migrateWorldSnapshot(v1, migrations, 5)).toThrow(
+      /No world-snapshot migration registered from v3/,
     );
   });
 });
@@ -916,6 +959,9 @@ describe('snapshotWorld / restoreWorld seam (#188)', () => {
     expect(snap.modules.competitorMarket.schemaVersion).toBe(1);
     expect(Array.isArray(snap.modules.competitorMarket.competitors)).toBe(true);
     expect(typeof snap.modules.competitorMarket.rngState).toBe('number');
+    expect(typeof snap.modules.regulatoryMeter.pressure).toBe('number');
+    expect(typeof snap.modules.regulatoryMeter.isTerminal).toBe('boolean');
+    expect(typeof snap.modules.regulatoryMeter.suspensionDaysRemaining).toBe('number');
     expect(snap.modules.demandShaper.schemaVersion).toBe(2);
     expect(Array.isArray(snap.modules.demandShaper.activeInputs)).toBe(true);
     expect(Array.isArray(snap.modules.demandShaper.observedHistory)).toBe(true);

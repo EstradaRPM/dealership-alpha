@@ -31,7 +31,7 @@ import type { StaffOrgSnapshot } from './game/StaffOrg';
 import type { StaffMoraleSnapshot } from './game/StaffMorale';
 import type { MarketEconomySnapshot } from './game/MarketEconomy';
 import type { CompetitorMarketSnapshot } from './game/CompetitorMarket';
-import type { ReputationSnapshot } from './game/Reputation';
+import type { RegulatoryMeterState, ReputationSnapshot } from './game/Reputation';
 import type { TierManagerSnapshot } from './game/CareerProgression';
 import type { FollowUpPoolSnapshot } from './game/FollowUpPool';
 import type { ServiceQueueSnapshot } from './game/ServiceQueue';
@@ -47,7 +47,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 2;
+export const WORLD_SNAPSHOT_VERSION = 3;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -63,6 +63,7 @@ export type WorldSnapshot = {
     readonly marketEconomy: MarketEconomySnapshot;
     readonly competitorMarket: CompetitorMarketSnapshot;
     readonly reputation: ReputationSnapshot;
+    readonly regulatoryMeter: RegulatoryMeterState;
     // CareerProgression module: tier + business identity AND career progress
     // (customersServed) ride in one TierManager blob.
     readonly tierManager: TierManagerSnapshot;
@@ -115,6 +116,17 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         ),
       },
     }),
+    2: (snap) => ({
+      version: 3,
+      modules: {
+        ...snap.modules,
+        regulatoryMeter: {
+          pressure: 0,
+          isTerminal: false,
+          suspensionDaysRemaining: 0,
+        },
+      },
+    }),
   };
 
 /**
@@ -161,6 +173,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       marketEconomy: world.marketEconomy.snapshot(),
       competitorMarket: world.competitorMarket.snapshot(),
       reputation: world.reputation.snapshot(),
+      regulatoryMeter: world.regulatoryMeter.getSerializableState(),
       tierManager: world.tierManager.snapshot(),
       followUpPool: world.followUpPool.snapshot(),
       serviceQueue: world.serviceQueue.snapshot(),
@@ -190,6 +203,7 @@ export function restoreWorld(
   world.marketEconomy.restore(snap.modules.marketEconomy);
   world.competitorMarket.restore(snap.modules.competitorMarket);
   world.reputation.restore(snap.modules.reputation);
+  world.regulatoryMeter.restoreState(snap.modules.regulatoryMeter);
   world.tierManager.restore(snap.modules.tierManager);
   world.followUpPool.restore(snap.modules.followUpPool);
   world.serviceQueue.restore(snap.modules.serviceQueue);
