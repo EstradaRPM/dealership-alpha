@@ -87,6 +87,7 @@ import {
 import { createEndCardManager, type EndCardManager } from './game/EndCard';
 import { createReputation, type Reputation } from './game/Reputation';
 import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
+import { createServiceFloorDrain } from './game/ServiceDispatch';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
 import {
@@ -689,6 +690,13 @@ export function createWorld(deps: {
         onTradeReviewHeld: (held) => heldTradeReviews.set(held.customerId, held),
         onDiscountReviewHeld: (held) =>
           heldDiscountReviews.set(held.customerId, held),
+      }),
+      createServiceFloorDrain({
+        bus,
+        staffOrg,
+        queue: departmentQueue,
+        economy,
+        masterSeed,
       }),
     ],
     customerSource,

@@ -170,3 +170,31 @@ describe('#84 composition root — EndCardManager wired into the live world', ()
     expect(world.endCardManager.data?.reason).toBe('retire');
   });
 });
+
+describe('#206 composition root — ServiceDispatch wired into the floor seams', () => {
+  it('auto-resolves Tier 2 service intake through a hired service advisor', () => {
+    const bus = createEventBus();
+    const world = createWorld({
+      bus,
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+    const closed: unknown[] = [];
+    bus.subscribe('service:ticket_closed', e => closed.push(e));
+
+    world.serviceQueue.restore({ schemaVersion: 1, currentTier: 2 });
+    const [advisor] = world.staffOrg.getCandidates('service-advisor');
+    world.staffOrg.hire(advisor.candidateId);
+
+    // Cold-start Day 1 does not advance the clock, so ServiceQueue's
+    // day_started intake starts on the next played day.
+    world.dayLoop.nextDay().runDay();
+
+    for (let i = 0; i < 4 && closed.length === 0; i++) {
+      world.dayLoop.nextDay().runDay();
+    }
+
+    expect(closed.length).toBeGreaterThan(0);
+    expect(world.departmentQueue.getBadgeCount('service')).toBeLessThan(4);
+  });
+});

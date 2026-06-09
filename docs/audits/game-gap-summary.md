@@ -5,6 +5,7 @@
 > anchored to `CLAUDE.md`, `docs/spec-condensed.md`, ADR-0001/0002, and the open issue queue.
 > Generated 2026-06-05 against `main` @ `e9169f4`. **Re-anchored 2026-06-05** to the
 > corrected design intent below.
+> ServiceDispatch gap updated 2026-06-08 for #206.
 
 Focus is **player-complete coverage**, not backend existence. A system "exists" here
 only if the player can reach, see, understand, and get feedback from it.
@@ -60,17 +61,16 @@ upside.
    surfaced — so the lever that unlocks F&I profit can't be pulled.
 5. **Invisible market conditions (StaffMorale, regulatory pressure).** More of the "board
    you price against" the player can't read; both change outcomes silently.
-6. **ServiceDispatch — composition orphan** (not wired in `createWorld`, no tests).
-7. **SettingsScreen / snapshot rollback — dark** (only player path to weekly rolling
+6. **SettingsScreen / snapshot rollback — dark** (only player path to weekly rolling
    snapshots; mounted nowhere).
-8. **TradeEscalationModal — dark** (player-adjudication branch of trades unreachable).
-9. **LegacyWall — dark** (specced PRD feature, storage-backed and tested, UI unreachable).
-10. **Standalone KPIDashboard — dark** (KPIs reachable only via MonthClose interstitial).
-11. **Hours-of-op "recipe" lever surfaced but inert** (selects an id; not fed to FloorSim).
-12. **No persistent history/event log** (`floorEvents` resets daily; Telemetry dev-only).
-13. **No tutorial/onboarding anywhere** — the match skill is subtle and taught nowhere.
-14. **Poaching dormant at starting reputation** (#187 open).
-15. **Doc drift** — `spec-condensed.md` lists multi-slot save as out-of-scope, contradicting
+7. **TradeEscalationModal — dark** (player-adjudication branch of trades unreachable).
+8. **LegacyWall — dark** (specced PRD feature, storage-backed and tested, UI unreachable).
+9. **Standalone KPIDashboard — dark** (KPIs reachable only via MonthClose interstitial).
+10. **Hours-of-op "recipe" lever surfaced but inert** (selects an id; not fed to FloorSim).
+11. **No persistent history/event log** (`floorEvents` resets daily; Telemetry dev-only).
+12. **No tutorial/onboarding anywhere** — the match skill is subtle and taught nowhere.
+13. **Poaching dormant at starting reputation** (#187 open).
+14. **Doc drift** — `spec-condensed.md` lists multi-slot save as out-of-scope, contradicting
     shipped behavior.
 
 ---
@@ -131,11 +131,6 @@ These are the gaps that directly degrade the intended loop, in order.
 
 These are finished or near-finished features mounted nowhere — highest leverage-to-effort,
 since the work exists and only wiring/mounting is missing.
-
-**ServiceDispatch** — composition orphan, never wired into `createWorld`, no tests. Service
-items resolve only via generic `DepartmentScreen` taps, so the Service department behaves
-inconsistently with the "hired staff auto-resolve their domain queue" model. *Type:* Code /
-state flow. *Severity:* **High**.
 
 **SettingsScreen (snapshot rollback)** — the only player path to the weekly rolling
 snapshots; imported nowhere in `App.tsx`. A built+tested persistence capability with no way
@@ -259,7 +254,7 @@ and poaching is dormant at starting reputation (#187). *Type:* UI + code. *Sever
    staffing-gated, auto-resolved reward, but the f&i-manager hire that switches it on is
    unreachable (multi-role hiring unsurfaced). The richer half of a good match never lands.
 
-4. **Five finished, tested features are dark** (ServiceDispatch, SettingsScreen/rollback,
+4. **Four finished, tested UI features are dark** (SettingsScreen/rollback,
    TradeEscalationModal, LegacyWall, standalone KPIDashboard). Built and unreachable —
    highest leverage-to-effort; only wiring/mounting is missing.
 

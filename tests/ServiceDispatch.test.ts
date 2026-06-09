@@ -1,7 +1,11 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createEconomy } from '../src/game/Economy';
 import { createDepartmentQueue } from '../src/game/DepartmentQueue';
-import { createServiceDispatch, type ServiceDispatchConfig } from '../src/game/ServiceDispatch';
+import {
+  createServiceDispatch,
+  createServiceFloorDrain,
+  type ServiceDispatchConfig,
+} from '../src/game/ServiceDispatch';
 import type { StaffOrg } from '../src/game/StaffOrg';
 import type { StaffWithComposites, Staff } from '../src/game/NPC';
 
@@ -91,6 +95,36 @@ function makeSetup(roster: StaffWithComposites[], config: ServiceDispatchConfig 
   const staffOrg = makeStaffOrg(roster);
   createServiceDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config });
   return { bus, economy, queue };
+}
+
+function makeDrainSetup(roster: StaffWithComposites[], config: ServiceDispatchConfig = NORMAL_CONFIG) {
+  const bus = createEventBus();
+  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+  const queue = createDepartmentQueue({ bus });
+  const staffOrg = makeStaffOrg(roster);
+  const drain = createServiceFloorDrain({
+    bus,
+    staffOrg,
+    queue,
+    economy,
+    masterSeed: MASTER_SEED,
+    config,
+  });
+  return { bus, economy, queue, drain };
+}
+
+function drainTicks(
+  drain: ReturnType<typeof createServiceFloorDrain>,
+  count: number,
+): { resolved: number; escalated: number } {
+  let resolved = 0;
+  let escalated = 0;
+  for (let tick = 1; tick <= count; tick++) {
+    const out = drain.drain({ day: 1, tick });
+    resolved += out.resolved;
+    escalated += out.escalated;
+  }
+  return { resolved, escalated };
 }
 
 // ── No advisor → no auto-resolve ─────────────────────────────────────────────
@@ -207,6 +241,64 @@ describe('ServiceDispatch — advisor skill affects resolve rate', () => {
   it('high-skill advisor resolves more tickets than low-skill', () => {
     const n = 200;
     expect(countResolved(0.95, n)).toBeGreaterThan(countResolved(0.05, n));
+  });
+});
+
+// ── Per-tick floor drain ─────────────────────────────────────────────────────
+
+describe('ServiceDispatch — floor drain', () => {
+  it('drains captured service intake across ticks with no exception channel', () => {
+    const { bus, queue, drain } = makeDrainSetup(
+      [makeAdvisor(0.8)],
+      ALWAYS_RESOLVE_CONFIG,
+    );
+    const events: unknown[] = [];
+    bus.subscribe('service:ticket_closed', e => events.push(e));
+
+    bus.publish('service:intake_ready', makeIntakePayload(1, 3));
+
+    const totals = drainTicks(drain, 8);
+
+    expect(totals).toEqual({ resolved: 3, escalated: 0 });
+    expect(queue.getBadgeCount('service')).toBe(0);
+    expect(events).toHaveLength(3);
+  });
+
+  it('bootstraps service items already queued before the day drain exists', () => {
+    const bus = createEventBus();
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const queue = createDepartmentQueue({ bus });
+    const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
+    const events: unknown[] = [];
+    bus.subscribe('service:ticket_closed', e => events.push(e));
+
+    bus.publish('service:intake_ready', makeIntakePayload(2, 2));
+    expect(queue.getBadgeCount('service')).toBe(2);
+
+    const drain = createServiceFloorDrain({
+      bus,
+      staffOrg,
+      queue,
+      economy,
+      masterSeed: MASTER_SEED,
+      config: ALWAYS_RESOLVE_CONFIG,
+    });
+
+    const totals = drainTicks(drain, 6);
+
+    expect(totals).toEqual({ resolved: 2, escalated: 0 });
+    expect(queue.getBadgeCount('service')).toBe(0);
+    expect(events).toHaveLength(2);
+  });
+
+  it('returns zero resolved/escalated and leaves work queued without an advisor', () => {
+    const { bus, queue, drain } = makeDrainSetup([], ALWAYS_RESOLVE_CONFIG);
+    bus.publish('service:intake_ready', makeIntakePayload(1, 2));
+
+    const totals = drainTicks(drain, 6);
+
+    expect(totals).toEqual({ resolved: 0, escalated: 0 });
+    expect(queue.getBadgeCount('service')).toBe(2);
   });
 });
 

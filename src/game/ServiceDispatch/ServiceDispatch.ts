@@ -2,7 +2,9 @@ import type { EventBus } from '../EventBus';
 import type { Economy } from '../Economy';
 import type { StaffOrg } from '../StaffOrg';
 import type { DepartmentQueue } from '../DepartmentQueue';
+import type { QueueItem } from '../DepartmentQueue';
 import type { DeptDrain } from '../FloorSim';
+import { loadServiceQueueConfig } from '../ServiceQueue';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import { loadServiceDispatchConfig, type ServiceDispatchConfig } from './serviceDispatchData';
 
@@ -126,19 +128,48 @@ export function createServiceDispatch(deps: ServiceDispatchDeps): ServiceDispatc
 export function createServiceFloorDrain(deps: ServiceDispatchDeps): DeptDrain {
   const { bus, staffOrg } = deps;
   const config = deps.config ?? loadServiceDispatchConfig();
+  const intakeConfig = loadServiceQueueConfig();
   const resolveServiceItem = makeServiceResolver({ ...deps, config });
 
   const pending: Array<{ item: ServiceIntakeItem; day: number }> = [];
+  const seen = new Set<string>();
+
+  function enqueue(item: ServiceIntakeItem, day: number): void {
+    if (seen.has(item.serviceItemId)) return;
+    seen.add(item.serviceItemId);
+    pending.push({ item, day });
+  }
+
+  function fromQueuedServiceItem(item: QueueItem): { item: ServiceIntakeItem; day: number } | null {
+    if (item.dept !== 'service' || item.type !== 'routine') return null;
+    const match = /^svc:(.+):\d+:\d+$/.exec(item.id);
+    const def = intakeConfig.intakeItems.find((d) =>
+      d.id === match?.[1] || d.label === item.label,
+    );
+    return {
+      item: {
+        serviceItemId: item.id,
+        label: item.label,
+        baseRevenue: def?.baseRevenue ?? 0,
+      },
+      day: item.createdDay,
+    };
+  }
+
+  function captureQueuedServiceItems(): void {
+    for (const item of deps.queue.getQueue('service')) {
+      const pendingItem = fromQueuedServiceItem(item);
+      if (pendingItem) enqueue(pendingItem.item, pendingItem.day);
+    }
+  }
+
   bus.subscribe('service:intake_ready', ({ day, items }) => {
     for (const item of items) {
-      pending.push({
-        item: {
-          serviceItemId: item.serviceItemId,
-          label: item.label,
-          baseRevenue: item.baseRevenue,
-        },
-        day,
-      });
+      enqueue({
+        serviceItemId: item.serviceItemId,
+        label: item.label,
+        baseRevenue: item.baseRevenue,
+      }, day);
     }
   });
 
@@ -148,6 +179,7 @@ export function createServiceFloorDrain(deps: ServiceDispatchDeps): DeptDrain {
   return {
     drain() {
       let resolved = 0;
+      captureQueuedServiceItems();
       if (pending.length === 0) return { resolved, escalated: 0 };
 
       const advisors = staffOrg.currentRoster.filter(
