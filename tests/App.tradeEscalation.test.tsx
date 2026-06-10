@@ -31,6 +31,7 @@ describe('App trade escalation reachability', () => {
         day: 1,
         currentVehicle: {
           templateId: 'cv:civic',
+          brand: 'vanda',
           make: 'Honda',
           model: 'Civic',
           year: 2016,

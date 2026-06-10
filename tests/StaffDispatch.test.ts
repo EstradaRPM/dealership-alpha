@@ -171,6 +171,7 @@ function makeCashVisit(personId: string): SalesVisit {
 function makeTradeVehicle(loanPayoff: number | null = null): CurrentVehicle {
   return {
     templateId: 'cv:civic',
+    brand: 'vanda',
     make: 'Honda',
     model: 'Civic',
     year: 2016,
@@ -196,6 +197,7 @@ function makeLotVehicle(id: string, overrides: Partial<LotVehicle> = {}): LotVeh
   return {
     id,
     templateId: 'base_sedan',
+    brand: 'generic',
     year: 2020,
     make: 'generic',
     model: 'Sedan',

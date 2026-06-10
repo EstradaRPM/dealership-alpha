@@ -42,12 +42,12 @@ describe('Inventory — auction source wiring (#160)', () => {
   });
 
   it('listings show distribution variance across a large sample', () => {
-    // Gather listing prices for ford_f150 specifically (anchor known: 21_500),
+    // Gather listing prices for corden_truck specifically (anchor known: 21_500),
     // across many days to wash out template variance.
     const f150Prices: number[] = [];
     for (let day = 1; day <= 100; day++) {
       for (const l of generateAuctionListings(day, 314, VEHICLE_DATA)) {
-        if (l.templateId === 'ford_f150') f150Prices.push(l.askingPrice);
+        if (l.templateId === 'corden_truck') f150Prices.push(l.askingPrice);
       }
     }
     expect(f150Prices.length).toBeGreaterThan(20);
@@ -73,7 +73,7 @@ describe('Inventory — auction source wiring (#160)', () => {
     for (let seed = 1; seed <= 50; seed++) {
       for (let day = 1; day <= 20; day++) {
         for (const l of generateAuctionListings(day, seed, VEHICLE_DATA)) {
-          if (l.templateId !== 'honda_civic' || l.condition !== 'average') continue;
+          if (l.templateId !== 'vanda_sedan' || l.condition !== 'average') continue;
           if (l.sourceId === honestId) honest.push(l.askingPrice);
           else if (l.sourceId === unreliableId) unreliable.push(l.askingPrice);
         }

@@ -37,6 +37,7 @@ const PINNED: TradeAllowanceNoiseConfig = {
 function vehicle(loanPayoff: number | null): CurrentVehicle {
   return {
     templateId: 'tmpl',
+    brand: 'toraya',
     make: 'Toyota',
     model: 'Camry',
     year: 2018,

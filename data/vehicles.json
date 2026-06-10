@@ -2,7 +2,8 @@
   "schemaVersion": 1,
   "templates": [
     {
-      "id": "honda_civic",
+      "id": "vanda_sedan",
+      "brand": "vanda",
       "make": "Honda",
       "model": "Civic",
       "trim": "LX",
@@ -12,7 +13,8 @@
       "category": "sedan"
     },
     {
-      "id": "toyota_camry",
+      "id": "toraya_sedan",
+      "brand": "toraya",
       "make": "Toyota",
       "model": "Camry",
       "trim": "LE",
@@ -22,7 +24,8 @@
       "category": "sedan"
     },
     {
-      "id": "ford_f150",
+      "id": "corden_truck",
+      "brand": "corden",
       "make": "Ford",
       "model": "F-150",
       "trim": "XL",
@@ -32,7 +35,8 @@
       "category": "truck"
     },
     {
-      "id": "chevy_silverado",
+      "id": "chevreau_truck",
+      "brand": "chevreau",
       "make": "Chevrolet",
       "model": "Silverado 1500",
       "trim": "WT",
@@ -42,7 +46,8 @@
       "category": "truck"
     },
     {
-      "id": "toyota_rav4",
+      "id": "toraya_suv",
+      "brand": "toraya",
       "make": "Toyota",
       "model": "RAV4",
       "trim": "LE",
@@ -52,7 +57,8 @@
       "category": "suv"
     },
     {
-      "id": "honda_crv",
+      "id": "vanda_suv",
+      "brand": "vanda",
       "make": "Honda",
       "model": "CR-V",
       "trim": "LX",
@@ -62,7 +68,8 @@
       "category": "suv"
     },
     {
-      "id": "ford_escape",
+      "id": "corden_suv",
+      "brand": "corden",
       "make": "Ford",
       "model": "Escape",
       "trim": "S",
@@ -72,7 +79,8 @@
       "category": "suv"
     },
     {
-      "id": "chevy_equinox",
+      "id": "chevreau_suv",
+      "brand": "chevreau",
       "make": "Chevrolet",
       "model": "Equinox",
       "trim": "LS",
@@ -82,7 +90,8 @@
       "category": "suv"
     },
     {
-      "id": "nissan_altima",
+      "id": "messan_sedan",
+      "brand": "messan",
       "make": "Nissan",
       "model": "Altima",
       "trim": "S",
@@ -92,7 +101,8 @@
       "category": "sedan"
     },
     {
-      "id": "jeep_cherokee",
+      "id": "sabaro_suv",
+      "brand": "sabaro",
       "make": "Jeep",
       "model": "Cherokee",
       "trim": "Sport",

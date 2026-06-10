@@ -17,7 +17,7 @@ const vehicleSpacedConfig: VehicleSpacedConfig = {
     },
   },
   templateOverrides: {
-    honda_civic: { economy: 0.9, dependability: 0.85 },
+    vanda_sedan: { economy: 0.9, dependability: 0.85 },
   },
   yearModifier: {
     referenceYear: 2020,
@@ -32,7 +32,7 @@ const brandTiersConfig: BrandTiersConfig = {
     luxury: { modifier: { appearance: 0.1, dependability: -0.1 } },
     mainstream: { modifier: {} },
   },
-  makes: { Honda: 'mainstream', Acura: 'luxury' },
+  brands: { vanda: 'mainstream', lancroft: 'luxury' },
 };
 
 const deps = { vehicleSpacedConfig, brandTiersConfig };
@@ -40,16 +40,16 @@ const deps = { vehicleSpacedConfig, brandTiersConfig };
 describe('vehicleSpaced accessor', () => {
   it('layer 1: resolves the category base for a template with no override', () => {
     const v = vehicleSpaced(
-      { category: 'sedan', templateId: 'generic_sedan', make: 'Honda', year: 2020 },
+      { category: 'sedan', templateId: 'generic_sedan', brand: 'vanda', year: 2020 },
       deps,
     );
-    // No override, mainstream make (empty modifier), reference year → pure base.
+    // No override, mainstream brand (empty modifier), reference year → pure base.
     expect(v).toEqual(vehicleSpacedConfig.categoryBase.sedan);
   });
 
   it('inherit default: an unknown template falls back to the category base', () => {
     const v = vehicleSpaced(
-      { category: 'sedan', templateId: 'brand_new_template', make: 'Honda', year: 2020 },
+      { category: 'sedan', templateId: 'brand_new_template', brand: 'vanda', year: 2020 },
       deps,
     );
     expect(v.economy).toBeCloseTo(0.8);
@@ -58,7 +58,7 @@ describe('vehicleSpaced accessor', () => {
 
   it('layer 2: per-template override replaces the named axes only', () => {
     const v = vehicleSpaced(
-      { category: 'sedan', templateId: 'honda_civic', make: 'Honda', year: 2020 },
+      { category: 'sedan', templateId: 'vanda_sedan', brand: 'vanda', year: 2020 },
       deps,
     );
     expect(v.economy).toBeCloseTo(0.9);
@@ -69,16 +69,16 @@ describe('vehicleSpaced accessor', () => {
 
   it('layer 3: brand-tier modifier is added on top of base', () => {
     const v = vehicleSpaced(
-      { category: 'sedan', templateId: 'generic_sedan', make: 'Acura', year: 2020 },
+      { category: 'sedan', templateId: 'generic_sedan', brand: 'lancroft', year: 2020 },
       deps,
     );
     expect(v.appearance).toBeCloseTo(0.4 + 0.1);
     expect(v.dependability).toBeCloseTo(0.7 - 0.1);
   });
 
-  it('layer 3: an unknown make contributes no tier modifier', () => {
+  it('layer 3: an unknown brand contributes no tier modifier', () => {
     const v = vehicleSpaced(
-      { category: 'sedan', templateId: 'generic_sedan', make: 'Tesla', year: 2020 },
+      { category: 'sedan', templateId: 'generic_sedan', brand: 'tesla', year: 2020 },
       deps,
     );
     expect(v).toEqual(vehicleSpacedConfig.categoryBase.sedan);
@@ -86,11 +86,11 @@ describe('vehicleSpaced accessor', () => {
 
   it('layer 4: year modifier is deterministic and signed by year gap', () => {
     const newer = vehicleSpaced(
-      { category: 'sedan', templateId: 'generic_sedan', make: 'Honda', year: 2023 },
+      { category: 'sedan', templateId: 'generic_sedan', brand: 'vanda', year: 2023 },
       deps,
     );
     const older = vehicleSpaced(
-      { category: 'sedan', templateId: 'generic_sedan', make: 'Honda', year: 2017 },
+      { category: 'sedan', templateId: 'generic_sedan', brand: 'vanda', year: 2017 },
       deps,
     );
     expect(newer.safety).toBeCloseTo(0.5 + 0.02 * 3);
@@ -98,7 +98,7 @@ describe('vehicleSpaced accessor', () => {
     // Pure: same input → same output.
     expect(
       vehicleSpaced(
-        { category: 'sedan', templateId: 'generic_sedan', make: 'Honda', year: 2023 },
+        { category: 'sedan', templateId: 'generic_sedan', brand: 'vanda', year: 2023 },
         deps,
       ),
     ).toEqual(newer);
@@ -106,7 +106,7 @@ describe('vehicleSpaced accessor', () => {
 
   it('layer 4: year modifier is bounded by maxAbs', () => {
     const v = vehicleSpaced(
-      { category: 'sedan', templateId: 'generic_sedan', make: 'Honda', year: 2100 },
+      { category: 'sedan', templateId: 'generic_sedan', brand: 'vanda', year: 2100 },
       deps,
     );
     // 0.02 * 80 = 1.6, clamped to +0.1 before the final [0,1] clamp.
@@ -115,7 +115,7 @@ describe('vehicleSpaced accessor', () => {
 
   it('clamps every axis to [0,1] after all layers', () => {
     const v = vehicleSpaced(
-      { category: 'sedan', templateId: 'generic_sedan', make: 'Honda', year: 1900 },
+      { category: 'sedan', templateId: 'generic_sedan', brand: 'vanda', year: 1900 },
       deps,
     );
     expect(v.safety).toBeGreaterThanOrEqual(0);
@@ -124,7 +124,7 @@ describe('vehicleSpaced accessor', () => {
 
   it('all four layers compose for a fully-specified vehicle', () => {
     const v = vehicleSpaced(
-      { category: 'sedan', templateId: 'honda_civic', make: 'Acura', year: 2022 },
+      { category: 'sedan', templateId: 'vanda_sedan', brand: 'lancroft', year: 2022 },
       deps,
     );
     // base.appearance 0.4, no template override on appearance, +luxury 0.1,
@@ -137,7 +137,7 @@ describe('vehicleSpaced accessor', () => {
   it('throws on an unknown category', () => {
     expect(() =>
       vehicleSpaced(
-        { category: 'spaceship', templateId: 'x', make: 'Honda', year: 2020 },
+        { category: 'spaceship', templateId: 'x', brand: 'vanda', year: 2020 },
         deps,
       ),
     ).toThrow(/no category base/);
@@ -146,8 +146,8 @@ describe('vehicleSpaced accessor', () => {
   it('works against the bundled config with no injected deps', () => {
     const v = vehicleSpaced({
       category: 'truck',
-      templateId: 'ford_f150',
-      make: 'Ford',
+      templateId: 'corden_truck',
+      brand: 'corden',
       year: 2021,
     });
     for (const n of Object.values(v)) {

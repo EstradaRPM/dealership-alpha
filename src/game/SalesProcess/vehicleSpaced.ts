@@ -32,7 +32,8 @@ const AXES: readonly SpacedAxis[] = [
 export interface SpacedVehicleInput {
   readonly category: string;
   readonly templateId: string;
-  readonly make: string;
+  /** Opaque canonical brand id — the brand-tier join key (never a display make). */
+  readonly brand: string;
   readonly year: number;
 }
 
@@ -51,8 +52,8 @@ const clamp = (n: number, lo: number, hi: number): number =>
  *  1. category base vector (the spine)
  *  2. per-template overrides — replace the named axes (new templates inherit
  *     the category base by having no override entry)
- *  3. brand-tier modifier — additive delta keyed by make → tier (unknown make
- *     contributes no modifier)
+ *  3. brand-tier modifier — additive delta keyed by brand id → tier (unknown
+ *     brand contributes no modifier)
  *  4. deterministic, bounded year modifier — `(year − referenceYear)` scaled by
  *     per-axis perYearDelta, each axis clamped to ±maxAbs
  *
@@ -83,8 +84,8 @@ export function vehicleSpaced(
     }
   }
 
-  // Layer 3: brand-tier additive modifier (unknown make → no tier).
-  const tierName = brands.makes[vehicle.make];
+  // Layer 3: brand-tier additive modifier (unknown brand → no tier).
+  const tierName = brands.brands[vehicle.brand];
   if (tierName !== undefined) {
     const tierMod = brands.tiers[tierName].modifier;
     for (const axis of AXES) {

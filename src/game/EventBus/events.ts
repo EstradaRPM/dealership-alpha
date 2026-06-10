@@ -198,6 +198,8 @@ export interface EventMap {
     vehicleId: string;
     cost: number;
     templateId: string;
+    /** Opaque canonical brand id (join key) — MarketEconomy resolves brand-tier from this. */
+    brand: string;
     make: string;
     year: number;
     mileage: number;
@@ -221,6 +223,8 @@ export interface EventMap {
     /** Cost basis = agreed trade allowance (non-cash). */
     allowance: number;
     templateId: string;
+    /** Opaque canonical brand id (join key); never a display string. */
+    brand: string;
     make: string;
     year: number;
     mileage: number;
@@ -279,6 +283,8 @@ export interface EventMap {
     vehicleId: string;
     salePrice: number;
     templateId: string;
+    /** Opaque canonical brand id (join key) — MarketEconomy resolves brand-tier from this. */
+    brand: string;
     make: string;
     year: number;
     mileage: number;
@@ -341,6 +347,8 @@ export interface EventMap {
     customerId: string;
     currentVehicle: {
       templateId: string;
+      /** Opaque canonical brand id (join key); never a display string. */
+      brand: string;
       make: string;
       model: string;
       year: number;
@@ -367,6 +375,8 @@ export interface EventMap {
     day: number;
     currentVehicle: {
       templateId: string;
+      /** Opaque canonical brand id (join key); never a display string. */
+      brand: string;
       make: string;
       model: string;
       year: number;

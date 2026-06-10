@@ -34,6 +34,7 @@ function makeSetup(masterSeed = 42) {
 
 const TRADE_VEHICLE: TradeAcquisitionInput['currentVehicle'] = {
   templateId: 'sedan-midsize',
+  brand: 'vanda',
   make: 'Honda',
   model: 'Accord',
   year: 2018,

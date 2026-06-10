@@ -12,7 +12,7 @@ Data loaders + schemas only (this slice):
 
 - `loadSalesProcessConfig` — `data/sales-process.json` (gate list, RNG band, walk floors, quadrant-close thresholds, price-formation weights, calibration bands). Type `SalesProcessConfig`.
 - `loadVehicleSpacedConfig` — `data/vehicle-spaced.json` (SPACED category base vectors + per-template modifier overrides). Type `VehicleSpacedConfig`.
-- `loadBrandTiersConfig` — `data/brand-tiers.json` (make → tier; tier → SPACED modifier delta). Type `BrandTiersConfig`.
+- `loadBrandTiersConfig` — `data/brand-tiers.json` (opaque brand id → tier via the `brands` map; tier → SPACED modifier delta). Type `BrandTiersConfig`. Vehicles join by their canonical `brand` id, never a make display string (#224).
 - `loadCustomerNonnegotiablesConfig` — `data/customer-nonnegotiables.json` (1–2 nonnegotiable count distribution + want/pass split for remaining SPACED axes; per-visit-archetype bias). Type `CustomerNonnegotiablesConfig`.
 - Matching `*Schema` Zod exports for each.
 
@@ -61,7 +61,7 @@ Affordability eligibility (#144) — pure, deterministic helpers for whether a d
 
 Accessor (#87):
 
-- `vehicleSpaced(vehicle, deps?)` → `SpacedVector`. Pure. Resolves SPACED in four layers: category base → per-template override (replace named axes; unknown template inherits the base) → brand-tier additive modifier (make → tier; unknown make = no modifier) → deterministic bounded year modifier (`(year − referenceYear)` × per-axis delta, each clamped to ±`maxAbs`), then every axis clamped to [0,1]. `deps` lets tests inject configs; defaults to the bundled loaders. Input is the narrow structural `SpacedVehicleInput` (`category/templateId/make/year`) — Inventory's `LotVehicle`/`AuctionListing` satisfy it without a module dependency.
+- `vehicleSpaced(vehicle, deps?)` → `SpacedVector`. Pure. Resolves SPACED in four layers: category base → per-template override (replace named axes; unknown template inherits the base) → brand-tier additive modifier (brand id → tier; unknown brand = no modifier) → deterministic bounded year modifier (`(year − referenceYear)` × per-axis delta, each clamped to ±`maxAbs`), then every axis clamped to [0,1]. `deps` lets tests inject configs; defaults to the bundled loaders. Input is the narrow structural `SpacedVehicleInput` (`category/templateId/brand/year`) — Inventory's `LotVehicle`/`AuctionListing` satisfy it without a module dependency.
 
 ## Data
 

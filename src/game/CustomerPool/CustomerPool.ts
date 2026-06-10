@@ -34,7 +34,7 @@ const ARCHETYPE_IMPATIENCE = 0.25;
 const STUB_VEHICLE_SPACED: SpacedVehicleInput = {
   category: 'sedan',
   templateId: 'base_sedan', // unknown template → inherits sedan category base
-  make: 'generic',          // unknown make → no brand-tier modifier
+  brand: 'generic',         // unknown brand → no brand-tier modifier
   year: 2020,               // reference year → no year modifier
 };
 const STUB_PRICED_VEHICLE: PricedVehicleInput = { purchasePrice: 8000, reconCost: 500 };

@@ -112,7 +112,7 @@ function buildListing(args: BuildListingArgs): AuctionListing {
   const anchorValue = computeAnchor(
     {
       templateId: template.id,
-      make: template.make,
+      brand: template.brand,
       year,
       mileage: baseMileage,
       category: template.category,
@@ -126,6 +126,7 @@ function buildListing(args: BuildListingArgs): AuctionListing {
   return {
     id: `auction-day${day}-${index}-${template.id}`,
     templateId: template.id,
+    brand: template.brand,
     year,
     make: template.make,
     model: template.model,

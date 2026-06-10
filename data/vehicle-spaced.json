@@ -27,21 +27,21 @@
     }
   },
   "templateOverrides": {
-    "ford_f150": {
+    "corden_truck": {
       "appearance": 0.35,
       "comfort": 0.35,
       "dependability": 0.8
     },
-    "chevy_silverado": {
+    "chevreau_truck": {
       "appearance": 0.35,
       "comfort": 0.35,
       "dependability": 0.78
     },
-    "honda_civic": {
+    "vanda_sedan": {
       "economy": 0.88,
       "dependability": 0.8
     },
-    "toyota_camry": {
+    "toraya_sedan": {
       "comfort": 0.55,
       "dependability": 0.82
     }

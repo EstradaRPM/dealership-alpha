@@ -8,8 +8,8 @@ import {
 const civic = (): MarketVehicleInput => ({
   purchasePrice: 11_000,
   reconCost: 800,
-  templateId: 'honda_civic',
-  make: 'Honda',
+  templateId: 'vanda_sedan',
+  brand: 'vanda',
   year: 2024,
   mileage: 36_000,
   category: 'sedan',

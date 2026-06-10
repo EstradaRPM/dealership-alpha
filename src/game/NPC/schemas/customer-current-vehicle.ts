@@ -10,6 +10,8 @@ const CreditTierKeySchema = z.enum(['A', 'B', 'C', 'D']);
 
 const TemplateDefSchema = z
   .object({
+    /** Opaque canonical brand id (join key); never a display string. */
+    brand: z.string().min(1),
     make: z.string().min(1),
     model: z.string().min(1),
     category: VehicleCategorySchema,
@@ -72,6 +74,8 @@ export type CustomerCurrentVehicleConfig = z.infer<
 export const CurrentVehicleSchema = z
   .object({
     templateId: z.string().min(1),
+    /** Opaque canonical brand id (join key); never a display string. */
+    brand: z.string().min(1),
     make: z.string().min(1),
     model: z.string().min(1),
     year: z.number().int(),

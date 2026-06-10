@@ -58,6 +58,7 @@ const STRONG: NegotiationSkill = { effectiveness: 0.95, trustworthiness: 0.5 };
 
 const CV: CurrentVehicle = {
   templateId: 'tmpl',
+  brand: 'toraya',
   make: 'Toyota',
   model: 'Camry',
   year: 2018,
