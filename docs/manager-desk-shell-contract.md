@@ -1,9 +1,17 @@
 # Manager Desk Shell Contract
 
-Issue #215 moved the MANAGERIAL phase from an unbounded card stack into the
-Manager Desk shell. New between-day UI must mount into one of the shell regions
-or an existing route/overlay type rather than appending another full-width card
-to `DayLoopShell`.
+> **Superseded by the UI rebrand (S2, #215).** `DayLoopShell` is retired. The
+> MANAGERIAL phase now lives in the 5-tab `AppShell` (`src/ui/AppShell/`):
+> `Today` + `Market` mount in the **Home** tab (`src/ui/HomeTab/`); `Prep` +
+> the department dock mount in the **Operations** tab (`src/ui/OperationsTab/`);
+> the day action is pinned in the shell footer; the live floor is a full-screen
+> MODE, not a tab. The mount-point taxonomy below still describes *which surface
+> goes where* — read tab names for the old region names.
+
+Issue #215 originally moved the MANAGERIAL phase from an unbounded card stack
+into the Manager Desk shell. New between-day UI must mount into one of the shell
+regions (now tabs) or an existing route/overlay type rather than appending
+another full-width card to a single scroll.
 
 ## Mount Points
 

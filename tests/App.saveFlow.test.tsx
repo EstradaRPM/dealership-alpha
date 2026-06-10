@@ -9,6 +9,11 @@ jest.mock(
   () => jest.requireActual('react-native-safe-area-context/jest/mock').default,
 );
 
+// These flows render the whole app and run a floor day end-to-end; the default
+// 5s is too tight under CI contention (this repo runs the suite on both push and
+// pull_request, so two runners compete). They complete in <1s locally.
+jest.setTimeout(20_000);
+
 describe('App save/load flow', () => {
   it('saves the current floor state, returns to main menu, and continues from that save', async () => {
     const screen = render(
@@ -26,7 +31,8 @@ describe('App save/load flow', () => {
     fireEvent.press(screen.getByText('Begin'));
 
     await waitFor(() => expect(screen.getByText('Manager Desk')).toBeTruthy());
-    fireEvent.press(screen.getByLabelText('Open Floor'));
+    // START DAY enters the floor MODE from the pinned shell action (#215).
+    fireEvent.press(screen.getByText('Open Floor →'));
     await waitFor(() => expect(screen.getByText('FLOOR')).toBeTruthy());
 
     fireEvent.press(screen.getByLabelText('Open game menu'));
@@ -64,6 +70,8 @@ describe('App save/load flow', () => {
     fireEvent.press(screen.getByText('Begin'));
 
     await waitFor(() => expect(screen.getByText('Manager Desk')).toBeTruthy());
+    // The auction lever lives under Operations in the rebranded IA (#215).
+    fireEvent.press(screen.getByLabelText('Operations'));
     fireEvent.press(screen.getByText('Visit Auction →'));
     await waitFor(() => expect(screen.getByText('Auction Lane')).toBeTruthy());
 
@@ -102,6 +110,8 @@ describe('App save/load flow', () => {
     fireEvent.press(screen.getByText('Begin'));
 
     await waitFor(() => expect(screen.getByText('Manager Desk')).toBeTruthy());
+    // Auction + pricing levers live under Operations in the rebranded IA (#215).
+    fireEvent.press(screen.getByLabelText('Operations'));
     fireEvent.press(screen.getByText('Visit Auction →'));
     await waitFor(() => expect(screen.getByText('Auction Lane')).toBeTruthy());
 
@@ -120,6 +130,8 @@ describe('App save/load flow', () => {
 
     fireEvent.press(screen.getByText(/Back/));
     await waitFor(() => expect(screen.getByText('Manager Desk')).toBeTruthy());
+    // Returning from a screen lands on Home; the pricing lever is on Operations.
+    fireEvent.press(screen.getByLabelText('Operations'));
     const askingPriceInput = screen.getByLabelText(`Asking price for ${vehicle.id}`);
     const loadedAskingPrice = vehicle.askingPrice + 1234;
     fireEvent.changeText(askingPriceInput, String(loadedAskingPrice));
@@ -141,6 +153,8 @@ describe('App save/load flow', () => {
     fireEvent.press(screen.getByText('Continue'));
 
     await waitFor(() => expect(screen.getByText('Manager Desk')).toBeTruthy());
+    // Pricing levers are reached via Operations after a continue/load (#215).
+    fireEvent.press(screen.getByLabelText('Operations'));
     expect(
       screen.getByLabelText(
         `Open pricing for ${vehicle.year} ${vehicle.make} ${vehicle.model}`,

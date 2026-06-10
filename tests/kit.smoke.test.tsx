@@ -100,7 +100,7 @@ describe('#225 theme is injectable — swap re-skins with no component edits', (
 });
 
 // Anti-orphan: the kit is no use if its theme isn't actually live in the app.
-// The proven surface (DayRecap, via DayLoopShell) must render under a root
+// The proven surfaces (DayRecap, the AppShell tabs) must render under a root
 // ThemeProvider in App.tsx, not just in isolated tests.
 describe('#225 the theme is mounted in the live App.tsx flow', () => {
   it('App.tsx imports ThemeProvider and wraps the render tree in it', () => {

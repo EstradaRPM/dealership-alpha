@@ -5,7 +5,7 @@ import { render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { loadRegulatoryTunables } from '../src/game/Reputation';
-import { DayLoopShell } from '../src/ui/DayLoopShell';
+import { FloorDashboard } from '../src/ui/FloorDashboard';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 import type { FloorDashboardModel } from '../src/ui/FloorDashboard';
 
@@ -22,7 +22,7 @@ const PROFILE: CharacterProfile = {
 };
 
 describe('#205 condition indicators - reachable through the live pipeline', () => {
-  it('renders live StaffMorale and regulatory pressure through DayLoopShell', () => {
+  it('renders live StaffMorale and regulatory pressure through the floor mode', () => {
     const bus = createEventBus();
     const world = createWorld({
       bus,
@@ -78,13 +78,7 @@ describe('#205 condition indicators - reachable through the live pipeline', () =
     };
 
     const { getByLabelText, getByText } = render(
-      <DayLoopShell
-        profile={PROFILE}
-        state={loopState}
-        onNextDay={() => {}}
-        floorModel={floorModel}
-        regulatoryPressure={regulatoryPressure}
-      />,
+      <FloorDashboard model={floorModel} />,
     );
 
     expect(
@@ -98,12 +92,14 @@ describe('#205 condition indicators - reachable through the live pipeline', () =
     ).toBeTruthy();
   });
 
-  it('App.tsx wires both indicators from the live world into DayLoopShell', () => {
+  it('App.tsx wires both indicators from the live world into the floor mode', () => {
     const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
 
     expect(src).toMatch(/pressure: world\.regulatoryMeter\.pressure/);
     expect(src).toMatch(/max: REGULATORY_TUNABLES\.pressureMax/);
     expect(src).toMatch(/morale: world\.staffMorale\.getMorale\(s\.id\)/);
-    expect(src).toMatch(/regulatoryPressure=\{regulatoryPressure\}/);
+    // The floor read-model (which carries regulatoryPressure + morale) reaches
+    // the live full-screen floor MODE.
+    expect(src).toMatch(/<FloorDashboard\s+model=\{floorModel\}/);
   });
 });
