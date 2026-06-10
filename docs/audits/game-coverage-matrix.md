@@ -1,20 +1,29 @@
 # Game Coverage Matrix — Current-State Audit
 
 > **Scope:** State map only. No fixes proposed, no scope broadened beyond what the
-> repo's docs/issues already agree on. Generated 2026-06-05 against `main` @ `e9169f4`;
-> ServiceDispatch row updated 2026-06-08 for #206.
+> repo's docs/issues already agree on. Generated 2026-06-09 against `main` @ `5c46b52`
+> (clean tree).
 >
 > **Sources of truth used:** `CLAUDE.md`, `docs/spec-condensed.md`, ADR-0001/0002,
 > the composition root (`src/createWorld.ts`), the live UI tree (`App.tsx`), the
 > save/load seam (`src/worldSnapshot.ts`), the `tests/` inventory, and the open
 > GitHub issue queue.
 
-> **Design intent (re-anchored 2026-06-05):** the felt loop is **Dope Wars × Lemonade
+> **Why this run (framing, not a finding):** this audit is the left-hand inventory column
+> for an upcoming **UI-mapping pass**. The plan is to agree a *final-look* UI (drafted as
+> images) and then map every existing mechanic onto a surface in that look. So the load-bearing
+> question this time is not "what's dark" but **"what mechanics now exist and therefore need a
+> home in the final UI."** Read the "Where Structure Diverges" and the gap summary's UI sections
+> with that lens. The single most relevant finding for that purpose: surfacing has become *broad
+> but architecturally incoherent* — surfaces were added by appending into `DayLoopShell`
+> (see #215), so nearly every mechanic is reachable, but the shell is now a pile, not a layout.
+
+> **Design intent (anchored 2026-06-05, unchanged):** the felt loop is **Dope Wars × Lemonade
 > Stand** — buy low / sell high, ride out random adverse events, and *match an inventory
 > "recipe" to the incoming buyer demand "weather,"* then watch customers stop or walk.
 > F&I/loan is **auto-resolved by design** (managerial-watch loop); the player is *not* meant
 > to perform F&I steps. Any older issue-history language to the contrary is superseded. See
-> divergences #6–#7 and `docs/audits/game-gap-summary.md`.
+> divergences and `docs/audits/game-gap-summary.md`.
 
 **Legend:** ✓ = present/complete · **Partial** = partially wired/surfaced · **Dark** = exists in code but unreachable in play · **Dev-only** = reachable only under `__DEV__` · **No / Missing** = absent · **N/A** = not applicable (infra)
 
@@ -24,31 +33,33 @@ Columns: 1 System · 2 Defined in docs · 3 In code · 4 Reachable in play · 5 
 
 | System | Docs | Code | Reachable | UI surfaced | Save/load | Onboard | Feedback | Tests | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| GameClock (day/overnight) | spec, CLAUDE.md | `GameClock` ✓ | ✓ | ✓ day counter/HUD | ✓ snapshot | No | ✓ recap | ✓ | Overnight resolution sequence wired via DayLoopController |
-| CustomerPool + state machine | spec, ADR-0001 | `CustomerPool` ✓ | ✓ (FloorSim spawns) | Partial — state visible only through HandPlay gates | **No** (not in worldSnapshot) | No | ✓ via hand-play | ✓ many | In-flight customer state not persisted; day-boundary autosave + mid-day checkpoint cover it by design |
+| GameClock (day/overnight) | spec, CLAUDE.md | ✓ | ✓ | ✓ day counter/HUD | ✓ snapshot | No | ✓ recap | ✓ | Overnight resolution sequence wired via DayLoopController |
+| CustomerPool + state machine | spec, ADR-0001 | ✓ | ✓ (FloorSim spawns) | Partial — state visible through HandPlay gates | **No** (not in worldSnapshot) | No | ✓ via hand-play | ✓ many | In-flight state not persisted; day-boundary autosave + mid-day checkpoint cover it by design |
 | DepartmentQueue | spec | ✓ | ✓ BottomNav | ✓ badges + DepartmentScreen | ✓ snapshot | No | ✓ badges | ✓ | |
-| StaffOrg (hire/fire/skills/exception threshold) | spec | ✓ | Partial | Partial — only salesperson hire surfaced; **fire & multi-role not surfaced** | ✓ snapshot | No | ✓ candidate cards | ✓ | `HIRING_ROLE_ID='salesperson'` hard-coded in App |
+| StaffOrg (hire/fire/skills/exception threshold) | spec | ✓ | ✓ | ✓ **multi-role hiring now surfaced** (salesperson + tier-gated managers incl. f&i-manager) | ✓ snapshot | No | ✓ candidate cards | ✓ | Hiring no longer hard-coded to salesperson; `buildHiringRoleOptions` tier-gates roles. **Fire still unsurfaced.** |
 | Inventory (recon/auction/aging/carry) | spec | ✓ | ✓ AuctionMenu | ✓ lot stats, Auction, Pricing | ✓ snapshot | No | ✓ inspection cost/aging warns | ✓ many | |
-| DealEngine (pricing/F&I/loan/gross) | spec | ✓ | ✓ (auto-close + hand-play) | **Partial** — no SalesWorkspace; F&I/loan computed, not player-driven; only gross shown | Stateless (no snapshot) | No | Partial | ✓ many | F&I product selection / loan structuring has no player UI |
+| DealEngine (pricing/F&I/loan/gross) | spec | ✓ | ✓ (auto-close + hand-play) | ✓ gross + match feeds DayRecap payoff (#199) | Stateless (no snapshot) | No | ✓ | ✓ many | F&I auto-resolved **by design**; f&i-manager hire now reachable (Tier 2+). No SalesWorkspace — correct, not a gap |
 | Economy (cash/payroll/rent/P&L) | spec | ✓ | ✓ | ✓ cash HUD + MonthClose | ✓ snapshot | No | ✓ | ✓ | |
-| Reputation + RegulatoryMeter | spec | ✓ | ✓ | Partial — reviewScore shown; regulatory pressure not surfaced | ✓ snapshot | No | Partial | ✓ | |
-| CompetitorMarket (drift/poach) | spec, ADR-0002 | ✓ | ✓ (newly wired #183) | Partial — comps in PricingScreen only | ✓ snapshot | No | No | ✓ many | **Poaching dormant at starting reputation (#187 open)** |
+| Reputation + RegulatoryMeter | spec | ✓ | ✓ | ✓ **regulatory pressure now surfaced** (RegulatoryGauge in FloorDashboard) | ✓ snapshot | No | ✓ | ✓ | reviewScore + regulatory gauge both shown (#2c2cbce) |
+| CompetitorMarket (drift/poach) | spec, ADR-0002 | ✓ | ✓ (wired #183) | Partial — comps in PricingScreen | ✓ snapshot | No | No | ✓ many | **Poaching dormant at starting reputation (#187 open)** |
 | CareerProgression / TierManager | spec | ✓ | ✓ | ✓ tier HUD, ChapterCard, EndCard | ✓ snapshot | No | ✓ | ✓ | Backstory Day-1 mods + tier-up wired |
 | Failure/recovery paths (tier-aware) | spec §failure | `Bankruptcy/Indictment/CareerEndings` monitors ✓ | ✓ terminal → EndCard | Partial — Tier-1 terminal shown; Tier-2 contraction / Tier-3 consent-decree recovery not clearly surfaced | via tierManager | No | ✓ EndCard | Partial | Recovery (non-terminal contraction) under-surfaced |
-| SaveStore (SQLite, multi-slot, snapshots) | spec, CLAUDE.md | ✓ | ✓ MainMenu + autosave | ✓ slot picker | ✓ (is persistence) | No | Partial | ✓ many | Weekly rolling snapshots built+tested but **rollback UI dark** |
+| SaveStore (SQLite, multi-slot, snapshots) | spec, CLAUDE.md | ✓ | ✓ MainMenu + autosave | ✓ slot picker + **rollback now reachable** (SettingsScreen) | ✓ (is persistence) | No | Partial | ✓ many | Weekly rolling snapshots reachable via SettingsScreen from MainMenu + in-game menu |
 | EventBus | spec | ✓ | N/A infra | N/A | N/A | N/A | N/A | ✓ | Sole cross-module channel |
 | CapacityManager (demand vs capacity) | spec | ✓ | ✓ | ✓ funnel/recap leakCause | Per-day, not persisted | No | ✓ leak cause | ✓ | |
 | FollowUpPool / BDC | per-module | ✓ | ✓ | ✓ BDC dept queue | ✓ snapshot | No | ✓ | ✓ | Morning callback wired |
 | NPC (traits/archetypes) | ADR-0001 | ✓ | ✓ | ✓ via customers/staff/competitors | Seed-derived | No | N/A | ✓ many | |
 | ServiceQueue | per-module | ✓ | Tier-2 gated | ✓ Service dept queue (Tier 2+) | ✓ snapshot | No | Partial | ✓ | Silent at Tier 1 by design |
-| ServiceDispatch | per-module CLAUDE.md | ✓ | ✓ (floorSeams, Tier 2+) | ✓ auto-resolves service queue with advisors | Stateless per-day | No | ✓ ticket-closed events | ✓ (ServiceDispatch + FloorSim + composition) | Service silent at Tier 1 by design |
-| StaffDispatch (floor drain) | per-module | ✓ | ✓ (floorSeams) | ✓ auto-resolve + escalation | Stateless per-day | No | ✓ exceptions | ✓ (FloorSim.drain/exception) | |
-| StaffMorale | per-module | ✓ | ✓ | **No — morale not shown anywhere** | ✓ snapshot | No | No | None standalone | Feeds dispatch multiplier; invisible to player |
+| ServiceDispatch (ServiceFloorDrain) | per-module CLAUDE.md | ✓ | ✓ (wired #206, floorSeams, Tier 2+) | ✓ auto-resolves service queue with advisors | Stateless per-day | No | ✓ ticket-closed events | ✓ | Service silent at Tier 1 by design |
+| StaffDispatch (floor drain) | per-module | ✓ | ✓ (floorSeams) | ✓ auto-resolve + escalation | Stateless per-day | No | ✓ exceptions | ✓ | |
+| StaffMorale | per-module | ✓ | ✓ | ✓ **now shown** — per-staff MORALE chip in FloorDashboard staff strip | ✓ snapshot | No | Partial | ✓ (StaffMorale + ConditionIndicators.reachability) | Feeds dispatch multiplier; now visible (#2c2cbce) |
 | MarketEconomy (anchor/drift/pricing) | market-economy lock | ✓ | ✓ | ✓ PricingScreen/valuations | ✓ snapshot | No | ✓ price position | ✓ many | |
-| — News engine / ticker / weekly report | market-economy lock | **Missing** | No | No | No | No | No | No | #176–#179 open, not built |
+| — News engine / ticker / weekly report | market-economy lock | **Missing** | No | No | No | No | No | No | #176–#179 open, not built. The Dope-Wars "adverse-events" pillar |
 | Telemetry | per-module | ✓ | Dev-only | Dev-only (AdminConsole) | ✓ snapshot | No | N/A | ✓ | |
-| KPIDashboard (logic) | spec | ✓ | ✓ | Partial — only via MonthClose | ✓ snapshot | No | Partial | ✓ | Market-state KPIs (#179) open |
-| DayLoopController / FloorSim (core loop) | #99/#107 records | ✓ | ✓ core loop | ✓ FloorDashboard + speed/pause | Mid-day checkpoint (replay), not worldSnapshot | No | ✓ | ✓ many | Real-time day; deterministic replay |
+| HistoryLog (persistent player history) | #208 | ✓ | ✓ (wired #208) | ✓ **HistoryScreen** from in-game menu | ✓ snapshot (v3→v4 migration) | No | ✓ | ✓ (HistoryLog + HistoryScreen.reachability) | Durable log of deals/exceptions/shocks/tier-ups; survives daily floorEvents reset |
+| KPIDashboard (logic + standalone UI) | spec, #179 | ✓ | ✓ **now mounted on-demand** | ✓ in-game menu route + MonthClose | ✓ snapshot | No | Partial | ✓ smoke | Market-state KPIs (#179) still open |
+| DemandShaper (demand "weather" + targeting) | #197/#198 | ✓ | ✓ (wired) | ✓ **DemandReadout** (observed mix + targeting levers + coverage gap) | ✓ snapshot | No | ✓ | ✓ (DemandShaper + DemandReadout.smoke) | Readout + influence levers surfaced; #197 umbrella PRD still open |
+| DayLoopController / FloorSim (core loop) | #99/#107 records | ✓ | ✓ core loop | ✓ FloorDashboard + speed/pause | Mid-day checkpoint (replay), not worldSnapshot | No | ✓ | ✓ many | Real-time day; deterministic replay; **hours-of-op now feeds day length (#207)** |
 | SalesProcess (gate evaluation) | sales-process slice | ✓ | ✓ | ✓ hand-play gates | Stateless | No | ✓ walk/close | ✓ many | |
 | EndCard / EndCardManager | spec | ✓ | ✓ game_over | ✓ EndCard | N/A | No | ✓ | ✓ smoke | |
 
@@ -56,25 +67,27 @@ Columns: 1 System · 2 Defined in docs · 3 In code · 4 Reachable in play · 5 
 
 | System | Docs | Code | Reachable | UI surfaced | Save/load | Onboard | Feedback | Tests | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| MainMenu (New/Continue/Load/Delete) | save-load mem | ✓ | ✓ boot | ✓ | ✓ slots | No | Partial | **None** | Start screen; no test |
+| MainMenu (New/Continue/Load/Delete + Settings + LegacyWall) | save-load mem | ✓ | ✓ boot | ✓ | ✓ slots | No | Partial | **None** | Start screen; now routes to Settings + LegacyWall; no dedicated test |
 | CharacterCreation | spec | ✓ | ✓ | ✓ | persists profile/seed | No | Partial | **None** | No test |
-| DayLoopShell + HUD | #107 record | ✓ | ✓ | ✓ | N/A | No | ✓ | via FloorDashboard.smoke | |
-| FloorDashboard (HUD/status) | #116/#117 | ✓ | ✓ | ✓ stat grid, staff strip, events | N/A | No | ✓ | ✓ smoke | |
-| DayRecap | #119 | ✓ | ✓ | ✓ | N/A | No | ✓ | ✓ smoke | |
+| DayLoopShell + HUD | #107 record | ✓ | ✓ | ✓ | N/A | No | ✓ | via FloorDashboard.smoke | **Outgrowing its layout — see #215** (recap/readout/levers all appended into one body) |
+| FloorDashboard (HUD/status) | #116/#117 | ✓ | ✓ | ✓ stat grid, staff strip (+morale), events, regulatory gauge | N/A | No | ✓ | ✓ smoke | |
+| DayRecap | #119/#199 | ✓ | ✓ | ✓ + **match-payoff line (#199)** | N/A | No | ✓ | ✓ smoke | "X of Y sales were strong matches — you had what they wanted" |
 | HandPlayModal (sales workspace) | #118 | ✓ | ✓ | ✓ | N/A | No | ✓ | ✓ smoke + FloorSim.handplay | |
-| OwnershipLevers (pre-open levers) | #120 | ✓ | ✓ | ✓ in DayLoopShell | N/A | No | Partial | ✓ smoke | Hours-of-op lever "wired only" (not fed to FloorSim) |
+| OwnershipLevers (pre-open levers) | #120 | ✓ | ✓ | ✓ in DayLoopShell | N/A | persists hoursOfOp | No | Partial | ✓ smoke | Hours-of-op lever now **effective** (feeds FloorSim, #207) |
+| DemandReadout | #198 | ✓ | ✓ | ✓ in DayLoopShell | reads DemandShaper | No | ✓ | ✓ smoke | Observed persona mix + "Who You're Targeting" levers + coverage gap |
 | AuctionMenu | #164 | ✓ | ✓ | ✓ | N/A | No | ✓ | ✓ smoke | |
 | PricingScreen | #175 | ✓ | ✓ | ✓ | N/A | No | ✓ | ✓ smoke | |
-| PersonnelScreen (hiring) | #120 | ✓ | ✓ | ✓ | N/A | No | Partial | **None** | No test |
+| PersonnelScreen (hiring) | #120 | ✓ | ✓ | ✓ multi-role options | N/A | No | Partial | **None** | No dedicated test; role options tier-gated |
 | DepartmentScreen (generic queue) | #76 | ✓ | ✓ | ✓ | N/A | No | ✓ | ✓ smoke | |
 | BottomNav | #76 | ✓ | ✓ | ✓ badges | N/A | No | ✓ | ✓ smoke | |
 | MonthCloseInterstitial | #123 | ✓ | ✓ | ✓ | N/A | No | ✓ | ✓ smoke | Hosts KPI snapshot |
 | NarrativeBeat / ChapterCard | spec, #127 | ✓ | ✓ tier-up | ✓ | N/A | No | ✓ | ✓ smoke | |
+| HistoryScreen | #208 | ✓ | ✓ in-game menu | ✓ | reads historyLog | No | ✓ | ✓ reachability | |
+| SettingsScreen (rollback) | spec persistence | ✓ | ✓ **now mounted** (MainMenu + in-game menu) | ✓ | reads snapshots | No | Partial | via composition | Player path to weekly rolling snapshots now reachable |
+| LegacyWallView (completed careers) | spec ("legacy wall") | ✓ + LegacyStore | ✓ **now mounted** (MainMenu route) | ✓ | LegacyStore ✓ | No | Partial | ✓ reachability | |
+| TradeEscalationModal | #170/#201 | ✓ | ✓ **now mounted** (overlay on `trade:escalated`) | ✓ | transient | No | ✓ | via composition | Player-adjudication branch reachable; #201 open for enhancements |
+| DiscountEscalationModal | — | ✓ | ✓ overlay | ✓ | transient | No | ✓ | ✓ smoke | |
 | Navigator (routing) | per-module | ✓ | N/A infra | N/A | N/A | N/A | N/A | ✓ | |
-| **TradeEscalationModal** | #170 | ✓ | **Dark — not imported in App** | No | N/A | No | No | ✓ smoke | createWorld computes approver→player overlay, but no overlay mounted |
-| **SettingsScreen (rollback)** | spec persistence | ✓ | **Dark** | No | reads snapshots | No | No | **None** | Only player path to rolling snapshots; not mounted |
-| **LegacyWall (completed careers)** | spec ("legacy wall") | ✓ + LegacyStore | **Dark** | No | LegacyStore ✓ | No | No | LegacyStore tested; UI **none** | PRD feature; UI unreachable |
-| **KPIDashboard (standalone UI)** | spec | ✓ | **Dark** | No (KPIs only via MonthClose) | N/A | No | No | ✓ smoke | #179 (market visibility) open |
 | CustomerCard | — | ✓ | **Dev-only** (AdminConsole) | Dev-only | N/A | No | N/A | ✓ smoke | Not in normal flow |
 | AdminConsole | — | ✓ | **Dev-only** (`__DEV__`) | Dev-only | uses saveStore | No | N/A | None | Dev tooling |
 
@@ -83,55 +96,111 @@ Columns: 1 System · 2 Defined in docs · 3 In code · 4 Reachable in play · 5 
 | System | Defined | Status | Notes |
 |---|---|---|---|
 | Core loop | #99/#107 | ✓ | DayLoopController/FloorSim real-time day, MANAGERIAL↔FLOOR_OPEN |
-| Menus | save-load mem | Partial | Start menu ✓; **Settings menu dark** |
-| Save/load | spec, #186 | ✓ multi-slot | 14 modules persisted; **CustomerPool & per-day funnels not in snapshot** (by design) |
-| HUD/status display | #116/#117 | ✓ | FloorDashboard |
-| NPC systems & skills | ADR-0001 | Partial | Skills exist; **morale invisible**, multi-role hiring not surfaced |
-| Dialogue/event/history log | #117/#127 | **Partial** | Per-day transient `floorEvents` + chapter cards only; **no persistent history/event log** |
+| Menus | save-load mem | ✓ | Start menu ✓; **Settings menu now reachable**; in-game menu routes to History/KPI/Settings |
+| Save/load | spec, #186 | ✓ multi-slot | 17 modules persisted (now incl. historyLog, demandShaper); CustomerPool & per-day funnels excluded by design |
+| HUD/status display | #116/#117 | ✓ | FloorDashboard (+morale, +regulatory gauge) |
+| NPC systems & skills | ADR-0001 | ✓ | Skills exist; morale now visible; **multi-role hiring now surfaced** (fire still not) |
+| Dialogue/event/history log | #117/#127/#208 | ✓ | **Persistent HistoryLog + HistoryScreen now landed (#208)**; chapter cards + recap remain |
 | Progression systems | spec | ✓ | TierManager + backstory |
 | Failure/recovery | spec | Partial | Terminal failure→EndCard ✓; tier-2/3 recovery under-surfaced |
-| Settings/accessibility | spec | **Partial/Dark** | `accessibilityLabel`s present on controls; **no settings/a11y screen reachable** |
-| Tutorial/onboarding | — | **Missing** | No tutorial, coachmarks, first-run, or help anywhere |
-| Feedback/notifications | #117 | ✓ | Badges, floor events, exception alerts, recap, month-close |
+| Settings/accessibility | spec | Partial | SettingsScreen reachable (rollback); `accessibilityLabel`s present; **no dedicated a11y options screen** |
+| Tutorial/onboarding | #213 | **Missing** | No tutorial, coachmarks, first-run, or help anywhere |
+| Feedback/notifications | #117 | ✓ | Badges, floor events, exception alerts, recap, month-close, match-payoff line |
+| Managerial UI information architecture | #215 | **Partial/at-capacity** | Surfaces appended into one `DayLoopShell` body; pushing core action path below the fold — no scroll/nav/layout strategy |
 
 ---
 
 ## Key Observations
 
-- **The happy-path loop is fully reachable and well-tested.** Boot → MainMenu → CharacterCreation/Continue → real-time day (FloorDashboard + hand-play + speed controls) → DayRecap → MonthClose → tier-up ChapterCard → EndCard, with autosave + mid-day checkpoint resume. This spine is solid.
-- **Four substantial UI components are built, tested, but dark (unreachable in play):** `TradeEscalationModal`, `SettingsScreen` (snapshot rollback), `LegacyWall` (completed-careers wall), and the standalone `KPIDashboard`. Each is imported nowhere in the live `App.tsx` tree.
-- **`StaffMorale` runs but is invisible** — wired into createWorld and persisted, feeds the dispatch multiplier, but surfaced in no UI.
-- **Trade-escalation has a logic-to-UI gap:** `createWorld` resolves an approver (GM>UCM>player) and falls through to "player overlay" when none is hired, but the overlay (`TradeEscalationModal`) isn't mounted — so the player-adjudication branch of trades is dark.
-- **Save/load is broad but deliberately partial:** 14 modules persist via `worldSnapshot`; `CustomerPool` in-flight state and per-day funnels are intentionally excluded (covered by day-boundary autosave + FloorSim mid-day checkpoint replay).
-- **DealEngine has no player-facing workspace.** F&I product selection and loan structuring are computed by the engine and auto-resolved; the player sees only resulting gross. There is no `SalesWorkspace` screen.
-- **No tutorial/onboarding exists at all**, and accessibility is limited to `accessibilityLabel` strings on controls (no settings screen, no a11y options).
-- **Several agreed systems are still open issues, not yet in code:** News engine/ticker/weekly report (#176–#179), market-state KPI visibility (#179), poaching activation (#187).
-- **No persistent player-facing history/event log** — `floorEvents` is reset every day; `Telemetry` is dev-only.
-- **Test coverage skews to game logic + UI smoke.** Notable UI components with **no test**: `MainMenu`, `CharacterCreation`, `PersonnelScreen`, `SettingsScreen`, `LegacyWall`, `DayLoopShell`, `AdminConsole`.
+- **The "dark code" backlog is essentially cleared.** Every UI component flagged dark in the
+  2026-06-05 audit is now imported and reachable: `LegacyWallView` (MainMenu route),
+  `SettingsScreen`/rollback (MainMenu + in-game menu), `TradeEscalationModal` (overlay on
+  `trade:escalated`), and the standalone `KPIDashboard` (on-demand in-game menu). No built
+  screen/view/modal under `src/ui` is currently mounted nowhere.
+- **Every "invisible-but-running" system now has a readout.** `StaffMorale` shows as a per-staff
+  MORALE chip; regulatory pressure shows as a `RegulatoryGauge` in the HUD; demand "weather"
+  shows in `DemandReadout` with a "Who You're Targeting" lever list; and a matched sale now
+  produces an explicit payoff line in `DayRecap` (#199).
+- **The central "match" skill is now playable on both ends.** The demand mix is readable
+  (DemandReadout), the player can influence it (targeting levers), and a strong match is
+  acknowledged in recap. This was the prior audit's #1 most-damaging omission; it is now
+  surfaced. (#197 remains open as the umbrella PRD, but its readout/influence/payoff
+  deliverables are in code.)
+- **The F&I-upside lever is reachable.** Multi-role hiring is implemented; `f&i-manager`
+  (tier `manager`, `hireTier: 2`) appears in hiring options at Tier 2+. F&I remains
+  auto-resolved by design.
+- **The hours-of-op lever is no longer inert** — it feeds FloorSim day length (#207) and
+  persists per slot.
+- **A persistent player-facing history log now exists** (#208): `HistoryLog` subscribes to
+  deals/exceptions/market-shocks/tier-ups, is persisted (snapshot v3→v4 migration), and is
+  surfaced in `HistoryScreen`.
+- **The largest remaining loop gap is the unbuilt news/adverse-events engine (#176–#179)** —
+  the Dope-Wars "bust" pillar. With demand-read/influence/payoff now landed, the world still
+  throws no random market/news *shocks* for the player to ride out.
+- **No tutorial/onboarding exists at all (#213).** The match skill is now visible but still
+  taught nowhere.
+- **The managerial UI shell is at capacity (#215).** Surfaces were added by appending into
+  one `DayLoopShell` body; there is no scroll/navigation/layout strategy, so the core action
+  path can fall below the fold. This is an information-architecture problem, not a missing
+  feature — and it is the most decision-relevant finding for the upcoming UI-mapping pass.
+- **Test coverage now includes reachability tests** (LegacyWall, ConditionIndicators,
+  HistoryScreen) alongside logic + smoke. UI components with **no dedicated test** remain:
+  `MainMenu`, `CharacterCreation`, `PersonnelScreen`, `DayLoopShell`, `AdminConsole`.
 
 ---
 
 ## Where Actual Structure Diverges From Intended Design
 
-1. **Multi-slot save vs. spec out-of-scope.** `docs/spec-condensed.md` explicitly lists "single career save" and "multi-save slots" as **out of scope for v1**, but the codebase ships `MultiSlotSaveStore` with a New/Continue/Load/Delete start menu (#186/#194/#195). The actual direction (per memory `save-load-foundation`) has overtaken the condensed spec — **the doc is stale**, not the code wrong, but they contradict.
-2. **"Legacy wall of completed careers" is specced and storage-backed but has no reachable UI.** `LegacyStore` is implemented and tested; `LegacyWallView` exists but is mounted nowhere.
-3. **Weekly rolling snapshots (4–6 weeks) are built and tested, but the player rollback path (`SettingsScreen`) is dark.** The persistence capability exists with no way for the player to use it.
-4. **Hours-of-op lever is "wired only."** The UI lever selects an id and the composition root holds a scaled `ticksPerDay`, but per the App comment it is not fed into FloorSim — a surfaced control with no gameplay effect yet.
-5. **DealEngine F&I is auto-resolved *by design* — the gap is upstream.** Per the corrected design intent (Dope Wars × Lemonade Stand; managerial-watch loop), the player is *not* meant to perform F&I/loan steps — auto-resolution is correct, not a missing workspace. F&I profit is built as a **staffing-gated lever**: `data/staff-roles.json` defines `f&i-manager` (`hireTier: 2`), F&I products carry a `requiredRole`, and `DealEngine.computeAutoFni(skill, unlockedRoles, rng)` only attaches role-unlocked products. The real divergence is that this lever is **unreachable** — `HIRING_ROLE_ID='salesperson'` is hard-coded and multi-role hiring isn't surfaced, so the player can't hire the f&i-manager that turns F&I profit on. See divergence #6.
-6. **The core "match" skill is invisible on both ends.** The intended loop rewards stocking inventory that matches the incoming *buyer demand mix* (the Lemonade "recipe vs. weather"). The demand context exists in the backend (economy demand-context seam) but there is **no player-facing demand-mix readout** to stock against, and **no match-payoff acknowledgement** when stocked inventory matches a buyer — so the central skill is neither a visible choice nor a felt reward.
+1. **Multi-slot save vs. spec out-of-scope (doc drift, #209).** `docs/spec-condensed.md` still
+   lists "single career save" and "multi-save slots" as **out of scope for v1**, but the
+   codebase ships `MultiSlotSaveStore` with a New/Continue/Load/Delete start menu. The doc is
+   stale, not the code wrong — they contradict.
+2. **Surfacing outran information architecture (#215).** The repo has, over recent slices,
+   correctly closed almost every "mechanic exists but isn't surfaced" gap — but it did so by
+   stacking each new surface (recap, demand readout, ownership levers, indicators) into the
+   same `DayLoopShell` body. The result is broad reachability with no layout strategy: the
+   managerial day-close screen is a vertical pile that can push the core action below the fold.
+   **This is the structural shape the upcoming final-look UI must resolve** — the mechanics are
+   present and surfaced; what's missing is a deliberate home for each.
+3. **DealEngine F&I is auto-resolved *by design* — not a gap.** Per the corrected design intent
+   (Dope Wars × Lemonade Stand; managerial-watch loop), the player is *not* meant to perform
+   F&I/loan steps. The previously-flagged "unreachable f&i-manager hire" is now resolved
+   (multi-role hiring landed). The residual is the engine's outcomes feeding the (now-present)
+   match-payoff surface — also landed (#199).
+4. **The Dope-Wars "adverse-events" pillar is unbuilt (#176–#179).** With the Lemonade-Stand
+   "recipe vs. weather" side now surfaced end-to-end, the missing half is the random market/news
+   shocks the player rides out. The world currently has weather to read but few weather *changes*
+   to react to.
+5. **Tier-2/3 recovery is under-surfaced.** Tier-1 terminal failure → EndCard is clear; the
+   non-terminal Tier-2 contraction and Tier-3 consent-decree recovery paths aren't clearly
+   distinguished from "game over" in the UI.
 
 ---
 
 ## Session Handoff Summary
 
-**Current state of the repo:** `main` @ `e9169f4`, clean tree. The core managerial day-loop is complete, reachable, and well-covered by tests — boot → start menu → character creation → real-time floor (HUD, hand-play, speed/pause) → day recap → month close → tier-up → end card, with multi-slot save/load, day-boundary autosave, and deterministic mid-day checkpoint resume. Save/load persists 14 modules via `worldSnapshot`. Most recent work wired CompetitorMarket into `createWorld` (#183) and finished the save/load foundation (#186 family).
+**Current state of the repo:** `main` @ `5c46b52`, clean tree. The core managerial day-loop is
+complete, reachable, and well-covered. Since the 2026-06-05 audit, five landings closed the bulk
+of the prior gap list: persistent history log (#208), hours-of-op → FloorSim (#207), morale +
+regulatory indicators (#2c2cbce), ServiceDispatch wiring (#206), and mounting the legacy wall
+(#647b671) — on top of earlier landings that mounted Settings/rollback, TradeEscalationModal,
+on-demand KPIDashboard, the DemandReadout + targeting levers, the #199 match-payoff line, and
+multi-role hiring. **Net: no UI component is dark; no running system is invisible; the central
+match skill is playable and rewarded.**
 
-**Most important gaps (highest leverage first):**
-1. **Dark UI paths:** `TradeEscalationModal`, `SettingsScreen` (rollback), `LegacyWall`, and standalone `KPIDashboard` are built+tested but mounted nowhere. These are finished features the player cannot reach.
-2. **Invisible-but-running systems:** `StaffMorale` and regulatory pressure affect simulation outcomes with zero UI surface.
-3. **Loop-critical surfacing:** the buyer demand-mix the player should stock against is invisible, and a matched sale produces no payoff feedback — so the central "match inventory to demand" skill is unplayable as a deliberate choice. (Note: DealEngine F&I auto-resolution is *by design*, not a gap; the F&I lever's real problem is the unreachable f&i-manager hire under multi-role hiring.) The player-adjudicated trade-escalation branch also has no mounted screen.
-4. **Not-yet-built agreed systems:** News engine/ticker/weekly report and market-state KPI visibility (#176–#179); poaching is dormant at starting reputation (#187).
-5. **Doc drift:** `docs/spec-condensed.md` still lists multi-slot saves as out-of-scope, contradicting shipped behavior.
-6. **Zero onboarding/tutorial; accessibility limited to control labels.**
+**Most important gaps now (highest leverage first):**
+1. **News / random adverse-events engine (#176–#179)** — the unbuilt Dope-Wars "bust" pillar;
+   now the top loop gap.
+2. **Managerial UI information architecture (#215)** — surfaces outgrew the shell; the day-close
+   screen has no layout/nav strategy. Most relevant to the planned final-look UI.
+3. **No onboarding/tutorial (#213)** — the (now visible) match skill is taught nowhere.
+4. **Tier-2/3 recovery surfacing** and **poaching dormant at starting reputation (#187)**.
+5. **Doc drift (#209)** — `spec-condensed.md` still lists multi-slot save as out-of-scope.
+6. Open follow-ons: market-state KPI visibility (#179), F&I attach/credit-trait modifiers
+   (#151–#153), calibration verification (#180/#181), first-playtest checkpoint (#74).
 
-**What the next session should do:** This was originally a mapping pass; #206 has since wired the `ServiceDispatch` orphan. The natural next step is to convert the remaining dark-code findings into the existing audit issues (#184 orphan audit, #185 composition-completeness guard) and decide, per the chronological-issue rule, whether wiring the dark UI components (Settings/rollback, LegacyWall, TradeEscalationModal, KPIDashboard) slots in before the open MarketEconomy news slices (#176–#179). Before any of that, reconcile `spec-condensed.md` with the shipped multi-slot reality so the source-of-truth doc stops contradicting the code.
+**What the next session should do:** This audit is the inventory feed for a UI-mapping pass
+against an agreed final-look. The right next step is **not** more wiring — it's (a) the #215
+information-architecture decision (how the now-numerous surfaces are organized in the final
+look), and (b) the news/adverse-events engine (#176–#179) as the last missing loop pillar. Fold
+the doc-drift reconcile (#209) in opportunistically.
