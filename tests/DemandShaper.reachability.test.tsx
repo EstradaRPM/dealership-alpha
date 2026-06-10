@@ -6,7 +6,7 @@ import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { SALES_ARCHETYPES } from '../src/game/CustomerPool';
 import { createRng } from '../src/game/NPC/Rng';
-import { DayLoopShell } from '../src/ui/DayLoopShell';
+import { HomeTab } from '../src/ui/HomeTab';
 import type { DemandReadoutModel, DemandTargetingLever } from '../src/ui/DemandReadout';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
@@ -186,7 +186,7 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
     expect(total).toBeGreaterThan(0);
   });
 
-  it('renders the readout in the MANAGERIAL shell, assembled the App way', () => {
+  it('renders the readout in the Home tab, assembled the App way', () => {
     const world = runRealDay();
     const observed = world.demandShaper.getObservedMix();
     const demandReadout: DemandReadoutModel = {
@@ -206,12 +206,7 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
     expect(state.phase).toBe('MANAGERIAL');
 
     const { getAllByText, getByText } = render(
-      <DayLoopShell
-        profile={PROFILE}
-        state={state}
-        onNextDay={() => {}}
-        demandReadout={demandReadout}
-      />,
+      <HomeTab state={state} demandReadout={demandReadout} />,
     );
 
     // The readout is mounted and shows the observed persona mix.
@@ -222,7 +217,7 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
     expect(getByText(/recent buyers wanted trucks; you\s*stock 0/i)).toBeTruthy();
   });
 
-  it('App.tsx wires demandReadout from the live world into DayLoopShell', () => {
+  it('App.tsx wires demandReadout from the live world into the Home tab', () => {
     const src = fs.readFileSync(
       path.join(__dirname, '..', 'App.tsx'),
       'utf8',

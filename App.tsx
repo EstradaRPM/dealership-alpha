@@ -31,7 +31,9 @@ import { ThemeProvider } from './src/ui/theme';
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { MainMenu } from './src/ui/MainMenu';
 import { InGameMenu } from './src/ui/InGameMenu';
-import { DayLoopShell } from './src/ui/DayLoopShell';
+import { AppShell, type ShellTab, type ShellStat } from './src/ui/AppShell';
+import { HomeTab } from './src/ui/HomeTab';
+import { OperationsTab } from './src/ui/OperationsTab';
 import { SettingsScreen } from './src/ui/SettingsScreen';
 import { LegacyWallView } from './src/ui/LegacyWall';
 import type { DayRecapModel } from './src/ui/DayRecap';
@@ -42,10 +44,12 @@ import type {
   DemandTargetingLever,
 } from './src/ui/DemandReadout';
 import { SALES_ARCHETYPES } from './src/game/CustomerPool';
-import type {
-  FloorDashboardModel,
-  FloorEvent,
-  RegulatoryPressureModel,
+import {
+  FloorDashboard,
+  type FloorDashboardModel,
+  type FloorEvent,
+  type FloorControls,
+  type RegulatoryPressureModel,
 } from './src/ui/FloorDashboard';
 import { HandPlayModal, type HandPlayOutcome } from './src/ui/HandPlayModal';
 import {
@@ -94,9 +98,9 @@ import { EndCard } from './src/ui/EndCard';
 import type { EndCardData } from './src/game/EndCard';
 import { loadRegulatoryTunables } from './src/game/Reputation';
 import { useNavigator } from './src/ui/Navigator';
-import { BottomNav } from './src/ui/BottomNav';
 import { DepartmentScreen } from './src/ui/DepartmentScreen';
 import type { DeptKey } from './src/game/DepartmentQueue';
+import { loadTierConfig } from './src/game/CareerProgression';
 
 const DEPT_TITLES: Record<DeptKey, string> = {
   sales: 'Sales',
@@ -143,6 +147,9 @@ const PRICING_STRATEGY_OPTIONS = Object.entries(PRICING_STRATEGIES.strategies).m
   ([id, s]) => ({ id, label: s.label, blurb: s.blurb }),
 );
 const REGULATORY_TUNABLES = loadRegulatoryTunables();
+
+// Tier ladder labels for the shell header (#215). Seed-free.
+const TIER_CONFIG = loadTierConfig();
 
 const DEFAULT_HIRING_ROLE_ID = 'salesperson';
 
@@ -1482,47 +1489,86 @@ export function DealershipApp({
       targetingLevers: buildTargetingLevers(world),
       coverageGap: buildCoverageGap(demandEntries, lotVehicles),
     };
+    // Live-clock speed/pause controls (#121), wired into the floor MODE.
+    const floorControls: FloorControls | undefined = floor
+      ? {
+          speed: floorLoop.speed,
+          speeds: floorLoop.speeds,
+          paused: floorLoop.paused,
+          onSetSpeed: (s) => {
+            if (floorLoop.paused) floorLoop.togglePause();
+            floorLoop.setSpeed(s);
+          },
+          onTogglePause: floorLoop.togglePause,
+          onSkipToClose: floorLoop.skipToClose,
+        }
+      : undefined;
+    // Shell header chrome (#215): business identity + the consequence strip.
+    const tierEntry =
+      TIER_CONFIG.tiers[world.tierManager.currentTier - 1] ??
+      TIER_CONFIG.tiers[0];
+    const headerStats: ShellStat[] = [
+      { label: 'CASH', value: `$${Math.round(world.economy.cash).toLocaleString()}` },
+      { label: 'REPUTATION', value: `${Math.round(world.reputation.reviewScore)}` },
+      {
+        label: 'REG PRESSURE',
+        value: `${Math.round(regulatoryPressure.pressure)}/${Math.round(regulatoryPressure.max)}`,
+      },
+      { label: 'TIER', value: `${world.tierManager.currentTier}` },
+    ];
+    // The 5-tab IA (#215): T1 ships Home + Operations unconditionally; tier
+    // gating and the other three tabs land in #226.
+    const shellTabs: ShellTab[] = [
+      {
+        key: 'home',
+        label: 'Home',
+        content: (
+          <HomeTab state={loopState} recap={recap} demandReadout={demandReadout} />
+        ),
+      },
+      {
+        key: 'operations',
+        label: 'Operations',
+        content: (
+          <OperationsTab
+            badges={world.departmentQueue.getBadges()}
+            onDeptPress={handleDeptPress}
+            leverProps={leverProps}
+            onOpenAuction={() => nav.navigate('auction')}
+          />
+        ),
+      },
+    ];
     content = (
       <View style={styles.container}>
         <StatusBar style="light" />
-        <View style={styles.container}>
-        <DayLoopShell
-          profile={profile}
-          state={loopState}
-          tier={world.tierManager.currentTier}
-          cash={world.economy.cash}
-          reputation={world.reputation.reviewScore}
-          regulatoryPressure={regulatoryPressure}
-          onNextDay={handleNextDay}
-          onOpenAuction={() => nav.navigate('auction')}
-          floorModel={floorModel}
-          floorControls={
-            floor
-              ? {
-                  speed: floorLoop.speed,
-                  speeds: floorLoop.speeds,
-                  paused: floorLoop.paused,
-                  onSetSpeed: (s) => {
-                    if (floorLoop.paused) floorLoop.togglePause();
-                    floorLoop.setSpeed(s);
-                  },
-                  onTogglePause: floorLoop.togglePause,
-                  onSkipToClose: floorLoop.skipToClose,
-                }
-              : undefined
-          }
-          recap={recap}
-          onExceptionPress={openHandPlay}
-          onCherryPick={floor && floor.canGrab() ? cherryPick : undefined}
-          leverProps={leverProps}
-          demandReadout={demandReadout}
-          onOpenGameMenu={openInGameMenu}
-        />
-        </View>
-        <BottomNav
-          badges={world.departmentQueue.getBadges()}
-          onPress={handleDeptPress}
-        />
+        {loopState.phase === 'FLOOR_OPEN' && floorModel ? (
+          // The live floor is a full-screen MODE entered via START DAY, not a
+          // tab (#215). FloorSim emits floor:day_complete on the final tick,
+          // flipping the controller back to MANAGERIAL → this re-renders the
+          // shell.
+          <FloorDashboard
+            model={floorModel}
+            controls={floorControls}
+            onExceptionPress={openHandPlay}
+            onCherryPick={floor && floor.canGrab() ? cherryPick : undefined}
+            onOpenGameMenu={openInGameMenu}
+          />
+        ) : (
+          <AppShell
+            businessName={
+              world.tierManager.businessName || `${profile.name}'s Lot`
+            }
+            tierLabel={`Tier ${world.tierManager.currentTier} — ${tierEntry.label}`}
+            stats={headerStats}
+            onOpenGameMenu={openInGameMenu}
+            tabs={shellTabs}
+            primaryAction={{
+              label: loopState.hasRecap ? 'Next Day →' : 'Open Floor →',
+              onPress: handleNextDay,
+            }}
+          />
+        )}
       </View>
     );
   } else if (screen === 'end-card' && endCard) {
