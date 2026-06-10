@@ -21,6 +21,12 @@ export interface ShellTab {
   key: ShellTabKey;
   label: string;
   content: React.ReactNode;
+  /**
+   * A revealed-but-not-yet-live tab (#226). The tab stays reachable but is
+   * marked in the bar; its `content` is expected to render its own locked
+   * presentation. Defaults to unlocked.
+   */
+  locked?: boolean;
 }
 
 export interface ShellStat {
@@ -37,10 +43,20 @@ export interface AppShellProps {
   stats?: readonly ShellStat[];
   /** Opens the in-session save/load/menu surface. */
   onOpenGameMenu?: () => void;
-  /** Available tabs (already tier-filtered by the caller; #226 gates the rest). */
+  /** Available tabs (already tier-filtered by the caller; see `resolveNavTabs`). */
   tabs: readonly ShellTab[];
-  /** Which tab is shown first. Defaults to the first available tab. */
+  /** Which tab is shown first (uncontrolled mode). Defaults to the first tab. */
   initialTabKey?: ShellTabKey;
+  /**
+   * Controlled active tab. When provided, the shell renders this tab and reports
+   * taps via `onTabChange` instead of owning the state. The composition root
+   * lifts this so the active tab survives a round-trip through a sub-screen
+   * (auction / pricing / a department) — without it, the shell unmounts on
+   * navigation and the tab resets to Home on return.
+   */
+  activeTabKey?: ShellTabKey;
+  /** Tap handler for controlled mode. */
+  onTabChange?: (key: ShellTabKey) => void;
   /**
    * The pinned primary day action (Next Day / Open Floor). It sits in a fixed
    * footer above the tab bar so day close can never push it below the fold —
@@ -63,13 +79,21 @@ export function AppShell({
   onOpenGameMenu,
   tabs,
   initialTabKey,
+  activeTabKey,
+  onTabChange,
   primaryAction,
 }: AppShellProps) {
   const t = useTheme();
-  const [activeKey, setActiveKey] = useState<ShellTabKey>(
+  const [internalKey, setInternalKey] = useState<ShellTabKey>(
     initialTabKey ?? tabs[0]?.key ?? 'home',
   );
-  // A tab can disappear under us (tier change in #226); fall back to the first.
+  const controlled = activeTabKey !== undefined;
+  const activeKey = controlled ? activeTabKey : internalKey;
+  const selectTab = (key: ShellTabKey) => {
+    if (!controlled) setInternalKey(key);
+    onTabChange?.(key);
+  };
+  // A tab can disappear under us (tier change); fall back to the first.
   const active = tabs.find((tab) => tab.key === activeKey) ?? tabs[0];
 
   const root: ViewStyle = { flex: 1, backgroundColor: t.colors.base };
@@ -206,11 +230,15 @@ export function AppShell({
               key={tab.key}
               style={tabStyle}
               accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              accessibilityLabel={tab.label}
-              onPress={() => setActiveKey(tab.key)}
+              accessibilityState={{ selected, disabled: tab.locked }}
+              accessibilityLabel={
+                tab.locked ? `${tab.label} (locked)` : tab.label
+              }
+              onPress={() => selectTab(tab.key)}
             >
-              <Text style={tabLabel}>{tab.label}</Text>
+              <Text style={tabLabel}>
+                {tab.locked ? `🔒 ${tab.label}` : tab.label}
+              </Text>
             </Pressable>
           );
         })}

@@ -129,10 +129,12 @@ describe('App save/load flow', () => {
     const vehicle = savedVehicle!;
 
     fireEvent.press(screen.getByText(/Back/));
-    await waitFor(() => expect(screen.getByText('Manager Desk')).toBeTruthy());
-    // Returning from a screen lands on Home; the pricing lever is on Operations.
-    fireEvent.press(screen.getByLabelText('Operations'));
-    const askingPriceInput = screen.getByLabelText(`Asking price for ${vehicle.id}`);
+    // The shell preserves the active tab across a sub-screen round-trip (#226),
+    // so returning from the auction lands back on Operations — where the pricing
+    // lever lives — rather than snapping to Home.
+    const askingPriceInput = await screen.findByLabelText(
+      `Asking price for ${vehicle.id}`,
+    );
     const loadedAskingPrice = vehicle.askingPrice + 1234;
     fireEvent.changeText(askingPriceInput, String(loadedAskingPrice));
     fireEvent(askingPriceInput, 'blur');
@@ -152,9 +154,10 @@ describe('App save/load flow', () => {
     await waitFor(() => expect(screen.getByText('DEALERSHIP')).toBeTruthy());
     fireEvent.press(screen.getByText('Continue'));
 
-    await waitFor(() => expect(screen.getByText('Manager Desk')).toBeTruthy());
-    // Pricing levers are reached via Operations after a continue/load (#215).
-    fireEvent.press(screen.getByLabelText('Operations'));
+    // Wait for the shell to remount after Continue, then make sure we're on
+    // Operations (the active tab persists across navigation per #226, so we may
+    // already be there; pressing it is idempotent).
+    fireEvent.press(await screen.findByLabelText('Operations'));
     expect(
       screen.getByLabelText(
         `Open pricing for ${vehicle.year} ${vehicle.make} ${vehicle.model}`,
