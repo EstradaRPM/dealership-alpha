@@ -9,6 +9,11 @@ jest.mock(
   () => jest.requireActual('react-native-safe-area-context/jest/mock').default,
 );
 
+// These flows render the whole app and run a floor day end-to-end; the default
+// 5s is too tight under CI contention (this repo runs the suite on both push and
+// pull_request, so two runners compete). They complete in <1s locally.
+jest.setTimeout(20_000);
+
 describe('App save/load flow', () => {
   it('saves the current floor state, returns to main menu, and continues from that save', async () => {
     const screen = render(
