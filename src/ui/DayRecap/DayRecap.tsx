@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { FunnelLeakCause } from '../../game/CapacityManager';
-import { colors } from '../theme';
+import { useTheme } from '../theme';
+import { Surface, SectionHeader, StatCard } from '../kit';
 
 /**
  * Pure read-model for the MANAGERIAL just-ended-day recap (#119). The
@@ -72,12 +73,31 @@ interface FunnelRowProps {
 }
 
 function FunnelRow({ label, value, emphasis }: FunnelRowProps) {
+  const t = useTheme();
   return (
-    <View style={styles.funnelRow}>
-      <Text style={[styles.funnelLabel, emphasis && styles.funnelLabelEmphasis]}>
+    <View
+      style={[
+        styles.funnelRow,
+        { paddingVertical: t.spacing.sm, borderBottomColor: t.colors.surfaceRaised },
+      ]}
+    >
+      <Text
+        style={[
+          t.typography.label,
+          { color: emphasis ? t.colors.textPrimary : t.colors.textSecondary },
+          emphasis && styles.emphasisWeight,
+        ]}
+      >
         {label}
       </Text>
-      <Text style={[styles.funnelValue, emphasis && styles.funnelValueEmphasis]}>
+      <Text
+        style={[
+          t.typography.label,
+          styles.tabular,
+          { color: emphasis ? t.colors.textPrimary : t.colors.textSecondary },
+          emphasis && styles.emphasisWeight,
+        ]}
+      >
         {value}
       </Text>
     </View>
@@ -86,88 +106,61 @@ function FunnelRow({ label, value, emphasis }: FunnelRowProps) {
 
 /**
  * The just-ended-day recap card: 4-level funnel + units/gross + one
- * plain-language biggest-leak callout. Read-only; smoke tests only.
+ * plain-language biggest-leak callout. Read-only; smoke tests only. First
+ * surface migrated onto the #225 token set + base-component kit.
  */
 export function DayRecap({ model }: { model: DayRecapModel }) {
+  const t = useTheme();
+  const tally = matchTally(model);
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>Day {model.day} Recap</Text>
+    <Surface style={{ width: '100%', marginBottom: t.spacing.xxxl }}>
+      <View style={{ marginBottom: t.spacing.lg }}>
+        <SectionHeader title={`Day ${model.day} Recap`} />
+      </View>
 
-      <View style={styles.funnel}>
+      <View style={{ marginBottom: t.spacing.lg }}>
         <FunnelRow label="Drove by" value={model.potentialTraffic} />
         <FunnelRow label="Walked in" value={model.walkedIn} />
         <FunnelRow label="Staff engaged" value={model.staffEngaged} />
         <FunnelRow label="Sold" value={model.sold} emphasis />
       </View>
 
-      <View style={styles.statRow}>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{model.sold}</Text>
-          <Text style={styles.statLabel}>Units</Text>
+      <View style={[styles.statRow, { marginBottom: t.spacing.lg }]}>
+        <View style={styles.statCell}>
+          <StatCard label="Units" value={model.sold} align="center" />
         </View>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{money(model.gross)}</Text>
-          <Text style={styles.statLabel}>Gross</Text>
+        <View style={styles.statCell}>
+          <StatCard label="Gross" value={money(model.gross)} align="center" />
         </View>
       </View>
 
-      <Text style={styles.callout}>{leakCallout(model)}</Text>
+      <Text style={[t.typography.body, styles.callout, { color: t.colors.textSecondary }]}>
+        {leakCallout(model)}
+      </Text>
 
-      {matchTally(model) != null && (
-        <Text style={styles.matchTally}>{matchTally(model)}</Text>
+      {tally != null && (
+        <Text
+          style={[
+            t.typography.body,
+            { color: t.colors.reward, fontWeight: '600', marginTop: t.spacing.sm },
+          ]}
+        >
+          {tally}
+        </Text>
       )}
-    </View>
+    </Surface>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    width: '100%',
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    padding: 20,
-    marginBottom: 28,
-  },
-  title: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: 16,
-  },
-  funnel: { marginBottom: 16 },
   funnelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 7,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.surfaceRaised,
   },
-  funnelLabel: { fontSize: 15, color: colors.textSecondary },
-  funnelLabelEmphasis: { color: colors.textPrimary, fontWeight: '700' },
-  funnelValue: { fontSize: 15, color: colors.textSecondary, fontVariant: ['tabular-nums'] },
-  funnelValueEmphasis: { color: colors.textPrimary, fontWeight: '700' },
-  statRow: { flexDirection: 'row', marginTop: 4, marginBottom: 16 },
-  stat: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 22, color: colors.textPrimary, fontWeight: '700' },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginTop: 2,
-  },
-  callout: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    fontStyle: 'italic',
-  },
-  matchTally: {
-    fontSize: 14,
-    color: colors.reward,
-    lineHeight: 20,
-    fontWeight: '600',
-    marginTop: 10,
-  },
+  emphasisWeight: { fontWeight: '700' },
+  tabular: { fontVariant: ['tabular-nums'] },
+  statRow: { flexDirection: 'row' },
+  statCell: { flex: 1 },
+  callout: { fontStyle: 'italic' },
 });

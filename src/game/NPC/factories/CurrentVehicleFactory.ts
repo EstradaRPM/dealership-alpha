@@ -150,6 +150,7 @@ export function rollCurrentVehicle(
 
   return CurrentVehicleSchema.parse({
     templateId,
+    brand: template.brand,
     make: template.make,
     model: template.model,
     year,

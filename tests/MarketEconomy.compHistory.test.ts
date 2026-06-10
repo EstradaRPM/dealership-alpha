@@ -20,8 +20,8 @@ import { loadBrandTiersConfig } from '../src/game/SalesProcess';
 const civic = (): MarketVehicleInput => ({
   purchasePrice: 11_000,
   reconCost: 800,
-  templateId: 'honda_civic',
-  make: 'Honda',
+  templateId: 'vanda_sedan',
+  brand: 'vanda',
   year: 2024,
   mileage: 36_000,
   category: 'sedan',
@@ -31,8 +31,8 @@ const civic = (): MarketVehicleInput => ({
 const f150 = (): MarketVehicleInput => ({
   purchasePrice: 22_000,
   reconCost: 1_200,
-  templateId: 'ford_f150',
-  make: 'Ford',
+  templateId: 'corden_truck',
+  brand: 'corden',
   year: 2023,
   mileage: 48_000,
   category: 'truck',
@@ -139,7 +139,7 @@ describe('MarketEconomy — segmentHeat composer wired through providers (#157)'
       salePrice: Math.round(
         computeAnchor(v) *
           loadMarketMarkupConfig().markups.sedan[
-            (loadBrandTiersConfig().makes[v.make] ?? 'mainstream') as
+            (loadBrandTiersConfig().brands[v.brand] ?? 'mainstream') as
               | 'economy'
               | 'luxury'
               | 'mainstream'
@@ -147,7 +147,8 @@ describe('MarketEconomy — segmentHeat composer wired through providers (#157)'
           1.3,
       ),
       templateId: v.templateId,
-      make: v.make,
+      brand: v.brand,
+      make: 'Honda',
       year: v.year,
       mileage: v.mileage,
       condition: v.condition,
@@ -175,7 +176,8 @@ describe('MarketEconomy — segmentHeat composer wired through providers (#157)'
       vehicleId: 'v1',
       cost: Math.round(anchor * 0.7), // 30% below anchor — cool segment
       templateId: v.templateId,
-      make: v.make,
+      brand: v.brand,
+      make: 'Honda',
       year: v.year,
       mileage: v.mileage,
       condition: v.condition,
@@ -202,7 +204,8 @@ describe('MarketEconomy — segmentHeat composer wired through providers (#157)'
           vehicleId: `v${i}`,
           cost: 10_000 + i * 100,
           templateId: v.templateId,
-          make: v.make,
+          brand: v.brand,
+          make: 'Honda',
           year: v.year,
           mileage: v.mileage,
           condition: v.condition,
@@ -237,7 +240,8 @@ describe('MarketEconomy — segmentHeat composer wired through providers (#157)'
       vehicleId: 'v1',
       salePrice: 999_999,
       templateId: v.templateId,
-      make: v.make,
+      brand: v.brand,
+      make: 'Ford',
       year: v.year,
       mileage: v.mileage,
       condition: v.condition,

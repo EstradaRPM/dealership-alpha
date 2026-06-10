@@ -24,7 +24,7 @@ describe('SalesProcess data loaders', () => {
 
   it('loads and validates the bundled brand-tiers.json', () => {
     const c = loadBrandTiersConfig();
-    expect(Object.keys(c.makes).length).toBeGreaterThan(0);
+    expect(Object.keys(c.brands).length).toBeGreaterThan(0);
   });
 
   it('loads and validates the bundled customer-nonnegotiables.json', () => {

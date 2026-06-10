@@ -19,12 +19,12 @@
       }
     }
   },
-  "makes": {
-    "Honda": "mainstream",
-    "Toyota": "mainstream",
-    "Ford": "mainstream",
-    "Chevrolet": "mainstream",
-    "Nissan": "economy",
-    "Jeep": "mainstream"
+  "brands": {
+    "vanda": "mainstream",
+    "toraya": "mainstream",
+    "corden": "mainstream",
+    "chevreau": "mainstream",
+    "messan": "economy",
+    "sabaro": "mainstream"
   }
 }

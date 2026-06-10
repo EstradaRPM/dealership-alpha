@@ -21,7 +21,8 @@ import {
  */
 export interface AnchorVehicleInput {
   readonly templateId: string;
-  readonly make: string;
+  /** Opaque canonical brand id — the brand-tier join key (never a display make). */
+  readonly brand: string;
   readonly year: number;
   readonly mileage: number;
   readonly category: string;
@@ -53,7 +54,7 @@ function resolveAnchorEntry(
   const segmentTable = fallback.fallbacks[v.category] as
     | Record<string, ResolvedAnchorEntry>
     | undefined;
-  const tier = brandTiers.makes[v.make] ?? 'mainstream';
+  const tier = brandTiers.brands[v.brand] ?? 'mainstream';
   const entry = segmentTable?.[tier];
   if (!entry) {
     throw new Error(

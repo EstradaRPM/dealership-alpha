@@ -162,8 +162,8 @@ describe('MarketEconomy.predictDaysToSell — wired (#174)', () => {
   const market = createMarketEconomy();
 
   const civic: AnchorVehicleInput & { daysOnLot?: number } = {
-    templateId: 'honda_civic',
-    make: 'Honda',
+    templateId: 'vanda_sedan',
+    brand: 'vanda',
     year: 2020,
     mileage: 40000,
     category: 'sedan',

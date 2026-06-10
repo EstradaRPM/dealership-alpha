@@ -130,12 +130,14 @@ export const BrandTiersConfigSchema = z
       z.string().min(1),
       z.object({ modifier: SpacedModifierSchema }).strict(),
     ),
-    makes: z.record(z.string().min(1), z.string().min(1)),
+    // Keyed by opaque brand id (never a make display string). The join key for
+    // vehicle → brand-tier resolution.
+    brands: z.record(z.string().min(1), z.string().min(1)),
   })
   .strict()
   .refine(
-    (cfg) => Object.values(cfg.makes).every((tier) => tier in cfg.tiers),
-    { message: 'every make must map to a defined tier' },
+    (cfg) => Object.values(cfg.brands).every((tier) => tier in cfg.tiers),
+    { message: 'every brand must map to a defined tier' },
   );
 
 export type BrandTiersConfig = z.infer<typeof BrandTiersConfigSchema>;

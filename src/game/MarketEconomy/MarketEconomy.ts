@@ -193,7 +193,7 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
   // reference is the engine's own anchor for wholesale and `anchor × markup`
   // for retail — keeping the two sources commensurable in the same window.
   function markupFor(v: AnchorVehicleInput): number {
-    const tier = brandTiers.makes[v.make] ?? 'mainstream';
+    const tier = brandTiers.brands[v.brand] ?? 'mainstream';
     const segmentTable = markup.markups[v.category];
     const m = segmentTable
       ? (segmentTable as Record<string, number | undefined>)[tier]
@@ -211,6 +211,7 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
       day: number;
       cost: number;
       templateId: string;
+      brand: string;
       make: string;
       year: number;
       mileage: number;
@@ -230,6 +231,7 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
       day: number;
       salePrice: number;
       templateId: string;
+      brand: string;
       make: string;
       year: number;
       mileage: number;

@@ -11,6 +11,8 @@ export type InspectionStatus = 'none' | 'pending' | 'completed';
 export interface AuctionListing {
   readonly id: string;
   readonly templateId: string;
+  /** Opaque canonical brand id (join key); never a display string. */
+  readonly brand: string;
   readonly year: number;
   readonly make: string;
   readonly model: string;
@@ -56,6 +58,7 @@ export interface TradeAcquisitionInput {
   readonly customerId: string;
   readonly currentVehicle: {
     readonly templateId: string;
+    readonly brand: string;
     readonly make: string;
     readonly model: string;
     readonly year: number;
@@ -73,6 +76,8 @@ export interface TradeAcquisitionInput {
 export interface LotVehicle {
   readonly id: string;
   readonly templateId: string;
+  /** Opaque canonical brand id (join key); never a display string. */
+  readonly brand: string;
   readonly year: number;
   readonly make: string;
   readonly model: string;

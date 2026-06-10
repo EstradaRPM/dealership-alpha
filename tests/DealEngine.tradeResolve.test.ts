@@ -18,6 +18,7 @@ const constBook: TradeBookValueFn = () => BOOK;
 
 const CV: CurrentVehicle = {
   templateId: 'tmpl',
+  brand: 'toraya',
   make: 'Toyota',
   model: 'Camry',
   year: 2018,

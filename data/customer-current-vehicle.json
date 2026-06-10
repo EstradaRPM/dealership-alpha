@@ -5,35 +5,35 @@
   "mileagePerYear": 12000,
 
   "templates": {
-    "honda_civic":      { "make": "Honda",     "model": "Civic",          "category": "sedan" },
-    "toyota_camry":     { "make": "Toyota",    "model": "Camry",          "category": "sedan" },
-    "nissan_altima":    { "make": "Nissan",    "model": "Altima",         "category": "sedan" },
-    "ford_focus":       { "make": "Ford",      "model": "Focus",          "category": "sedan" },
-    "hyundai_sonata":   { "make": "Hyundai",   "model": "Sonata",         "category": "sedan" },
-    "bmw_3series":      { "make": "BMW",       "model": "3 Series",       "category": "sedan" },
-    "lexus_es":         { "make": "Lexus",     "model": "ES",             "category": "sedan" },
+    "vanda_sedan":     { "brand": "vanda",    "make": "Honda",     "model": "Civic",          "category": "sedan" },
+    "toraya_sedan":    { "brand": "toraya",   "make": "Toyota",    "model": "Camry",          "category": "sedan" },
+    "messan_sedan":    { "brand": "messan",   "make": "Nissan",    "model": "Altima",         "category": "sedan" },
+    "corden_sedan":    { "brand": "corden",   "make": "Ford",      "model": "Focus",          "category": "sedan" },
+    "vyndai_sedan":    { "brand": "vyndai",   "make": "Hyundai",   "model": "Sonata",         "category": "sedan" },
+    "bavron_sedan":    { "brand": "bavron",   "make": "BMW",       "model": "3 Series",       "category": "sedan" },
+    "meridas_sedan":   { "brand": "meridas",  "make": "Lexus",     "model": "ES",             "category": "sedan" },
 
-    "ford_f150":        { "make": "Ford",      "model": "F-150",          "category": "truck" },
-    "chevy_silverado":  { "make": "Chevrolet", "model": "Silverado 1500", "category": "truck" },
-    "ram_1500":         { "make": "Ram",       "model": "1500",           "category": "truck" },
-    "toyota_tacoma":    { "make": "Toyota",    "model": "Tacoma",         "category": "truck" },
+    "corden_truck":    { "brand": "corden",   "make": "Ford",      "model": "F-150",          "category": "truck" },
+    "chevreau_truck":  { "brand": "chevreau", "make": "Chevrolet", "model": "Silverado 1500", "category": "truck" },
+    "ravon_truck":     { "brand": "ravon",    "make": "Ram",       "model": "1500",           "category": "truck" },
+    "toraya_truck":    { "brand": "toraya",   "make": "Toyota",    "model": "Tacoma",         "category": "truck" },
 
-    "toyota_rav4":      { "make": "Toyota",    "model": "RAV4",           "category": "suv" },
-    "honda_crv":        { "make": "Honda",     "model": "CR-V",           "category": "suv" },
-    "ford_escape":      { "make": "Ford",      "model": "Escape",         "category": "suv" },
-    "chevy_equinox":    { "make": "Chevrolet", "model": "Equinox",        "category": "suv" },
-    "jeep_cherokee":    { "make": "Jeep",      "model": "Cherokee",       "category": "suv" },
-    "lexus_rx":         { "make": "Lexus",     "model": "RX",             "category": "suv" },
-    "acura_mdx":        { "make": "Acura",     "model": "MDX",            "category": "suv" }
+    "toraya_suv":      { "brand": "toraya",   "make": "Toyota",    "model": "RAV4",           "category": "suv" },
+    "vanda_suv":       { "brand": "vanda",    "make": "Honda",     "model": "CR-V",           "category": "suv" },
+    "corden_suv":      { "brand": "corden",   "make": "Ford",      "model": "Escape",         "category": "suv" },
+    "chevreau_suv":    { "brand": "chevreau", "make": "Chevrolet", "model": "Equinox",        "category": "suv" },
+    "sabaro_suv":      { "brand": "sabaro",   "make": "Jeep",      "model": "Cherokee",       "category": "suv" },
+    "meridas_suv":     { "brand": "meridas",  "make": "Lexus",     "model": "RX",             "category": "suv" },
+    "lancroft_suv":    { "brand": "lancroft", "make": "Acura",     "model": "MDX",            "category": "suv" }
   },
 
   "archetypes": {
     "young_family": {
       "categoryWeights": { "sedan": 0.35, "suv": 0.55, "truck": 0.10 },
       "templatePool": {
-        "sedan": ["honda_civic", "toyota_camry", "nissan_altima", "ford_focus", "hyundai_sonata"],
-        "suv":   ["toyota_rav4", "honda_crv", "ford_escape", "chevy_equinox", "jeep_cherokee"],
-        "truck": ["ford_f150", "chevy_silverado", "toyota_tacoma"]
+        "sedan": ["vanda_sedan", "toraya_sedan", "messan_sedan", "corden_sedan", "vyndai_sedan"],
+        "suv":   ["toraya_suv", "vanda_suv", "corden_suv", "chevreau_suv", "sabaro_suv"],
+        "truck": ["corden_truck", "chevreau_truck", "toraya_truck"]
       },
       "ageOffset":         { "mu": 6.0, "sigma": 2.5 },
       "mileageMultiplier": { "mu": 1.05, "sigma": 0.25 },
@@ -50,9 +50,9 @@
     "enthusiast": {
       "categoryWeights": { "sedan": 0.55, "suv": 0.35, "truck": 0.10 },
       "templatePool": {
-        "sedan": ["bmw_3series", "lexus_es", "honda_civic", "toyota_camry", "nissan_altima"],
-        "suv":   ["lexus_rx", "acura_mdx", "toyota_rav4", "jeep_cherokee"],
-        "truck": ["toyota_tacoma", "ford_f150"]
+        "sedan": ["bavron_sedan", "meridas_sedan", "vanda_sedan", "toraya_sedan", "messan_sedan"],
+        "suv":   ["meridas_suv", "lancroft_suv", "toraya_suv", "sabaro_suv"],
+        "truck": ["toraya_truck", "corden_truck"]
       },
       "ageOffset":         { "mu": 3.0, "sigma": 1.8 },
       "mileageMultiplier": { "mu": 0.80, "sigma": 0.20 },
@@ -69,9 +69,9 @@
     "commuter": {
       "categoryWeights": { "sedan": 0.65, "suv": 0.25, "truck": 0.10 },
       "templatePool": {
-        "sedan": ["honda_civic", "toyota_camry", "nissan_altima", "ford_focus", "hyundai_sonata"],
-        "suv":   ["honda_crv", "toyota_rav4", "ford_escape", "chevy_equinox"],
-        "truck": ["toyota_tacoma", "ford_f150"]
+        "sedan": ["vanda_sedan", "toraya_sedan", "messan_sedan", "corden_sedan", "vyndai_sedan"],
+        "suv":   ["vanda_suv", "toraya_suv", "corden_suv", "chevreau_suv"],
+        "truck": ["toraya_truck", "corden_truck"]
       },
       "ageOffset":         { "mu": 7.5, "sigma": 2.5 },
       "mileageMultiplier": { "mu": 1.20, "sigma": 0.25 },
@@ -88,9 +88,9 @@
     "retiree": {
       "categoryWeights": { "sedan": 0.55, "suv": 0.40, "truck": 0.05 },
       "templatePool": {
-        "sedan": ["toyota_camry", "lexus_es", "honda_civic", "hyundai_sonata"],
-        "suv":   ["lexus_rx", "acura_mdx", "honda_crv", "toyota_rav4"],
-        "truck": ["ford_f150", "toyota_tacoma"]
+        "sedan": ["toraya_sedan", "meridas_sedan", "vanda_sedan", "vyndai_sedan"],
+        "suv":   ["meridas_suv", "lancroft_suv", "vanda_suv", "toraya_suv"],
+        "truck": ["corden_truck", "toraya_truck"]
       },
       "ageOffset":         { "mu": 5.5, "sigma": 2.0 },
       "mileageMultiplier": { "mu": 0.70, "sigma": 0.20 },
@@ -107,9 +107,9 @@
     "tradesperson": {
       "categoryWeights": { "sedan": 0.10, "suv": 0.20, "truck": 0.70 },
       "templatePool": {
-        "sedan": ["nissan_altima", "ford_focus", "honda_civic"],
-        "suv":   ["jeep_cherokee", "chevy_equinox", "ford_escape"],
-        "truck": ["ford_f150", "chevy_silverado", "ram_1500", "toyota_tacoma"]
+        "sedan": ["messan_sedan", "corden_sedan", "vanda_sedan"],
+        "suv":   ["sabaro_suv", "chevreau_suv", "corden_suv"],
+        "truck": ["corden_truck", "chevreau_truck", "ravon_truck", "toraya_truck"]
       },
       "ageOffset":         { "mu": 8.5, "sigma": 3.0 },
       "mileageMultiplier": { "mu": 1.35, "sigma": 0.30 },

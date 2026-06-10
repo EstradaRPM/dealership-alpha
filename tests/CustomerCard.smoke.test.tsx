@@ -3,7 +3,8 @@ import { render } from '@testing-library/react-native';
 import { CustomerCard } from '../src/ui/CustomerCard';
 
 const financedVehicle = {
-  templateId: 'honda_civic',
+  templateId: 'vanda_sedan',
+  brand: 'vanda',
   make: 'Honda',
   model: 'Civic',
   year: 2018,

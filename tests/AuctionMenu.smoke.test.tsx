@@ -4,8 +4,9 @@ import { AuctionMenu } from '../src/ui/AuctionMenu';
 import type { AuctionListing, LotVehicle } from '../src/game/Inventory';
 
 const mockListing: AuctionListing = {
-  id: 'auction-day1-0-honda_civic',
-  templateId: 'honda_civic',
+  id: 'auction-day1-0-vanda_sedan',
+  templateId: 'vanda_sedan',
+  brand: 'vanda',
   year: 2020,
   make: 'Honda',
   model: 'Civic',
@@ -21,8 +22,9 @@ const mockListing: AuctionListing = {
 };
 
 const mockLotVehicle: LotVehicle = {
-  id: 'auction-day1-0-toyota_camry',
-  templateId: 'toyota_camry',
+  id: 'auction-day1-0-toraya_sedan',
+  templateId: 'toraya_sedan',
+  brand: 'toraya',
   year: 2019,
   make: 'Toyota',
   model: 'Camry',

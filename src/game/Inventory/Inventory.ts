@@ -224,6 +224,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
   function buildAcquiredVehicle(args: {
     id: string;
     templateId: string;
+    brand: string;
     year: number;
     make: string;
     model: string;
@@ -252,6 +253,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
     return {
       id: args.id,
       templateId: args.templateId,
+      brand: args.brand,
       year: args.year,
       make: args.make,
       model: args.model,
@@ -293,6 +295,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
     const lotVehicle = buildAcquiredVehicle({
       id: `trade-day${currentDay}-${customerId}`,
       templateId: currentVehicle.templateId,
+      brand: currentVehicle.brand,
       year: currentVehicle.year,
       make: currentVehicle.make,
       model: currentVehicle.model,
@@ -314,6 +317,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
       customerId,
       allowance: agreedAllowance,
       templateId: lotVehicle.templateId,
+      brand: lotVehicle.brand,
       make: lotVehicle.make,
       year: lotVehicle.year,
       mileage: lotVehicle.mileage,
@@ -362,7 +366,23 @@ export function createInventory(deps: InventoryDeps): Inventory {
     const remainingShortfall = v.reconRealizedCost - v.reconCost;
     const spendThisDay = Math.min(remainingShortfall, perDaySpend);
     if (spendThisDay <= 0) {
-      return { ...v, reconStatus: 'complete', reconDaysRemaining: 0 };
+      // Already fully amortized — e.g. a surprise pause landed exactly on the
+      // realized total and the player then authorized the (now zero) remaining
+      // spend. Completion must always notify, so emit recon_completed here too
+      // rather than transition to 'complete' silently.
+      bus.publish('inventory:recon_completed', {
+        day,
+        vehicleId: v.id,
+        realizedCost: v.reconRealizedCost,
+        estimate: v.reconEstimate,
+        bucket: v.reconBucket,
+      });
+      return {
+        ...v,
+        reconCost: v.reconRealizedCost,
+        reconStatus: 'complete',
+        reconDaysRemaining: 0,
+      };
     }
 
     const newSpent = v.reconCost + spendThisDay;
@@ -469,6 +489,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
       const lotVehicle = buildAcquiredVehicle({
         id: listing.id,
         templateId: listing.templateId,
+        brand: listing.brand,
         year: listing.year,
         make: listing.make,
         model: listing.model,
@@ -490,6 +511,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
         vehicleId: lotVehicle.id,
         cost: listing.askingPrice,
         templateId: lotVehicle.templateId,
+        brand: lotVehicle.brand,
         make: lotVehicle.make,
         year: lotVehicle.year,
         mileage: lotVehicle.mileage,
@@ -508,6 +530,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
         vehicleId,
         salePrice: salePrice ?? vehicle.askingPrice,
         templateId: vehicle.templateId,
+        brand: vehicle.brand,
         make: vehicle.make,
         year: vehicle.year,
         mileage: vehicle.mileage,
@@ -611,6 +634,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
         vehicleId: v.id,
         salePrice: wholesale,
         templateId: v.templateId,
+        brand: v.brand,
         make: v.make,
         year: v.year,
         mileage: v.mileage,

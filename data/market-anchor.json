@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "templates": {
-    "honda_civic":     { "baseAnchor": 12500, "curveType": "sedan" },
-    "toyota_camry":    { "baseAnchor": 15000, "curveType": "sedan" },
-    "ford_f150":       { "baseAnchor": 21500, "curveType": "truck" },
-    "chevy_silverado": { "baseAnchor": 20000, "curveType": "truck" },
-    "toyota_rav4":     { "baseAnchor": 19000, "curveType": "suv" },
-    "honda_crv":       { "baseAnchor": 16500, "curveType": "suv" },
-    "ford_escape":     { "baseAnchor": 13000, "curveType": "suv" },
-    "chevy_equinox":   { "baseAnchor": 14000, "curveType": "suv" },
-    "nissan_altima":   { "baseAnchor": 11750, "curveType": "sedan" },
-    "jeep_cherokee":   { "baseAnchor": 15500, "curveType": "suv" }
+    "vanda_sedan":    { "baseAnchor": 12500, "curveType": "sedan" },
+    "toraya_sedan":   { "baseAnchor": 15000, "curveType": "sedan" },
+    "corden_truck":   { "baseAnchor": 21500, "curveType": "truck" },
+    "chevreau_truck": { "baseAnchor": 20000, "curveType": "truck" },
+    "toraya_suv":     { "baseAnchor": 19000, "curveType": "suv" },
+    "vanda_suv":      { "baseAnchor": 16500, "curveType": "suv" },
+    "corden_suv":     { "baseAnchor": 13000, "curveType": "suv" },
+    "chevreau_suv":   { "baseAnchor": 14000, "curveType": "suv" },
+    "messan_sedan":   { "baseAnchor": 11750, "curveType": "sedan" },
+    "sabaro_suv":     { "baseAnchor": 15500, "curveType": "suv" }
   }
 }

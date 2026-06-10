@@ -21,8 +21,8 @@ const deps = {
 const REF_MI = deps.curvesConfig.referenceMileage;
 
 const civic = (mileage: number): AnchorVehicleInput => ({
-  templateId: 'honda_civic',
-  make: 'Honda',
+  templateId: 'vanda_sedan',
+  brand: 'vanda',
   year: deps.curvesConfig.referenceYear,
   mileage,
   category: 'sedan',
@@ -30,8 +30,8 @@ const civic = (mileage: number): AnchorVehicleInput => ({
 });
 
 const f150 = (mileage: number): AnchorVehicleInput => ({
-  templateId: 'ford_f150',
-  make: 'Ford',
+  templateId: 'corden_truck',
+  brand: 'corden',
   year: deps.curvesConfig.referenceYear,
   mileage,
   category: 'truck',
@@ -52,7 +52,7 @@ describe('MarketEconomy.computeAnchor — mileage curve (#156)', () => {
       expect(values[i]).toBeLessThanOrEqual(values[i - 1]);
     }
     const shape = deps.curvesConfig.curves.sedan;
-    const base = deps.anchorConfig.templates.honda_civic.baseAnchor;
+    const base = deps.anchorConfig.templates.vanda_sedan.baseAnchor;
     expect(values[values.length - 1]).toBeCloseTo(base * shape.mileageFloor, 6);
   });
 

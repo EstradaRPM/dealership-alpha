@@ -137,7 +137,7 @@ export function pickVehicleForMatch(
     const score =
       fit * WANT_WEIGHT -
       pricePenalty(listPrice, headroom) * customer.priceSensitivity +
-      reputationBonusFn(v.make);
+      reputationBonusFn(v.brand);
 
     if (score > bestScore) {
       bestScore = score;

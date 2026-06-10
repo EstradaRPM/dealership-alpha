@@ -72,8 +72,8 @@ const baseCustomer: MatchCustomer = {
 const vehicleA: MatchableVehicle = {
   id: 'V-001',
   category: 'sedan',
-  templateId: 'honda_civic',
-  make: 'Honda',
+  templateId: 'vanda_sedan',
+  brand: 'vanda',
   year: 2022,
   purchasePrice: 10_000,
   reconCost: 1_000,
@@ -82,8 +82,8 @@ const vehicleA: MatchableVehicle = {
 const vehicleB: MatchableVehicle = {
   id: 'V-002',
   category: 'sedan',
-  templateId: 'toyota_camry',
-  make: 'Toyota',
+  templateId: 'toraya_sedan',
+  brand: 'toraya',
   year: 2022,
   purchasePrice: 15_000,
   reconCost: 1_000,

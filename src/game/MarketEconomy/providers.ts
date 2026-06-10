@@ -65,7 +65,7 @@ function markupFor(
       `MarketEconomy: missing markup table for category="${vehicle.category}"`,
     );
   }
-  const tier = brandTiers.makes[vehicle.make] ?? 'mainstream';
+  const tier = brandTiers.brands[vehicle.brand] ?? 'mainstream';
   const m = (segmentTable as Record<string, number | undefined>)[tier];
   if (m === undefined) {
     throw new Error(

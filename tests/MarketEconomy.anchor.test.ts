@@ -21,8 +21,8 @@ const deps = {
 };
 
 const civicAtRef: AnchorVehicleInput = {
-  templateId: 'honda_civic',
-  make: 'Honda',
+  templateId: 'vanda_sedan',
+  brand: 'vanda',
   year: deps.curvesConfig.referenceYear,
   mileage: deps.curvesConfig.referenceMileage,
   category: 'sedan',
@@ -36,7 +36,7 @@ describe('MarketEconomy.computeAnchor (#155)', () => {
 
   it('per-template hit returns baseAnchor at reference year + average condition', () => {
     expect(computeAnchor(civicAtRef, deps)).toBe(
-      deps.anchorConfig.templates.honda_civic.baseAnchor,
+      deps.anchorConfig.templates.vanda_sedan.baseAnchor,
     );
   });
 
@@ -50,15 +50,15 @@ describe('MarketEconomy.computeAnchor (#155)', () => {
     expect(computeAnchor(unknownTemplate, deps)).toBe(expected);
   });
 
-  it('uses "mainstream" tier when make is unknown', () => {
-    const unknownMake: AnchorVehicleInput = {
+  it('uses "mainstream" tier when brand is unknown', () => {
+    const unknownBrand: AnchorVehicleInput = {
       ...civicAtRef,
       templateId: 'no_such_template',
-      make: 'NoSuchMake',
+      brand: 'no_such_brand',
     };
     const mainstreamFallback =
       deps.fallbackConfig.fallbacks.sedan.mainstream.baseAnchor;
-    expect(computeAnchor(unknownMake, deps)).toBe(mainstreamFallback);
+    expect(computeAnchor(unknownBrand, deps)).toBe(mainstreamFallback);
   });
 
   it('year curve depreciates monotonically with age then floors', () => {
@@ -70,7 +70,7 @@ describe('MarketEconomy.computeAnchor (#155)', () => {
       expect(values[i]).toBeLessThanOrEqual(values[i - 1]);
     }
     const shape = deps.curvesConfig.curves.sedan;
-    const base = deps.anchorConfig.templates.honda_civic.baseAnchor;
+    const base = deps.anchorConfig.templates.vanda_sedan.baseAnchor;
     expect(values[values.length - 1]).toBe(base * shape.floor);
   });
 
@@ -99,8 +99,8 @@ describe('MarketEconomy.createProviders (#155)', () => {
   const civic: MarketVehicleInput = {
     purchasePrice: 11_000,
     reconCost: 800,
-    templateId: 'honda_civic',
-    make: 'Honda',
+    templateId: 'vanda_sedan',
+    brand: 'vanda',
     year: deps.curvesConfig.referenceYear,
     mileage: deps.curvesConfig.referenceMileage,
     category: 'sedan',

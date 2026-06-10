@@ -27,6 +27,7 @@ import {
   type WorldSnapshot,
   type PersistedWorldSnapshot,
 } from './src/worldSnapshot';
+import { ThemeProvider } from './src/ui/theme';
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { MainMenu } from './src/ui/MainMenu';
 import { InGameMenu } from './src/ui/InGameMenu';
@@ -1566,78 +1567,82 @@ export function DealershipApp({
 
   return (
     <SafeAreaProvider>
-      <View style={styles.container}>
-        <SafeAreaView
-          style={styles.safeArea}
-          edges={['top', 'bottom', 'left', 'right']}
-        >
-          {content}
-        </SafeAreaView>
-        <HandPlayModal
-          visible={handSession != null}
-          customerId={handSession?.customerId ?? null}
-          playLive={HAND_PLAY_LIVE}
-          outcome={handOutcome}
-          onChoose={chooseApproach}
-          onClose={closeHandPlay}
-        />
-        <TradeEscalationModal
-          visible={tradeReview != null}
-          review={tradeReview}
-          onDecide={decideTrade}
-          counterResult={tradeCounterResult}
-        />
-        <DiscountEscalationModal
-          visible={discountReview != null}
-          review={discountReview}
-          onDecide={decideDiscount}
-          counterResult={discountCounterResult}
-        />
-        {monthClose != null && world && (
-          <MonthCloseInterstitial
-            model={{
-              month: monthClose,
-              tier: 1,
-              snapshot: world.kpiDashboard.getSnapshot(),
-            }}
-            onDismiss={() => setMonthClose(null)}
+      {/* Single injectable theme (#225): every kit surface reads tokens from
+          here, so swapping this theme object re-skins the whole UI in one place. */}
+      <ThemeProvider>
+        <View style={styles.container}>
+          <SafeAreaView
+            style={styles.safeArea}
+            edges={['top', 'bottom', 'left', 'right']}
+          >
+            {content}
+          </SafeAreaView>
+          <HandPlayModal
+            visible={handSession != null}
+            customerId={handSession?.customerId ?? null}
+            playLive={HAND_PLAY_LIVE}
+            outcome={handOutcome}
+            onChoose={chooseApproach}
+            onClose={closeHandPlay}
           />
-        )}
-        {endCard == null &&
-          world != null &&
-          chapterQueue.length > 0 &&
-          world.dayLoop.state().phase === 'MANAGERIAL' && (
-            // Non-terminal drain (#127 decision 1/3): one full-bleed
-            // acknowledge-card at a time, at the MANAGERIAL boundary, before
-            // the EOD recap (this Modal renders over the DayLoopShell recap).
-            // onConfirm applies the tier-up rebrand and pops the queue head;
-            // remaining beats surface FIFO on the next render.
-            <ChapterCard
-              visible
-              toTier={chapterQueue[0].toTier}
-              defaultBusinessName={
-                world.tierManager.businessName || (profile?.name ?? '')
-              }
-              onConfirm={(opts) => {
-                world.tierManager.applyTierUp(opts);
-                setChapterQueue((q) => q.slice(1));
-                bump();
+          <TradeEscalationModal
+            visible={tradeReview != null}
+            review={tradeReview}
+            onDecide={decideTrade}
+            counterResult={tradeCounterResult}
+          />
+          <DiscountEscalationModal
+            visible={discountReview != null}
+            review={discountReview}
+            onDecide={decideDiscount}
+            counterResult={discountCounterResult}
+          />
+          {monthClose != null && world && (
+            <MonthCloseInterstitial
+              model={{
+                month: monthClose,
+                tier: 1,
+                snapshot: world.kpiDashboard.getSnapshot(),
               }}
+              onDismiss={() => setMonthClose(null)}
             />
           )}
-        {__DEV__ && world && (
-          <AdminConsole
-            bus={bus}
-            clock={world.clock}
-            economy={world.economy}
-            inventory={world.inventory}
-            saveStore={saveStore}
-            telemetry={world.telemetry}
-            customerPool={world.customerPool}
-            onSaveCleared={handleSaveCleared}
-          />
-        )}
-      </View>
+          {endCard == null &&
+            world != null &&
+            chapterQueue.length > 0 &&
+            world.dayLoop.state().phase === 'MANAGERIAL' && (
+              // Non-terminal drain (#127 decision 1/3): one full-bleed
+              // acknowledge-card at a time, at the MANAGERIAL boundary, before
+              // the EOD recap (this Modal renders over the DayLoopShell recap).
+              // onConfirm applies the tier-up rebrand and pops the queue head;
+              // remaining beats surface FIFO on the next render.
+              <ChapterCard
+                visible
+                toTier={chapterQueue[0].toTier}
+                defaultBusinessName={
+                  world.tierManager.businessName || (profile?.name ?? '')
+                }
+                onConfirm={(opts) => {
+                  world.tierManager.applyTierUp(opts);
+                  setChapterQueue((q) => q.slice(1));
+                  bump();
+                }}
+              />
+            )}
+          {__DEV__ && world && (
+            <AdminConsole
+              bus={bus}
+              clock={world.clock}
+              economy={world.economy}
+              inventory={world.inventory}
+              saveStore={saveStore}
+              telemetry={world.telemetry}
+              customerPool={world.customerPool}
+              onSaveCleared={handleSaveCleared}
+            />
+          )}
+        </View>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

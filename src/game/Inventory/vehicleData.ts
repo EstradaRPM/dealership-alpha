@@ -3,6 +3,11 @@ import { parseData } from '../data/loadJson';
 
 const VehicleTemplateSchema = z.object({
   id: z.string(),
+  /**
+   * Opaque canonical brand id (join key into brands.json / brand-tiers.json).
+   * Never a display string — `make`/`model` carry the human-readable name.
+   */
+  brand: z.string(),
   make: z.string(),
   model: z.string(),
   trim: z.string(),
