@@ -186,19 +186,29 @@ function Dashboard({
           {/* Weather readout (#231): today's conditions + an honest one-day
               forecast. Renders only when the composition root supplied weather. */}
           {model.calendar.weather ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'baseline',
-                marginTop: t.spacing.sm,
-              }}
-            >
-              <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
-                {model.calendar.weather.todayLabel}
-              </Text>
-              <Text style={subValue}>{model.calendar.weather.forecastLabel}</Text>
-            </View>
+            <>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  marginTop: t.spacing.sm,
+                }}
+              >
+                <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
+                  {model.calendar.weather.todayLabel}
+                </Text>
+                <Text style={subValue}>{model.calendar.weather.forecastLabel}</Text>
+              </View>
+              {/* Season demand lean (#231 S2): which buyer attributes this
+                  season nudges demand toward — the readable surface of the
+                  want-vector lean. */}
+              {model.calendar.weather.seasonLeanLabel ? (
+                <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
+                  {model.calendar.weather.seasonLeanLabel}
+                </Text>
+              ) : null}
+            </>
           ) : null}
         </Surface>
       </View>

@@ -299,6 +299,7 @@ function setup(
     tradeEscalationOverride?: () => number;
     tradePolicyMultiplier?: () => number;
     salesProcessDeps?: StaffDispatchDeps['salesProcessDeps'];
+    wantVectorBias?: StaffDispatchDeps['wantVectorBias'];
   } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
@@ -354,6 +355,7 @@ function setup(
     getCustomerSession: (id) => sessions.get(id),
     getHasGm: opts.getHasGm,
     salesProcessDeps: opts.salesProcessDeps,
+    wantVectorBias: opts.wantVectorBias,
     // Deterministic FNI: never attach (keeps backGross = 0 so per-test math is exact).
     fniRng: () => 1.0,
     // #169: constant book seam + optional UCM condition read.
@@ -463,6 +465,33 @@ describe('StaffDispatch — real close path (#147)', () => {
     admit(bus, 'cust:1');
     expect(events[0].outcome).toBe('no_sale');
     expect(events[0].matchQuality).toBeUndefined();
+  });
+
+  it('season demand lean (#231 S2): wantVectorBias runs on the resolution want-vector', () => {
+    const seen: Array<{ spaced: Record<string, number>; day: number }> = [];
+    const { bus, sessions, events } = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+      // Identity bias that records the call: proves the seam is live in the
+      // auto-resolve match path (the createWorld test asserts it's wired to
+      // Weather.leanWantVector; the Weather test asserts the lean transform).
+      wantVectorBias: (spaced, day) => {
+        seen.push({ spaced: { ...spaced }, day });
+        return spaced;
+      },
+    });
+    sessions.set('cust:1', makeSession('cust:1', makeFinanceVisit('cust:1')));
+    admit(bus, 'cust:1', 1);
+    expect(events[0].outcome).toBe('closed');
+    expect(seen).toHaveLength(1);
+    expect(seen[0].day).toBe(1);
+    // The biased vector is the visit's own preference want-vector.
+    expect(seen[0].spaced).toEqual({
+      safety: 0.2,
+      performance: 0.2,
+      appearance: 0.2,
+      comfort: 0.2,
+      economy: 0.2,
+      dependability: 0.2,
+    });
   });
 
   it('per-tick drain: N customers + < N inventory closes exactly inventory.length', () => {

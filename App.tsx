@@ -1556,6 +1556,15 @@ export function DealershipApp({
     // Both are pure projections of (masterSeed, day) off the live World.
     const todayWeather = world.weather.weatherForDay(world.clock.currentDay);
     const forecastWeather = world.weather.weatherForDay(world.clock.currentDay + 1);
+    // Season demand lean (#231 S2): the SPACED axes today's season nudges
+    // buyer wants toward, highest lean first — the readable surface of the
+    // want-vector bias the auto-resolve match runs through. Positive deltas
+    // only (what the season *favors*); the effect itself is emergent.
+    const seasonLean = Object.entries(world.weather.wantLeanForDay(world.clock.currentDay))
+      .filter(([, delta]) => delta > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([axis]) => axis);
     const homeDashboard = buildHomeDashboard({
       businessName: world.tierManager.businessName || `${profile.name}'s Lot`,
       tierLabel: `Tier ${world.tierManager.currentTier} — ${tierEntry.label}`,
@@ -1578,6 +1587,7 @@ export function DealershipApp({
         conditionLabel: todayWeather.conditionLabel,
         forecastTemperatureF: forecastWeather.temperatureF,
         forecastConditionLabel: forecastWeather.conditionLabel,
+        seasonLean,
       },
     });
     // The fixed 5-tab IA (#215). All five tabs are ALWAYS present — navigation

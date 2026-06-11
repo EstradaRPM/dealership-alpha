@@ -673,6 +673,11 @@ export function createWorld(deps: {
           vehicleCostFn: marketEconomy.vehicleCostFn,
           bookValueFn: marketEconomy.bookValueFn,
         },
+        // #231 S2: season demand lean. Biases the customer want-vector for the
+        // resolution day before the match, so the seasonal effect is emergent
+        // through pickVehicleFor (#197) — winter nudges wants toward
+        // dependability/safety, summer toward performance/looks, etc.
+        wantVectorBias: (spaced, day) => weather.leanWantVector(spaced, day),
         // #169: trade resolution. Book provider (adapted at this boundary) +
         // the UCM condition-read confidence. A used-car-manager on the roster
         // appraises the trade with confidence = their `condition_reading`

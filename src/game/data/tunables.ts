@@ -127,6 +127,24 @@ export const TunablesSchema = z.object({
       fall: WeatherSeasonSchema,
       winter: WeatherSeasonSchema,
     }),
+    // Season → demand lean (#231 S2). Additive per-axis deltas applied to the
+    // customer want-vector (the 6 SPACED axes), so the seasonal effect stays
+    // emergent through persona→preference→pickVehicleFor (#197): weather nudges
+    // *what buyers want* along attribute axes, and which specific models that
+    // favors falls out of the match — learnable across the full inventory, no
+    // per-make/model rules. Each season is a partial record over the SPACED axis
+    // ids (safety/performance/appearance/comfort/economy/dependability); a
+    // missing axis means no lean (0). Magnitudes are minor first-pass
+    // calibration, tuned last. Condition-specific leans over *new* axes
+    // (snow→AWD, etc.) arrive with the attribute-schema extension (S4).
+    attributeLeans: z.object({
+      bySeason: z.object({
+        spring: z.record(z.string().min(1), z.number()),
+        summer: z.record(z.string().min(1), z.number()),
+        fall: z.record(z.string().min(1), z.number()),
+        winter: z.record(z.string().min(1), z.number()),
+      }),
+    }),
   }),
   // Live render loop (#121, design #107). UI-only: a wall-clock interval
   // drives FloorSim.step() at `baseTickIntervalMs / speed`. Game logic never

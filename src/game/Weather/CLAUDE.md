@@ -1,9 +1,10 @@
 # Weather
 
-Season + per-day weather substrate (#231). Slice 1 of the weather-demand
-mechanic: a read-only daily weather state surfaced on the Home calendar card.
-Later slices ride season/weather onto demand (attribute-axis lean) and traffic
-volume — they wire onto this same pure core, they do not replace it.
+Season + per-day weather substrate (#231). The weather-demand mechanic:
+S1 a read-only daily weather state surfaced on the Home calendar card; S2 a
+season → demand lean over the customer want-vector. Later slices ride daily
+weather onto traffic volume (S3) and add new attribute axes (S4) — they wire
+onto this same pure core, they do not replace it.
 
 ## Public API (`index.ts`)
 - `createWeather({ masterSeed, config? })` → `Weather`.
@@ -13,7 +14,27 @@ volume — they wire onto this same pure core, they do not replace it.
     conditionLabel, temperatureF }`. The **forecast** is just
     `weatherForDay(currentDay + 1)` — honest one-day lookahead, not a demand
     oracle.
-- Types: `Weather`, `WeatherConfig`, `WeatherDeps`, `DayWeather`.
+  - `wantLeanForDay(day) → Record<axisId, number>` (**S2**) — the day's season
+    demand lean: additive per-axis deltas over the SPACED want axes. Pure, from
+    `attributeLeans.bySeason[season]`.
+  - `leanWantVector(spaced, day) → spaced` (**S2**) — apply the day's lean to a
+    customer want-vector, clamped to [0,1]. Axes absent from the lean (and lean
+    axes the vector doesn't carry) pass through. This is the seam StaffDispatch's
+    auto-resolve path biases `customerSpaced` through before the match, so the
+    seasonal effect stays **emergent through `persona→preference→pickVehicleFor`**
+    (#197) — never a per-make/model rule. Returns a new object; never mutates.
+- Types: `Weather`, `WeatherConfig`, `WeatherDeps`, `DayWeather`, `SpacedLike`.
+
+## Demand lean (S2)
+Season nudges *what buyers want* along the existing 6 SPACED axes; which models
+that favors falls out of the existing match. Wiring: `createWorld` passes
+`wantVectorBias: (spaced, day) => weather.leanWantVector(spaced, day)` into the
+`StaffFloorDrain`; the resolver biases the want-vector before `pickVehicleForMatch`
++ `resolveSalesProcess`. The lean is also surfaced verbatim on the Home calendar
+card ("Season favors: Reliability, Safety") so the effect is learnable, not just
+felt. `SpacedLike` (`Record<string, number>`) keeps Weather decoupled from
+SalesProcess — it never imports `SpacedVector`. Condition-specific leans over
+*new* axes (snow→AWD) arrive with the attribute-schema extension (S4).
 
 ## Determinism & persistence
 Weather for a day is a **pure function of `(masterSeed, day)`**: a temperature
@@ -34,14 +55,15 @@ None — a pure library/factory module (mirrors SalesProcess / DemandShaper). Th
 composition root reads `weatherForDay` to assemble the Home readout.
 
 ## Data
-- `data/tunables.json` → `weather`: `{ conditions, seasons }`. `conditions` is
-  the condition-id → display-label catalog; each season carries `{ tempMinF,
-  tempMaxF, conditionWeights }` (a relative distribution over the condition
-  ids — snow ~0 outside winter, etc.). Magnitudes are first-pass calibration,
-  tuned last.
+- `data/tunables.json` → `weather`: `{ conditions, seasons, attributeLeans }`.
+  `conditions` is the condition-id → display-label catalog; each season carries
+  `{ tempMinF, tempMaxF, conditionWeights }` (a relative distribution over the
+  condition ids — snow ~0 outside winter, etc.). `attributeLeans.bySeason` (S2)
+  is a per-season partial record over the SPACED axis ids → additive want-vector
+  delta. Magnitudes are first-pass calibration, tuned last.
 
 ## Scope notes
-- Slice 1 is **behavior-neutral on demand** — weather is displayed, nothing
-  consumes it for spawning yet. The demand lean (over vehicle attribute axes,
-  via the customer want-vector) and the daily-weather → traffic-volume rider are
-  later slices of #231.
+- S1 was **behavior-neutral on demand** (weather displayed only). S2 makes the
+  season lean the customer want-vector in the live auto-resolve path. Still
+  ahead: the daily-weather → traffic-volume rider (S3) and the new attribute
+  axes drivetrain/convertible/fuel (S4) of #231.

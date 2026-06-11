@@ -150,6 +150,14 @@
         "tempMaxF": 42,
         "conditionWeights": { "clear": 3, "cloudy": 3, "rain": 1, "snow": 4, "storm": 0 }
       }
+    },
+    "attributeLeans": {
+      "bySeason": {
+        "spring": { "economy": 0.08, "appearance": 0.03 },
+        "summer": { "performance": 0.08, "appearance": 0.07, "economy": -0.04 },
+        "fall": { "dependability": 0.05, "economy": 0.03 },
+        "winter": { "dependability": 0.1, "safety": 0.07, "performance": -0.06, "appearance": -0.04 }
+      }
     }
   },
   "renderLoop": {

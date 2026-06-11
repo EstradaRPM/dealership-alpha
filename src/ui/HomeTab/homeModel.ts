@@ -42,6 +42,12 @@ export interface HomeDashboardInputs {
     conditionLabel: string;
     forecastTemperatureF: number;
     forecastConditionLabel: string;
+    /**
+     * SPACED axis ids this season nudges buyer demand toward (#231 S2), highest
+     * lean first. Rendered as a learnable "what's selling this season" line; the
+     * effect itself is emergent through the match, this just makes it readable.
+     */
+    seasonLean?: string[];
   };
 }
 
@@ -68,7 +74,12 @@ export interface HomeCalendarModel {
   /** Current gameplay month laid out as a 7-wide grid, today highlighted. */
   miniCal: MiniCalDay[];
   /** Weather readout line + one-day forecast (#231); absent without input. */
-  weather?: { todayLabel: string; forecastLabel: string };
+  weather?: {
+    todayLabel: string;
+    forecastLabel: string;
+    /** "Season favors: Reliability, Safety" (#231 S2); absent when no lean. */
+    seasonLeanLabel?: string;
+  };
 }
 
 export interface HomeStat {
@@ -95,6 +106,16 @@ const SEASON_LABELS: Record<SeasonName, string> = {
   summer: 'Summer',
   fall: 'Fall',
   winter: 'Winter',
+};
+
+/** Player-friendly labels for the SPACED want-vector axes (#231 S2 readout). */
+const SPACED_AXIS_LABELS: Record<string, string> = {
+  safety: 'Safety',
+  performance: 'Performance',
+  appearance: 'Looks',
+  comfort: 'Comfort',
+  economy: 'Fuel economy',
+  dependability: 'Reliability',
 };
 
 const SEASON_QUARTER: Record<SeasonName, number> = {
@@ -146,10 +167,15 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
     isToday: i + 1 === dayOfMonth,
   }));
 
+  const leanLabels = (input.weather?.seasonLean ?? [])
+    .map((axis) => SPACED_AXIS_LABELS[axis] ?? axis)
+    .filter((label) => label.length > 0);
   const weather = input.weather
     ? {
         todayLabel: `${input.weather.temperatureF}° · ${input.weather.conditionLabel}`,
         forecastLabel: `Tomorrow: ${input.weather.forecastTemperatureF}° · ${input.weather.forecastConditionLabel}`,
+        seasonLeanLabel:
+          leanLabels.length > 0 ? `Season favors: ${leanLabels.join(', ')}` : undefined,
       }
     : undefined;
 

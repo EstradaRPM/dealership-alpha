@@ -16,11 +16,24 @@ import { createRng, deriveSeed } from '../NPC/Rng';
  * desync mid-day (see replay-determinism-constraint).
  *
  * Slice 1 is read-only: it feeds the Home calendar weather line + an honest
- * one-day forecast. Later slices ride season/weather onto demand (the
- * attribute-axis lean) and traffic volume — those wire onto this same pure core.
+ * one-day forecast. Slice 2 (#231) rides the *season* onto demand: a
+ * data-driven additive lean over the customer want-vector's SPACED axes
+ * (`wantLeanForDay` / `leanWantVector`), so which models a season favors falls
+ * out of the existing match (#197) rather than any per-make/model rule. Traffic
+ * volume (S3) and the new attribute axes (S4) wire onto this same pure core.
  */
 
 export type WeatherConfig = Tunables['weather'];
+
+/**
+ * A want-vector slice: axis id → unit-scaled level. Structurally compatible
+ * with SalesProcess's `SpacedVector` without importing it (one-directional
+ * decoupling — Weather never depends on SalesProcess). `leanWantVector`
+ * preserves the caller's concrete shape via a generic.
+ */
+export type SpacedLike = Record<string, number>;
+
+const clampUnit = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 
 export interface DayWeather {
   readonly day: number;
@@ -36,6 +49,20 @@ export interface DayWeather {
 export interface Weather {
   /** Deterministic weather for any day — a pure function of (masterSeed, day). */
   weatherForDay(day: number): DayWeather;
+  /**
+   * The day's season demand lean (#231 S2): additive per-axis deltas over the
+   * customer want-vector's SPACED axes (only non-zero axes present). Pure — a
+   * function of the day's season + the bundled `attributeLeans` config.
+   */
+  wantLeanForDay(day: number): Readonly<Record<string, number>>;
+  /**
+   * Apply the day's season lean to a customer want-vector, clamping each axis
+   * to [0,1]. Returns a new object of the caller's shape; axes absent from the
+   * lean pass through unchanged. This is the seam StaffDispatch's auto-resolve
+   * path biases the customer want-vector through before the match (#197), so
+   * the seasonal effect stays emergent.
+   */
+  leanWantVector<T extends SpacedLike>(spaced: T, day: number): T;
 }
 
 export interface WeatherDeps {
@@ -68,17 +95,31 @@ function weightedPick(weights: Record<string, number>, roll: number): string {
 export function createWeather(deps: WeatherDeps): Weather {
   const config = deps.config ?? loadTunables().weather;
 
-  return {
-    weatherForDay(day: number): DayWeather {
-      const season = seasonForDay(day);
-      const band = config.seasons[season];
-      const rng = createRng(deriveSeed(deps.masterSeed, 'weather', { day }));
-      const temperatureF = Math.round(
-        band.tempMinF + rng() * (band.tempMaxF - band.tempMinF),
-      );
-      const conditionId = weightedPick(band.conditionWeights, rng());
-      const conditionLabel = config.conditions[conditionId] ?? conditionId;
-      return { day, season, conditionId, conditionLabel, temperatureF };
-    },
-  };
+  function weatherForDay(day: number): DayWeather {
+    const season = seasonForDay(day);
+    const band = config.seasons[season];
+    const rng = createRng(deriveSeed(deps.masterSeed, 'weather', { day }));
+    const temperatureF = Math.round(
+      band.tempMinF + rng() * (band.tempMaxF - band.tempMinF),
+    );
+    const conditionId = weightedPick(band.conditionWeights, rng());
+    const conditionLabel = config.conditions[conditionId] ?? conditionId;
+    return { day, season, conditionId, conditionLabel, temperatureF };
+  }
+
+  function wantLeanForDay(day: number): Readonly<Record<string, number>> {
+    return config.attributeLeans.bySeason[seasonForDay(day)];
+  }
+
+  function leanWantVector<T extends SpacedLike>(spaced: T, day: number): T {
+    const lean = wantLeanForDay(day);
+    const out: Record<string, number> = { ...spaced };
+    for (const axis of Object.keys(lean)) {
+      // Only lean axes the want-vector actually carries; unknown axes are noise.
+      if (axis in out) out[axis] = clampUnit(out[axis] + lean[axis]);
+    }
+    return out as T;
+  }
+
+  return { weatherForDay, wantLeanForDay, leanWantVector };
 }

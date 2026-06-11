@@ -56,6 +56,16 @@ export interface StaffDispatchDeps {
   /** Optional SalesProcess deps (configs, market/cost/book seam overrides). */
   salesProcessDeps?: ResolveDeps & CloseDeps & PickVehicleDeps;
   /**
+   * Season/weather demand lean (#231 S2). Biases the customer want-vector
+   * (SPACED axes) for the resolution day before the match + sales process, so
+   * the seasonal effect is emergent through pickVehicleFor (#197) — which
+   * models a season favors falls out of the match, not a per-model rule. The
+   * composition root wires this from `Weather.leanWantVector`. Omitted ⇒
+   * identity (behavior-neutral; the #94 calibration + legacy/test harnesses are
+   * unaffected).
+   */
+  wantVectorBias?: (spaced: SpacedVector, day: number) => SpacedVector;
+  /**
    * Honest wholesale book for a customer's trade-in (#169). Wired from the live
    * MarketEconomy book provider at the composition root (which owns the
    * CurrentVehicle→PricedVehicleInput cast). Omitting it disables trade
@@ -293,7 +303,12 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         ? deps.creditTiers.tiers[deps.dealEngine.classifyCredit(person.credit)]
         : undefined;
 
-    const customerSpaced = visit.preferences as SpacedVector;
+    // Season/weather demand lean (#231 S2): nudge the want-vector before the
+    // match so the seasonal effect stays emergent through pickVehicleFor.
+    const rawSpaced = visit.preferences as SpacedVector;
+    const customerSpaced = deps.wantVectorBias
+      ? deps.wantVectorBias(rawSpaced, day)
+      : rawSpaced;
     const priceSensitivity = clampUnit(1 - person.wealth / 120000);
     const matchCustomer: MatchCustomer = {
       masterSeed,
