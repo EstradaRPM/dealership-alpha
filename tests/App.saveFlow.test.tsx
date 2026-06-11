@@ -30,7 +30,7 @@ describe('App save/load flow', () => {
     fireEvent.press(screen.getByText('Ex-Mechanic'));
     fireEvent.press(screen.getByText('Begin'));
 
-    await waitFor(() => expect(screen.getByText('Manager Desk')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('home-dashboard')).toBeTruthy());
     // START DAY enters the floor MODE from the pinned shell action (#215).
     fireEvent.press(screen.getByText('Open Floor →'));
     await waitFor(() => expect(screen.getByText('FLOOR')).toBeTruthy());
@@ -69,7 +69,7 @@ describe('App save/load flow', () => {
     fireEvent.press(screen.getByText('Ex-Mechanic'));
     fireEvent.press(screen.getByText('Begin'));
 
-    await waitFor(() => expect(screen.getByText('Manager Desk')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('home-dashboard')).toBeTruthy());
     // The auction lever lives under Operations in the rebranded IA (#215).
     fireEvent.press(screen.getByLabelText('Operations'));
     fireEvent.press(screen.getByText('Visit Auction →'));
@@ -109,7 +109,7 @@ describe('App save/load flow', () => {
     fireEvent.press(screen.getByText('Ex-Mechanic'));
     fireEvent.press(screen.getByText('Begin'));
 
-    await waitFor(() => expect(screen.getByText('Manager Desk')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('home-dashboard')).toBeTruthy());
     // Auction + pricing levers live under Operations in the rebranded IA (#215).
     fireEvent.press(screen.getByLabelText('Operations'));
     fireEvent.press(screen.getByText('Visit Auction →'));

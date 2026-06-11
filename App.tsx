@@ -38,7 +38,8 @@ import {
   type ShellTabKey,
   type ShellStat,
 } from './src/ui/AppShell';
-import { HomeTab } from './src/ui/HomeTab';
+import { HomeTab, buildHomeDashboard } from './src/ui/HomeTab';
+import { DAYS_PER_WEEK, DAYS_PER_YEAR } from './src/game/GameClock';
 import { OperationsTab } from './src/ui/OperationsTab';
 import { StrategicTab } from './src/ui/StrategicTab';
 import { SettingsScreen } from './src/ui/SettingsScreen';
@@ -365,6 +366,12 @@ export function DealershipApp({
   worldRef.current = world;
   const [lotVehicles, setLotVehicles] = useState<readonly LotVehicle[]>([]);
   const [cash, setCash] = useState(0);
+  // Cash "vs yesterday" delta for the Home dashboard (#230). The ref holds the
+  // prior day's closing cash; the day-complete handler diffs against it and
+  // re-snapshots. Null until the first day closes (and after a cold reload —
+  // the delta is a display nicety, not persisted state).
+  const prevDayCashRef = useRef<number | null>(null);
+  const [cashDelta, setCashDelta] = useState<number | null>(null);
   // Active shell tab, lifted out of AppShell so it survives a round-trip
   // through a sub-screen (auction / pricing / a department). The shell unmounts
   // on those navigations; without lifting this the tab would reset to Home on
@@ -610,6 +617,10 @@ export function DealershipApp({
     }
     setWorld(w);
     setCash(w.economy.cash);
+    // Re-seed the vs-yesterday baseline against the restored cash (#230); the
+    // delta itself isn't persisted, so it stays blank until the next day closes.
+    prevDayCashRef.current = w.economy.cash;
+    setCashDelta(null);
     setLotVehicles(w.inventory.getLotVehicles());
     setProfile(character);
     nav.reset('game');
@@ -792,6 +803,11 @@ export function DealershipApp({
       if (w) {
         setLotVehicles(w.inventory.getLotVehicles());
         setCash(w.economy.cash);
+        // Cash vs-yesterday delta (#230): diff the just-closed day's cash
+        // against the prior day's close, then re-snapshot for the next day.
+        const prevDayCash = prevDayCashRef.current;
+        if (prevDayCash != null) setCashDelta(w.economy.cash - prevDayCash);
+        prevDayCashRef.current = w.economy.cash;
         // Cross-day autosave (#194): persist the world snapshot into the
         // active slot at the day boundary, merged with the slot's existing
         // blob (preserving character/seed/policy — the same merge-with-existing
@@ -1192,6 +1208,10 @@ export function DealershipApp({
             });
             setWorld(w);
             setCash(w.economy.cash);
+            // Seed the vs-yesterday baseline (#230): first day's delta is
+            // measured against the night-before-Day-1 cash.
+            prevDayCashRef.current = w.economy.cash;
+            setCashDelta(null);
             setProfile(p);
             nav.reset('game');
           }}
@@ -1528,6 +1548,28 @@ export function DealershipApp({
       },
       { label: 'TIER', value: `${world.tierManager.currentTier}` },
     ];
+    // Home status dashboard (#230): formatted entirely in the model builder from
+    // primitives read off the live World. The inventory nudge reuses the demand
+    // coverage gap (recent buyers wanting a category the lot can't cover) and
+    // deep-links into Operations.
+    const homeDashboard = buildHomeDashboard({
+      businessName: world.tierManager.businessName || `${profile.name}'s Lot`,
+      tierLabel: `Tier ${world.tierManager.currentTier} — ${tierEntry.label}`,
+      cash: world.economy.cash,
+      cashDelta,
+      reputation: world.reputation.reviewScore,
+      currentDay: world.clock.currentDay,
+      season: world.clock.currentSeason,
+      daysPerWeek: DAYS_PER_WEEK,
+      daysPerMonth: DAYS_PER_MONTH,
+      daysPerYear: DAYS_PER_YEAR,
+      pendingLeads: world.departmentQueue.getQueue('sales').length,
+      inventoryCount: lotVehicles.length,
+      inService: world.departmentQueue.getQueue('service').length,
+      inventoryNudge: demandReadout.coverageGap
+        ? `Lot thin on ${demandReadout.coverageGap.label}`
+        : undefined,
+    });
     // The fixed 5-tab IA (#215). All five tabs are ALWAYS present — navigation
     // is never gated by tier; progression is altitude rising inside a surface,
     // not tabs appearing/disappearing (spine §2). Home + Operations back live
@@ -1535,7 +1577,13 @@ export function DealershipApp({
     // per-surface rebrand slice lands. Per-tab content is selected by key.
     const tabContent: Record<ShellTabKey, React.ReactNode> = {
       home: (
-        <HomeTab state={loopState} recap={recap} demandReadout={demandReadout} />
+        <HomeTab
+          state={loopState}
+          dashboard={homeDashboard}
+          onOpenOperations={() => setShellTab('operations')}
+          recap={recap}
+          demandReadout={demandReadout}
+        />
       ),
       operations: (
         <OperationsTab

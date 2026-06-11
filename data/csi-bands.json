@@ -1,0 +1,10 @@
+{
+  "_comment": "CSI / reputation 0-100 → qualitative label band (#230). Inclusive upper bound per band, ascending. Surfaced on the Home dashboard reputation card; the underlying score stays the source of truth.",
+  "bands": [
+    { "maxScore": 39, "label": "Poor" },
+    { "maxScore": 59, "label": "Fair" },
+    { "maxScore": 74, "label": "Good" },
+    { "maxScore": 89, "label": "Very Good" },
+    { "maxScore": 100, "label": "Excellent" }
+  ]
+}
