@@ -8,13 +8,25 @@ export interface HeroBannerProps {
   imageSource?: ImageSourcePropType;
 }
 
-const BANNER_HEIGHT = 200;
+// Hero art ships at 2:1 (e.g. lot-tier1 is 1774x887). Deriving height from
+// width at this ratio shows the full frame instead of cover-cropping a fixed
+// 200px strip out of it.
+const HERO_ASPECT = 2;
 
 export function HeroBanner({ imageSource }: HeroBannerProps) {
   const t = useTheme();
   return (
     <View
-      style={{ height: BANNER_HEIGHT, overflow: 'hidden', marginBottom: t.spacing.md }}
+      style={{
+        // Bleed across the AppShell content padding (lg horizontal / md top,
+        // see AppShell's ScrollView contentContainerStyle) so the banner runs
+        // the full device width with no inset.
+        marginHorizontal: -t.spacing.lg,
+        marginTop: -t.spacing.md,
+        aspectRatio: HERO_ASPECT,
+        overflow: 'hidden',
+        marginBottom: t.spacing.md,
+      }}
       testID="home-hero-banner"
     >
       {imageSource ? (
