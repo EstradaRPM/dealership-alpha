@@ -8,7 +8,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useTheme } from '../theme';
-import { Button } from '../kit';
+import { Button, Icon, type IconName } from '../kit';
 
 /**
  * The canonical bottom-tab IA (#215). Five enduring tabs across the whole game;
@@ -16,6 +16,19 @@ import { Button } from '../kit';
  * bars in the mockup PNGs are generation artifacts — this taxonomy is the lock.
  */
 export type ShellTabKey = 'home' | 'operations' | 'people' | 'finance' | 'growth';
+
+/**
+ * Tab glyphs (#241). Keyed by the closed ShellTabKey union so a new tab can't
+ * ship without an icon; the glyph choice lives here with the IA, not in data —
+ * Ionicons names are a presentation detail of this nav, like the mockup art.
+ */
+const TAB_ICONS: Record<ShellTabKey, IconName> = {
+  home: 'home',
+  operations: 'storefront',
+  people: 'people',
+  finance: 'cash',
+  growth: 'trending-up',
+};
 
 export interface ShellTab {
   key: ShellTabKey;
@@ -211,7 +224,8 @@ export function AppShell({
           const tabStyle: ViewStyle = {
             flex: 1,
             alignItems: 'center',
-            paddingVertical: t.spacing.md,
+            gap: t.spacing.xxs,
+            paddingVertical: t.spacing.sm,
             borderTopWidth: 2,
             borderTopColor: selected ? t.colors.primary : 'transparent',
           };
@@ -228,6 +242,11 @@ export function AppShell({
               accessibilityLabel={tab.label}
               onPress={() => selectTab(tab.key)}
             >
+              <Icon
+                name={TAB_ICONS[tab.key]}
+                size="md"
+                tone={selected ? 'primary' : 'muted'}
+              />
               <Text style={tabLabel}>{tab.label}</Text>
             </Pressable>
           );
