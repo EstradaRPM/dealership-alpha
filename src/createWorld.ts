@@ -756,15 +756,19 @@ export function createWorld(deps: {
   const demandSource: DemandSource = {
     slipFor: (ctx) => {
       const slip = stubDemand.slipFor(ctx);
+      // #231 S3: the daily-weather → traffic-volume rider composes onto the same
+      // controllable-lever traffic multiplier (the seam comment's "marketing
+      // slots in here later"). It is the per-DAY variance; FloorSim's
+      // seasonArrivalMultiplier stays the coarse SEASON baseline — orthogonal,
+      // no double-counting. Pure projection of (masterSeed, day) ⇒ replay-safe.
       return {
         ...slip,
         reputation: Math.min(1, Math.max(0, reputation.reviewScore / 100)),
         pricing: {
           ...slip.pricing,
-          trafficMultiplier: computeDemandFactor(
-            inventory.getLotVehicles(),
-            demandModelCfg,
-          ),
+          trafficMultiplier:
+            computeDemandFactor(inventory.getLotVehicles(), demandModelCfg) *
+            weather.volumeMultiplierForDay(ctx.day),
         },
       };
     },

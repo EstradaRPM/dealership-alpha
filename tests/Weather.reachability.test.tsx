@@ -33,6 +33,9 @@ const CONFIG: WeatherConfig = {
       winter: { dependability: 0.3, safety: 0.5, unknownAxis: 0.9 },
     },
   },
+  // S3: clear is a busy day, snow is a slow day; a value omitted (none here) ⇒ 1.
+  conditionVolume: { clear: 1.2, snow: 0.6 },
+  volumeOutlook: { busyMin: 1.05, slowMax: 0.9 },
 };
 
 describe('#231 Weather — deterministic per-day projection', () => {
@@ -115,6 +118,43 @@ describe('#231 S2 Weather — season demand lean over the want-vector', () => {
     const b = createWeather({ masterSeed: 7, config: CONFIG });
     const want = { dependability: 0.2, safety: 0.2 };
     expect(w.leanWantVector(want, 300)).toEqual(b.leanWantVector({ ...want }, 300));
+  });
+});
+
+describe('#231 S3 Weather — daily weather → traffic volume', () => {
+  const w = createWeather({ masterSeed: 7, config: CONFIG });
+
+  it('maps the day condition to a volume multiplier (clear↑ day 1, snow↓ day 300)', () => {
+    // day 1 ⇒ spring ⇒ clear (busy), day 300 ⇒ winter ⇒ snow (slow).
+    expect(w.weatherForDay(1).conditionId).toBe('clear');
+    expect(w.volumeMultiplierForDay(1)).toBe(1.2);
+    expect(w.weatherForDay(300).conditionId).toBe('snow');
+    expect(w.volumeMultiplierForDay(300)).toBe(0.6);
+  });
+
+  it('bands the multiplier into a learnable traffic outlook', () => {
+    expect(w.trafficOutlookForDay(1)).toBe('busy'); // 1.2 ≥ busyMin 1.05
+    expect(w.trafficOutlookForDay(300)).toBe('slow'); // 0.6 ≤ slowMax 0.9
+  });
+
+  it('defaults an unmapped condition to a neutral (1) steady multiplier', () => {
+    // A config whose drawn condition has no conditionVolume entry ⇒ 1 ⇒ steady.
+    const bare = createWeather({
+      masterSeed: 7,
+      config: {
+        ...CONFIG,
+        conditionVolume: {},
+        volumeOutlook: { busyMin: 1.05, slowMax: 0.9 },
+      },
+    });
+    expect(bare.volumeMultiplierForDay(1)).toBe(1);
+    expect(bare.trafficOutlookForDay(1)).toBe('steady');
+  });
+
+  it('is deterministic: a fresh instance with the same seed yields the same volume', () => {
+    const b = createWeather({ masterSeed: 7, config: CONFIG });
+    expect(b.volumeMultiplierForDay(1)).toBe(w.volumeMultiplierForDay(1));
+    expect(b.trafficOutlookForDay(300)).toBe(w.trafficOutlookForDay(300));
   });
 });
 
@@ -207,5 +247,48 @@ describe('#231 Weather — reachable on the live Home calendar', () => {
     // just render — the auto-resolve drain runs the match through it.
     const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'createWorld.ts'), 'utf8');
     expect(src).toMatch(/wantVectorBias: \(spaced, day\) => weather\.leanWantVector\(spaced, day\)/);
+  });
+
+  // ── #231 S3: daily weather → traffic volume ─────────────────────────────────
+  const S3_INPUTS: HomeDashboardInputs = {
+    ...INPUTS,
+    weather: { ...INPUTS.weather!, trafficOutlook: 'busy', forecastTrafficOutlook: 'slow' },
+  };
+
+  it('appends the daily traffic outlook to the today + forecast lines', () => {
+    const m = buildHomeDashboard(S3_INPUTS);
+    expect(m.calendar.weather?.todayLabel).toBe('72° · Clear · High traffic');
+    expect(m.calendar.weather?.forecastLabel).toBe('Tomorrow: 65° · Rain · Low traffic');
+  });
+
+  it('omits the outlook suffix when no outlook is supplied (back-compat)', () => {
+    // The shared INPUTS carries no outlook ⇒ the S1/S2 labels are unchanged.
+    const m = buildHomeDashboard(INPUTS);
+    expect(m.calendar.weather?.todayLabel).toBe('72° · Clear');
+    expect(m.calendar.weather?.forecastLabel).toBe('Tomorrow: 65° · Rain');
+  });
+
+  it('renders the traffic outlook on the live Home tab', () => {
+    const model = buildHomeDashboard(S3_INPUTS);
+    const { getByText } = render(
+      <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
+    );
+    expect(getByText('72° · Clear · High traffic')).toBeTruthy();
+    expect(getByText('Tomorrow: 65° · Rain · Low traffic')).toBeTruthy();
+  });
+
+  it('App.tsx feeds today + tomorrow traffic outlook off the live world', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    expect(src).toMatch(
+      /trafficOutlook: world\.weather\.trafficOutlookForDay\(world\.clock\.currentDay\)/,
+    );
+    expect(src).toMatch(/forecastTrafficOutlook: world\.weather\.trafficOutlookForDay\(/);
+  });
+
+  it('createWorld rides the daily volume multiplier on the demand trafficMultiplier', () => {
+    // #231 S3 anti-orphan: weather must actually move VOLUME, not just render —
+    // the volume multiplier composes onto the demand-factor traffic multiplier.
+    const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'createWorld.ts'), 'utf8');
+    expect(src).toMatch(/weather\.volumeMultiplierForDay\(ctx\.day\)/);
   });
 });

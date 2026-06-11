@@ -145,6 +145,23 @@ export const TunablesSchema = z.object({
         winter: z.record(z.string().min(1), z.number()),
       }),
     }),
+    // Daily weather → traffic VOLUME (#231 S3). A per-condition multiplier on
+    // the day's expected foot traffic — nice day ↑, bad day ↓. Rides the locked
+    // #125 pricing.trafficMultiplier composite alongside the inventory-depth
+    // demandFactor; it is the per-DAY variance, orthogonal to (and never
+    // double-counting) floorSim.seasonArrivalMultiplier, which stays the
+    // coarse SEASON-level baseline. A condition id absent here defaults to 1
+    // (neutral). Reuses the day's already-drawn condition — no new RNG, so the
+    // multiplier is a pure projection of (masterSeed, day) and replay-safe.
+    conditionVolume: z.record(z.string().min(1), z.number().nonnegative()),
+    // Qualitative outlook bands for the Home weather card (#231 S3): the
+    // volume multiplier ≥ busyMin reads "high traffic", ≤ slowMax reads "low
+    // traffic", otherwise "normal". UI label thresholds, data-driven so the
+    // forecast stays an honest, learnable planning signal — not an oracle.
+    volumeOutlook: z.object({
+      busyMin: z.number().positive(),
+      slowMax: z.number().positive(),
+    }),
   }),
   // Live render loop (#121, design #107). UI-only: a wall-clock interval
   // drives FloorSim.step() at `baseTickIntervalMs / speed`. Game logic never

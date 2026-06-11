@@ -158,7 +158,15 @@
         "fall": { "dependability": 0.05, "economy": 0.03 },
         "winter": { "dependability": 0.1, "safety": 0.07, "performance": -0.06, "appearance": -0.04 }
       }
-    }
+    },
+    "conditionVolume": {
+      "clear": 1.12,
+      "cloudy": 1.0,
+      "rain": 0.85,
+      "snow": 0.7,
+      "storm": 0.55
+    },
+    "volumeOutlook": { "busyMin": 1.05, "slowMax": 0.9 }
   },
   "renderLoop": {
     "baseTickIntervalMs": 400,

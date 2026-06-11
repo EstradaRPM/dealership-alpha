@@ -1588,6 +1588,12 @@ export function DealershipApp({
         forecastTemperatureF: forecastWeather.temperatureF,
         forecastConditionLabel: forecastWeather.conditionLabel,
         seasonLean,
+        // #231 S3: daily weather → traffic-volume outlook. Surfacing tomorrow's
+        // makes reading the forecast an actionable planning signal.
+        trafficOutlook: world.weather.trafficOutlookForDay(world.clock.currentDay),
+        forecastTrafficOutlook: world.weather.trafficOutlookForDay(
+          world.clock.currentDay + 1,
+        ),
       },
     });
     // The fixed 5-tab IA (#215). All five tabs are ALWAYS present — navigation

@@ -5,4 +5,5 @@ export type {
   WeatherDeps,
   DayWeather,
   SpacedLike,
+  TrafficOutlook,
 } from './Weather';

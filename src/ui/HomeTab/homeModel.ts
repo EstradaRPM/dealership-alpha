@@ -15,6 +15,11 @@ import csiBands from '../../../data/csi-bands.json';
 
 export type SeasonName = 'spring' | 'summer' | 'fall' | 'winter';
 
+/** Daily-weather traffic outlook (#231 S3). Structurally matches the Weather
+ *  module's `TrafficOutlook`; defined locally so this read-model stays free of
+ *  game-logic imports (the composition root passes the value straight in). */
+export type TrafficOutlook = 'busy' | 'steady' | 'slow';
+
 /** Inputs the composition root reads off the live World, no module types. */
 export interface HomeDashboardInputs {
   businessName: string;
@@ -48,6 +53,14 @@ export interface HomeDashboardInputs {
      * effect itself is emergent through the match, this just makes it readable.
      */
     seasonLean?: string[];
+    /**
+     * Today's / tomorrow's daily-weather traffic outlook (#231 S3) — the
+     * readable form of the volume multiplier riding demand. Optional so a
+     * caller can supply weather without the outlook. The forecast outlook is
+     * what makes reading tomorrow's weather an actionable planning signal.
+     */
+    trafficOutlook?: TrafficOutlook;
+    forecastTrafficOutlook?: TrafficOutlook;
   };
 }
 
@@ -118,6 +131,13 @@ const SPACED_AXIS_LABELS: Record<string, string> = {
   dependability: 'Reliability',
 };
 
+/** Traffic-outlook ids → player-facing readout (#231 S3). */
+const TRAFFIC_OUTLOOK_LABELS: Record<TrafficOutlook, string> = {
+  busy: 'High traffic',
+  steady: 'Normal traffic',
+  slow: 'Low traffic',
+};
+
 const SEASON_QUARTER: Record<SeasonName, number> = {
   spring: 1,
   summer: 2,
@@ -170,10 +190,18 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
   const leanLabels = (input.weather?.seasonLean ?? [])
     .map((axis) => SPACED_AXIS_LABELS[axis] ?? axis)
     .filter((label) => label.length > 0);
+  // #231 S3: append the daily traffic outlook so the forecast becomes an
+  // actionable "is tomorrow worth opening big?" planning signal, not just decor.
+  const todaySuffix = input.weather?.trafficOutlook
+    ? ` · ${TRAFFIC_OUTLOOK_LABELS[input.weather.trafficOutlook]}`
+    : '';
+  const forecastSuffix = input.weather?.forecastTrafficOutlook
+    ? ` · ${TRAFFIC_OUTLOOK_LABELS[input.weather.forecastTrafficOutlook]}`
+    : '';
   const weather = input.weather
     ? {
-        todayLabel: `${input.weather.temperatureF}° · ${input.weather.conditionLabel}`,
-        forecastLabel: `Tomorrow: ${input.weather.forecastTemperatureF}° · ${input.weather.forecastConditionLabel}`,
+        todayLabel: `${input.weather.temperatureF}° · ${input.weather.conditionLabel}${todaySuffix}`,
+        forecastLabel: `Tomorrow: ${input.weather.forecastTemperatureF}° · ${input.weather.forecastConditionLabel}${forecastSuffix}`,
         seasonLeanLabel:
           leanLabels.length > 0 ? `Season favors: ${leanLabels.join(', ')}` : undefined,
       }

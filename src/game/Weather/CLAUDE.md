@@ -23,7 +23,25 @@ onto this same pure core, they do not replace it.
     auto-resolve path biases `customerSpaced` through before the match, so the
     seasonal effect stays **emergent through `persona→preference→pickVehicleFor`**
     (#197) — never a per-make/model rule. Returns a new object; never mutates.
-- Types: `Weather`, `WeatherConfig`, `WeatherDeps`, `DayWeather`, `SpacedLike`.
+  - `volumeMultiplierForDay(day) → number` (**S3**) — the daily-weather →
+    traffic-VOLUME multiplier (nice day ↑, bad day ↓). A pure projection of the
+    day's already-drawn condition via `conditionVolume` (no new RNG ⇒
+    replay-safe); unmapped conditions ⇒ 1.
+  - `trafficOutlookForDay(day) → 'busy' | 'steady' | 'slow'` (**S3**) — the
+    multiplier banded by `volumeOutlook` for the Home weather card, so reading
+    tomorrow's forecast is a learnable planning signal.
+- Types: `Weather`, `WeatherConfig`, `WeatherDeps`, `DayWeather`, `SpacedLike`,
+  `TrafficOutlook`.
+
+## Traffic volume (S3)
+Daily weather rides foot-traffic volume. `createWorld` composes
+`volumeMultiplierForDay(day)` onto the locked #125 `pricing.trafficMultiplier`
+(alongside the inventory-depth `demandFactor`), which `DayLoopController`
+projects into FloorSim's `demandFactor` arrival input. It is the **per-day
+variance**, orthogonal to FloorSim's `seasonArrivalMultiplier` — the coarse
+SEASON baseline — so the two never double-count (season-constant × daily
+variance). The Home card surfaces today's + tomorrow's outlook so the forecast
+is actionable, not decorative.
 
 ## Demand lean (S2)
 Season nudges *what buyers want* along the existing 6 SPACED axes; which models
@@ -64,6 +82,6 @@ composition root reads `weatherForDay` to assemble the Home readout.
 
 ## Scope notes
 - S1 was **behavior-neutral on demand** (weather displayed only). S2 makes the
-  season lean the customer want-vector in the live auto-resolve path. Still
-  ahead: the daily-weather → traffic-volume rider (S3) and the new attribute
-  axes drivetrain/convertible/fuel (S4) of #231.
+  season lean the customer want-vector in the live auto-resolve path. S3 rides
+  daily weather onto traffic VOLUME (above). Still ahead: the new attribute axes
+  drivetrain/convertible/fuel (S4) of #231.

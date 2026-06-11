@@ -19,8 +19,11 @@ import { createRng, deriveSeed } from '../NPC/Rng';
  * one-day forecast. Slice 2 (#231) rides the *season* onto demand: a
  * data-driven additive lean over the customer want-vector's SPACED axes
  * (`wantLeanForDay` / `leanWantVector`), so which models a season favors falls
- * out of the existing match (#197) rather than any per-make/model rule. Traffic
- * volume (S3) and the new attribute axes (S4) wire onto this same pure core.
+ * out of the existing match (#197) rather than any per-make/model rule. Slice 3
+ * rides *daily* weather onto traffic VOLUME (`volumeMultiplierForDay` /
+ * `trafficOutlookForDay`) — a per-condition multiplier the composition root
+ * composes onto the demand traffic multiplier, orthogonal to FloorSim's coarse
+ * season baseline. The new attribute axes (S4) wire onto this same pure core.
  */
 
 export type WeatherConfig = Tunables['weather'];
@@ -46,6 +49,10 @@ export interface DayWeather {
   readonly temperatureF: number;
 }
 
+/** Qualitative foot-traffic outlook for a day (#231 S3) — the readable form of
+ *  the volume multiplier, banded by `volumeOutlook`. */
+export type TrafficOutlook = 'busy' | 'steady' | 'slow';
+
 export interface Weather {
   /** Deterministic weather for any day — a pure function of (masterSeed, day). */
   weatherForDay(day: number): DayWeather;
@@ -63,6 +70,21 @@ export interface Weather {
    * the seasonal effect stays emergent.
    */
   leanWantVector<T extends SpacedLike>(spaced: T, day: number): T;
+  /**
+   * The day's daily-weather → traffic-VOLUME multiplier (#231 S3): a nice day
+   * lifts expected foot traffic, a bad day depresses it. A pure projection of
+   * the day's already-drawn condition (no new RNG ⇒ replay-safe). The
+   * composition root rides this on the locked #125 `pricing.trafficMultiplier`
+   * composite; it is the per-day variance, orthogonal to FloorSim's coarse
+   * `seasonArrivalMultiplier` season baseline. Unmapped conditions ⇒ 1.
+   */
+  volumeMultiplierForDay(day: number): number;
+  /**
+   * The day's traffic outlook (#231 S3): the volume multiplier banded into a
+   * qualitative `busy | steady | slow` for the Home weather card, so reading
+   * tomorrow's forecast becomes an honest, learnable planning signal.
+   */
+  trafficOutlookForDay(day: number): TrafficOutlook;
 }
 
 export interface WeatherDeps {
@@ -121,5 +143,24 @@ export function createWeather(deps: WeatherDeps): Weather {
     return out as T;
   }
 
-  return { weatherForDay, wantLeanForDay, leanWantVector };
+  function volumeMultiplierForDay(day: number): number {
+    const { conditionId } = weatherForDay(day);
+    // Reuses the day's drawn condition — no new RNG. Unmapped ⇒ neutral 1.
+    return config.conditionVolume[conditionId] ?? 1;
+  }
+
+  function trafficOutlookForDay(day: number): TrafficOutlook {
+    const mult = volumeMultiplierForDay(day);
+    if (mult >= config.volumeOutlook.busyMin) return 'busy';
+    if (mult <= config.volumeOutlook.slowMax) return 'slow';
+    return 'steady';
+  }
+
+  return {
+    weatherForDay,
+    wantLeanForDay,
+    leanWantVector,
+    volumeMultiplierForDay,
+    trafficOutlookForDay,
+  };
 }
