@@ -1590,6 +1590,7 @@ export function DealershipApp({
     const homeDashboard = buildHomeDashboard({
       businessName: world.tierManager.businessName || `${profile.name}'s Lot`,
       tierLabel: `Tier ${world.tierManager.currentTier} — ${tierEntry.label}`,
+      tier: world.tierManager.currentTier,
       cash: world.economy.cash,
       cashDelta,
       reputation: world.reputation.reviewScore,

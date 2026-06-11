@@ -25,6 +25,8 @@ export type TrafficOutlook = 'busy' | 'steady' | 'slow';
 export interface HomeDashboardInputs {
   businessName: string;
   tierLabel: string;
+  /** Numeric tier (1-based). Used to key tier-specific hero art. Defaults to 1. */
+  tier?: number;
   cash: number;
   /** Today's cash minus yesterday's close; null on the night before Day 1. */
   cashDelta: number | null;
@@ -128,6 +130,8 @@ export interface HomeStat {
 export interface HomeDashboardModel {
   businessName: string;
   tierLabel: string;
+  /** Numeric tier (1-based). Keyed to hero art in the banner. */
+  tier: number;
   cash: { value: string; delta?: string; trend: TrendDirection };
   reputation: { score: number; csiLabel: string };
   calendar: HomeCalendarModel;
@@ -273,6 +277,7 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
   return {
     businessName: input.businessName,
     tierLabel: input.tierLabel,
+    tier: input.tier ?? 1,
     cash: {
       value: formatCash(input.cash),
       delta: input.cashDelta == null ? undefined : formatDelta(input.cashDelta),

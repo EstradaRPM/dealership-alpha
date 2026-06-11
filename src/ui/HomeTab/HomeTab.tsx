@@ -14,6 +14,14 @@ import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { GateStrip } from './GateStrip';
 import { HeroBanner } from './HeroBanner';
 import type { HomeDashboardModel, MiniCalDay } from './homeModel';
+import type { ImageSourcePropType } from 'react-native';
+
+// Metro requires static require() calls — map must live at module scope.
+const HERO_BY_TIER: Partial<Record<number, ImageSourcePropType>> = {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  1: require('../../../assets/hero/lot-tier1.jpg'),
+  // 2 and 3 added when art lands (#251)
+};
 
 export interface HomeTabProps {
   state: DayLoopState;
@@ -119,7 +127,7 @@ function Dashboard({
 
   return (
     <View testID="home-dashboard">
-      <HeroBanner />
+      <HeroBanner imageSource={HERO_BY_TIER[model.tier] ?? HERO_BY_TIER[1]} />
       {/* Identity (name + tier) is owned by the persistent AppShell header on
           every tab (#238 HITL); the dashboard no longer repeats it. */}
       {/* Cash + reputation cards */}
