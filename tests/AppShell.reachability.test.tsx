@@ -69,8 +69,8 @@ describe('#215 AppShell — 5-tab IA reachability', () => {
     expect(src).toMatch(/from '\.\/src\/ui\/AppShell'/);
     expect(src).toMatch(/type ShellTab\b/);
     expect(src).not.toMatch(/from '\.\/src\/ui\/DayLoopShell'/);
-    // Tabs are tier-gated through the data-driven gate, not a hardcoded list.
-    expect(src).toMatch(/resolveNavTabs\(/);
+    // The fixed 5-tab IA is composed from the data-driven nav list.
+    expect(src).toMatch(/loadNavTabs\(\)/);
     // Home + Operations tab content is composed and handed to the shell.
     expect(src).toMatch(/home:/);
     expect(src).toMatch(/operations:/);

@@ -1,33 +1,23 @@
 import React from 'react';
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader, Badge } from '../kit';
+import { Surface, SectionHeader } from '../kit';
 
 export interface StrategicTabProps {
   /** Surface title, e.g. "People". */
   title: string;
-  /** One-line description of what the unlocked surface becomes. */
+  /** One-line description of what this surface becomes. */
   tagline: string;
-  /** When false, render the locked teaser instead of the live scaffold. */
-  unlocked: boolean;
-  /** Teaser copy shown while locked, e.g. "Unlocks at Tier 2 — …". */
-  unlockHint: string;
 }
 
 /**
- * The thin scaffold for the three strategic tabs — People · Finance · Growth
- * (#226). It establishes each tab's presence and its locked ↔ unlocked
- * presentation; the real mechanics for each land in their own per-surface
- * rebrand slices. Presentation only — the composition root resolves `unlocked`
- * from the tier gate (`resolveNavTabs`) and passes the copy down from
- * `data/nav-tabs.json`, so there are no magic strings or game-logic imports here.
+ * Placeholder for a strategic tab — People · Finance · Growth — whose rebranded
+ * surface hasn't been built yet. These tabs are part of the fixed 5-tab IA and
+ * are ALWAYS present (navigation is never gated by tier); this just stands in
+ * until each tab's real surface lands via its own per-surface rebrand slice. It
+ * names what the surface becomes — no tier/unlock framing. Presentation only.
  */
-export function StrategicTab({
-  title,
-  tagline,
-  unlocked,
-  unlockHint,
-}: StrategicTabProps) {
+export function StrategicTab({ title, tagline }: StrategicTabProps) {
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
   const body: ViewStyle = { marginTop: t.spacing.md };
@@ -41,33 +31,14 @@ export function StrategicTab({
     fontStyle: 'italic',
     marginTop: t.spacing.md,
   };
-  const lockTitle: TextStyle = {
-    ...t.typography.statValue,
-    color: t.colors.textMuted,
-  };
-  const lockHint: TextStyle = {
-    ...t.typography.caption,
-    color: t.colors.textSecondary,
-    marginTop: t.spacing.sm,
-  };
 
   return (
     <View style={region} testID={`strategic-tab-${title.toLowerCase()}`}>
       <SectionHeader title={title} />
-      {unlocked ? (
-        <View style={body} testID="strategic-tab-unlocked">
-          <Text style={tag}>{tagline}</Text>
-          <Text style={placeholder}>
-            This surface comes online in a later slice.
-          </Text>
-        </View>
-      ) : (
-        <Surface variant="inset" style={body} testID="strategic-tab-locked">
-          <Badge label="LOCKED" tone="neutral" />
-          <Text style={lockTitle}>{title} is on the horizon</Text>
-          <Text style={lockHint}>{unlockHint}</Text>
-        </Surface>
-      )}
+      <Surface variant="inset" style={body}>
+        <Text style={tag}>{tagline}</Text>
+        <Text style={placeholder}>This surface is coming in a later slice.</Text>
+      </Surface>
     </View>
   );
 }

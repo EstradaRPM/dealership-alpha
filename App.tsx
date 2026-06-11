@@ -33,7 +33,7 @@ import { MainMenu } from './src/ui/MainMenu';
 import { InGameMenu } from './src/ui/InGameMenu';
 import {
   AppShell,
-  resolveNavTabs,
+  loadNavTabs,
   type ShellTab,
   type ShellTabKey,
   type ShellStat,
@@ -1528,11 +1528,11 @@ export function DealershipApp({
       },
       { label: 'TIER', value: `${world.tierManager.currentTier}` },
     ];
-    // The 5-tab IA (#215) with progressive tier-gating (#226). The visible tabs
-    // and each tab's locked/unlocked state come from the data-driven gate
-    // (`resolveNavTabs` over data/nav-tabs.json) — never a hardcoded list. At T1
-    // only Home + Operations resolve; People/Finance/Growth reveal and unlock on
-    // their tier conditions. Per-tab content is composed here and selected by key.
+    // The fixed 5-tab IA (#215). All five tabs are ALWAYS present — navigation
+    // is never gated by tier; progression is altitude rising inside a surface,
+    // not tabs appearing/disappearing (spine §2). Home + Operations back live
+    // surfaces today; People/Finance/Growth show a placeholder until their own
+    // per-surface rebrand slice lands. Per-tab content is selected by key.
     const tabContent: Record<ShellTabKey, React.ReactNode> = {
       home: (
         <HomeTab state={loopState} recap={recap} demandReadout={demandReadout} />
@@ -1549,21 +1549,13 @@ export function DealershipApp({
       finance: null,
       growth: null,
     };
-    const shellTabs: ShellTab[] = resolveNavTabs(
-      world.tierManager.currentTier,
-    ).map((tab) => ({
+    const shellTabs: ShellTab[] = loadNavTabs().map((tab) => ({
       key: tab.key,
       label: tab.label,
-      locked: tab.state === 'locked',
       content:
         tabContent[tab.key] ??
-        (tab.tagline && tab.unlockHint ? (
-          <StrategicTab
-            title={tab.label}
-            tagline={tab.tagline}
-            unlockHint={tab.unlockHint}
-            unlocked={tab.state === 'unlocked'}
-          />
+        (tab.tagline ? (
+          <StrategicTab title={tab.label} tagline={tab.tagline} />
         ) : null),
     }));
     content = (

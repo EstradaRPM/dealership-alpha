@@ -1,31 +1,22 @@
 {
-  "_doc": "Canonical 5-tab IA gating (#226). revealTier = the tier at which a tab first appears in the nav; unlockTier = the tier at which it goes live (below it the tab shows a locked teaser). Home + Operations are always present and unlocked. This protects the validated T1 onboarding: at T1 only Home + Operations appear — no empty tabs on day one. v1 covers tiers 1-3; Growth's unlockTier 4 is the seam, intentionally never live in v1.",
+  "_doc": "The canonical, fixed 5-tab IA (fork 1, re-validated 2026-06-10). Always present — navigation is NOT gated by tier; progression is altitude rising INSIDE each surface (spine §2), never tabs appearing/disappearing. Home + Operations back live surfaces today; People/Finance/Growth are placeholders until their per-surface rebrand slice (via /map-mockup) lands. tagline = the one-line description of what each strategic surface becomes.",
   "tabs": [
-    { "key": "home", "label": "Home", "revealTier": 1, "unlockTier": 1 },
-    { "key": "operations", "label": "Operations", "revealTier": 1, "unlockTier": 1 },
+    { "key": "home", "label": "Home" },
+    { "key": "operations", "label": "Operations" },
     {
       "key": "people",
       "label": "People",
-      "revealTier": 2,
-      "unlockTier": 2,
-      "tagline": "Hiring, training, morale, and your org chart.",
-      "unlockHint": "Unlocks at Tier 2 — bring on your first hire."
+      "tagline": "Hiring, talent ceilings, training, morale, and your org chart."
     },
     {
       "key": "finance",
       "label": "Finance",
-      "revealTier": 2,
-      "unlockTier": 3,
-      "tagline": "F&I products, lending, and the profit dials behind every deal.",
-      "unlockHint": "Unlocks at Tier 3 — when F&I comes online."
+      "tagline": "F&I products, lending, and the profit dials behind every deal."
     },
     {
       "key": "growth",
       "label": "Growth",
-      "revealTier": 3,
-      "unlockTier": 4,
-      "tagline": "Brand strategy, franchising, and the path to a dealer group.",
-      "unlockHint": "Unlocks at Tier 4 — as you approach your first franchise."
+      "tagline": "Capex, marketing, franchise courtship, and the path to a dealer group."
     }
   ]
 }

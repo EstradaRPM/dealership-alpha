@@ -21,12 +21,6 @@ export interface ShellTab {
   key: ShellTabKey;
   label: string;
   content: React.ReactNode;
-  /**
-   * A revealed-but-not-yet-live tab (#226). The tab stays reachable but is
-   * marked in the bar; its `content` is expected to render its own locked
-   * presentation. Defaults to unlocked.
-   */
-  locked?: boolean;
 }
 
 export interface ShellStat {
@@ -43,7 +37,7 @@ export interface AppShellProps {
   stats?: readonly ShellStat[];
   /** Opens the in-session save/load/menu surface. */
   onOpenGameMenu?: () => void;
-  /** Available tabs (already tier-filtered by the caller; see `resolveNavTabs`). */
+  /** The fixed 5-tab IA, composed by the caller (see `loadNavTabs`). */
   tabs: readonly ShellTab[];
   /** Which tab is shown first (uncontrolled mode). Defaults to the first tab. */
   initialTabKey?: ShellTabKey;
@@ -230,15 +224,11 @@ export function AppShell({
               key={tab.key}
               style={tabStyle}
               accessibilityRole="tab"
-              accessibilityState={{ selected, disabled: tab.locked }}
-              accessibilityLabel={
-                tab.locked ? `${tab.label} (locked)` : tab.label
-              }
+              accessibilityState={{ selected }}
+              accessibilityLabel={tab.label}
               onPress={() => selectTab(tab.key)}
             >
-              <Text style={tabLabel}>
-                {tab.locked ? `🔒 ${tab.label}` : tab.label}
-              </Text>
+              <Text style={tabLabel}>{tab.label}</Text>
             </Pressable>
           );
         })}
