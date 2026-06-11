@@ -260,15 +260,8 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
     },
     { key: 'service', label: 'In Service', value: `${input.inService}` },
   ];
-  // "% on track" quick-stat (#233 S3b) — derived from the gate's pace
-  // projection (the binding face), surfaced only once the gate is wired.
-  if (input.gate?.percentOnTrack != null) {
-    stats.push({
-      key: 'on-track',
-      label: 'On Track',
-      value: `${input.gate.percentOnTrack}%`,
-    });
-  }
+  // "% on track" is shown once, in the gate strip header (#238 de-dup); it used
+  // to also push a quick-stat tile here, which duplicated the same figure.
 
   const trend: TrendDirection =
     input.cashDelta == null || input.cashDelta === 0

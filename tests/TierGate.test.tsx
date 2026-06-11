@@ -302,8 +302,10 @@ describe('#233 S3b — gate strip reachable on the live Home dashboard', () => {
     const m = buildHomeDashboard(INPUTS);
     // units (flow) + cash (level) faces at T1.
     expect(m.gate?.faces.map((f) => f.id).sort()).toEqual(['cash', 'units']);
-    // "% on track" quick-stat lands in the stat strip.
-    expect(m.stats.some((s) => s.key === 'on-track')).toBe(true);
+    // "% on track" is no longer duplicated as a quick-stat tile (#238) — it
+    // lives once in the gate strip header. The gate still carries the figure.
+    expect(m.stats.some((s) => s.key === 'on-track')).toBe(false);
+    expect(m.gate?.percentOnTrack).not.toBeNull();
     // "Sold this month X / target" rides the calendar card.
     expect(m.calendar.soldThisMonth).toEqual({ current: 2, target: 10 });
   });

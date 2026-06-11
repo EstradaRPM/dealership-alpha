@@ -7,7 +7,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader, StatCard, Pill } from '../kit';
+import { Surface, SectionHeader, StatCard, Pill, IconBadge } from '../kit';
 import type { DayLoopState } from '../../game/DayLoopController';
 import { DayRecap, type DayRecapModel } from '../DayRecap';
 import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
@@ -110,10 +110,6 @@ function Dashboard({
     gap: t.spacing.md,
   };
   const cardCol: ViewStyle = { flex: 1 };
-  const name: TextStyle = {
-    ...t.typography.statValue,
-    color: t.colors.textPrimary,
-  };
   const subValue: TextStyle = {
     ...t.typography.caption,
     color: t.colors.textSecondary,
@@ -122,15 +118,8 @@ function Dashboard({
 
   return (
     <View testID="home-dashboard">
-      {/* Identity + tier badge */}
-      <View
-        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-        testID="home-region-identity"
-      >
-        <Text style={name}>{model.businessName}</Text>
-        <Pill tone="info" label={model.tierLabel} />
-      </View>
-
+      {/* Identity (name + tier) is owned by the persistent AppShell header on
+          every tab (#238 HITL); the dashboard no longer repeats it. */}
       {/* Cash + reputation cards */}
       <View style={cardRow}>
         <View style={cardCol}>
@@ -140,11 +129,16 @@ function Dashboard({
               value={model.cash.value}
               delta={model.cash.delta}
               trend={model.cash.trend}
+              icon="cash"
+              iconTone="positive"
             />
           </Surface>
         </View>
         <View style={cardCol}>
           <Surface>
+            <View style={{ marginBottom: t.spacing.sm }}>
+              <IconBadge name="star" tone="reward" variant="soft" size="sm" />
+            </View>
             <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
               {model.reputation.score}
               <Text style={{ ...t.typography.caption, color: t.colors.textMuted }}>
@@ -196,18 +190,16 @@ function Dashboard({
               forecast. Renders only when the composition root supplied weather. */}
           {model.calendar.weather ? (
             <>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                  marginTop: t.spacing.sm,
-                }}
-              >
+              {/* Stacked, not a space-between row (#238): both the conditions
+                  line and the forecast can run wide, so a row let them collide.
+                  Today's reads as the headline; tomorrow's sits beneath it. */}
+              <View style={{ marginTop: t.spacing.sm }}>
                 <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
                   {model.calendar.weather.todayLabel}
                 </Text>
-                <Text style={subValue}>{model.calendar.weather.forecastLabel}</Text>
+                <Text style={{ ...subValue, marginTop: t.spacing.xxs }}>
+                  {model.calendar.weather.forecastLabel}
+                </Text>
               </View>
               {/* Season demand lean (#231 S2): which buyer attributes this
                   season nudges demand toward — the readable surface of the

@@ -86,13 +86,14 @@ describe('#230 buildHomeDashboard — pure model math', () => {
 });
 
 describe('#230 Home dashboard — reachable through the live pipeline', () => {
-  it('renders the dashboard in the Home tab with identity/cash/CSI/calendar/quick-stats', () => {
+  it('renders the dashboard in the Home tab with cash/CSI/calendar/quick-stats', () => {
     const model = buildHomeDashboard(INPUTS);
     const { getByText, getByTestId } = render(
       <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
     );
     expect(getByTestId('home-dashboard')).toBeTruthy();
-    expect(getByText('Summit Motors')).toBeTruthy();
+    // Identity (name + tier) now lives in the AppShell header, not the
+    // dashboard body (#238); the dashboard leads with the cash card.
     expect(getByText('$1,247,503')).toBeTruthy();
     expect(getByText('Very Good')).toBeTruthy(); // CSI band
     expect(getByText('Day 42')).toBeTruthy();

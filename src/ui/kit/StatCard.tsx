@@ -69,7 +69,12 @@ export function StatCard({
         </View>
       )}
       <Text style={valueText}>{value}</Text>
-      <Text style={labelText}>{label}</Text>
+      {/* In a narrow tile a single long label ("INVENTORY") would otherwise
+          break mid-word ("INVENTOR Y"); cap at two lines and let it shrink to
+          fit rather than fracture. No-op for labels that already fit. */}
+      <Text style={labelText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+        {label}
+      </Text>
       {delta != null && <Text style={deltaText}>{delta}</Text>}
     </View>
   );

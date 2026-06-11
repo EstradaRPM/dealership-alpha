@@ -1539,14 +1539,14 @@ export function DealershipApp({
     const tierEntry =
       TIER_CONFIG.tiers[world.tierManager.currentTier - 1] ??
       TIER_CONFIG.tiers[0];
+    // Cash / reputation / tier now live once in the richer Home dashboard cards
+    // (#238 HITL): the shell header already carries name + tier identity, so the
+    // top strip keeps only REG PRESSURE — the one status with no other home.
     const headerStats: ShellStat[] = [
-      { label: 'CASH', value: `$${Math.round(world.economy.cash).toLocaleString()}` },
-      { label: 'REPUTATION', value: `${Math.round(world.reputation.reviewScore)}` },
       {
         label: 'REG PRESSURE',
         value: `${Math.round(regulatoryPressure.pressure)}/${Math.round(regulatoryPressure.max)}`,
       },
-      { label: 'TIER', value: `${world.tierManager.currentTier}` },
     ];
     // Home status dashboard (#230): formatted entirely in the model builder from
     // primitives read off the live World. The inventory nudge reuses the demand
