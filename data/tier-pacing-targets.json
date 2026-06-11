@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "notes": "Pacing INTENT for the #247 balance harness — locked by the 2026-06-11 tier-gate grill (docs/planning/macro-loop-spine.md §12). Streak rule + face ladder + threshold values live in tier-gate.json; this file only says what pacing the tuned thresholds must produce. Threshold tuning runs AFTER the staff-teeth pass (#249).",
+  "campaign": {
+    "targetRealHoursToReachTier7": 30,
+    "approxInGameYears": 9,
+    "streakRule": "to leave tier N, post N consecutive meet-or-better verdict months on all active faces",
+    "perfectPlayFloorGameMonths": 21
+  },
+  "assumedRealMinutesPerGameDay": {
+    "1": 1.25,
+    "2": 1.25,
+    "3": 1.0,
+    "4": 0.75,
+    "5": 0.6,
+    "6": 0.5
+  },
+  "dwellTargets": {
+    "1": { "realHours": 1, "medianGameMonths": 2 },
+    "2": { "realHours": 2, "medianGameMonths": 3.5 },
+    "3": { "realHours": 4, "medianGameMonths": 8.5 },
+    "4": { "realHours": 6, "medianGameMonths": 17 },
+    "5": { "realHours": 8, "medianGameMonths": 28 },
+    "6": { "realHours": 10, "medianGameMonths": 40 }
+  },
+  "toleranceBand": 0.3,
+  "policyAssertions": {
+    "competent": {
+      "rule": "median dwell per tier within toleranceBand of medianGameMonths"
+    },
+    "optimal": {
+      "fasterThanCompetentMin": 0.25,
+      "fasterThanCompetentMax": 0.3,
+      "rule": "total time to T7 is 25-30% below competent; can never beat perfectPlayFloorGameMonths"
+    },
+    "naive": {
+      "mustEventuallyReachTier": 3,
+      "maxRelativeTimeVsCompetent": 2.0,
+      "hardWall": {
+        "gate": "tier3to4",
+        "minGameYearsBlocked": 5,
+        "rule": "naive policy must NOT complete the T3 streak (all five faces) within 5 game-years"
+      }
+    }
+  }
+}

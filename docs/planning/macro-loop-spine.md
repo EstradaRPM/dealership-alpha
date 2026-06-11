@@ -114,10 +114,23 @@ A tier does **not** need its own mid-point milestone mechanic. The **multi-dimen
 
 Player-influenceable demand is a headline spine (see the #197 work) and exists **from T1** (lot mix, pricing, cheap local ads). **BDC at T5 is the industrial lead-gen amplifier**, not demand's first appearance.
 
+## 12. Tier gates — structure LOCKED (2026-06-11 grill)
+
+The gate-numbers open item is resolved at the structural level. Decision record (do not re-grill):
+
+1. **Mechanism — verdict streaks.** Advancement = consecutive TierGate month-verdict "meet"-or-better months on every face active at the tier. `tier-progression.json`'s instantaneous `triggerThreshold` is **retired**; `tier-gate.json` is the single rulebook; the Home gate strip is literally the gate.
+2. **Campaign budget.** ~30 real hours for a competent player to *reach* T7 (T7 itself is the open-ended sandbox summit). Real dwell ≈ T1 1h → T2 2h → T3 4h → T4 6h → T5 8h → T6 10h (each ≈1.5× the last). With per-tier real-time compression (delegation + batch-sim), that's ≈ 8–9 in-game years total — intended fiction.
+3. **Streak rule.** *To leave tier N, post N consecutive meet-or-better months.* Strict-consecutive; a missed month resets the streak. Perfect-play floor = 21 game-months to T7. Streaks are structural and locked; **thresholds are the tuned part** (#247 harness).
+4. **Face activation ladder.** T1: units + cash. T2: + gross (first profit dials). T3: + csi + facility (price of admission to courtship). T4+: all five. No staff-roster face — gates measure outcomes, not shopping lists.
+5. **Act 2 gate kind.** From T3→T4 onward the streak is the **prerequisite/dossier** (verdict history *is* the track record OEMs read), and advancement is **player-initiated**: apply to a specific brand, pass its weighting over your dossier, pay the franchise fee. Act 1 (T1→T3) auto-advances on streak completion. Brand weighting tables = parked OEM engine (#223).
+6. **Ascent only.** Verdicts never demote; streak reset is the only verdict punishment. Descent remains the narrative failure paths (terminal / contraction / consent decree), unchanged.
+7. **Skill spread (harness assertions, `data/tier-pacing-targets.json`).** Competent: median dwell within ±30% of the curve. Optimal: 25–30% faster (floored by the 21-month minimum). Naive: reaches T3 at ≤2× competent time but **must not pass T3→T4 within 5 game-years** — Act 2 is the skill wall, and the courtship fiction explains it.
+8. **Tuning sequence.** Build the #247 harness now; run the threshold-tuning campaign **after** the staff-teeth pass (§5) lands — salary drain + talent-scaled hire cost move the cash/gross faces directly. Staff calibration ladder: issue #249.
+
 ---
 
 ## Open / deliberately un-tuned
 
-- **Gate numbers** (monthly units, capital, cash cost, rep thresholds, facility-performance bars). The CSV's values are hip-shot placeholders; tune *last*, against whatever produces an engaging pace.
-- **Staff risk/reward teeth** (§5) — identified; needs its own design/build pass to set cost curves, scarcity, salary drain, poaching.
+- **Gate numbers** — structure LOCKED 2026-06-11, see §12. Numeric thresholds are tuned by the #247 balance harness against `data/tier-pacing-targets.json`, **after** the staff-teeth pass.
+- **Staff risk/reward teeth** (§5) — identified; needs its own design/build pass to set cost curves, scarcity, salary drain, poaching. Real-industry salesperson calibration ladder captured in issue #249; resolve the staff-"tier" naming collision there (dealership tiers own the word).
 - **Monetization model — PARKED, own axis.** On-record positioning is *premium, niche*. An F2P "IAP to grant a franchise license" was floated and flagged as the **pay-to-skip trap** (it monetizes the courtship's core tension and cuts against premium positioning). If ever F2P, monetize cosmetics/convenience that don't touch the progression spine — never the gate.
