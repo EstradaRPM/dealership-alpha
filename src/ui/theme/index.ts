@@ -1,5 +1,7 @@
 export { colors, DEFAULT_ACCENT } from './tokens';
 export type { ColorToken } from './tokens';
+export { gradients } from './gradients';
+export type { GradientToken, GradientStops } from './gradients';
 export { spacing } from './spacing';
 export type { SpacingToken } from './spacing';
 export { radius } from './radius';

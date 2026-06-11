@@ -14,13 +14,21 @@ import type { ViewStyle } from 'react-native';
 export const elevation = {
   /** Flush with its parent — no shadow. */
   none: {} as ViewStyle,
-  /** Lifted off the page — cards, panels, primary buttons. */
+  /**
+   * Lifted off the page — cards, panels, primary buttons. A true raised bevel:
+   * a lighter top hairline (the catch-light along the upper edge) over a deeper,
+   * softer outer drop shadow, so a card reads as a physical slab rather than a
+   * flat fill. Pairs with the `surfaceRaised` gradient + `gloss` sheen on the
+   * `Surface` itself.
+   */
   raised: {
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.09)',
   },
   /** High above everything — modals, menus, floating actions. */
   floating: {

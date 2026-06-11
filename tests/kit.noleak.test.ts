@@ -3,7 +3,10 @@ import * as path from 'path';
 
 /**
  * No-leak guard (#225 re-skinnability requirement). Kit components must resolve
- * every color through the theme — never a raw hex / rgb literal. If this rots
+ * every color through the theme — never a raw hex / rgb literal. This now covers
+ * gradient material too (#235): the `gradients` stop arrays live in
+ * `src/ui/theme/gradients.ts`, and kit components (Gradient, Surface) reference
+ * them by role via `useTheme()` — no literal stops in components. If this rots
  * as later surfaces are added, the single-place re-skin guarantee silently
  * breaks. Color literals are allowed ONLY in `src/ui/theme/` (the role→value
  * map); they are forbidden in `src/ui/kit/`.
@@ -23,7 +26,7 @@ function kitFiles(): string[] {
 
 describe('#225 kit components contain no raw color literals', () => {
   it('finds at least the expected kit files (guard is actually scanning something)', () => {
-    expect(kitFiles().length).toBeGreaterThanOrEqual(7);
+    expect(kitFiles().length).toBeGreaterThanOrEqual(8);
   });
 
   it.each(kitFiles())('%s resolves color through the theme only', (file) => {

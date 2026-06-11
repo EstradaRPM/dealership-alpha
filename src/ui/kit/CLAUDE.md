@@ -45,13 +45,19 @@ function MyScreen() {
 
 ## Kit surface
 
-`Surface`/`Card` (raised·inset·flat) · `Button` (primary·secondary·ghost) ·
+`Surface`/`Card` (raised·inset·flat) · `Gradient`/`GradientSurface` (themed
+`LinearGradient` by role) · `Button` (primary·secondary·ghost) ·
 `Badge`/`Pill` (neutral·info·positive·reward·danger) · `ProgressBar` ·
 `Meter` (labeled gauge) · `StatCard` (value·label·trend delta) · `SectionHeader`.
 
+A `raised` `Surface` is a real slab: a `surfaceRaised` gradient fill under a
+`gloss` top sheen, wrapped by the `raised` bevel (top catch-light + outer
+shadow). Gradients never hand-painted per surface — always a `gradients` role.
+
 ## Tokens
 
-`colors` (semantic roles, #133) · `spacing` (4-based rhythm) · `radius` ·
+`colors` (semantic roles, #133) · `gradients` (role→`[from,to,…]` stop arrays,
+the depth "material", #235) · `spacing` (4-based rhythm) · `radius` ·
 `typography` (named text roles off a size/weight/line-height ramp) ·
 `elevation` (raised·floating·inset depth — the neo-skeuo bevels).
 

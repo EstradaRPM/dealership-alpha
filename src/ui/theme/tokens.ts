@@ -17,7 +17,7 @@ export const colors = {
   /** Cards, panels, modals sitting on `base`. */
   surface: '#18202e',
   /** Raised surface: list rows, inputs, the layer above `surface`. */
-  surfaceRaised: '#232d40',
+  surfaceRaised: '#2b3650',
 
   /** Default borders / dividers. */
   border: '#33405a',
