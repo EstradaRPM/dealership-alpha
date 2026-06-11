@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Image, StyleSheet, type ImageSourcePropType } from 'react-native';
+import { View, StyleSheet, type ImageSourcePropType } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme';
 
@@ -30,7 +31,10 @@ export function HeroBanner({ imageSource }: HeroBannerProps) {
       testID="home-hero-banner"
     >
       {imageSource ? (
-        <Image source={imageSource} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        // expo-image, not RN Image: on the new architecture RN's Image was
+        // drawing the bitmap at intrinsic size (top-left corner only) instead
+        // of honoring resizeMode="cover".
+        <Image source={imageSource} style={StyleSheet.absoluteFill} contentFit="cover" />
       ) : (
         <LinearGradient
           colors={['#1e3a5f', t.colors.base]}
