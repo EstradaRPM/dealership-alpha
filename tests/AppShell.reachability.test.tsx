@@ -66,11 +66,14 @@ describe('#215 AppShell — 5-tab IA reachability', () => {
   it('App.tsx mounts the Home + Operations tabs and the pinned day action', () => {
     const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
     // The shell replaces the DayLoopShell + BottomNav management composition.
-    expect(src).toMatch(/import \{ AppShell, type ShellTab/);
+    expect(src).toMatch(/from '\.\/src\/ui\/AppShell'/);
+    expect(src).toMatch(/type ShellTab\b/);
     expect(src).not.toMatch(/from '\.\/src\/ui\/DayLoopShell'/);
+    // The fixed 5-tab IA is composed from the data-driven nav list.
+    expect(src).toMatch(/loadNavTabs\(\)/);
     // Home + Operations tab content is composed and handed to the shell.
-    expect(src).toMatch(/key: 'home'/);
-    expect(src).toMatch(/key: 'operations'/);
+    expect(src).toMatch(/home:/);
+    expect(src).toMatch(/operations:/);
     expect(src).toMatch(/<HomeTab\s/);
     expect(src).toMatch(/<OperationsTab\s/);
     expect(src).toMatch(/<AppShell/);

@@ -1,0 +1,22 @@
+{
+  "_doc": "The canonical, fixed 5-tab IA (fork 1, re-validated 2026-06-10). Always present — navigation is NOT gated by tier; progression is altitude rising INSIDE each surface (spine §2), never tabs appearing/disappearing. Home + Operations back live surfaces today; People/Finance/Growth are placeholders until their per-surface rebrand slice (via /map-mockup) lands. tagline = the one-line description of what each strategic surface becomes.",
+  "tabs": [
+    { "key": "home", "label": "Home" },
+    { "key": "operations", "label": "Operations" },
+    {
+      "key": "people",
+      "label": "People",
+      "tagline": "Hiring, talent ceilings, training, morale, and your org chart."
+    },
+    {
+      "key": "finance",
+      "label": "Finance",
+      "tagline": "F&I products, lending, and the profit dials behind every deal."
+    },
+    {
+      "key": "growth",
+      "label": "Growth",
+      "tagline": "Capex, marketing, franchise courtship, and the path to a dealer group."
+    }
+  ]
+}

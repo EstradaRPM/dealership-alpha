@@ -31,9 +31,16 @@ import { ThemeProvider } from './src/ui/theme';
 import { CharacterCreation } from './src/ui/CharacterCreation';
 import { MainMenu } from './src/ui/MainMenu';
 import { InGameMenu } from './src/ui/InGameMenu';
-import { AppShell, type ShellTab, type ShellStat } from './src/ui/AppShell';
+import {
+  AppShell,
+  loadNavTabs,
+  type ShellTab,
+  type ShellTabKey,
+  type ShellStat,
+} from './src/ui/AppShell';
 import { HomeTab } from './src/ui/HomeTab';
 import { OperationsTab } from './src/ui/OperationsTab';
+import { StrategicTab } from './src/ui/StrategicTab';
 import { SettingsScreen } from './src/ui/SettingsScreen';
 import { LegacyWallView } from './src/ui/LegacyWall';
 import type { DayRecapModel } from './src/ui/DayRecap';
@@ -358,6 +365,11 @@ export function DealershipApp({
   worldRef.current = world;
   const [lotVehicles, setLotVehicles] = useState<readonly LotVehicle[]>([]);
   const [cash, setCash] = useState(0);
+  // Active shell tab, lifted out of AppShell so it survives a round-trip
+  // through a sub-screen (auction / pricing / a department). The shell unmounts
+  // on those navigations; without lifting this the tab would reset to Home on
+  // return. Controlled via AppShell's activeTabKey/onTabChange.
+  const [shellTab, setShellTab] = useState<ShellTabKey>('home');
   // Hours-of-op lever selection (#120/#207). The selected option's scaled
   // ticksPerDay is fed into FloorSim via a live getter (below), so a longer
   // shift literally makes the day run more ticks. The ref keeps the getter
@@ -1516,29 +1528,36 @@ export function DealershipApp({
       },
       { label: 'TIER', value: `${world.tierManager.currentTier}` },
     ];
-    // The 5-tab IA (#215): T1 ships Home + Operations unconditionally; tier
-    // gating and the other three tabs land in #226.
-    const shellTabs: ShellTab[] = [
-      {
-        key: 'home',
-        label: 'Home',
-        content: (
-          <HomeTab state={loopState} recap={recap} demandReadout={demandReadout} />
-        ),
-      },
-      {
-        key: 'operations',
-        label: 'Operations',
-        content: (
-          <OperationsTab
-            badges={world.departmentQueue.getBadges()}
-            onDeptPress={handleDeptPress}
-            leverProps={leverProps}
-            onOpenAuction={() => nav.navigate('auction')}
-          />
-        ),
-      },
-    ];
+    // The fixed 5-tab IA (#215). All five tabs are ALWAYS present — navigation
+    // is never gated by tier; progression is altitude rising inside a surface,
+    // not tabs appearing/disappearing (spine §2). Home + Operations back live
+    // surfaces today; People/Finance/Growth show a placeholder until their own
+    // per-surface rebrand slice lands. Per-tab content is selected by key.
+    const tabContent: Record<ShellTabKey, React.ReactNode> = {
+      home: (
+        <HomeTab state={loopState} recap={recap} demandReadout={demandReadout} />
+      ),
+      operations: (
+        <OperationsTab
+          badges={world.departmentQueue.getBadges()}
+          onDeptPress={handleDeptPress}
+          leverProps={leverProps}
+          onOpenAuction={() => nav.navigate('auction')}
+        />
+      ),
+      people: null,
+      finance: null,
+      growth: null,
+    };
+    const shellTabs: ShellTab[] = loadNavTabs().map((tab) => ({
+      key: tab.key,
+      label: tab.label,
+      content:
+        tabContent[tab.key] ??
+        (tab.tagline ? (
+          <StrategicTab title={tab.label} tagline={tab.tagline} />
+        ) : null),
+    }));
     content = (
       <View style={styles.container}>
         <StatusBar style="light" />
@@ -1563,6 +1582,8 @@ export function DealershipApp({
             stats={headerStats}
             onOpenGameMenu={openInGameMenu}
             tabs={shellTabs}
+            activeTabKey={shellTab}
+            onTabChange={setShellTab}
             primaryAction={{
               label: loopState.hasRecap ? 'Next Day →' : 'Open Floor →',
               onPress: handleNextDay,
