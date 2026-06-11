@@ -1,6 +1,8 @@
 export { HomeTab } from './HomeTab';
 export type { HomeTabProps } from './HomeTab';
+export { GateStrip } from './GateStrip';
 export { buildHomeDashboard, csiLabel } from './homeModel';
+export { buildGateStrip } from './gateStripModel';
 export type {
   HomeDashboardModel,
   HomeDashboardInputs,
@@ -9,3 +11,11 @@ export type {
   MiniCalDay,
   SeasonName,
 } from './homeModel';
+export type {
+  GateStripModel,
+  GateFaceView,
+  FlowFaceView,
+  LevelFaceView,
+  TrendFaceView,
+  TodayContribution,
+} from './gateStripModel';

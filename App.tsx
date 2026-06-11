@@ -38,7 +38,7 @@ import {
   type ShellTabKey,
   type ShellStat,
 } from './src/ui/AppShell';
-import { HomeTab, buildHomeDashboard } from './src/ui/HomeTab';
+import { HomeTab, buildHomeDashboard, buildGateStrip } from './src/ui/HomeTab';
 import { DAYS_PER_WEEK, DAYS_PER_YEAR } from './src/game/GameClock';
 import { OperationsTab } from './src/ui/OperationsTab';
 import { StrategicTab } from './src/ui/StrategicTab';
@@ -1576,24 +1576,17 @@ export function DealershipApp({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
       .map(([axis]) => axis);
-    // Monthly tier-gate tracer (#232): format the engine's live per-face
-    // projections into honest one-line readouts, each in its native idiom
-    // (decision 3). Minimal by design — the full gate-progress strip is S3b.
-    const gateLines = world.tierGate.getProgress().faces.map((f) => {
-      if (f.kind === 'flow') {
-        const proj = Math.round(f.projectedLanding);
-        const pace = f.onPace
-          ? `on pace (proj ${proj})`
-          : `need ${f.onPaceRateNeeded.toFixed(1)}/day (proj ${proj})`;
-        return `${f.label}: ${Math.round(f.current)}/${Math.round(f.target)} · ${pace}`;
-      }
-      if (f.kind === 'level') {
-        const arrow = f.trend === 'climbing' ? '↗' : f.trend === 'sliding' ? '↘' : '→';
-        return `${f.label}: avg $${Math.round(f.avgLevel).toLocaleString()} vs $${Math.round(f.threshold).toLocaleString()} ${arrow}`;
-      }
-      const arrow = f.trend === 'climbing' ? '↗' : f.trend === 'sliding' ? '↘' : '→';
-      return `${f.label}: ${Math.round(f.rollingAvg)} vs ${Math.round(f.threshold)} ${arrow}`;
-    });
+    // Monthly tier-gate progress strip (#233 S3b): the engine's live per-face
+    // projections, structured into the full gate strip — pace bars, cash gauge,
+    // CSI sparkline, % on track. The day's haul (the just-closed day's units +
+    // gross, while the recap still holds) is the daily-contribution tick that
+    // visibly fills the bars (decision 1's reward beat).
+    const gateModel = buildGateStrip(
+      world.tierGate.getProgress(),
+      loopState.hasRecap
+        ? { units: funnel.sold, gross: grossToday }
+        : undefined,
+    );
     const homeDashboard = buildHomeDashboard({
       businessName: world.tierManager.businessName || `${profile.name}'s Lot`,
       tierLabel: `Tier ${world.tierManager.currentTier} — ${tierEntry.label}`,
@@ -1611,7 +1604,7 @@ export function DealershipApp({
       inventoryNudge: demandReadout.coverageGap
         ? `Lot thin on ${demandReadout.coverageGap.label}`
         : undefined,
-      gate: gateLines.length > 0 ? { lines: gateLines } : undefined,
+      gate: gateModel.faces.length > 0 ? gateModel : undefined,
       weather: {
         temperatureF: todayWeather.temperatureF,
         conditionLabel: todayWeather.conditionLabel,

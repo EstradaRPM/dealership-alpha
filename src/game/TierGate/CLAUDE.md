@@ -29,7 +29,9 @@ coach); each face renders in its **native idiom** (decision 3).
     - **level** (`cash`): `currentLevel`, `avgLevel` (gauge needle), `threshold`,
       `trend` arrow, `meetsThreshold`. No catch-up — a balance isn't a flow.
     - **trend** (`csi`): `rollingAvg`, `threshold`, `trend`
-      (climbing/flat/sliding), `meetsThreshold`.
+      (climbing/flat/sliding), `meetsThreshold`, `recentSamples` (the rolling
+      window's raw points, oldest→newest — the S3b CSI sparkline; deterministic,
+      so still replay-safe).
   - `snapshot()/restore()` — module-owned `schemaVersion`; round-trips the
     in-progress month (#188 world seam).
 - `createDefaultTierGateSnapshot()` — behavior-neutral fresh-month default (the

@@ -255,6 +255,7 @@ export function createTierGate(deps: TierGateDeps): TierGate {
           threshold: target,
           trend: classifyTrend(w, config.trendEpsilon),
           meetsThreshold: rollingAvg >= target,
+          recentSamples: [...w],
         };
       }
       case 'stepped':

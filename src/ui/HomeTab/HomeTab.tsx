@@ -11,6 +11,7 @@ import { Surface, SectionHeader, StatCard, Pill } from '../kit';
 import type { DayLoopState } from '../../game/DayLoopController';
 import { DayRecap, type DayRecapModel } from '../DayRecap';
 import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
+import { GateStrip } from './GateStrip';
 import type { HomeDashboardModel, MiniCalDay } from './homeModel';
 
 export interface HomeTabProps {
@@ -182,6 +183,14 @@ function Dashboard({
             Week {model.calendar.week} · Month {model.calendar.month} · Q
             {model.calendar.quarter} {model.calendar.seasonLabel}
           </Text>
+          {/* Sold this month X / target (#233 S3b) — replaces the mockup's
+              static "16/10"; backed by the gate's units flow face. */}
+          {model.calendar.soldThisMonth ? (
+            <Text style={{ ...subValue, marginTop: t.spacing.xs }} testID="home-sold-this-month">
+              Sold this month {model.calendar.soldThisMonth.current} /{' '}
+              {model.calendar.soldThisMonth.target}
+            </Text>
+          ) : null}
           <MiniCalendar days={model.calendar.miniCal} columns={7} />
           {/* Weather readout (#231): today's conditions + an honest one-day
               forecast. Renders only when the composition root supplied weather. */}
@@ -220,29 +229,11 @@ function Dashboard({
         </Surface>
       </View>
 
-      {/* Monthly tier-gate tracer (#232). A minimal live readout proving the
-          gate engine's per-face projections render; the full gate-progress strip
-          is S3b. Each line is one active face in its native idiom. */}
-      {model.gate && model.gate.lines.length > 0 ? (
-        <View style={{ marginTop: t.spacing.md }} testID="home-gate-tracer">
-          <Surface>
-            <Text style={{ ...t.typography.statLabel, color: t.colors.textMuted }}>
-              MONTHLY GATE
-            </Text>
-            {model.gate.lines.map((line, i) => (
-              <Text
-                key={i}
-                style={{
-                  ...t.typography.caption,
-                  color: t.colors.textSecondary,
-                  marginTop: t.spacing.xxs,
-                }}
-              >
-                {line}
-              </Text>
-            ))}
-          </Surface>
-        </View>
+      {/* Monthly tier-gate progress strip (#233 S3b). The reframed TODAY'S
+          TARGETS bar: each active face in its native idiom, the day's haul
+          ticking up the bars, % on track in the header. */}
+      {model.gate && model.gate.faces.length > 0 ? (
+        <GateStrip model={model.gate} />
       ) : null}
 
       {/* Quick-stat strip */}

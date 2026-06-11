@@ -75,6 +75,12 @@ export interface TrendFaceProgress {
   readonly threshold: number;
   readonly trend: GateTrend;
   readonly meetsThreshold: boolean;
+  /**
+   * The rolling window's raw daily samples, oldest→newest — the data points the
+   * Home strip plots as the CSI **sparkline** (S3b). Surfaced read-only off the
+   * engine's existing internal window; deterministic, so it stays replay-safe.
+   */
+  readonly recentSamples: readonly number[];
 }
 
 /**

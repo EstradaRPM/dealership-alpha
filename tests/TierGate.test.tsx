@@ -5,7 +5,7 @@ import { render } from '@testing-library/react-native';
 import { createEventBus, type EventBus } from '../src/game/EventBus';
 import { createTierGate, type TierGate } from '../src/game/TierGate';
 import type { TierGateConfig, GateMonthVerdict } from '../src/game/TierGate';
-import { HomeTab, buildHomeDashboard } from '../src/ui/HomeTab';
+import { HomeTab, buildHomeDashboard, buildGateStrip } from '../src/ui/HomeTab';
 import type { HomeDashboardInputs } from '../src/ui/HomeTab';
 import type { DayLoopState } from '../src/game/DayLoopController';
 
@@ -268,6 +268,18 @@ const MANAGERIAL: DayLoopState = {
   hasRecap: true,
 };
 
+// A real gate strip built off the engine's live readout — the same path App.tsx
+// uses. T1 lights units (flow) + cash (level); 2 units by day-of-month 5 of 10.
+function buildLiveGate() {
+  const h = makeHarness({ tier: 1, startCash: 50000 });
+  h.setDay(5);
+  h.cash = 50000;
+  h.endDay(); // one cash sample so the level gauge has an average
+  h.closeDeal(1000, 0);
+  h.closeDeal(1000, 0);
+  return buildGateStrip(h.gate.getProgress(), { units: 1, gross: 1000 });
+}
+
 const INPUTS: HomeDashboardInputs = {
   businessName: 'Summit Motors',
   tierLabel: 'Tier 1 — Gravel Yard',
@@ -282,33 +294,55 @@ const INPUTS: HomeDashboardInputs = {
   pendingLeads: 4,
   inventoryCount: 20,
   inService: 2,
-  gate: { lines: ['Retail Units: 2/10 · need 1.6/day (proj 4)', 'Cash on Hand: avg $50,000 vs $50,000 →'] },
+  gate: buildLiveGate(),
 };
 
-describe('#232 TierGate — reachable on the live Home dashboard', () => {
-  it('passes gate tracer lines through buildHomeDashboard', () => {
+describe('#233 S3b — gate strip reachable on the live Home dashboard', () => {
+  it('threads the structured gate strip + derived stats through buildHomeDashboard', () => {
     const m = buildHomeDashboard(INPUTS);
-    expect(m.gate?.lines.length).toBe(2);
+    // units (flow) + cash (level) faces at T1.
+    expect(m.gate?.faces.map((f) => f.id).sort()).toEqual(['cash', 'units']);
+    // "% on track" quick-stat lands in the stat strip.
+    expect(m.stats.some((s) => s.key === 'on-track')).toBe(true);
+    // "Sold this month X / target" rides the calendar card.
+    expect(m.calendar.soldThisMonth).toEqual({ current: 2, target: 10 });
   });
 
-  it('omits the gate block when no lines are supplied', () => {
+  it('omits the gate block + derived stats when no gate is supplied', () => {
     const { gate, ...noGate } = INPUTS;
     void gate;
-    expect(buildHomeDashboard(noGate).gate).toBeUndefined();
+    const m = buildHomeDashboard(noGate);
+    expect(m.gate).toBeUndefined();
+    expect(m.stats.some((s) => s.key === 'on-track')).toBe(false);
+    expect(m.calendar.soldThisMonth).toBeUndefined();
   });
 
-  it('renders the gate tracer lines in the Home tab', () => {
+  it('flow face reports the pace readout (a fact the player reads, not a grade)', () => {
+    const strip = buildLiveGate();
+    const units = strip.faces.find((f) => f.id === 'units');
+    if (units?.kind !== 'flow') throw new Error('expected flow');
+    // 2 of 10 by day 5 ⇒ behind pace ⇒ a "need N/day" pace fact, no letter grade.
+    expect(units.valueLabel).toBe('2 / 10');
+    expect(units.paceLabel).toMatch(/Need .*\/day · proj/);
+    expect(units.onPace).toBe(false);
+  });
+
+  it('renders the gate strip + pace readouts in the Home tab (anti-orphan)', () => {
     const model = buildHomeDashboard(INPUTS);
     const { getByText, getByTestId } = render(
       <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
     );
-    expect(getByTestId('home-gate-tracer')).toBeTruthy();
-    expect(getByText('Retail Units: 2/10 · need 1.6/day (proj 4)')).toBeTruthy();
+    expect(getByTestId('home-gate-strip')).toBeTruthy();
+    expect(getByText('Monthly Gate')).toBeTruthy();
+    expect(getByText('2 / 10')).toBeTruthy();
+    expect(getByTestId('home-sold-this-month')).toBeTruthy();
+    // The day's haul ticks the units bar (daily-contribution reward beat).
+    expect(getByTestId('gate-today-tick-units')).toBeTruthy();
   });
 
-  it('App.tsx builds the gate lines off the live world and feeds buildHomeDashboard', () => {
+  it('App.tsx builds the gate strip off the live world and feeds buildHomeDashboard', () => {
     const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
-    expect(src).toMatch(/world\.tierGate\.getProgress\(\)/);
-    expect(src).toMatch(/gate: gateLines\.length > 0/);
+    expect(src).toMatch(/buildGateStrip\(\s*world\.tierGate\.getProgress\(\)/);
+    expect(src).toMatch(/gate: gateModel\.faces\.length > 0/);
   });
 });

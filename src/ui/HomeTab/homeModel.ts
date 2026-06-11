@@ -1,4 +1,5 @@
 import type { TrendDirection } from '../kit';
+import type { GateStripModel } from './gateStripModel';
 import csiBands from '../../../data/csi-bands.json';
 
 /**
@@ -39,13 +40,13 @@ export interface HomeDashboardInputs {
   /** Contextual pre-open nudge that deep-links into Operations; e.g. "Lot thin on trucks". */
   inventoryNudge?: string;
   /**
-   * Monthly tier-gate tracer (#232). A minimal live readout of the gate
-   * engine's per-face projections — the full gate-progress strip is S3b. Each
-   * line is one active face, already framed in its native idiom by the
-   * composition root (flow = pace, level = gauge, trend = arrow). Optional so
-   * pre-gate callers/tests still build a model.
+   * Monthly tier-gate progress strip (#233 S3b). The full structured per-face
+   * readout (flow pace bars + daily-haul tick, cash gauge, CSI sparkline) plus
+   * the derived "% on track" quick-stat and the units-sold-this-month pair.
+   * Built by `buildGateStrip` off the engine's live `getProgress()`. Optional so
+   * pre-gate callers/tests still build a dashboard model.
    */
-  gate?: { lines: string[] };
+  gate?: GateStripModel;
   /**
    * Today's weather + an honest one-day forecast (#231). Optional so callers
    * and tests predating the weather mechanic still build a model.
@@ -101,6 +102,8 @@ export interface HomeCalendarModel {
   dateLabel: string;
   /** Current gameplay month laid out as a 7-wide grid, today highlighted. */
   miniCal: MiniCalDay[];
+  /** "Sold this month X / target" (#233 S3b); absent until the gate is wired. */
+  soldThisMonth?: { current: number; target: number };
   /** Weather readout line + one-day forecast (#231); absent without input. */
   weather?: {
     todayLabel: string;
@@ -129,8 +132,8 @@ export interface HomeDashboardModel {
   reputation: { score: number; csiLabel: string };
   calendar: HomeCalendarModel;
   stats: HomeStat[];
-  /** Monthly tier-gate tracer lines (#232); absent until the gate is wired. */
-  gate?: { lines: string[] };
+  /** Monthly tier-gate progress strip (#233 S3b); absent until the gate is wired. */
+  gate?: GateStripModel;
 }
 
 const SEASON_LABELS: Record<SeasonName, string> = {
@@ -257,6 +260,15 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
     },
     { key: 'service', label: 'In Service', value: `${input.inService}` },
   ];
+  // "% on track" quick-stat (#233 S3b) — derived from the gate's pace
+  // projection (the binding face), surfaced only once the gate is wired.
+  if (input.gate?.percentOnTrack != null) {
+    stats.push({
+      key: 'on-track',
+      label: 'On Track',
+      value: `${input.gate.percentOnTrack}%`,
+    });
+  }
 
   const trend: TrendDirection =
     input.cashDelta == null || input.cashDelta === 0
@@ -285,6 +297,7 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
       seasonLabel,
       dateLabel: `${seasonLabel} · Week ${week} · Day ${dayOfMonth}`,
       miniCal,
+      soldThisMonth: input.gate?.unitsSold,
       weather,
     },
     stats,

@@ -149,6 +149,25 @@ function clockLabel(
   return `${h12}:${String(m).padStart(2, '0')}${period}`;
 }
 
+/**
+ * Time remaining until the day closes (#233 S3b) — the reframed mockup "Results
+ * in" countdown, honestly labeled as time-to-close. Maps the remaining tick
+ * fraction onto the open-hours window; "Closing" once the floor is spent.
+ */
+function timeToCloseLabel(
+  tick: number,
+  ticksPerDay: number,
+  openHour: number,
+  closeHour: number,
+): string {
+  const frac = ticksPerDay <= 0 ? 1 : Math.min(1, tick / ticksPerDay);
+  const minsLeft = Math.max(0, Math.round((1 - frac) * (closeHour - openHour) * 60));
+  if (minsLeft <= 0) return 'Closing';
+  const h = Math.floor(minsLeft / 60);
+  const m = minsLeft % 60;
+  return h > 0 ? `${h}h ${m}m to close` : `${m}m to close`;
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.statCell}>
@@ -220,6 +239,9 @@ export function FloorDashboard({
         <Text style={styles.hudCell}>DAY {day}</Text>
         <Text style={styles.hudCell}>
           {clockLabel(tick, ticksPerDay, openHour, closeHour)}
+        </Text>
+        <Text style={styles.hudCell} testID="floor-time-to-close">
+          {timeToCloseLabel(tick, ticksPerDay, openHour, closeHour)}
         </Text>
         <Text style={styles.hudCell}>{money(cash)}</Text>
         {regulatoryPressure ? (
