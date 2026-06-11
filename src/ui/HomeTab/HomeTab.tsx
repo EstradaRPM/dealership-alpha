@@ -12,6 +12,7 @@ import type { DayLoopState } from '../../game/DayLoopController';
 import { DayRecap, type DayRecapModel } from '../DayRecap';
 import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { GateStrip } from './GateStrip';
+import { HeroBanner } from './HeroBanner';
 import type { HomeDashboardModel, MiniCalDay } from './homeModel';
 
 export interface HomeTabProps {
@@ -118,6 +119,7 @@ function Dashboard({
 
   return (
     <View testID="home-dashboard">
+      <HeroBanner />
       {/* Identity (name + tier) is owned by the persistent AppShell header on
           every tab (#238 HITL); the dashboard no longer repeats it. */}
       {/* Cash + reputation cards */}
