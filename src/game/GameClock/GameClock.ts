@@ -38,7 +38,13 @@ const DAYS_PER_WEEK = 7;
 const DAYS_PER_SEASON = 91; // 13 weeks × 7 days
 const DAYS_PER_YEAR = 364;  // 4 seasons × 91 days
 
-function computeSeason(day: number): Season {
+/**
+ * Pure season-from-day projection over the 4×91 game year. Exported as the
+ * single source of truth for season boundaries so other modules (e.g. Weather,
+ * #231) derive season without duplicating the cutoffs or reaching into a live
+ * clock instance.
+ */
+export function seasonForDay(day: number): Season {
   const dayInYear = ((day - 1) % DAYS_PER_YEAR) + 1;
   if (dayInYear <= 91) return 'spring';
   if (dayInYear <= 182) return 'summer';
@@ -61,7 +67,7 @@ export function createGameClock(deps: {
   return {
     get currentDay() { return day; },
     get dayOfWeek() { return computeDayOfWeek(day); },
-    get currentSeason() { return computeSeason(day); },
+    get currentSeason() { return seasonForDay(day); },
 
     advanceDay() {
       const endingDay = day;

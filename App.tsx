@@ -1552,6 +1552,10 @@ export function DealershipApp({
     // primitives read off the live World. The inventory nudge reuses the demand
     // coverage gap (recent buyers wanting a category the lot can't cover) and
     // deep-links into Operations.
+    // Weather readout (#231): today's conditions + an honest one-day forecast.
+    // Both are pure projections of (masterSeed, day) off the live World.
+    const todayWeather = world.weather.weatherForDay(world.clock.currentDay);
+    const forecastWeather = world.weather.weatherForDay(world.clock.currentDay + 1);
     const homeDashboard = buildHomeDashboard({
       businessName: world.tierManager.businessName || `${profile.name}'s Lot`,
       tierLabel: `Tier ${world.tierManager.currentTier} — ${tierEntry.label}`,
@@ -1569,6 +1573,12 @@ export function DealershipApp({
       inventoryNudge: demandReadout.coverageGap
         ? `Lot thin on ${demandReadout.coverageGap.label}`
         : undefined,
+      weather: {
+        temperatureF: todayWeather.temperatureF,
+        conditionLabel: todayWeather.conditionLabel,
+        forecastTemperatureF: forecastWeather.temperatureF,
+        forecastConditionLabel: forecastWeather.conditionLabel,
+      },
     });
     // The fixed 5-tab IA (#215). All five tabs are ALWAYS present — navigation
     // is never gated by tier; progression is altitude rising inside a surface,

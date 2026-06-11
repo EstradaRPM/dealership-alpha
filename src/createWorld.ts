@@ -14,6 +14,7 @@
  */
 import type { EventBus } from './game/EventBus';
 import { createGameClock, type GameClock } from './game/GameClock';
+import { createWeather, type Weather } from './game/Weather';
 import {
   createDepartmentQueue,
   type DepartmentQueue,
@@ -116,6 +117,7 @@ export type StaffTaxonomy = ReturnType<typeof loadStaffTaxonomy>;
 export interface World {
   masterSeed: number;
   clock: GameClock;
+  weather: Weather;
   departmentQueue: DepartmentQueue;
   customerPool: CustomerPool;
   economy: Economy;
@@ -315,6 +317,9 @@ export function createWorld(deps: {
   // DayLoopController cold-start (skip-advance on the first nextDay) plays
   // Day 1 rather than skipping it.
   const clock = createGameClock({ bus });
+  // Per-day weather is a pure projection of (masterSeed, day) — no state, no
+  // snapshot (see Weather/CLAUDE.md). Slice 1 surfaces it on the Home calendar.
+  const weather = createWeather({ masterSeed });
   const departmentQueue = createDepartmentQueue({ bus });
   // Legacy live-day arrival path OFF: FloorSim owns arrivals via the injected
   // customer-source seam below.
@@ -771,6 +776,7 @@ export function createWorld(deps: {
   return {
     masterSeed,
     clock,
+    weather,
     departmentQueue,
     customerPool,
     economy,

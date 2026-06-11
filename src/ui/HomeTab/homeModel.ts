@@ -33,6 +33,16 @@ export interface HomeDashboardInputs {
   inService: number;
   /** Contextual pre-open nudge that deep-links into Operations; e.g. "Lot thin on trucks". */
   inventoryNudge?: string;
+  /**
+   * Today's weather + an honest one-day forecast (#231). Optional so callers
+   * and tests predating the weather mechanic still build a model.
+   */
+  weather?: {
+    temperatureF: number;
+    conditionLabel: string;
+    forecastTemperatureF: number;
+    forecastConditionLabel: string;
+  };
 }
 
 /** A single day cell in the mini-calendar grid. */
@@ -57,6 +67,8 @@ export interface HomeCalendarModel {
   dateLabel: string;
   /** Current gameplay month laid out as a 7-wide grid, today highlighted. */
   miniCal: MiniCalDay[];
+  /** Weather readout line + one-day forecast (#231); absent without input. */
+  weather?: { todayLabel: string; forecastLabel: string };
 }
 
 export interface HomeStat {
@@ -134,6 +146,13 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
     isToday: i + 1 === dayOfMonth,
   }));
 
+  const weather = input.weather
+    ? {
+        todayLabel: `${input.weather.temperatureF}° · ${input.weather.conditionLabel}`,
+        forecastLabel: `Tomorrow: ${input.weather.forecastTemperatureF}° · ${input.weather.forecastConditionLabel}`,
+      }
+    : undefined;
+
   const stats: HomeStat[] = [
     { key: 'leads', label: 'Pending Leads', value: `${input.pendingLeads}` },
     {
@@ -173,6 +192,7 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
       seasonLabel,
       dateLabel: `${seasonLabel} · Week ${week} · Day ${dayOfMonth}`,
       miniCal,
+      weather,
     },
     stats,
   };

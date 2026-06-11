@@ -1,6 +1,17 @@
 import { z } from 'zod';
 import { parseData } from './loadJson';
 
+// One season's weather generation band (#231). Temperature is drawn uniformly
+// in [tempMinF, tempMaxF]; the day's condition is a weighted draw over the
+// shared condition catalog (snow weight ~0 outside winter, etc.).
+const WeatherSeasonSchema = z
+  .object({
+    tempMinF: z.number(),
+    tempMaxF: z.number(),
+    conditionWeights: z.record(z.string().min(1), z.number().nonnegative()),
+  })
+  .strict();
+
 export const TunablesSchema = z.object({
   schemaVersion: z.literal(1),
   clock: z.object({
@@ -99,6 +110,23 @@ export const TunablesSchema = z.object({
     coverageCategoryByPersona: z
       .record(z.string().min(1), z.string().min(1))
       .optional(),
+  }),
+  // Weather / season substrate (#231). Per-day weather is a pure deterministic
+  // projection of (masterSeed, day): a temperature drawn in the season's range
+  // plus a condition drawn from the season's condition weights, on a per-day
+  // keyed seed (replay-safe, independent of tick order — see
+  // replay-determinism-constraint). Slice 1 is read-only (a Home calendar
+  // readout); later slices ride season/weather onto demand. `conditions` is the
+  // id → display-label catalog; each season's `conditionWeights` is a relative
+  // distribution over those ids.
+  weather: z.object({
+    conditions: z.record(z.string().min(1), z.string().min(1)),
+    seasons: z.object({
+      spring: WeatherSeasonSchema,
+      summer: WeatherSeasonSchema,
+      fall: WeatherSeasonSchema,
+      winter: WeatherSeasonSchema,
+    }),
   }),
   // Live render loop (#121, design #107). UI-only: a wall-clock interval
   // drives FloorSim.step() at `baseTickIntervalMs / speed`. Game logic never

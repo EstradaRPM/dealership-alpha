@@ -121,6 +121,37 @@
       "tradesperson": "truck"
     }
   },
+  "weather": {
+    "conditions": {
+      "clear": "Clear",
+      "cloudy": "Cloudy",
+      "rain": "Rain",
+      "snow": "Snow",
+      "storm": "Storm"
+    },
+    "seasons": {
+      "spring": {
+        "tempMinF": 48,
+        "tempMaxF": 72,
+        "conditionWeights": { "clear": 4, "cloudy": 3, "rain": 3, "snow": 0, "storm": 1 }
+      },
+      "summer": {
+        "tempMinF": 70,
+        "tempMaxF": 95,
+        "conditionWeights": { "clear": 6, "cloudy": 2, "rain": 1, "snow": 0, "storm": 1 }
+      },
+      "fall": {
+        "tempMinF": 42,
+        "tempMaxF": 68,
+        "conditionWeights": { "clear": 4, "cloudy": 4, "rain": 3, "snow": 0.5, "storm": 0.5 }
+      },
+      "winter": {
+        "tempMinF": 18,
+        "tempMaxF": 42,
+        "conditionWeights": { "clear": 3, "cloudy": 3, "rain": 1, "snow": 4, "storm": 0 }
+      }
+    }
+  },
   "renderLoop": {
     "baseTickIntervalMs": 400,
     "speedMultipliers": [1, 2, 4],

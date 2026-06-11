@@ -183,8 +183,23 @@ function Dashboard({
             {model.calendar.quarter} {model.calendar.seasonLabel}
           </Text>
           <MiniCalendar days={model.calendar.miniCal} columns={7} />
-          {/* Weather readout slot — left laid out for the deferred weather
-              mechanic (locked fork 3); drops in under the calendar. */}
+          {/* Weather readout (#231): today's conditions + an honest one-day
+              forecast. Renders only when the composition root supplied weather. */}
+          {model.calendar.weather ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                marginTop: t.spacing.sm,
+              }}
+            >
+              <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
+                {model.calendar.weather.todayLabel}
+              </Text>
+              <Text style={subValue}>{model.calendar.weather.forecastLabel}</Text>
+            </View>
+          ) : null}
         </Surface>
       </View>
 
