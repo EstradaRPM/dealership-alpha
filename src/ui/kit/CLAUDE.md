@@ -47,8 +47,16 @@ function MyScreen() {
 
 `Surface`/`Card` (raised·inset·flat) · `Gradient`/`GradientSurface` (themed
 `LinearGradient` by role) · `Button` (primary·secondary·ghost) ·
-`Badge`/`Pill` (neutral·info·positive·reward·danger) · `ProgressBar` ·
-`Meter` (labeled gauge) · `StatCard` (value·label·trend delta) · `SectionHeader`.
+`Badge`/`Pill` (neutral·info·positive·reward·danger; `outline`·`soft` fill) ·
+`Icon` (Ionicons glyph by name, themed `size`/`tone`) · `IconBadge` (colored
+tile holding an `Icon`; `solid`·`soft`, rounded·circle) · `ProgressBar` ·
+`Meter` (labeled gauge) · `StatCard` (value·label·trend delta, optional leading
+`icon`) · `SectionHeader`.
+
+Icons (#236) come from `@expo/vector-icons` (Ionicons). The glyph name is a
+prop; size/color are theme roles (`theme.icon.size`/`.tone`), never literals.
+Soft fills (soft `Pill`, soft `IconBadge`, `StatCard` icon) use the `*Tint`
+translucent color roles — single-sourced in `tokens.ts`, never an inline alpha.
 
 A `raised` `Surface` is a real slab: a `surfaceRaised` gradient fill under a
 `gloss` top sheen, wrapped by the `raised` bevel (top catch-light + outer

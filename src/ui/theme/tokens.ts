@@ -47,6 +47,18 @@ export const colors = {
 
   /** Text/icon color to sit ON a `primary` or `reward` fill. */
   onAccent: '#0e1420',
+
+  /**
+   * Soft translucent accent tints — the "filled / soft-glow" backgrounds behind
+   * a soft `IconBadge` tile or a soft `Pill` (#236). One per accent so the chip
+   * fill stays single-sourced; the glyph/text sits on top in the matching tone.
+   */
+  neutralTint: 'rgba(138,148,166,0.16)',
+  primaryTint: 'rgba(56,189,248,0.16)',
+  accentTint: 'rgba(129,140,248,0.16)',
+  rewardTint: 'rgba(251,191,36,0.16)',
+  positiveTint: 'rgba(52,211,153,0.16)',
+  dangerTint: 'rgba(244,80,90,0.16)',
 } as const;
 
 /**

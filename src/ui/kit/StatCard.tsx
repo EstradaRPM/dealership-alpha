@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
+import { IconBadge, type IconBadgeTone } from './IconBadge';
+import type { IconName } from './Icon';
 
 export type TrendDirection = 'up' | 'down' | 'flat';
 
@@ -15,6 +17,10 @@ export interface StatCardProps {
   trend?: TrendDirection;
   /** Horizontal alignment of the stack. Default `left`. */
   align?: 'left' | 'center';
+  /** Optional leading `IconBadge` glyph above the figure (Ionicons name). */
+  icon?: IconName;
+  /** Tone for the leading icon badge. Default `primary`. */
+  iconTone?: IconBadgeTone;
 }
 
 /**
@@ -27,6 +33,8 @@ export function StatCard({
   delta,
   trend = 'flat',
   align = 'left',
+  icon,
+  iconTone = 'primary',
 }: StatCardProps) {
   const t = useTheme();
   const items: ViewStyle = { alignItems: align === 'center' ? 'center' : 'flex-start' };
@@ -55,6 +63,11 @@ export function StatCard({
 
   return (
     <View style={items}>
+      {icon != null && (
+        <View style={{ marginBottom: t.spacing.sm }}>
+          <IconBadge name={icon} tone={iconTone} variant="soft" size="sm" />
+        </View>
+      )}
       <Text style={valueText}>{value}</Text>
       <Text style={labelText}>{label}</Text>
       {delta != null && <Text style={deltaText}>{delta}</Text>}

@@ -5,6 +5,7 @@ import { radius, type RadiusToken } from './radius';
 import { typography, type TypographyToken } from './typography';
 import { elevation, type ElevationToken } from './elevation';
 import { gradients, type GradientToken, type GradientStops } from './gradients';
+import { icon, type IconSizeToken, type IconToneToken } from './icons';
 
 /**
  * The full theme: the one role→value map the whole UI renders against. A new
@@ -22,6 +23,10 @@ export interface Theme {
   radius: Record<RadiusToken, number>;
   typography: Record<TypographyToken, TextStyle>;
   elevation: Record<ElevationToken, ViewStyle>;
+  icon: {
+    size: Record<IconSizeToken, number>;
+    tone: Record<IconToneToken, string>;
+  };
 }
 
 /** The current default theme: the "cool modern sim" palette + structural ramps. */
@@ -32,4 +37,5 @@ export const defaultTheme: Theme = {
   radius,
   typography,
   elevation,
+  icon,
 };

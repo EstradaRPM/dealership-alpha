@@ -4,18 +4,24 @@ import { useTheme } from '../theme';
 
 export type BadgeTone = 'neutral' | 'info' | 'positive' | 'reward' | 'danger';
 
+/** `outline` = accent border on a raised chip; `soft` = filled translucent tint. */
+export type BadgeVariant = 'outline' | 'soft';
+
 export interface BadgeProps {
   label: string;
   /** Semantic status color. Default `neutral`. */
   tone?: BadgeTone;
+  /** Fill treatment. Default `outline`. */
+  variant?: BadgeVariant;
 }
 
 /**
  * Status chip / pill — the small uppercase tag the mockups scatter everywhere
- * (HIGH DEMAND, AGING, NEW). Tone selects a semantic accent; the chip itself is
- * a tinted pill. Presentation only.
+ * (HIGH DEMAND, AGING, NEW). Tone selects a semantic accent; `outline` rims a
+ * raised chip while `soft` fills it with a translucent tint of the same accent
+ * (the mockup's soft-glow badges). Presentation only.
  */
-export function Badge({ label, tone = 'neutral' }: BadgeProps) {
+export function Badge({ label, tone = 'neutral', variant = 'outline' }: BadgeProps) {
   const t = useTheme();
   const accent =
     tone === 'info'
@@ -27,15 +33,26 @@ export function Badge({ label, tone = 'neutral' }: BadgeProps) {
           : tone === 'danger'
             ? t.colors.danger
             : t.colors.textMuted;
+  const tint =
+    tone === 'info'
+      ? t.colors.primaryTint
+      : tone === 'positive'
+        ? t.colors.positiveTint
+        : tone === 'reward'
+          ? t.colors.rewardTint
+          : tone === 'danger'
+            ? t.colors.dangerTint
+            : t.colors.neutralTint;
 
+  const soft = variant === 'soft';
   const container: ViewStyle = {
     alignSelf: 'flex-start',
     paddingVertical: t.spacing.xxs,
     paddingHorizontal: t.spacing.sm,
     borderRadius: t.radius.pill,
-    borderWidth: 1,
+    borderWidth: soft ? 0 : 1,
     borderColor: accent,
-    backgroundColor: t.colors.surfaceRaised,
+    backgroundColor: soft ? tint : t.colors.surfaceRaised,
   };
   const text: TextStyle = { ...t.typography.badge, color: accent };
 

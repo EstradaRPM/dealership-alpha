@@ -10,6 +10,8 @@ export { typography } from './typography';
 export type { TypographyToken } from './typography';
 export { elevation } from './elevation';
 export type { ElevationToken } from './elevation';
+export { icon, iconSize, iconTone } from './icons';
+export type { IconSizeToken, IconToneToken } from './icons';
 export { defaultTheme } from './theme';
 export type { Theme } from './theme';
 export { ThemeProvider, useTheme } from './ThemeProvider';

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { FunnelLeakCause } from '../../game/CapacityManager';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader, StatCard } from '../kit';
+import { Surface, SectionHeader, StatCard, IconBadge } from '../kit';
 
 /**
  * Pure read-model for the MANAGERIAL just-ended-day recap (#119). The
@@ -114,7 +114,8 @@ export function DayRecap({ model }: { model: DayRecapModel }) {
   const tally = matchTally(model);
   return (
     <Surface style={{ width: '100%', marginBottom: t.spacing.xxxl }}>
-      <View style={{ marginBottom: t.spacing.lg }}>
+      <View style={[styles.headerRow, { marginBottom: t.spacing.lg, gap: t.spacing.md }]}>
+        <IconBadge name="calendar" tone="primary" shape="rounded" />
         <SectionHeader title={`Day ${model.day} Recap`} />
       </View>
 
@@ -127,10 +128,16 @@ export function DayRecap({ model }: { model: DayRecapModel }) {
 
       <View style={[styles.statRow, { marginBottom: t.spacing.lg }]}>
         <View style={styles.statCell}>
-          <StatCard label="Units" value={model.sold} align="center" />
+          <StatCard label="Units" value={model.sold} align="center" icon="car-sport" iconTone="primary" />
         </View>
         <View style={styles.statCell}>
-          <StatCard label="Gross" value={money(model.gross)} align="center" />
+          <StatCard
+            label="Gross"
+            value={money(model.gross)}
+            align="center"
+            icon="cash"
+            iconTone="reward"
+          />
         </View>
       </View>
 
@@ -158,6 +165,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  headerRow: { flexDirection: 'row', alignItems: 'center' },
   emphasisWeight: { fontWeight: '700' },
   tabular: { fontVariant: ['tabular-nums'] },
   statRow: { flexDirection: 'row' },
