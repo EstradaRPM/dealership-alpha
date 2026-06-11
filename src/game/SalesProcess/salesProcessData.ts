@@ -26,6 +26,23 @@ const SpacedModifierSchema = z
   .partial()
   .strict();
 
+// Vehicle ATTRIBUTE axes (#231 S4) — the across-the-board physical traits honest
+// weather nuance rides, complementing the 6 persona-SPACED axes: drivetrain/
+// ground-clearance (`winterCapability`), convertible body (`openAir`), and fuel
+// economy (`fuelEfficiency`). Stored with the same categoryBase + per-template
+// override pattern so every template gets a coherent value with no per-model
+// hand-maintenance. Unit-scaled like SPACED; weather leans (data) bias the match
+// along these axes so the seasonal effect stays emergent (no per-model rules).
+const AttributeVectorSchema = z
+  .object({
+    winterCapability: unit,
+    openAir: unit,
+    fuelEfficiency: unit,
+  })
+  .strict();
+
+const AttributeOverrideSchema = AttributeVectorSchema.partial().strict();
+
 export const GATES = ['GREET', 'QUALIFY', 'DEMO', 'NEGOTIATE'] as const;
 const GateEnum = z.enum(GATES);
 
@@ -118,6 +135,11 @@ export const VehicleSpacedConfigSchema = z
         maxAbs: unit,
       })
       .strict(),
+    // #231 S4: per-category attribute base + per-template overrides. Categories
+    // here must cover the same set as `categoryBase` (the accessor throws on a
+    // category with no attribute base, mirroring `vehicleSpaced`).
+    attributeBase: z.record(z.string().min(1), AttributeVectorSchema),
+    attributeOverrides: z.record(z.string().min(1), AttributeOverrideSchema),
   })
   .strict();
 

@@ -54,5 +54,41 @@
       "comfort": 0.009
     },
     "maxAbs": 0.1
+  },
+  "attributeBase": {
+    "sedan": {
+      "winterCapability": 0.3,
+      "openAir": 0.05,
+      "fuelEfficiency": 0.8
+    },
+    "suv": {
+      "winterCapability": 0.7,
+      "openAir": 0.05,
+      "fuelEfficiency": 0.45
+    },
+    "truck": {
+      "winterCapability": 0.75,
+      "openAir": 0.03,
+      "fuelEfficiency": 0.3
+    }
+  },
+  "attributeOverrides": {
+    "corden_truck": {
+      "winterCapability": 0.82,
+      "fuelEfficiency": 0.25
+    },
+    "chevreau_truck": {
+      "winterCapability": 0.8,
+      "fuelEfficiency": 0.28
+    },
+    "sabaro_suv": {
+      "winterCapability": 0.8
+    },
+    "vanda_sedan": {
+      "fuelEfficiency": 0.9
+    },
+    "toraya_sedan": {
+      "fuelEfficiency": 0.85
+    }
   }
 }

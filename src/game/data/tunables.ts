@@ -162,6 +162,29 @@ export const TunablesSchema = z.object({
       busyMin: z.number().positive(),
       slowMax: z.number().positive(),
     }),
+    // New vehicle-attribute demand leans (#231 S4). Signed deltas over the
+    // *attribute* axes (winterCapability / openAir / fuelEfficiency — drivetrain,
+    // convertible body, fuel economy), the across-the-board complement to the
+    // persona-SPACED `attributeLeans` above. `bySeason` carries the climate
+    // regime (summer→open-air, winter→AWD) and `byCondition` the acute daily
+    // signal (snow/storm/rain→AWD); the two are summed per axis for the day. A
+    // positive lean tilts the auto-resolve match toward vehicles above-neutral
+    // on that attribute, so which models a day favors stays emergent through
+    // persona→preference→pickVehicleFor (#197) — no per-make/model rules. Empty
+    // ⇒ no effect (calm-day / config-absent back-compat). Magnitudes are minor
+    // first-pass calibration, tuned last.
+    attributeAxisLeans: z.object({
+      bySeason: z.object({
+        spring: z.record(z.string().min(1), z.number()),
+        summer: z.record(z.string().min(1), z.number()),
+        fall: z.record(z.string().min(1), z.number()),
+        winter: z.record(z.string().min(1), z.number()),
+      }),
+      byCondition: z.record(
+        z.string().min(1),
+        z.record(z.string().min(1), z.number()),
+      ),
+    }),
   }),
   // Live render loop (#121, design #107). UI-only: a wall-clock interval
   // drives FloorSim.step() at `baseTickIntervalMs / speed`. Game logic never

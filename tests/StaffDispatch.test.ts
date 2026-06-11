@@ -300,6 +300,7 @@ function setup(
     tradePolicyMultiplier?: () => number;
     salesProcessDeps?: StaffDispatchDeps['salesProcessDeps'];
     wantVectorBias?: StaffDispatchDeps['wantVectorBias'];
+    attributeLeanForDay?: StaffDispatchDeps['attributeLeanForDay'];
   } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
@@ -356,6 +357,7 @@ function setup(
     getHasGm: opts.getHasGm,
     salesProcessDeps: opts.salesProcessDeps,
     wantVectorBias: opts.wantVectorBias,
+    attributeLeanForDay: opts.attributeLeanForDay,
     // Deterministic FNI: never attach (keeps backGross = 0 so per-test math is exact).
     fniRng: () => 1.0,
     // #169: constant book seam + optional UCM condition read.
@@ -492,6 +494,23 @@ describe('StaffDispatch — real close path (#147)', () => {
       economy: 0.2,
       dependability: 0.2,
     });
+  });
+
+  it('attribute lean (#231 S4): attributeLeanForDay runs for the resolution day', () => {
+    const seenDays: number[] = [];
+    const { bus, sessions, events } = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+      // Records the call: proves the attribute-lean seam is live in the
+      // auto-resolve match path (the createWorld test asserts it's wired to
+      // Weather.attributeLeanForDay; the match-tilt test asserts the effect).
+      attributeLeanForDay: (day) => {
+        seenDays.push(day);
+        return { winterCapability: 0.3 };
+      },
+    });
+    sessions.set('cust:1', makeSession('cust:1', makeFinanceVisit('cust:1')));
+    admit(bus, 'cust:1', 1);
+    expect(events[0].outcome).toBe('closed');
+    expect(seenDays).toEqual([1]);
   });
 
   it('per-tick drain: N customers + < N inventory closes exactly inventory.length', () => {

@@ -24,6 +24,12 @@ const vehicleSpacedConfig: VehicleSpacedConfig = {
     perYearDelta: { safety: 0.02, appearance: 0.01, comfort: 0.01 },
     maxAbs: 0.1,
   },
+  attributeBase: {
+    sedan: { winterCapability: 0.3, openAir: 0.05, fuelEfficiency: 0.8 },
+  },
+  attributeOverrides: {
+    vanda_sedan: { fuelEfficiency: 0.9 },
+  },
 };
 
 const brandTiersConfig: BrandTiersConfig = {

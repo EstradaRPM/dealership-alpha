@@ -1565,6 +1565,17 @@ export function DealershipApp({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([axis]) => axis);
+    // Vehicle-attribute demand lean (#231 S4): the attribute axes today's
+    // weather (season + condition) favors — the readable surface of the match
+    // tilt toward weather-aligned units (snow → AWD, summer → open-top).
+    // Positive leans only (what the day *favors*); the effect itself is emergent.
+    const weatherLean = Object.entries(
+      world.weather.attributeLeanForDay(world.clock.currentDay),
+    )
+      .filter(([, delta]) => delta > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([axis]) => axis);
     const homeDashboard = buildHomeDashboard({
       businessName: world.tierManager.businessName || `${profile.name}'s Lot`,
       tierLabel: `Tier ${world.tierManager.currentTier} — ${tierEntry.label}`,
@@ -1588,6 +1599,7 @@ export function DealershipApp({
         forecastTemperatureF: forecastWeather.temperatureF,
         forecastConditionLabel: forecastWeather.conditionLabel,
         seasonLean,
+        weatherLean,
         // #231 S3: daily weather → traffic-volume outlook. Surfacing tomorrow's
         // makes reading the forecast an actionable planning signal.
         trafficOutlook: world.weather.trafficOutlookForDay(world.clock.currentDay),

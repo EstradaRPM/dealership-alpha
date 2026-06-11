@@ -166,7 +166,20 @@
       "snow": 0.7,
       "storm": 0.55
     },
-    "volumeOutlook": { "busyMin": 1.05, "slowMax": 0.9 }
+    "volumeOutlook": { "busyMin": 1.05, "slowMax": 0.9 },
+    "attributeAxisLeans": {
+      "bySeason": {
+        "spring": { "fuelEfficiency": 0.12 },
+        "summer": { "openAir": 0.3, "fuelEfficiency": 0.05 },
+        "fall": { "winterCapability": 0.05 },
+        "winter": { "winterCapability": 0.15, "openAir": -0.15 }
+      },
+      "byCondition": {
+        "snow": { "winterCapability": 0.2 },
+        "storm": { "winterCapability": 0.15 },
+        "rain": { "winterCapability": 0.1 }
+      }
+    }
   },
   "renderLoop": {
     "baseTickIntervalMs": 400,

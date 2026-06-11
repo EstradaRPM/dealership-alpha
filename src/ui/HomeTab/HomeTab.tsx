@@ -208,6 +208,13 @@ function Dashboard({
                   {model.calendar.weather.seasonLeanLabel}
                 </Text>
               ) : null}
+              {/* Vehicle-attribute lean (#231 S4): drivetrain/body/fuel traits
+                  today's weather tilts demand toward (snow → AWD/4WD). */}
+              {model.calendar.weather.weatherLeanLabel ? (
+                <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
+                  {model.calendar.weather.weatherLeanLabel}
+                </Text>
+              ) : null}
             </>
           ) : null}
         </Surface>

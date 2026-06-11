@@ -36,6 +36,19 @@ const CONFIG: WeatherConfig = {
   // S3: clear is a busy day, snow is a slow day; a value omitted (none here) ⇒ 1.
   conditionVolume: { clear: 1.2, snow: 0.6 },
   volumeOutlook: { busyMin: 1.05, slowMax: 0.9 },
+  // S4: vehicle-attribute leans. Winter season + snow condition both lean
+  // winterCapability so the day's lean is their sum (asserted below).
+  attributeAxisLeans: {
+    bySeason: {
+      spring: { fuelEfficiency: 0.1 },
+      summer: { openAir: 0.3 },
+      fall: {},
+      winter: { winterCapability: 0.15, openAir: -0.1 },
+    },
+    byCondition: {
+      snow: { winterCapability: 0.2 },
+    },
+  },
 };
 
 describe('#231 Weather — deterministic per-day projection', () => {
@@ -155,6 +168,30 @@ describe('#231 S3 Weather — daily weather → traffic volume', () => {
     const b = createWeather({ masterSeed: 7, config: CONFIG });
     expect(b.volumeMultiplierForDay(1)).toBe(w.volumeMultiplierForDay(1));
     expect(b.trafficOutlookForDay(300)).toBe(w.trafficOutlookForDay(300));
+  });
+});
+
+describe('#231 S4 Weather — vehicle-attribute demand lean', () => {
+  const w = createWeather({ masterSeed: 7, config: CONFIG });
+
+  it('sums the season + daily-condition lean per axis (day 300 ⇒ winter + snow)', () => {
+    // winter season: winterCapability +0.15, openAir −0.1; snow condition adds
+    // winterCapability +0.2 ⇒ winterCapability 0.35, openAir −0.1.
+    expect(w.weatherForDay(300).conditionId).toBe('snow');
+    expect(w.attributeLeanForDay(300)).toEqual({
+      winterCapability: 0.35,
+      openAir: -0.1,
+    });
+  });
+
+  it('is season-only when the day condition carries no lean (day 1 ⇒ spring, clear)', () => {
+    expect(w.weatherForDay(1).conditionId).toBe('clear'); // no byCondition entry
+    expect(w.attributeLeanForDay(1)).toEqual({ fuelEfficiency: 0.1 });
+  });
+
+  it('is deterministic: a fresh instance with the same seed leans identically', () => {
+    const b = createWeather({ masterSeed: 7, config: CONFIG });
+    expect(b.attributeLeanForDay(300)).toEqual(w.attributeLeanForDay(300));
   });
 });
 
@@ -290,5 +327,42 @@ describe('#231 Weather — reachable on the live Home calendar', () => {
     // the volume multiplier composes onto the demand-factor traffic multiplier.
     const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'createWorld.ts'), 'utf8');
     expect(src).toMatch(/weather\.volumeMultiplierForDay\(ctx\.day\)/);
+  });
+
+  // ── #231 S4: vehicle-attribute demand lean ──────────────────────────────────
+  const S4_INPUTS: HomeDashboardInputs = {
+    ...INPUTS,
+    weather: { ...INPUTS.weather!, weatherLean: ['winterCapability', 'fuelEfficiency'] },
+  };
+
+  it('formats the attribute lean as a "Weather favors:" line, axis ids → labels', () => {
+    const m = buildHomeDashboard(S4_INPUTS);
+    expect(m.calendar.weather?.weatherLeanLabel).toBe('Weather favors: AWD / 4WD, Fuel economy');
+  });
+
+  it('omits the weather-lean label when no attribute lean is supplied (back-compat)', () => {
+    const m = buildHomeDashboard(INPUTS);
+    expect(m.calendar.weather?.weatherLeanLabel).toBeUndefined();
+  });
+
+  it('renders the attribute-lean line on the live Home tab', () => {
+    const model = buildHomeDashboard(S4_INPUTS);
+    const { getByText } = render(
+      <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
+    );
+    expect(getByText('Weather favors: AWD / 4WD, Fuel economy')).toBeTruthy();
+  });
+
+  it('App.tsx derives the attribute lean off the live world and feeds it in', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    expect(src).toMatch(/world\.weather\.attributeLeanForDay\(world\.clock\.currentDay\)/);
+    expect(src).toMatch(/weatherLean,/);
+  });
+
+  it('createWorld wires the attribute lean into the live StaffDispatch match path', () => {
+    // #231 S4 anti-orphan: the lean must tilt the *resolution* match, not just
+    // render — the auto-resolve drain runs the argmax through it.
+    const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'createWorld.ts'), 'utf8');
+    expect(src).toMatch(/attributeLeanForDay: \(day\) => weather\.attributeLeanForDay\(day\)/);
   });
 });

@@ -85,6 +85,17 @@ export interface Weather {
    * tomorrow's forecast becomes an honest, learnable planning signal.
    */
   trafficOutlookForDay(day: number): TrafficOutlook;
+  /**
+   * The day's vehicle-ATTRIBUTE demand lean (#231 S4): signed per-axis deltas
+   * over the attribute axes (winterCapability / openAir / fuelEfficiency), the
+   * across-the-board complement to the persona-SPACED `wantLeanForDay`. Sums the
+   * season climate regime (`bySeason`) and the acute daily-condition signal
+   * (`byCondition`, keyed off the day's already-drawn condition ⇒ no new RNG,
+   * replay-safe). The match (#197) tilts toward vehicles whose attributes align
+   * with a positive lean, so which models a day favors stays emergent. Only
+   * non-zero axes present; an empty result means no lean.
+   */
+  attributeLeanForDay(day: number): Readonly<Record<string, number>>;
 }
 
 export interface WeatherDeps {
@@ -156,11 +167,24 @@ export function createWeather(deps: WeatherDeps): Weather {
     return 'steady';
   }
 
+  function attributeLeanForDay(day: number): Readonly<Record<string, number>> {
+    const { conditionId } = weatherForDay(day);
+    const { bySeason, byCondition } = config.attributeAxisLeans;
+    const seasonLean = bySeason[seasonForDay(day)] ?? {};
+    const conditionLean = byCondition[conditionId] ?? {};
+    const out: Record<string, number> = { ...seasonLean };
+    for (const axis of Object.keys(conditionLean)) {
+      out[axis] = (out[axis] ?? 0) + conditionLean[axis];
+    }
+    return out;
+  }
+
   return {
     weatherForDay,
     wantLeanForDay,
     leanWantVector,
     volumeMultiplierForDay,
     trafficOutlookForDay,
+    attributeLeanForDay,
   };
 }

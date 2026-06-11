@@ -54,6 +54,13 @@ export interface HomeDashboardInputs {
      */
     seasonLean?: string[];
     /**
+     * Vehicle-attribute axis ids today's weather favors (#231 S4), highest lean
+     * first — drivetrain/body/fuel traits (winterCapability / openAir /
+     * fuelEfficiency) the match tilts demand toward. Rendered as a learnable
+     * "what the weather's selling" line, distinct from the persona `seasonLean`.
+     */
+    weatherLean?: string[];
+    /**
      * Today's / tomorrow's daily-weather traffic outlook (#231 S3) — the
      * readable form of the volume multiplier riding demand. Optional so a
      * caller can supply weather without the outlook. The forecast outlook is
@@ -92,6 +99,8 @@ export interface HomeCalendarModel {
     forecastLabel: string;
     /** "Season favors: Reliability, Safety" (#231 S2); absent when no lean. */
     seasonLeanLabel?: string;
+    /** "Weather favors: AWD / 4WD" (#231 S4); absent when no attribute lean. */
+    weatherLeanLabel?: string;
   };
 }
 
@@ -129,6 +138,13 @@ const SPACED_AXIS_LABELS: Record<string, string> = {
   comfort: 'Comfort',
   economy: 'Fuel economy',
   dependability: 'Reliability',
+};
+
+/** Player-friendly labels for the vehicle-attribute axes (#231 S4 readout). */
+const ATTRIBUTE_AXIS_LABELS: Record<string, string> = {
+  winterCapability: 'AWD / 4WD',
+  openAir: 'Convertibles',
+  fuelEfficiency: 'Fuel economy',
 };
 
 /** Traffic-outlook ids → player-facing readout (#231 S3). */
@@ -190,6 +206,15 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
   const leanLabels = (input.weather?.seasonLean ?? [])
     .map((axis) => SPACED_AXIS_LABELS[axis] ?? axis)
     .filter((label) => label.length > 0);
+  // #231 S4: vehicle-attribute leans (drivetrain/body/fuel) the weather favors,
+  // de-duplicated so a label shared with a persona axis (Fuel economy) shows once.
+  const weatherLeanLabels = Array.from(
+    new Set(
+      (input.weather?.weatherLean ?? [])
+        .map((axis) => ATTRIBUTE_AXIS_LABELS[axis] ?? axis)
+        .filter((label) => label.length > 0),
+    ),
+  );
   // #231 S3: append the daily traffic outlook so the forecast becomes an
   // actionable "is tomorrow worth opening big?" planning signal, not just decor.
   const todaySuffix = input.weather?.trafficOutlook
@@ -204,6 +229,10 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
         forecastLabel: `Tomorrow: ${input.weather.forecastTemperatureF}° · ${input.weather.forecastConditionLabel}${forecastSuffix}`,
         seasonLeanLabel:
           leanLabels.length > 0 ? `Season favors: ${leanLabels.join(', ')}` : undefined,
+        weatherLeanLabel:
+          weatherLeanLabels.length > 0
+            ? `Weather favors: ${weatherLeanLabels.join(', ')}`
+            : undefined,
       }
     : undefined;
 

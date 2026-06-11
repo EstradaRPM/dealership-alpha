@@ -23,6 +23,17 @@ export type {
   SpacedVehicleInput,
   VehicleSpacedDeps,
 } from './vehicleSpaced';
+export {
+  vehicleAttributes,
+  weatherAttributeBonus,
+  ATTRIBUTE_AXES,
+  ATTRIBUTE_NEUTRAL,
+} from './vehicleAttributes';
+export type {
+  AttributeAxis,
+  AttributeVector,
+  VehicleAttributesDeps,
+} from './vehicleAttributes';
 
 export {
   GREEN_SALESPERSON,

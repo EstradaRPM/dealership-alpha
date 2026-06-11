@@ -66,6 +66,15 @@ export interface StaffDispatchDeps {
    */
   wantVectorBias?: (spaced: SpacedVector, day: number) => SpacedVector;
   /**
+   * Vehicle-attribute demand lean for the resolution day (#231 S4). Signed
+   * deltas over the attribute axes (winterCapability / openAir / fuelEfficiency)
+   * that tilt the match toward weather-aligned vehicles (AWD in snow, etc.).
+   * Passed straight into the matcher's `attributeLean`; the composition root
+   * wires it from `Weather.attributeLeanForDay`. Omitted ⇒ no lean
+   * (behavior-neutral; calibration + legacy/test harnesses unaffected).
+   */
+  attributeLeanForDay?: (day: number) => Readonly<Record<string, number>>;
+  /**
    * Honest wholesale book for a customer's trade-in (#169). Wired from the live
    * MarketEconomy book provider at the composition root (which owns the
    * CurrentVehicle→PricedVehicleInput cast). Omitting it disables trade
@@ -330,6 +339,9 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
     const pickDeps: PickVehicleDeps = {
       ...(deps.salesProcessDeps ?? {}),
       tier,
+      // #231 S4: the day's vehicle-attribute demand lean nudges the match toward
+      // weather-aligned units. Omitted seam ⇒ undefined ⇒ no effect.
+      attributeLean: deps.attributeLeanForDay?.(day),
     };
     const lot = deps.inventory.getLotVehicles();
     const match = pickVehicleForMatch(matchCustomer, lot, pickDeps);

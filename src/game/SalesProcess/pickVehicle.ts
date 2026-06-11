@@ -17,6 +17,10 @@ import {
   type SpacedVehicleInput,
   type VehicleSpacedDeps,
 } from './vehicleSpaced';
+import {
+  vehicleAttributes as computeVehicleAttributes,
+  weatherAttributeBonus,
+} from './vehicleAttributes';
 
 /**
  * Narrow structural lot vehicle: SPACED + price inputs + a stable id for
@@ -53,6 +57,15 @@ export interface PickVehicleDeps
     AffordabilityDeps {
   readonly marketPriceFn?: MarketPriceFn;
   readonly reputationBonusFn?: ReputationBonusFn;
+  /**
+   * The day's vehicle-attribute demand lean (#231 S4): signed deltas over the
+   * attribute axes (winterCapability / openAir / fuelEfficiency). Tilts the
+   * argmax toward vehicles whose attributes align with the day's weather — AWD
+   * in snow, convertibles in summer — so the seasonal effect stays emergent
+   * through the match. Omitted/empty ⇒ no effect (calm-day back-compat). The
+   * composition root wires this from `Weather.attributeLeanForDay`.
+   */
+  readonly attributeLean?: Readonly<Record<string, number>>;
 }
 
 const WANT_WEIGHT = 1;
@@ -134,10 +147,16 @@ export function pickVehicleForMatch(
 
     const fit = wantAxisFit(axisProfile, customer.customerSpaced, spaced);
     const listPrice = marketPriceFn(v);
+    // #231 S4: weather attribute lean nudges the argmax (AWD in snow, etc.).
+    // Zero when no lean is wired, so the persona match is otherwise untouched.
+    const attrBonus = deps.attributeLean
+      ? weatherAttributeBonus(deps.attributeLean, computeVehicleAttributes(v, deps))
+      : 0;
     const score =
       fit * WANT_WEIGHT -
       pricePenalty(listPrice, headroom) * customer.priceSensitivity +
-      reputationBonusFn(v.brand);
+      reputationBonusFn(v.brand) +
+      attrBonus;
 
     if (score > bestScore) {
       bestScore = score;

@@ -59,6 +59,24 @@ Affordability eligibility (#144) — pure, deterministic helpers for whether a d
 - `isEligible(customer, vehicle, deps?)` → dispatches on `paymentMethod`; finance requires `deps.tier`.
 - Narrow inputs: `AffordabilityCustomer { wealth, annualIncome, paymentMethod, cashSpendFraction?, downPaymentBehavior? }`, `CreditTierPolicy { apr, maxTerm, ptiCap, ltvCeiling }`. Caller assembles from Person/Visit + DealEngine tier.
 
+Vehicle-attribute accessor + weather tilt (#231 S4):
+
+- `vehicleAttributes(vehicle, deps?) → AttributeVector` — resolves the vehicle's
+  attribute axes (`winterCapability` / `openAir` / `fuelEfficiency`) from
+  `data/vehicle-spaced.json` `attributeBase` (per category) + `attributeOverrides`
+  (per template), clamped to [0,1]. Same `categoryBase`+override pattern as
+  `vehicleSpaced`; no brand/year layers (attributes are physical, not perception/
+  age). Throws on a category with no attribute base. These are *vehicle* traits,
+  distinct from the persona-SPACED axes; weather (not personality) creates the
+  demand for them.
+- `weatherAttributeBonus(lean, attrs) → number` — `Σ_axis lean[axis]·(attr − 0.5)`.
+  Exactly 0 for an empty lean. `pickVehicleForMatch` adds this to the argmax
+  `score` (via the optional `PickVehicleDeps.attributeLean`, wired from
+  `Weather.attributeLeanForDay`), tilting toward weather-aligned units while
+  leaving `matchQuality` (want-axis fit) untouched. `ATTRIBUTE_AXES` /
+  `ATTRIBUTE_NEUTRAL` exported for callers. v1 inventory carries no convertibles,
+  so `openAir` is inert until such a template exists.
+
 Accessor (#87):
 
 - `vehicleSpaced(vehicle, deps?)` → `SpacedVector`. Pure. Resolves SPACED in four layers: category base → per-template override (replace named axes; unknown template inherits the base) → brand-tier additive modifier (brand id → tier; unknown brand = no modifier) → deterministic bounded year modifier (`(year − referenceYear)` × per-axis delta, each clamped to ±`maxAbs`), then every axis clamped to [0,1]. `deps` lets tests inject configs; defaults to the bundled loaders. Input is the narrow structural `SpacedVehicleInput` (`category/templateId/brand/year`) — Inventory's `LotVehicle`/`AuctionListing` satisfy it without a module dependency.

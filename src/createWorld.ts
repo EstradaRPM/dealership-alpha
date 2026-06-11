@@ -678,6 +678,10 @@ export function createWorld(deps: {
         // through pickVehicleFor (#197) — winter nudges wants toward
         // dependability/safety, summer toward performance/looks, etc.
         wantVectorBias: (spaced, day) => weather.leanWantVector(spaced, day),
+        // #231 S4: vehicle-attribute demand lean. Tilts the match toward
+        // weather-aligned units (AWD/4WD on snow days, fuel-efficient sedans in
+        // spring), emergent through the same #197 match — no per-model rules.
+        attributeLeanForDay: (day) => weather.attributeLeanForDay(day),
         // #169: trade resolution. Book provider (adapted at this boundary) +
         // the UCM condition-read confidence. A used-car-manager on the roster
         // appraises the trade with confidence = their `condition_reading`

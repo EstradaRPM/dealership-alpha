@@ -30,6 +30,13 @@ onto this same pure core, they do not replace it.
   - `trafficOutlookForDay(day) → 'busy' | 'steady' | 'slow'` (**S3**) — the
     multiplier banded by `volumeOutlook` for the Home weather card, so reading
     tomorrow's forecast is a learnable planning signal.
+  - `attributeLeanForDay(day) → Record<axisId, number>` (**S4**) — the day's
+    *vehicle-attribute* demand lean: signed deltas over the attribute axes
+    (`winterCapability` / `openAir` / `fuelEfficiency`), the across-the-board
+    complement to `wantLeanForDay`. Sums the season climate regime
+    (`attributeAxisLeans.bySeason`) and the acute daily-condition signal
+    (`byCondition`, keyed off the day's drawn condition ⇒ no new RNG). Only
+    non-zero axes present; empty ⇒ no lean.
 - Types: `Weather`, `WeatherConfig`, `WeatherDeps`, `DayWeather`, `SpacedLike`,
   `TrafficOutlook`.
 
@@ -42,6 +49,24 @@ variance**, orthogonal to FloorSim's `seasonArrivalMultiplier` — the coarse
 SEASON baseline — so the two never double-count (season-constant × daily
 variance). The Home card surfaces today's + tomorrow's outlook so the forecast
 is actionable, not decorative.
+
+## Attribute lean (S4)
+Weather also nudges demand over *vehicle attributes* — drivetrain/ground
+clearance (`winterCapability`), convertible body (`openAir`), fuel economy
+(`fuelEfficiency`) — distinct from the persona-SPACED axes S2 leans. These are
+across-the-board: SalesProcess derives every template's attribute vector from
+`vehicle-spaced.json` (`attributeBase` + `attributeOverrides`), so a lean
+written over attributes gives every model a coherent response with no
+per-make/model rule. Wiring: `createWorld` passes
+`attributeLeanForDay: (day) => weather.attributeLeanForDay(day)` into the
+`StaffFloorDrain`; StaffDispatch hands it to the matcher's `attributeLean`, and
+`pickVehicleForMatch` adds `weatherAttributeBonus = Σ lean·(attr − 0.5)` to the
+argmax score — a positive lean tilts toward weather-aligned units (AWD in snow,
+open-tops in summer) while leaving `matchQuality` (want-axis fit, the #199
+payoff) untouched. Zero lean ⇒ zero effect (calm-day / lean-less back-compat).
+The lean is surfaced on the Home card as "Weather favors: AWD / 4WD". Note: v1
+inventory has no convertibles, so `openAir` is dormant (schema in place for a
+future template). Config: `weather.attributeAxisLeans { bySeason, byCondition }`.
 
 ## Demand lean (S2)
 Season nudges *what buyers want* along the existing 6 SPACED axes; which models
@@ -83,5 +108,6 @@ composition root reads `weatherForDay` to assemble the Home readout.
 ## Scope notes
 - S1 was **behavior-neutral on demand** (weather displayed only). S2 makes the
   season lean the customer want-vector in the live auto-resolve path. S3 rides
-  daily weather onto traffic VOLUME (above). Still ahead: the new attribute axes
-  drivetrain/convertible/fuel (S4) of #231.
+  daily weather onto traffic VOLUME (above). S4 adds the new vehicle-attribute
+  axes (drivetrain/convertible/fuel) and the per-condition attribute lean over
+  them (above). #231 is complete.
