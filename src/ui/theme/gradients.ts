@@ -25,8 +25,14 @@ export const gradients = {
   surfaceRaised: ['#313e58', '#212b3e'],
   /** Primary interactive fill (cyan) — glossy call-to-action bodies. */
   primary: ['#4fc6fb', '#2ea3dd'],
+  /** Dim companion fill (navy-blue) — secondary buttons. */
+  primaryDim: ['#27496f', '#163050'],
   /** Money & win moments (amber) — reward fills, tier-up flourishes. */
   reward: ['#fcd34d', '#f4a823'],
+  /** Positive/success fill (green) — healthy pace/target bars. */
+  positive: ['#5ee7b0', '#22b07d'],
+  /** Danger/negative fill (red) — behind-pace / loss bars. */
+  danger: ['#f87681', '#e23a46'],
   /**
    * The glossy top-highlight sheen layered over a raised surface — translucent
    * white fading to fully transparent. Sits above the fill, below the content.

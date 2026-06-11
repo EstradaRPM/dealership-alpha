@@ -30,6 +30,18 @@ export const elevation = {
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.09)',
   },
+  /**
+   * Soft colored halo — a glow cast in the element's OWN accent color (glossy
+   * primary button, progress-bar fill). Carries only the soft, offset-less
+   * shadow geometry; the caster supplies `shadowColor` from a color role, so a
+   * blue button glows blue and a green bar glows green off one geometry.
+   */
+  glow: {
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 6,
+  },
   /** High above everything — modals, menus, floating actions. */
   floating: {
     shadowColor: '#000000',
