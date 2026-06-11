@@ -39,6 +39,14 @@ export interface HomeDashboardInputs {
   /** Contextual pre-open nudge that deep-links into Operations; e.g. "Lot thin on trucks". */
   inventoryNudge?: string;
   /**
+   * Monthly tier-gate tracer (#232). A minimal live readout of the gate
+   * engine's per-face projections — the full gate-progress strip is S3b. Each
+   * line is one active face, already framed in its native idiom by the
+   * composition root (flow = pace, level = gauge, trend = arrow). Optional so
+   * pre-gate callers/tests still build a model.
+   */
+  gate?: { lines: string[] };
+  /**
    * Today's weather + an honest one-day forecast (#231). Optional so callers
    * and tests predating the weather mechanic still build a model.
    */
@@ -121,6 +129,8 @@ export interface HomeDashboardModel {
   reputation: { score: number; csiLabel: string };
   calendar: HomeCalendarModel;
   stats: HomeStat[];
+  /** Monthly tier-gate tracer lines (#232); absent until the gate is wired. */
+  gate?: { lines: string[] };
 }
 
 const SEASON_LABELS: Record<SeasonName, string> = {
@@ -278,5 +288,6 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
       weather,
     },
     stats,
+    gate: input.gate,
   };
 }

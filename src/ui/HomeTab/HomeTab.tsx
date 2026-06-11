@@ -220,6 +220,31 @@ function Dashboard({
         </Surface>
       </View>
 
+      {/* Monthly tier-gate tracer (#232). A minimal live readout proving the
+          gate engine's per-face projections render; the full gate-progress strip
+          is S3b. Each line is one active face in its native idiom. */}
+      {model.gate && model.gate.lines.length > 0 ? (
+        <View style={{ marginTop: t.spacing.md }} testID="home-gate-tracer">
+          <Surface>
+            <Text style={{ ...t.typography.statLabel, color: t.colors.textMuted }}>
+              MONTHLY GATE
+            </Text>
+            {model.gate.lines.map((line, i) => (
+              <Text
+                key={i}
+                style={{
+                  ...t.typography.caption,
+                  color: t.colors.textSecondary,
+                  marginTop: t.spacing.xxs,
+                }}
+              >
+                {line}
+              </Text>
+            ))}
+          </Surface>
+        </View>
+      ) : null}
+
       {/* Quick-stat strip */}
       <View style={cardRow}>
         {model.stats.map((s) => {

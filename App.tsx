@@ -1576,6 +1576,24 @@ export function DealershipApp({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
       .map(([axis]) => axis);
+    // Monthly tier-gate tracer (#232): format the engine's live per-face
+    // projections into honest one-line readouts, each in its native idiom
+    // (decision 3). Minimal by design — the full gate-progress strip is S3b.
+    const gateLines = world.tierGate.getProgress().faces.map((f) => {
+      if (f.kind === 'flow') {
+        const proj = Math.round(f.projectedLanding);
+        const pace = f.onPace
+          ? `on pace (proj ${proj})`
+          : `need ${f.onPaceRateNeeded.toFixed(1)}/day (proj ${proj})`;
+        return `${f.label}: ${Math.round(f.current)}/${Math.round(f.target)} · ${pace}`;
+      }
+      if (f.kind === 'level') {
+        const arrow = f.trend === 'climbing' ? '↗' : f.trend === 'sliding' ? '↘' : '→';
+        return `${f.label}: avg $${Math.round(f.avgLevel).toLocaleString()} vs $${Math.round(f.threshold).toLocaleString()} ${arrow}`;
+      }
+      const arrow = f.trend === 'climbing' ? '↗' : f.trend === 'sliding' ? '↘' : '→';
+      return `${f.label}: ${Math.round(f.rollingAvg)} vs ${Math.round(f.threshold)} ${arrow}`;
+    });
     const homeDashboard = buildHomeDashboard({
       businessName: world.tierManager.businessName || `${profile.name}'s Lot`,
       tierLabel: `Tier ${world.tierManager.currentTier} — ${tierEntry.label}`,
@@ -1593,6 +1611,7 @@ export function DealershipApp({
       inventoryNudge: demandReadout.coverageGap
         ? `Lot thin on ${demandReadout.coverageGap.label}`
         : undefined,
+      gate: gateLines.length > 0 ? { lines: gateLines } : undefined,
       weather: {
         temperatureF: todayWeather.temperatureF,
         conditionLabel: todayWeather.conditionLabel,

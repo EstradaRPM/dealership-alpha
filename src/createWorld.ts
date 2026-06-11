@@ -97,6 +97,7 @@ import { createServiceFloorDrain } from './game/ServiceDispatch';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createHistoryLog, type HistoryLog } from './game/HistoryLog';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
+import { createTierGate, type TierGate } from './game/TierGate';
 import {
   createCompetitorMarket,
   loadCompetitors,
@@ -135,6 +136,7 @@ export interface World {
   telemetry: Telemetry;
   historyLog: HistoryLog;
   kpiDashboard: KPIDashboard;
+  tierGate: TierGate;
   dayLoop: DayLoopController;
   staffTaxonomy: StaffTaxonomy;
   marketEconomy: MarketEconomy;
@@ -528,6 +530,21 @@ export function createWorld(deps: {
   // Month-close hook (#123): the KPIDashboard supplies the month-to-date
   // snapshot the interstitial composes.
   const kpiDashboard = createKPIDashboard({ bus });
+  // TierGate (#232): the monthly tier-GATE engine. Accrues each day's haul onto
+  // the multi-dimensional monthly bars (units/gross from deal:closed; cash/csi
+  // sampled nightly off the live providers below), computes honest per-face
+  // pace/projection for the Home strip, and fires the single 4-band verdict on
+  // clock:month_ended. Built after Economy/Reputation/TierManager so its signal
+  // closures + tier read are live. Persisted via the world snapshot (#188).
+  const tierGate = createTierGate({
+    bus,
+    getCurrentDay: () => clock.currentDay,
+    getCurrentTier: () => tierManager.currentTier,
+    signals: {
+      cash: () => economy.cash,
+      csi: () => reputation.reviewScore,
+    },
+  });
 
   // CustomerPool behind FloorSim's #99 customer-source seam: FloorSim's own
   // arrival RNG decides the admitted count per tick; the adapter only mints
@@ -807,6 +824,7 @@ export function createWorld(deps: {
     telemetry,
     historyLog,
     kpiDashboard,
+    tierGate,
     dayLoop,
     staffTaxonomy,
     marketEconomy,

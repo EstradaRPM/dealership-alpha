@@ -37,6 +37,25 @@ export interface EventMap {
   // last in the advanceDay() sequence so week-close consumers settle first.
   'clock:month_ended': { day: number };
 
+  // TierGate — the single 4-band monthly verdict (#232), fired once on
+  // clock:month_ended on the multi-dimensional tier GATE. `overall` is the WORST
+  // active face (the gate is multi-dimensional; the binding constraint grades
+  // the month — macro-loop-spine §10). `faces` carries each active face's band +
+  // its achieved/target `ratio`. This is where month-end confetti / bonus /
+  // escalation hang — never a daily grade (goals-targets-design decision 1).
+  'tierGate:month_verdict': {
+    day: number;
+    /** Running gameplay month index (1-based). */
+    month: number;
+    tier: number;
+    overall: 'exceed' | 'meet' | 'nearMiss' | 'miss';
+    faces: {
+      id: string;
+      band: 'exceed' | 'meet' | 'nearMiss' | 'miss';
+      ratio: number;
+    }[];
+  };
+
   // FloorSim intra-day logical-tick loop. Public contract LOCKED at the #99
   // HITL gate (see issue #99 sign-off for the authoritative surface). Runs
   // strictly between clock:day_started and the player-gated composition-root

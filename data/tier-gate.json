@@ -1,0 +1,22 @@
+{
+  "trendWindowDays": 14,
+  "trendEpsilon": 0.5,
+  "levelTrendEpsilon": 2000,
+  "bands": {
+    "exceed": 1.1,
+    "meet": 1.0,
+    "nearMiss": 0.85
+  },
+  "faces": {
+    "units": { "kind": "flow", "label": "Retail Units" },
+    "gross": { "kind": "flow", "label": "Gross Profit" },
+    "cash": { "kind": "level", "label": "Cash on Hand" },
+    "csi": { "kind": "trend", "label": "CSI" },
+    "facility": { "kind": "stepped", "label": "Facility / Image" }
+  },
+  "tiers": {
+    "1": { "units": 8, "cash": 60000 },
+    "2": { "units": 15, "gross": 30000, "cash": 150000 },
+    "3": { "units": 28, "gross": 70000, "cash": 420000, "csi": 75 }
+  }
+}

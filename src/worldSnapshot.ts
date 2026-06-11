@@ -37,6 +37,10 @@ import type { FollowUpPoolSnapshot } from './game/FollowUpPool';
 import type { ServiceQueueSnapshot } from './game/ServiceQueue';
 import type { DepartmentQueueSnapshot } from './game/DepartmentQueue';
 import type { KPIDashboardSnapshot } from './game/KPIDashboard';
+import {
+  createDefaultTierGateSnapshot,
+  type TierGateSnapshot,
+} from './game/TierGate';
 import type { TelemetrySnapshot } from './game/Telemetry';
 import {
   createDefaultHistoryLogSnapshot,
@@ -51,7 +55,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 4;
+export const WORLD_SNAPSHOT_VERSION = 5;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -76,6 +80,8 @@ export type WorldSnapshot = {
     readonly serviceQueue: ServiceQueueSnapshot;
     readonly departmentQueue: DepartmentQueueSnapshot;
     readonly kpiDashboard: KPIDashboardSnapshot;
+    // Month-to-date tier-gate accruals + rolling samples (#232).
+    readonly tierGate: TierGateSnapshot;
     readonly telemetry: TelemetrySnapshot;
     readonly demandShaper: DemandShaperSnapshot;
     // Durable player-facing history log (#208).
@@ -140,6 +146,13 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         historyLog: createDefaultHistoryLogSnapshot(),
       },
     }),
+    4: (snap) => ({
+      version: 5,
+      modules: {
+        ...snap.modules,
+        tierGate: createDefaultTierGateSnapshot(),
+      },
+    }),
   };
 
 /**
@@ -192,6 +205,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       serviceQueue: world.serviceQueue.snapshot(),
       departmentQueue: world.departmentQueue.snapshot(),
       kpiDashboard: world.kpiDashboard.snapshot(),
+      tierGate: world.tierGate.snapshot(),
       telemetry: world.telemetry.snapshot(),
       demandShaper: world.demandShaper.snapshot(),
       historyLog: world.historyLog.snapshot(),
@@ -223,6 +237,7 @@ export function restoreWorld(
   world.serviceQueue.restore(snap.modules.serviceQueue);
   world.departmentQueue.restore(snap.modules.departmentQueue);
   world.kpiDashboard.restore(snap.modules.kpiDashboard);
+  world.tierGate.restore(snap.modules.tierGate);
   world.telemetry.restore(snap.modules.telemetry);
   world.demandShaper.restore(snap.modules.demandShaper);
   world.historyLog.restore(snap.modules.historyLog);
