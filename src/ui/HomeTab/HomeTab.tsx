@@ -7,7 +7,16 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader, StatCard, Pill, IconBadge } from '../kit';
+import {
+  Surface,
+  SectionHeader,
+  StatCard,
+  Pill,
+  IconBadge,
+  GradientSurface,
+  type IconName,
+  type IconBadgeTone,
+} from '../kit';
 import type { DayLoopState } from '../../game/DayLoopController';
 import { DayRecap, type DayRecapModel } from '../DayRecap';
 import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
@@ -21,6 +30,15 @@ const HERO_BY_TIER: Partial<Record<number, ImageSourcePropType>> = {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   1: require('../../../assets/hero/lot-tier1.jpg'),
   // 2 and 3 added when art lands (#251)
+};
+
+/** Leading glyph + accent per quick-stat tile (#240), keyed by the read-model's
+ *  stat key. View-side mapping so the read model stays presentation-free; an
+ *  unknown key renders a plain tile. */
+const STAT_ICONS: Record<string, { icon: IconName; tone: IconBadgeTone }> = {
+  leads: { icon: 'people', tone: 'primary' },
+  inventory: { icon: 'car-sport', tone: 'accent' },
+  service: { icon: 'construct', tone: 'positive' },
 };
 
 export interface HomeTabProps {
@@ -166,7 +184,7 @@ function Dashboard({
               Reputation
             </Text>
             <View style={{ marginTop: t.spacing.xs, alignSelf: 'flex-start' }}>
-              <Pill tone="positive" label={model.reputation.csiLabel} />
+              <Pill tone="positive" variant="soft" label={model.reputation.csiLabel} />
             </View>
           </Surface>
         </View>
@@ -175,35 +193,56 @@ function Dashboard({
       {/* Calendar */}
       <View style={{ marginTop: t.spacing.md }}>
         <Surface>
-          <View
-            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}
-          >
-            <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
-              Day {model.calendar.day}
-            </Text>
-            <Pill tone="neutral" label={model.calendar.seasonLabel} />
+          {/* Skeuo day-badge (#240): the mockup's calendar-page "DAY 42" tile
+              replaces the plain "Day N" headline; the calendar facts ride
+              alongside it. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
+            <DayBadge day={model.calendar.day} />
+            <View style={{ flex: 1 }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
+                  Week {model.calendar.week}
+                </Text>
+                <Pill tone="neutral" variant="soft" label={model.calendar.seasonLabel} />
+              </View>
+              <Text style={subValue}>
+                Month {model.calendar.month} · Q{model.calendar.quarter}{' '}
+                {model.calendar.seasonLabel}
+              </Text>
+              {/* Sold this month X / target (#233 S3b) — replaces the mockup's
+                  static "16/10"; backed by the gate's units flow face. */}
+              {model.calendar.soldThisMonth ? (
+                <Text
+                  style={{ ...subValue, marginTop: t.spacing.xs }}
+                  testID="home-sold-this-month"
+                >
+                  Sold this month {model.calendar.soldThisMonth.current} /{' '}
+                  {model.calendar.soldThisMonth.target}
+                </Text>
+              ) : null}
+            </View>
           </View>
-          <Text style={subValue}>
-            Week {model.calendar.week} · Month {model.calendar.month} · Q
-            {model.calendar.quarter} {model.calendar.seasonLabel}
-          </Text>
-          {/* Sold this month X / target (#233 S3b) — replaces the mockup's
-              static "16/10"; backed by the gate's units flow face. */}
-          {model.calendar.soldThisMonth ? (
-            <Text style={{ ...subValue, marginTop: t.spacing.xs }} testID="home-sold-this-month">
-              Sold this month {model.calendar.soldThisMonth.current} /{' '}
-              {model.calendar.soldThisMonth.target}
-            </Text>
-          ) : null}
           <MiniCalendar days={model.calendar.miniCal} columns={7} />
           {/* Weather readout (#231): today's conditions + an honest one-day
               forecast. Renders only when the composition root supplied weather. */}
           {model.calendar.weather ? (
-            <>
+            <Surface
+              variant="inset"
+              padded={false}
+              style={{ marginTop: t.spacing.sm, padding: t.spacing.md }}
+            >
+              {/* Weather sits in an inset well (#240's soft-fill sweep) so the
+                  readout reads as a recessed instrument inside the card. */}
               {/* Stacked, not a space-between row (#238): both the conditions
                   line and the forecast can run wide, so a row let them collide.
                   Today's reads as the headline; tomorrow's sits beneath it. */}
-              <View style={{ marginTop: t.spacing.sm }}>
+              <View>
                 <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
                   {model.calendar.weather.todayLabel}
                 </Text>
@@ -226,7 +265,7 @@ function Dashboard({
                   {model.calendar.weather.weatherLeanLabel}
                 </Text>
               ) : null}
-            </>
+            </Surface>
           ) : null}
         </Surface>
       </View>
@@ -243,7 +282,13 @@ function Dashboard({
         {model.stats.map((s) => {
           const tile = (
             <Surface>
-              <StatCard label={s.label} value={s.value} align="center" />
+              <StatCard
+                label={s.label}
+                value={s.value}
+                align="center"
+                icon={STAT_ICONS[s.key]?.icon}
+                iconTone={STAT_ICONS[s.key]?.tone}
+              />
               {s.note ? (
                 <Text
                   style={{
@@ -279,6 +324,57 @@ function Dashboard({
   );
 }
 
+/**
+ * The mockup's calendar-page "DAY 42" tile (#240): a primary-gradient header
+ * strip over the big day number on a raised page. Mirrors `Surface`'s
+ * frame/fill split so the bevel shadow isn't clipped by the page's rounded
+ * corners.
+ */
+function DayBadge({ day }: { day: number }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        borderRadius: t.radius.md,
+        backgroundColor: t.colors.surfaceRaised,
+        ...t.elevation.raised,
+      }}
+      testID="home-day-badge"
+    >
+      <View style={{ borderRadius: t.radius.md, overflow: 'hidden' }}>
+        <GradientSurface
+          gradient="primary"
+          style={{
+            paddingVertical: t.spacing.xxs,
+            paddingHorizontal: t.spacing.md,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ ...t.typography.badge, color: t.colors.onAccent }}>DAY</Text>
+        </GradientSurface>
+        <GradientSurface
+          gradient="surfaceRaised"
+          style={{
+            paddingVertical: t.spacing.xs,
+            paddingHorizontal: t.spacing.md,
+            alignItems: 'center',
+          }}
+        >
+          <Text
+            style={{
+              ...t.typography.statValue,
+              color: t.colors.textPrimary,
+              fontVariant: ['tabular-nums'],
+            }}
+          >
+            {day}
+          </Text>
+        </GradientSurface>
+      </View>
+    </View>
+  );
+}
+
 function MiniCalendar({ days, columns }: { days: MiniCalDay[]; columns: number }) {
   const t = useTheme();
   const cell: ViewStyle = {
@@ -288,7 +384,11 @@ function MiniCalendar({ days, columns }: { days: MiniCalDay[]; columns: number }
     alignItems: 'center',
     justifyContent: 'center',
   };
-  const todayCell: ViewStyle = { ...cell, backgroundColor: t.colors.accent };
+  const cellText = (isToday: boolean): TextStyle => ({
+    ...t.typography.caption,
+    color: isToday ? t.colors.onAccent : t.colors.textMuted,
+    fontVariant: ['tabular-nums'],
+  });
   return (
     <View
       style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: t.spacing.sm }}
@@ -303,17 +403,17 @@ function MiniCalendar({ days, columns }: { days: MiniCalDay[]; columns: number }
             marginVertical: t.spacing.xxs,
           }}
         >
-          <View style={d.isToday ? todayCell : cell}>
-            <Text
-              style={{
-                ...t.typography.caption,
-                color: d.isToday ? t.colors.onAccent : t.colors.textMuted,
-                fontVariant: ['tabular-nums'],
-              }}
-            >
-              {d.dayOfMonth}
-            </Text>
-          </View>
+          {/* Today pops as a glossy gradient pip (#240's sweep); other days
+              stay quiet flat cells. */}
+          {d.isToday ? (
+            <GradientSurface gradient="primary" style={{ ...cell, overflow: 'hidden' }}>
+              <Text style={cellText(true)}>{d.dayOfMonth}</Text>
+            </GradientSurface>
+          ) : (
+            <View style={cell}>
+              <Text style={cellText(false)}>{d.dayOfMonth}</Text>
+            </View>
+          )}
         </View>
       ))}
     </View>

@@ -1,7 +1,15 @@
 import React from 'react';
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader, Pill } from '../kit';
+import {
+  Surface,
+  SectionHeader,
+  Pill,
+  IconBadge,
+  ProgressBar,
+  type IconName,
+  type IconBadgeTone,
+} from '../kit';
 import type {
   GateStripModel,
   FlowFaceView,
@@ -34,6 +42,7 @@ export function GateStrip({ model }: { model: GateStripModel }) {
           {model.percentOnTrack != null ? (
             <Pill
               tone={model.percentOnTrack >= 100 ? 'positive' : 'info'}
+              variant="soft"
               label={`${model.percentOnTrack}% on track`}
             />
           ) : null}
@@ -54,24 +63,47 @@ export function GateStrip({ model }: { model: GateStripModel }) {
   );
 }
 
+/** Per-face glyph + accent for the leading tile (#240). Keyed by the TierGate
+ *  face ids (`units`/`gross`/`cash`/`csi`/`facility`); an unknown id simply
+ *  renders no tile, so new faces degrade gracefully. */
+const FACE_ICONS: Record<string, { icon: IconName; tone: IconBadgeTone }> = {
+  units: { icon: 'car-sport', tone: 'primary' },
+  gross: { icon: 'cash', tone: 'reward' },
+  cash: { icon: 'wallet', tone: 'positive' },
+  csi: { icon: 'star', tone: 'accent' },
+  facility: { icon: 'business', tone: 'muted' },
+};
+
 function faceHeader(t: ReturnType<typeof useTheme>): {
   row: ViewStyle;
-  label: TextStyle;
   value: TextStyle;
 } {
   return {
     row: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'baseline',
+      alignItems: 'center',
     },
-    label: { ...t.typography.statLabel, color: t.colors.textMuted },
     value: {
       ...t.typography.statLabel,
       color: t.colors.textSecondary,
       fontVariant: ['tabular-nums'],
     },
   };
+}
+
+/** Leading icon tile + face label — the header's left group. */
+function FaceLabel({ id, label }: { id: string; label: string }) {
+  const t = useTheme();
+  const face = FACE_ICONS[id];
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}>
+      {face ? (
+        <IconBadge name={face.icon} tone={face.tone} variant="soft" size="sm" />
+      ) : null}
+      <Text style={{ ...t.typography.statLabel, color: t.colors.textMuted }}>{label}</Text>
+    </View>
+  );
 }
 
 /** Trend arrow + tone. */
@@ -90,36 +122,22 @@ function TrendArrow({ trend }: { trend: 'up' | 'down' | 'flat' }) {
 function FlowFace({ face }: { face: FlowFaceView }) {
   const t = useTheme();
   const h = faceHeader(t);
-  // Two-segment bar: the settled month-to-date portion plus today's haul tick in
-  // the reward tone, so the day's contribution is visibly filling the bar.
-  const track: ViewStyle = {
-    height: t.spacing.sm,
-    borderRadius: t.radius.pill,
-    backgroundColor: t.colors.base,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    marginTop: t.spacing.xs,
-    ...t.elevation.inset,
-  };
-  const priorPct = Math.max(0, Math.min(1, face.priorFill)) * 100;
-  const todayPct = Math.max(0, Math.min(1, face.todayFill)) * 100;
-  const priorColor = face.tone === 'positive' ? t.colors.positive : t.colors.primary;
   return (
     <View>
       <View style={h.row}>
-        <Text style={h.label}>{face.label}</Text>
+        <FaceLabel id={face.id} label={face.label} />
         <Text style={h.value}>{face.valueLabel}</Text>
       </View>
-      <View style={track}>
-        <View
-          style={{ width: `${priorPct}%`, height: '100%', backgroundColor: priorColor }}
+      {/* Two-segment gradient bar (#237/#240): the settled month-to-date portion
+          plus today's haul tick in the reward tone, so the day's contribution is
+          visibly filling the bar. */}
+      <View style={{ marginTop: t.spacing.xs }}>
+        <ProgressBar
+          value={face.priorFill}
+          tone={face.tone === 'positive' ? 'positive' : 'primary'}
+          tick={face.todayFill}
+          tickTestID={`gate-today-tick-${face.id}`}
         />
-        {todayPct > 0 ? (
-          <View
-            style={{ width: `${todayPct}%`, height: '100%', backgroundColor: t.colors.reward }}
-            testID={`gate-today-tick-${face.id}`}
-          />
-        ) : null}
       </View>
       <Text
         style={{
@@ -137,20 +155,10 @@ function FlowFace({ face }: { face: FlowFaceView }) {
 function LevelFace({ face }: { face: LevelFaceView }) {
   const t = useTheme();
   const h = faceHeader(t);
-  const track: ViewStyle = {
-    height: t.spacing.sm,
-    borderRadius: t.radius.pill,
-    backgroundColor: t.colors.base,
-    overflow: 'hidden',
-    marginTop: t.spacing.xs,
-    ...t.elevation.inset,
-  };
-  const pct = Math.max(0, Math.min(1, face.fill)) * 100;
-  const fillColor = face.meets ? t.colors.positive : t.colors.primary;
   return (
     <View>
       <View style={h.row}>
-        <Text style={h.label}>{face.label}</Text>
+        <FaceLabel id={face.id} label={face.label} />
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: t.spacing.xs }}>
           <Text style={h.value}>
             {face.valueLabel} {face.thresholdLabel}
@@ -158,8 +166,8 @@ function LevelFace({ face }: { face: LevelFaceView }) {
           <TrendArrow trend={face.trend} />
         </View>
       </View>
-      <View style={track}>
-        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: fillColor }} />
+      <View style={{ marginTop: t.spacing.xs }}>
+        <ProgressBar value={face.fill} tone={face.meets ? 'positive' : 'primary'} />
       </View>
     </View>
   );
@@ -171,7 +179,7 @@ function TrendFace({ face }: { face: TrendFaceView }) {
   return (
     <View>
       <View style={h.row}>
-        <Text style={h.label}>{face.label}</Text>
+        <FaceLabel id={face.id} label={face.label} />
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: t.spacing.xs }}>
           <Text style={h.value}>
             {face.valueLabel} {face.thresholdLabel}

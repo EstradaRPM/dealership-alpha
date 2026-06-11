@@ -96,7 +96,10 @@ describe('#230 Home dashboard — reachable through the live pipeline', () => {
     // dashboard body (#238); the dashboard leads with the cash card.
     expect(getByText('$1,247,503')).toBeTruthy();
     expect(getByText('Very Good')).toBeTruthy(); // CSI band
-    expect(getByText('Day 42')).toBeTruthy();
+    // The day now renders as the skeuo calendar-page badge (#240): a "DAY"
+    // header strip over the number, not a single "Day 42" text run.
+    expect(getByTestId('home-day-badge')).toBeTruthy();
+    expect(getByText('42')).toBeTruthy();
     expect(getByTestId('home-mini-calendar')).toBeTruthy();
     expect(getByText('Pending Leads')).toBeTruthy();
     expect(getByText('In Service')).toBeTruthy();

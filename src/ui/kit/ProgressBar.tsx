@@ -11,28 +11,39 @@ export interface ProgressBarProps {
   value: number;
   /** Fill color role. Default `primary`. */
   tone?: ProgressTone;
+  /**
+   * Optional second segment appended after the main fill, as its own [0,1]
+   * fraction of the track — e.g. today's haul ticking up a month-to-date pace
+   * bar. Omit (or 0) for the plain single-fill bar.
+   */
+  tick?: number;
+  /** Color role for the tick segment. Default `reward` (the win accent). */
+  tickTone?: ProgressTone;
+  /** testID hung on the tick segment, for visibility assertions. */
+  tickTestID?: string;
+}
+
+/** Every `ProgressTone` is also a gradient role + flat color role of the same name. */
+function roles(tone: ProgressTone): GradientToken {
+  return tone;
 }
 
 /**
  * Horizontal fill bar — the targets/pace bars from the mockups. An inset track
- * groove holding a gradient fill that glows in its own tone. Presentation only;
- * the caller computes the ratio.
+ * groove holding a gradient fill that glows in its own tone; an optional second
+ * `tick` segment rides the end of the fill (the daily-contribution reward
+ * beat). Presentation only; the caller computes the ratios.
  */
-export function ProgressBar({ value, tone = 'primary' }: ProgressBarProps) {
+export function ProgressBar({
+  value,
+  tone = 'primary',
+  tick,
+  tickTone = 'reward',
+  tickTestID,
+}: ProgressBarProps) {
   const t = useTheme();
   const pct = Math.max(0, Math.min(1, value)) * 100;
-  // Each tone maps to a matching gradient role + glow color; `primary` covers
-  // the default and any unlisted tone.
-  const gradient: GradientToken =
-    tone === 'positive' ? 'positive' : tone === 'reward' ? 'reward' : tone === 'danger' ? 'danger' : 'primary';
-  const glow =
-    tone === 'positive'
-      ? t.colors.positive
-      : tone === 'reward'
-        ? t.colors.reward
-        : tone === 'danger'
-          ? t.colors.danger
-          : t.colors.primary;
+  const tickPct = Math.max(0, Math.min(1, tick ?? 0)) * 100;
 
   const track: ViewStyle = {
     height: t.spacing.md,
@@ -41,18 +52,41 @@ export function ProgressBar({ value, tone = 'primary' }: ProgressBarProps) {
     justifyContent: 'center',
     ...t.elevation.inset,
   };
+
+  if (tickPct > 0) {
+    // Two-segment mode: settled fill + appended tick run squared inside the
+    // track; the track's pill radius clips both ends (glow would be clipped
+    // anyway, so the segments skip it).
+    const segTrack: ViewStyle = {
+      ...track,
+      flexDirection: 'row',
+      justifyContent: 'flex-start',
+      overflow: 'hidden',
+    };
+    return (
+      <View style={segTrack}>
+        <GradientSurface gradient={roles(tone)} style={{ width: `${pct}%`, height: '100%' }} />
+        <GradientSurface
+          gradient={roles(tickTone)}
+          style={{ width: `${tickPct}%`, height: '100%' }}
+          testID={tickTestID}
+        />
+      </View>
+    );
+  }
+
   // Pill-rounded fill carries its own soft glow; the track keeps the groove.
   const fill: ViewStyle = {
     width: `${pct}%`,
     height: '100%',
     borderRadius: t.radius.pill,
     ...t.elevation.glow,
-    shadowColor: glow,
+    shadowColor: t.colors[tone],
   };
 
   return (
     <View style={track}>
-      <GradientSurface gradient={gradient} style={fill} />
+      <GradientSurface gradient={roles(tone)} style={fill} />
     </View>
   );
 }
