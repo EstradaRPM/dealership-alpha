@@ -52,6 +52,10 @@ export const colors = {
    *  recap). The one place a translucent full-screen backdrop is themed. */
   scrim: 'rgba(8,12,20,0.78)',
 
+  /** Drop-shadow color for text sitting directly on hero art — pairs with the
+   *  hero scrim gradients to guarantee legibility over any photo. */
+  heroTextShadow: 'rgba(4,8,16,0.85)',
+
   /**
    * Soft translucent accent tints — the "filled / soft-glow" backgrounds behind
    * a soft `IconBadge` tile or a soft `Pill` (#236). One per accent so the chip

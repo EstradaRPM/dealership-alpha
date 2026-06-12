@@ -1796,6 +1796,7 @@ export function DealershipApp({
               world.tierManager.businessName || `${profile.name}'s Lot`
             }
             tierLabel={`Tier ${world.tierManager.currentTier} — ${tierEntry.label}`}
+            tierCompact={`T${world.tierManager.currentTier}`}
             stats={headerStats}
             heroSource={
               HERO_BY_TIER[world.tierManager.currentTier] ?? HERO_BY_TIER[1]

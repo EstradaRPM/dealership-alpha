@@ -52,6 +52,8 @@ export interface AppShellProps {
   businessName: string;
   /** Pre-formatted tier line, e.g. "Tier 1 — Micro Lot". */
   tierLabel: string;
+  /** Short tier tag (e.g. "T1") for the collapsed single-line readout. */
+  tierCompact?: string;
   /** Pre-formatted header stat strip (reg pressure today; room for more). */
   stats?: readonly ShellStat[];
   /**
@@ -111,6 +113,7 @@ const CARD_OVERLAP = 24;
 export function AppShell({
   businessName,
   tierLabel,
+  tierCompact,
   stats = [],
   heroSource,
   onOpenGameMenu,
@@ -208,14 +211,23 @@ export function AppShell({
   });
 
   const root: ViewStyle = { flex: 1, backgroundColor: t.colors.base };
+  // Belt-and-suspenders legibility over photo art: the scrims carry the bulk
+  // of the contrast, the shadow guarantees the glyph edges.
+  const onHeroShadow: TextStyle = {
+    textShadowColor: t.colors.heroTextShadow,
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
+  };
   const dealershipName: TextStyle = {
     ...t.typography.title,
     color: t.colors.textPrimary,
+    ...onHeroShadow,
   };
   const tierText: TextStyle = {
     ...t.typography.statLabel,
     color: t.colors.textSecondary,
     marginTop: t.spacing.xxs,
+    ...onHeroShadow,
   };
   const menuBtn: ViewStyle = {
     width: 38,
@@ -231,6 +243,7 @@ export function AppShell({
     ...t.typography.statLabel,
     fontSize: 11,
     color: t.colors.textMuted,
+    ...onHeroShadow,
   };
   const statValue: TextStyle = {
     ...t.typography.statValue,
@@ -238,6 +251,7 @@ export function AppShell({
     color: t.colors.textPrimary,
     fontVariant: ['tabular-nums'],
     marginTop: t.spacing.xxs,
+    ...onHeroShadow,
   };
   const compactStat: TextStyle = {
     ...t.typography.badge,
@@ -301,6 +315,20 @@ export function AppShell({
             left: 0,
             right: 0,
             height: insets.top + 118,
+          }}
+        />
+        {/* Extra horizontal contrast on the text side only — the photo keeps
+            its punch on the right while the name/stats column reads clean. */}
+        <Gradient
+          gradient="heroScrimSide"
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: width * 0.72,
+            height: insets.top + 142,
           }}
         />
         {/* Bottom fade into `base` so the first cards float with no hard seam. */}
@@ -415,21 +443,24 @@ export function AppShell({
             </Animated.View>
           </View>
 
-          {/* Collapsed-only: the same stats on a single inline line. */}
-          {stats.length > 0 && (
+          {/* Collapsed-only: tier + stats fold up INTO the slim bar as one
+              inline line, vertically centered on the title row — never below
+              the bar. */}
+          {(stats.length > 0 || tierCompact) && (
             <Animated.View
               style={{
                 opacity: compactOpacity,
-                alignSelf: 'center',
-                alignItems: 'flex-end',
+                alignSelf: 'flex-start',
+                height: 30,
+                justifyContent: 'center',
               }}
               pointerEvents="none"
             >
-              {stats.map((s) => (
-                <Text key={s.label} style={compactStat}>
-                  {`${s.label} ${s.value}`}
-                </Text>
-              ))}
+              <Text style={compactStat} numberOfLines={1}>
+                {[tierCompact, ...stats.map((s) => `${s.label} ${s.value}`)]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Text>
             </Animated.View>
           )}
 
