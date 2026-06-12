@@ -44,7 +44,7 @@ import { OperationsTab } from './src/ui/OperationsTab';
 import { StrategicTab } from './src/ui/StrategicTab';
 import { SettingsScreen } from './src/ui/SettingsScreen';
 import { LegacyWallView } from './src/ui/LegacyWall';
-import type { DayRecapModel } from './src/ui/DayRecap';
+import { DayRecapModal, type DayRecapModel } from './src/ui/DayRecap';
 import type {
   DemandCoverageGap,
   DemandReadoutEntry,
@@ -415,10 +415,23 @@ export function DealershipApp({
   const [floorEvents, setFloorEvents] = useState<readonly FloorEvent[]>([]);
   const eventSeq = useRef(0);
   // Per-day inventory-buyer match tally (#199): closed deals scored for
-  // stock-vs-buyer fit, and how many cleared the strong-match threshold. Feeds
-  // the floor toast (live) + the DayRecap tally (MANAGERIAL). Reset each
-  // "Next Day" alongside grossToday/floorEvents.
-  const [matchTally, setMatchTally] = useState({ strong: 0, matched: 0 });
+  // stock-vs-buyer fit, and how many cleared the strong-match threshold. Held
+  // in a ref (not display state — the live beat is the floor toast) so the
+  // day-close handler reads the final tally synchronously when it assembles the
+  // recap. Reset each "Next Day" alongside grossToday/floorEvents.
+  const matchTallyRef = useRef({ strong: 0, matched: 0 });
+  // Mirror of `grossToday` updated synchronously in the close handler, so the
+  // day-close recap captures the final figure without waiting on a re-render
+  // (the state copy still feeds the live HUD / gate strip). Reset each day.
+  const grossTodayRef = useRef(0);
+  // Last completed day's recap (#253), the single source for both the modal
+  // that pops on day close and the Today-region reopen chip. Persisted in the
+  // save envelope so the chip — and its truthfulness — survives a reload;
+  // restored on load, so a Day-15 save never falls back to "Night before Day 1".
+  const [lastRecap, setLastRecap] = useState<DayRecapModel | null>(null);
+  // Whether the recap modal is currently popped over Home (#253). Set true on
+  // day close, dismissable, reopenable from the chip.
+  const [recapModalOpen, setRecapModalOpen] = useState(false);
   // Re-render trigger for the headless DayLoopController lifecycle.
   const [, setTick] = useState(0);
   const bump = () => setTick((n) => n + 1);
@@ -621,6 +634,11 @@ export function DealershipApp({
     // delta itself isn't persisted, so it stays blank until the next day closes.
     prevDayCashRef.current = w.economy.cash;
     setCashDelta(null);
+    // Restore the persisted last-day recap (#253): the chip reflects the real
+    // last closed day, so a Day-15 save never shows "Night before Day 1". The
+    // modal does not auto-pop on load — it pops only on an actual day close.
+    setLastRecap((state.lastRecap as DayRecapModel | undefined) ?? null);
+    setRecapModalOpen(false);
     setLotVehicles(w.inventory.getLotVehicles());
     setProfile(character);
     nav.reset('game');
@@ -727,8 +745,11 @@ export function DealershipApp({
     setLotVehicles([]);
     setCash(0);
     setGrossToday(0);
+    grossTodayRef.current = 0;
     setFloorEvents([]);
-    setMatchTally({ strong: 0, matched: 0 });
+    matchTallyRef.current = { strong: 0, matched: 0 };
+    setLastRecap(null);
+    setRecapModalOpen(false);
     setHandSession(null);
     setHandResult(null);
     setTradeReview(null);
@@ -808,14 +829,38 @@ export function DealershipApp({
         const prevDayCash = prevDayCashRef.current;
         if (prevDayCash != null) setCashDelta(w.economy.cash - prevDayCash);
         prevDayCashRef.current = w.economy.cash;
+        // Day-close reward beat (#253): capture the just-closed day's recap
+        // from the live funnel + the synchronously-mirrored gross/match refs,
+        // pop it as a modal over Home, and persist it in the save envelope so
+        // the reopen chip survives a reload. The captured model is the single
+        // source for both the modal and the chip (the live funnel zeroes out
+        // on the next day and isn't restored on load).
+        const funnel = w.capacityManager.getDayFunnel();
+        const recapModel: DayRecapModel = {
+          day: w.clock.currentDay,
+          potentialTraffic: funnel.potentialTraffic,
+          walkedIn: funnel.walkedIn,
+          staffEngaged: funnel.staffEngaged,
+          sold: funnel.sold,
+          gross: grossTodayRef.current,
+          leakCause: funnel.leakCause,
+          strongMatches: matchTallyRef.current.strong,
+          matchedSales: matchTallyRef.current.matched,
+        };
+        setLastRecap(recapModel);
+        setRecapModalOpen(true);
         // Cross-day autosave (#194): persist the world snapshot into the
         // active slot at the day boundary, merged with the slot's existing
         // blob (preserving character/seed/policy — the same merge-with-existing
         // write the policy/strategy setters use). The adapter derives the
-        // slot's `day` metadata from this snapshot.
+        // slot's `day` metadata from this snapshot. The recap rides the same
+        // write as a top-level envelope field (#253).
         void (async () => {
           const worldSnapshot = snapshotWorld(w);
-          const nextState = await buildCurrentSaveState({}, worldSnapshot);
+          const nextState = await buildCurrentSaveState(
+            { lastRecap: recapModel },
+            worldSnapshot,
+          );
           await saveStore.save(nextState);
           if (worldSnapshot.modules.gameClock.day % 7 === 0) {
             const snapshotStore = await snapshotStoreForActiveSlot();
@@ -850,7 +895,10 @@ export function DealershipApp({
     }: {
       frontGross: number;
       backGross: number;
-    }) => setGrossToday((g) => g + frontGross + backGross);
+    }) => {
+      grossTodayRef.current += frontGross + backGross;
+      setGrossToday((g) => g + frontGross + backGross);
+    };
     // Match-payoff beat (#199): every closed deal carries the want-axis fit of
     // the stocked unit. Tally all closes; a strong match also drops a live
     // floor toast ("you had what they wanted") into the event log.
@@ -863,10 +911,10 @@ export function DealershipApp({
     }) => {
       if (outcome !== 'closed') return;
       const strong = (matchQuality ?? 0) >= STRONG_MATCH_THRESHOLD;
-      setMatchTally((t) => ({
-        strong: t.strong + (strong ? 1 : 0),
-        matched: t.matched + 1,
-      }));
+      matchTallyRef.current = {
+        strong: matchTallyRef.current.strong + (strong ? 1 : 0),
+        matched: matchTallyRef.current.matched + 1,
+      };
       if (strong) {
         setFloorEvents((log) => [
           ...log,
@@ -1042,8 +1090,12 @@ export function DealershipApp({
     // to MANAGERIAL (its own subscription) and re-renders.
     if (!world) return;
     setGrossToday(0);
+    grossTodayRef.current = 0;
     setFloorEvents([]);
-    setMatchTally({ strong: 0, matched: 0 });
+    matchTallyRef.current = { strong: 0, matched: 0 };
+    // Leaving MANAGERIAL → the day-close recap modal is done; the chip keeps
+    // the prior recap reachable until the next day closes over it (#253).
+    setRecapModalOpen(false);
     world.dayLoop.nextDay();
     bump();
   };
@@ -1212,6 +1264,9 @@ export function DealershipApp({
             // measured against the night-before-Day-1 cash.
             prevDayCashRef.current = w.economy.cash;
             setCashDelta(null);
+            // Fresh game → no recap yet; Home shows honest pre-Day-1 copy (#253).
+            setLastRecap(null);
+            setRecapModalOpen(false);
             setProfile(p);
             nav.reset('game');
           }}
@@ -1442,21 +1497,12 @@ export function DealershipApp({
           },
         }
       : undefined;
-    // Just-ended-day recap (#119). In MANAGERIAL the funnel + running gross
-    // still hold the day that just closed (both reset on the next
-    // clock:day_started / handleNextDay). Absent on the night before Day 1.
-    const recap: DayRecapModel | undefined = loopState.hasRecap
-      ? {
-          day: loopState.day,
-          potentialTraffic: funnel.potentialTraffic,
-          walkedIn: funnel.walkedIn,
-          staffEngaged: funnel.staffEngaged,
-          sold: funnel.sold,
-          gross: grossToday,
-          leakCause: funnel.leakCause,
-          strongMatches: matchTally.strong,
-          matchedSales: matchTally.matched,
-        }
+    // Last-day recap reopen chip (#253). Driven by the persisted/captured
+    // `lastRecap`, not the live funnel — so it stays present and truthful after
+    // a reload (the funnel zeroes each day and isn't restored). Absent only
+    // when no day has closed yet, where Home shows honest pre-Day-1 copy.
+    const recapChip = lastRecap
+      ? { day: lastRecap.day, onOpen: () => setRecapModalOpen(true) }
       : undefined;
     // MANAGERIAL pre-open ownership levers (#120). Assembled here in the
     // composition root; greyed by `ownershipUnlocked` (⇔ MANAGERIAL).
@@ -1632,7 +1678,7 @@ export function DealershipApp({
           state={loopState}
           dashboard={homeDashboard}
           onOpenOperations={() => setShellTab('operations')}
-          recap={recap}
+          recapChip={recapChip}
           demandReadout={demandReadout}
         />
       ),
@@ -1762,6 +1808,15 @@ export function DealershipApp({
             review={discountReview}
             onDecide={decideDiscount}
             counterResult={discountCounterResult}
+          />
+          {/* Day-close reward beat (#253): pops over Home on day close,
+              dismissable, and reopenable from the Today-region chip. Rendered
+              before the month-close / chapter overlays so those stack on top
+              at a month or tier boundary. */}
+          <DayRecapModal
+            visible={recapModalOpen}
+            model={lastRecap}
+            onDismiss={() => setRecapModalOpen(false)}
           />
           {monthClose != null && world && (
             <MonthCloseInterstitial

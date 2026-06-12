@@ -152,7 +152,7 @@ describe('#199 match-payoff beat — reachable through the live pipeline', () =>
     // reset it each day.
     expect(src).toMatch(/bus\.subscribe\('staff:auto_resolved', onAutoResolved\)/);
     expect(src).toMatch(/kind: 'match'/);
-    expect(src).toMatch(/strongMatches: matchTally\.strong/);
-    expect(src).toMatch(/matchedSales: matchTally\.matched/);
+    expect(src).toMatch(/strongMatches: matchTallyRef\.current\.strong/);
+    expect(src).toMatch(/matchedSales: matchTallyRef\.current\.matched/);
   });
 });

@@ -18,7 +18,6 @@ import {
   type IconBadgeTone,
 } from '../kit';
 import type { DayLoopState } from '../../game/DayLoopController';
-import { DayRecap, type DayRecapModel } from '../DayRecap';
 import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { GateStrip } from './GateStrip';
 import { HeroBanner } from './HeroBanner';
@@ -47,8 +46,10 @@ export interface HomeTabProps {
   dashboard?: HomeDashboardModel;
   /** Deep-link into the Operations tab (inventory tile). */
   onOpenOperations?: () => void;
-  /** Just-ended-day recap. Absent on the night before Day 1. */
-  recap?: DayRecapModel;
+  /** Reopen-affordance for the last day's recap (#253). The recap itself is a
+   *  modal that pops on day close; this chip reopens it. Absent ⇒ no day has
+   *  closed yet (pre-Day-1), so honest copy shows instead of a lie. */
+  recapChip?: { day: number; onOpen: () => void };
   /** Observed persona-mix readout (#198). Absent ⇒ hint shown. */
   demandReadout?: DemandReadoutModel;
 }
@@ -64,7 +65,7 @@ export function HomeTab({
   state,
   dashboard,
   onOpenOperations,
-  recap,
+  recapChip,
   demandReadout,
 }: HomeTabProps) {
   const t = useTheme();
@@ -75,7 +76,6 @@ export function HomeTab({
     color: t.colors.textMuted,
     fontStyle: 'italic',
   };
-  const showRecap = state.hasRecap && !!recap;
 
   return (
     <View>
@@ -101,10 +101,12 @@ export function HomeTab({
       <View style={region} testID="home-region-today">
         <SectionHeader title="Today" />
         <View style={regionBody}>
-          {showRecap && recap ? (
-            <DayRecap model={recap} />
+          {recapChip ? (
+            <RecapChip day={recapChip.day} onOpen={recapChip.onOpen} />
           ) : (
-            <Text style={hint}>Night before Day 1.</Text>
+            // No day has closed yet — honest pre-Day-1 copy, never a "Night
+            // before Day 1" string stamped onto a Day-15 save (#253).
+            <Text style={hint}>Your first day hasn&apos;t opened yet.</Text>
           )}
         </View>
       </View>
@@ -120,6 +122,42 @@ export function HomeTab({
         </View>
       </View>
     </View>
+  );
+}
+
+/**
+ * Reopen-affordance for the last day's recap (#253). The reward beat now pops
+ * as a modal on day close; this chip lets the player pull it back up from the
+ * Today region — and, because it is driven by the persisted recap, it stays
+ * truthful across a reload (no hardcoded "Night before Day 1").
+ */
+function RecapChip({ day, onOpen }: { day: number; onOpen: () => void }) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={onOpen}
+      accessibilityRole="button"
+      accessibilityLabel={`Open Day ${day} recap`}
+      testID="home-recap-chip"
+    >
+      <Surface variant="inset" padded={false} style={{ padding: t.spacing.md }}>
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}
+        >
+          <IconBadge name="calendar" tone="primary" variant="soft" size="sm" />
+          <Text
+            style={{
+              ...t.typography.label,
+              color: t.colors.textPrimary,
+              flex: 1,
+            }}
+          >
+            Day {day} recap
+          </Text>
+          <Text style={{ ...t.typography.label, color: t.colors.primary }}>→</Text>
+        </View>
+      </Surface>
+    </Pressable>
   );
 }
 
