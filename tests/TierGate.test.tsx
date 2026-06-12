@@ -284,7 +284,7 @@ const INPUTS: HomeDashboardInputs = {
   businessName: 'Summit Motors',
   tierLabel: 'Tier 1 — Gravel Yard',
   cash: 50000,
-  cashDelta: 0,
+  cashDelta: null,
   reputation: 70,
   currentDay: 5,
   season: 'spring',

@@ -20,6 +20,7 @@ function makeEconomy(initialCash: number): Economy {
   let cash = initialCash;
   return {
     get cash() { return cash; },
+    inventoryAcquisitionSpend: 0,
     postRevenue: jest.fn(),
     postExpense: jest.fn(),
     forceDebit: jest.fn((amount: number) => { cash -= amount; }),

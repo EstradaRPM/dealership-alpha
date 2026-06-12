@@ -21,7 +21,7 @@ const INPUTS: HomeDashboardInputs = {
   businessName: 'Summit Motors',
   tierLabel: 'Tier 2 — Paved Lot',
   cash: 1_247_503,
-  cashDelta: 32_490,
+  cashDelta: { ops: 32_490, stock: 0 },
   reputation: 87,
   currentDay: 42,
   season: 'spring',
@@ -51,13 +51,33 @@ describe('#230 buildHomeDashboard — pure model math', () => {
     expect(m.cash.delta).toBe('+$32,490 vs yesterday');
     expect(m.cash.trend).toBe('up');
 
-    const down = buildHomeDashboard({ ...INPUTS, cashDelta: -1500 });
+    const down = buildHomeDashboard({ ...INPUTS, cashDelta: { ops: -1500, stock: 0 } });
     expect(down.cash.delta).toBe('-$1,500 vs yesterday');
     expect(down.cash.trend).toBe('down');
 
     const none = buildHomeDashboard({ ...INPUTS, cashDelta: null });
     expect(none.cash.delta).toBeUndefined();
     expect(none.cash.trend).toBe('flat');
+  });
+
+  it('breaks stock spend out of the delta and keys the trend off ops (#255)', () => {
+    // Buy-heavy profitable day: raw cash change is -$25,510, but the card
+    // reads a positive ops delta with the buy broken out, trending up.
+    const m = buildHomeDashboard({
+      ...INPUTS,
+      cashDelta: { ops: 12_490, stock: 38_000 },
+    });
+    expect(m.cash.delta).toBe('+$12,490 ops · -$38,000 into stock');
+    expect(m.cash.trend).toBe('up');
+
+    // Ops loss alongside a buy still trends down — the split is honest, it
+    // just never colors the deliberate buy itself as the loss.
+    const opsLoss = buildHomeDashboard({
+      ...INPUTS,
+      cashDelta: { ops: -2_000, stock: 38_000 },
+    });
+    expect(opsLoss.cash.delta).toBe('-$2,000 ops · -$38,000 into stock');
+    expect(opsLoss.cash.trend).toBe('down');
   });
 
   it('derives calendar labels + a today-highlighted mini-calendar off the game year', () => {

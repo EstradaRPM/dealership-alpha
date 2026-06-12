@@ -36,6 +36,7 @@ const STUB_CONFIG: TierConfig = {
 function makeEconomy(cash: number): Economy {
   return {
     get cash() { return cash; },
+    inventoryAcquisitionSpend: 0,
     postRevenue: jest.fn(),
     postExpense: jest.fn(),
     forceDebit: jest.fn(),

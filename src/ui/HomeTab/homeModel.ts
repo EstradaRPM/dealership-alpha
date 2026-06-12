@@ -21,6 +21,18 @@ export type SeasonName = 'spring' | 'summer' | 'fall' | 'winter';
  *  game-logic imports (the composition root passes the value straight in). */
 export type TrafficOutlook = 'busy' | 'steady' | 'slow';
 
+/**
+ * The vs-yesterday cash delta, split cash-flow-statement style (#255): `ops` is
+ * the day's operating delta (sales gross, fees, rent, payroll — everything
+ * except stock buys); `stock` is the day's inventory-acquisition spend, broken
+ * out so a deliberate buy never renders as a loss. The raw cash change is
+ * `ops - stock`. Persisted verbatim in the save envelope, so keep it plain data.
+ */
+export interface CashDeltaSplit {
+  ops: number;
+  stock: number;
+}
+
 /** Inputs the composition root reads off the live World, no module types. */
 export interface HomeDashboardInputs {
   businessName: string;
@@ -28,8 +40,8 @@ export interface HomeDashboardInputs {
   /** Numeric tier (1-based). Used to key tier-specific hero art. Defaults to 1. */
   tier?: number;
   cash: number;
-  /** Today's cash minus yesterday's close; null on the night before Day 1. */
-  cashDelta: number | null;
+  /** Vs-yesterday delta split (#255); null on the night before Day 1. */
+  cashDelta: CashDeltaSplit | null;
   reputation: number;
   currentDay: number;
   season: SeasonName;
@@ -188,9 +200,23 @@ function formatCash(cash: number): string {
   return `$${Math.round(cash).toLocaleString()}`;
 }
 
-function formatDelta(delta: number): string {
-  const sign = delta >= 0 ? '+' : '-';
-  return `${sign}$${Math.abs(Math.round(delta)).toLocaleString()} vs yesterday`;
+function formatSignedCash(amount: number): string {
+  const sign = amount >= 0 ? '+' : '-';
+  return `${sign}$${Math.abs(Math.round(amount)).toLocaleString()}`;
+}
+
+/**
+ * #255 split readout. With stock spend the line reads
+ * `+$12,490 ops · -$38,000 into stock`; without, it stays the plain
+ * `+$12,490 vs yesterday` the pre-split card showed.
+ */
+function formatDelta(delta: CashDeltaSplit): string {
+  if (Math.round(delta.stock) === 0) {
+    return `${formatSignedCash(delta.ops)} vs yesterday`;
+  }
+  return `${formatSignedCash(delta.ops)} ops · -$${Math.abs(
+    Math.round(delta.stock),
+  ).toLocaleString()} into stock`;
 }
 
 export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardModel {
@@ -262,10 +288,12 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
   // "% on track" is shown once, in the gate strip header (#238 de-dup); it used
   // to also push a quick-stat tile here, which duplicated the same figure.
 
+  // Trend keys off the operating delta (#255): money parked in stock is an
+  // asset swap, not a loss, so it never drags the arrow down.
   const trend: TrendDirection =
-    input.cashDelta == null || input.cashDelta === 0
+    input.cashDelta == null || input.cashDelta.ops === 0
       ? 'flat'
-      : input.cashDelta > 0
+      : input.cashDelta.ops > 0
         ? 'up'
         : 'down';
 

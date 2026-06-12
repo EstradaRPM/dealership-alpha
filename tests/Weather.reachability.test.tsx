@@ -206,7 +206,7 @@ const INPUTS: HomeDashboardInputs = {
   businessName: 'Summit Motors',
   tierLabel: 'Tier 2 — Paved Lot',
   cash: 1_000_000,
-  cashDelta: 0,
+  cashDelta: null,
   reputation: 80,
   currentDay: 42,
   season: 'spring',

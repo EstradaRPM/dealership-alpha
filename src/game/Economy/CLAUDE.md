@@ -5,7 +5,14 @@ Money ledger. Posts revenue and expense entries, computes P&L summaries.
 ## Public API (`index.ts`)
 - `createEconomy()` → `Economy`.
 - `loadEconomyConfig` — reads economy tunables from `data/tunables.json` (Economy section).
-- Types: `Economy`, `EconomyDeps`, `EconomyConfig`, `LedgerEntry`, `PnLSummary`.
+- Types: `Economy`, `EconomyDeps`, `EconomyConfig`, `ExpenseCategory`, `LedgerEntry`, `PnLSummary`.
+- `postExpense`/`forceDebit` take an optional `ExpenseCategory`
+  (`'inventoryAcquisition'` = cash converted into stock, i.e. auction purchase
+  price; inspection/recon/carrying stay uncategorized = operating). The lifetime
+  `inventoryAcquisitionSpend` accumulator backs the Home cash-delta ops/stock
+  split (#255) — cumulative, never reset; consumers diff it across day closes
+  like they diff `cash`. Persisted in the snapshot (pre-#255 snapshots restore
+  to 0).
 
 ## Events
 - **Emits:** `economy:revenue_posted`, `economy:expense_posted` (every post produces one of these).

@@ -66,12 +66,35 @@ describe('Economy snapshot/restore (#188)', () => {
     expect(economy.cash).toBe(60_500);
 
     const snap = economy.snapshot();
-    expect(snap).toEqual({ schemaVersion: 1, cash: 60_500 });
+    expect(snap).toEqual({
+      schemaVersion: 1,
+      cash: 60_500,
+      inventoryAcquisitionSpend: 0,
+    });
 
     const fresh = createEconomy({ bus: createEventBus(), startingCash: 50_000 });
     expect(fresh.cash).toBe(50_000);
     fresh.restore(snap);
     expect(fresh.cash).toBe(60_500);
+  });
+
+  it('round-trips the lifetime inventory-acquisition spend (#255)', () => {
+    const economy = createEconomy({ bus: createEventBus(), startingCash: 100_000 });
+    economy.postExpense(38_000, 'Auction purchase: v1', 'inventoryAcquisition');
+    economy.postExpense(500, 'Inspection: v2'); // uncategorized → operating
+    expect(economy.inventoryAcquisitionSpend).toBe(38_000);
+
+    const fresh = createEconomy({ bus: createEventBus(), startingCash: 100_000 });
+    fresh.restore(economy.snapshot());
+    expect(fresh.cash).toBe(61_500);
+    expect(fresh.inventoryAcquisitionSpend).toBe(38_000);
+  });
+
+  it('restores a pre-#255 snapshot (no acquisition field) to a zero counter', () => {
+    const fresh = createEconomy({ bus: createEventBus(), startingCash: 10_000 });
+    fresh.restore({ schemaVersion: 1, cash: 42_000 });
+    expect(fresh.cash).toBe(42_000);
+    expect(fresh.inventoryAcquisitionSpend).toBe(0);
   });
 });
 

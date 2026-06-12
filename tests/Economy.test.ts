@@ -50,6 +50,48 @@ describe('Economy — cash mutations', () => {
   });
 });
 
+// ── Inventory-acquisition spend tracker (#255) ────────────────────────────────
+
+describe('Economy — inventory-acquisition spend (#255)', () => {
+  it('only inventoryAcquisition-categorized expenses accrue', () => {
+    const { clock, economy } = makeSetup();
+    clock.advanceDay();
+    expect(economy.inventoryAcquisitionSpend).toBe(0);
+    economy.postExpense(12_000, 'Auction purchase: v1', 'inventoryAcquisition');
+    economy.postExpense(500, 'Inspection: v2');
+    economy.postRevenue(8_000, 'Sale');
+    expect(economy.inventoryAcquisitionSpend).toBe(12_000);
+  });
+
+  it('accumulates across days and never resets (lifetime counter)', () => {
+    const { clock, economy } = makeSetup();
+    clock.advanceDay();
+    economy.postExpense(10_000, 'Auction purchase: v1', 'inventoryAcquisition');
+    clock.advanceDay();
+    economy.postExpense(15_000, 'Auction purchase: v2', 'inventoryAcquisition');
+    expect(economy.inventoryAcquisitionSpend).toBe(25_000);
+  });
+
+  it('forceDebit honors the category too', () => {
+    const { clock, economy } = makeSetup(1_000);
+    clock.advanceDay();
+    economy.forceDebit(5_000, 'Auction purchase: v1', 'inventoryAcquisition');
+    expect(economy.inventoryAcquisitionSpend).toBe(5_000);
+  });
+
+  it('categorized entries carry the category in the P&L ledger', () => {
+    const { clock, economy } = makeSetup();
+    clock.advanceDay();
+    economy.postExpense(9_000, 'Auction purchase: v1', 'inventoryAcquisition');
+    economy.postExpense(300, 'Supplies');
+    const entries = economy.getPnL(1, 1).entries;
+    expect(entries.find((e) => e.label.startsWith('Auction'))?.category).toBe(
+      'inventoryAcquisition',
+    );
+    expect(entries.find((e) => e.label === 'Supplies')?.category).toBeUndefined();
+  });
+});
+
 // ── Event publishing ──────────────────────────────────────────────────────────
 
 describe('Economy — event publishing', () => {
@@ -216,5 +258,18 @@ describe('Economy — Inventory integration', () => {
     const pnl = economy.getPnL(1, 1);
     expect(pnl.totalExpenses).toBe(listing.askingPrice);
     expect(pnl.entries[0].type).toBe('expense');
+  });
+
+  it('auction buy counts as inventory-acquisition spend (#255)', () => {
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const inventory = createInventory({ bus, masterSeed: 42, economy, vehicleData });
+
+    clock.advanceDay();
+    const [listing] = inventory.getAuctionListings();
+    inventory.buyFromAuction(listing.id);
+
+    expect(economy.inventoryAcquisitionSpend).toBe(listing.askingPrice);
   });
 });

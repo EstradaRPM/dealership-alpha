@@ -38,7 +38,12 @@ import {
   type ShellTabKey,
   type ShellStat,
 } from './src/ui/AppShell';
-import { HomeTab, buildHomeDashboard, buildGateStrip } from './src/ui/HomeTab';
+import {
+  HomeTab,
+  buildHomeDashboard,
+  buildGateStrip,
+  type CashDeltaSplit,
+} from './src/ui/HomeTab';
 import { DAYS_PER_WEEK, DAYS_PER_YEAR } from './src/game/GameClock';
 import { OperationsTab } from './src/ui/OperationsTab';
 import { StrategicTab } from './src/ui/StrategicTab';
@@ -328,6 +333,16 @@ function buildCoverageGap(
 // a magic number. clock:month_ended fires on endingDay % daysPerMonth === 0.
 const DAYS_PER_MONTH = loadTunables().clock.daysPerMonth;
 
+// Shape-check the persisted cash-delta split (#255) coming back out of the
+// untyped save envelope; anything malformed degrades to "no delta yet".
+function readPersistedCashDelta(value: unknown): CashDeltaSplit | null {
+  if (value == null || typeof value !== 'object') return null;
+  const { ops, stock } = value as Partial<CashDeltaSplit>;
+  return typeof ops === 'number' && typeof stock === 'number'
+    ? { ops, stock }
+    : null;
+}
+
 export interface DealershipAppProps {
   driverFactory?: DriverFactory;
   onServicesReady?: (services: AppServices) => void;
@@ -366,12 +381,17 @@ export function DealershipApp({
   worldRef.current = world;
   const [lotVehicles, setLotVehicles] = useState<readonly LotVehicle[]>([]);
   const [cash, setCash] = useState(0);
-  // Cash "vs yesterday" delta for the Home dashboard (#230). The ref holds the
-  // prior day's closing cash; the day-complete handler diffs against it and
-  // re-snapshots. Null until the first day closes (and after a cold reload —
-  // the delta is a display nicety, not persisted state).
+  // Cash "vs yesterday" delta for the Home dashboard (#230, split #255). The
+  // refs hold the prior day's closing cash and the lifetime stock-acquisition
+  // spend at that close; the day-complete handler diffs both against the live
+  // Economy figures to split the day into an operating delta + an "into stock"
+  // line, then re-snapshots. Null until the first day closes. Both baselines
+  // and the computed split ride the save envelope (#255), so a load shows the
+  // last closed day's delta immediately and the next close diffs correctly
+  // even when the save was written mid-managerial-phase.
   const prevDayCashRef = useRef<number | null>(null);
-  const [cashDelta, setCashDelta] = useState<number | null>(null);
+  const prevDayAcquisitionSpendRef = useRef<number | null>(null);
+  const [cashDelta, setCashDelta] = useState<CashDeltaSplit | null>(null);
   // Active shell tab, lifted out of AppShell so it survives a round-trip
   // through a sub-screen (auction / pricing / a department). The shell unmounts
   // on those navigations; without lifting this the tab would reset to Home on
@@ -630,10 +650,20 @@ export function DealershipApp({
     }
     setWorld(w);
     setCash(w.economy.cash);
-    // Re-seed the vs-yesterday baseline against the restored cash (#230); the
-    // delta itself isn't persisted, so it stays blank until the next day closes.
-    prevDayCashRef.current = w.economy.cash;
-    setCashDelta(null);
+    // Restore the persisted vs-yesterday baselines + the last computed delta
+    // split (#255), so the Home card shows the last closed day's delta right
+    // away instead of staying blank until the next close. The persisted
+    // baselines (closing cash + lifetime stock spend at the last day close)
+    // beat re-seeding from live figures, which a mid-managerial-phase save
+    // would have polluted with post-close auction buys. Pre-#255 saves lack
+    // all three fields → old behavior (re-seed, blank delta) as the fallback.
+    prevDayCashRef.current =
+      typeof state.prevDayCash === 'number' ? state.prevDayCash : w.economy.cash;
+    prevDayAcquisitionSpendRef.current =
+      typeof state.prevDayAcquisitionSpend === 'number'
+        ? state.prevDayAcquisitionSpend
+        : w.economy.inventoryAcquisitionSpend;
+    setCashDelta(readPersistedCashDelta(state.cashDelta));
     // Restore the persisted last-day recap (#253): the chip reflects the real
     // last closed day, so a Day-15 save never shows "Night before Day 1". The
     // modal does not auto-pop on load — it pops only on an actual day close.
@@ -744,6 +774,9 @@ export function DealershipApp({
     setWorld(null);
     setLotVehicles([]);
     setCash(0);
+    setCashDelta(null);
+    prevDayCashRef.current = null;
+    prevDayAcquisitionSpendRef.current = null;
     setGrossToday(0);
     grossTodayRef.current = 0;
     setFloorEvents([]);
@@ -824,11 +857,23 @@ export function DealershipApp({
       if (w) {
         setLotVehicles(w.inventory.getLotVehicles());
         setCash(w.economy.cash);
-        // Cash vs-yesterday delta (#230): diff the just-closed day's cash
-        // against the prior day's close, then re-snapshot for the next day.
+        // Cash vs-yesterday delta (#230), split ops-vs-stock (#255): diff the
+        // just-closed day's cash and lifetime acquisition spend against the
+        // prior close. Stock buys are an asset swap, not a loss — adding the
+        // day's acquisition spend back into the raw cash change yields the
+        // operating delta, with the spend broken out as its own line.
+        const closingCash = w.economy.cash;
+        const acquisitionSpend = w.economy.inventoryAcquisitionSpend;
         const prevDayCash = prevDayCashRef.current;
-        if (prevDayCash != null) setCashDelta(w.economy.cash - prevDayCash);
-        prevDayCashRef.current = w.economy.cash;
+        let deltaSplit: CashDeltaSplit | null = null;
+        if (prevDayCash != null) {
+          const stock =
+            acquisitionSpend - (prevDayAcquisitionSpendRef.current ?? 0);
+          deltaSplit = { ops: closingCash - prevDayCash + stock, stock };
+          setCashDelta(deltaSplit);
+        }
+        prevDayCashRef.current = closingCash;
+        prevDayAcquisitionSpendRef.current = acquisitionSpend;
         // Day-close reward beat (#253): capture the just-closed day's recap
         // from the live funnel + the synchronously-mirrored gross/match refs,
         // pop it as a modal over Home, and persist it in the save envelope so
@@ -854,11 +899,19 @@ export function DealershipApp({
         // blob (preserving character/seed/policy — the same merge-with-existing
         // write the policy/strategy setters use). The adapter derives the
         // slot's `day` metadata from this snapshot. The recap rides the same
-        // write as a top-level envelope field (#253).
+        // write as a top-level envelope field (#253), and so do the cash-delta
+        // baselines + the computed split (#255) — written only here, at the
+        // close that moves them; every other save merges-with-existing and
+        // carries them forward untouched.
         void (async () => {
           const worldSnapshot = snapshotWorld(w);
           const nextState = await buildCurrentSaveState(
-            { lastRecap: recapModel },
+            {
+              lastRecap: recapModel,
+              prevDayCash: closingCash,
+              prevDayAcquisitionSpend: acquisitionSpend,
+              cashDelta: deltaSplit,
+            },
             worldSnapshot,
           );
           await saveStore.save(nextState);
@@ -1260,9 +1313,11 @@ export function DealershipApp({
             });
             setWorld(w);
             setCash(w.economy.cash);
-            // Seed the vs-yesterday baseline (#230): first day's delta is
-            // measured against the night-before-Day-1 cash.
+            // Seed the vs-yesterday baselines (#230/#255): first day's delta
+            // is measured against the night-before-Day-1 cash + (zero)
+            // lifetime stock spend.
             prevDayCashRef.current = w.economy.cash;
+            prevDayAcquisitionSpendRef.current = w.economy.inventoryAcquisitionSpend;
             setCashDelta(null);
             // Fresh game → no recap yet; Home shows honest pre-Day-1 copy (#253).
             setLastRecap(null);

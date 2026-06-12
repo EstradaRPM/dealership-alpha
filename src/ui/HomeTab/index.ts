@@ -4,6 +4,7 @@ export { GateStrip } from './GateStrip';
 export { buildHomeDashboard, csiLabel } from './homeModel';
 export { buildGateStrip } from './gateStripModel';
 export type {
+  CashDeltaSplit,
   HomeDashboardModel,
   HomeDashboardInputs,
   HomeCalendarModel,

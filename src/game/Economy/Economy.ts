@@ -2,7 +2,7 @@ import type { EventBus } from '../EventBus';
 import { DAYS_PER_WEEK } from '../GameClock';
 import { loadEconomyConfig } from './economyData';
 import type { EconomyConfig } from './economyData';
-import type { LedgerEntry, PnLSummary } from './types';
+import type { ExpenseCategory, LedgerEntry, PnLSummary } from './types';
 
 /**
  * Persistence surface for Economy (#188). Module-owned `schemaVersion`, same as
@@ -14,15 +14,26 @@ import type { LedgerEntry, PnLSummary } from './types';
 export interface EconomySnapshot {
   readonly schemaVersion: 1;
   readonly cash: number;
+  /**
+   * Lifetime cash spent acquiring stock (#255). Optional because pre-#255
+   * snapshots lack it; restore defaults it to 0.
+   */
+  readonly inventoryAcquisitionSpend?: number;
 }
 
 export interface Economy {
   readonly cash: number;
+  /**
+   * Lifetime cash spent on `inventoryAcquisition`-categorized expenses (#255).
+   * Cumulative, never reset — the Home cash-delta split diffs it across day
+   * closes the same way it diffs `cash`, so no per-day windowing lives here.
+   */
+  readonly inventoryAcquisitionSpend: number;
   postRevenue(amount: number, label: string): void;
-  postExpense(amount: number, label: string): void;
+  postExpense(amount: number, label: string, category?: ExpenseCategory): void;
   // Bypass the solvency check. Used by failure paths (bankruptcy debt service,
   // compliance fees) where cash legitimately goes negative.
-  forceDebit(amount: number, label: string): void;
+  forceDebit(amount: number, label: string, category?: ExpenseCategory): void;
   getPnL(fromDay: number, toDay: number): PnLSummary;
   /** #188 SaveStore seam: capture/rehydrate the cash balance. */
   snapshot(): EconomySnapshot;
@@ -41,6 +52,7 @@ export function createEconomy(deps: EconomyDeps): Economy {
 
   let cash = deps.startingCash;
   let currentDay = 1;
+  let inventoryAcquisitionSpend = 0;
   const ledger: LedgerEntry[] = [];
 
   // Track which day is active via day_ended so expenses/revenues posted after
@@ -56,14 +68,21 @@ export function createEconomy(deps: EconomyDeps): Economy {
     }
   });
 
-  function postExpenseInternal(day: number, amount: number, label: string): void {
+  function postExpenseInternal(
+    day: number,
+    amount: number,
+    label: string,
+    category?: ExpenseCategory,
+  ): void {
     cash -= amount;
-    ledger.push({ day, type: 'expense', amount, label });
+    if (category === 'inventoryAcquisition') inventoryAcquisitionSpend += amount;
+    ledger.push({ day, type: 'expense', amount, label, ...(category ? { category } : {}) });
     bus.publish('economy:expense_posted', { day, amount, label });
   }
 
   return {
     get cash() { return cash; },
+    get inventoryAcquisitionSpend() { return inventoryAcquisitionSpend; },
 
     postRevenue(amount, label) {
       cash += amount;
@@ -71,15 +90,15 @@ export function createEconomy(deps: EconomyDeps): Economy {
       bus.publish('economy:revenue_posted', { day: currentDay, amount, label });
     },
 
-    postExpense(amount, label) {
+    postExpense(amount, label, category) {
       if (cash < amount) {
         throw new Error(`Insufficient cash (have ${cash}, need ${amount})`);
       }
-      postExpenseInternal(currentDay, amount, label);
+      postExpenseInternal(currentDay, amount, label, category);
     },
 
-    forceDebit(amount, label) {
-      postExpenseInternal(currentDay, amount, label);
+    forceDebit(amount, label, category) {
+      postExpenseInternal(currentDay, amount, label, category);
     },
 
     getPnL(fromDay, toDay) {
@@ -94,11 +113,14 @@ export function createEconomy(deps: EconomyDeps): Economy {
     },
 
     snapshot() {
-      return { schemaVersion: 1, cash };
+      return { schemaVersion: 1, cash, inventoryAcquisitionSpend };
     },
 
     restore(snap) {
       cash = snap.cash;
+      // Pre-#255 snapshots lack the field → start the lifetime counter at 0.
+      // The Home delta diffs it across day closes, so only growth matters.
+      inventoryAcquisitionSpend = snap.inventoryAcquisitionSpend ?? 0;
     },
   };
 }

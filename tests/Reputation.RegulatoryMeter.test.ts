@@ -21,6 +21,7 @@ function makeEconomy(initialCash: number): Economy & { setCash(v: number): void 
   let cash = initialCash;
   return {
     get cash() { return cash; },
+    inventoryAcquisitionSpend: 0,
     setCash(v: number) { cash = v; },
     postRevenue: jest.fn(),
     postExpense: jest.fn(),

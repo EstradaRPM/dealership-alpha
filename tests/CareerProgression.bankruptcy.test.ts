@@ -23,6 +23,7 @@ function makeEconomy(initialCash: number): MutableEconomy {
   const debits: Array<{ amount: number; label: string }> = [];
   return {
     get cash() { return cash; },
+    inventoryAcquisitionSpend: 0,
     setCash(value: number) { cash = value; },
     postRevenue: jest.fn(),
     postExpense: jest.fn(),

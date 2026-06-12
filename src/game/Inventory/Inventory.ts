@@ -483,7 +483,14 @@ export function createInventory(deps: InventoryDeps): Inventory {
         );
       }
 
-      economy.postExpense(listing.askingPrice, `Auction purchase: ${listing.id}`);
+      // Categorized as stock acquisition (#255): the Home cash delta breaks
+      // this out as "into stock" instead of coloring a deliberate buy as a
+      // loss. Inspection/recon/carrying stay uncategorized (operating spend).
+      economy.postExpense(
+        listing.askingPrice,
+        `Auction purchase: ${listing.id}`,
+        'inventoryAcquisition',
+      );
 
       const reliability = sourceReliability.reliability[listing.sourceId] ?? 0.5;
       const lotVehicle = buildAcquiredVehicle({
