@@ -209,8 +209,9 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
       <HomeTab state={state} demandReadout={demandReadout} />,
     );
 
-    // The readout is mounted and shows the observed persona mix.
-    expect(getByText("Who's Been Walking In")).toBeTruthy();
+    // The readout is mounted and shows the observed persona mix. (No internal
+    // card title — the Market region header owns it, #257.)
+    expect(getByText('Market')).toBeTruthy();
     expect(getByText('Young Family')).toBeTruthy();
     expect(getByText("Who You're Targeting")).toBeTruthy();
     expect(getAllByText(/Reputation|Inventory composition/).length).toBeGreaterThan(0);

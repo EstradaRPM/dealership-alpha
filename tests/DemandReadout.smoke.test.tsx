@@ -20,13 +20,14 @@ const MODEL: DemandReadoutModel = {
 };
 
 describe('DemandReadout smoke', () => {
-  it('renders the title, persona labels, shares, and trend glyphs', () => {
-    const { getByText } = render(<DemandReadout model={MODEL} />);
-    expect(getByText("Who's Been Walking In")).toBeTruthy();
+  it('renders persona labels, shares, and trend indicators (no internal card title — the Market region header owns it, #257)', () => {
+    const { getByText, getByLabelText, queryByText } = render(<DemandReadout model={MODEL} />);
+    expect(queryByText("Who's Been Walking In")).toBeNull();
     expect(getByText('Young Family')).toBeTruthy();
     expect(getByText('50%')).toBeTruthy();
-    expect(getByText('▲')).toBeTruthy(); // rising
-    expect(getByText('▼')).toBeTruthy(); // falling
+    expect(getByLabelText('Young Family trend rising')).toBeTruthy();
+    expect(getByLabelText('Enthusiast trend falling')).toBeTruthy();
+    expect(getByLabelText('Commuter trend steady')).toBeTruthy();
     expect(getByText("Who You're Targeting")).toBeTruthy();
     expect(getByText('Inventory composition')).toBeTruthy();
     expect(getByText('Young Family +42')).toBeTruthy();
