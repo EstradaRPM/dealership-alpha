@@ -21,8 +21,12 @@ export type GradientStops = readonly [string, string, ...string[]];
 export const gradients = {
   /** Flush panels / page-level fills — a whisper of vertical depth. */
   surface: ['#1c2536', '#141b28'],
-  /** Raised cards, panels, primary-button bodies — lifts off `surface`. */
-  surfaceRaised: ['#313e58', '#212b3e'],
+  /**
+   * Raised cards, panels, primary-button bodies — lifts off `surface`. A
+   * near-flat run (glass slab, not a bubble): the lift comes from the rim
+   * light + shadow in `elevation.raised`, not from a loud fill sweep.
+   */
+  surfaceRaised: ['#2a3450', '#222c40'],
   /** Primary interactive fill (cyan) — glossy call-to-action bodies. */
   primary: ['#4fc6fb', '#2ea3dd'],
   /** Dim companion fill (navy-blue) — secondary buttons. */
@@ -34,10 +38,11 @@ export const gradients = {
   /** Danger/negative fill (red) — behind-pace / loss bars. */
   danger: ['#f87681', '#e23a46'],
   /**
-   * The glossy top-highlight sheen layered over a raised surface — translucent
-   * white fading to fully transparent. Sits above the fill, below the content.
+   * The top-highlight sheen layered over a raised surface — translucent white
+   * fading to fully transparent. Sits above the fill, below the content. Kept
+   * faint: it should read as light catching a glass edge, not a plastic dome.
    */
-  gloss: ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.00)'],
+  gloss: ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.00)'],
   /**
    * Hero-header top scrim — sits between the hero art and the identity text so
    * the dealership name/tier stay readable over any photo (and behind the

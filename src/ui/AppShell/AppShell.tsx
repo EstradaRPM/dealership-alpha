@@ -1,4 +1,4 @@
-import React, { useContext, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -148,12 +148,47 @@ export function AppShell({
   const activeKey = controlled ? activeTabKey : internalKey;
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  /**
+   * Tab-switch reset choreography: the scroll position snaps to 0 instantly
+   * (a tab change is a new page), but snapping `scrollY` with it would make the
+   * collapsed header POP back open. Instead the header reads
+   * `headerY = scrollY + resetBoost`: on switch the boost is set to the old
+   * offset and decays to 0 over ~180ms, so the hero re-expands as a glide while
+   * the incoming tab's content crossfades in on the same beat.
+   */
+  const resetBoost = useRef(new Animated.Value(0)).current;
+  const headerY = useRef(Animated.add(scrollY, resetBoost)).current;
+  const contentFade = useRef(new Animated.Value(1)).current;
+  // JS-side mirror of the live offset, read only at the moment of a tab switch.
+  const lastOffset = useRef(0);
+  useEffect(() => {
+    const id = scrollY.addListener(({ value }) => {
+      lastOffset.current = value;
+    });
+    return () => scrollY.removeListener(id);
+  }, [scrollY]);
   const selectTab = (key: ShellTabKey) => {
     if (key !== activeKey) {
-      // A tab change is a new page: reset to the expanded header instantly so
-      // the next tab never starts half-collapsed.
+      // Collapse progress maxes out at `range`; cap the glide there so a deep
+      // scroll doesn't stall the re-expansion in the clamped zone.
+      const from = Math.min(lastOffset.current, range);
       scrollRef.current?.scrollTo({ y: 0, animated: false });
       scrollY.setValue(0);
+      lastOffset.current = 0;
+      if (from > 0) {
+        resetBoost.setValue(from);
+        Animated.timing(resetBoost, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }).start();
+      }
+      contentFade.setValue(0);
+      Animated.timing(contentFade, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
     }
     if (!controlled) setInternalKey(key);
     onTabChange?.(key);
@@ -162,49 +197,52 @@ export function AppShell({
   const active = tabs.find((tab) => tab.key === activeKey) ?? tabs[0];
 
   // --- Scroll-driven header choreography (all native-driver-safe props) ---
+  // Everything below reads `headerY` (scroll + tab-switch reset boost), never
+  // raw `scrollY`, so the same curves drive both the live scroll collapse and
+  // the animated re-expansion on a tab change.
   /** Hero parallax: drifts up at ~1/3 scroll speed instead of sitting frozen. */
-  const heroShift = scrollY.interpolate({
+  const heroShift = headerY.interpolate({
     inputRange: [0, range],
     outputRange: [0, -range * 0.35],
     extrapolate: 'clamp',
   });
   /** iOS pull-down: the hero stretches from its top edge instead of tearing. */
-  const heroStretch = scrollY.interpolate({
+  const heroStretch = headerY.interpolate({
     inputRange: [-160, 0],
     outputRange: [1.45, 1],
     extrapolate: 'clamp',
   });
   /** The art dims toward the scrim as it slims, so it reads less pronounced. */
-  const heroDim = scrollY.interpolate({
+  const heroDim = headerY.interpolate({
     inputRange: [0, range * 0.35, range],
     outputRange: [0, 0.1, 1],
     extrapolate: 'clamp',
   });
   /** Stacked tier line + stat block: gone by mid-collapse. */
-  const metaOpacity = scrollY.interpolate({
+  const metaOpacity = headerY.interpolate({
     inputRange: [0, range * 0.55],
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
-  const metaShift = scrollY.interpolate({
+  const metaShift = headerY.interpolate({
     inputRange: [0, range * 0.55],
     outputRange: [0, -8],
     extrapolate: 'clamp',
   });
   /** Single-line compact readout: fades in as the stacked block leaves. */
-  const compactOpacity = scrollY.interpolate({
+  const compactOpacity = headerY.interpolate({
     inputRange: [range * 0.6, range],
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
   /** The bar earns an opaque backdrop once cards start sliding beneath it. */
-  const barBgOpacity = scrollY.interpolate({
+  const barBgOpacity = headerY.interpolate({
     inputRange: [range * 0.45, range],
     outputRange: [0, 0.97],
     extrapolate: 'clamp',
   });
   /** The dealership name settles slightly smaller in the collapsed bar. */
-  const titleScale = scrollY.interpolate({
+  const titleScale = headerY.interpolate({
     inputRange: [0, range],
     outputRange: [1, 0.85],
     extrapolate: 'clamp',
@@ -361,7 +399,9 @@ export function AppShell({
         keyboardShouldPersistTaps="handled"
         testID="app-shell-content"
       >
-        {active?.content}
+        <Animated.View style={{ opacity: contentFade }}>
+          {active?.content}
+        </Animated.View>
       </Animated.ScrollView>
 
       {/* Identity bar — pinned over hero AND scrolling content. */}

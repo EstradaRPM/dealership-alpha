@@ -15,20 +15,21 @@ export const elevation = {
   /** Flush with its parent — no shadow. */
   none: {} as ViewStyle,
   /**
-   * Lifted off the page — cards, panels, primary buttons. A true raised bevel:
-   * a lighter top hairline (the catch-light along the upper edge) over a deeper,
-   * softer outer drop shadow, so a card reads as a physical slab rather than a
-   * flat fill. Pairs with the `surfaceRaised` gradient + `gloss` sheen on the
-   * `Surface` itself.
+   * Lifted off the page — cards, panels, primary buttons. Glass-slab bevel: a
+   * faint rim light all the way around (brightest along the top edge, where
+   * light catches glass) over a soft outer drop shadow, so a card reads as a
+   * cool pane rather than a puffy bubble. Pairs with the near-flat
+   * `surfaceRaised` gradient + faint `gloss` sheen on the `Surface` itself.
    */
   raised: {
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.32,
     shadowRadius: 12,
     elevation: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.09)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    borderTopColor: 'rgba(255,255,255,0.10)',
   },
   /**
    * Soft colored halo — a glow cast in the element's OWN accent color (glossy

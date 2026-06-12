@@ -73,9 +73,9 @@ export function Surface({
 }
 
 const styles = StyleSheet.create({
-  // Glossy top-highlight edge — covers the upper band, fading out downward.
-  // Clipped to the card's rounded corners by the parent's overflow:hidden.
-  gloss: { position: 'absolute', top: 0, left: 0, right: 0, height: '45%' },
+  // Top-highlight edge — a shallow band fading out downward (glass catch-light,
+  // not a half-card dome). Clipped to the rounded corners by overflow:hidden.
+  gloss: { position: 'absolute', top: 0, left: 0, right: 0, height: '30%' },
 });
 
 /** Semantic alias — a `Card` is a raised `Surface`. Same interface. */
