@@ -39,8 +39,6 @@ export interface HomeDashboardInputs {
   pendingLeads: number;
   inventoryCount: number;
   inService: number;
-  /** Contextual pre-open nudge that deep-links into Operations; e.g. "Lot thin on trucks". */
-  inventoryNudge?: string;
   /**
    * Monthly tier-gate progress strip (#233 S3b). The full structured per-face
    * readout (flow pace bars + daily-haul tick, cash gauge, CSI sparkline) plus
@@ -123,8 +121,6 @@ export interface HomeStat {
   value: string;
   /** When set, the tile deep-links (e.g. inventory → Operations). */
   deepLink?: boolean;
-  /** Sub-line under the value, e.g. the inventory nudge. */
-  note?: string;
 }
 
 export interface HomeDashboardModel {
@@ -260,7 +256,6 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
       label: 'Inventory',
       value: `${input.inventoryCount}`,
       deepLink: true,
-      note: input.inventoryNudge,
     },
     { key: 'service', label: 'In Service', value: `${input.inService}` },
   ];

@@ -319,7 +319,7 @@ function Dashboard({
       <View style={cardRow}>
         {model.stats.map((s) => {
           const tile = (
-            <Surface>
+            <Surface style={{ flex: 1 }}>
               <StatCard
                 label={s.label}
                 value={s.value}
@@ -327,24 +327,13 @@ function Dashboard({
                 icon={STAT_ICONS[s.key]?.icon}
                 iconTone={STAT_ICONS[s.key]?.tone}
               />
-              {s.note ? (
-                <Text
-                  style={{
-                    ...t.typography.caption,
-                    color: t.colors.textSecondary,
-                    marginTop: t.spacing.xxs,
-                    textAlign: 'center',
-                  }}
-                >
-                  {s.note}
-                </Text>
-              ) : null}
             </Surface>
           );
           return (
             <View key={s.key} style={cardCol}>
               {s.deepLink && onOpenOperations ? (
                 <Pressable
+                  style={{ flex: 1 }}
                   accessibilityRole="button"
                   accessibilityLabel={`${s.label} — open Operations`}
                   onPress={onOpenOperations}

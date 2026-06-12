@@ -31,7 +31,6 @@ const INPUTS: HomeDashboardInputs = {
   pendingLeads: 18,
   inventoryCount: 128,
   inService: 16,
-  inventoryNudge: 'Lot thin on trucks',
 };
 
 describe('#230 buildHomeDashboard — pure model math', () => {
@@ -76,12 +75,11 @@ describe('#230 buildHomeDashboard — pure model math', () => {
     expect(today[0].dayOfMonth).toBe(12); // (41 % 30) + 1
   });
 
-  it('passes through the inventory nudge as a deep-linkable quick stat', () => {
+  it('inventory stat carries value + deep-link, no note (#254)', () => {
     const m = buildHomeDashboard(INPUTS);
     const inv = m.stats.find((s) => s.key === 'inventory');
     expect(inv?.value).toBe('128');
     expect(inv?.deepLink).toBe(true);
-    expect(inv?.note).toBe('Lot thin on trucks');
   });
 });
 
@@ -103,7 +101,6 @@ describe('#230 Home dashboard — reachable through the live pipeline', () => {
     expect(getByTestId('home-mini-calendar')).toBeTruthy();
     expect(getByText('Pending Leads')).toBeTruthy();
     expect(getByText('In Service')).toBeTruthy();
-    expect(getByText('Lot thin on trucks')).toBeTruthy();
   });
 
   it('deep-links the inventory quick-stat into Operations', () => {

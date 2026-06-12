@@ -1648,9 +1648,6 @@ export function DealershipApp({
       pendingLeads: world.departmentQueue.getQueue('sales').length,
       inventoryCount: lotVehicles.length,
       inService: world.departmentQueue.getQueue('service').length,
-      inventoryNudge: demandReadout.coverageGap
-        ? `Lot thin on ${demandReadout.coverageGap.label}`
-        : undefined,
       gate: gateModel.faces.length > 0 ? gateModel : undefined,
       weather: {
         temperatureF: todayWeather.temperatureF,
