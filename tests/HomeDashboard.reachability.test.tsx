@@ -118,6 +118,8 @@ describe('#230 Home dashboard — reachable through the live pipeline', () => {
     // header strip over the number, not a single "Day 42" text run.
     expect(getByTestId('home-day-badge')).toBeTruthy();
     expect(getByText('42')).toBeTruthy();
+    // Calendar collapses by default (#256); expand it to verify the month grid.
+    fireEvent.press(getByTestId('home-calendar-toggle'));
     expect(getByTestId('home-mini-calendar')).toBeTruthy();
     expect(getByText('Pending Leads')).toBeTruthy();
     expect(getByText('In Service')).toBeTruthy();

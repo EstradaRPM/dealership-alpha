@@ -1,7 +1,7 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { HomeTab, buildHomeDashboard } from '../src/ui/HomeTab';
 import type { HomeDashboardInputs } from '../src/ui/HomeTab';
 import { createWeather } from '../src/game/Weather';
@@ -251,10 +251,13 @@ describe('#231 Weather — reachable on the live Home calendar', () => {
 
   it('renders the weather line in the Home tab', () => {
     const model = buildHomeDashboard(INPUTS);
-    const { getByText } = render(
+    const { getByText, getByTestId } = render(
       <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
     );
+    // Today's label is visible in the collapsed weather chip (#256).
     expect(getByText('72° · Clear')).toBeTruthy();
+    // Forecast + season lean are in the expanded section — tap to open.
+    fireEvent.press(getByTestId('home-calendar-toggle'));
     expect(getByText('Tomorrow: 65° · Rain')).toBeTruthy();
     // #231 S2: the season demand lean is reachable on the live Home card.
     expect(getByText('Season favors: Reliability, Safety')).toBeTruthy();
@@ -307,10 +310,13 @@ describe('#231 Weather — reachable on the live Home calendar', () => {
 
   it('renders the traffic outlook on the live Home tab', () => {
     const model = buildHomeDashboard(S3_INPUTS);
-    const { getByText } = render(
+    const { getByText, getByTestId } = render(
       <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
     );
+    // Today's label (with outlook) is visible in the collapsed chip (#256).
     expect(getByText('72° · Clear · High traffic')).toBeTruthy();
+    // Forecast is in the expanded section — tap to open.
+    fireEvent.press(getByTestId('home-calendar-toggle'));
     expect(getByText('Tomorrow: 65° · Rain · Low traffic')).toBeTruthy();
   });
 
@@ -347,9 +353,11 @@ describe('#231 Weather — reachable on the live Home calendar', () => {
 
   it('renders the attribute-lean line on the live Home tab', () => {
     const model = buildHomeDashboard(S4_INPUTS);
-    const { getByText } = render(
+    const { getByText, getByTestId } = render(
       <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
     );
+    // Attribute lean is in the expanded section — tap to open (#256).
+    fireEvent.press(getByTestId('home-calendar-toggle'));
     expect(getByText('Weather favors: AWD / 4WD, Fuel economy')).toBeTruthy();
   });
 

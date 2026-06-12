@@ -3,6 +3,9 @@ import {
   View,
   Text,
   Pressable,
+  LayoutAnimation,
+  Platform,
+  UIManager,
   type ViewStyle,
   type TextStyle,
 } from 'react-native';
@@ -180,6 +183,7 @@ function Dashboard({
     color: t.colors.textSecondary,
     marginTop: t.spacing.xxs,
   };
+  const [calendarExpanded, setCalendarExpanded] = React.useState(false);
 
   return (
     <View testID="home-dashboard">
@@ -228,85 +232,74 @@ function Dashboard({
         </View>
       </View>
 
-      {/* Calendar */}
-      <View style={{ marginTop: t.spacing.md }}>
-        <Surface>
-          {/* Skeuo day-badge (#240): the mockup's calendar-page "DAY 42" tile
-              replaces the plain "Day N" headline; the calendar facts ride
-              alongside it. */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
-            <DayBadge day={model.calendar.day} />
-            <View style={{ flex: 1 }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
+      {/* Calendar — collapsed to a single row by default; tap expands (#256) */}
+      <Pressable
+        onPress={() => {
+          if (Platform.OS === 'android') {
+            UIManager.setLayoutAnimationEnabledExperimental?.(true);
+          }
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setCalendarExpanded((v) => !v);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={calendarExpanded ? 'Collapse calendar' : 'Expand calendar'}
+        testID="home-calendar-toggle"
+      >
+        <View style={{ marginTop: t.spacing.md }}>
+          <Surface>
+            {/* Collapsed row: DAY chip · Week/Month/Quarter · weather chip */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
+              <DayBadge day={model.calendar.day} />
+              <View style={{ flex: 1 }}>
                 <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
-                  Week {model.calendar.week}
+                  Week {model.calendar.week} · Month {model.calendar.month} · Q
+                  {model.calendar.quarter}
                 </Text>
-                <Pill tone="neutral" variant="soft" label={model.calendar.seasonLabel} />
+                <Text style={subValue}>{model.calendar.seasonLabel}</Text>
               </View>
-              <Text style={subValue}>
-                Month {model.calendar.month} · Q{model.calendar.quarter}{' '}
-                {model.calendar.seasonLabel}
-              </Text>
-              {/* Sold this month X / target (#233 S3b) — replaces the mockup's
-                  static "16/10"; backed by the gate's units flow face. */}
-              {model.calendar.soldThisMonth ? (
-                <Text
-                  style={{ ...subValue, marginTop: t.spacing.xs }}
-                  testID="home-sold-this-month"
-                >
-                  Sold this month {model.calendar.soldThisMonth.current} /{' '}
-                  {model.calendar.soldThisMonth.target}
-                </Text>
+              {model.calendar.weather ? (
+                <Pill tone="neutral" variant="soft" label={model.calendar.weather.todayLabel} />
               ) : null}
             </View>
-          </View>
-          <MiniCalendar days={model.calendar.miniCal} columns={7} />
-          {/* Weather readout (#231): today's conditions + an honest one-day
-              forecast. Renders only when the composition root supplied weather. */}
-          {model.calendar.weather ? (
-            <Surface
-              variant="inset"
-              padded={false}
-              style={{ marginTop: t.spacing.sm, padding: t.spacing.md }}
-            >
-              {/* Weather sits in an inset well (#240's soft-fill sweep) so the
-                  readout reads as a recessed instrument inside the card. */}
-              {/* Stacked, not a space-between row (#238): both the conditions
-                  line and the forecast can run wide, so a row let them collide.
-                  Today's reads as the headline; tomorrow's sits beneath it. */}
-              <View>
-                <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
-                  {model.calendar.weather.todayLabel}
-                </Text>
-                <Text style={{ ...subValue, marginTop: t.spacing.xxs }}>
-                  {model.calendar.weather.forecastLabel}
-                </Text>
-              </View>
-              {/* Season demand lean (#231 S2): which buyer attributes this
-                  season nudges demand toward — the readable surface of the
-                  want-vector lean. */}
-              {model.calendar.weather.seasonLeanLabel ? (
-                <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
-                  {model.calendar.weather.seasonLeanLabel}
-                </Text>
-              ) : null}
-              {/* Vehicle-attribute lean (#231 S4): drivetrain/body/fuel traits
-                  today's weather tilts demand toward (snow → AWD/4WD). */}
-              {model.calendar.weather.weatherLeanLabel ? (
-                <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
-                  {model.calendar.weather.weatherLeanLabel}
-                </Text>
-              ) : null}
-            </Surface>
-          ) : null}
-        </Surface>
-      </View>
+            {/* Expanded: sold metric + full month grid + weather forecast/leans */}
+            {calendarExpanded ? (
+              <>
+                {model.calendar.soldThisMonth ? (
+                  <Text
+                    style={{ ...subValue, marginTop: t.spacing.xs }}
+                    testID="home-sold-this-month"
+                  >
+                    Sold this month {model.calendar.soldThisMonth.current} /{' '}
+                    {model.calendar.soldThisMonth.target}
+                  </Text>
+                ) : null}
+                <MiniCalendar days={model.calendar.miniCal} columns={7} />
+                {model.calendar.weather ? (
+                  <Surface
+                    variant="inset"
+                    padded={false}
+                    style={{ marginTop: t.spacing.sm, padding: t.spacing.md }}
+                  >
+                    <Text style={{ ...subValue, marginTop: 0 }}>
+                      {model.calendar.weather.forecastLabel}
+                    </Text>
+                    {model.calendar.weather.seasonLeanLabel ? (
+                      <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
+                        {model.calendar.weather.seasonLeanLabel}
+                      </Text>
+                    ) : null}
+                    {model.calendar.weather.weatherLeanLabel ? (
+                      <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
+                        {model.calendar.weather.weatherLeanLabel}
+                      </Text>
+                    ) : null}
+                  </Surface>
+                ) : null}
+              </>
+            ) : null}
+          </Surface>
+        </View>
+      </Pressable>
 
       {/* Monthly tier-gate progress strip (#233 S3b). The reframed TODAY'S
           TARGETS bar: each active face in its native idiom, the day's haul

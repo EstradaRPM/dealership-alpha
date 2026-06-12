@@ -1,7 +1,7 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { createEventBus, type EventBus } from '../src/game/EventBus';
 import { createTierGate, type TierGate } from '../src/game/TierGate';
 import type { TierGateConfig, GateMonthVerdict } from '../src/game/TierGate';
@@ -337,6 +337,8 @@ describe('#233 S3b — gate strip reachable on the live Home dashboard', () => {
     expect(getByTestId('home-gate-strip')).toBeTruthy();
     expect(getByText('Monthly Gate')).toBeTruthy();
     expect(getByText('2 / 10')).toBeTruthy();
+    // sold-this-month is in the expanded calendar section (#256) — tap to open.
+    fireEvent.press(getByTestId('home-calendar-toggle'));
     expect(getByTestId('home-sold-this-month')).toBeTruthy();
     // The day's haul ticks the units bar (daily-contribution reward beat).
     expect(getByTestId('gate-today-tick-units')).toBeTruthy();
