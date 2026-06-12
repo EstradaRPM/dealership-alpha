@@ -23,16 +23,7 @@ import {
 import type { DayLoopState } from '../../game/DayLoopController';
 import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { GateStrip } from './GateStrip';
-import { HeroBanner } from './HeroBanner';
 import type { HomeDashboardModel, MiniCalDay } from './homeModel';
-import type { ImageSourcePropType } from 'react-native';
-
-// Metro requires static require() calls — map must live at module scope.
-const HERO_BY_TIER: Partial<Record<number, ImageSourcePropType>> = {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  1: require('../../../assets/hero/lot-tier1.jpg'),
-  // 2 and 3 added when art lands (#251)
-};
 
 /** Leading glyph + accent per quick-stat tile (#240), keyed by the read-model's
  *  stat key. View-side mapping so the read model stays presentation-free; an
@@ -187,9 +178,10 @@ function Dashboard({
 
   return (
     <View testID="home-dashboard">
-      <HeroBanner imageSource={HERO_BY_TIER[model.tier] ?? HERO_BY_TIER[1]} />
-      {/* Identity (name + tier) is owned by the persistent AppShell header on
-          every tab (#238 HITL); the dashboard no longer repeats it. */}
+      {/* Identity (name + tier) AND the tier hero art are owned by the
+          persistent AppShell header (#238 HITL / hero-backdrop collapse): the
+          shell paints the lot photo as the page background and these cards
+          float up over its bottom fade. */}
       {/* Cash + reputation cards */}
       <View style={cardRow}>
         <View style={cardCol}>

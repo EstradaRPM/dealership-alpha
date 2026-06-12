@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, AppState } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  AppState,
+  type ImageSourcePropType,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -114,6 +119,14 @@ import { useNavigator } from './src/ui/Navigator';
 import { DepartmentScreen } from './src/ui/DepartmentScreen';
 import type { DeptKey } from './src/game/DepartmentQueue';
 import { loadTierConfig } from './src/game/CareerProgression';
+
+// Tier-keyed hero art for the shell's header backdrop. Metro requires static
+// require() calls — the map must live at module scope.
+const HERO_BY_TIER: Partial<Record<number, ImageSourcePropType>> = {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  1: require('./assets/hero/lot-tier1.jpg'),
+  // 2 and 3 added when art lands (#251)
+};
 
 const DEPT_TITLES: Record<DeptKey, string> = {
   sales: 'Sales',
@@ -1229,6 +1242,11 @@ export function DealershipApp({
   };
 
   let content: React.ReactNode = <View style={styles.container} />;
+  // True while the management AppShell is on screen: its hero header bleeds
+  // behind the status bar, so the root SafeAreaView must NOT pad the top edge
+  // (the shell pads its own content by the inset). Every other screen keeps
+  // the full inset.
+  let shellOwnsTopInset = false;
 
   if (screen === 'main-menu') {
     content = (
@@ -1755,6 +1773,8 @@ export function DealershipApp({
           <StrategicTab title={tab.label} tagline={tab.tagline} />
         ) : null),
     }));
+    const floorIsOpen = loopState.phase === 'FLOOR_OPEN' && !!floorModel;
+    shellOwnsTopInset = !floorIsOpen;
     content = (
       <View style={styles.container}>
         <StatusBar style="light" />
@@ -1777,6 +1797,9 @@ export function DealershipApp({
             }
             tierLabel={`Tier ${world.tierManager.currentTier} — ${tierEntry.label}`}
             stats={headerStats}
+            heroSource={
+              HERO_BY_TIER[world.tierManager.currentTier] ?? HERO_BY_TIER[1]
+            }
             onOpenGameMenu={openInGameMenu}
             tabs={shellTabs}
             activeTabKey={shellTab}
@@ -1837,7 +1860,14 @@ export function DealershipApp({
         <View style={styles.container}>
           <SafeAreaView
             style={styles.safeArea}
-            edges={['top', 'bottom', 'left', 'right']}
+            edges={
+              // The shell's hero header bleeds behind the status bar and pads
+              // its own content by the inset; every other screen keeps the top
+              // edge.
+              shellOwnsTopInset
+                ? ['bottom', 'left', 'right']
+                : ['top', 'bottom', 'left', 'right']
+            }
           >
             {content}
           </SafeAreaView>

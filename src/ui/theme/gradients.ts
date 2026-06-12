@@ -38,6 +38,17 @@ export const gradients = {
    * white fading to fully transparent. Sits above the fill, below the content.
    */
   gloss: ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.00)'],
+  /**
+   * Hero-header top scrim — sits between the hero art and the identity text so
+   * the dealership name/tier stay readable over any photo (and behind the
+   * translucent status bar). Dark at the very top, gone by mid-header.
+   */
+  heroScrimTop: ['rgba(8,12,20,0.88)', 'rgba(8,12,20,0.42)', 'rgba(8,12,20,0)'],
+  /**
+   * Hero-header bottom fade — melts the hero art into the page `base` so the
+   * first content cards float over the photo with no hard seam.
+   */
+  heroScrimBottom: ['rgba(14,20,32,0)', 'rgba(14,20,32,0.55)', '#0e1420'],
 } as const satisfies Record<string, GradientStops>;
 
 export type GradientToken = keyof typeof gradients;

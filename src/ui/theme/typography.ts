@@ -10,6 +10,12 @@ import type { TextStyle } from 'react-native';
  * literal types, so `fontWeight`/`textTransform` stay assignable downstream.
  */
 export const typography = {
+  /** Screen identity title — the dealership name over the hero header. */
+  title: {
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
   /** Card / section eyebrow — uppercase, tracked, muted in use. */
   sectionTitle: {
     fontSize: 13,
