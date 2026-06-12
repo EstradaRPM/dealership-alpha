@@ -4,8 +4,6 @@ import {
   Text,
   Pressable,
   LayoutAnimation,
-  Platform,
-  UIManager,
   type ViewStyle,
   type TextStyle,
 } from 'react-native';
@@ -231,9 +229,8 @@ function Dashboard({
       {/* Calendar — collapsed to a single row by default; tap expands (#256) */}
       <Pressable
         onPress={() => {
-          if (Platform.OS === 'android') {
-            UIManager.setLayoutAnimationEnabledExperimental?.(true);
-          }
+          // No setLayoutAnimationEnabledExperimental: it's a no-op (and warns)
+          // on the New Architecture, where LayoutAnimation is always on.
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
           setCalendarExpanded((v) => !v);
         }}
