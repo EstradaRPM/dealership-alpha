@@ -84,8 +84,6 @@ export interface GateStripModel {
    * the month-end verdict's worst-face rule. `null` when no faces are lit.
    */
   percentOnTrack: number | null;
-  /** Units flow face's month-to-date count + target — the calendar-card readout. */
-  unitsSold?: { current: number; target: number };
 }
 
 /** Today's haul, keyed by flow face id, for the daily-contribution tick. */
@@ -217,13 +215,8 @@ export function buildGateStrip(
           ) * 100,
         );
 
-  const units = progress.faces.find(
-    (f): f is FlowFaceProgress => f.kind === 'flow' && f.id === 'units',
-  );
-
   return {
     faces,
     percentOnTrack,
-    unitsSold: units ? { current: units.current, target: units.target } : undefined,
   };
 }

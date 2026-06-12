@@ -15,6 +15,7 @@ import {
   SectionHeader,
   StatCard,
   Pill,
+  Icon,
   IconBadge,
   GradientSurface,
   type IconName,
@@ -92,8 +93,10 @@ export function HomeTab({
         </View>
       )}
 
+      {/* Titled "Recap", not "Today" — it holds the LAST closed day's recap
+          chip, and a "Day N recap" under a "Today" header read dishonest (#258). */}
       <View style={region} testID="home-region-today">
-        <SectionHeader title="Today" />
+        <SectionHeader title="Recap" />
         <View style={regionBody}>
           {recapChip ? (
             <RecapChip day={recapChip.day} onOpen={recapChip.onOpen} />
@@ -148,7 +151,7 @@ function RecapChip({ day, onOpen }: { day: number; onOpen: () => void }) {
           >
             Day {day} recap
           </Text>
-          <Text style={{ ...t.typography.label, color: t.colors.primary }}>→</Text>
+          <Icon name="chevron-forward" size="sm" tone="primary" />
         </View>
       </Surface>
     </Pressable>
@@ -182,10 +185,11 @@ function Dashboard({
           persistent AppShell header (#238 HITL / hero-backdrop collapse): the
           shell paints the lot photo as the page background and these cards
           float up over its bottom fade. */}
-      {/* Cash + reputation cards */}
+      {/* Cash + reputation cards — both Surfaces flex-fill their column so the
+          two slabs always render the same height regardless of content. */}
       <View style={cardRow}>
         <View style={cardCol}>
-          <Surface>
+          <Surface style={{ flex: 1 }}>
             <StatCard
               label="Cash"
               value={model.cash.value}
@@ -197,7 +201,7 @@ function Dashboard({
           </Surface>
         </View>
         <View style={cardCol}>
-          <Surface>
+          <Surface style={{ flex: 1 }}>
             <View style={{ marginBottom: t.spacing.sm }}>
               <IconBadge name="star" tone="reward" variant="soft" size="sm" />
             </View>
@@ -253,18 +257,10 @@ function Dashboard({
                 <Pill tone="neutral" variant="soft" label={model.calendar.weather.todayLabel} />
               ) : null}
             </View>
-            {/* Expanded: sold metric + full month grid + weather forecast/leans */}
+            {/* Expanded: full month grid + weather forecast/leans. (Sold-this-
+                month lives once, in the gate strip's units face — #258 de-dup.) */}
             {calendarExpanded ? (
               <>
-                {model.calendar.soldThisMonth ? (
-                  <Text
-                    style={{ ...subValue, marginTop: t.spacing.xs }}
-                    testID="home-sold-this-month"
-                  >
-                    Sold this month {model.calendar.soldThisMonth.current} /{' '}
-                    {model.calendar.soldThisMonth.target}
-                  </Text>
-                ) : null}
                 <MiniCalendar days={model.calendar.miniCal} columns={7} />
                 {model.calendar.weather ? (
                   <Surface

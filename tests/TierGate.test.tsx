@@ -1,7 +1,7 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render } from '@testing-library/react-native';
 import { createEventBus, type EventBus } from '../src/game/EventBus';
 import { createTierGate, type TierGate } from '../src/game/TierGate';
 import type { TierGateConfig, GateMonthVerdict } from '../src/game/TierGate';
@@ -306,8 +306,6 @@ describe('#233 S3b — gate strip reachable on the live Home dashboard', () => {
     // lives once in the gate strip header. The gate still carries the figure.
     expect(m.stats.some((s) => s.key === 'on-track')).toBe(false);
     expect(m.gate?.percentOnTrack).not.toBeNull();
-    // "Sold this month X / target" rides the calendar card.
-    expect(m.calendar.soldThisMonth).toEqual({ current: 2, target: 10 });
   });
 
   it('omits the gate block + derived stats when no gate is supplied', () => {
@@ -316,7 +314,6 @@ describe('#233 S3b — gate strip reachable on the live Home dashboard', () => {
     const m = buildHomeDashboard(noGate);
     expect(m.gate).toBeUndefined();
     expect(m.stats.some((s) => s.key === 'on-track')).toBe(false);
-    expect(m.calendar.soldThisMonth).toBeUndefined();
   });
 
   it('flow face reports the pace readout (a fact the player reads, not a grade)', () => {
@@ -335,11 +332,8 @@ describe('#233 S3b — gate strip reachable on the live Home dashboard', () => {
       <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
     );
     expect(getByTestId('home-gate-strip')).toBeTruthy();
-    expect(getByText('Monthly Gate')).toBeTruthy();
+    expect(getByText('This Month')).toBeTruthy();
     expect(getByText('2 / 10')).toBeTruthy();
-    // sold-this-month is in the expanded calendar section (#256) — tap to open.
-    fireEvent.press(getByTestId('home-calendar-toggle'));
-    expect(getByTestId('home-sold-this-month')).toBeTruthy();
     // The day's haul ticks the units bar (daily-contribution reward beat).
     expect(getByTestId('gate-today-tick-units')).toBeTruthy();
   });

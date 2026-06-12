@@ -93,7 +93,7 @@ const HERO_BODY_MAX = 236;
 /** Hero backdrop height as a fraction of screen width (2:1-ish art, cropped). */
 const HERO_BODY_RATIO = 0.52;
 /** How far the first content card tucks up over the hero's bottom fade. */
-const CARD_OVERLAP = 24;
+const CARD_OVERLAP = 40;
 
 /**
  * The durable operating console for the management phase (#215). It owns the

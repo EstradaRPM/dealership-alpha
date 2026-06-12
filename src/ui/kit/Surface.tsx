@@ -41,6 +41,11 @@ export function Surface({
       borderRadius: t.radius.md,
       overflow: 'hidden',
       padding: padded ? t.spacing.xl : t.spacing.none,
+      // When the frame is stretched taller than its content (equal-height card
+      // rows pass `style={{ flex: 1 }}`), the gradient fill must grow with it or
+      // the frame's flat fallback color shows through the bottom band. Grow-only
+      // (no basis 0), so auto-sized cards still hug their content.
+      flexGrow: 1,
     };
     return (
       <View style={[frame, style]} {...rest}>

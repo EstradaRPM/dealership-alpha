@@ -5,6 +5,7 @@ import {
   Surface,
   SectionHeader,
   Pill,
+  Icon,
   IconBadge,
   ProgressBar,
   type IconName,
@@ -29,36 +30,38 @@ import type {
 export function GateStrip({ model }: { model: GateStripModel }) {
   const t = useTheme();
   return (
-    <View style={{ marginTop: t.spacing.md }} testID="home-gate-strip">
-      <Surface>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <SectionHeader title="Monthly Gate" />
-          {model.percentOnTrack != null ? (
+    // Region idiom matching Today/Market (#258): the SectionHeader titles the
+    // region OUTSIDE the card (% pill riding its accessory slot), the faces
+    // live on the Surface below. "This Month" is the player-facing name for
+    // the monthly tier gate.
+    <View style={{ marginTop: t.spacing.xl }} testID="home-gate-strip">
+      <SectionHeader
+        title="This Month"
+        accessory={
+          model.percentOnTrack != null ? (
             <Pill
               tone={model.percentOnTrack >= 100 ? 'positive' : 'info'}
               variant="soft"
               label={`${model.percentOnTrack}% on track`}
             />
-          ) : null}
-        </View>
-        {model.faces.map((face) => (
-          <View key={face.id} style={{ marginTop: t.spacing.md }}>
-            {face.kind === 'flow' ? (
-              <FlowFace face={face} />
-            ) : face.kind === 'level' ? (
-              <LevelFace face={face} />
-            ) : (
-              <TrendFace face={face} />
-            )}
-          </View>
-        ))}
-      </Surface>
+          ) : undefined
+        }
+      />
+      <View style={{ marginTop: t.spacing.md }}>
+        <Surface>
+          {model.faces.map((face, i) => (
+            <View key={face.id} style={{ marginTop: i === 0 ? 0 : t.spacing.md }}>
+              {face.kind === 'flow' ? (
+                <FlowFace face={face} />
+              ) : face.kind === 'level' ? (
+                <LevelFace face={face} />
+              ) : (
+                <TrendFace face={face} />
+              )}
+            </View>
+          ))}
+        </Surface>
+      </View>
     </View>
   );
 }
@@ -106,17 +109,15 @@ function FaceLabel({ id, label }: { id: string; label: string }) {
   );
 }
 
-/** Trend arrow + tone. */
+/** Trend arrow + tone — a kit `Icon`, not a text glyph (#258). */
 function TrendArrow({ trend }: { trend: 'up' | 'down' | 'flat' }) {
-  const t = useTheme();
-  const glyph = trend === 'up' ? '↗' : trend === 'down' ? '↘' : '→';
-  const color =
-    trend === 'up'
-      ? t.colors.positive
-      : trend === 'down'
-        ? t.colors.danger
-        : t.colors.textMuted;
-  return <Text style={{ ...t.typography.statLabel, color }}>{glyph}</Text>;
+  return trend === 'up' ? (
+    <Icon name="trending-up" size="sm" tone="positive" />
+  ) : trend === 'down' ? (
+    <Icon name="trending-down" size="sm" tone="danger" />
+  ) : (
+    <Icon name="remove" size="sm" tone="muted" />
+  );
 }
 
 function FlowFace({ face }: { face: FlowFaceView }) {
@@ -159,7 +160,7 @@ function LevelFace({ face }: { face: LevelFaceView }) {
     <View>
       <View style={h.row}>
         <FaceLabel id={face.id} label={face.label} />
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: t.spacing.xs }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}>
           <Text style={h.value}>
             {face.valueLabel} {face.thresholdLabel}
           </Text>
@@ -180,7 +181,7 @@ function TrendFace({ face }: { face: TrendFaceView }) {
     <View>
       <View style={h.row}>
         <FaceLabel id={face.id} label={face.label} />
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: t.spacing.xs }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}>
           <Text style={h.value}>
             {face.valueLabel} {face.thresholdLabel}
           </Text>

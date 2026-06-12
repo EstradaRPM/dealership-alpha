@@ -54,7 +54,7 @@ export interface HomeDashboardInputs {
   /**
    * Monthly tier-gate progress strip (#233 S3b). The full structured per-face
    * readout (flow pace bars + daily-haul tick, cash gauge, CSI sparkline) plus
-   * the derived "% on track" quick-stat and the units-sold-this-month pair.
+   * the derived "% on track" figure.
    * Built by `buildGateStrip` off the engine's live `getProgress()`. Optional so
    * pre-gate callers/tests still build a dashboard model.
    */
@@ -114,8 +114,6 @@ export interface HomeCalendarModel {
   dateLabel: string;
   /** Current gameplay month laid out as a 7-wide grid, today highlighted. */
   miniCal: MiniCalDay[];
-  /** "Sold this month X / target" (#233 S3b); absent until the gate is wired. */
-  soldThisMonth?: { current: number; target: number };
   /** Weather readout line + one-day forecast (#231); absent without input. */
   weather?: {
     todayLabel: string;
@@ -318,7 +316,6 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
       seasonLabel,
       dateLabel: `${seasonLabel} · Week ${week} · Day ${dayOfMonth}`,
       miniCal,
-      soldThisMonth: input.gate?.unitsSold,
       weather,
     },
     stats,
