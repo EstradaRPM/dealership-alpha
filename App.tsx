@@ -6,6 +6,8 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   createLegacyStore,
@@ -1952,6 +1954,16 @@ export function DealershipApp({
 }
 
 export default function App() {
+  // Preload the kit's icon font up front instead of leaning on each Icon's
+  // lazy per-mount load: one load, no glyph pop-in, and a *visible* warning
+  // when the font fails (the lazy path swallows the rejection and Android
+  // paints fallback tofu/CJK characters in its place).
+  const [, iconFontError] = useFonts(Ionicons.font);
+  useEffect(() => {
+    if (iconFontError) {
+      console.warn('Ionicons icon font failed to load:', iconFontError);
+    }
+  }, [iconFontError]);
   return <DealershipApp />;
 }
 

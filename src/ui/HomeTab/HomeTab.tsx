@@ -247,7 +247,15 @@ function Dashboard({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
               <DayBadge day={model.calendar.day} />
               <View style={{ flex: 1 }}>
-                <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
+                {/* One line always — between the DAY badge and weather chip the
+                    column is narrow, and "Week 3 · Month 1 · Q1" wrapping
+                    mid-phrase reads broken; shrink to fit instead. */}
+                <Text
+                  style={{ ...t.typography.statValue, color: t.colors.textPrimary }}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
                   Week {model.calendar.week} · Month {model.calendar.month} · Q
                   {model.calendar.quarter}
                 </Text>
