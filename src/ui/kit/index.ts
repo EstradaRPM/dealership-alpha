@@ -22,6 +22,8 @@ export { ProgressBar } from './ProgressBar';
 export type { ProgressBarProps, ProgressTone } from './ProgressBar';
 export { Meter } from './Meter';
 export type { MeterProps } from './Meter';
+export { GaugeArc } from './GaugeArc';
+export type { GaugeArcProps, GaugeTone } from './GaugeArc';
 export { StatCard } from './StatCard';
 export type { StatCardProps, TrendDirection } from './StatCard';
 export { SectionHeader } from './SectionHeader';

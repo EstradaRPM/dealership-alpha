@@ -14,6 +14,7 @@ import {
   Pill,
   Icon,
   IconBadge,
+  GaugeArc,
   GradientSurface,
   type IconName,
   type IconBadgeTone,
@@ -216,27 +217,31 @@ function Dashboard({
         </View>
         <View style={cardCol}>
           <Surface style={{ flex: 1 }}>
-            <View style={{ marginBottom: t.spacing.sm }}>
-              <IconBadge name="star" tone="reward" variant="solid" size="sm" />
-            </View>
-            <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
-              {model.reputation.score}
-              <Text style={{ ...t.typography.caption, color: t.colors.textMuted }}>
-                {' '}
-                / 100
-              </Text>
-            </Text>
-            <Text
+            {/* Header mirrors the cash StatCard's badge-over-label, then the
+                score reads as a gold gauge dial instead of a flat number (#262). */}
+            <View
               style={{
-                ...t.typography.statLabel,
-                color: t.colors.textMuted,
-                marginTop: t.spacing.xxs,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.spacing.sm,
+                marginBottom: t.spacing.sm,
               }}
             >
-              Reputation
-            </Text>
-            <View style={{ marginTop: t.spacing.xs, alignSelf: 'flex-start' }}>
-              <Pill tone="positive" variant="soft" label={model.reputation.csiLabel} />
+              <IconBadge name="star" tone="reward" variant="solid" size="sm" />
+              <Text style={{ ...t.typography.statLabel, color: t.colors.textMuted }}>
+                Reputation
+              </Text>
+            </View>
+            <View style={{ flex: 1, justifyContent: 'center' }}>
+              <GaugeArc
+                value={model.reputation.score / 100}
+                tone="reward"
+                readout={`${model.reputation.score}`}
+                readoutSuffix="/ 100"
+                caption={model.reputation.csiLabel}
+                captionTone="positive"
+                testID="home-reputation-gauge"
+              />
             </View>
           </Surface>
         </View>

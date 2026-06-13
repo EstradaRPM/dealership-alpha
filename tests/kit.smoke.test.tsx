@@ -11,6 +11,7 @@ import {
   Pill,
   ProgressBar,
   Meter,
+  GaugeArc,
   StatCard,
   SectionHeader,
 } from '../src/ui/kit';
@@ -57,6 +58,28 @@ describe('#225 base-component kit — smoke', () => {
     expect(() => render(<ProgressBar value={-5} />)).not.toThrow();
     expect(() => render(<ProgressBar value={5} />)).not.toThrow();
   });
+
+  it('renders GaugeArc with a provider', () => {
+    expect(() =>
+      render(
+        <ThemeProvider theme={defaultTheme}>
+          <GaugeArc value={0.87} tone="reward" readout="87" readoutSuffix="/ 100" caption="Very Good" />
+        </ThemeProvider>,
+      ),
+    ).not.toThrow();
+  });
+
+  it('renders GaugeArc with no provider (default theme) and degrades at 0 and 100', () => {
+    expect(() => render(<GaugeArc value={0} tone="reward" readout="0" caption="Poor" />)).not.toThrow();
+    expect(() => render(<GaugeArc value={1} tone="reward" readout="100" caption="Excellent" />)).not.toThrow();
+  });
+
+  it.each(['primary', 'positive', 'reward', 'danger'] as const)(
+    'GaugeArc tone=%s renders',
+    (tone) => {
+      expect(() => render(<GaugeArc value={0.5} tone={tone} />)).not.toThrow();
+    },
+  );
 });
 
 // The re-skinnability requirement: swapping the theme object at the root must
