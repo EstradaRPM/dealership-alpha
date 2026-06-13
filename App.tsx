@@ -8,6 +8,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { iconFont } from './src/ui/kit';
+import { IconFontDebug } from './src/ui/IconFontDebug';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   createLegacyStore,
@@ -1965,7 +1966,12 @@ export default function App() {
       console.warn('Kit icon font failed to load:', iconFontError);
     }
   }, [iconFontError]);
-  return <DealershipApp />;
+  return (
+    <View style={styles.container}>
+      <DealershipApp />
+      {__DEV__ && <IconFontDebug />}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
