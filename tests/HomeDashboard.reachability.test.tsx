@@ -48,15 +48,18 @@ describe('#230 buildHomeDashboard — pure model math', () => {
   it('formats cash + a signed vs-yesterday delta with a trend', () => {
     const m = buildHomeDashboard(INPUTS);
     expect(m.cash.value).toBe('$1,247,503');
-    expect(m.cash.delta).toBe('+$32,490 vs yesterday');
+    expect(m.cash.delta).toBe('+$32,490');
+    expect(m.cash.deltaContext).toBe('vs yesterday');
     expect(m.cash.trend).toBe('up');
 
     const down = buildHomeDashboard({ ...INPUTS, cashDelta: { ops: -1500, stock: 0 } });
-    expect(down.cash.delta).toBe('-$1,500 vs yesterday');
+    expect(down.cash.delta).toBe('-$1,500');
+    expect(down.cash.deltaContext).toBe('vs yesterday');
     expect(down.cash.trend).toBe('down');
 
     const none = buildHomeDashboard({ ...INPUTS, cashDelta: null });
     expect(none.cash.delta).toBeUndefined();
+    expect(none.cash.deltaContext).toBeUndefined();
     expect(none.cash.trend).toBe('flat');
   });
 
@@ -67,7 +70,8 @@ describe('#230 buildHomeDashboard — pure model math', () => {
       ...INPUTS,
       cashDelta: { ops: 12_490, stock: 38_000 },
     });
-    expect(m.cash.delta).toBe('+$12,490 ops · -$38,000 into stock');
+    expect(m.cash.delta).toBe('+$12,490 ops');
+    expect(m.cash.deltaContext).toBe('-$38,000 into stock');
     expect(m.cash.trend).toBe('up');
 
     // Ops loss alongside a buy still trends down — the split is honest, it
@@ -76,7 +80,8 @@ describe('#230 buildHomeDashboard — pure model math', () => {
       ...INPUTS,
       cashDelta: { ops: -2_000, stock: 38_000 },
     });
-    expect(opsLoss.cash.delta).toBe('-$2,000 ops · -$38,000 into stock');
+    expect(opsLoss.cash.delta).toBe('-$2,000 ops');
+    expect(opsLoss.cash.deltaContext).toBe('-$38,000 into stock');
     expect(opsLoss.cash.trend).toBe('down');
   });
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
 import { IconBadge, type IconBadgeTone } from './IconBadge';
-import type { IconName } from './Icon';
+import { Icon, type IconName } from './Icon';
 
 export type TrendDirection = 'up' | 'down' | 'flat';
 
@@ -11,9 +11,11 @@ export interface StatCardProps {
   label: string;
   /** The headline figure, pre-formatted by the caller. */
   value: string | number;
-  /** Optional trend delta (e.g. "+12%"); colored by `trend`. */
+  /** Optional trend delta (e.g. "+12%"); toned by `trend`. */
   delta?: string;
-  /** Direction the delta represents. Drives the delta color. Default `flat`. */
+  /** Optional trailing context for the delta chip (e.g. "vs Yesterday"), formatted by the caller. */
+  deltaContext?: string;
+  /** Direction the delta represents. Drives the chip tone + arrow. Default `flat`. */
   trend?: TrendDirection;
   /** Horizontal alignment of the stack. Default `left`. */
   align?: 'left' | 'center';
@@ -31,6 +33,7 @@ export function StatCard({
   label,
   value,
   delta,
+  deltaContext,
   trend = 'flat',
   align = 'left',
   icon,
@@ -48,17 +51,42 @@ export function StatCard({
     color: t.colors.textMuted,
     marginTop: t.spacing.xxs,
   };
-  const deltaColor =
+  // Delta is a toned candy chip, not inert text: trend drives the tint fill,
+  // the accent applied to the figure, and the trend-arrow glyph.
+  const deltaAccent =
     trend === 'up'
       ? t.colors.positive
       : trend === 'down'
         ? t.colors.danger
         : t.colors.textMuted;
+  const deltaTint =
+    trend === 'up'
+      ? t.colors.positiveTint
+      : trend === 'down'
+        ? t.colors.dangerTint
+        : t.colors.neutralTint;
+  const arrow: IconName =
+    trend === 'up' ? 'trending-up' : trend === 'down' ? 'trending-down' : 'remove';
+  const arrowTone = trend === 'up' ? 'positive' : trend === 'down' ? 'danger' : 'muted';
+  const deltaChip: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: align === 'center' ? 'center' : 'flex-start',
+    marginTop: t.spacing.xs,
+    paddingVertical: t.spacing.xxs,
+    paddingHorizontal: t.spacing.sm,
+    borderRadius: t.radius.pill,
+    backgroundColor: deltaTint,
+    gap: t.spacing.xxs,
+  };
   const deltaText: TextStyle = {
     ...t.typography.caption,
-    color: deltaColor,
-    marginTop: t.spacing.xxs,
+    color: deltaAccent,
     fontVariant: ['tabular-nums'],
+  };
+  const deltaContextText: TextStyle = {
+    ...t.typography.caption,
+    color: t.colors.textMuted,
   };
 
   return (
@@ -77,7 +105,13 @@ export function StatCard({
       <Text style={labelText} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
         {label}
       </Text>
-      {delta != null && <Text style={deltaText}>{delta}</Text>}
+      {delta != null && (
+        <View style={deltaChip}>
+          <Icon name={arrow} size="sm" tone={arrowTone} />
+          <Text style={deltaText}>{delta}</Text>
+          {deltaContext != null && <Text style={deltaContextText}>{deltaContext}</Text>}
+        </View>
+      )}
     </View>
   );
 }

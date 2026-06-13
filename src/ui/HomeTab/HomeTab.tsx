@@ -209,6 +209,7 @@ function Dashboard({
               label="Cash"
               value={model.cash.value}
               delta={model.cash.delta}
+              deltaContext={model.cash.deltaContext}
               trend={model.cash.trend}
               icon="cash"
               iconTone="positive"

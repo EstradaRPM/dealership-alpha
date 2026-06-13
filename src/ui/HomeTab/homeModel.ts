@@ -138,7 +138,7 @@ export interface HomeDashboardModel {
   tierLabel: string;
   /** Numeric tier (1-based). Keyed to hero art in the banner. */
   tier: number;
-  cash: { value: string; delta?: string; trend: TrendDirection };
+  cash: { value: string; delta?: string; deltaContext?: string; trend: TrendDirection };
   reputation: { score: number; csiLabel: string };
   calendar: HomeCalendarModel;
   stats: HomeStat[];
@@ -204,17 +204,20 @@ function formatSignedCash(amount: number): string {
 }
 
 /**
- * #255 split readout. With stock spend the line reads
- * `+$12,490 ops · -$38,000 into stock`; without, it stays the plain
- * `+$12,490 vs yesterday` the pre-split card showed.
+ * #255 split readout, formatted for the StatCard delta chip (#263): `delta` is
+ * the toned figure carried beside the trend arrow, `deltaContext` the muted
+ * suffix. Without stock spend it reads `+$12,490 · vs yesterday`; with, the
+ * suffix becomes the broken-out acquisition spend (`+$12,490 ops · -$38,000
+ * into stock`) so a deliberate buy never reads as a loss.
  */
-function formatDelta(delta: CashDeltaSplit): string {
+function formatDelta(delta: CashDeltaSplit): { delta: string; deltaContext: string } {
   if (Math.round(delta.stock) === 0) {
-    return `${formatSignedCash(delta.ops)} vs yesterday`;
+    return { delta: formatSignedCash(delta.ops), deltaContext: 'vs yesterday' };
   }
-  return `${formatSignedCash(delta.ops)} ops · -$${Math.abs(
-    Math.round(delta.stock),
-  ).toLocaleString()} into stock`;
+  return {
+    delta: `${formatSignedCash(delta.ops)} ops`,
+    deltaContext: `-$${Math.abs(Math.round(delta.stock)).toLocaleString()} into stock`,
+  };
 }
 
 export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardModel {
@@ -301,7 +304,7 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
     tier: input.tier ?? 1,
     cash: {
       value: formatCash(input.cash),
-      delta: input.cashDelta == null ? undefined : formatDelta(input.cashDelta),
+      ...(input.cashDelta == null ? {} : formatDelta(input.cashDelta)),
       trend,
     },
     reputation: {

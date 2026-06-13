@@ -28,6 +28,14 @@ describe('#225 base-component kit — smoke', () => {
           <SectionHeader title="Section" accessory={<Badge label="NEW" tone="info" />} />
           <Card variant="inset">
             <StatCard label="Units" value={3} delta="+2" trend="up" />
+            <StatCard
+              label="Cash"
+              value="$1,247,503"
+              delta="+$32,490"
+              deltaContext="vs Yesterday"
+              trend="up"
+            />
+            <StatCard label="Gross" value="$0" delta="-$1,500" trend="down" />
             <ProgressBar value={0.6} />
             <Meter label="Morale" value={0.72} readout="72%" tone="positive" />
             <Pill label="AGING" tone="danger" />
