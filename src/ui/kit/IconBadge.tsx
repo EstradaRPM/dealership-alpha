@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme';
-import type { Theme } from '../theme';
+import type { Theme, GradientToken } from '../theme';
+import { GradientSurface } from './Gradient';
 import { Icon, type IconName } from './Icon';
 
 /** Tones an `IconBadge` tile can fill in — the accents, no `onAccent`. */
@@ -42,7 +43,8 @@ function tint(t: Theme, tone: IconBadgeTone): string {
 /**
  * A colored rounded-square (or circle) tile holding a single `Icon` — the
  * cash-$, star-rep, and department-row treatment from the mockup. `solid` reads
- * as a painted chip (dark glyph on the accent); `soft` reads as a gentle tint
+ * as a glossy painted chip (dark glyph on the tone's gradient fill — the
+ * mockup's candy tile, not a flat swatch); `soft` reads as a gentle tint
  * (accent glyph on a translucent wash). Presentation only.
  */
 export function IconBadge({
@@ -56,14 +58,23 @@ export function IconBadge({
   const tile: ViewStyle = {
     padding: size === 'sm' ? t.spacing.xs : t.spacing.sm,
     borderRadius: shape === 'circle' ? t.radius.pill : t.radius.md,
-    backgroundColor: variant === 'soft' ? tint(t, tone) : t.icon.tone[tone],
     alignSelf: 'flex-start',
     alignItems: 'center',
     justifyContent: 'center',
   };
+  if (variant === 'solid') {
+    // Tone names are a subset of the gradient roles, so the tile fill resolves
+    // directly — a tone without a matching gradient is a compile error here.
+    const fill: GradientToken = tone;
+    return (
+      <GradientSurface gradient={fill} style={{ ...tile, overflow: 'hidden' }}>
+        <Icon name={name} size={size} tone="onAccent" />
+      </GradientSurface>
+    );
+  }
   return (
-    <View style={tile}>
-      <Icon name={name} size={size} tone={variant === 'soft' ? tone : 'onAccent'} />
+    <View style={{ ...tile, backgroundColor: tint(t, tone) }}>
+      <Icon name={name} size={size} tone={tone} />
     </View>
   );
 }

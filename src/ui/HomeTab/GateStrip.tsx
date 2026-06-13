@@ -102,7 +102,7 @@ function FaceLabel({ id, label }: { id: string; label: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.xs }}>
       {face ? (
-        <IconBadge name={face.icon} tone={face.tone} variant="soft" size="sm" />
+        <IconBadge name={face.icon} tone={face.tone} variant="solid" size="sm" />
       ) : null}
       <Text style={{ ...t.typography.statLabel, color: t.colors.textMuted }}>{label}</Text>
     </View>

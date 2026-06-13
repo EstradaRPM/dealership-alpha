@@ -139,7 +139,7 @@ function RecapChip({ day, onOpen }: { day: number; onOpen: () => void }) {
         <View
           style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}
         >
-          <IconBadge name="calendar" tone="primary" variant="soft" size="sm" />
+          <IconBadge name="calendar" tone="primary" variant="solid" size="sm" />
           <Text
             style={{
               ...t.typography.label,
@@ -201,7 +201,7 @@ function Dashboard({
         <View style={cardCol}>
           <Surface style={{ flex: 1 }}>
             <View style={{ marginBottom: t.spacing.sm }}>
-              <IconBadge name="star" tone="reward" variant="soft" size="sm" />
+              <IconBadge name="star" tone="reward" variant="solid" size="sm" />
             </View>
             <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
               {model.reputation.score}

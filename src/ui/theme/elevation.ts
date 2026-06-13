@@ -27,9 +27,11 @@ export const elevation = {
     shadowOpacity: 0.32,
     shadowRadius: 12,
     elevation: 8,
+    // The rim is the load-bearing depth cue on Android (shadow* props are
+    // iOS-only there); tuned to register on an OLED, not just in a design tool.
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    borderTopColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255,255,255,0.09)',
+    borderTopColor: 'rgba(255,255,255,0.18)',
   },
   /**
    * Soft colored halo — a glow cast in the element's OWN accent color (glossy

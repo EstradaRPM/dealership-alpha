@@ -12,12 +12,14 @@
  */
 
 export const colors = {
-  /** App background — the deepest layer. */
-  base: '#0e1420',
+  /** App background — the deepest layer. Kept a step above true near-black:
+   *  Android renders `elevation` as a black ambient shadow, so the page must be
+   *  light enough for card shadows and bevel edges to register at all. */
+  base: '#121a2b',
   /** Cards, panels, modals sitting on `base`. */
-  surface: '#18202e',
+  surface: '#1c2536',
   /** Raised surface: list rows, inputs, the layer above `surface`. */
-  surfaceRaised: '#2b3650',
+  surfaceRaised: '#2e3a58',
 
   /** Default borders / dividers. */
   border: '#33405a',

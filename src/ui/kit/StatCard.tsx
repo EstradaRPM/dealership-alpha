@@ -65,7 +65,9 @@ export function StatCard({
     <View style={items}>
       {icon != null && (
         <View style={{ marginBottom: t.spacing.sm }}>
-          <IconBadge name={icon} tone={iconTone} variant="soft" size="sm" />
+          {/* Solid candy tile per the mockup — the soft 16%-alpha tint reads as
+              a muddy smudge on the dark surface at device brightness. */}
+          <IconBadge name={icon} tone={iconTone} variant="solid" size="sm" />
         </View>
       )}
       <Text style={valueText}>{value}</Text>

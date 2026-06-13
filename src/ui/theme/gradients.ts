@@ -20,15 +20,20 @@ export type GradientStops = readonly [string, string, ...string[]];
 
 export const gradients = {
   /** Flush panels / page-level fills — a whisper of vertical depth. */
-  surface: ['#1c2536', '#141b28'],
+  surface: ['#202a3e', '#161e2e'],
   /**
-   * Raised cards, panels, primary-button bodies — lifts off `surface`. A
-   * near-flat run (glass slab, not a bubble): the lift comes from the rim
-   * light + shadow in `elevation.raised`, not from a loud fill sweep.
+   * Raised cards, panels, primary-button bodies — lifts off `surface`. The run
+   * is deliberately wide enough to register on a phone OLED (the prior
+   * near-flat sweep read as a flat fill on device); still a glass slab, not a
+   * bubble — the rim light + shadow in `elevation.raised` carry the lift.
    */
-  surfaceRaised: ['#2a3450', '#222c40'],
+  surfaceRaised: ['#323e60', '#242e46'],
   /** Primary interactive fill (cyan) — glossy call-to-action bodies. */
   primary: ['#4fc6fb', '#2ea3dd'],
+  /** Secondary accent fill (indigo) — solid `IconBadge` tiles, selection pops. */
+  accent: ['#97a2fb', '#6973ee'],
+  /** Muted/neutral fill — solid `IconBadge` tiles with no semantic accent. */
+  muted: ['#98a2b4', '#76829a'],
   /** Dim companion fill (navy-blue) — secondary buttons. */
   primaryDim: ['#27496f', '#163050'],
   /** Money & win moments (amber) — reward fills, tier-up flourishes. */
@@ -39,10 +44,11 @@ export const gradients = {
   danger: ['#f87681', '#e23a46'],
   /**
    * The top-highlight sheen layered over a raised surface — translucent white
-   * fading to fully transparent. Sits above the fill, below the content. Kept
-   * faint: it should read as light catching a glass edge, not a plastic dome.
+   * fading to fully transparent. Sits above the fill, below the content. Tuned
+   * to be visible on a phone OLED at real brightness (6% was sub-threshold)
+   * while still reading as light catching a glass edge, not a plastic dome.
    */
-  gloss: ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.00)'],
+  gloss: ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.00)'],
   /**
    * Hero-header top scrim — sits between the hero art and the identity text so
    * the dealership name/tier stay readable over any photo (and behind the
@@ -59,7 +65,7 @@ export const gradients = {
    * Hero-header bottom fade — melts the hero art into the page `base` so the
    * first content cards float over the photo with no hard seam.
    */
-  heroScrimBottom: ['rgba(14,20,32,0)', 'rgba(14,20,32,0.55)', '#0e1420'],
+  heroScrimBottom: ['rgba(18,26,43,0)', 'rgba(18,26,43,0.55)', '#121a2b'],
 } as const satisfies Record<string, GradientStops>;
 
 export type GradientToken = keyof typeof gradients;
