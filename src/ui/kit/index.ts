@@ -15,6 +15,7 @@ export { Badge, Pill } from './Badge';
 export type { BadgeProps, BadgeTone, BadgeVariant } from './Badge';
 export { Icon } from './Icon';
 export type { IconProps, IconName } from './Icon';
+export { iconFont } from './ionicons';
 export { IconBadge } from './IconBadge';
 export type { IconBadgeProps, IconBadgeTone } from './IconBadge';
 export { ProgressBar } from './ProgressBar';

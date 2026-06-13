@@ -1,5 +1,5 @@
 import React from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from './ionicons';
 import { useTheme } from '../theme';
 import type { IconSizeToken, IconToneToken } from '../theme';
 
