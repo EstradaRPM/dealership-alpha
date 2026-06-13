@@ -292,7 +292,15 @@ function Dashboard({
           pointerEvents={calendarExpanded ? 'auto' : 'none'}
           importantForAccessibility={calendarExpanded ? 'auto' : 'no-hide-descendants'}
         >
+          {/* Measure the drawer's natural height from an ABSOLUTELY-positioned
+              layer. If this measuring view were a normal flow child, it would
+              inherit the clip parent's animated `height: 0` on the New
+              Architecture and report 0 — leaving `drawerHeight` at 0 so the
+              drawer animates from 0 → `1 * 0` = 0 (never opens). An absolute
+              child is laid out independent of the parent's height, so onLayout
+              reports the true content height. */}
           <View
+            style={{ position: 'absolute', left: 0, right: 0, top: 0 }}
             onLayout={(e) => {
               const h = Math.round(e.nativeEvent.layout.height);
               if (h && h !== drawerHeight) setDrawerHeight(h);
