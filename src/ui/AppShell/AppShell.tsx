@@ -241,10 +241,13 @@ export function AppShell({
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
-  /** The bar earns an opaque backdrop once cards start sliding beneath it. */
+  /** The bar earns an opaque backdrop once cards start sliding beneath it.
+   *  Resolves to a FULLY opaque fill so the collapsed bar completely occludes
+   *  the hero art behind it — at 0.97 the dimmed photo (and scrolling content)
+   *  bled faintly through the top band. */
   const barBgOpacity = headerY.interpolate({
     inputRange: [range * 0.45, range],
-    outputRange: [0, 0.97],
+    outputRange: [0, 1],
     extrapolate: 'clamp',
   });
   /** The dealership name settles slightly smaller in the collapsed bar. */

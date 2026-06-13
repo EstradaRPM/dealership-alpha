@@ -226,19 +226,27 @@ function Dashboard({
         </View>
       </View>
 
-      {/* Calendar — collapsed to a single row by default; tap expands (#256) */}
-      <Pressable
-        onPress={() => {
-          // No setLayoutAnimationEnabledExperimental: it's a no-op (and warns)
-          // on the New Architecture, where LayoutAnimation is always on.
-          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-          setCalendarExpanded((v) => !v);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={calendarExpanded ? 'Collapse calendar' : 'Expand calendar'}
-        testID="home-calendar-toggle"
-      >
-        <View style={{ marginTop: t.spacing.md }}>
+      {/* Calendar — collapsed to a single row by default; tapping the row opens
+          a flat drawer below (#256). The drawer is deliberately OUTSIDE the
+          raised gradient card: keeping it in the card would stretch that card's
+          surfaceRaised fill AND bloom its gloss (a 30%-of-height catch-light
+          becomes a bright dome on the tall state). Holding the gradient card
+          fixed and revealing a flat (gradient-free) drawer also keeps the open
+          animation smooth — nothing re-rasterizes a LinearGradient per frame as
+          the layout eases. */}
+      <View style={{ marginTop: t.spacing.md }}>
+        <Pressable
+          onPress={() => {
+            // No setLayoutAnimationEnabledExperimental: it's a no-op (and warns)
+            // on the New Architecture, where LayoutAnimation is always on. The
+            // preset fades the drawer in/out as the height push eases.
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setCalendarExpanded((v) => !v);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={calendarExpanded ? 'Collapse calendar' : 'Expand calendar'}
+          testID="home-calendar-toggle"
+        >
           <Surface>
             {/* Collapsed row: DAY chip · Week/Month/Quarter · weather chip */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
@@ -262,37 +270,38 @@ function Dashboard({
                 <Pill tone="neutral" variant="soft" label={model.calendar.weather.todayLabel} />
               ) : null}
             </View>
-            {/* Expanded: full month grid + weather forecast/leans. (Sold-this-
-                month lives once, in the gate strip's units face — #258 de-dup.) */}
-            {calendarExpanded ? (
-              <>
-                <MiniCalendar days={model.calendar.miniCal} columns={7} />
-                {model.calendar.weather ? (
-                  <Surface
-                    variant="inset"
-                    padded={false}
-                    style={{ marginTop: t.spacing.sm, padding: t.spacing.md }}
-                  >
-                    <Text style={{ ...subValue, marginTop: 0 }}>
-                      {model.calendar.weather.forecastLabel}
-                    </Text>
-                    {model.calendar.weather.seasonLeanLabel ? (
-                      <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
-                        {model.calendar.weather.seasonLeanLabel}
-                      </Text>
-                    ) : null}
-                    {model.calendar.weather.weatherLeanLabel ? (
-                      <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
-                        {model.calendar.weather.weatherLeanLabel}
-                      </Text>
-                    ) : null}
-                  </Surface>
+          </Surface>
+        </Pressable>
+        {/* Expanded drawer: full month grid + weather forecast/leans, in a flat
+            panel so no gradient blooms on open. (Sold-this-month lives once, in
+            the gate strip's units face — #258 de-dup.) */}
+        {calendarExpanded ? (
+          <Surface variant="flat" style={{ marginTop: t.spacing.sm }}>
+            <MiniCalendar days={model.calendar.miniCal} columns={7} />
+            {model.calendar.weather ? (
+              <Surface
+                variant="inset"
+                padded={false}
+                style={{ marginTop: t.spacing.sm, padding: t.spacing.md }}
+              >
+                <Text style={{ ...subValue, marginTop: 0 }}>
+                  {model.calendar.weather.forecastLabel}
+                </Text>
+                {model.calendar.weather.seasonLeanLabel ? (
+                  <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
+                    {model.calendar.weather.seasonLeanLabel}
+                  </Text>
                 ) : null}
-              </>
+                {model.calendar.weather.weatherLeanLabel ? (
+                  <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
+                    {model.calendar.weather.weatherLeanLabel}
+                  </Text>
+                ) : null}
+              </Surface>
             ) : null}
           </Surface>
-        </View>
-      </Pressable>
+        ) : null}
+      </View>
 
       {/* Monthly tier-gate progress strip (#233 S3b). The reframed TODAY'S
           TARGETS bar: each active face in its native idiom, the day's haul
