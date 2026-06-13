@@ -27,11 +27,12 @@ export const elevation = {
     shadowOpacity: 0.32,
     shadowRadius: 12,
     elevation: 8,
-    // The rim is the load-bearing depth cue on Android (shadow* props are
-    // iOS-only there); tuned to register on an OLED, not just in a design tool.
+    // The rim is the load-bearing depth cue — it (not a big fill jump) is what
+    // separates a low-contrast card from the page, and it carries on Android
+    // where shadow* props don't. Tuned to register on an OLED.
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.09)',
-    borderTopColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderTopColor: 'rgba(255,255,255,0.20)',
   },
   /**
    * Soft colored halo — a glow cast in the element's OWN accent color (glossy
@@ -53,12 +54,13 @@ export const elevation = {
     shadowRadius: 12,
     elevation: 10,
   },
-  /** Pressed into the page — wells, inputs, track grooves. */
+  /** Pressed into the page — wells, inputs, track grooves. Top edge deepened so
+   *  the groove still reads now that raised fills sit closer to the page. */
   inset: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.35)',
+    borderTopColor: 'rgba(0,0,0,0.45)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
 } satisfies Record<string, ViewStyle>;
 

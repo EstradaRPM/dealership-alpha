@@ -68,6 +68,13 @@ export function IconBadge({
     const fill: GradientToken = tone;
     return (
       <GradientSurface gradient={fill} style={{ ...tile, overflow: 'hidden' }}>
+        {/* Same top sheen the raised Surface carries — gives the candy tile a
+            glossy dome instead of a flat swatch. */}
+        <GradientSurface
+          gradient="gloss"
+          pointerEvents="none"
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%' }}
+        />
         <Icon name={name} size={size} tone="onAccent" />
       </GradientSurface>
     );

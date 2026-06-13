@@ -80,13 +80,21 @@ export function ProgressBar({
     width: `${pct}%`,
     height: '100%',
     borderRadius: t.radius.pill,
+    overflow: 'hidden',
     ...t.elevation.glow,
     shadowColor: t.colors[tone],
   };
 
   return (
     <View style={track}>
-      <GradientSurface gradient={roles(tone)} style={fill} />
+      <GradientSurface gradient={roles(tone)} style={fill}>
+        {/* Top sheen so the fill reads as a glossy lozenge, not a flat stick. */}
+        <GradientSurface
+          gradient="gloss"
+          pointerEvents="none"
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }}
+        />
+      </GradientSurface>
     </View>
   );
 }

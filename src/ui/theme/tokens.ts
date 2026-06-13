@@ -18,8 +18,11 @@ export const colors = {
   base: '#121a2b',
   /** Cards, panels, modals sitting on `base`. */
   surface: '#1c2536',
-  /** Raised surface: list rows, inputs, the layer above `surface`. */
-  surfaceRaised: '#2e3a58',
+  /** Raised surface: list rows, inputs, the layer above `surface`. Sits only a
+   *  gentle step above `base` — premium dark UI separates a card with its bevel
+   *  (rim + gloss + shadow), not a big fill-luminance jump. A loud lift here
+   *  reads as flat stacked rectangles ("dark-theme beta"), not glass panes. */
+  surfaceRaised: '#283249',
 
   /** Default borders / dividers. */
   border: '#33405a',

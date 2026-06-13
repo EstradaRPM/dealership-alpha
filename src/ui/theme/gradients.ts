@@ -22,12 +22,13 @@ export const gradients = {
   /** Flush panels / page-level fills — a whisper of vertical depth. */
   surface: ['#202a3e', '#161e2e'],
   /**
-   * Raised cards, panels, primary-button bodies — lifts off `surface`. The run
-   * is deliberately wide enough to register on a phone OLED (the prior
-   * near-flat sweep read as a flat fill on device); still a glass slab, not a
-   * bubble — the rim light + shadow in `elevation.raised` carry the lift.
+   * Raised cards, panels, primary-button bodies. Sits only a gentle step above
+   * the page `base`: the separation comes from the bevel (rim + gloss + shadow
+   * in `elevation.raised`), NOT from a big fill jump — a loud lift reads as a
+   * flat colored rectangle, not a glass slab. Still a perceptible vertical run
+   * so the gradient registers on a phone OLED.
    */
-  surfaceRaised: ['#323e60', '#242e46'],
+  surfaceRaised: ['#2a3450', '#1e2738'],
   /** Primary interactive fill (cyan) — glossy call-to-action bodies. */
   primary: ['#4fc6fb', '#2ea3dd'],
   /** Secondary accent fill (indigo) — solid `IconBadge` tiles, selection pops. */
@@ -38,8 +39,10 @@ export const gradients = {
   primaryDim: ['#27496f', '#163050'],
   /** Money & win moments (amber) — reward fills, tier-up flourishes. */
   reward: ['#fcd34d', '#f4a823'],
-  /** Positive/success fill (green) — healthy pace/target bars. */
-  positive: ['#5ee7b0', '#22b07d'],
+  /** Positive/success fill (green) — money tiles, healthy pace/target bars.
+   *  Deepened off a pale mint so the candy tile reads as rich money-green, not
+   *  faded, against the low-contrast card. */
+  positive: ['#47dca3', '#1fa173'],
   /** Danger/negative fill (red) — behind-pace / loss bars. */
   danger: ['#f87681', '#e23a46'],
   /**
@@ -48,7 +51,7 @@ export const gradients = {
    * to be visible on a phone OLED at real brightness (6% was sub-threshold)
    * while still reading as light catching a glass edge, not a plastic dome.
    */
-  gloss: ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.00)'],
+  gloss: ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.00)'],
   /**
    * Hero-header top scrim — sits between the hero art and the identity text so
    * the dealership name/tier stay readable over any photo (and behind the
