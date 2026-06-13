@@ -8,7 +8,6 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { iconFont } from './src/ui/kit';
-import { IconFontDebug } from './src/ui/IconFontDebug';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   createLegacyStore,
@@ -1957,21 +1956,15 @@ export function DealershipApp({
 export default function App() {
   // Preload the kit's icon font up front instead of leaning on each Icon's
   // lazy per-mount load: one load, no glyph pop-in, and a *visible* warning
-  // when the font fails. The kit registers the ttf under its own family name
-  // (see src/ui/kit/ionicons.ts) so Expo Go's pre-registered 'ionicons' can
-  // never shadow it with a mismatched font.
+  // when the font fails. The kit owns which ttf this is and registers it
+  // under a project-unique family name (see src/ui/kit/icons.ts).
   const [, iconFontError] = useFonts(iconFont);
   useEffect(() => {
     if (iconFontError) {
       console.warn('Kit icon font failed to load:', iconFontError);
     }
   }, [iconFontError]);
-  return (
-    <View style={styles.container}>
-      <DealershipApp />
-      {__DEV__ && <IconFontDebug />}
-    </View>
-  );
+  return <DealershipApp />;
 }
 
 const styles = StyleSheet.create({

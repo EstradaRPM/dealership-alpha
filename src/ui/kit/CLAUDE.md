@@ -48,13 +48,18 @@ function MyScreen() {
 `Surface`/`Card` (raised·inset·flat) · `Gradient`/`GradientSurface` (themed
 `LinearGradient` by role) · `Button` (primary·secondary·ghost) ·
 `Badge`/`Pill` (neutral·info·positive·reward·danger; `outline`·`soft` fill) ·
-`Icon` (Ionicons glyph by name, themed `size`/`tone`) · `IconBadge` (colored
+`Icon` (kit glyph by name, themed `size`/`tone`) · `IconBadge` (colored
 tile holding an `Icon`; `solid`·`soft`, rounded·circle) · `ProgressBar` ·
 `Meter` (labeled gauge) · `StatCard` (value·label·trend delta, optional leading
 `icon`) · `SectionHeader`.
 
-Icons (#236) come from `@expo/vector-icons` (Ionicons). The glyph name is a
-prop; size/color are theme roles (`theme.icon.size`/`.tone`), never literals.
+Icons (#236) come from `@expo/vector-icons`, rendered as **MaterialIcons**
+glyphs: Android silently rejects SDK 54's vendored Ionicons.ttf (loads +
+registers fine, paints tofu — see `icons.ts`), so call sites keep their
+Ionicons-style names and `ICON_MAP` in `icons.ts` resolves each to a Material
+glyph. New icon = add one mapping entry there; the `satisfies` clause makes a
+missing/typo'd Material glyph a compile error. The glyph name is a prop;
+size/color are theme roles (`theme.icon.size`/`.tone`), never literals.
 Soft fills (soft `Pill`, soft `IconBadge`, `StatCard` icon) use the `*Tint`
 translucent color roles — single-sourced in `tokens.ts`, never an inline alpha.
 
