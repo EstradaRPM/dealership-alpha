@@ -580,8 +580,13 @@ export function AppShell({
             borderTopWidth: 2,
             borderTopColor: selected ? t.colors.primary : 'transparent',
           };
+          // Sentence-case nav labels (#265): tab labels are wayfinding, not
+          // status tags — tracked all-caps here is wireframe texture. Keep the
+          // small bold size, drop the uppercase + wide tracking.
           const tabLabel: TextStyle = {
             ...t.typography.badge,
+            textTransform: 'none',
+            letterSpacing: 0.3,
             color: selected ? t.colors.primary : t.colors.textMuted,
           };
           return (

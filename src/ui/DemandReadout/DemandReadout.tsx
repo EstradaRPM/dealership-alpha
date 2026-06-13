@@ -126,10 +126,11 @@ function TargetingLeverRow({ lever }: { lever: DemandTargetingLever }) {
  */
 export function DemandReadout({ model }: { model: DemandReadoutModel }) {
   const t = useTheme();
+  // Calm muted caption, not italic — italic empty-states read as wireframe
+  // placeholder filler (#265).
   const empty: TextStyle = {
     ...t.typography.caption,
     color: t.colors.textMuted,
-    fontStyle: 'italic',
   };
   const dividedSection: ViewStyle = {
     marginTop: t.spacing.lg,

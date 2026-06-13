@@ -42,6 +42,7 @@ export function GateStrip({ model }: { model: GateStripModel }) {
             <Pill
               tone={model.percentOnTrack >= 100 ? 'positive' : 'info'}
               variant="soft"
+              textCase="sentence"
               label={`${model.percentOnTrack}% on track`}
             />
           ) : undefined
@@ -202,7 +203,6 @@ function Sparkline({ values }: { values: number[] }) {
         style={{
           ...t.typography.caption,
           color: t.colors.textMuted,
-          fontStyle: 'italic',
           marginTop: t.spacing.xxs,
         }}
       >

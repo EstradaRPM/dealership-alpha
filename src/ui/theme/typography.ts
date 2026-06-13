@@ -28,12 +28,13 @@ export const typography = {
     fontSize: 22,
     fontWeight: '700',
   },
-  /** Caption under a stat — uppercase, tracked. */
+  /** Caption under a stat — sentence-case, lightly tracked. Tracked all-caps is
+   *  reserved for `sectionTitle` (true section headers); card labels read calm
+   *  and lowercase so the hierarchy isn't a wall of caps (#265). */
   statLabel: {
     fontSize: 12,
-    fontWeight: '400',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    fontWeight: '500',
+    letterSpacing: 0.2,
   },
   /** Default body copy. */
   body: {

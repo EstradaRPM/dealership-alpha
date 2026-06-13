@@ -64,10 +64,11 @@ export function HomeTab({
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
   const regionBody: ViewStyle = { marginTop: t.spacing.md };
+  // Empty-state copy: a calm muted caption, NOT italic — the italic one-liners
+  // read as wireframe placeholder filler (#265). Informative, not apologetic.
   const hint: TextStyle = {
     ...t.typography.caption,
     color: t.colors.textMuted,
-    fontStyle: 'italic',
   };
 
   return (
@@ -283,7 +284,12 @@ function Dashboard({
                 <Text style={subValue}>{model.calendar.seasonLabel}</Text>
               </View>
               {model.calendar.weather ? (
-                <Pill tone="neutral" variant="soft" label={model.calendar.weather.todayLabel} />
+                <Pill
+                  tone="neutral"
+                  variant="soft"
+                  textCase="sentence"
+                  label={model.calendar.weather.todayLabel}
+                />
               ) : null}
             </View>
           </Surface>

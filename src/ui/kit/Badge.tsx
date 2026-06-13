@@ -13,6 +13,13 @@ export interface BadgeProps {
   tone?: BadgeTone;
   /** Fill treatment. Default `outline`. */
   variant?: BadgeVariant;
+  /**
+   * Casing of the chip text. `caps` (default) is the tracked-uppercase status-tag
+   * idiom (NEW · AGING · TIER 2). `sentence` keeps the label as written — for
+   * descriptive chips (a weather readout, "91% on track") that aren't tags and
+   * read as wireframe filler in all-caps (the typography pass).
+   */
+  textCase?: 'caps' | 'sentence';
 }
 
 /**
@@ -21,7 +28,12 @@ export interface BadgeProps {
  * raised chip while `soft` fills it with a translucent tint of the same accent
  * (the mockup's soft-glow badges). Presentation only.
  */
-export function Badge({ label, tone = 'neutral', variant = 'outline' }: BadgeProps) {
+export function Badge({
+  label,
+  tone = 'neutral',
+  variant = 'outline',
+  textCase = 'caps',
+}: BadgeProps) {
   const t = useTheme();
   const accent =
     tone === 'info'
@@ -54,7 +66,12 @@ export function Badge({ label, tone = 'neutral', variant = 'outline' }: BadgePro
     borderColor: accent,
     backgroundColor: soft ? tint : t.colors.surfaceRaised,
   };
-  const text: TextStyle = { ...t.typography.badge, color: accent };
+  const text: TextStyle = {
+    ...t.typography.badge,
+    color: accent,
+    // Descriptive chips opt out of the tracked-uppercase tag idiom.
+    ...(textCase === 'sentence' ? { textTransform: 'none', letterSpacing: 0.2 } : null),
+  };
 
   return (
     <View style={container}>
