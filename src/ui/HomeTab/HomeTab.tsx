@@ -3,7 +3,8 @@ import {
   View,
   Text,
   Pressable,
-  LayoutAnimation,
+  Animated,
+  Easing,
   type ViewStyle,
   type TextStyle,
 } from 'react-native';
@@ -176,6 +177,20 @@ function Dashboard({
     marginTop: t.spacing.xxs,
   };
   const [calendarExpanded, setCalendarExpanded] = React.useState(false);
+  // Smooth open/close: LayoutAnimation is a no-op on the New Architecture (it
+  // just snaps), so the drawer is driven by a JS Animated value instead. The
+  // drawer stays mounted and clipped; its natural height is measured once via
+  // onLayout, then `expand` interpolates both the clip height and the opacity.
+  const expand = React.useRef(new Animated.Value(0)).current;
+  const [drawerHeight, setDrawerHeight] = React.useState(0);
+  React.useEffect(() => {
+    Animated.timing(expand, {
+      toValue: calendarExpanded ? 1 : 0,
+      duration: 260,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // animates layout height — JS driver only
+    }).start();
+  }, [calendarExpanded, expand]);
 
   return (
     <View testID="home-dashboard">
@@ -236,13 +251,7 @@ function Dashboard({
           the layout eases. */}
       <View style={{ marginTop: t.spacing.md }}>
         <Pressable
-          onPress={() => {
-            // No setLayoutAnimationEnabledExperimental: it's a no-op (and warns)
-            // on the New Architecture, where LayoutAnimation is always on. The
-            // preset fades the drawer in/out as the height push eases.
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            setCalendarExpanded((v) => !v);
-          }}
+          onPress={() => setCalendarExpanded((v) => !v)}
           accessibilityRole="button"
           accessibilityLabel={calendarExpanded ? 'Collapse calendar' : 'Expand calendar'}
           testID="home-calendar-toggle"
@@ -274,33 +283,58 @@ function Dashboard({
         </Pressable>
         {/* Expanded drawer: full month grid + weather forecast/leans, in a flat
             panel so no gradient blooms on open. (Sold-this-month lives once, in
-            the gate strip's units face — #258 de-dup.) */}
-        {calendarExpanded ? (
-          <Surface variant="flat" style={{ marginTop: t.spacing.sm }}>
-            <MiniCalendar days={model.calendar.miniCal} columns={7} />
-            {model.calendar.weather ? (
-              <Surface
-                variant="inset"
-                padded={false}
-                style={{ marginTop: t.spacing.sm, padding: t.spacing.md }}
-              >
-                <Text style={{ ...subValue, marginTop: 0 }}>
-                  {model.calendar.weather.forecastLabel}
-                </Text>
-                {model.calendar.weather.seasonLeanLabel ? (
-                  <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
-                    {model.calendar.weather.seasonLeanLabel}
+            the gate strip's units face — #258 de-dup.) Always mounted, clipped
+            to an Animated height + faded by `expand` so the open is a smooth
+            glide, not LayoutAnimation's Fabric snap. */}
+        <Animated.View
+          style={{
+            overflow: 'hidden',
+            opacity: expand,
+            // Once measured, clip from 0 → natural height. Before measuring,
+            // pin to 0 while collapsed (the default mount state) so the unclipped
+            // drawer never flashes a full-height frame; the inner view still lays
+            // out naturally inside the clip, so onLayout reads its true height.
+            height: drawerHeight
+              ? expand.interpolate({ inputRange: [0, 1], outputRange: [0, drawerHeight] })
+              : calendarExpanded
+                ? undefined
+                : 0,
+          }}
+          pointerEvents={calendarExpanded ? 'auto' : 'none'}
+          importantForAccessibility={calendarExpanded ? 'auto' : 'no-hide-descendants'}
+        >
+          <View
+            onLayout={(e) => {
+              const h = Math.round(e.nativeEvent.layout.height);
+              if (h && h !== drawerHeight) setDrawerHeight(h);
+            }}
+          >
+            <Surface variant="flat" style={{ marginTop: t.spacing.sm }}>
+              <MiniCalendar days={model.calendar.miniCal} columns={7} />
+              {model.calendar.weather ? (
+                <Surface
+                  variant="inset"
+                  padded={false}
+                  style={{ marginTop: t.spacing.sm, padding: t.spacing.md }}
+                >
+                  <Text style={{ ...subValue, marginTop: 0 }}>
+                    {model.calendar.weather.forecastLabel}
                   </Text>
-                ) : null}
-                {model.calendar.weather.weatherLeanLabel ? (
-                  <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
-                    {model.calendar.weather.weatherLeanLabel}
-                  </Text>
-                ) : null}
-              </Surface>
-            ) : null}
-          </Surface>
-        ) : null}
+                  {model.calendar.weather.seasonLeanLabel ? (
+                    <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
+                      {model.calendar.weather.seasonLeanLabel}
+                    </Text>
+                  ) : null}
+                  {model.calendar.weather.weatherLeanLabel ? (
+                    <Text style={{ ...subValue, marginTop: t.spacing.xs }}>
+                      {model.calendar.weather.weatherLeanLabel}
+                    </Text>
+                  ) : null}
+                </Surface>
+              ) : null}
+            </Surface>
+          </View>
+        </Animated.View>
       </View>
 
       {/* Monthly tier-gate progress strip (#233 S3b). The reframed TODAY'S

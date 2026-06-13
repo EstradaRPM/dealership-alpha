@@ -394,11 +394,7 @@ export function AppShell({
       <Animated.ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingTop: heroHeight - CARD_OVERLAP,
-          paddingHorizontal: t.spacing.lg,
-          paddingBottom: t.spacing.xl,
-        }}
+        contentContainerStyle={{ flexGrow: 1 }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true },
@@ -407,9 +403,22 @@ export function AppShell({
         keyboardShouldPersistTaps="handled"
         testID="app-shell-content"
       >
-        <Animated.View style={{ opacity: contentFade }}>
-          {active?.content}
-        </Animated.View>
+        {/* Transparent hero-reveal spacer: the only band where the photo shows
+            through. Everything below scrolls on an opaque `base` sheet so the
+            hero never peeks through the gaps between cards as the page moves. */}
+        <View style={{ height: heroHeight - CARD_OVERLAP }} pointerEvents="none" />
+        <View
+          style={{
+            flexGrow: 1,
+            backgroundColor: t.colors.base,
+            paddingHorizontal: t.spacing.lg,
+            paddingBottom: t.spacing.xl,
+          }}
+        >
+          <Animated.View style={{ opacity: contentFade }}>
+            {active?.content}
+          </Animated.View>
+        </View>
       </Animated.ScrollView>
 
       {/* Identity bar — pinned over hero AND scrolling content. */}
