@@ -72,12 +72,6 @@ export const gradients = {
    */
   heroScrimTop: ['rgba(8,12,20,0.92)', 'rgba(8,12,20,0.55)', 'rgba(8,12,20,0)'],
   /**
-   * Hero-header side scrim — a horizontal (left → right) darkening run layered
-   * under the identity text only, so the text side of the photo carries extra
-   * contrast without flattening the whole image.
-   */
-  heroScrimSide: ['rgba(8,12,20,0.80)', 'rgba(8,12,20,0.35)', 'rgba(8,12,20,0)'],
-  /**
    * Hero-header bottom fade — melts the hero art into the page `base` so the
    * first content cards float over the photo with no hard seam.
    */

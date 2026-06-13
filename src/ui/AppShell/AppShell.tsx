@@ -374,20 +374,6 @@ export function AppShell({
             height: insets.top + 118,
           }}
         />
-        {/* Extra horizontal contrast on the text side only — the photo keeps
-            its punch on the right while the name/stats column reads clean. */}
-        <Gradient
-          gradient="heroScrimSide"
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: width * 0.72,
-            height: insets.top + 142,
-          }}
-        />
         {/* Bottom fade into `base` so the first cards float with no hard seam. */}
         <Gradient
           gradient="heroScrimBottom"
