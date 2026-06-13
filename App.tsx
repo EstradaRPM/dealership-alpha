@@ -1663,10 +1663,22 @@ export function DealershipApp({
     // Cash / reputation / tier now live once in the richer Home dashboard cards
     // (#238 HITL): the shell header already carries name + tier identity, so the
     // top strip keeps only REG PRESSURE — the one status with no other home.
+    // Tone shifts with the pressure level so the chip reads as a dial: clear
+    // green low, amber as it climbs, red once it's a real liability.
+    const pressureRatio =
+      regulatoryPressure.max > 0
+        ? regulatoryPressure.pressure / regulatoryPressure.max
+        : 0;
     const headerStats: ShellStat[] = [
       {
         label: 'REG PRESSURE',
         value: `${Math.round(regulatoryPressure.pressure)}/${Math.round(regulatoryPressure.max)}`,
+        tone:
+          pressureRatio >= 0.66
+            ? 'danger'
+            : pressureRatio >= 0.33
+              ? 'reward'
+              : 'positive',
       },
     ];
     // Home status dashboard (#230): formatted entirely in the model builder from

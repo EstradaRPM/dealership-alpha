@@ -14,7 +14,7 @@ import {
 import { Image } from 'expo-image';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
-import { Button, Icon, Gradient, type IconName } from '../kit';
+import { Button, Icon, Gradient, Pill, type IconName, type BadgeTone } from '../kit';
 
 /**
  * The canonical bottom-tab IA (#215). Five enduring tabs across the whole game;
@@ -45,6 +45,12 @@ export interface ShellTab {
 export interface ShellStat {
   label: string;
   value: string;
+  /**
+   * Optional semantic tone so a status reads as a glanceable dial — the
+   * reg-pressure chip shifts green→amber→red as it climbs. The composition root
+   * maps the live value to a tone; the view just paints the rim + value in it.
+   */
+  tone?: BadgeTone;
 }
 
 export interface AppShellProps {
@@ -261,12 +267,6 @@ export function AppShell({
     color: t.colors.textPrimary,
     ...onHeroShadow,
   };
-  const tierText: TextStyle = {
-    ...t.typography.statLabel,
-    color: t.colors.textSecondary,
-    marginTop: t.spacing.xxs,
-    ...onHeroShadow,
-  };
   const menuBtn: ViewStyle = {
     width: 38,
     height: 38,
@@ -277,19 +277,38 @@ export function AppShell({
     borderWidth: 1,
     borderColor: t.colors.border,
   };
-  const statLabel: TextStyle = {
-    ...t.typography.statLabel,
-    fontSize: 11,
-    color: t.colors.textMuted,
-    ...onHeroShadow,
+  // A status's semantic accent — the rim + value color that turns the chip into
+  // a glanceable dial. `undefined` tone reads as a plain identity chip.
+  const toneAccent = (tone?: BadgeTone): string =>
+    tone === 'info'
+      ? t.colors.primary
+      : tone === 'positive'
+        ? t.colors.positive
+        : tone === 'reward'
+          ? t.colors.reward
+          : tone === 'danger'
+            ? t.colors.danger
+            : t.colors.textSecondary;
+  // A contained stat chip (label + value) on the hero — the chip's own
+  // surfaceRaised fill carries the contrast, so it stays legible over any photo
+  // without leaning on the text shadow the way bare-on-photo text would.
+  const statChip: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.xs,
+    paddingVertical: t.spacing.xxs,
+    paddingHorizontal: t.spacing.sm,
+    borderRadius: t.radius.pill,
+    borderWidth: 1,
+    backgroundColor: t.colors.surfaceRaised,
   };
-  const statValue: TextStyle = {
-    ...t.typography.statValue,
-    fontSize: 18,
-    color: t.colors.textPrimary,
+  const statChipLabel: TextStyle = {
+    ...t.typography.badge,
+    color: t.colors.textMuted,
+  };
+  const statChipValue: TextStyle = {
+    ...t.typography.badge,
     fontVariant: ['tabular-nums'],
-    marginTop: t.spacing.xxs,
-    ...onHeroShadow,
   };
   const compactStat: TextStyle = {
     ...t.typography.badge,
@@ -458,26 +477,49 @@ export function AppShell({
                 {businessName}
               </Text>
             </Animated.View>
-            {/* Expanded-only meta: tier line + stacked stat block. */}
+            {/* Expanded-only meta: tier chip + a row of contained stat chips.
+                Everything here is a real container — the dealership name is the
+                only bare text the hero carries, so nothing reads as a debug
+                overlay floating on the photo. */}
             <Animated.View
-              style={{ opacity: metaOpacity, transform: [{ translateY: metaShift }] }}
+              style={{
+                opacity: metaOpacity,
+                transform: [{ translateY: metaShift }],
+                marginTop: t.spacing.xs,
+              }}
             >
-              <Text style={tierText}>{tierLabel}</Text>
+              <Pill label={tierLabel} tone="info" variant="outline" />
               {stats.length > 0 && (
                 <View
                   style={{
                     flexDirection: 'row',
                     flexWrap: 'wrap',
                     marginTop: t.spacing.sm,
-                    gap: t.spacing.xxl,
+                    gap: t.spacing.sm,
                   }}
                 >
-                  {stats.map((s) => (
-                    <View key={s.label}>
-                      <Text style={statLabel}>{s.label}</Text>
-                      <Text style={statValue}>{s.value}</Text>
-                    </View>
-                  ))}
+                  {stats.map((s) => {
+                    const accent = toneAccent(s.tone);
+                    return (
+                      <View
+                        key={s.label}
+                        style={{
+                          ...statChip,
+                          borderColor: s.tone ? accent : t.colors.border,
+                        }}
+                      >
+                        <Text style={statChipLabel}>{s.label}</Text>
+                        <Text
+                          style={{
+                            ...statChipValue,
+                            color: s.tone ? accent : t.colors.textPrimary,
+                          }}
+                        >
+                          {s.value}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
               )}
             </Animated.View>
