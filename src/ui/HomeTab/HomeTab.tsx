@@ -22,7 +22,7 @@ import {
 import type { DayLoopState } from '../../game/DayLoopController';
 import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { GateStrip } from './GateStrip';
-import type { HomeDashboardModel, MiniCalDay } from './homeModel';
+import type { HomeDashboardModel, HomeStat, MiniCalDay } from './homeModel';
 
 /** Leading glyph + accent per quick-stat tile (#240), keyed by the read-model's
  *  stat key. View-side mapping so the read model stays presentation-free; an
@@ -347,22 +347,81 @@ function Dashboard({
         <GateStrip model={model.gate} />
       ) : null}
 
-      {/* Quick-stat strip */}
-      <View style={cardRow}>
-        {model.stats.map((s) => {
-          const tile = (
-            <Surface style={{ flex: 1 }}>
-              <StatCard
-                label={s.label}
-                value={s.value}
-                align="center"
-                icon={STAT_ICONS[s.key]?.icon}
-                iconTone={STAT_ICONS[s.key]?.tone}
-              />
-            </Surface>
+      {/* Quick-stat strip (#264) */}
+      <QuickStatStrip stats={model.stats} onOpenOperations={onOpenOperations} />
+    </View>
+  );
+}
+
+/**
+ * The mockup's compact quick-stat row (#264): one short strip — icon tile +
+ * value + label per cell, tight horizontal rhythm with hairline dividers —
+ * replacing the three full-height mega-cards that each held a lone number (pure
+ * wireframe smell on a fresh save). Pure layout reshape of the same read model;
+ * the inventory cell keeps its Operations deep-link.
+ */
+function QuickStatStrip({
+  stats,
+  onOpenOperations,
+}: {
+  stats: HomeStat[];
+  onOpenOperations?: () => void;
+}) {
+  const t = useTheme();
+  // Column cell: a top [icon · value] row (so every icon AND value sits on one
+  // shared line across cells), then the label on a single line beneath. One-line
+  // labels make all cells exactly the same height with no padded reserve, so the
+  // strip hugs its content (no dead space) and the dividers stretch clean.
+  // Content is centered within each third — with only three full-width cells,
+  // left-anchoring would leave each cluster stranded in a wide empty cell.
+  const cell: ViewStyle = { flex: 1, alignItems: 'center' };
+  const topRow: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.sm,
+  };
+  const valueText: TextStyle = {
+    ...t.typography.statValue,
+    color: t.colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  };
+  const labelText: TextStyle = {
+    ...t.typography.statLabel,
+    color: t.colors.textMuted,
+    marginTop: t.spacing.xs,
+    textAlign: 'center',
+  };
+  const divider: ViewStyle = {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: t.colors.border,
+    marginHorizontal: t.spacing.md,
+  };
+  return (
+    <Surface style={{ marginTop: t.spacing.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
+        {stats.map((s, i) => {
+          const meta = STAT_ICONS[s.key];
+          const body = (
+            <View style={cell}>
+              <View style={topRow}>
+                {meta != null && (
+                  <IconBadge name={meta.icon} tone={meta.tone} variant="solid" size="sm" />
+                )}
+                <Text style={valueText} numberOfLines={1}>
+                  {s.value}
+                </Text>
+              </View>
+              {/* Single line keeps every cell the same height; ellipsizes
+                  rather than fractures if a width ever can't hold the word. */}
+              <Text style={labelText} numberOfLines={1}>
+                {s.label}
+              </Text>
+            </View>
           );
           return (
-            <View key={s.key} style={cardCol}>
+            <React.Fragment key={s.key}>
+              {i > 0 && <View style={divider} />}
               {s.deepLink && onOpenOperations ? (
                 <Pressable
                   style={{ flex: 1 }}
@@ -370,16 +429,16 @@ function Dashboard({
                   accessibilityLabel={`${s.label} — open Operations`}
                   onPress={onOpenOperations}
                 >
-                  {tile}
+                  {body}
                 </Pressable>
               ) : (
-                tile
+                body
               )}
-            </View>
+            </React.Fragment>
           );
         })}
       </View>
-    </View>
+    </Surface>
   );
 }
 
