@@ -98,8 +98,6 @@ const BAR_BODY = 52;
 const HERO_BODY_MAX = 236;
 /** Hero backdrop height as a fraction of screen width (2:1-ish art, cropped). */
 const HERO_BODY_RATIO = 0.52;
-/** How far the first content card tucks up over the hero's bottom fade. */
-const CARD_OVERLAP = 40;
 
 /**
  * The durable operating console for the management phase (#215). It owns the
@@ -404,9 +402,12 @@ export function AppShell({
         testID="app-shell-content"
       >
         {/* Transparent hero-reveal spacer: the only band where the photo shows
-            through. Everything below scrolls on an opaque `base` sheet so the
-            hero never peeks through the gaps between cards as the page moves. */}
-        <View style={{ height: heroHeight - CARD_OVERLAP }} pointerEvents="none" />
+            through. It runs to the hero's BOTTOM edge — where heroScrimBottom
+            has already faded to solid `base` (#121a2b) — so the opaque sheet
+            below picks up seamlessly with no hard line, while the scrim's soft
+            fade still blends the photo into the page. Everything below scrolls
+            on the sheet, so the hero never peeks through gaps between cards. */}
+        <View style={{ height: heroHeight }} pointerEvents="none" />
         <View
           style={{
             flexGrow: 1,

@@ -1,13 +1,11 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  Animated,
+import { View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native';
+import Animated, {
   Easing,
-  type ViewStyle,
-  type TextStyle,
-} from 'react-native';
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useTheme } from '../theme';
 import {
   Surface,
@@ -178,19 +176,22 @@ function Dashboard({
   };
   const [calendarExpanded, setCalendarExpanded] = React.useState(false);
   // Smooth open/close: LayoutAnimation is a no-op on the New Architecture (it
-  // just snaps), so the drawer is driven by a JS Animated value instead. The
-  // drawer stays mounted and clipped; its natural height is measured once via
-  // onLayout, then `expand` interpolates both the clip height and the opacity.
-  const expand = React.useRef(new Animated.Value(0)).current;
+  // snaps) and a JS-driven Animated height stutters (it reflows the page on the
+  // JS thread every frame). Reanimated runs the clip on the UI thread instead.
+  // The drawer stays mounted and clipped; its natural height is measured once
+  // via onLayout, then `expand` drives both the clip height and the opacity.
+  const expand = useSharedValue(0);
   const [drawerHeight, setDrawerHeight] = React.useState(0);
   React.useEffect(() => {
-    Animated.timing(expand, {
-      toValue: calendarExpanded ? 1 : 0,
+    expand.value = withTiming(calendarExpanded ? 1 : 0, {
       duration: 260,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false, // animates layout height — JS driver only
-    }).start();
+    });
   }, [calendarExpanded, expand]);
+  const drawerStyle = useAnimatedStyle(() => ({
+    height: expand.value * drawerHeight,
+    opacity: expand.value,
+  }));
 
   return (
     <View testID="home-dashboard">
@@ -287,19 +288,7 @@ function Dashboard({
             to an Animated height + faded by `expand` so the open is a smooth
             glide, not LayoutAnimation's Fabric snap. */}
         <Animated.View
-          style={{
-            overflow: 'hidden',
-            opacity: expand,
-            // Once measured, clip from 0 → natural height. Before measuring,
-            // pin to 0 while collapsed (the default mount state) so the unclipped
-            // drawer never flashes a full-height frame; the inner view still lays
-            // out naturally inside the clip, so onLayout reads its true height.
-            height: drawerHeight
-              ? expand.interpolate({ inputRange: [0, 1], outputRange: [0, drawerHeight] })
-              : calendarExpanded
-                ? undefined
-                : 0,
-          }}
+          style={[{ overflow: 'hidden' }, drawerStyle]}
           pointerEvents={calendarExpanded ? 'auto' : 'none'}
           importantForAccessibility={calendarExpanded ? 'auto' : 'no-hide-descendants'}
         >
