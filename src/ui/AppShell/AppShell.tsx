@@ -519,7 +519,12 @@ export function AppShell({
 
       {primaryAction && (
         <View style={footer} testID="app-shell-action-footer">
-          <Button label={primaryAction.label} onPress={primaryAction.onPress} />
+          <Button
+            label={primaryAction.label}
+            onPress={primaryAction.onPress}
+            size="hero"
+            icon="arrow-forward"
+          />
         </View>
       )}
 

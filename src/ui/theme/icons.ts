@@ -32,6 +32,9 @@ export const iconTone = {
   muted: colors.textMuted,
   /** Glyph color to sit ON a solid-filled tone tile (cash / star badge). */
   onAccent: colors.onAccent,
+  /** Near-white glyph to sit ON a saturated primary/dim button fill — pairs
+   *  with the light label on the gradient `Button` variants. */
+  onPrimary: colors.textPrimary,
 } as const;
 
 export type IconToneToken = keyof typeof iconTone;

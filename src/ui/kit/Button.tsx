@@ -9,22 +9,40 @@ import {
 } from 'react-native';
 import { useTheme } from '../theme';
 import { GradientSurface } from './Gradient';
+import { Icon, type IconName } from './Icon';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+export type ButtonSize = 'md' | 'hero';
 
 export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   label: string;
   /** Visual weight. Default `primary`. */
   variant?: ButtonVariant;
+  /**
+   * Visual scale. `hero` is the screen's single headline verb (the pinned day
+   * action): a bigger body, a louder colored glow, and room for a leading icon.
+   * Default `md`.
+   */
+  size?: ButtonSize;
+  /** Optional leading glyph drawn before the label (the hero day-action CTA). */
+  icon?: IconName;
 }
 
 /**
- * Themed pressable. `primary` is a glossy gradient CTA with a colored glow,
- * `secondary` a dim-blue gradient companion with a raised bevel, `ghost` an
- * outline-only action. Disabled state dims the whole control. Pure presentation
- * — the caller owns `onPress` semantics.
+ * Themed pressable. `primary` is a glossy saturated-blue gradient CTA carrying a
+ * near-white label + colored glow, `secondary` a dim-blue gradient companion
+ * with a raised bevel, `ghost` an outline-only action. `size="hero"` swells the
+ * primary CTA into the screen's headline verb. Disabled state dims the whole
+ * control. Pure presentation — the caller owns `onPress` semantics.
  */
-export function Button({ label, variant = 'primary', disabled, ...rest }: ButtonProps) {
+export function Button({
+  label,
+  variant = 'primary',
+  size = 'md',
+  icon,
+  disabled,
+  ...rest
+}: ButtonProps) {
   const t = useTheme();
 
   // `ghost` stays a flat outline — no gradient body.
@@ -53,36 +71,57 @@ export function Button({ label, variant = 'primary', disabled, ...rest }: Button
   }
 
   const isPrimary = variant === 'primary';
+  const isHero = size === 'hero';
+  const radius = isHero ? t.radius.lg : t.radius.md;
 
   // Outer frame: solid fallback fill (so the bevel/glow has a shape to cast) +
-  // depth. Primary glows in its own accent; secondary takes the raised bevel.
+  // depth. Primary glows in its own accent (a fat `glowHero` halo at hero
+  // scale); secondary takes the raised bevel.
   const frame: ViewStyle = {
-    borderRadius: t.radius.md,
+    borderRadius: radius,
     backgroundColor: isPrimary ? t.colors.primary : t.colors.primaryDim,
     opacity: disabled ? 0.45 : 1,
-    ...(isPrimary ? { ...t.elevation.glow, shadowColor: t.colors.primary } : t.elevation.raised),
+    ...(isPrimary
+      ? { ...(isHero ? t.elevation.glowHero : t.elevation.glow), shadowColor: t.colors.primary }
+      : t.elevation.raised),
+  };
+  // Faked under-glow: a translucent cyan bloom bleeding below + beside the frame
+  // so a colored glow reads even where the platform's colored shadow doesn't
+  // (Android < API 28). Drawn behind the fill; only the bled edges show.
+  const glow: ViewStyle = {
+    position: 'absolute',
+    top: t.spacing.xs,
+    left: t.spacing.lg,
+    right: t.spacing.lg,
+    bottom: -t.spacing.sm,
+    borderRadius: t.radius.pill,
   };
   // Inner gradient body clips to the rounded corners and holds the padding.
   const fill: ViewStyle = {
-    borderRadius: t.radius.md,
+    borderRadius: radius,
     overflow: 'hidden',
-    paddingVertical: t.spacing.md,
+    flexDirection: 'row',
+    gap: t.spacing.sm,
+    paddingVertical: isHero ? t.spacing.lg : t.spacing.md,
     paddingHorizontal: t.spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
   };
   const text: TextStyle = {
-    ...t.typography.button,
-    color: isPrimary ? t.colors.onAccent : t.colors.textPrimary,
+    ...(isHero ? t.typography.buttonHero : t.typography.button),
+    color: t.colors.textPrimary,
   };
 
   return (
     <Pressable
       accessibilityRole="button"
       disabled={disabled}
-      style={({ pressed }) => [frame, pressed && !disabled ? { opacity: 0.8 } : null]}
+      style={({ pressed }) => [frame, pressed && !disabled ? { opacity: 0.78 } : null]}
       {...rest}
     >
+      {isPrimary && isHero ? (
+        <GradientSurface gradient="primaryGlow" pointerEvents="none" style={glow} />
+      ) : null}
       <GradientSurface gradient={isPrimary ? 'primary' : 'primaryDim'} style={fill}>
         <GradientSurface
           gradient="gloss"
@@ -91,6 +130,7 @@ export function Button({ label, variant = 'primary', disabled, ...rest }: Button
           pointerEvents="none"
           style={styles.gloss}
         />
+        {icon ? <Icon name={icon} size="md" tone="onPrimary" /> : null}
         <Text style={text}>{label}</Text>
       </GradientSurface>
     </Pressable>

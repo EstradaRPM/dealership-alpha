@@ -10,7 +10,7 @@ export type { SurfaceProps, SurfaceVariant } from './Surface';
 export { Gradient, GradientSurface } from './Gradient';
 export type { GradientSurfaceProps } from './Gradient';
 export { Button } from './Button';
-export type { ButtonProps, ButtonVariant } from './Button';
+export type { ButtonProps, ButtonVariant, ButtonSize } from './Button';
 export { Badge, Pill } from './Badge';
 export type { BadgeProps, BadgeTone, BadgeVariant } from './Badge';
 export { Icon } from './Icon';

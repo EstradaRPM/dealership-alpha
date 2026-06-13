@@ -69,6 +69,12 @@ export const typography = {
     fontSize: 15,
     fontWeight: '700',
   },
+  /** Hero CTA face — the screen's one headline verb (footer day action). */
+  buttonHero: {
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
 } satisfies Record<string, TextStyle>;
 
 export type TypographyToken = keyof typeof typography;

@@ -46,6 +46,20 @@ export const elevation = {
     shadowRadius: 8,
     elevation: 6,
   },
+  /**
+   * Loud accent halo for the hero CTA — same own-color principle as `glow` but
+   * fat enough to read as a deliberate glow, not an ambient shadow. The high
+   * `elevation` is what makes Android (API 28+) cast a strong COLORED drop
+   * shadow once the caster supplies `shadowColor` from a color role; the wide
+   * radius/opacity give iOS its bloom. Pairs with the `primaryGlow` under-layer
+   * so the glow survives even where the platform colored shadow doesn't.
+   */
+  glowHero: {
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 16,
+    elevation: 16,
+  },
   /** High above everything — modals, menus, floating actions. */
   floating: {
     shadowColor: '#000000',

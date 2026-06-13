@@ -29,8 +29,21 @@ export const gradients = {
    * so the gradient registers on a phone OLED.
    */
   surfaceRaised: ['#2a3450', '#1e2738'],
-  /** Primary interactive fill (cyan) — glossy call-to-action bodies. */
-  primary: ['#4fc6fb', '#2ea3dd'],
+  /**
+   * Primary interactive fill — the glossy headline CTA body (footer day action).
+   * A saturated blue that carries a high-contrast near-white label: the prior
+   * pale cyan read as a *disabled* control under dark text, so the stops were
+   * deepened to a confident, lit blue that reads as the screen's one verb.
+   */
+  primary: ['#3a9bf0', '#1f6fd6'],
+  /**
+   * Faked under-glow halo for the hero CTA — a translucent cyan bloom layered
+   * BEHIND the button, bright through the middle and fading to nothing top and
+   * bottom, so a colored glow reads on every platform (Android never renders the
+   * iOS-only `elevation.glow` shadow geometry). Hue matches `colors.primary` so
+   * the bloom and the API-28+ colored elevation shadow are the same light.
+   */
+  primaryGlow: ['rgba(56,189,248,0)', 'rgba(56,189,248,0.55)', 'rgba(56,189,248,0)'],
   /** Secondary accent fill (indigo) — solid `IconBadge` tiles, selection pops. */
   accent: ['#97a2fb', '#6973ee'],
   /** Muted/neutral fill — solid `IconBadge` tiles with no semantic accent. */
