@@ -78,7 +78,7 @@ Each monitor is the sole publisher of events `EndCardManager` depends on
 
 | Ending event (→ EndCard) | Publisher | Wired? |
 |---|---|---|
-| `career:bankruptcy_terminal` | `BankruptcyMonitor` | **No** |
+| `career:bankruptcy_terminal` | `BankruptcyMonitor` | Yes (#270) |
 | `regulatory:ag_complaint_terminal` | `RegulatoryMeter` | Yes |
 | `career:indictment_terminal` | `IndictmentMonitor` | **No** |
 | `career:retired` | `CareerEndingsMonitor` | **No** |
@@ -127,7 +127,11 @@ flagged, not changed, by this audit.
 ## Follow-up issues
 
 - **#270** — `BankruptcyMonitor` wiring (#30 path): instantiate in
-  `createWorld`, add to world snapshot (#188 seam).
+  `createWorld`, add to world snapshot (#188 seam). **DONE** — wired in
+  `createWorld`, persisted via the `bankruptcyMonitor` snapshot key
+  (envelope v6, migration 5→6), reachability test drives the real composition
+  root in `Composition.tier.test.ts`. `career:bankruptcy_contraction` /
+  `career:bankruptcy_compliance` / `career:debt_payment_made` now go live too.
 - **#271** — `IndictmentMonitor` wiring (#32 path): instantiate + persist; plus
   emit the F2 severe-event signals from gameplay so its inputs aren't dark.
 - **#272** — `CareerEndingsMonitor` wiring (#35 success endings): instantiate +

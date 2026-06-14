@@ -17,6 +17,10 @@ Player tier (1 → 3 in v1) + backstory-driven Day 1 modifiers + branding rebran
   blob is the world seam's `tierManager` key — it round-trips both the
   "tier/business identity" and "career progression" facets #192 calls out.
   (`getSerializableState()/restoreState()` remain the module-internal raw form.)
+- `BankruptcyMonitor.getSerializableState()/restoreState()` — the debt-overhang
+  state (insolvency streak, outstanding T2 contraction debt, terminal flag) is
+  the world seam's `bankruptcyMonitor` key (#270, envelope v6). It is wired into
+  `createWorld` alongside `TierManager`/`RegulatoryMeter`.
 
 ## Events
 - **Emits:** `career:tier_up`, `career:bankruptcy_*`, `career:debt_payment_made`, `career:indictment_*`, `career:retired`, `career:pe_offer_made`, `career:pe_sellout`, `career:family_handoff`.

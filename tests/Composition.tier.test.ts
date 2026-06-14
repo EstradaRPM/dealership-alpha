@@ -1,5 +1,6 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
+import { snapshotWorld, restoreWorld } from '../src/worldSnapshot';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 const MASTER_SEED = 42;
@@ -168,6 +169,75 @@ describe('#84 composition root — EndCardManager wired into the live world', ()
 
     expect(gameOver).toHaveBeenCalledTimes(1);
     expect(world.endCardManager.data?.reason).toBe('retire');
+  });
+});
+
+describe('#270 composition root — BankruptcyMonitor wired into the live world', () => {
+  it('routes sustained Tier 1 cash-insolvency to a terminal bankruptcy game-over', () => {
+    const bus = createEventBus();
+    const world = createWorld({
+      bus,
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+    expect(world.tierManager.currentTier).toBe(1);
+
+    const terminal = jest.fn();
+    const gameOver = jest.fn();
+    bus.subscribe('career:bankruptcy_terminal', terminal);
+    bus.subscribe('career:game_over', gameOver);
+
+    // Drive cash below the failure-tunables cashFloor (0): start 50k, debit 60k.
+    world.economy.forceDebit(60_000, 'test insolvency');
+    expect(world.economy.cash).toBeLessThan(0);
+
+    // Real failure-tunables: 7 consecutive insolvent overnight ticks at Tier 1
+    // → terminal. The first six only accrue the streak.
+    for (let day = 1; day <= 6; day++) {
+      bus.publish('clock:overnight_payroll', { day });
+    }
+    expect(terminal).not.toHaveBeenCalled();
+
+    bus.publish('clock:overnight_payroll', { day: 7 });
+
+    // BankruptcyMonitor (the sole publisher) fired its terminal, and the
+    // live-wired EndCardManager converged it into a single game-over.
+    expect(terminal).toHaveBeenCalledWith({ day: 7, tier: 1 });
+    expect(gameOver).toHaveBeenCalledTimes(1);
+    expect(world.endCardManager.data?.reason).toBe('bankruptcy');
+    expect(world.bankruptcyMonitor.isTerminal).toBe(true);
+  });
+
+  it('round-trips bankruptcy debt-overhang state through the world snapshot', () => {
+    const bus = createEventBus();
+    const world = createWorld({
+      bus,
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+
+    world.bankruptcyMonitor.restoreState({
+      insolventDayCount: 3,
+      outstandingDebt: 42_000,
+      isTerminal: false,
+    });
+
+    const snap = snapshotWorld(world);
+    expect(snap.modules.bankruptcyMonitor).toEqual({
+      insolventDayCount: 3,
+      outstandingDebt: 42_000,
+      isTerminal: false,
+    });
+
+    const rebuilt = createWorld({
+      bus: createEventBus(),
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+    expect(rebuilt.bankruptcyMonitor.outstandingDebt).toBe(0);
+    restoreWorld(JSON.parse(JSON.stringify(snap)), rebuilt);
+    expect(rebuilt.bankruptcyMonitor.outstandingDebt).toBe(42_000);
+    expect(rebuilt.bankruptcyMonitor.insolventDayCount).toBe(3);
   });
 });
 

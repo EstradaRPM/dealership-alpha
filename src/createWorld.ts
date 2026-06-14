@@ -82,7 +82,9 @@ import type { PricedVehicleInput } from './game/SalesProcess';
 import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
 import {
   createTierManager,
+  createBankruptcyMonitor,
   type TierManager,
+  type BankruptcyMonitor,
   type CharacterProfile,
 } from './game/CareerProgression';
 import { createEndCardManager, type EndCardManager } from './game/EndCard';
@@ -132,6 +134,7 @@ export interface World {
   regulatoryMeter: RegulatoryMeter;
   serviceQueue: ServiceQueue;
   tierManager: TierManager;
+  bankruptcyMonitor: BankruptcyMonitor;
   endCardManager: EndCardManager;
   telemetry: Telemetry;
   historyLog: HistoryLog;
@@ -343,6 +346,19 @@ export function createWorld(deps: {
   const reputation = createReputation({ bus, economy });
   const tierManager = createTierManager({ bus, economy, reputation });
   const regulatoryMeter = createRegulatoryMeter({ bus, economy, tierManager });
+  // #270: BankruptcyMonitor — the sole publisher of `career:bankruptcy_terminal`
+  // (consumed by EndCardManager to settle a game-over). Built earlier but never
+  // instantiated in the world (a composition orphan, #184/F1): until wired,
+  // running out of cash never ended the run — the most common expected failure
+  // path was dead. It watches `clock:overnight_payroll` for sustained insolvency
+  // and routes bankruptcy to the tier-appropriate outcome (terminal at Tier 1,
+  // contraction at Tier 2, compliance cost at Tier 3+). Its debt-overhang state
+  // persists via the world snapshot (#188).
+  const bankruptcyMonitor = createBankruptcyMonitor({
+    bus,
+    economy,
+    tierManager,
+  });
   const inventory = createInventory({
     bus,
     masterSeed,
@@ -820,6 +836,7 @@ export function createWorld(deps: {
     regulatoryMeter,
     serviceQueue,
     tierManager,
+    bankruptcyMonitor,
     endCardManager,
     telemetry,
     historyLog,

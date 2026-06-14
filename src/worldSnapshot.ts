@@ -32,7 +32,10 @@ import type { StaffMoraleSnapshot } from './game/StaffMorale';
 import type { MarketEconomySnapshot } from './game/MarketEconomy';
 import type { CompetitorMarketSnapshot } from './game/CompetitorMarket';
 import type { RegulatoryMeterState, ReputationSnapshot } from './game/Reputation';
-import type { TierManagerSnapshot } from './game/CareerProgression';
+import type {
+  TierManagerSnapshot,
+  BankruptcyMonitorState,
+} from './game/CareerProgression';
 import type { FollowUpPoolSnapshot } from './game/FollowUpPool';
 import type { ServiceQueueSnapshot } from './game/ServiceQueue';
 import type { DepartmentQueueSnapshot } from './game/DepartmentQueue';
@@ -55,7 +58,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 5;
+export const WORLD_SNAPSHOT_VERSION = 6;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -75,6 +78,9 @@ export type WorldSnapshot = {
     // CareerProgression module: tier + business identity AND career progress
     // (customersServed) ride in one TierManager blob.
     readonly tierManager: TierManagerSnapshot;
+    // BankruptcyMonitor debt-overhang state: insolvency streak + outstanding
+    // T2 contraction debt + terminal flag (#270).
+    readonly bankruptcyMonitor: BankruptcyMonitorState;
     // Queued/pending work + accumulated metrics (#193).
     readonly followUpPool: FollowUpPoolSnapshot;
     readonly serviceQueue: ServiceQueueSnapshot;
@@ -153,6 +159,17 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         tierGate: createDefaultTierGateSnapshot(),
       },
     }),
+    5: (snap) => ({
+      version: 6,
+      modules: {
+        ...snap.modules,
+        bankruptcyMonitor: {
+          insolventDayCount: 0,
+          outstandingDebt: 0,
+          isTerminal: false,
+        },
+      },
+    }),
   };
 
 /**
@@ -201,6 +218,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       reputation: world.reputation.snapshot(),
       regulatoryMeter: world.regulatoryMeter.getSerializableState(),
       tierManager: world.tierManager.snapshot(),
+      bankruptcyMonitor: world.bankruptcyMonitor.getSerializableState(),
       followUpPool: world.followUpPool.snapshot(),
       serviceQueue: world.serviceQueue.snapshot(),
       departmentQueue: world.departmentQueue.snapshot(),
@@ -233,6 +251,7 @@ export function restoreWorld(
   world.reputation.restore(snap.modules.reputation);
   world.regulatoryMeter.restoreState(snap.modules.regulatoryMeter);
   world.tierManager.restore(snap.modules.tierManager);
+  world.bankruptcyMonitor.restoreState(snap.modules.bankruptcyMonitor);
   world.followUpPool.restore(snap.modules.followUpPool);
   world.serviceQueue.restore(snap.modules.serviceQueue);
   world.departmentQueue.restore(snap.modules.departmentQueue);
