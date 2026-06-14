@@ -123,3 +123,12 @@ the owned FloorSim (observability only).
 ## Locked / do-not-re-grill
 `DemandContext` = #125 (locked 2026-05-17). FloorSim surface = #99 (locked).
 This module must not change either; it only projects #125 → #99.
+
+**Boundary reopened (#277, Pricing/Demand spine S5):** the #125 *shape* is
+untouched, but the semantics of `pricing.trafficMultiplier` are reopened — it is
+now a real price-elastic demand input, not a flat stub. The composition root
+rides the price → arrivals rider (`computePricingTrafficMultiplier`) onto that
+field alongside the inventory-depth `demandFactor` and the weather rider;
+`project()` still forwards the single composite to FloorSim's `demandFactor`
+unchanged. Ships at identity (`demandModel.pricingTrafficWeight = 0`). See
+`docs/planning/pricing-demand-spine.md` §7.

@@ -30,6 +30,13 @@ player-influenceable demand-shaping loop).
     per-lever attribution.
     #211 wires inventory composition and live reputation here; #212 adds the
     reserved advertising producer without changing spawn or UI contracts.
+    #277 adds the `pricing` producer to the union as an **empty socket**
+    (`buildPricingInfluence` in `createWorld`, wired as `pricing-posture`,
+    returns `null` ⇒ identity). Per the Pricing/Demand spine, price posture
+    will skew *which segment walks in* (the vehicle-type heat map); the
+    heat-map slice fills the body. The separate price → arrival *volume* seam
+    lives in `computePricingTrafficMultiplier` (#125 `pricing.trafficMultiplier`
+    composite), NOT here.
   - `drawPersona(rng)` — deterministic weighted persona draw. **Pure function of
     the injected RNG** — the root feeds the existing seeded per-spawn stream so
     replays (#122) reproduce the persona sequence.

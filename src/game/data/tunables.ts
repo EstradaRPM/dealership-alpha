@@ -51,6 +51,13 @@ export const TunablesSchema = z.object({
     qualityMultMax: z.number().nonnegative(),
     // Hard clamp on the composite demandFactor (outlier guard).
     demandFactorMax: z.number().positive(),
+    // Price → arrivals blend weight (#277, Pricing/Demand spine S5). How
+    // strongly the lot-wide price-posture response bends FloorSim arrival
+    // volume, riding the same #125 pricing.trafficMultiplier composite. Ships
+    // at 0 ⇒ identity (the seam is wired but the curve is unarmed — zero
+    // behavior change); the calibration slice raises it once the per-vehicle
+    // response is sourced from MarketEconomy's shared demandMultiplier.
+    pricingTrafficWeight: z.number().nonnegative(),
   }),
   // Demand-shaping persona mix (#198). DemandShaper turns a per-day persona
   // weight vector into a deterministic weighted spawn draw and tracks realized

@@ -104,3 +104,15 @@ Sequencing respects dependencies; each slice lands verifiable.
 
 ## 6. Open calibration knobs (deferred to balance, not design)
 Elasticity steepness, heat volatility/drift rate, event frequency, negative-equity tail weight, intel-precision deltas per staff level, auto-pricing policy aggressiveness.
+
+## 7. Reopened locked-record boundaries (the §0 "pricing never touched arrivals" reversal)
+
+Three locked records stated that pricing/marketing/strategy never reach the arrival path. The spine reverses that — pricing is the **primary** demand lever — but **without widening any locked interface**. Pricing enters as a *demand input*, never as a new term in FloorSim or a new field on `DemandContext`.
+
+**Seam of record:** price posture rides the existing locked #125 `pricing.trafficMultiplier` composite (the dual-path pricing field that was always reserved for exactly this), composed in the composition root alongside the inventory-depth `demandFactor` (#128a) and the weather rider (#231 S3). `DayLoopController.project()` forwards the single composite to FloorSim's one `demandFactor` scalar (#99 §`DayContext`) — FloorSim's contract is byte-unchanged.
+
+- **FloorSim #99/#103 "macro boundary":** reworded — marketing/pricing/strategy still never enter FloorSim *directly*; they enter only as the projected `demandFactor`. Updated in `FloorSim/CLAUDE.md`.
+- **DemandContext #125:** the *shape* is untouched; the *semantics* of `pricing.trafficMultiplier` reopen from flat-stub to real price-elastic input. Updated in `DayLoopController/CLAUDE.md`.
+- **DemandShaper persona-mix scope:** gains a `pricing` producer (the empty socket) so price posture can later skew *which segment* walks in (the heat map), distinct from the volume seam above. Updated in `DemandShaper/CLAUDE.md`.
+
+**Ship discipline (S5, #277):** the seam is wired at **identity** — `computePricingTrafficMultiplier` returns 1 while `demandModel.pricingTrafficWeight = 0`, and `buildPricingInfluence` returns null. Zero behavior change; existing arrival draws stay byte-identical. The calibration slice raises the weight and routes the per-vehicle response through MarketEconomy's shared `demandMultiplier` (#276 / Pillar 3 — one model, two consumers), so the screen's predicted days-to-sell and the floor's actual arrivals read the same curve.

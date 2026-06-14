@@ -26,7 +26,8 @@
     },
     "qualityMultMin": 0.6,
     "qualityMultMax": 1.3,
-    "demandFactorMax": 3.0
+    "demandFactorMax": 3.0,
+    "pricingTrafficWeight": 0
   },
   "demandShaper": {
     "windowSize": 60,

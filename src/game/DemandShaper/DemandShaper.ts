@@ -21,7 +21,7 @@ export type DemandTrend = 'rising' | 'steady' | 'falling';
 export interface DemandInfluenceInput {
   readonly id: string;
   readonly label: string;
-  readonly producer: 'inventory' | 'reputation' | 'advertising' | 'test';
+  readonly producer: 'inventory' | 'reputation' | 'advertising' | 'pricing' | 'test';
   /**
    * Target additive persona deltas. Positive values make that persona likelier;
    * negative values lean demand away from that persona. The effective

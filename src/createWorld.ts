@@ -28,6 +28,7 @@ import { createEconomy, type Economy } from './game/Economy';
 import { createInventory, type Inventory } from './game/Inventory';
 import { loadTunables } from './game/data';
 import { computeDemandFactor } from './computeDemandFactor';
+import { computePricingTrafficMultiplier } from './computePricingTrafficMultiplier';
 import { createStaffOrg, type StaffOrg } from './game/StaffOrg';
 import { createCapacityManager } from './game/CapacityManager';
 import type { CapacityManager } from './game/CapacityManager';
@@ -284,6 +285,20 @@ function buildAdvertisingInfluence(
     lagDays: campaign.lagDays,
     decayDays: campaign.decayDays ?? campaign.lagDays,
   };
+}
+
+/**
+ * Pricing-posture persona producer (#277, Pricing/Demand spine S5) — the empty
+ * socket. Per the design spine, the player's price posture will skew *which
+ * segment walks in* (the vehicle-type heat map, Pillar 1), not just arrival
+ * volume. This is the wired-but-inert seam: it returns `null` (no persona
+ * deltas) so the producer is registered and removable like the others while the
+ * heat-map slice fills the body. Identity ⇒ zero behavior change.
+ */
+function buildPricingInfluence(
+  _config: DemandShaperTunables,
+): DemandInfluenceInput | null {
+  return null;
 }
 
 export function createWorld(deps: {
@@ -663,6 +678,13 @@ export function createWorld(deps: {
       'reputation',
       buildReputationInfluence(reputation.reviewScore, demandShaperConfig),
     );
+    // #277 S5: the pricing-posture persona producer (empty socket — returns
+    // null until the heat-map slice fills it). Wired here so the producer is
+    // live and removable alongside inventory/reputation; identity for now.
+    syncDemandInfluence(
+      'pricing-posture',
+      buildPricingInfluence(demandShaperConfig),
+    );
   };
   syncDemandInfluences();
   const demandControls = {
@@ -865,14 +887,21 @@ export function createWorld(deps: {
       // slots in here later"). It is the per-DAY variance; FloorSim's
       // seasonArrivalMultiplier stays the coarse SEASON baseline — orthogonal,
       // no double-counting. Pure projection of (masterSeed, day) ⇒ replay-safe.
+      // #277 S5: the price → arrivals rider joins the same composite. Ships at
+      // identity (pricingTrafficWeight 0 ⇒ ×1 ⇒ no behavior change); the
+      // calibration slice arms it with MarketEconomy's shared demandMultiplier.
+      const lot = inventory.getLotVehicles();
       return {
         ...slip,
         reputation: Math.min(1, Math.max(0, reputation.reviewScore / 100)),
         pricing: {
           ...slip.pricing,
           trafficMultiplier:
-            computeDemandFactor(inventory.getLotVehicles(), demandModelCfg) *
-            weather.volumeMultiplierForDay(ctx.day),
+            computeDemandFactor(lot, demandModelCfg) *
+            weather.volumeMultiplierForDay(ctx.day) *
+            computePricingTrafficMultiplier(lot, {
+              weight: demandModelCfg.pricingTrafficWeight,
+            }),
         },
       };
     },

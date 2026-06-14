@@ -105,9 +105,16 @@ interface rework. Load-bearing invariants for anyone touching this module:
   HandPlaySession`; `advance()` resolves a gate via the #85 seam, burns
   tick-cost ticks, returns a discriminated union (continue | closed | walk).
   `canGrab()` precondition owned here. FloorSim is department/tier-agnostic.
-- **Macro boundary:** marketing/pricing/strategy never enter FloorSim
-  directly — only via `DayContext` + seam behavior. `dealershipId` reserved
-  as a seed-derivation context key for v2 dealer-group.
+- **Macro boundary (reopened #277):** marketing/pricing/strategy never enter
+  FloorSim *directly* — they enter as a **demand input** through the single
+  projected `demandFactor` only, never as new FloorSim terms. The original
+  "pricing never touches arrivals" stance is superseded by the Pricing/Demand
+  spine (`docs/planning/pricing-demand-spine.md` §7): price posture rides the
+  locked #125 `pricing.trafficMultiplier` composite (alongside inventory depth
+  and weather) via `computePricingTrafficMultiplier`, so FloorSim's contract is
+  unchanged — it still consumes one scalar. Ships at identity
+  (`demandModel.pricingTrafficWeight = 0` ⇒ ×1). `dealershipId` reserved as a
+  seed-derivation context key for v2 dealer-group.
 - **3-phase day:** floor-open → floor-closes (`floor:day_complete` ≠ advance
   clock) → after-hours (managerial, OUT of FloorSim). Clock advance is always
   a separate player-gated composition-root action. FloorSim never calls
@@ -125,8 +132,9 @@ keeping `step()` pure w.r.t. injected state.
 
 **`demandFactor` (#128a, additive #99 amendment — design-record note on
 #99/#107).** One optional scalar so the full controllable-lever economics
-(inventory depth × quality now; pricing/marketing later) stay behind the
-locked #125 `DemandSource` seam and never widen this contract again. It is
+(inventory depth × quality + weather + **pricing posture (#277, identity
+default)**; marketing later) stay behind the locked #125 `DemandSource` seam
+and never widen this contract again. It is
 the only arrival input that can floor traffic at ~0 (empty lot ⇒ no draw)
 or exceed 1 (busy high-volume store) — rep/share/season can't. Arrival model
 becomes `expected = base · (1+repC·rep) · (1+shareC·share) · season ·
