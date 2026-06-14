@@ -106,12 +106,14 @@ const DISCOUNT_EXCEPTION_CONFIG: SalesProcessConfig = {
   walk: { trustCollapseFloor: 0, patienceFloor: -1 },
   nonnegotiables: { qualifyRevealThreshold: 0, tolerance: 1 },
   close: { buyThreshold: 0, softThreshold: 0, trustFloor: 0 },
+  // Reservation model (#274): drives the wealth=15k customer (sensitivity 0.875)
+  // to reservation = 10625·(1.0 − 0.875·0.2) ≈ 8766 — below the 9300 margin floor
+  // (forces the discount-escalation branch) but above the 8500 cost (canAcceptAsk
+  // stays true). valueLift 0 keeps the reservation independent of the meter run.
   price: {
-    base: 500,
-    valueGapWeight: 0,
-    sensitivityWeight: 5000,
-    skillHoldWeight: 2500,
-    trustHoldWeight: 1500,
+    reservationBase: 1.0,
+    valueLift: 0,
+    sensitivityDrag: 0.2,
     minGross: 800,
     overageAllowed: 1500,
     framingWeight: 0,

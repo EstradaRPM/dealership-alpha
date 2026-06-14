@@ -66,8 +66,16 @@ export interface PriceFormation {
   readonly vehicleCost: number;
   readonly closingComposite: GateSkill;
   /**
-   * `base + (1−Value)·valueGapWeight + sensitivity·sensitivityWeight
-   *  − closingEffectiveness·skillHoldWeight − trust·trustHoldWeight`
+   * The customer's max willingness-to-pay (#274): the market benchmark scaled by
+   * `reservationBase + Value·valueLift − sensitivity·sensitivityDrag`, floored at
+   * 0. `requiredDiscount` derives from the gap between this and the ask.
+   */
+  readonly reservationPrice: number;
+  /**
+   * `max(0, askingPrice − reservationPrice)` (#274). Zero when the ask sits at or
+   * below the customer's reservation (they buy at ask); positive when the ask
+   * exceeds it (discount toward the reservation, or escalate if that's below the
+   * margin floor). Never negative — a customer never volunteers above their max.
    */
   readonly requiredDiscount: number;
   readonly marginFloorPrice: number;
@@ -108,18 +116,24 @@ export interface CloseResult {
  *
  * Price formation (applied before evaluating objectiveDeal). The transaction
  * anchor is the player-set `askingPrice` (#273); `marketPrice` is demoted to a
- * competitor benchmark (labeling/comps) and no longer sets the price:
- *   requiredDiscount = base + (1−Value)·valueGapWeight + sensitivity·sensitivityWeight
- *                      − closingSkill·skillHoldWeight − trust·trustHoldWeight
+ * competitor benchmark (labeling/comps + reservation anchor) and no longer sets
+ * the price. The reservation-price model (#274) replaces the old additive
+ * requiredDiscount formula:
+ *   reservationPrice = marketPrice × max(0, reservationBase
+ *                      + Value·valueLift − sensitivity·sensitivityDrag)
+ *   requiredDiscount = max(0, askingPrice − reservationPrice)
  *   marginFloorPrice = vehicleCost + minGross
- *   realizedPrice    = clamp(askingPrice − requiredDiscount,
- *                            marginFloorPrice, askingPrice + overageAllowed)
+ *   rawPrice         = askingPrice − requiredDiscount   (= min(ask, reservation))
+ *   realizedPrice    = clamp(rawPrice, marginFloorPrice, askingPrice + overageAllowed)
  *   closeable        = rawPrice ≥ marginFloorPrice
  *   frontGross       = realizedPrice − vehicleCost
+ * ask ≤ reservation ⇒ requiredDiscount 0 ⇒ buys at ask. ask > reservation ⇒
+ * discount toward reservation, or (reservation < floor) not closeable ⇒ escalate.
  *
  * objectiveDeal = clamp(base + framingBoost, 0, 1)
- * where base = (1−sensitivity)×Value + sensitivity×normalizedPriceScore
- *       normalizedPriceScore = discountGiven / (askingPrice − marginFloorPrice)
+ * where base = (1−sensitivity)×Value + sensitivity×priceSatisfaction
+ *       priceSatisfaction = consumer surplus = (reservation − realizedPrice)
+ *                           / (reservation − marginFloorPrice), clamped [0,1]
  *       framingBoost = closingEff × sensitivity × framingWeight
  * priceSensitivity blends value vs price; framingBoost lets skilled closers lift
  * objectiveDeal for price-focused customers regardless of the held price.
@@ -147,17 +161,27 @@ export function closeAndPrice(
   // Closing gate skill (NEGOTIATE drives price hold)
   const closingComposite: GateSkill = skill.skillFor('NEGOTIATE');
 
-  // Price formation (PRD decision 12)
+  // Price formation (PRD decision 12; reservation-price model #274)
   const { price: p } = cfg;
-  const requiredDiscount =
-    p.base +
-    (1 - meters.value) * p.valueGapWeight +
-    priceSensitivity * p.sensitivityWeight -
-    closingComposite.effectiveness * p.skillHoldWeight -
-    meters.trustIntegrity * p.trustHoldWeight;
+
+  // Reservation price: the customer's max willingness-to-pay. Anchored on the
+  // market benchmark (segment retail reference), lifted by value built during
+  // the visit, dragged down by price sensitivity (their wealth proxy). Skill and
+  // trust no longer move the price here — the salesperson's price work lives in
+  // the discount event (#274 spine, the discount-escalation branch).
+  const reservationFactor = Math.max(
+    0,
+    p.reservationBase +
+      meters.value * p.valueLift -
+      priceSensitivity * p.sensitivityDrag,
+  );
+  const reservationPrice = marketPrice * reservationFactor;
+
+  // requiredDiscount = the gap between ask and reservation, floored at 0.
+  const requiredDiscount = Math.max(0, askingPrice - reservationPrice);
 
   const marginFloorPrice = vehicleCost + p.minGross;
-  const rawPrice = askingPrice - requiredDiscount;
+  const rawPrice = askingPrice - requiredDiscount; // = min(ask, reservationPrice)
   const realizedPrice = Math.max(
     marginFloorPrice,
     Math.min(askingPrice + p.overageAllowed, rawPrice),
@@ -167,20 +191,24 @@ export function closeAndPrice(
 
   // objectiveDeal (PRD decision 11): weighted blend of value and price satisfaction.
   // priceSensitivity is the blend weight — low sensitivity customers buy on value
-  // built; high sensitivity customers buy on how much of the available discount
-  // they received. normalizedPriceScore uses the actual margin room (floor→market)
-  // so a $500 discount on a $3k-room vehicle scores meaningfully, not near-zero.
-  const maxDiscount = Math.max(askingPrice - marginFloorPrice, 0);
-  const discountGiven = Math.max(askingPrice - realizedPrice, 0);
-  const normalizedPriceScore = maxDiscount > 0 ? Math.min(discountGiven / maxDiscount, 1) : 0;
+  // built; high sensitivity customers buy on the price relative to their own
+  // reservation. priceSatisfaction is consumer surplus (#274): how far below their
+  // max willingness-to-pay they actually paid, scaled by the room between the
+  // reservation and the margin floor — paying at reservation scores 0, at the floor
+  // scores 1. This is the coherent reservation-model price signal (a discount off a
+  // sticker the customer would never have paid is not satisfaction).
+  const reservationRoom = Math.max(reservationPrice - marginFloorPrice, 0);
+  const surplus = Math.max(reservationPrice - realizedPrice, 0);
+  const priceSatisfaction =
+    reservationRoom > 0 ? Math.min(surplus / reservationRoom, 1) : 0;
   // Closing framing boost: a skilled closer actively reframes value for price-focused
-  // customers at the decision moment, lifting objectiveDeal independently of discount.
+  // customers at the decision moment, lifting objectiveDeal independently of price.
   // Scales with both closing effectiveness and sensitivity — irrelevant when sensitivity=0.
   const framingBoost =
     closingComposite.effectiveness * priceSensitivity * p.framingWeight;
   const objectiveDeal = clampUnit(
     (1 - priceSensitivity) * meters.value +
-      priceSensitivity * normalizedPriceScore +
+      priceSensitivity * priceSatisfaction +
       framingBoost,
   );
 
@@ -213,6 +241,7 @@ export function closeAndPrice(
       marketPrice,
       vehicleCost,
       closingComposite,
+      reservationPrice,
       requiredDiscount,
       marginFloorPrice,
       rawPrice,

@@ -97,11 +97,15 @@ export const SalesProcessConfigSchema = z
       .strict(),
     price: z
       .object({
-        base: z.number(),
-        valueGapWeight: z.number(),
-        sensitivityWeight: z.number(),
-        skillHoldWeight: z.number(),
-        trustHoldWeight: z.number(),
+        // Reservation-price model (#274): the customer's max willingness-to-pay
+        // as a multiple of the market benchmark (segment retail reference).
+        // reservationFactor = reservationBase + value·valueLift − sensitivity·sensitivityDrag.
+        /** Neutral-trait willingness as a fraction of the market benchmark. */
+        reservationBase: z.number().nonnegative(),
+        /** How much value built during the visit lifts willingness-to-pay. */
+        valueLift: z.number().nonnegative(),
+        /** How much price sensitivity (wealth proxy) drags willingness down. */
+        sensitivityDrag: z.number().nonnegative(),
         minGross: z.number().nonnegative(),
         overageAllowed: z.number().nonnegative(),
         /** Closing-skill boost to objectiveDeal for price-sensitive customers. */

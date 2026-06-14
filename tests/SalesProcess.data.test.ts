@@ -69,13 +69,12 @@ describe('SalesProcess schemas reject malformed input', () => {
         walk: { trustCollapseFloor: 0.1, patienceFloor: 0 },
         close: { buyThreshold: 0.7, softThreshold: 0.5, trustFloor: 0.4 },
         price: {
-          base: 0,
-          valueGapWeight: 0,
-          sensitivityWeight: 0,
-          skillHoldWeight: 0,
-          trustHoldWeight: 0,
+          reservationBase: 1.0,
+          valueLift: 0.3,
+          sensitivityDrag: 0.3,
           minGross: 0,
           overageAllowed: 0,
+          framingWeight: 0.15,
         },
         calibration: {
           positiveMin: 0.85,

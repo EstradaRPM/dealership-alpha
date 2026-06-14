@@ -28,11 +28,9 @@ const config: SalesProcessConfig = {
   nonnegotiables: { qualifyRevealThreshold: 0.45, tolerance: 0.1 },
   close: { buyThreshold: 0.75, softThreshold: 0.55, trustFloor: 0.45 },
   price: {
-    base: 500,
-    valueGapWeight: 4000,
-    sensitivityWeight: 3000,
-    skillHoldWeight: 2500,
-    trustHoldWeight: 1500,
+    reservationBase: 1.0,
+    valueLift: 0.5,
+    sensitivityDrag: 0.5,
     minGross: 800,
     overageAllowed: 1500,
     framingWeight: 0.15,
@@ -86,8 +84,9 @@ describe('price formation', () => {
     );
   });
 
-  it('realizedPrice clamps to marketPrice + overageAllowed on the high end', () => {
-    // Max skill, max value, max trust, zero sensitivity → big negative requiredDiscount
+  it('reservation ≥ ask → requiredDiscount 0, buys at ask (no premium above ask)', () => {
+    // Max value, zero sensitivity → reservation well above the ask. A customer
+    // never volunteers above their max, so the realized price is the ask itself.
     const meters: MeterState = { trustIntegrity: 1.0, value: 1.0 };
     const expert = makeSalespersonProfile({
       NEGOTIATE: { effectiveness: 1.0, trustworthiness: 1.0 },
@@ -96,10 +95,11 @@ describe('price formation', () => {
       { meters, skill: expert, priceSensitivity: 0, vehicle },
       deps,
     );
-    // requiredDiscount = 500 + 0 + 0 - 2500 - 1500 = -3500 → rawPrice = 23500
-    // clamp: max(16800, min(21500, 23500)) = 21500
-    expect(result.realizedPrice).toBe(21_500); // 20k + 1500 overage
-    expect(result.frontGross).toBe(21_500 - 16_000);
+    // ask = market = 20k; reservation = 20k·(1 + 0.5·1 − 0.5·0) = 30k ≥ ask
+    expect(result.priceFormation.reservationPrice).toBe(30_000);
+    expect(result.priceFormation.requiredDiscount).toBe(0);
+    expect(result.realizedPrice).toBe(20_000); // buys at ask
+    expect(result.frontGross).toBe(20_000 - 16_000);
   });
 
   it('frontGross = realizedPrice − vehicleCost', () => {
@@ -123,7 +123,7 @@ describe('price formation', () => {
       },
       deps,
     );
-    // requiredDiscount = 500 + 4000 + 3000 - 875 - 0 = 6625 → rawPrice = 13375
+    // reservation = 20k·(1 + 0.5·0 − 0.5·1) = 10k → rawPrice = 10k
     // marginFloorPrice = 16800 → not closeable
     expect(result.closeable).toBe(false);
   });
@@ -300,7 +300,7 @@ describe('objectiveDeal', () => {
 
   it('low priceSensitivity means objectiveDeal ≈ ValueMeter (price matters little)', () => {
     const meters: MeterState = { trustIntegrity: 0.5, value: 0.8 };
-    // At priceSensitivity=0 → priceScore=1 → objectiveDeal = ValueMeter = 0.8
+    // At priceSensitivity=0 the price term drops out → objectiveDeal = ValueMeter = 0.8
     const result = closeAndPrice(
       { meters, skill: GREEN_SALESPERSON, priceSensitivity: 0, vehicle },
       deps,
@@ -394,8 +394,9 @@ describe('askingPrice anchor (#273)', () => {
     expect(low.priceFormation.askingPrice).toBe(18_000);
     expect(high.priceFormation.askingPrice).toBe(24_000);
     expect(high.realizedPrice).toBeGreaterThan(low.realizedPrice);
-    // Same requiredDiscount + no clamp at these prices → the realized gap equals
-    // the ask gap, proving the ask (not the flat $20k market) is the anchor.
+    // Both asks sit below the reservation (~$25.5k) → requiredDiscount 0 for each,
+    // so the realized gap equals the ask gap, proving the ask (not the flat $20k
+    // market) is the anchor.
     expect(high.realizedPrice - low.realizedPrice).toBe(6_000);
   });
 
@@ -434,6 +435,88 @@ describe('askingPrice anchor (#273)', () => {
     );
     expect(noAsk.priceFormation.askingPrice).toBe(20_000);
     expect(noAsk.realizedPrice).toBe(withAsk.realizedPrice);
+  });
+});
+
+// ── reservation-price model (#274) ───────────────────────────────────────────
+
+describe('reservation-price discount model (#274)', () => {
+  // Config: reservationBase 1.0, valueLift 0.5, sensitivityDrag 0.5.
+  // market = 20k, cost = 16k, marginFloorPrice = 16.8k.
+  // reservation = 20k · (1 + 0.5·value − 0.5·sensitivity).
+  const meters: MeterState = { trustIntegrity: 0.6, value: 0.6 };
+  const sensitivity = 0.4; // reservation = 20k·(1 + 0.3 − 0.2) = 22k
+
+  it('computes the reservation price from market × (base + value·lift − sensitivity·drag)', () => {
+    const result = closeAndPrice(
+      { meters, skill: GREEN_SALESPERSON, priceSensitivity: sensitivity, vehicle },
+      deps,
+    );
+    expect(result.priceFormation.reservationPrice).toBe(22_000);
+  });
+
+  it('ask ≤ reservation → requiredDiscount 0, customer buys at ask', () => {
+    const result = closeAndPrice(
+      {
+        meters,
+        skill: GREEN_SALESPERSON,
+        priceSensitivity: sensitivity,
+        vehicle: { ...vehicle, askingPrice: 21_000 }, // ≤ 22k reservation
+      },
+      deps,
+    );
+    expect(result.priceFormation.requiredDiscount).toBe(0);
+    expect(result.realizedPrice).toBe(21_000); // at ask
+    expect(result.closeable).toBe(true);
+  });
+
+  it('ask > reservation → requiredDiscount = ask − reservation, deal forms at the reservation', () => {
+    const result = closeAndPrice(
+      {
+        meters,
+        skill: GREEN_SALESPERSON,
+        priceSensitivity: sensitivity,
+        vehicle: { ...vehicle, askingPrice: 25_000 }, // > 22k reservation
+      },
+      deps,
+    );
+    expect(result.priceFormation.requiredDiscount).toBe(3_000); // 25k − 22k
+    expect(result.realizedPrice).toBe(22_000); // discounted to the reservation
+    expect(result.closeable).toBe(true); // 22k ≥ 16.8k floor
+  });
+
+  it('ask > reservation AND reservation < margin floor → not closeable (escalate)', () => {
+    // Low value + max sensitivity → reservation = 20k·(1 + 0.05 − 0.5) = 11k < 16.8k floor.
+    const result = closeAndPrice(
+      {
+        meters: { trustIntegrity: 0.1, value: 0.1 },
+        skill: GREEN_SALESPERSON,
+        priceSensitivity: 1.0,
+        vehicle: { ...vehicle, askingPrice: 20_000 },
+      },
+      deps,
+    );
+    expect(result.priceFormation.reservationPrice).toBe(11_000);
+    expect(result.priceFormation.requiredDiscount).toBe(9_000); // 20k − 11k
+    expect(result.closeable).toBe(false); // below floor → discount-escalation branch
+  });
+
+  it('value built during the visit raises the reservation (more willing to pay)', () => {
+    const make = (value: number): CloseResult =>
+      closeAndPrice(
+        {
+          meters: { trustIntegrity: 0.5, value },
+          skill: GREEN_SALESPERSON,
+          priceSensitivity: 0.5,
+          vehicle: { ...vehicle, askingPrice: 30_000 },
+        },
+        deps,
+      );
+    const low = make(0.2);
+    const high = make(0.9);
+    expect(high.priceFormation.reservationPrice).toBeGreaterThan(
+      low.priceFormation.reservationPrice,
+    );
   });
 });
 

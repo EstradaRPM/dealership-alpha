@@ -1,6 +1,11 @@
 {
   "schemaVersion": 1,
-  "gates": ["GREET", "QUALIFY", "DEMO", "NEGOTIATE"],
+  "gates": [
+    "GREET",
+    "QUALIFY",
+    "DEMO",
+    "NEGOTIATE"
+  ],
   "rng": {
     "seedNamespace": "customer_pool.sales_gate",
     "jitterBand": 0.34
@@ -11,10 +16,22 @@
     "easeWeight": 0.2
   },
   "meters": {
-    "GREET": { "trust": 1, "value": 0 },
-    "QUALIFY": { "trust": 0.6, "value": 0.4 },
-    "DEMO": { "trust": 0.3, "value": 0.7 },
-    "NEGOTIATE": { "trust": 0.5, "value": 0.5 }
+    "GREET": {
+      "trust": 1,
+      "value": 0
+    },
+    "QUALIFY": {
+      "trust": 0.6,
+      "value": 0.4
+    },
+    "DEMO": {
+      "trust": 0.3,
+      "value": 0.7
+    },
+    "NEGOTIATE": {
+      "trust": 0.5,
+      "value": 0.5
+    }
   },
   "walk": {
     "trustCollapseFloor": 0.15,
@@ -27,14 +44,12 @@
   "close": {
     "buyThreshold": 0.35,
     "softThreshold": 0.35,
-    "trustFloor": 0.39
+    "trustFloor": 0.38
   },
   "price": {
-    "base": 500,
-    "valueGapWeight": 4000,
-    "sensitivityWeight": 3000,
-    "skillHoldWeight": 2500,
-    "trustHoldWeight": 1500,
+    "reservationBase": 1.015,
+    "valueLift": 0.3,
+    "sensitivityDrag": 0.3,
     "minGross": 800,
     "overageAllowed": 1500,
     "framingWeight": 0.15
