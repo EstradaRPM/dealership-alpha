@@ -7,8 +7,7 @@ import {
   StyleSheet,
   Modal,
 } from 'react-native';
-import type { CandidateListing } from '../../game/StaffOrg';
-import type { StaffWithComposites } from '../../game/StaffOrg/types';
+import type { CandidateListing, StaffWithComposites } from '../../game/StaffOrg';
 import { colors } from '../theme';
 
 export interface PersonnelRoleOption {

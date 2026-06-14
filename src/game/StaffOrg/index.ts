@@ -5,7 +5,7 @@ export type {
   StaffOrgSnapshot,
   ConditionAssessInput,
 } from './StaffOrg';
-export type { CandidateListing } from './types';
+export type { CandidateListing, StaffWithComposites } from './types';
 export { loadStaffOrgConfig } from './staffOrgData';
 export type { StaffOrgConfig, ConditionReadConfig } from './staffOrgData';
 export {
