@@ -27,15 +27,18 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 - `data/vehicles.json` — base catalog (model definitions, MSRP, segment).
 - `data/brands.json`, `data/brand-market-share.json` — used by the auction generator for realistic spread.
 
-## Pricing (#120)
-- Every `LotVehicle` carries `suggestedRetail` + `askingPrice`. v1 has no
-  market engine, so `suggestedRetail` is a flat cost-basis placeholder
-  (`purchasePrice + reconCost`) and `askingPrice` defaults to it.
+## Pricing (#120, #273)
+- Every `LotVehicle` carries `suggestedRetail` + `askingPrice`.
+- **#273:** `askingPrice` is now the close's transaction anchor
+  (`SalesProcess.closeAndPrice` forms `realizedPrice` off it). Intake stamps the
+  default `suggestedRetail` (and thus `askingPrice`) from the optional
+  `marketPriceFn` dep — the live MarketEconomy market suggestion — so the
+  default ask sits at market, not cost. Omit the dep (test harnesses without a
+  market engine) to fall back to the cost-basis placeholder
+  (`purchasePrice + reconEstimate`). The composition root wires
+  `marketEconomy.marketPriceFn`.
 - `setAskingPrice(vehicleId, price)` is the MANAGERIAL Pricing-lever sink
   (clamps `<0`→0, rounds, unknown id = no-op).
-- Deep DealEngine consumption of `askingPrice` is a downstream slice; the
-  future simulated retail-value engine replaces the `suggestedRetail`
-  expression only — no consumer or lever changes.
 
 ## Auction volume (#129)
 - `auctionConfig.minListings`/`maxListings` = steady-state daily board size.

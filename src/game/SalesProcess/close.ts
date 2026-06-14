@@ -15,12 +15,23 @@ import type { MeterState } from './evaluator';
 
 const clampUnit = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 
+/**
+ * Vehicle input to the close. Widens the narrow price seam (#273) with the
+ * player-set `askingPrice` — the transaction anchor. Inventory's `LotVehicle`
+ * (which carries a required `askingPrice`) satisfies it; narrow seam-stub /
+ * calibration callers omit it and fall back to the market benchmark, which
+ * preserves the legacy `book × markup` math for those paths.
+ */
+export type CloseVehicleInput = PricedVehicleInput & {
+  readonly askingPrice?: number;
+};
+
 export interface CloseInput {
   readonly meters: MeterState;
   readonly skill: SalespersonSkill;
   /** Customer's price sensitivity, unit-scaled (archetype attribute). */
   readonly priceSensitivity: number;
-  readonly vehicle: PricedVehicleInput;
+  readonly vehicle: CloseVehicleInput;
   readonly marketPriceFn?: MarketPriceFn;
   readonly vehicleCostFn?: VehicleCostFn;
 }
@@ -41,6 +52,16 @@ export type CloseOutcome = 'buy' | 'no_close';
 
 /** Intermediate price-formation values, exposed for HITL review and tests. */
 export interface PriceFormation {
+  /**
+   * The transaction anchor (#273): the player-set `askingPrice`, or the market
+   * benchmark when no ask is supplied. `realizedPrice` forms off this.
+   */
+  readonly askingPrice: number;
+  /**
+   * Competitor benchmark (`book × markup`). Demoted from the transaction price
+   * (#273) — retained only for below/above-market labeling and comps; it no
+   * longer sets what the customer pays.
+   */
   readonly marketPrice: number;
   readonly vehicleCost: number;
   readonly closingComposite: GateSkill;
@@ -51,7 +72,7 @@ export interface PriceFormation {
   readonly requiredDiscount: number;
   readonly marginFloorPrice: number;
   /**
-   * `marketPrice − requiredDiscount` — the raw price before margin clamping.
+   * `askingPrice − requiredDiscount` — the raw price before margin clamping.
    * When this is below `marginFloorPrice` the deal is not closeable on price.
    */
   readonly rawPrice: number;
@@ -85,18 +106,20 @@ export interface CloseResult {
  *   objectiveDeal ≥ softThreshold AND trust ≥ trustFloor → soft buy
  *   otherwise                                  → no_close
  *
- * Price formation (applied before evaluating objectiveDeal):
+ * Price formation (applied before evaluating objectiveDeal). The transaction
+ * anchor is the player-set `askingPrice` (#273); `marketPrice` is demoted to a
+ * competitor benchmark (labeling/comps) and no longer sets the price:
  *   requiredDiscount = base + (1−Value)·valueGapWeight + sensitivity·sensitivityWeight
  *                      − closingSkill·skillHoldWeight − trust·trustHoldWeight
  *   marginFloorPrice = vehicleCost + minGross
- *   realizedPrice    = clamp(marketPrice − requiredDiscount,
- *                            marginFloorPrice, marketPrice + overageAllowed)
+ *   realizedPrice    = clamp(askingPrice − requiredDiscount,
+ *                            marginFloorPrice, askingPrice + overageAllowed)
  *   closeable        = rawPrice ≥ marginFloorPrice
  *   frontGross       = realizedPrice − vehicleCost
  *
  * objectiveDeal = clamp(base + framingBoost, 0, 1)
  * where base = (1−sensitivity)×Value + sensitivity×normalizedPriceScore
- *       normalizedPriceScore = discountGiven / (marketPrice − marginFloorPrice)
+ *       normalizedPriceScore = discountGiven / (askingPrice − marginFloorPrice)
  *       framingBoost = closingEff × sensitivity × framingWeight
  * priceSensitivity blends value vs price; framingBoost lets skilled closers lift
  * objectiveDeal for price-focused customers regardless of the held price.
@@ -113,7 +136,12 @@ export function closeAndPrice(
   const marketPriceFn = input.marketPriceFn ?? deps.marketPriceFn ?? staticMarketPrice;
   const vehicleCostFn = input.vehicleCostFn ?? deps.vehicleCostFn ?? staticVehicleCost;
 
+  // marketPrice is now the competitor benchmark only (#273) — labeling/comps,
+  // never the anchor. The transaction anchors on the player-set askingPrice;
+  // narrow seam-stub callers that carry no ask fall back to the benchmark,
+  // preserving the legacy book×markup math (and the #94 calibration path).
   const marketPrice = marketPriceFn(vehicle);
+  const askingPrice = vehicle.askingPrice ?? marketPrice;
   const vehicleCost = vehicleCostFn(vehicle);
 
   // Closing gate skill (NEGOTIATE drives price hold)
@@ -129,10 +157,10 @@ export function closeAndPrice(
     meters.trustIntegrity * p.trustHoldWeight;
 
   const marginFloorPrice = vehicleCost + p.minGross;
-  const rawPrice = marketPrice - requiredDiscount;
+  const rawPrice = askingPrice - requiredDiscount;
   const realizedPrice = Math.max(
     marginFloorPrice,
-    Math.min(marketPrice + p.overageAllowed, rawPrice),
+    Math.min(askingPrice + p.overageAllowed, rawPrice),
   );
   const closeable = rawPrice >= marginFloorPrice;
   const frontGross = realizedPrice - vehicleCost;
@@ -142,8 +170,8 @@ export function closeAndPrice(
   // built; high sensitivity customers buy on how much of the available discount
   // they received. normalizedPriceScore uses the actual margin room (floor→market)
   // so a $500 discount on a $3k-room vehicle scores meaningfully, not near-zero.
-  const maxDiscount = Math.max(marketPrice - marginFloorPrice, 0);
-  const discountGiven = Math.max(marketPrice - realizedPrice, 0);
+  const maxDiscount = Math.max(askingPrice - marginFloorPrice, 0);
+  const discountGiven = Math.max(askingPrice - realizedPrice, 0);
   const normalizedPriceScore = maxDiscount > 0 ? Math.min(discountGiven / maxDiscount, 1) : 0;
   // Closing framing boost: a skilled closer actively reframes value for price-focused
   // customers at the decision moment, lifting objectiveDeal independently of discount.
@@ -181,6 +209,7 @@ export function closeAndPrice(
     badReview: lowTrustForced,
     highFiResistance: lowTrustForced,
     priceFormation: {
+      askingPrice,
       marketPrice,
       vehicleCost,
       closingComposite,

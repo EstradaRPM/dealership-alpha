@@ -404,6 +404,28 @@ export function createWorld(deps: {
     economy,
     tierManager,
   });
+  // MarketEconomy live providers (#155): closed-form anchor + markup table
+  // replace the static cost-plus stubs in `SalesProcess/seams.ts`. Wired into
+  // StaffFloorDrain (resolver always passes a full LotVehicle) and — since
+  // #167 — into the customer factory's trade-ask seam below. Other call sites
+  // that still pass narrow PricedVehicleInput stubs (CustomerPool's
+  // resolveViaProcess, the #94 calibration test) fall back to the static stubs
+  // by not injecting these. Built before Inventory (#273) so intake can stamp
+  // the market suggestion as each unit's default asking price.
+  // #156: the per-save personality vector is rolled from masterSeed at
+  // construction. Two slots with different seeds get distinct hidden biases →
+  // genuinely different worlds from minute one.
+  // #157 wiring: pass the bus + a getCurrentDay so MarketEconomy subscribes
+  // to inventory:vehicle_purchased/sold, records each transaction's
+  // delta-vs-anchor into its rolling window, and exposes the emergent
+  // segment-drift term in segmentHeat. With no comps recorded yet (cold
+  // start), drift=0 and the engine reduces to the slice-#156 personality
+  // world — the #94 calibration path stays untouched.
+  const marketEconomy = createMarketEconomy({
+    masterSeed,
+    bus,
+    getCurrentDay: () => clock.currentDay,
+  });
   const inventory = createInventory({
     bus,
     masterSeed,
@@ -413,6 +435,13 @@ export function createWorld(deps: {
     // #173: floorplan APR follows the dealership tier — a diegetic
     // progression reward read live so a mid-game tier-up cheapens carry.
     getTier: () => tierManager.currentTier,
+    // #273: stamp each acquired unit's default asking price (the close's
+    // transaction anchor) at the market suggestion instead of cost basis. The
+    // provider declares the narrow `PricedVehicleInput` seam but reads only the
+    // anchor fields a LotVehicle carries — the cast is the documented runtime
+    // contract, mirroring the trade-ask seam below.
+    marketPriceFn: (v) =>
+      marketEconomy.marketPriceFn(v as unknown as PricedVehicleInput),
   });
   // #271: getCurrentDay feeds the lemon-law exposure emit (selling an
   // un-reconditioned hidden lemon → `regulatory:lemon_law_incident`), the live
@@ -428,27 +457,6 @@ export function createWorld(deps: {
   // canonical deal:closed (with the five deal-structuring fields) fires
   // instead of synthesizing a SalesProcess emit against a stub vehicle.
   const creditTiers = loadCreditTiers();
-  // MarketEconomy live providers (#155): closed-form anchor + markup table
-  // replace the static cost-plus stubs in `SalesProcess/seams.ts`. Wired into
-  // StaffFloorDrain (resolver always passes a full LotVehicle) and — since
-  // #167 — into the customer factory's trade-ask seam below. Other call sites
-  // that still pass narrow PricedVehicleInput stubs (CustomerPool's
-  // resolveViaProcess, the #94 calibration test) fall back to the static stubs
-  // by not injecting these.
-  // #156: the per-save personality vector is rolled from masterSeed at
-  // construction. Two slots with different seeds get distinct hidden biases →
-  // genuinely different worlds from minute one.
-  // #157 wiring: pass the bus + a getCurrentDay so MarketEconomy subscribes
-  // to inventory:vehicle_purchased/sold, records each transaction's
-  // delta-vs-anchor into its rolling window, and exposes the emergent
-  // segment-drift term in segmentHeat. With no comps recorded yet (cold
-  // start), drift=0 and the engine reduces to the slice-#156 personality
-  // world — the #94 calibration path stays untouched.
-  const marketEconomy = createMarketEconomy({
-    masterSeed,
-    bus,
-    getCurrentDay: () => clock.currentDay,
-  });
   // #183: CompetitorMarket — the static v1 rival roster with weekly drift.
   // Built earlier but never instantiated in the world (a dark module): its
   // `market:competitive_pressure` (CustomerPool poaching) and #158

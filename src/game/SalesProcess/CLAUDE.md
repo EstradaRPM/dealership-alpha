@@ -42,7 +42,16 @@ Nonnegotiable gating (#89) — pure, deterministic:
 Quadrant close + price formation (#90):
 
 - `closeAndPrice(input, deps?) → CloseResult` — pure, deterministic (no RNG). Takes `MeterState`, `SalespersonSkill`, `priceSensitivity` (unit-scaled), `vehicle: PricedVehicleInput`, and optional `marketPriceFn`/`vehicleCostFn` seam overrides (defaults to `staticMarketPrice`/`staticVehicleCost`). Computes price formation first, then `objectiveDeal`, then applies the quadrant close rule.
-  - **Price formation (PRD decision 12):** `requiredDiscount = base + (1−Value)·valueGapWeight + sensitivity·sensitivityWeight − closingSkill·skillHoldWeight − trust·trustHoldWeight`. `marginFloorPrice = vehicleCost + minGross`. `realizedPrice = clamp(rawPrice, marginFloorPrice, marketPrice + overageAllowed)`. `closeable = rawPrice ≥ marginFloorPrice`. `frontGross = realizedPrice − vehicleCost`.
+  - **Transaction anchor (#273):** the close forms off the player-set
+    `vehicle.askingPrice` (Pricing/Demand spine, Pillar 2). `CloseVehicleInput =
+    PricedVehicleInput & { askingPrice? }` — Inventory's `LotVehicle` (required
+    ask) satisfies it; narrow seam-stub / #94-calibration callers omit it and
+    fall back to the market benchmark, preserving the legacy `book × markup`
+    math. `marketPriceFn` is **demoted to a competitor benchmark** (below/above-
+    market labeling + comps), surfaced as `priceFormation.marketPrice` — it no
+    longer sets what the customer pays. `priceFormation.askingPrice` is the
+    resolved anchor.
+  - **Price formation (PRD decision 12):** `requiredDiscount = base + (1−Value)·valueGapWeight + sensitivity·sensitivityWeight − closingSkill·skillHoldWeight − trust·trustHoldWeight`. `marginFloorPrice = vehicleCost + minGross`. `rawPrice = askingPrice − requiredDiscount`. `realizedPrice = clamp(rawPrice, marginFloorPrice, askingPrice + overageAllowed)`. `closeable = rawPrice ≥ marginFloorPrice`. `frontGross = realizedPrice − vehicleCost`.
   - **objectiveDeal (PRD decision 11):** `clamp(Value × (1 − sensitivity × (1 − discountFraction)), 0, 1)` where `discountFraction = clamp((marketPrice − realizedPrice) / marketPrice, 0, 1)`.
   - **Quadrant close rule:** `objectiveDeal ≥ buyThreshold` → buy (trust irrelevant); `objectiveDeal ≥ softThreshold AND trust ≥ trustFloor` → soft buy; otherwise no_close. `closeable=false` blocks all closes.
   - **Low-trust forced close:** `outcome=buy AND unconditional AND trust < trustFloor` → `badReview=true + highFiResistance=true` (signals downstream).

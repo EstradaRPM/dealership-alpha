@@ -114,6 +114,15 @@ export interface InventoryDeps {
    * mirror — same shape as the SalesProcess seam default).
    */
   bookValueFn?: (v: LotVehicle) => number;
+  /**
+   * Live market-price provider (#273). Sets a freshly-acquired unit's
+   * `suggestedRetail` (and thus its default `askingPrice`) to the market
+   * suggestion rather than the cost-basis placeholder. Omit to fall back to
+   * `purchasePrice + reconEstimate` (the v1 stub) — test harnesses that don't
+   * wire MarketEconomy keep the cost-basis default. Receives the built
+   * `LotVehicle`, which carries every anchor field the provider reads.
+   */
+  marketPriceFn?: (v: LotVehicle) => number;
   reconVariance?: ReconVarianceConfig;
   reconSurprises?: ReconSurpriseEventsConfig;
   auctionSourceReliability?: AuctionSourceReliability;
@@ -132,6 +141,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
   const getTier = deps.getTier ?? (() => 1);
   const bookValueFn =
     deps.bookValueFn ?? ((v: LotVehicle) => v.purchasePrice + v.reconCost);
+  const marketPriceFn = deps.marketPriceFn;
 
   let currentDay = 1;
   let auctionListings: AuctionListing[] = [];
@@ -249,8 +259,11 @@ export function createInventory(deps: InventoryDeps): Inventory {
     );
     const reconDaysTotal =
       reconVariance.reconDaysByCondition[args.condition] ?? 5;
-    const suggestedRetail = args.purchasePrice + args.reconEstimate;
-    return {
+    // Cost-basis placeholder (#120). When a live market provider is wired
+    // (#273) the suggested retail — and thus the default asking price, now the
+    // close's transaction anchor — comes from the market suggestion instead.
+    const costBasis = args.purchasePrice + args.reconEstimate;
+    const vehicle: LotVehicle = {
       id: args.id,
       templateId: args.templateId,
       brand: args.brand,
@@ -269,8 +282,8 @@ export function createInventory(deps: InventoryDeps): Inventory {
       carryingCostToDate: 0,
       dailyCarryingCost: 0,
       aged: false,
-      suggestedRetail,
-      askingPrice: suggestedRetail,
+      suggestedRetail: costBasis,
+      askingPrice: costBasis,
       reconStatus: 'in_progress',
       reconEstimate: args.reconEstimate,
       reconRealizedCost: reconRoll.realizedCost,
@@ -278,6 +291,9 @@ export function createInventory(deps: InventoryDeps): Inventory {
       reconDaysTotal,
       reconBucket: reconRoll.bucket,
     };
+    if (!marketPriceFn) return vehicle;
+    const suggestedRetail = Math.max(0, Math.round(marketPriceFn(vehicle)));
+    return { ...vehicle, suggestedRetail, askingPrice: suggestedRetail };
   }
 
   /**

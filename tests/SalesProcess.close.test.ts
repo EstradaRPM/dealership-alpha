@@ -367,6 +367,76 @@ describe('skill/meter extremes — deterministic', () => {
 
 // ── Price seam injection ─────────────────────────────────────────────────────
 
+// ── askingPrice anchor (#273) ────────────────────────────────────────────────
+
+describe('askingPrice anchor (#273)', () => {
+  const meters: MeterState = { trustIntegrity: 0.7, value: 0.7 };
+
+  it('anchors realizedPrice on askingPrice — a high-priced and a low-priced car transact at different prices', () => {
+    const low = closeAndPrice(
+      {
+        meters,
+        skill: GREEN_SALESPERSON,
+        priceSensitivity: 0.3,
+        vehicle: { ...vehicle, askingPrice: 18_000 },
+      },
+      deps,
+    );
+    const high = closeAndPrice(
+      {
+        meters,
+        skill: GREEN_SALESPERSON,
+        priceSensitivity: 0.3,
+        vehicle: { ...vehicle, askingPrice: 24_000 },
+      },
+      deps,
+    );
+    expect(low.priceFormation.askingPrice).toBe(18_000);
+    expect(high.priceFormation.askingPrice).toBe(24_000);
+    expect(high.realizedPrice).toBeGreaterThan(low.realizedPrice);
+    // Same requiredDiscount + no clamp at these prices → the realized gap equals
+    // the ask gap, proving the ask (not the flat $20k market) is the anchor.
+    expect(high.realizedPrice - low.realizedPrice).toBe(6_000);
+  });
+
+  it('askingPrice — not marketPrice — sets the price; market is retained only as a benchmark', () => {
+    // Ask far above the $20k market benchmark. With a strong process the deal
+    // forms off the ask, so realizedPrice sits well above market.
+    const expert = makeSalespersonProfile({
+      NEGOTIATE: { effectiveness: 1, trustworthiness: 1 },
+    });
+    const result = closeAndPrice(
+      {
+        meters: { trustIntegrity: 1, value: 1 },
+        skill: expert,
+        priceSensitivity: 0,
+        vehicle: { ...vehicle, askingPrice: 30_000 },
+      },
+      deps,
+    );
+    expect(result.priceFormation.marketPrice).toBe(20_000); // benchmark unchanged
+    expect(result.realizedPrice).toBeGreaterThan(20_000); // anchored on the 30k ask
+  });
+
+  it('falls back to the market benchmark when no askingPrice is supplied (legacy/stub callers)', () => {
+    const withAsk = closeAndPrice(
+      {
+        meters,
+        skill: GREEN_SALESPERSON,
+        priceSensitivity: 0.3,
+        vehicle: { ...vehicle, askingPrice: 20_000 }, // == marketPrice
+      },
+      deps,
+    );
+    const noAsk = closeAndPrice(
+      { meters, skill: GREEN_SALESPERSON, priceSensitivity: 0.3, vehicle },
+      deps,
+    );
+    expect(noAsk.priceFormation.askingPrice).toBe(20_000);
+    expect(noAsk.realizedPrice).toBe(withAsk.realizedPrice);
+  });
+});
+
 describe('price seam injection', () => {
   it('accepts custom marketPriceFn and vehicleCostFn', () => {
     const meters: MeterState = { trustIntegrity: 0.8, value: 0.8 };

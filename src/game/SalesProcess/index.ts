@@ -90,6 +90,7 @@ export type {
 export { closeAndPrice } from './close';
 export type {
   CloseInput,
+  CloseVehicleInput,
   CloseDeps,
   CloseOutcome,
   CloseResult,
