@@ -80,7 +80,7 @@ Each monitor is the sole publisher of events `EndCardManager` depends on
 |---|---|---|
 | `career:bankruptcy_terminal` | `BankruptcyMonitor` | Yes (#270) |
 | `regulatory:ag_complaint_terminal` | `RegulatoryMeter` | Yes |
-| `career:indictment_terminal` | `IndictmentMonitor` | **No** |
+| `career:indictment_terminal` | `IndictmentMonitor` | Yes (#271) |
 | `career:retired` | `CareerEndingsMonitor` | **No** |
 | `career:pe_sellout` | `CareerEndingsMonitor` | **No** |
 | `career:family_handoff` | `CareerEndingsMonitor` | **No** |
@@ -100,14 +100,16 @@ this audit exists to catch.
 (`IndictmentMonitor.ts:95-103`) that **no production module publishes** — they
 appear only in `events.ts`, the monitor, and the monitor's test:
 
-- `regulatory:lemon_law_incident`
-- `regulatory:audit_failure`
-- `deal:fraud_flag`
+- `regulatory:lemon_law_incident` — **producer live (#271):** `DealEngine.closeDeal`
+  emits it when an un-reconditioned hidden lemon (`reconStatus !== 'complete'`
+  with a `major`/`catastrophic` recon bucket) is retailed.
+- `regulatory:audit_failure` — still dark (no producer); follow-on.
+- `deal:fraud_flag` — still dark (no producer); follow-on.
 
-So even after `IndictmentMonitor` is wired (F1), its indictment-pressure inputs
-stay dark until a gameplay system (a sold lemon, a failed audit, a fraudulent
-deal structure) actually emits them. Tracked as part of the IndictmentMonitor
-wiring issue.
+`IndictmentMonitor` was wired in #271 (F1) and its lemon-law input now has a real
+gameplay producer; the remaining two severe signals stay dark until a gameplay
+system (a failed audit, a fraudulent deal structure) emits them. Tracked as
+follow-ons to #271.
 
 ### F3 — `bus:ready` is declared but never published in production (benign)
 

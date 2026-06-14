@@ -32,13 +32,20 @@ export interface DealEngineDeps {
   bus?: EventBus;
   inventory?: Pick<Inventory, 'getLotVehicle' | 'sellVehicle'>;
   economy?: Pick<Economy, 'postRevenue'>;
+  /**
+   * Live current-day getter (#271). Only consumed by the lemon-law exposure
+   * emit below, which stamps `day` onto `regulatory:lemon_law_incident`.
+   * Omitted ⇒ day 0 (isolation tests that don't drive a clock); the composition
+   * root passes `() => clock.currentDay`.
+   */
+  getCurrentDay?: () => number;
 }
 
 export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
   const catalog = deps.catalog ?? loadCreditTiers();
   const fniCatalog = deps.fniCatalog ?? loadFniProducts();
   const autoAttachConfig = deps.fniAutoAttachConfig ?? loadFniAutoAttachConfig();
-  const { bus, inventory, economy } = deps;
+  const { bus, inventory, economy, getCurrentDay } = deps;
 
   return {
     classifyCredit(score) {
@@ -96,6 +103,26 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
 
       inventory.sellVehicle(vehicleId, agreedPrice);
       economy.postRevenue(agreedPrice, `Vehicle sale: ${vehicleId}`);
+
+      // Lemon-law exposure (#271, IndictmentMonitor severe-event producer).
+      // Retailing a unit whose hidden recon landed in a severe tail bucket
+      // (`major`/`catastrophic`) WITHOUT having reconditioned it (recon never
+      // reached `complete` — sold mid-recon or sold-as-is past a paused recon
+      // surprise) ships a latent defect to the customer. That is the diegetic
+      // trigger for lemon-law liability, which accumulates indictment pressure.
+      // A completed recon means the defect was found AND fixed, so it is NOT a
+      // lemon — hence the `!== 'complete'` gate. This is the tracer producer;
+      // the other two severe signals (`regulatory:audit_failure`,
+      // `deal:fraud_flag`) remain unwired follow-ons (see issue #271).
+      const soldAsLemon =
+        vehicle.reconStatus !== 'complete' &&
+        (vehicle.reconBucket === 'major' || vehicle.reconBucket === 'catastrophic');
+      if (soldAsLemon) {
+        bus.publish('regulatory:lemon_law_incident', {
+          day: getCurrentDay?.() ?? 0,
+          customerId,
+        });
+      }
 
       let backGross = 0;
       for (const attached of fniProducts) {

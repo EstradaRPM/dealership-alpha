@@ -83,8 +83,10 @@ import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
 import {
   createTierManager,
   createBankruptcyMonitor,
+  createIndictmentMonitor,
   type TierManager,
   type BankruptcyMonitor,
+  type IndictmentMonitor,
   type CharacterProfile,
 } from './game/CareerProgression';
 import { createEndCardManager, type EndCardManager } from './game/EndCard';
@@ -135,6 +137,7 @@ export interface World {
   serviceQueue: ServiceQueue;
   tierManager: TierManager;
   bankruptcyMonitor: BankruptcyMonitor;
+  indictmentMonitor: IndictmentMonitor;
   endCardManager: EndCardManager;
   telemetry: Telemetry;
   historyLog: HistoryLog;
@@ -359,6 +362,22 @@ export function createWorld(deps: {
     economy,
     tierManager,
   });
+  // #271: IndictmentMonitor — the sole publisher of `career:indictment_terminal`
+  // (consumed by EndCardManager to settle the prison-sentence game-over) plus
+  // the Tier 2 contraction / Tier 3+ legal-defense outcomes. Built earlier but
+  // never instantiated in the world (a composition orphan, #184/F2): until wired
+  // none of those signals could fire. It accumulates severe-event pressure
+  // (lemon-law incidents, audit failures, deal fraud flags) and routes an
+  // indictment to the tier-appropriate outcome (terminal at Tier 1). Its
+  // pressure state persists via the world snapshot (#188). NOTE: of its three
+  // pressure inputs only `regulatory:lemon_law_incident` has a live producer so
+  // far (DealEngine, selling an un-reconditioned hidden lemon); `audit_failure`
+  // and `deal:fraud_flag` remain unwired follow-ons (#271).
+  const indictmentMonitor = createIndictmentMonitor({
+    bus,
+    economy,
+    tierManager,
+  });
   const inventory = createInventory({
     bus,
     masterSeed,
@@ -369,7 +388,15 @@ export function createWorld(deps: {
     // progression reward read live so a mid-game tier-up cheapens carry.
     getTier: () => tierManager.currentTier,
   });
-  const dealEngine = createDealEngine({ bus, inventory, economy });
+  // #271: getCurrentDay feeds the lemon-law exposure emit (selling an
+  // un-reconditioned hidden lemon → `regulatory:lemon_law_incident`), the live
+  // producer for IndictmentMonitor's severe-event pressure.
+  const dealEngine = createDealEngine({
+    bus,
+    inventory,
+    economy,
+    getCurrentDay: () => clock.currentDay,
+  });
   // CustomerPool gets the DealEngine + inventory + tier-catalog wiring (#146)
   // so dispatch(CLOSE) routes real closes through DealEngine.closeDeal — the
   // canonical deal:closed (with the five deal-structuring fields) fires
@@ -837,6 +864,7 @@ export function createWorld(deps: {
     serviceQueue,
     tierManager,
     bankruptcyMonitor,
+    indictmentMonitor,
     endCardManager,
     telemetry,
     historyLog,

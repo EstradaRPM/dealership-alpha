@@ -241,6 +241,68 @@ describe('#270 composition root — BankruptcyMonitor wired into the live world'
   });
 });
 
+describe('#271 composition root — IndictmentMonitor wired into the live world', () => {
+  it('routes accumulated severe-event pressure to a terminal indictment game-over', () => {
+    const bus = createEventBus();
+    const world = createWorld({
+      bus,
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+    expect(world.tierManager.currentTier).toBe(1);
+
+    const terminal = jest.fn();
+    const gameOver = jest.fn();
+    bus.subscribe('career:indictment_terminal', terminal);
+    bus.subscribe('career:game_over', gameOver);
+
+    // Real failure-tunables: lemonLawPressure 15, pressureThreshold 50. Three
+    // incidents (45) stay under threshold; the fourth (60) trips a Tier 1
+    // terminal indictment. These ride the live, wired monitor — the same
+    // `regulatory:lemon_law_incident` signal DealEngine now emits when an
+    // un-reconditioned hidden lemon is retailed.
+    for (let i = 0; i < 3; i++) {
+      bus.publish('regulatory:lemon_law_incident', { day: 1, customerId: `c${i}` });
+    }
+    expect(terminal).not.toHaveBeenCalled();
+
+    bus.publish('regulatory:lemon_law_incident', { day: 1, customerId: 'c3' });
+
+    // IndictmentMonitor (the sole publisher) fired its terminal, and the
+    // live-wired EndCardManager converged it into a single game-over.
+    expect(terminal).toHaveBeenCalledWith({ day: 1, tier: 1, pressure: 60 });
+    expect(gameOver).toHaveBeenCalledTimes(1);
+    expect(world.endCardManager.data?.reason).toBe('indictment');
+    expect(world.indictmentMonitor.isTerminal).toBe(true);
+  });
+
+  it('round-trips indictment pressure through the world snapshot', () => {
+    const bus = createEventBus();
+    const world = createWorld({
+      bus,
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+
+    world.indictmentMonitor.restoreState({ pressure: 30, isTerminal: false });
+
+    const snap = snapshotWorld(world);
+    expect(snap.modules.indictmentMonitor).toEqual({
+      pressure: 30,
+      isTerminal: false,
+    });
+
+    const rebuilt = createWorld({
+      bus: createEventBus(),
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+    expect(rebuilt.indictmentMonitor.pressure).toBe(0);
+    restoreWorld(JSON.parse(JSON.stringify(snap)), rebuilt);
+    expect(rebuilt.indictmentMonitor.pressure).toBe(30);
+  });
+});
+
 describe('#206 composition root — ServiceDispatch wired into the floor seams', () => {
   it('auto-resolves Tier 2 service intake through a hired service advisor', () => {
     const bus = createEventBus();

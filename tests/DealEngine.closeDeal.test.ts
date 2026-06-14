@@ -2,6 +2,7 @@ import { createEventBus } from '../src/game/EventBus';
 import { createGameClock } from '../src/game/GameClock';
 import { createEconomy } from '../src/game/Economy';
 import { createInventory, loadVehicleData } from '../src/game/Inventory';
+import type { LotVehicle } from '../src/game/Inventory';
 import { createCustomerPool } from '../src/game/CustomerPool';
 import { createDealEngine } from '../src/game/DealEngine';
 import {
@@ -166,5 +167,99 @@ describe('DealEngine.closeDeal — end-to-end', () => {
     const result = dealEngine.closeDeal({ customerId, vehicleId, agreedPrice });
 
     expect(result.frontGross).toBeLessThan(0);
+  });
+});
+
+// ── closeDeal — lemon-law exposure producer (#271) ────────────────────────────
+
+describe('DealEngine.closeDeal — lemon-law exposure (#271)', () => {
+  function makeLotVehicle(overrides: Partial<LotVehicle>): LotVehicle {
+    return {
+      id: 'v1',
+      templateId: 't1',
+      brand: 'brand-x',
+      year: 2020,
+      make: 'Make',
+      model: 'Model',
+      trim: '',
+      mileage: 50_000,
+      condition: 'average',
+      conditionReport: '',
+      purchasePrice: 10_000,
+      reconCost: 0,
+      category: 'sedan',
+      arrivalDay: 1,
+      daysInInventory: 0,
+      carryingCostToDate: 0,
+      dailyCarryingCost: 0,
+      aged: false,
+      suggestedRetail: 12_000,
+      askingPrice: 12_000,
+      reconStatus: 'in_progress',
+      reconEstimate: 1_000,
+      reconRealizedCost: 4_000,
+      reconDaysRemaining: 3,
+      reconDaysTotal: 5,
+      reconBucket: 'within',
+      ...overrides,
+    };
+  }
+
+  function setupWithVehicle(vehicle: LotVehicle) {
+    const bus = createEventBus();
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const inventory = {
+      getLotVehicle: () => vehicle,
+      sellVehicle: jest.fn(() => vehicle),
+    };
+    const dealEngine = createDealEngine({
+      bus,
+      inventory,
+      economy,
+      getCurrentDay: () => 7,
+    });
+    const incidents: Array<{ day: number; customerId: string }> = [];
+    bus.subscribe('regulatory:lemon_law_incident', (e) => incidents.push(e));
+    return { bus, dealEngine, incidents };
+  }
+
+  it('emits a lemon-law incident when an un-reconditioned major-tail lemon is retailed', () => {
+    const { dealEngine, incidents } = setupWithVehicle(
+      makeLotVehicle({ reconStatus: 'in_progress', reconBucket: 'major' }),
+    );
+
+    dealEngine.closeDeal({ customerId: 'cust-1', vehicleId: 'v1', agreedPrice: 12_000 });
+
+    expect(incidents).toEqual([{ day: 7, customerId: 'cust-1' }]);
+  });
+
+  it('emits for a catastrophic lemon sold as-is past a paused recon surprise', () => {
+    const { dealEngine, incidents } = setupWithVehicle(
+      makeLotVehicle({ reconStatus: 'paused_for_decision', reconBucket: 'catastrophic' }),
+    );
+
+    dealEngine.closeDeal({ customerId: 'cust-2', vehicleId: 'v1', agreedPrice: 12_000 });
+
+    expect(incidents).toHaveLength(1);
+  });
+
+  it('does NOT emit when the tail-bucket defect was reconditioned (recon complete)', () => {
+    const { dealEngine, incidents } = setupWithVehicle(
+      makeLotVehicle({ reconStatus: 'complete', reconBucket: 'catastrophic' }),
+    );
+
+    dealEngine.closeDeal({ customerId: 'cust-3', vehicleId: 'v1', agreedPrice: 12_000 });
+
+    expect(incidents).toHaveLength(0);
+  });
+
+  it('does NOT emit for an un-reconditioned unit with a clean (within) recon', () => {
+    const { dealEngine, incidents } = setupWithVehicle(
+      makeLotVehicle({ reconStatus: 'in_progress', reconBucket: 'within' }),
+    );
+
+    dealEngine.closeDeal({ customerId: 'cust-4', vehicleId: 'v1', agreedPrice: 12_000 });
+
+    expect(incidents).toHaveLength(0);
   });
 });

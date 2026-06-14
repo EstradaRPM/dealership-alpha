@@ -35,6 +35,7 @@ import type { RegulatoryMeterState, ReputationSnapshot } from './game/Reputation
 import type {
   TierManagerSnapshot,
   BankruptcyMonitorState,
+  IndictmentMonitorState,
 } from './game/CareerProgression';
 import type { FollowUpPoolSnapshot } from './game/FollowUpPool';
 import type { ServiceQueueSnapshot } from './game/ServiceQueue';
@@ -58,7 +59,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 6;
+export const WORLD_SNAPSHOT_VERSION = 7;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -81,6 +82,8 @@ export type WorldSnapshot = {
     // BankruptcyMonitor debt-overhang state: insolvency streak + outstanding
     // T2 contraction debt + terminal flag (#270).
     readonly bankruptcyMonitor: BankruptcyMonitorState;
+    // IndictmentMonitor severe-event pressure + terminal flag (#271).
+    readonly indictmentMonitor: IndictmentMonitorState;
     // Queued/pending work + accumulated metrics (#193).
     readonly followUpPool: FollowUpPoolSnapshot;
     readonly serviceQueue: ServiceQueueSnapshot;
@@ -170,6 +173,16 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         },
       },
     }),
+    6: (snap) => ({
+      version: 7,
+      modules: {
+        ...snap.modules,
+        indictmentMonitor: {
+          pressure: 0,
+          isTerminal: false,
+        },
+      },
+    }),
   };
 
 /**
@@ -219,6 +232,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       regulatoryMeter: world.regulatoryMeter.getSerializableState(),
       tierManager: world.tierManager.snapshot(),
       bankruptcyMonitor: world.bankruptcyMonitor.getSerializableState(),
+      indictmentMonitor: world.indictmentMonitor.getSerializableState(),
       followUpPool: world.followUpPool.snapshot(),
       serviceQueue: world.serviceQueue.snapshot(),
       departmentQueue: world.departmentQueue.snapshot(),
@@ -252,6 +266,7 @@ export function restoreWorld(
   world.regulatoryMeter.restoreState(snap.modules.regulatoryMeter);
   world.tierManager.restore(snap.modules.tierManager);
   world.bankruptcyMonitor.restoreState(snap.modules.bankruptcyMonitor);
+  world.indictmentMonitor.restoreState(snap.modules.indictmentMonitor);
   world.followUpPool.restore(snap.modules.followUpPool);
   world.serviceQueue.restore(snap.modules.serviceQueue);
   world.departmentQueue.restore(snap.modules.departmentQueue);

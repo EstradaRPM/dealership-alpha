@@ -21,6 +21,14 @@ Player tier (1 → 3 in v1) + backstory-driven Day 1 modifiers + branding rebran
   state (insolvency streak, outstanding T2 contraction debt, terminal flag) is
   the world seam's `bankruptcyMonitor` key (#270, envelope v6). It is wired into
   `createWorld` alongside `TierManager`/`RegulatoryMeter`.
+- `IndictmentMonitor.getSerializableState()/restoreState()` — the severe-event
+  pressure + terminal flag is the world seam's `indictmentMonitor` key (#271,
+  envelope v7). Wired into `createWorld` alongside the other failure monitors.
+  Of its three pressure inputs only `regulatory:lemon_law_incident` has a live
+  producer (DealEngine emits it when an un-reconditioned hidden lemon —
+  `reconStatus !== 'complete'` with a `major`/`catastrophic` recon bucket — is
+  retailed); `regulatory:audit_failure` and `deal:fraud_flag` remain unwired
+  follow-ons (#271).
 
 ## Events
 - **Emits:** `career:tier_up`, `career:bankruptcy_*`, `career:debt_payment_made`, `career:indictment_*`, `career:retired`, `career:pe_offer_made`, `career:pe_sellout`, `career:family_handoff`.
