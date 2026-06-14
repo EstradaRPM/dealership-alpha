@@ -1,17 +1,10 @@
 import rawConfig from '../../../data/tier-progression.json';
 
-export interface TierThreshold {
-  minCashOnHand: number;
-  minCustomersServed: number;
-  minReputationScore: number;
-}
-
 export interface TierEntry {
   tier: number;
   label: string;
   illustration: string;
   caption: string;
-  triggerThreshold?: TierThreshold;
 }
 
 export interface AccentOption {

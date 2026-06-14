@@ -84,6 +84,23 @@ export interface GateStripModel {
    * the month-end verdict's worst-face rule. `null` when no faces are lit.
    */
   percentOnTrack: number | null;
+  /**
+   * #250 — the tier-advancement streak line. Advancement is N consecutive
+   * meet-or-better months; this surfaces the banked progress ("Track record:
+   * month 2 of 3") or, once the top-tier streak is complete, the dossier-ready
+   * cue. `null` when no streak status is supplied.
+   */
+  streakLabel: string | null;
+}
+
+/** Tier-advancement streak status for the gate strip's track-record line (#250). */
+export interface StreakStatus {
+  /** Consecutive meet-or-better months banked at the current tier. */
+  current: number;
+  /** Months needed to leave the current tier. */
+  required: number;
+  /** Top-tier streak complete → franchise dossier ready (no auto-advance). */
+  dossierReady: boolean;
 }
 
 /** Today's haul, keyed by flow face id, for the daily-contribution tick. */
@@ -187,9 +204,17 @@ function faceTrackRatio(f: FaceProgress): number {
   }
 }
 
+/** The track-record line copy for the streak state (#250). */
+function streakLabelFor(streak: StreakStatus): string {
+  return streak.dossierReady
+    ? 'Track record ready — franchise courtship coming'
+    : `Track record: month ${streak.current} of ${streak.required}`;
+}
+
 export function buildGateStrip(
   progress: GateProgress,
   today?: TodayContribution,
+  streak?: StreakStatus,
 ): GateStripModel {
   const faces: GateFaceView[] = progress.faces.map((f) => {
     switch (f.kind) {
@@ -218,5 +243,6 @@ export function buildGateStrip(
   return {
     faces,
     percentOnTrack,
+    streakLabel: streak ? streakLabelFor(streak) : null,
   };
 }

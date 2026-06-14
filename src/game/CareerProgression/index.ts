@@ -10,7 +10,7 @@ export type {
 } from './TierManager';
 
 export { loadTierConfig } from './tierData';
-export type { TierConfig, TierEntry, TierThreshold, AccentOption, FontOption } from './tierData';
+export type { TierConfig, TierEntry, AccentOption, FontOption } from './tierData';
 
 export { createBankruptcyMonitor } from './BankruptcyMonitor';
 export type {

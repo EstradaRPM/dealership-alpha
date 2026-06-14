@@ -36,7 +36,10 @@ export interface TierGateConfig {
   /** Face id → its kind + display label. */
   readonly faces: Readonly<Record<string, GateFaceDef>>;
   /** Tier number (as string key) → { faceId → target }. Listed faces are the
-   *  active faces for that tier; an absent face is dark at that tier. */
+   *  active faces for that tier; an absent face is dark at that tier. A tier
+   *  entry may also carry non-face control tunables read by other modules —
+   *  `streak` (#250: consecutive meet-or-better months to leave the tier); these
+   *  have no `faces` def and the engine never treats them as gate faces. */
   readonly tiers: Readonly<Record<string, Readonly<Record<string, number>>>>;
 }
 

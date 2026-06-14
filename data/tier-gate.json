@@ -15,8 +15,8 @@
     "facility": { "kind": "stepped", "label": "Facility / Image" }
   },
   "tiers": {
-    "1": { "units": 8, "cash": 60000 },
-    "2": { "units": 15, "gross": 30000, "cash": 150000 },
-    "3": { "units": 28, "gross": 70000, "cash": 420000, "csi": 75 }
+    "1": { "units": 8, "cash": 60000, "streak": 1 },
+    "2": { "units": 15, "gross": 30000, "cash": 150000, "streak": 2 },
+    "3": { "units": 28, "gross": 70000, "cash": 420000, "csi": 75, "facility": 50, "streak": 3 }
   }
 }

@@ -19,4 +19,5 @@ export type {
   LevelFaceView,
   TrendFaceView,
   TodayContribution,
+  StreakStatus,
 } from './gateStripModel';

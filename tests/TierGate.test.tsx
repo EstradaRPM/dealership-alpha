@@ -345,3 +345,43 @@ describe('#233 S3b — gate strip reachable on the live Home dashboard', () => {
     expect(src).toMatch(/gate: gateModel\.faces\.length > 0/);
   });
 });
+
+describe('#250 S3b — tier-advancement streak surfaced on the gate strip', () => {
+  it('renders the banked track-record line ("month X of N")', () => {
+    const strip = buildGateStrip(makeHarness().gate.getProgress(), undefined, {
+      current: 2,
+      required: 3,
+      dossierReady: false,
+    });
+    expect(strip.streakLabel).toBe('Track record: month 2 of 3');
+  });
+
+  it('renders the dossier-ready cue once the top-tier streak completes', () => {
+    const strip = buildGateStrip(makeHarness({ tier: 3 }).gate.getProgress(), undefined, {
+      current: 3,
+      required: 3,
+      dossierReady: true,
+    });
+    expect(strip.streakLabel).toBe('Track record ready — franchise courtship coming');
+  });
+
+  it('omits the streak line when no streak status is supplied', () => {
+    const strip = buildGateStrip(makeHarness().gate.getProgress());
+    expect(strip.streakLabel).toBeNull();
+  });
+
+  it('shows the streak line in the rendered Home gate strip', () => {
+    const model = buildHomeDashboard({
+      ...INPUTS,
+      gate: buildGateStrip(makeHarness().gate.getProgress(), undefined, {
+        current: 1,
+        required: 2,
+        dossierReady: false,
+      }),
+    });
+    const { getByTestId } = render(
+      <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
+    );
+    expect(getByTestId('gate-streak-line')).toBeTruthy();
+  });
+});

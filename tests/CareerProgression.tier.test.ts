@@ -1,27 +1,14 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createTierManager } from '../src/game/CareerProgression';
 import type { TierConfig } from '../src/game/CareerProgression';
-import type { Economy } from '../src/game/Economy';
-import type { Reputation } from '../src/game/Reputation';
+import type { GateBand } from '../src/game/TierGate';
 
 const STUB_CONFIG: TierConfig = {
   checkIntervalDays: 28,
   tiers: [
     { tier: 1, label: 'Gravel Yard', illustration: '🏚', caption: 'awaits' },
-    {
-      tier: 2,
-      label: 'Paved Lot',
-      illustration: '🏗',
-      caption: 'taking shape',
-      triggerThreshold: { minCashOnHand: 1000, minCustomersServed: 5, minReputationScore: 60 },
-    },
-    {
-      tier: 3,
-      label: 'Small Showroom',
-      illustration: '🏢',
-      caption: 'worth protecting',
-      triggerThreshold: { minCashOnHand: 5000, minCustomersServed: 15, minReputationScore: 70 },
-    },
+    { tier: 2, label: 'Paved Lot', illustration: '🏗', caption: 'taking shape' },
+    { tier: 3, label: 'Small Showroom', illustration: '🏢', caption: 'worth protecting' },
   ],
   accentOptions: [
     { id: 'gold', label: 'Gold', color: '#c8a96e' },
@@ -33,201 +20,220 @@ const STUB_CONFIG: TierConfig = {
   ],
 };
 
-function makeEconomy(cash: number): Economy {
-  return {
-    get cash() { return cash; },
-    inventoryAcquisitionSpend: 0,
-    postRevenue: jest.fn(),
-    postExpense: jest.fn(),
-    forceDebit: jest.fn(),
-    getPnL: jest.fn().mockReturnValue({ totalRevenue: 0, totalExpenses: 0, netIncome: 0, entries: [] }),
-    snapshot: jest.fn().mockReturnValue({ schemaVersion: 1, cash }),
-    restore: jest.fn(),
-  };
+// Locked #250 streak rule: leave tier N after N consecutive meet-or-better months.
+const STREAKS = { 1: 1, 2: 2, 3: 3 } as const;
+
+type Bus = ReturnType<typeof createEventBus>;
+
+function postVerdict(bus: Bus, overall: GateBand, day = 30): void {
+  bus.publish('tierGate:month_verdict', {
+    day,
+    month: Math.ceil(day / 30),
+    tier: 1,
+    overall,
+    faces: [],
+  });
 }
 
-function makeReputation(score: number): Reputation {
-  return {
-    get customerSatisfaction() { return score; },
-    get reviewScore() { return score; },
-    get marketingBudget() { return 0; },
-    setMarketingBudget: jest.fn(),
-    getDailyDemand: jest.fn().mockReturnValue(3),
-    snapshot: jest.fn().mockReturnValue({
-      schemaVersion: 1,
-      customerSatisfaction: score,
-      reviewScore: score,
-      marketingBudget: 0,
-    }),
-    restore: jest.fn(),
-  };
+function makeManager(bus: Bus) {
+  return createTierManager({ bus, config: STUB_CONFIG, streaksByTier: STREAKS });
 }
 
-function simulateCustomersServed(bus: ReturnType<typeof createEventBus>, count: number) {
-  for (let i = 0; i < count; i++) {
-    bus.publish('customer:resolved', { customerId: `c${i}`, outcome: 'closed', receptivity: 0.5, satisfaction: 1, retentionSeed: 0.5, heat: 0, agreedPrice: 0, frontGross: 0 });
-  }
-}
-
-function simulateMonthEnd(bus: ReturnType<typeof createEventBus>, day: number) {
-  bus.publish('clock:overnight_payroll', { day });
-}
-
-describe('TierManager — trigger evaluation', () => {
-  it('starts at tier 1 with zero customers served', () => {
+describe('TierManager — #250 streak-based advancement', () => {
+  it('starts at tier 1 with a zero streak and no dossier', () => {
     const bus = createEventBus();
-    const tm = createTierManager({
-      bus,
-      economy: makeEconomy(0),
-      reputation: makeReputation(50),
-      config: STUB_CONFIG,
-    });
+    const tm = makeManager(bus);
     expect(tm.currentTier).toBe(1);
-    expect(tm.customersServed).toBe(0);
+    expect(tm.monthStreak).toBe(0);
+    expect(tm.requiredStreak).toBe(1);
+    expect(tm.dossierReady).toBe(false);
   });
 
-  it('increments customersServed on each customer:resolved event', () => {
+  it('advances T1→T2 after a single meet-or-better month (streak length 1)', () => {
     const bus = createEventBus();
-    const tm = createTierManager({
-      bus,
-      economy: makeEconomy(0),
-      reputation: makeReputation(50),
-      config: STUB_CONFIG,
-    });
-    simulateCustomersServed(bus, 3);
-    expect(tm.customersServed).toBe(3);
-  });
+    const tierUp = jest.fn();
+    bus.subscribe('career:tier_up', tierUp);
+    const tm = makeManager(bus);
 
-  it('does not trigger tier-up when check interval has not been reached', () => {
-    const bus = createEventBus();
-    const tm = createTierManager({
-      bus,
-      economy: makeEconomy(9999),
-      reputation: makeReputation(99),
-      config: STUB_CONFIG,
-    });
-    simulateCustomersServed(bus, 10);
-    simulateMonthEnd(bus, 7); // not divisible by 28
-    expect(tm.currentTier).toBe(1);
-  });
-
-  it('does not trigger tier-up when thresholds are not met', () => {
-    const bus = createEventBus();
-    const tierUpHandler = jest.fn();
-    bus.subscribe('career:tier_up', tierUpHandler);
-
-    const tm = createTierManager({
-      bus,
-      economy: makeEconomy(500),        // below minCashOnHand: 1000
-      reputation: makeReputation(62),
-      config: STUB_CONFIG,
-    });
-    simulateCustomersServed(bus, 10);
-    simulateMonthEnd(bus, 28);
-
-    expect(tm.currentTier).toBe(1);
-    expect(tierUpHandler).not.toHaveBeenCalled();
-  });
-
-  it('triggers tier-up and publishes career:tier_up when all thresholds met', () => {
-    const bus = createEventBus();
-    const tierUpHandler = jest.fn();
-    bus.subscribe('career:tier_up', tierUpHandler);
-
-    const tm = createTierManager({
-      bus,
-      economy: makeEconomy(1500),
-      reputation: makeReputation(65),
-      config: STUB_CONFIG,
-    });
-    simulateCustomersServed(bus, 6);
-    simulateMonthEnd(bus, 28);
+    postVerdict(bus, 'meet', 30);
 
     expect(tm.currentTier).toBe(2);
-    expect(tierUpHandler).toHaveBeenCalledWith({ fromTier: 1, toTier: 2, day: 28 });
+    expect(tm.monthStreak).toBe(0); // resets for the new tier
+    expect(tierUp).toHaveBeenCalledWith({ fromTier: 1, toTier: 2, day: 30 });
   });
 
-  it('does not trigger twice on consecutive month-end checks once already tiered up', () => {
+  it('an "exceed" month also counts as meet-or-better', () => {
     const bus = createEventBus();
-    const tierUpHandler = jest.fn();
-    bus.subscribe('career:tier_up', tierUpHandler);
-
-    const tm = createTierManager({
-      bus,
-      economy: makeEconomy(1500),
-      reputation: makeReputation(65),
-      config: STUB_CONFIG,
-    });
-    simulateCustomersServed(bus, 6);
-    simulateMonthEnd(bus, 28);
-    simulateMonthEnd(bus, 56); // second month-end; still below tier 3 thresholds
-
+    const tm = makeManager(bus);
+    postVerdict(bus, 'exceed', 30);
     expect(tm.currentTier).toBe(2);
-    expect(tierUpHandler).toHaveBeenCalledTimes(1);
   });
 
-  it('does not advance beyond the final tier', () => {
+  it('requires TWO consecutive meet-or-better months to leave T2', () => {
     const bus = createEventBus();
-    const tierUpHandler = jest.fn();
-    bus.subscribe('career:tier_up', tierUpHandler);
+    const tierUp = jest.fn();
+    bus.subscribe('career:tier_up', tierUp);
+    const tm = makeManager(bus);
 
-    const tm = createTierManager({
-      bus,
-      economy: makeEconomy(999999),
-      reputation: makeReputation(99),
-      config: STUB_CONFIG,
-    });
-    simulateCustomersServed(bus, 50);
-    simulateMonthEnd(bus, 28);  // tier 1 → 2
-    simulateMonthEnd(bus, 56);  // tier 2 → 3
-    simulateMonthEnd(bus, 84);  // no tier 4 exists
+    postVerdict(bus, 'meet', 30); // T1 → T2
+    expect(tm.currentTier).toBe(2);
 
+    postVerdict(bus, 'meet', 60); // first qualifying month at T2
+    expect(tm.currentTier).toBe(2);
+    expect(tm.monthStreak).toBe(1);
+
+    postVerdict(bus, 'meet', 90); // second → advance to T3
     expect(tm.currentTier).toBe(3);
-    expect(tierUpHandler).toHaveBeenCalledTimes(2);
+    expect(tierUp).toHaveBeenLastCalledWith({ fromTier: 2, toTier: 3, day: 90 });
+  });
+
+  it('resets the streak to 0 on a below-meet (nearMiss) month', () => {
+    const bus = createEventBus();
+    const tm = makeManager(bus);
+    postVerdict(bus, 'meet', 30); // T1 → T2 (now needs 2 to leave)
+
+    postVerdict(bus, 'meet', 60); // streak 1
+    expect(tm.monthStreak).toBe(1);
+    postVerdict(bus, 'nearMiss', 90); // strict reset
+    expect(tm.monthStreak).toBe(0);
+    expect(tm.currentTier).toBe(2);
+
+    // Must rebuild the full two-month streak from scratch.
+    postVerdict(bus, 'meet', 120);
+    postVerdict(bus, 'meet', 150);
+    expect(tm.currentTier).toBe(3);
+  });
+
+  it('also resets on a "miss" month', () => {
+    const bus = createEventBus();
+    const tm = makeManager(bus);
+    postVerdict(bus, 'meet', 30); // → T2
+    postVerdict(bus, 'meet', 60); // streak 1
+    postVerdict(bus, 'miss', 90);
+    expect(tm.monthStreak).toBe(0);
+    expect(tm.currentTier).toBe(2);
+  });
+
+  it('arms the dossier on a completed T3 streak WITHOUT advancing past T3', () => {
+    const bus = createEventBus();
+    const tierUp = jest.fn();
+    bus.subscribe('career:tier_up', tierUp);
+    const tm = makeManager(bus);
+
+    // Climb to T3.
+    postVerdict(bus, 'meet', 30); // → T2
+    postVerdict(bus, 'meet', 60);
+    postVerdict(bus, 'meet', 90); // → T3
+    expect(tm.currentTier).toBe(3);
+    tierUp.mockClear();
+
+    // T3 needs 3 consecutive meet-or-better months.
+    postVerdict(bus, 'meet', 120);
+    postVerdict(bus, 'meet', 150);
+    expect(tm.dossierReady).toBe(false);
+    postVerdict(bus, 'meet', 180); // completes the streak
+
+    expect(tm.currentTier).toBe(3); // never auto-advances to a T4
+    expect(tm.dossierReady).toBe(true);
+    expect(tierUp).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the identity rule (N months for tier N) when no streaksByTier is wired', () => {
+    const bus = createEventBus();
+    const tm = createTierManager({ bus, config: STUB_CONFIG });
+    expect(tm.requiredStreak).toBe(1); // tier 1
+    postVerdict(bus, 'meet', 30);
+    expect(tm.currentTier).toBe(2);
+    expect(tm.requiredStreak).toBe(2); // tier 2
+  });
+
+  it('still tracks customersServed off customer:resolved', () => {
+    const bus = createEventBus();
+    const tm = makeManager(bus);
+    for (let i = 0; i < 3; i++) {
+      bus.publish('customer:resolved', {
+        customerId: `c${i}`, outcome: 'closed', receptivity: 0.5,
+        satisfaction: 1, retentionSeed: 0.5, heat: 0, agreedPrice: 0, frontGross: 0,
+      });
+    }
+    expect(tm.customersServed).toBe(3);
   });
 });
 
-describe('TierManager — applyTierUp and state serialization', () => {
+describe('TierManager — applyTierUp, contraction, and state serialization', () => {
   it('applyTierUp persists branding choices', () => {
     const bus = createEventBus();
-    const tm = createTierManager({
-      bus,
-      economy: makeEconomy(0),
-      reputation: makeReputation(50),
-      config: STUB_CONFIG,
-    });
+    const tm = makeManager(bus);
     tm.applyTierUp({ businessName: 'Estrada Motors', accentColor: '#4a9eff', fontId: 'prestige' });
     expect(tm.businessName).toBe('Estrada Motors');
     expect(tm.accentColor).toBe('#4a9eff');
     expect(tm.fontId).toBe('prestige');
   });
 
-  it('getSerializableState round-trips through restoreState', () => {
+  it('applyContraction unwinds an in-progress advancement streak', () => {
     const bus = createEventBus();
-    const tm = createTierManager({
-      bus,
-      economy: makeEconomy(1500),
-      reputation: makeReputation(65),
-      config: STUB_CONFIG,
-    });
-    simulateCustomersServed(bus, 6);
-    simulateMonthEnd(bus, 28);
+    const tm = makeManager(bus);
+    postVerdict(bus, 'meet', 30); // → T2
+    postVerdict(bus, 'meet', 60); // streak 1 toward T3
+    expect(tm.monthStreak).toBe(1);
+
+    tm.applyContraction(1);
+    expect(tm.currentTier).toBe(1);
+    expect(tm.monthStreak).toBe(0);
+  });
+
+  it('snapshot round-trips tier, career progress, streak, and dossier (schemaVersion 2)', () => {
+    const bus = createEventBus();
+    const tm = makeManager(bus);
+    postVerdict(bus, 'meet', 30); // → T2
+    postVerdict(bus, 'meet', 60); // streak 1 toward T3
     tm.applyTierUp({ businessName: 'Revived Rides', accentColor: '#c0392b', fontId: 'classic' });
 
-    const snapshot = tm.getSerializableState();
+    const snap = tm.snapshot();
+    expect(snap.schemaVersion).toBe(2);
+    expect(snap.monthStreak).toBe(1);
 
-    const bus2 = createEventBus();
-    const tm2 = createTierManager({
-      bus: bus2,
-      economy: makeEconomy(0),
-      reputation: makeReputation(50),
-      config: STUB_CONFIG,
-    });
-    tm2.restoreState(snapshot);
-
+    const tm2 = makeManager(createEventBus());
+    tm2.restore(snap);
     expect(tm2.currentTier).toBe(2);
     expect(tm2.businessName).toBe('Revived Rides');
-    expect(tm2.accentColor).toBe('#c0392b');
-    expect(tm2.customersServed).toBe(6);
+    expect(tm2.monthStreak).toBe(1);
+    expect(tm2.dossierReady).toBe(false);
+  });
+
+  it('mid-streak survives save/load and resumes toward the SAME advancement', () => {
+    const bus = createEventBus();
+    const tm = makeManager(bus);
+    postVerdict(bus, 'meet', 30); // → T2 (needs 2 to leave)
+    postVerdict(bus, 'meet', 60); // banked 1 of 2
+
+    const snap = JSON.parse(JSON.stringify(tm.snapshot()));
+
+    const bus2 = createEventBus();
+    const tm2 = makeManager(bus2);
+    tm2.restore(snap);
+    expect(tm2.currentTier).toBe(2);
+    expect(tm2.monthStreak).toBe(1);
+
+    // One more meet-or-better month finishes the restored streak → T3.
+    postVerdict(bus2, 'meet', 90);
+    expect(tm2.currentTier).toBe(3);
+  });
+
+  it('rehydrates a pre-#250 (schemaVersion 1) blob to a fresh streak', () => {
+    const bus = createEventBus();
+    const tm = makeManager(bus);
+    // A legacy v1 blob has no monthStreak / dossierReady fields.
+    tm.restore({
+      schemaVersion: 1,
+      currentTier: 2,
+      businessName: 'Legacy Lot',
+      accentColor: '#38bdf8',
+      fontId: 'classic',
+      customersServed: 40,
+    } as never);
+    expect(tm.currentTier).toBe(2);
+    expect(tm.monthStreak).toBe(0);
+    expect(tm.dossierReady).toBe(false);
   });
 });

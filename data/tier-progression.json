@@ -11,23 +11,13 @@
       "tier": 2,
       "label": "Paved Lot",
       "illustration": "🏗",
-      "caption": "A real operation takes shape.",
-      "triggerThreshold": {
-        "minCashOnHand": 125000,
-        "minCustomersServed": 100,
-        "minReputationScore": 62
-      }
+      "caption": "A real operation takes shape."
     },
     {
       "tier": 3,
       "label": "Small Showroom",
       "illustration": "🏢",
-      "caption": "You've built something worth protecting.",
-      "triggerThreshold": {
-        "minCashOnHand": 400000,
-        "minCustomersServed": 300,
-        "minReputationScore": 75
-      }
+      "caption": "You've built something worth protecting."
     }
   ],
   "accentOptions": [

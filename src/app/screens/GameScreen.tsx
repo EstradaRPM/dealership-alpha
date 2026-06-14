@@ -289,6 +289,11 @@ export function GameScreen({
   const gateModel = buildGateStrip(
     world.tierGate.getProgress(),
     loopState.hasRecap ? { units: funnel.sold, gross: grossToday } : undefined,
+    {
+      current: world.tierManager.monthStreak,
+      required: world.tierManager.requiredStreak,
+      dossierReady: world.tierManager.dossierReady,
+    },
   );
   const homeDashboard = buildHomeDashboard({
     businessName: world.tierManager.businessName || `${profile.name}'s Lot`,

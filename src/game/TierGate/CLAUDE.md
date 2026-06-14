@@ -72,7 +72,10 @@ the verdict, then the month resets.
 - `data/tier-gate.json` — `trendWindowDays`, `trendEpsilon`, `levelTrendEpsilon`,
   `bands` (exceed/meet/nearMiss ratio thresholds), `faces` (id → kind+label),
   `tiers` (tier → { faceId → target }). All magnitudes are first-pass; **numbers
-  tune last**.
+  tune last**. A tier entry may also carry the non-face **`streak`** control
+  tunable (#250 — consecutive meet-or-better months to LEAVE that tier, read by
+  CareerProgression's TierManager); the engine ignores keys without a `faces`
+  def, so `streak` never grades or lights as a gate face.
 
 ## Scope notes
 - v1 = T1–T3 (units/gross/cash/csi progressively). OEM stair-step second stream

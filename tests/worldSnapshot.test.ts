@@ -377,82 +377,54 @@ describe('Reputation snapshot/restore (#192)', () => {
   });
 });
 
-describe('TierManager snapshot/restore (#192)', () => {
-  // Stub config with low thresholds so a real tier-up fires cheaply — proves
-  // currentTier + career progress (customersServed) survive the round-trip.
+describe('TierManager snapshot/restore (#192, streak fields #250)', () => {
+  // Stub config: 3 tiers, no thresholds (advancement is streak-based, #250).
   const STUB_CONFIG = {
     checkIntervalDays: 28,
     tiers: [
       { tier: 1, label: 'Gravel Yard', illustration: '🏚', caption: 'awaits' },
-      {
-        tier: 2,
-        label: 'Paved Lot',
-        illustration: '🏗',
-        caption: 'shape',
-        triggerThreshold: { minCashOnHand: 1000, minCustomersServed: 5, minReputationScore: 60 },
-      },
+      { tier: 2, label: 'Paved Lot', illustration: '🏗', caption: 'shape' },
+      { tier: 3, label: 'Small Showroom', illustration: '🏢', caption: 'protect' },
     ],
     accentOptions: [{ id: 'gold', label: 'Gold', color: '#c8a96e' }],
     fontOptions: [{ id: 'classic', label: 'Classic' }],
   };
 
-  function makeEconomy(cash: number) {
-    return {
-      get cash() { return cash; },
-      postRevenue: jest.fn(),
-      postExpense: jest.fn(),
-      forceDebit: jest.fn(),
-      getPnL: jest.fn(),
-      snapshot: jest.fn(),
-      restore: jest.fn(),
-    } as never;
-  }
-  function makeReputation(score: number) {
-    return {
-      get customerSatisfaction() { return score; },
-      get reviewScore() { return score; },
-      get marketingBudget() { return 0; },
-      setMarketingBudget: jest.fn(),
-      getDailyDemand: jest.fn(),
-      snapshot: jest.fn(),
-      restore: jest.fn(),
-    } as never;
-  }
-
-  it('round-trips tier, business identity, and career progress exactly', () => {
+  it('round-trips tier, business identity, career progress, and streak exactly', () => {
     const bus = createEventBus();
     const tm = createTierManager({
       bus,
-      economy: makeEconomy(2000),
-      reputation: makeReputation(65),
       config: STUB_CONFIG,
+      streaksByTier: { 1: 1, 2: 2, 3: 3 },
     });
 
-    // Progress career (customersServed) + advance the tier on the month-end check.
+    // Progress career (customersServed) + advance the tier off the gate verdict.
     for (let i = 0; i < 6; i++) {
       bus.publish('customer:resolved', {
         customerId: `c${i}`, outcome: 'closed', receptivity: 0.5,
         satisfaction: 1, retentionSeed: 0.5, heat: 0, agreedPrice: 0, frontGross: 0,
       });
     }
-    bus.publish('clock:overnight_payroll', { day: 28 });
+    bus.publish('tierGate:month_verdict', { day: 30, month: 1, tier: 1, overall: 'meet', faces: [] });
+    bus.publish('tierGate:month_verdict', { day: 60, month: 2, tier: 2, overall: 'meet', faces: [] });
     tm.applyTierUp({ businessName: 'Revived Rides', accentColor: '#c8a96e', fontId: 'classic' });
     expect(tm.currentTier).toBe(2);
+    expect(tm.monthStreak).toBe(1);
 
     const snap = tm.snapshot();
-    expect(snap.schemaVersion).toBe(1);
+    expect(snap.schemaVersion).toBe(2);
 
     const tm2 = createTierManager({
       bus: createEventBus(),
-      economy: makeEconomy(0),
-      reputation: makeReputation(50),
       config: STUB_CONFIG,
+      streaksByTier: { 1: 1, 2: 2, 3: 3 },
     });
     tm2.restore(snap);
     expect(tm2.currentTier).toBe(2);
     expect(tm2.businessName).toBe('Revived Rides');
     expect(tm2.accentColor).toBe('#c8a96e');
     expect(tm2.customersServed).toBe(6);
+    expect(tm2.monthStreak).toBe(1);
   });
 });
 

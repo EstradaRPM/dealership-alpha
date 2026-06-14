@@ -61,6 +61,20 @@ export function GateStrip({ model }: { model: GateStripModel }) {
               )}
             </View>
           ))}
+          {/* #250 tier-advancement track-record line: banked meet-or-better
+              months toward the next tier, or the dossier-ready cue at the top. */}
+          {model.streakLabel != null ? (
+            <Text
+              testID="gate-streak-line"
+              style={{
+                ...t.typography.caption,
+                color: t.colors.textSecondary,
+                marginTop: t.spacing.md,
+              }}
+            >
+              {model.streakLabel}
+            </Text>
+          ) : null}
         </Surface>
       </View>
     </View>

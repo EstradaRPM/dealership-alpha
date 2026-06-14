@@ -103,7 +103,7 @@ import { createServiceFloorDrain } from './game/ServiceDispatch';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createHistoryLog, type HistoryLog } from './game/HistoryLog';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
-import { createTierGate, type TierGate } from './game/TierGate';
+import { createTierGate, loadTierGateConfig, type TierGate } from './game/TierGate';
 import {
   createCompetitorMarket,
   loadCompetitors,
@@ -347,10 +347,19 @@ export function createWorld(deps: {
   // Reputation + TierManager are created ahead of Inventory + StaffOrg: the
   // hiring headcount cap (#131) reads the live tier, and Inventory's #173
   // floorplan APR scales with it (better tier → cheaper money). Reputation
-  // drifts overnight and takes deal/walk hits via the bus; TierManager
-  // evaluates tier-up on the payroll-night cadence.
+  // drifts overnight and takes deal/walk hits via the bus; TierManager advances
+  // off the monthly tier-gate verdict streak (#250), not an instantaneous check.
   const reputation = createReputation({ bus, economy });
-  const tierManager = createTierManager({ bus, economy, reputation });
+  // #250 — the per-tier advancement streak lengths live in tier-gate.json's
+  // `streak` field (composition root reads the shared tunable and injects it, so
+  // TierManager stays decoupled from the TierGate module).
+  const gateConfig = loadTierGateConfig();
+  const streaksByTier: Record<number, number> = {};
+  for (const [tierKey, targets] of Object.entries(gateConfig.tiers)) {
+    const s = (targets as Record<string, number>).streak;
+    if (typeof s === 'number') streaksByTier[Number(tierKey)] = s;
+  }
+  const tierManager = createTierManager({ bus, streaksByTier });
   const regulatoryMeter = createRegulatoryMeter({ bus, economy, tierManager });
   // #270: BankruptcyMonitor — the sole publisher of `career:bankruptcy_terminal`
   // (consumed by EndCardManager to settle a game-over). Built earlier but never

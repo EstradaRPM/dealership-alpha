@@ -306,7 +306,10 @@ export function createTierGate(deps: TierGateDeps): TierGate {
     const month = Math.floor((day - 1) / daysPerMonth) + 1;
     const targets = targetsFor(tier);
     const faces: FaceVerdict[] = Object.entries(targets)
-      .filter(([id]) => config.faces[id]?.kind !== 'stepped')
+      // Only real, non-stepped faces grade the month. A tier entry may carry
+      // non-face control tunables (e.g. #250's per-tier `streak`); those have no
+      // `config.faces` def and must never leak into the verdict.
+      .filter(([id]) => config.faces[id] && config.faces[id].kind !== 'stepped')
       .map(([id, target]) => {
         const ratio = faceRatio(id, target);
         return { id, ratio, band: bandFor(ratio, config) };
