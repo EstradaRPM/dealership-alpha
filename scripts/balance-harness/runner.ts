@@ -22,8 +22,9 @@ import type {
 } from './types';
 
 /** A fixed, balance-neutral founder so every run starts from the same place —
- *  the only thing that varies across runs is the masterSeed and the policy. */
-const PROFILE: CharacterProfile = {
+ *  the only thing that varies across runs is the masterSeed and the policy.
+ *  Exported so the #248 fixture generator captures worlds from the same founder. */
+export const PROFILE: CharacterProfile = {
   name: 'Harness Bot',
   backstoryId: 'ex-mechanic',
   day1Modifier: {

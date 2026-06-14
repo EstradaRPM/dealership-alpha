@@ -97,6 +97,36 @@ describe('MainMenu smoke tests', () => {
     expect(onLegacyWall).toHaveBeenCalledTimes(1);
   });
 
+  it('hides the dev tier row unless tiers + handler are supplied (#248)', () => {
+    const screen = render(
+      <MainMenu
+        saveStore={makeStore()}
+        onNewGame={jest.fn()}
+        onLoadGame={jest.fn()}
+        onContinue={jest.fn()}
+        onStartAtTier={jest.fn()}
+        devTiers={[]}
+      />,
+    );
+    expect(screen.queryByText('DEV · START AT TIER')).toBeNull();
+  });
+
+  it('dispatches onStartAtTier with the tapped tier (#248)', () => {
+    const onStartAtTier = jest.fn();
+    const screen = render(
+      <MainMenu
+        saveStore={makeStore()}
+        onNewGame={jest.fn()}
+        onLoadGame={jest.fn()}
+        onContinue={jest.fn()}
+        onStartAtTier={onStartAtTier}
+        devTiers={[2, 3]}
+      />,
+    );
+    fireEvent.press(screen.getByText('T3'));
+    expect(onStartAtTier).toHaveBeenCalledWith(3);
+  });
+
   it('Continue resumes the most-recently-played slot', async () => {
     // Monotonic clock so the two slots get strictly-ordered lastPlayed stamps.
     let tick = 0;

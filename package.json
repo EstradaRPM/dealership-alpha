@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "test": "jest",
     "balance": "tsx scripts/balance-harness/cli.ts",
+    "gen:fixtures": "tsx scripts/balance-harness/gen-fixtures.ts",
     "typecheck": "tsc --noEmit",
     "build": "npx eas-cli build",
     "tunnel:reset": "npm uninstall @expo/ngrok && rimraf node_modules/@expo/ngrok node_modules/ngrok && npm install -D @expo/ngrok@latest"

@@ -24,6 +24,11 @@ interface Props {
   onSettings?: () => void;
   /** Optional — the completed-careers wall is hidden when not provided. */
   onLegacyWall?: () => void;
+  /** __DEV__ only (#248) — tiers with a committed fixture. The dev "Start at
+   *  Tier N" row is hidden unless this is non-empty AND `onStartAtTier` is set. */
+  devTiers?: readonly number[];
+  /** __DEV__ only (#248) — launch a fresh slot seeded from the Tier-N fixture. */
+  onStartAtTier?: (tier: number) => void;
 }
 
 /** Most-recently-played slot by lastPlayed timestamp (ISO 8601 sorts lexically). */
@@ -49,6 +54,8 @@ export function MainMenu({
   onContinue,
   onSettings,
   onLegacyWall,
+  devTiers,
+  onStartAtTier,
 }: Props) {
   const [mode, setMode] = useState<Mode>('menu');
   const [slots, setSlots] = useState<readonly SlotMetadata[]>([]);
@@ -144,6 +151,22 @@ export function MainMenu({
             </TouchableOpacity>
           ) : null}
         </View>
+        {onStartAtTier && devTiers && devTiers.length > 0 ? (
+          <View style={styles.devSection}>
+            <Text style={styles.devLabel}>DEV · START AT TIER</Text>
+            <View style={styles.devRow}>
+              {devTiers.map((tier) => (
+                <TouchableOpacity
+                  key={tier}
+                  style={styles.devBtn}
+                  onPress={() => onStartAtTier(tier)}
+                >
+                  <Text style={styles.devBtnText}>T{tier}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ) : null}
       </View>
     );
   }
@@ -369,5 +392,36 @@ const styles = StyleSheet.create({
     color: colors.danger,
     marginTop: 16,
     fontSize: 14,
+  },
+  devSection: {
+    marginTop: 48,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+  },
+  devLabel: {
+    fontFamily: 'monospace',
+    fontSize: 9,
+    color: colors.border,
+    letterSpacing: 3,
+    marginBottom: 10,
+  },
+  devRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  devBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  devBtnText: {
+    fontFamily: 'monospace',
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 1,
   },
 });

@@ -35,6 +35,7 @@ import type { SaveSlots } from '../useSaveSlots';
 import type { Levers } from '../useLevers';
 import type { Modals } from '../useModals';
 import type { DayLoop } from '../useDayLoop';
+import { TIER_FIXTURES, type TierFixture } from '../devFixtures';
 
 export interface RouteContentProps {
   nav: Navigator;
@@ -49,6 +50,8 @@ export interface RouteContentProps {
   floorLoop: FloorRenderLoop;
   loadActiveSlotIntoGame: () => Promise<void>;
   startNewGame: (p: CharacterProfile) => void;
+  /** __DEV__ only (#248) — launch a fresh slot from a committed Tier-N fixture. */
+  startAtTierFixture: (fixture: TierFixture) => void;
   handleDeptPress: (dept: DeptKey) => void;
   handleEndCardDismiss: () => void;
 }
@@ -70,6 +73,7 @@ export function RouteContent({
   floorLoop,
   loadActiveSlotIntoGame,
   startNewGame,
+  startAtTierFixture,
   handleDeptPress,
   handleEndCardDismiss,
 }: RouteContentProps): React.ReactElement {
@@ -109,6 +113,17 @@ export function RouteContent({
           onLoadGame={() => void loadActiveSlotIntoGame()}
           onSettings={saveSlots.openSettings}
           onLegacyWall={saveSlots.openLegacyWall}
+          // __DEV__ tier fixtures (#248): the registry is empty in production,
+          // so this row never shows there.
+          devTiers={__DEV__ ? TIER_FIXTURES.map((f) => f.tier) : undefined}
+          onStartAtTier={
+            __DEV__
+              ? (tier) => {
+                  const fixture = TIER_FIXTURES.find((f) => f.tier === tier);
+                  if (fixture) startAtTierFixture(fixture);
+                }
+              : undefined
+          }
         />
       </>
     );

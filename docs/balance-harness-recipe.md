@@ -125,6 +125,40 @@ CSI), arrivals, closes, strong-match count, and the end state — `completed`,
 `bankrupt` (a hard insolvency throw on the floor the game can't cover), or
 `gameover` (a modeled `career:game_over` ending).
 
+## Tier-N dev fixtures (#248)
+
+Human feel-testing of T2+ otherwise means playing up through every tier below
+it. The competent policy generates representative mid-game worlds for free:
+`gen-fixtures` drives it through the **real** game and, at the first clean
+day-boundary it enters each target tier, captures the live `worldSnapshot` into
+a committed `SaveState` (`data/fixtures/tier-N.json`).
+
+```
+npm run gen:fixtures                 # competent policy → data/fixtures/tier-{2,3}.json
+npm run gen:fixtures -- --policy optimal   # capture from a stronger policy (see caveat)
+```
+
+- The capture is taken **after** `runDay()` (floor closed, no visit mid-flight)
+  — the same boundary the live autosave uses, so a fixture restores exactly like
+  any save.
+- The fixture is a plain `SaveState` (`{ world, character, masterSeed }`). The
+  dev MainMenu (`__DEV__` only, `src/app/devFixtures.ts` → `TIER_FIXTURES`)
+  creates a fresh slot, `save()`s the fixture into it, and routes in through the
+  **normal** `loadActiveSlotIntoGame` path (migrate + `restoreWorld`). There is
+  **no parallel loader**; autosave/slots then work from there.
+- **Regenerate when the `worldSnapshot` envelope version bumps** — a stale
+  fixture restores an outdated module shape. `tests/tierFixtures.test.ts`
+  asserts `tier-2.json` is at `WORLD_SNAPSHOT_VERSION`, so a forgotten
+  regeneration fails CI. Regeneration is the one command above.
+- **Only reachable tiers are committed.** Under the current *un-tuned* tier-gate
+  thresholds the climb to **T3 game-overs before it gets there** — true for both
+  competent *and* optimal — so there is no `tier-3.json` yet. Once the #249
+  staff-teeth + threshold-tuning pass makes T3 reachable, `npm run gen:fixtures`
+  writes it and you add one line to `TIER_FIXTURES`; no other change.
+- **Determinism:** a fixed seed (`deriveSeeds(1,1)[0]`) + the policy ⇒
+  byte-stable fixtures. The generator never mutates `data/` except the fixture
+  files it writes.
+
 ## Notes & caveats
 
 - **Pacing targets aren't tuned yet.** Threshold tuning runs *after* the

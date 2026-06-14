@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, AppState } from 'react-native';
+import { View, StyleSheet, AppState, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createSqliteDriverFactory } from '../game/SaveStore';
@@ -19,6 +19,7 @@ import type { CharacterProfile } from '../game/CareerProgression';
 import type { DeptKey } from '../game/DepartmentQueue';
 import type { DayRecapModel } from '../ui/DayRecap';
 import { createAppServices, type AppServices } from './services';
+import type { TierFixture } from './devFixtures';
 import { useWorldState } from './useWorldState';
 import { useSaveSlots } from './useSaveSlots';
 import { useLevers } from './useLevers';
@@ -257,6 +258,28 @@ export function DealershipApp({
     nav.reset('game');
   };
 
+  // __DEV__ tier fixtures (#248): create a fresh slot, seed it with a committed
+  // mid-game world fixture, then route in through the *normal* load path —
+  // loadActiveSlotIntoGame migrates + restores the snapshot exactly like any
+  // save, and autosave/slots work from there. No production reach: the only
+  // caller is the __DEV__-gated MainMenu entry.
+  const startAtTierFixture = (fixture: TierFixture) => {
+    void (async () => {
+      try {
+        const meta = await slotStore.createSlot(`[DEV] Tier ${fixture.tier}`);
+        await slotStore.selectSlot(meta.id);
+        await saveStore.save(fixture.state);
+        await loadActiveSlotIntoGame();
+      } catch (err) {
+        console.error('Dev tier-fixture launch failed', err);
+        Alert.alert(
+          'Dev fixture',
+          'Could not start — save slots may be full. Delete one and retry.',
+        );
+      }
+    })();
+  };
+
   // Boot to the start menu (#195). No auto-load into the last game — the
   // player chooses New Game / Continue / Load.
   useEffect(() => {
@@ -357,6 +380,7 @@ export function DealershipApp({
               floorLoop={floorLoop}
               loadActiveSlotIntoGame={loadActiveSlotIntoGame}
               startNewGame={startNewGame}
+              startAtTierFixture={startAtTierFixture}
               handleDeptPress={handleDeptPress}
               handleEndCardDismiss={handleEndCardDismiss}
             />

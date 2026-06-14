@@ -1,0 +1,2803 @@
+{
+  "world": {
+    "version": 8,
+    "modules": {
+      "gameClock": {
+        "schemaVersion": 1,
+        "day": 31
+      },
+      "economy": {
+        "schemaVersion": 1,
+        "cash": 222733.55345708656,
+        "inventoryAcquisitionSpend": 307300
+      },
+      "inventory": {
+        "schemaVersion": 1,
+        "currentDay": 32,
+        "lastPreparedDay": 32,
+        "auctionListings": [
+          {
+            "id": "auction-day32-0-sabaro_suv",
+            "templateId": "sabaro_suv",
+            "brand": "sabaro",
+            "year": 2017,
+            "make": "Jeep",
+            "model": "Cherokee",
+            "trim": "Sport",
+            "mileage": 82500,
+            "condition": "average",
+            "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
+            "askingPrice": 7000,
+            "reconCost": 1200,
+            "category": "suv",
+            "sourceId": "manheim_digital",
+            "inspectionStatus": "none"
+          },
+          {
+            "id": "auction-day32-1-vanda_suv",
+            "templateId": "vanda_suv",
+            "brand": "vanda",
+            "year": 2018,
+            "make": "Honda",
+            "model": "CR-V",
+            "trim": "LX",
+            "mileage": 119000,
+            "condition": "average",
+            "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
+            "askingPrice": 8400,
+            "reconCost": 1200,
+            "category": "suv",
+            "sourceId": "estate_close_out",
+            "inspectionStatus": "none"
+          },
+          {
+            "id": "auction-day32-2-chevreau_suv",
+            "templateId": "chevreau_suv",
+            "brand": "chevreau",
+            "year": 2018,
+            "make": "Chevrolet",
+            "model": "Equinox",
+            "trim": "LS",
+            "mileage": 93500,
+            "condition": "clean",
+            "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
+            "askingPrice": 7800,
+            "reconCost": 500,
+            "category": "suv",
+            "sourceId": "manheim_digital",
+            "inspectionStatus": "none"
+          },
+          {
+            "id": "auction-day32-3-toraya_sedan",
+            "templateId": "toraya_sedan",
+            "brand": "toraya",
+            "year": 2018,
+            "make": "Toyota",
+            "model": "Camry",
+            "trim": "LE",
+            "mileage": 83000,
+            "condition": "clean",
+            "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
+            "askingPrice": 7100,
+            "reconCost": 500,
+            "category": "sedan",
+            "sourceId": "repo_lane",
+            "inspectionStatus": "none"
+          },
+          {
+            "id": "auction-day32-4-vanda_sedan",
+            "templateId": "vanda_sedan",
+            "brand": "vanda",
+            "year": 2020,
+            "make": "Honda",
+            "model": "Civic",
+            "trim": "LX",
+            "mileage": 48000,
+            "condition": "clean",
+            "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
+            "askingPrice": 7500,
+            "reconCost": 500,
+            "category": "sedan",
+            "sourceId": "estate_close_out",
+            "inspectionStatus": "none"
+          },
+          {
+            "id": "auction-day32-5-chevreau_truck",
+            "templateId": "chevreau_truck",
+            "brand": "chevreau",
+            "year": 2018,
+            "make": "Chevrolet",
+            "model": "Silverado 1500",
+            "trim": "WT",
+            "mileage": 86500,
+            "condition": "clean",
+            "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
+            "askingPrice": 13700,
+            "reconCost": 500,
+            "category": "truck",
+            "sourceId": "independent_consignment",
+            "inspectionStatus": "none"
+          },
+          {
+            "id": "auction-day32-6-corden_suv",
+            "templateId": "corden_suv",
+            "brand": "corden",
+            "year": 2018,
+            "make": "Ford",
+            "model": "Escape",
+            "trim": "S",
+            "mileage": 100500,
+            "condition": "average",
+            "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
+            "askingPrice": 7000,
+            "reconCost": 1200,
+            "category": "suv",
+            "sourceId": "repo_lane",
+            "inspectionStatus": "none"
+          },
+          {
+            "id": "auction-day32-7-messan_sedan",
+            "templateId": "messan_sedan",
+            "brand": "messan",
+            "year": 2018,
+            "make": "Nissan",
+            "model": "Altima",
+            "trim": "S",
+            "mileage": 90000,
+            "condition": "average",
+            "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
+            "askingPrice": 5500,
+            "reconCost": 1200,
+            "category": "sedan",
+            "sourceId": "estate_close_out",
+            "inspectionStatus": "none"
+          }
+        ],
+        "pendingInspections": [],
+        "lotVehicles": [
+          {
+            "id": "auction-day6-2-toraya_suv",
+            "templateId": "toraya_suv",
+            "brand": "toraya",
+            "year": 2019,
+            "make": "Toyota",
+            "model": "RAV4",
+            "trim": "LE",
+            "mileage": 74000,
+            "condition": "average",
+            "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
+            "purchasePrice": 12900,
+            "reconCost": 1126,
+            "category": "suv",
+            "arrivalDay": 6,
+            "daysInInventory": 26,
+            "carryingCostToDate": 479,
+            "dailyCarryingCost": 19,
+            "aged": false,
+            "suggestedRetail": 14100,
+            "askingPrice": 14100,
+            "reconStatus": "complete",
+            "reconEstimate": 1200,
+            "reconRealizedCost": 1126,
+            "reconDaysRemaining": 0,
+            "reconDaysTotal": 5,
+            "reconBucket": "within"
+          },
+          {
+            "id": "auction-day19-4-vanda_suv",
+            "templateId": "vanda_suv",
+            "brand": "vanda",
+            "year": 2019,
+            "make": "Honda",
+            "model": "CR-V",
+            "trim": "LX",
+            "mileage": 49500,
+            "condition": "clean",
+            "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
+            "purchasePrice": 11400,
+            "reconCost": 453,
+            "category": "suv",
+            "arrivalDay": 19,
+            "daysInInventory": 13,
+            "carryingCostToDate": 240,
+            "dailyCarryingCost": 18,
+            "aged": false,
+            "suggestedRetail": 11900,
+            "askingPrice": 11900,
+            "reconStatus": "complete",
+            "reconEstimate": 500,
+            "reconRealizedCost": 453,
+            "reconDaysRemaining": 0,
+            "reconDaysTotal": 3,
+            "reconBucket": "within"
+          },
+          {
+            "id": "auction-day27-0-chevreau_suv",
+            "templateId": "chevreau_suv",
+            "brand": "chevreau",
+            "year": 2019,
+            "make": "Chevrolet",
+            "model": "Equinox",
+            "trim": "LS",
+            "mileage": 68000,
+            "condition": "clean",
+            "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
+            "purchasePrice": 6600,
+            "reconCost": 547,
+            "category": "suv",
+            "arrivalDay": 27,
+            "daysInInventory": 5,
+            "carryingCostToDate": 80,
+            "dailyCarryingCost": 17,
+            "aged": false,
+            "suggestedRetail": 7100,
+            "askingPrice": 7100,
+            "reconStatus": "complete",
+            "reconEstimate": 500,
+            "reconRealizedCost": 547,
+            "reconDaysRemaining": 0,
+            "reconDaysTotal": 3,
+            "reconBucket": "within"
+          },
+          {
+            "id": "auction-day28-7-chevreau_suv",
+            "templateId": "chevreau_suv",
+            "brand": "chevreau",
+            "year": 2018,
+            "make": "Chevrolet",
+            "model": "Equinox",
+            "trim": "LS",
+            "mileage": 83500,
+            "condition": "average",
+            "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
+            "purchasePrice": 7300,
+            "reconCost": 916,
+            "category": "suv",
+            "arrivalDay": 28,
+            "daysInInventory": 4,
+            "carryingCostToDate": 60,
+            "dailyCarryingCost": 15,
+            "aged": false,
+            "suggestedRetail": 8500,
+            "askingPrice": 8500,
+            "reconStatus": "in_progress",
+            "reconEstimate": 1200,
+            "reconRealizedCost": 1143,
+            "reconDaysRemaining": 1,
+            "reconDaysTotal": 5,
+            "reconBucket": "within"
+          },
+          {
+            "id": "auction-day30-2-chevreau_suv",
+            "templateId": "chevreau_suv",
+            "brand": "chevreau",
+            "year": 2019,
+            "make": "Chevrolet",
+            "model": "Equinox",
+            "trim": "LS",
+            "mileage": 77500,
+            "condition": "average",
+            "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
+            "purchasePrice": 8900,
+            "reconCost": 466,
+            "category": "suv",
+            "arrivalDay": 30,
+            "daysInInventory": 2,
+            "carryingCostToDate": 30,
+            "dailyCarryingCost": 15,
+            "aged": false,
+            "suggestedRetail": 10100,
+            "askingPrice": 10100,
+            "reconStatus": "in_progress",
+            "reconEstimate": 1200,
+            "reconRealizedCost": 1164,
+            "reconDaysRemaining": 3,
+            "reconDaysTotal": 5,
+            "reconBucket": "within"
+          }
+        ]
+      },
+      "staffOrg": {
+        "schemaVersion": 1,
+        "currentDay": 31,
+        "roster": [
+          {
+            "id": "staff:career_salesperson:1:1",
+            "role_id": "salesperson",
+            "trait_ids": [
+              "aggressiveness"
+            ],
+            "skills": {
+              "product_knowledge": 49.50625875023909,
+              "communication": 43.168973960126024,
+              "rapport_building": 71.74525118590515
+            },
+            "resources": {
+              "stamina": 72.47094058784144
+            },
+            "counters": {
+              "experience": 0,
+              "deals_closed": 0,
+              "days_employed": 0
+            }
+          },
+          {
+            "id": "staff:grinder_salesperson:1:2",
+            "role_id": "salesperson",
+            "trait_ids": [
+              "charisma",
+              "ego"
+            ],
+            "skills": {
+              "product_knowledge": 15.694142949309807,
+              "communication": 39.98199214578155,
+              "rapport_building": 58.93389075040339
+            },
+            "resources": {
+              "stamina": 76.2424236445754
+            },
+            "counters": {
+              "experience": 0,
+              "deals_closed": 0,
+              "days_employed": 0
+            }
+          },
+          {
+            "id": "staff:poached_sales_manager:1:0",
+            "role_id": "sales-manager",
+            "trait_ids": [
+              "transparency",
+              "charisma",
+              "aggressiveness",
+              "ego"
+            ],
+            "skills": {
+              "product_knowledge": 84.4450386366412,
+              "communication": 77.49120082046456,
+              "rapport_building": 56.31597765634504,
+              "pricing": 69.07583197582431,
+              "t_o_closing": 81.43623319033028
+            },
+            "resources": {
+              "stamina": 81.19456486210983
+            },
+            "counters": {
+              "experience": 0,
+              "deals_closed": 0,
+              "days_employed": 0
+            }
+          }
+        ]
+      },
+      "staffMorale": {
+        "schemaVersion": 1,
+        "morale": [
+          [
+            "staff:career_salesperson:1:1",
+            95
+          ],
+          [
+            "staff:grinder_salesperson:1:2",
+            95
+          ],
+          [
+            "staff:poached_sales_manager:1:0",
+            95
+          ]
+        ]
+      },
+      "marketEconomy": {
+        "schemaVersion": 1,
+        "compHistory": {
+          "schemaVersion": 1,
+          "windows": {
+            "sedan": [
+              {
+                "segment": "sedan",
+                "delta": 0.09336425920424185,
+                "weight": 0.5,
+                "day": 1,
+                "source": "wholesale"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.08786908613222111,
+                "weight": 0.5,
+                "day": 1,
+                "source": "wholesale"
+              },
+              {
+                "segment": "sedan",
+                "delta": -0.06685522156500134,
+                "weight": 0.5,
+                "day": 1,
+                "source": "wholesale"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.012229090728120395,
+                "weight": 1,
+                "day": 2,
+                "source": "retail"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.15893769485660192,
+                "weight": 0.5,
+                "day": 4,
+                "source": "wholesale"
+              },
+              {
+                "segment": "sedan",
+                "delta": -0.0023341984558379325,
+                "weight": 1,
+                "day": 5,
+                "source": "retail"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.05030564482679334,
+                "weight": 1,
+                "day": 6,
+                "source": "retail"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.032844453625283876,
+                "weight": 0.5,
+                "day": 10,
+                "source": "wholesale"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.018480325506311956,
+                "weight": 0.5,
+                "day": 10,
+                "source": "wholesale"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.024404765792235716,
+                "weight": 1,
+                "day": 11,
+                "source": "retail"
+              },
+              {
+                "segment": "sedan",
+                "delta": -0.09822169317894891,
+                "weight": 0.5,
+                "day": 12,
+                "source": "wholesale"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.12972400633003978,
+                "weight": 1,
+                "day": 13,
+                "source": "retail"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.08666407974706991,
+                "weight": 1,
+                "day": 13,
+                "source": "retail"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.16722989836775093,
+                "weight": 1,
+                "day": 13,
+                "source": "retail"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.0993183433826954,
+                "weight": 1,
+                "day": 21,
+                "source": "retail"
+              },
+              {
+                "segment": "sedan",
+                "delta": 0.15550466905794247,
+                "weight": 1,
+                "day": 24,
+                "source": "retail"
+              }
+            ],
+            "suv": [
+              {
+                "segment": "suv",
+                "delta": 0.04608637024160345,
+                "weight": 1,
+                "day": 13,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.03444188212720922,
+                "weight": 0.5,
+                "day": 14,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.03138695364123967,
+                "weight": 0.5,
+                "day": 14,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.0027447565010672026,
+                "weight": 0.5,
+                "day": 14,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.0030538663315370362,
+                "weight": 1,
+                "day": 15,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.04769936621117821,
+                "weight": 1,
+                "day": 15,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.08520357598144279,
+                "weight": 0.5,
+                "day": 16,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.03103364822404009,
+                "weight": 1,
+                "day": 16,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.047157163582248085,
+                "weight": 1,
+                "day": 16,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.056783588284445186,
+                "weight": 0.5,
+                "day": 17,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.055917316645928805,
+                "weight": 1,
+                "day": 17,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.05689463788790183,
+                "weight": 0.5,
+                "day": 18,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.06289289735658565,
+                "weight": 1,
+                "day": 18,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.025617176375156814,
+                "weight": 1,
+                "day": 18,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.012294421802685473,
+                "weight": 0.5,
+                "day": 19,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.21538001741364388,
+                "weight": 0.5,
+                "day": 19,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.03609949574843907,
+                "weight": 0.5,
+                "day": 19,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.11342624873772023,
+                "weight": 1,
+                "day": 19,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.20491679454254874,
+                "weight": 0.5,
+                "day": 20,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.01305781168243314,
+                "weight": 1,
+                "day": 21,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.06636348106753986,
+                "weight": 1,
+                "day": 21,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.003262334244570342,
+                "weight": 0.5,
+                "day": 22,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.04201756279558677,
+                "weight": 0.5,
+                "day": 22,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.13168227121715503,
+                "weight": 0.5,
+                "day": 22,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.14259418717233785,
+                "weight": 1,
+                "day": 22,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.1511641884524988,
+                "weight": 1,
+                "day": 23,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.02390977753961343,
+                "weight": 1,
+                "day": 23,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.004106444207326865,
+                "weight": 0.5,
+                "day": 24,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.007030083804002718,
+                "weight": 0.5,
+                "day": 25,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.050537205929771734,
+                "weight": 1,
+                "day": 25,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.1785981311853384,
+                "weight": 0.5,
+                "day": 26,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.043990705468574864,
+                "weight": 1,
+                "day": 26,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.26952428765336656,
+                "weight": 0.5,
+                "day": 27,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.00862779064231367,
+                "weight": 1,
+                "day": 27,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.0210945577600683,
+                "weight": 1,
+                "day": 27,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.12123059924914037,
+                "weight": 0.5,
+                "day": 28,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.022012751346072057,
+                "weight": 0.5,
+                "day": 28,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.00742984922640455,
+                "weight": 1,
+                "day": 29,
+                "source": "retail"
+              },
+              {
+                "segment": "suv",
+                "delta": 0.05225883912203799,
+                "weight": 0.5,
+                "day": 30,
+                "source": "wholesale"
+              },
+              {
+                "segment": "suv",
+                "delta": -0.0210975355716585,
+                "weight": 1,
+                "day": 31,
+                "source": "retail"
+              }
+            ],
+            "truck": [
+              {
+                "segment": "truck",
+                "delta": 0.009244781229645005,
+                "weight": 0.285,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.015927906958386306,
+                "weight": 0.255,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": -0.006382931633852423,
+                "weight": 0.045,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": -0.005455654679099087,
+                "weight": 0.12,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.13971003774295876,
+                "weight": 1,
+                "day": 13,
+                "source": "retail"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.0061929122544824855,
+                "weight": 0.27,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.008353441841900344,
+                "weight": 0.285,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.012069656798848888,
+                "weight": 0.045,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": -0.01038793449406511,
+                "weight": 0.12,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.13890546054054131,
+                "weight": 1,
+                "day": 18,
+                "source": "retail"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.021804632747154162,
+                "weight": 1,
+                "day": 18,
+                "source": "retail"
+              },
+              {
+                "segment": "truck",
+                "delta": -0.008909081136807773,
+                "weight": 0.27,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": -0.010734595946269104,
+                "weight": 0.075,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.00616514523979278,
+                "weight": 0.285,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": -0.00930415445007382,
+                "weight": 0.255,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.009933398216962819,
+                "weight": 0.03,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.006963253654539592,
+                "weight": 0.27,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.0073042665142565855,
+                "weight": 0.285,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.005267344517633332,
+                "weight": 0.255,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": 0.012185442961053922,
+                "weight": 0.045,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "truck",
+                "delta": -0.010092791396891704,
+                "weight": 0.12,
+                "day": 28,
+                "source": "competitor"
+              }
+            ],
+            "midline": [
+              {
+                "segment": "midline",
+                "delta": 0.009244781229645005,
+                "weight": 0.09,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": 0.015927906958386306,
+                "weight": 0.165,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": -0.006382931633852423,
+                "weight": 0.18,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": -0.005455654679099087,
+                "weight": 0.21,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": 0.0061929122544824855,
+                "weight": 0.15,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": 0.008353441841900344,
+                "weight": 0.09,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": 0.012069656798848888,
+                "weight": 0.18,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": -0.01038793449406511,
+                "weight": 0.21,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": -0.008909081136807773,
+                "weight": 0.15,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": -0.010734595946269104,
+                "weight": 0.255,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": 0.00616514523979278,
+                "weight": 0.09,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": -0.00930415445007382,
+                "weight": 0.165,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": 0.009933398216962819,
+                "weight": 0.165,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": 0.006963253654539592,
+                "weight": 0.15,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": 0.0073042665142565855,
+                "weight": 0.09,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": 0.005267344517633332,
+                "weight": 0.165,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": 0.012185442961053922,
+                "weight": 0.18,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "midline",
+                "delta": -0.010092791396891704,
+                "weight": 0.21,
+                "day": 28,
+                "source": "competitor"
+              }
+            ],
+            "economy": [
+              {
+                "segment": "economy",
+                "delta": 0.009244781229645005,
+                "weight": 0.06,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": 0.015927906958386306,
+                "weight": 0.105,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": -0.006382931633852423,
+                "weight": 0.24,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": -0.005455654679099087,
+                "weight": 0.165,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": 0.0061929122544824855,
+                "weight": 0.09,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": 0.008353441841900344,
+                "weight": 0.06,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": 0.012069656798848888,
+                "weight": 0.24,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": -0.01038793449406511,
+                "weight": 0.165,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": -0.008909081136807773,
+                "weight": 0.09,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": -0.010734595946269104,
+                "weight": 0.18,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": 0.00616514523979278,
+                "weight": 0.06,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": -0.00930415445007382,
+                "weight": 0.105,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": 0.009933398216962819,
+                "weight": 0.255,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": 0.006963253654539592,
+                "weight": 0.09,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": 0.0073042665142565855,
+                "weight": 0.06,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": 0.005267344517633332,
+                "weight": 0.105,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": 0.012185442961053922,
+                "weight": 0.24,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "economy",
+                "delta": -0.010092791396891704,
+                "weight": 0.165,
+                "day": 28,
+                "source": "competitor"
+              }
+            ],
+            "luxury": [
+              {
+                "segment": "luxury",
+                "delta": 0.009244781229645005,
+                "weight": 0.015,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": 0.015927906958386306,
+                "weight": 0.03,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": -0.006382931633852423,
+                "weight": 0.03,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": -0.005455654679099087,
+                "weight": 0.045,
+                "day": 7,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": 0.0061929122544824855,
+                "weight": 0.03,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": 0.008353441841900344,
+                "weight": 0.015,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": 0.012069656798848888,
+                "weight": 0.03,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": -0.01038793449406511,
+                "weight": 0.045,
+                "day": 14,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": -0.008909081136807773,
+                "weight": 0.03,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": -0.010734595946269104,
+                "weight": 0.045,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": 0.00616514523979278,
+                "weight": 0.015,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": -0.00930415445007382,
+                "weight": 0.03,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": 0.009933398216962819,
+                "weight": 0.03,
+                "day": 21,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": 0.006963253654539592,
+                "weight": 0.03,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": 0.0073042665142565855,
+                "weight": 0.015,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": 0.005267344517633332,
+                "weight": 0.03,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": 0.012185442961053922,
+                "weight": 0.03,
+                "day": 28,
+                "source": "competitor"
+              },
+              {
+                "segment": "luxury",
+                "delta": -0.010092791396891704,
+                "weight": 0.045,
+                "day": 28,
+                "source": "competitor"
+              }
+            ]
+          }
+        },
+        "shocks": {
+          "schemaVersion": 1,
+          "active": [
+            {
+              "instanceId": "suv_oem_recall@15",
+              "shockId": "suv_oem_recall",
+              "label": "OEM SUV recall",
+              "startDay": 15,
+              "expectedEndDay": 40,
+              "segmentMagnitudes": {
+                "suv": -0.07512126188259571
+              }
+            }
+          ]
+        }
+      },
+      "competitorMarket": {
+        "schemaVersion": 1,
+        "competitors": [
+          {
+            "id": "valley-corden",
+            "name": "Valley Corden",
+            "brand": "corden",
+            "personality": "volume_dealer",
+            "price_point": "value",
+            "rep": 0.7263425104226916,
+            "inventory": 0.8225427485164255,
+            "pricing": 0.6049893575627356,
+            "clamp": {
+              "rep": {
+                "lo": 0.57,
+                "hi": 0.87
+              },
+              "inventory": {
+                "lo": 0.65,
+                "hi": 0.95
+              },
+              "pricing": {
+                "lo": 0.45,
+                "hi": 0.75
+              }
+            }
+          },
+          {
+            "id": "sunrise-toraya",
+            "name": "Sunrise Toraya",
+            "brand": "toraya",
+            "personality": "premium_csi",
+            "price_point": "premium",
+            "rep": 0.8464998329477383,
+            "inventory": 0.7149602180626242,
+            "pricing": 0.5408560763252899,
+            "clamp": {
+              "rep": {
+                "lo": 0.7,
+                "hi": 1
+              },
+              "inventory": {
+                "lo": 0.55,
+                "hi": 0.85
+              },
+              "pricing": {
+                "lo": 0.4,
+                "hi": 0.7
+              }
+            }
+          },
+          {
+            "id": "metro-vanda",
+            "name": "Metro Vanda",
+            "brand": "vanda",
+            "personality": "value_leader",
+            "price_point": "budget",
+            "rep": 0.7572728796117009,
+            "inventory": 0.6876352632883936,
+            "pricing": 0.4569013145752251,
+            "clamp": {
+              "rep": {
+                "lo": 0.63,
+                "hi": 0.93
+              },
+              "inventory": {
+                "lo": 0.5,
+                "hi": 0.8
+              },
+              "pricing": {
+                "lo": 0.35,
+                "hi": 0.65
+              }
+            }
+          },
+          {
+            "id": "desert-ravon",
+            "name": "Desert Ravon",
+            "brand": "ravon",
+            "personality": "volume_leader",
+            "price_point": "value",
+            "rep": 0.5187224306399003,
+            "inventory": 0.7227023129584268,
+            "pricing": 0.7621352696511894,
+            "clamp": {
+              "rep": {
+                "lo": 0.4,
+                "hi": 0.7
+              },
+              "inventory": {
+                "lo": 0.6,
+                "hi": 0.9
+              },
+              "pricing": {
+                "lo": 0.55,
+                "hi": 0.85
+              }
+            }
+          },
+          {
+            "id": "lakeview-chevreau",
+            "name": "Lakeview Chevreau",
+            "brand": "chevreau",
+            "personality": "aggressive_discounter",
+            "price_point": "budget",
+            "rep": 0.6452739659603685,
+            "inventory": 0.886166417999193,
+            "pricing": 0.6828308866545559,
+            "clamp": {
+              "rep": {
+                "lo": 0.5,
+                "hi": 0.8
+              },
+              "inventory": {
+                "lo": 0.7,
+                "hi": 1
+              },
+              "pricing": {
+                "lo": 0.5,
+                "hi": 0.8
+              }
+            }
+          },
+          {
+            "id": "southside-vyndai",
+            "name": "Southside Vyndai",
+            "brand": "vyndai",
+            "personality": "marginal_survivor",
+            "price_point": "budget",
+            "rep": 0.5476676824875175,
+            "inventory": 0.5294691770896317,
+            "pricing": 0.429696290998254,
+            "clamp": {
+              "rep": {
+                "lo": 0.45,
+                "hi": 0.75
+              },
+              "inventory": {
+                "lo": 0.4,
+                "hi": 0.7
+              },
+              "pricing": {
+                "lo": 0.25,
+                "hi": 0.55
+              }
+            }
+          },
+          {
+            "id": "eastside-kaivo",
+            "name": "Eastside Kaivo",
+            "brand": "kaivo",
+            "personality": "budget_discounter",
+            "price_point": "budget",
+            "rep": 0.494799317549914,
+            "inventory": 0.4885403925459832,
+            "pricing": 0.3879066502489149,
+            "clamp": {
+              "rep": {
+                "lo": 0.43,
+                "hi": 0.73
+              },
+              "inventory": {
+                "lo": 0.35,
+                "hi": 0.65
+              },
+              "pricing": {
+                "lo": 0.23,
+                "hi": 0.53
+              }
+            }
+          },
+          {
+            "id": "riverside-messan",
+            "name": "Riverside Messan",
+            "brand": "messan",
+            "personality": "value_dealer",
+            "price_point": "value",
+            "rep": 0.6415682325535453,
+            "inventory": 0.5718482498079538,
+            "pricing": 0.43139173750067134,
+            "clamp": {
+              "rep": {
+                "lo": 0.47,
+                "hi": 0.77
+              },
+              "inventory": {
+                "lo": 0.45,
+                "hi": 0.75
+              },
+              "pricing": {
+                "lo": 0.33,
+                "hi": 0.63
+              }
+            }
+          }
+        ],
+        "rngState": 2875972544
+      },
+      "reputation": {
+        "schemaVersion": 1,
+        "customerSatisfaction": 100,
+        "reviewScore": 100,
+        "marketingBudget": 0
+      },
+      "regulatoryMeter": {
+        "pressure": 0,
+        "isTerminal": false,
+        "suspensionDaysRemaining": 0
+      },
+      "tierManager": {
+        "schemaVersion": 2,
+        "currentTier": 2,
+        "businessName": "",
+        "accentColor": "#38bdf8",
+        "fontId": "classic",
+        "customersServed": 43,
+        "monthStreak": 0,
+        "dossierReady": false
+      },
+      "bankruptcyMonitor": {
+        "insolventDayCount": 0,
+        "outstandingDebt": 0,
+        "isTerminal": false
+      },
+      "indictmentMonitor": {
+        "pressure": 15,
+        "isTerminal": false
+      },
+      "careerEndingsMonitor": {
+        "currentOffer": null,
+        "lastOfferDay": 0,
+        "isEnded": false
+      },
+      "followUpPool": {
+        "schemaVersion": 1,
+        "active": [],
+        "archived": [],
+        "currentDay": 31
+      },
+      "serviceQueue": {
+        "schemaVersion": 1,
+        "currentTier": 2
+      },
+      "departmentQueue": {
+        "schemaVersion": 1,
+        "queues": {
+          "sales": [
+            {
+              "id": "q-88",
+              "type": "missed_opportunity",
+              "dept": "sales",
+              "label": "Walk-in",
+              "createdDay": 16,
+              "customerId": "floor-walk:16:150:0"
+            },
+            {
+              "id": "q-89",
+              "type": "missed_opportunity",
+              "dept": "sales",
+              "label": "Walk-in",
+              "createdDay": 16,
+              "customerId": "floor-walk:16:152:0"
+            },
+            {
+              "id": "q-90",
+              "type": "missed_opportunity",
+              "dept": "sales",
+              "label": "Walk-in",
+              "createdDay": 16,
+              "customerId": "floor-walk:16:155:0"
+            },
+            {
+              "id": "q-91",
+              "type": "missed_opportunity",
+              "dept": "sales",
+              "label": "Walk-in",
+              "createdDay": 16,
+              "customerId": "floor-walk:16:161:0"
+            },
+            {
+              "id": "q-112",
+              "type": "missed_opportunity",
+              "dept": "sales",
+              "label": "Walk-in",
+              "createdDay": 19,
+              "customerId": "floor-walk:19:137:0"
+            },
+            {
+              "id": "q-121",
+              "type": "missed_opportunity",
+              "dept": "sales",
+              "label": "Walk-in",
+              "createdDay": 20,
+              "customerId": "floor-walk:20:172:0"
+            }
+          ],
+          "service": [],
+          "bdc": [],
+          "office": [
+            {
+              "id": "q-5",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 2
+            },
+            {
+              "id": "q-8",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 3
+            },
+            {
+              "id": "q-16",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 4
+            },
+            {
+              "id": "q-18",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 5
+            },
+            {
+              "id": "q-25",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 6
+            },
+            {
+              "id": "q-31",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 7
+            },
+            {
+              "id": "q-36",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 8
+            },
+            {
+              "id": "q-43",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 9
+            },
+            {
+              "id": "q-47",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 10
+            },
+            {
+              "id": "q-53",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 11
+            },
+            {
+              "id": "q-57",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 12
+            },
+            {
+              "id": "q-60",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 13
+            },
+            {
+              "id": "q-68",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 14
+            },
+            {
+              "id": "q-72",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 15
+            },
+            {
+              "id": "q-80",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 16
+            },
+            {
+              "id": "q-92",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 17
+            },
+            {
+              "id": "q-98",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 18
+            },
+            {
+              "id": "q-104",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 19
+            },
+            {
+              "id": "q-113",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 20
+            },
+            {
+              "id": "q-122",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 21
+            },
+            {
+              "id": "q-128",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 22
+            },
+            {
+              "id": "q-135",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 23
+            },
+            {
+              "id": "q-139",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 24
+            },
+            {
+              "id": "q-142",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 25
+            },
+            {
+              "id": "q-148",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 26
+            },
+            {
+              "id": "q-154",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 27
+            },
+            {
+              "id": "q-161",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 28
+            },
+            {
+              "id": "q-167",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 29
+            },
+            {
+              "id": "q-175",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 30
+            },
+            {
+              "id": "q-177",
+              "type": "routine",
+              "dept": "office",
+              "label": "Receptionist phone question",
+              "createdDay": 31
+            }
+          ],
+          "lot": []
+        }
+      },
+      "kpiDashboard": {
+        "schemaVersion": 1,
+        "deals": [
+          {
+            "frontGross": 712,
+            "backGross": 0,
+            "daysInInventory": 0,
+            "agreedPrice": 7812,
+            "paymentMethod": "finance",
+            "downPayment": 2095.273576131097,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 505,
+            "backGross": 0,
+            "daysInInventory": 1,
+            "agreedPrice": 6712,
+            "paymentMethod": "finance",
+            "downPayment": 376.09568744432664,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 3217.384064891783,
+            "backGross": 1000,
+            "daysInInventory": 1,
+            "agreedPrice": 9199.384064891783,
+            "paymentMethod": "finance",
+            "downPayment": 4599.6920324458915,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 3357.1947446084396,
+            "backGross": 1500,
+            "daysInInventory": 1,
+            "agreedPrice": 9839.19474460844,
+            "paymentMethod": "cash",
+            "downPayment": 9839.19474460844,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 2684.682407983175,
+            "backGross": 1000,
+            "daysInInventory": 0,
+            "agreedPrice": 8984.682407983175,
+            "paymentMethod": "cash",
+            "downPayment": 8984.682407983175,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 317,
+            "backGross": 1500,
+            "daysInInventory": 1,
+            "agreedPrice": 7640,
+            "paymentMethod": "finance",
+            "downPayment": 541.6413032724608,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 2984,
+            "backGross": 1500,
+            "daysInInventory": 2,
+            "agreedPrice": 12528,
+            "paymentMethod": "cash",
+            "downPayment": 12528,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 3281,
+            "backGross": 1000,
+            "daysInInventory": 1,
+            "agreedPrice": 11744,
+            "paymentMethod": "finance",
+            "downPayment": 2179.3902402426315,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 2699,
+            "backGross": 500,
+            "daysInInventory": 0,
+            "agreedPrice": 9099,
+            "paymentMethod": "finance",
+            "downPayment": 2875.55719476441,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 1200.357505574657,
+            "backGross": 1000,
+            "daysInInventory": 5,
+            "agreedPrice": 9021.357505574657,
+            "paymentMethod": "cash",
+            "downPayment": 9021.357505574657,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 2862,
+            "backGross": 0,
+            "daysInInventory": 1,
+            "agreedPrice": 13323,
+            "paymentMethod": "cash",
+            "downPayment": 13323,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 2159.9179856412084,
+            "backGross": 500,
+            "daysInInventory": 4,
+            "agreedPrice": 10050.917985641208,
+            "paymentMethod": "finance",
+            "downPayment": 3417.53901428956,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 1786.6357596591934,
+            "backGross": 500,
+            "daysInInventory": 1,
+            "agreedPrice": 11459.635759659193,
+            "paymentMethod": "finance",
+            "downPayment": 634.2843975344708,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 2844,
+            "backGross": 1000,
+            "daysInInventory": 4,
+            "agreedPrice": 13884,
+            "paymentMethod": "finance",
+            "downPayment": 4639.913428121765,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 963.9332788226466,
+            "backGross": 1500,
+            "daysInInventory": 1,
+            "agreedPrice": 5712.933278822647,
+            "paymentMethod": "finance",
+            "downPayment": 325.4854783320881,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 3416.7850539335013,
+            "backGross": 1500,
+            "daysInInventory": 1,
+            "agreedPrice": 10178.785053933501,
+            "paymentMethod": "finance",
+            "downPayment": 301.55522935730363,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 2311.3072002131303,
+            "backGross": 0,
+            "daysInInventory": 3,
+            "agreedPrice": 11336.30720021313,
+            "paymentMethod": "finance",
+            "downPayment": 646.8710534765141,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 3160,
+            "backGross": 1500,
+            "daysInInventory": 12,
+            "agreedPrice": 11688,
+            "paymentMethod": "finance",
+            "downPayment": 2267.289356950428,
+            "term": 72,
+            "apr": 0.129
+          },
+          {
+            "frontGross": 6004,
+            "backGross": 1000,
+            "daysInInventory": 0,
+            "agreedPrice": 16268,
+            "paymentMethod": "finance",
+            "downPayment": 3609.0368856130244,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 2546.7108379419788,
+            "backGross": 0,
+            "daysInInventory": 3,
+            "agreedPrice": 10456.710837941979,
+            "paymentMethod": "finance",
+            "downPayment": 482.8213060149926,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 2190.951907393135,
+            "backGross": 1000,
+            "daysInInventory": 1,
+            "agreedPrice": 11996.951907393135,
+            "paymentMethod": "cash",
+            "downPayment": 6055.951907393135,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 3466.015378654298,
+            "backGross": 1500,
+            "daysInInventory": 0,
+            "agreedPrice": 9407.015378654298,
+            "paymentMethod": "cash",
+            "downPayment": 9407.015378654298,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 2584.1317111632998,
+            "backGross": 0,
+            "daysInInventory": 0,
+            "agreedPrice": 9084.1317111633,
+            "paymentMethod": "finance",
+            "downPayment": 730.2619111382808,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 2047.4611861992817,
+            "backGross": 1000,
+            "daysInInventory": 2,
+            "agreedPrice": 9951.461186199282,
+            "paymentMethod": "finance",
+            "downPayment": 330.9526468945877,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 3034,
+            "backGross": 1000,
+            "daysInInventory": 3,
+            "agreedPrice": 15624,
+            "paymentMethod": "cash",
+            "downPayment": 15624,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 5003.713149332198,
+            "backGross": 1500,
+            "daysInInventory": 5,
+            "agreedPrice": 18644.713149332198,
+            "paymentMethod": "cash",
+            "downPayment": 18644.713149332198,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 736,
+            "backGross": 1000,
+            "daysInInventory": 0,
+            "agreedPrice": 8136,
+            "paymentMethod": "finance",
+            "downPayment": 2262.8135770164386,
+            "term": 66,
+            "apr": 0.189
+          },
+          {
+            "frontGross": 2773.1600565481403,
+            "backGross": 0,
+            "daysInInventory": 0,
+            "agreedPrice": 10121.16005654814,
+            "paymentMethod": "finance",
+            "downPayment": 620.8655507916253,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 2149.075413644445,
+            "backGross": 0,
+            "daysInInventory": 1,
+            "agreedPrice": 10632.075413644445,
+            "paymentMethod": "finance",
+            "downPayment": 1902.0987851630641,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 2292.4466912003645,
+            "backGross": 1000,
+            "daysInInventory": 0,
+            "agreedPrice": 8592.446691200365,
+            "paymentMethod": "finance",
+            "downPayment": 465.87246972754565,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 5523.600456403565,
+            "backGross": 0,
+            "daysInInventory": 5,
+            "agreedPrice": 15971.600456403565,
+            "paymentMethod": "finance",
+            "downPayment": 1221.4965254215338,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 2992.7198311281336,
+            "backGross": 1500,
+            "daysInInventory": 1,
+            "agreedPrice": 8847.719831128134,
+            "paymentMethod": "finance",
+            "downPayment": 531.7868872059886,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 2037.823260545967,
+            "backGross": 500,
+            "daysInInventory": 14,
+            "agreedPrice": 11227.823260545967,
+            "paymentMethod": "finance",
+            "downPayment": 947.3992945270105,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 436,
+            "backGross": 1500,
+            "daysInInventory": 0,
+            "agreedPrice": 7736,
+            "paymentMethod": "cash",
+            "downPayment": 3151,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 3029,
+            "backGross": 1000,
+            "daysInInventory": 1,
+            "agreedPrice": 8199,
+            "paymentMethod": "finance",
+            "downPayment": 426.6565346394658,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 1702.4447637617359,
+            "backGross": 1500,
+            "daysInInventory": 1,
+            "agreedPrice": 9349.444763761736,
+            "paymentMethod": "finance",
+            "downPayment": 4519.937730594572,
+            "term": 84,
+            "apr": 0.059
+          },
+          {
+            "frontGross": 5060,
+            "backGross": 0,
+            "daysInInventory": 1,
+            "agreedPrice": 13305,
+            "paymentMethod": "cash",
+            "downPayment": 13305,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 1152.8511079850832,
+            "backGross": 0,
+            "daysInInventory": 1,
+            "agreedPrice": 9102.851107985083,
+            "paymentMethod": "cash",
+            "downPayment": 9102.851107985083,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 2904,
+            "backGross": 1500,
+            "daysInInventory": 4,
+            "agreedPrice": 13716,
+            "paymentMethod": "finance",
+            "downPayment": 4940.905119202578,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 1124.4060176863804,
+            "backGross": 1500,
+            "daysInInventory": 2,
+            "agreedPrice": 10864.40601768638,
+            "paymentMethod": "cash",
+            "downPayment": 10864.40601768638,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 161,
+            "backGross": 1500,
+            "daysInInventory": 1,
+            "agreedPrice": 10711,
+            "paymentMethod": "finance",
+            "downPayment": 467.5333775785818,
+            "term": 75,
+            "apr": 0.089
+          },
+          {
+            "frontGross": 3586.913867161984,
+            "backGross": 1500,
+            "daysInInventory": 10,
+            "agreedPrice": 17411.913867161984,
+            "paymentMethod": "cash",
+            "downPayment": 17411.913867161984,
+            "term": 0,
+            "apr": 0
+          },
+          {
+            "frontGross": 2114.9298190088302,
+            "backGross": 0,
+            "daysInInventory": 3,
+            "agreedPrice": 9530.92981900883,
+            "paymentMethod": "finance",
+            "downPayment": 1103.3032320032132,
+            "term": 75,
+            "apr": 0.089
+          }
+        ],
+        "dailyCarryingCost": 84
+      },
+      "tierGate": {
+        "schemaVersion": 1,
+        "flowAccrual": {
+          "units": 1,
+          "gross": 2114.9298190088302
+        },
+        "levelSamples": {
+          "cash": {
+            "sum": 0,
+            "count": 0,
+            "monthStart": null
+          }
+        },
+        "trendSamples": {
+          "csi": []
+        }
+      },
+      "telemetry": {
+        "schemaVersion": 1,
+        "enabled": false,
+        "sessionStartedAt": 0,
+        "currentDay": 0,
+        "events": []
+      },
+      "demandShaper": {
+        "schemaVersion": 2,
+        "baselineMix": {
+          "young_family": 1.35,
+          "enthusiast": 0.75,
+          "commuter": 1.15,
+          "retiree": 0.9,
+          "tradesperson": 0.85
+        },
+        "activeInputs": [
+          {
+            "id": "reputation",
+            "label": "Reputation 100",
+            "producer": "reputation",
+            "weights": {
+              "young_family": 0.45499999999999996,
+              "enthusiast": 0,
+              "commuter": 0.175,
+              "retiree": 0.385,
+              "tradesperson": 0
+            },
+            "targetWeights": {
+              "young_family": 0.45499999999999996,
+              "enthusiast": 0,
+              "commuter": 0.175,
+              "retiree": 0.385,
+              "tradesperson": 0
+            },
+            "lagDays": 0,
+            "decayDays": 0,
+            "elapsedDays": 0,
+            "removing": false
+          },
+          {
+            "id": "inventory-composition",
+            "label": "Inventory composition (5 units)",
+            "producer": "inventory",
+            "weights": {
+              "young_family": 0.765,
+              "enthusiast": 0,
+              "commuter": 0,
+              "retiree": 0.225,
+              "tradesperson": 0
+            },
+            "targetWeights": {
+              "young_family": 0.765,
+              "enthusiast": 0,
+              "commuter": 0,
+              "retiree": 0.225,
+              "tradesperson": 0
+            },
+            "lagDays": 0,
+            "decayDays": 0,
+            "elapsedDays": 0,
+            "removing": false
+          }
+        ],
+        "observedHistory": [
+          "tradesperson",
+          "young_family",
+          "young_family",
+          "young_family",
+          "commuter",
+          "young_family",
+          "young_family",
+          "young_family",
+          "retiree",
+          "tradesperson",
+          "young_family",
+          "tradesperson",
+          "commuter",
+          "commuter",
+          "young_family",
+          "young_family",
+          "commuter",
+          "young_family",
+          "young_family",
+          "tradesperson",
+          "young_family",
+          "young_family",
+          "tradesperson",
+          "young_family",
+          "retiree",
+          "retiree",
+          "enthusiast",
+          "retiree",
+          "young_family",
+          "commuter",
+          "tradesperson",
+          "commuter",
+          "commuter",
+          "young_family",
+          "retiree",
+          "young_family",
+          "young_family",
+          "young_family",
+          "young_family",
+          "commuter",
+          "commuter",
+          "tradesperson",
+          "young_family",
+          "enthusiast",
+          "commuter",
+          "young_family",
+          "enthusiast",
+          "retiree",
+          "young_family",
+          "enthusiast",
+          "young_family",
+          "retiree",
+          "young_family",
+          "commuter",
+          "young_family",
+          "retiree",
+          "commuter",
+          "young_family",
+          "enthusiast",
+          "young_family"
+        ]
+      },
+      "historyLog": {
+        "schemaVersion": 1,
+        "nextId": 59,
+        "currentDay": 31,
+        "entries": [
+          {
+            "id": 58,
+            "day": 31,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $2,115 gross."
+          },
+          {
+            "id": 57,
+            "day": 30,
+            "kind": "tier",
+            "text": "Promoted to Tier 2."
+          },
+          {
+            "id": 56,
+            "day": 29,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $5,087 gross."
+          },
+          {
+            "id": 55,
+            "day": 28,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 54,
+            "day": 27,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $1,661 gross."
+          },
+          {
+            "id": 53,
+            "day": 27,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $2,624 gross."
+          },
+          {
+            "id": 52,
+            "day": 27,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 51,
+            "day": 26,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $4,404 gross."
+          },
+          {
+            "id": 50,
+            "day": 25,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $1,153 gross."
+          },
+          {
+            "id": 49,
+            "day": 24,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $5,060 gross."
+          },
+          {
+            "id": 48,
+            "day": 23,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $3,202 gross."
+          },
+          {
+            "id": 47,
+            "day": 23,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $4,029 gross."
+          },
+          {
+            "id": 46,
+            "day": 22,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $1,936 gross."
+          },
+          {
+            "id": 45,
+            "day": 22,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 44,
+            "day": 22,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 43,
+            "day": 21,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $2,538 gross."
+          },
+          {
+            "id": 42,
+            "day": 21,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $4,493 gross."
+          },
+          {
+            "id": 41,
+            "day": 21,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $5,524 gross."
+          },
+          {
+            "id": 40,
+            "day": 20,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 39,
+            "day": 20,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 38,
+            "day": 19,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $3,292 gross."
+          },
+          {
+            "id": 37,
+            "day": 18,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $2,149 gross."
+          },
+          {
+            "id": 36,
+            "day": 18,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $2,773 gross."
+          },
+          {
+            "id": 35,
+            "day": 18,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $1,736 gross."
+          },
+          {
+            "id": 34,
+            "day": 18,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $6,504 gross."
+          },
+          {
+            "id": 33,
+            "day": 17,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 32,
+            "day": 17,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $4,034 gross."
+          },
+          {
+            "id": 31,
+            "day": 17,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 30,
+            "day": 16,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $3,047 gross."
+          },
+          {
+            "id": 29,
+            "day": 16,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $2,584 gross."
+          },
+          {
+            "id": 28,
+            "day": 15,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 27,
+            "day": 15,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $4,966 gross."
+          },
+          {
+            "id": 26,
+            "day": 15,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $3,191 gross."
+          },
+          {
+            "id": 25,
+            "day": 15,
+            "kind": "market",
+            "text": "Market shift: OEM SUV recall."
+          },
+          {
+            "id": 24,
+            "day": 13,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $2,547 gross."
+          },
+          {
+            "id": 23,
+            "day": 13,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $7,004 gross."
+          },
+          {
+            "id": 22,
+            "day": 13,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $4,660 gross."
+          },
+          {
+            "id": 21,
+            "day": 13,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $2,311 gross."
+          },
+          {
+            "id": 20,
+            "day": 13,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $4,917 gross."
+          },
+          {
+            "id": 19,
+            "day": 11,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $2,464 gross."
+          },
+          {
+            "id": 18,
+            "day": 10,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $3,844 gross."
+          },
+          {
+            "id": 17,
+            "day": 9,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $2,287 gross."
+          },
+          {
+            "id": 16,
+            "day": 9,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $2,660 gross."
+          },
+          {
+            "id": 15,
+            "day": 8,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 14,
+            "day": 7,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $2,862 gross."
+          },
+          {
+            "id": 13,
+            "day": 7,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 12,
+            "day": 6,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $2,200 gross."
+          },
+          {
+            "id": 11,
+            "day": 5,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 10,
+            "day": 5,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $3,199 gross."
+          },
+          {
+            "id": 9,
+            "day": 5,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $4,281 gross."
+          },
+          {
+            "id": 8,
+            "day": 5,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $4,484 gross."
+          },
+          {
+            "id": 7,
+            "day": 5,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $1,817 gross."
+          },
+          {
+            "id": 6,
+            "day": 4,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $3,685 gross."
+          },
+          {
+            "id": 5,
+            "day": 3,
+            "kind": "sale",
+            "text": "Sold a unit (cash) — $4,857 gross."
+          },
+          {
+            "id": 4,
+            "day": 3,
+            "kind": "escalation",
+            "text": "Escalation on the sales floor needed your call."
+          },
+          {
+            "id": 3,
+            "day": 3,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $4,217 gross."
+          },
+          {
+            "id": 2,
+            "day": 2,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $505 gross."
+          },
+          {
+            "id": 1,
+            "day": 1,
+            "kind": "sale",
+            "text": "Sold a unit (financed) — $712 gross."
+          }
+        ]
+      }
+    }
+  },
+  "character": {
+    "name": "Harness Bot",
+    "backstoryId": "ex-mechanic",
+    "day1Modifier": {
+      "backstoryId": "ex-mechanic",
+      "reconJudgmentBonus": 0.15,
+      "startingCreditLine": 0,
+      "startingCapitalBonus": 0,
+      "grudgesFlag": false
+    }
+  },
+  "masterSeed": 2648424735
+}
