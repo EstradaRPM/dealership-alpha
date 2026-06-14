@@ -63,11 +63,11 @@ export interface EventMap {
   // the clock:* overnight sequence. FloorSim NEVER calls GameClock;
   // floor:day_complete signals "enter after-hours", not "advance clock".
   //
-  // Canonical per-tick sequence (authoritative ordering for #100/#101/#103):
+  // Canonical per-tick sequence (authoritative ordering for #100/#101):
   //   1 spawn arrivals → 2 admit/walk (floor:customer_walked) →
-  //   3 drainDept (resolved + escalated) → 4 escalate (floor:exception_raised)
-  //   → 5 floor:tick (settled heartbeat, emitted LAST in the tick) →
-  //   6 day-end check (floor:day_complete, exactly once).
+  //   3 drainDept (resolved + escalated; escalated only tallied) →
+  //   4 floor:tick (settled heartbeat, emitted LAST in the tick) →
+  //   5 day-end check (floor:day_complete, exactly once).
   // Per simulated day: floor:tick ×ticksPerDay (ascending 1..ticksPerDay),
   // then floor:day_complete once.
   'floor:tick': {
@@ -89,22 +89,6 @@ export interface EventMap {
     day: number;
     /** 1-based tick the walk occurred on, 1..ticksPerDay. */
     tick: number;
-  };
-  // Step 4 of the canonical per-tick sequence: emitted once per dramatic case
-  // (VIP, high-dollar, irate, lemon-law/audit, comeback) the department drain
-  // forced out of its auto-resolved routine queue into FloorSim's forced-
-  // exception channel. Emitted after that tick's drain and before its
-  // floor:tick. Observability only — StaffDispatch owns the f(skill × role
-  // tier) escalation threshold behind the drain seam; FloorSim only mints the
-  // grabbable exception ref + this heartbeat.
-  'floor:exception_raised': {
-    day: number;
-    /** 1-based tick the escalation occurred on, 1..ticksPerDay. */
-    tick: number;
-    /** Synthetic FloorSim ref id, also grabbable via grabbableCustomers(). */
-    customerId: string;
-    /** Opaque routing context for the escalated case (e.g. 'sales'). */
-    department: string;
   };
   'floor:day_complete': {
     day: number;
@@ -386,7 +370,7 @@ export interface EventMap {
   // (or an ask over the player override) escalated to the #84 manager-attention
   // overlay (#170). Published by the close-flow seam (StaffDispatch) when
   // `resolveTradeIn` returns `player_review`; the composition root subscribes to
-  // open the overlay + pause the day (cf. `floor:exception_raised`). The deal is
+  // open the overlay + pause the day (via the render-loop `hold`). The deal is
   // held for the player — no `deal:closed` fires for this customer this pass.
   // Carries the full review surface so the overlay needs no further lookups.
   'trade:escalated': {

@@ -12,7 +12,6 @@ const MODEL: FloorDashboardModel = {
   openHour: 9,
   closeHour: 19,
   cash: 48_250,
-  exceptionPending: false,
   ups: 9,
   sold: 2,
   pendingWarm: 3,
@@ -21,15 +20,7 @@ const MODEL: FloorDashboardModel = {
     { id: 's1', role: 'Salesperson', department: 'sales' },
     { id: 's2', role: 'Lot Porter', department: 'unassigned' },
   ],
-  events: [
-    { kind: 'walk', key: 'w0', text: 't2 · lot opened' },
-    {
-      kind: 'exception',
-      key: 'e1',
-      customerId: 'floor:3:5:0',
-      text: 't5 · sales exception — needs you',
-    },
-  ],
+  events: [{ kind: 'walk', key: 'w0', text: 't2 · lot opened' }],
   inventory: { unitsOnLot: 6, flooredValue: 92_400, avgDaysInInventory: 18.5 },
 };
 
@@ -38,12 +29,10 @@ describe('FloorDashboard smoke tests', () => {
     expect(() => render(<FloorDashboard model={MODEL} />)).not.toThrow();
   });
 
-  it('renders with a pending forced exception + negative cash', () => {
+  it('renders with negative cash', () => {
     expect(() =>
       render(
-        <FloorDashboard
-          model={{ ...MODEL, exceptionPending: true, cash: -1_200, gross: 0 }}
-        />,
+        <FloorDashboard model={{ ...MODEL, cash: -1_200, gross: 0 }} />,
       ),
     ).not.toThrow();
   });
@@ -63,14 +52,6 @@ describe('FloorDashboard smoke tests', () => {
             },
           }}
         />,
-      ),
-    ).not.toThrow();
-  });
-
-  it('renders with an exception-press handler wired', () => {
-    expect(() =>
-      render(
-        <FloorDashboard model={MODEL} onExceptionPress={() => undefined} />,
       ),
     ).not.toThrow();
   });

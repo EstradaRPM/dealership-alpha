@@ -41,11 +41,6 @@ export const DEPT_TITLES: Record<DeptKey, string> = {
   lot: 'Lot',
 };
 
-// Hand-play modal default (#118): sourced from a tunable, never a magic
-// number. false ⇒ opening the modal auto-pauses the day; true ⇒ the day
-// keeps running live behind it (the #74/#105 felt-pacing comparison path).
-export const HAND_PLAY_LIVE = loadTunables().handPlay.playtestLiveDefault;
-
 // Representative open-hours window for the FLOOR-OPEN HUD clock (#121).
 export const RENDER_LOOP = loadTunables().renderLoop;
 

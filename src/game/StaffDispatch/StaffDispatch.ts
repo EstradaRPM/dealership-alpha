@@ -15,7 +15,6 @@ import type {
 import { resolveTradeIn, rollCustomerCounterResponse } from '../DealEngine';
 import type { Person, Visit } from '../NPC';
 import { createRng, deriveSeed } from '../NPC/Rng';
-import { EXCEPTION_FLAGS } from './types';
 import { loadStaffDispatchConfig, type StaffDispatchConfig } from './staffDispatchData';
 import {
   closeAndPrice,
@@ -48,7 +47,6 @@ export interface StaffDispatchDeps {
   getCustomerSession: (customerId: string) => StaffDispatchCustomerSession | undefined;
   staffMorale?: StaffMorale;
   config?: StaffDispatchConfig;
-  getHasGm?: () => boolean;
   /** RNG for F&I auto-attach (defaults to Math.random). */
   fniRng?: () => number;
   /** Optional unlocked F&I roles override. Defaults to deriving from staffOrg roster. */
@@ -221,13 +219,13 @@ const ARCHETYPE_IMPATIENCE = 0.25;
  * Builds the per-customer sales auto-resolution closure shared by the legacy
  * once-per-admit path and the per-tick floor drain (#101). #147 rewires the
  * close to the real machinery: pickVehicleFor → resolveSalesProcess →
- * closeAndPrice → DealEngine.closeDeal. Exception roll + hold-floor are
- * untouched; the synthetic close path is gone.
+ * closeAndPrice → DealEngine.closeDeal. The hold-floor model is untouched;
+ * the synthetic close path is gone. The only `escalated` returns now are the
+ * trade (#170) and discount (#222) player-review holds.
  */
 function makeSalesResolver(deps: StaffDispatchDeps) {
   const { bus, staffOrg, queue, masterSeed, staffMorale } = deps;
   const config = deps.config ?? loadStaffDispatchConfig();
-  const getHasGm = deps.getHasGm;
 
   function emitNoSale(
     customerId: string,
@@ -254,34 +252,10 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
     );
     if (salespeople.length === 0) return 'declined';
 
-    const rng = createRng(
-      deriveSeed(masterSeed, 'staff_dispatch', { customerId, day }),
-    );
-
-    const flagRates = getHasGm?.()
-      ? config.gmExceptionFlagRates
-      : config.exceptionFlagRates;
-
-    // Pick highest-effectiveness salesperson. Selection draws no RNG, so
-    // hoisting it above the exception roll keeps the RNG stream identical to
-    // the legacy order — only the skill-scaled threshold changes outcomes.
+    // Pick highest-effectiveness salesperson.
     const salesperson = salespeople.reduce((best, s) =>
       s.effectiveness > best.effectiveness ? s : best,
     );
-
-    // Forced-exception threshold = f(staff skill × role tier) (#103). Each
-    // dramatic-case rate is raised to an exponent lerped by the best
-    // salesperson's effectiveness; exponent ≥ 1 ⇒ rate^exp ≤ rate, so a more
-    // skilled floor escalates fewer/rarer cases (rate 1.0 stays guaranteed).
-    const skillExp = lerp(
-      config.exceptionSkillExpMin,
-      config.exceptionSkillExpMax,
-      salesperson.effectiveness,
-    );
-    for (const flag of EXCEPTION_FLAGS) {
-      const rate = flagRates[flag] ?? 0;
-      if (rng() < Math.pow(rate, skillExp)) return 'escalated';
-    }
 
     // Hold-floor model (#134): any salesperson on the roster always works
     // (holds) the up — there is no skill-gated decline.

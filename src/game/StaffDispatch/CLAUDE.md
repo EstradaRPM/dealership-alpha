@@ -32,9 +32,10 @@ to the real machinery. Per customer (after exception roll + hold-floor):
    - `abandoned` → `no_sale`/`trade_negative_equity` (underwater) or
      `no_sale`/`trade_manager_declined` (manager refused at the extended range).
    - `player_review` → emit `trade:escalated` (full overlay payload) and return
-     **`escalated`** from the resolver: the deal is HELD for the player and
-     FloorSim raises a grabbable exception. No `deal:closed` / `trade:resolved`
-     fires for this customer this pass.
+     **`escalated`** from the resolver: the deal is HELD for the player (the
+     composition root opens the overlay + pauses the floor via the render-loop
+     `hold`). No `deal:closed` / `trade:resolved` fires for this customer this
+     pass.
      With `onTradeReviewHeld` wired (#201), StaffDispatch also hands the
      composition root a closure that resolves the held close after the player's
      modal decision; accepted asks/counters emit `trade:resolved` and continue
@@ -107,11 +108,12 @@ with #147.
   queue and resolves them via the **same resolver** as the legacy path, so
   the queue drains across ticks with identical outcomes — only the cadence
   differs. Composition wires one path or the other per FloorSim day, never
-  both. `escalated` counts dramatic cases the resolver refused; FloorSim
-  turns each into a grabbable exception ref + `floor:exception_raised` (#103).
+  both. `escalated` counts dramatic cases the resolver held for the player (a
+  trade/discount review); FloorSim only tallies the count (the #103
+  forced-exception channel was removed in #275).
 - `loadStaffDispatchConfig` — reads dispatch tunables.
 - Types: `StaffDispatch`, `StaffDispatchDeps`, `StaffDispatchConfig`,
-  `StaffDispatchCustomerSession`, `ExceptionFlag`.
+  `StaffDispatchCustomerSession`.
 
 ## Events
 - **Emits:** `staff:auto_resolved` (outcome `closed` or `no_sale`, with
@@ -131,19 +133,14 @@ with #147.
   `capacity:customer_admitted`; floor-drain path per FloorSim tick).
 
 ## Data
-- `data/tunables.json` — staff-dispatch section (exception thresholds,
-  per-tick drain throughput).
+- `data/tunables.json` — staff-dispatch section (`minDrainPerTick` /
+  `maxDrainPerTick` per-tick floor-drain throughput).
 
-## ExceptionFlag
-Used to flag deals that auto-resolution refused to handle (e.g. high-value,
-low-trust scenarios). Those bubble to the player UI.
-
-## Exception threshold = f(skill × role tier) (#103)
-The dramatic-case escalation threshold is the master scaling dial. Each
-`exceptionFlagRates` entry is raised to an exponent lerped between
-`exceptionSkillExpMin` (at effectiveness 0) and `exceptionSkillExpMax` (at
-effectiveness 1) by the best on-roster salesperson's effectiveness. Exponent
-≥ 1 ⇒ `rate^exp ≤ rate`, so a more skilled floor escalates fewer/rarer
-cases while a guaranteed `1.0` rate stays guaranteed. Selection draws no RNG
-and is hoisted above the roll, so the RNG stream is identical to the legacy
-order — only the skill-scaled threshold changes outcomes.
+## Escalation (held reviews only)
+The resolver returns `'escalated'` solely for the trade (#170) and discount
+(#222) player-review holds — the deal is HELD and surfaced via its own
+`trade:escalated` / `discount:escalated` event. The legacy dramatic-case
+flag roll (`EXCEPTION_FLAGS` / `exceptionFlagRates` / `gmExceptionFlagRates`
+/ `exceptionSkillExp*`) that fed the dead HandPlay event was **removed in
+#275**, so those ups now flow through the normal close path instead of being
+refused.

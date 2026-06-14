@@ -25,43 +25,20 @@ import type { StaffWithComposites, Staff, Person, SalesVisit } from '../src/game
 
 const MASTER_SEED = 42;
 
-const FLAGS0 = {
-  vip_customer: 0,
-  high_dollar_deal: 0,
-  irate_customer: 0,
-  lemon_law_threat: 0,
-  audit_trigger: 0,
-};
-const FLAGS1 = {
-  vip_customer: 1,
-  high_dollar_deal: 1,
-  irate_customer: 1,
-  lemon_law_threat: 1,
-  audit_trigger: 1,
-};
-
 /** A drain config with a flat per-tick budget (min == max ⇒ effectiveness-
  *  independent) so per-tick throughput is exact and deterministic. */
-function flatBudget(perTick: number, exceptionFlags = FLAGS0): StaffDispatchConfig {
+function flatBudget(perTick: number): StaffDispatchConfig {
   return {
-    exceptionFlagRates: exceptionFlags,
-    gmExceptionFlagRates: FLAGS0,
     minDrainPerTick: perTick,
     maxDrainPerTick: perTick,
-    exceptionSkillExpMin: 1.0,
-    exceptionSkillExpMax: 3.0,
   };
 }
 
 /** A skill-scaled budget: lerp(min,max,bestEffectiveness). */
 function skillBudget(min: number, max: number): StaffDispatchConfig {
   return {
-    exceptionFlagRates: FLAGS0,
-    gmExceptionFlagRates: FLAGS0,
     minDrainPerTick: min,
     maxDrainPerTick: max,
-    exceptionSkillExpMin: 1.0,
-    exceptionSkillExpMax: 3.0,
   };
 }
 
@@ -331,24 +308,5 @@ describe('createStaffFloorDrain — FIFO ordering across ticks', () => {
     expect(w.events[1].customerId).toBe('cust:second');
     expect(w.events[1].outcome).toBe('no_sale');
     expect(t2.escalated).toBe(0);
-  });
-});
-
-// ── attempted-set dedup (held escalations are not re-attempted) ──────────────
-
-describe('createStaffFloorDrain — escalations are attempted once', () => {
-  it('an exception-escalated up counts once and is not re-attempted next tick', () => {
-    // FLAGS1 forces escalation deterministically (rate 1.0). The held item stays
-    // on the queue; the attempted-set must keep later ticks from re-counting it.
-    const w = setup([makeStaff(1.0)], flatBudget(5, FLAGS1));
-    admit(w, 'cust:1');
-
-    const t1 = tick(w, 1, 0);
-    expect(t1).toEqual({ resolved: 0, escalated: 1 });
-    expect(w.events).toHaveLength(0); // escalation emits no auto_resolved
-    expect(w.queue.getQueue('sales')).toHaveLength(1); // still held
-
-    const t2 = tick(w, 1, 1);
-    expect(t2).toEqual({ resolved: 0, escalated: 0 }); // not re-attempted
   });
 });

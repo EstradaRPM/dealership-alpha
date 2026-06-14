@@ -28,7 +28,6 @@ import { useDayLoop } from './useDayLoop';
 import { AppOverlays } from './screens/AppOverlays';
 import { RouteContent } from './screens/RouteContent';
 import {
-  HAND_PLAY_LIVE,
   TRADE_POLICY,
   PRICING_STRATEGIES,
   HOURS_OF_OP,
@@ -96,7 +95,6 @@ export function DealershipApp({
 
   const modals = useModals({
     bus,
-    world,
     worldRef,
     setLotVehicles,
     setCash,
@@ -122,10 +120,8 @@ export function DealershipApp({
   const floorLoop = useFloorRenderLoop({
     floor: world?.dayLoop.currentFloor() ?? null,
     active: world ? world.dayLoop.state().phase === 'FLOOR_OPEN' : false,
-    bus,
     onTick: bump,
     hold:
-      (modals.handSession != null && !HAND_PLAY_LIVE) ||
       modals.tradeReview != null ||
       modals.discountReview != null ||
       screen === 'in-game-menu' ||
@@ -299,14 +295,9 @@ export function DealershipApp({
     return () => sub.remove();
   }, []);
 
-  // Bottom-nav dispatch (#76). Sales is the hand-play workspace, not a
-  // resolve-list — it opens the existing cherry-pick/hand-play path. The
-  // other four push the generic DepartmentScreen. Always responds.
+  // Bottom-nav dispatch (#76). Every department pushes the generic
+  // DepartmentScreen for its queue. Always responds.
   const handleDeptPress = (dept: DeptKey) => {
-    if (dept === 'sales') {
-      modals.cherryPick();
-      return;
-    }
     nav.navigate('department', { dept });
   };
 
@@ -375,7 +366,6 @@ export function DealershipApp({
               worldState={worldState}
               saveSlots={saveSlots}
               levers={levers}
-              modals={modals}
               dayLoop={dayLoop}
               floorLoop={floorLoop}
               loadActiveSlotIntoGame={loadActiveSlotIntoGame}

@@ -98,14 +98,6 @@ export function createHistoryLog(deps: { bus: EventBus }): HistoryLog {
     );
   });
 
-  bus.subscribe('floor:exception_raised', (p: EventMap['floor:exception_raised']) => {
-    append(
-      p.day,
-      'escalation',
-      `Escalation on the ${p.department} floor needed your call.`,
-    );
-  });
-
   bus.subscribe('market:shock_started', (p: EventMap['market:shock_started']) => {
     append(p.day, 'market', `Market shift: ${p.label}.`);
   });

@@ -62,34 +62,9 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
   };
 }
 
-const ZERO_FLAGS = {
-  vip_customer: 0,
-  high_dollar_deal: 0,
-  irate_customer: 0,
-  lemon_law_threat: 0,
-  audit_trigger: 0,
-};
-
-const ALL_FLAGS = {
-  vip_customer: 1,
-  high_dollar_deal: 1,
-  irate_customer: 1,
-  lemon_law_threat: 1,
-  audit_trigger: 1,
-};
-
-const NO_EXCEPTION_CONFIG: StaffDispatchConfig = {
-  exceptionFlagRates: ZERO_FLAGS,
-  gmExceptionFlagRates: ZERO_FLAGS,
+const BASE_CONFIG: StaffDispatchConfig = {
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.60,
-  exceptionSkillExpMin: 1.0,
-  exceptionSkillExpMax: 3.0,
-};
-
-const ALL_EXCEPTION_CONFIG: StaffDispatchConfig = {
-  ...NO_EXCEPTION_CONFIG,
-  exceptionFlagRates: ALL_FLAGS,
 };
 
 const DISCOUNT_EXCEPTION_CONFIG: SalesProcessConfig = {
@@ -292,10 +267,9 @@ const TRADE_BOOK = 6_000;
 
 function setup(
   roster: StaffWithComposites[],
-  config: StaffDispatchConfig = NO_EXCEPTION_CONFIG,
+  config: StaffDispatchConfig = BASE_CONFIG,
   opts: {
     lot?: LotVehicle[];
-    getHasGm?: () => boolean;
     tradeConditionRead?: () => TradeConditionRead | null;
     tradeApprover?: () => TradeApprover | null;
     tradeEscalationOverride?: () => number;
@@ -356,7 +330,6 @@ function setup(
     dealEngine,
     creditTiers: loadCreditTiers(),
     getCustomerSession: (id) => sessions.get(id),
-    getHasGm: opts.getHasGm,
     salesProcessDeps: opts.salesProcessDeps,
     wantVectorBias: opts.wantVectorBias,
     attributeLeanForDay: opts.attributeLeanForDay,
@@ -395,18 +368,12 @@ function admit(bus: EventBus, customerId: string, day = 1): void {
   bus.publish('capacity:customer_admitted', { day, customerId, label: 'Test' });
 }
 
-// ── No staff / exception escalation ─────────────────────────────────────────
+// ── No staff ─────────────────────────────────────────────────────────────────
 
-describe('StaffDispatch — no staff & exception escalation (preserved)', () => {
+describe('StaffDispatch — no staff', () => {
   it('no staff on roster ⇒ no auto_resolved, item stays in queue', () => {
     const { bus, events } = setup([]);
     admit(bus, 'cust:1');
-    expect(events).toHaveLength(0);
-  });
-
-  it('exception flag forces escalation regardless of skill (no resolve)', () => {
-    const { bus, events } = setup([makeStaff(1.0)], ALL_EXCEPTION_CONFIG);
-    admit(bus, 'cust:vip');
     expect(events).toHaveLength(0);
   });
 });
@@ -462,7 +429,7 @@ describe('StaffDispatch — real close path (#147)', () => {
   });
 
   it('a no_sale carries no match quality (#199)', () => {
-    const { bus, sessions, events } = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+    const { bus, sessions, events } = setup([makeStaff(0.9)], BASE_CONFIG, {
       lot: [],
     });
     sessions.set('cust:1', makeSession('cust:1', makeFinanceVisit('cust:1')));
@@ -473,7 +440,7 @@ describe('StaffDispatch — real close path (#147)', () => {
 
   it('season demand lean (#231 S2): wantVectorBias runs on the resolution want-vector', () => {
     const seen: Array<{ spaced: Record<string, number>; day: number }> = [];
-    const { bus, sessions, events } = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+    const { bus, sessions, events } = setup([makeStaff(0.9)], BASE_CONFIG, {
       // Identity bias that records the call: proves the seam is live in the
       // auto-resolve match path (the createWorld test asserts it's wired to
       // Weather.leanWantVector; the Weather test asserts the lean transform).
@@ -500,7 +467,7 @@ describe('StaffDispatch — real close path (#147)', () => {
 
   it('attribute lean (#231 S4): attributeLeanForDay runs for the resolution day', () => {
     const seenDays: number[] = [];
-    const { bus, sessions, events } = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+    const { bus, sessions, events } = setup([makeStaff(0.9)], BASE_CONFIG, {
       // Records the call: proves the attribute-lean seam is live in the
       // auto-resolve match path (the createWorld test asserts it's wired to
       // Weather.attributeLeanForDay; the match-tilt test asserts the effect).
@@ -519,7 +486,7 @@ describe('StaffDispatch — real close path (#147)', () => {
     const lot = [makeLotVehicle('veh:1'), makeLotVehicle('veh:2')];
     const { bus, sessions, events, inventorySold } = setup(
       [makeStaff(0.95)],
-      NO_EXCEPTION_CONFIG,
+      BASE_CONFIG,
       { lot },
     );
     for (let i = 0; i < 5; i++) {
@@ -535,7 +502,7 @@ describe('StaffDispatch — real close path (#147)', () => {
   });
 
   it('empty lot ⇒ no_sale reason=no_fit', () => {
-    const { bus, sessions, events } = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, { lot: [] });
+    const { bus, sessions, events } = setup([makeStaff(0.9)], BASE_CONFIG, { lot: [] });
     sessions.set('cust:1', makeSession('cust:1', makeFinanceVisit('cust:1')));
     admit(bus, 'cust:1');
     expect(events[0].outcome).toBe('no_sale');
@@ -561,7 +528,7 @@ describe('StaffDispatch — discount escalation (#222)', () => {
   };
 
   it('no sales manager ⇒ discount:escalated fires with payload and held close', () => {
-    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+    const w = setup([makeStaff(0.9)], BASE_CONFIG, {
       salesProcessDeps: discountDeps,
     });
     w.sessions.set(
@@ -604,7 +571,7 @@ describe('StaffDispatch — discount escalation (#222)', () => {
         makeStaff(0.9, 'staff:sales'),
         makeStaff(1.0, 'staff:sales-manager', 'sales-manager'),
       ],
-      NO_EXCEPTION_CONFIG,
+      BASE_CONFIG,
       { salesProcessDeps: discountDeps },
     );
     w.sessions.set(
@@ -629,7 +596,7 @@ describe('StaffDispatch — discount escalation (#222)', () => {
   });
 
   it('player decline records discount_player_declined, distinct from no_close', () => {
-    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+    const w = setup([makeStaff(0.9)], BASE_CONFIG, {
       salesProcessDeps: discountDeps,
     });
     w.sessions.set(
@@ -671,8 +638,6 @@ describe('StaffDispatch — hold-floor (#134) preserved', () => {
 describe('StaffDispatch — config', () => {
   it('loadStaffDispatchConfig returns valid tunables (no dead fields)', () => {
     const config = loadStaffDispatchConfig();
-    expect(Object.keys(config.exceptionFlagRates).length).toBeGreaterThan(0);
-    expect(Object.keys(config.gmExceptionFlagRates).length).toBeGreaterThan(0);
     expect(config.minDrainPerTick).toBeGreaterThanOrEqual(0);
     expect(config.maxDrainPerTick).toBeGreaterThan(0);
     // Dead fields are gone.
@@ -680,6 +645,9 @@ describe('StaffDispatch — config', () => {
     expect('minCloseRate' in config).toBe(false);
     expect('maxCloseRate' in config).toBe(false);
     expect('minGrossModifier' in config).toBe(false);
+    // Dramatic-case exception flags removed with the dead HandPlay path (#275).
+    expect('exceptionFlagRates' in config).toBe(false);
+    expect('gmExceptionFlagRates' in config).toBe(false);
   });
 });
 
@@ -786,7 +754,7 @@ describe('StaffDispatch — routine trade resolution (#169)', () => {
   it('a UCM condition read lifts the target (higher confidence ⇒ less defensive)', () => {
     // High-confidence read ⇒ defensiveFactor 1 ⇒ target = TRADE_BOOK (6_000).
     // An ask of 6_000 now accepts rather than drawing a counter.
-    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+    const w = setup([makeStaff(0.9)], BASE_CONFIG, {
       tradeConditionRead: () => ({ confidence: 1.0 }),
     });
     w.sessions.set(
@@ -858,7 +826,7 @@ describe('StaffDispatch — trade escalation (#170)', () => {
 
   it('a GM resolves the escalated trade silently ⇒ deal closes, trade:resolved, no escalation', () => {
     const gm: () => TradeApprover = () => ({ role: 'gm', skill: { effectiveness: 0.6, trustworthiness: 0.5 } });
-    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, { tradeApprover: gm });
+    const w = setup([makeStaff(0.9)], BASE_CONFIG, { tradeApprover: gm });
     unusualAsk(w);
     admit(w.bus, 'cust:1');
     expect(w.escalations).toHaveLength(0);
@@ -869,7 +837,7 @@ describe('StaffDispatch — trade escalation (#170)', () => {
 
   it('a UCM approver also resolves silently when no GM is present', () => {
     const ucm: () => TradeApprover = () => ({ role: 'ucm', skill: { effectiveness: 0.6, trustworthiness: 0.5 } });
-    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, { tradeApprover: ucm });
+    const w = setup([makeStaff(0.9)], BASE_CONFIG, { tradeApprover: ucm });
     unusualAsk(w);
     admit(w.bus, 'cust:1');
     expect(w.escalations).toHaveLength(0);
@@ -879,7 +847,7 @@ describe('StaffDispatch — trade escalation (#170)', () => {
 
   it('per-slot override forces player review even with a GM on staff', () => {
     const gm: () => TradeApprover = () => ({ role: 'gm', skill: { effectiveness: 0.6, trustworthiness: 0.5 } });
-    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+    const w = setup([makeStaff(0.9)], BASE_CONFIG, {
       tradeApprover: gm,
       tradeEscalationOverride: () => 8_000, // ask 9_000 > 8_000 ⇒ escalate to player
     });
@@ -892,7 +860,7 @@ describe('StaffDispatch — trade escalation (#170)', () => {
 
   it('a manager who declines beyond the extended window ⇒ no_sale reason=trade_manager_declined', () => {
     const gm: () => TradeApprover = () => ({ role: 'gm', skill: { effectiveness: 0.1, trustworthiness: 0.5 } });
-    const w = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, { tradeApprover: gm });
+    const w = setup([makeStaff(0.9)], BASE_CONFIG, { tradeApprover: gm });
     // ask 9_000 = target 5_100 × 1.76 — beyond the manager window (×1.6) + weak closer.
     w.sessions.set(
       'cust:1',
@@ -934,7 +902,7 @@ describe('StaffDispatch — trade-policy multiplier wiring (#172)', () => {
     expect(market.trades[0].hadCounter).toBe(true);
     expect(market.trades[0].agreedAllowance).toBeLessThan(5_600);
 
-    const aggressive = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+    const aggressive = setup([makeStaff(0.9)], BASE_CONFIG, {
       tradePolicyMultiplier: () => 1.1,
     });
     tradeAsk(aggressive, 5_600);
@@ -954,50 +922,12 @@ describe('StaffDispatch — trade-policy multiplier wiring (#172)', () => {
     expect(market.trades).toHaveLength(1);
     expect(market.escalations).toHaveLength(0);
 
-    const conservative = setup([makeStaff(0.9)], NO_EXCEPTION_CONFIG, {
+    const conservative = setup([makeStaff(0.9)], BASE_CONFIG, {
       tradePolicyMultiplier: () => 0.92,
     });
     tradeAsk(conservative, 6_300);
     admit(conservative.bus, 'cust:1');
     expect(conservative.trades).toHaveLength(0);
     expect(conservative.escalations).toHaveLength(1);
-  });
-});
-
-// ── GM exception thresholds ──────────────────────────────────────────────────
-
-describe('StaffDispatch — GM exception thresholds', () => {
-  const GM_EXCEPTION_CONFIG: StaffDispatchConfig = {
-    ...NO_EXCEPTION_CONFIG,
-    exceptionFlagRates: { ...ALL_FLAGS },
-    gmExceptionFlagRates: {
-      vip_customer: 0,
-      high_dollar_deal: 0,
-      irate_customer: 0,
-      lemon_law_threat: 1,
-      audit_trigger: 1,
-    },
-  };
-
-  it('without GM: all-flag config escalates (no resolve)', () => {
-    const { bus, events } = setup([makeStaff(1.0)], GM_EXCEPTION_CONFIG, { getHasGm: () => false });
-    admit(bus, 'cust:1');
-    expect(events).toHaveLength(0);
-  });
-
-  it('with GM: non-legal flags drop to 0 ⇒ customer is auto-resolved', () => {
-    const configNoLegal: StaffDispatchConfig = {
-      ...GM_EXCEPTION_CONFIG,
-      gmExceptionFlagRates: ZERO_FLAGS,
-    };
-    const { bus, events } = setup([makeStaff(1.0)], configNoLegal, { getHasGm: () => true });
-    admit(bus, 'cust:1');
-    expect(events).toHaveLength(1);
-  });
-
-  it('with GM: lemon_law_threat at 1 still escalates', () => {
-    const { bus, events } = setup([makeStaff(1.0)], GM_EXCEPTION_CONFIG, { getHasGm: () => true });
-    admit(bus, 'cust:1');
-    expect(events).toHaveLength(0);
   });
 });

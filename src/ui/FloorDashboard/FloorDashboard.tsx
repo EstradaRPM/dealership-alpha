@@ -26,8 +26,6 @@ export interface FloorDashboardModel {
   closeHour: number;
   /** Cash on hand (Economy). */
   cash: number;
-  /** A forced exception is waiting to be hand-played. */
-  exceptionPending: boolean;
   /** Ups: real customers admitted onto the lot today (fresh walk-ins +
    *  be-backs). The only arrival count the live floor surfaces — drove-by /
    *  turned-away traffic is an EOD-recap concept, never a live-floor visual
@@ -73,14 +71,11 @@ export interface RegulatoryPressureModel {
 
 /**
  * One event-log row. A `walk` is a transient informational line; a `match` is
- * the inventory-buyer match-payoff toast (#199), a highlighted reward line; an
- * `exception` is a tappable alert row whose `id` is the grabbable CustomerRef —
- * tapping it surfaces the hand-play modal (wired next slice).
+ * the inventory-buyer match-payoff toast (#199), a highlighted reward line.
  */
 export type FloorEvent =
   | { kind: 'walk'; key: string; text: string }
-  | { kind: 'match'; key: string; text: string }
-  | { kind: 'exception'; key: string; customerId: string; text: string };
+  | { kind: 'match'; key: string; text: string };
 
 export interface InventoryStats {
   /** Vehicles currently on the lot. */
@@ -109,17 +104,6 @@ interface Props {
   model: FloorDashboardModel;
   /** Live-clock speed/pause controls (#121). Absent ⇒ no control bar. */
   controls?: FloorControls;
-  /**
-   * Tapped an exception alert row → surface the hand-play modal (#118) for
-   * that forced exception. Absent ⇒ rows render but are inert.
-   */
-  onExceptionPress?: (customerId: string) => void;
-  /**
-   * Voluntary cherry-pick (#118): open the hand-play modal on a customer the
-   * composition root selects from the grabbable roster. Absent ⇒ no affordance
-   * (e.g. nothing grabbable, or tick-budget exhausted).
-   */
-  onCherryPick?: () => void;
   /** Open the in-session save/load/menu surface. */
   onOpenGameMenu?: () => void;
 }
@@ -208,8 +192,6 @@ function RegulatoryGauge({ model }: { model: RegulatoryPressureModel }) {
 export function FloorDashboard({
   model,
   controls,
-  onExceptionPress,
-  onCherryPick,
   onOpenGameMenu,
 }: Props) {
   const {
@@ -219,7 +201,6 @@ export function FloorDashboard({
     openHour,
     closeHour,
     cash,
-    exceptionPending,
     ups,
     sold,
     pendingWarm,
@@ -249,14 +230,6 @@ export function FloorDashboard({
         ) : null}
         <Text style={styles.hudCell}>
           {sold}U · {money(gross)}
-        </Text>
-        <Text
-          style={[styles.hudPip, exceptionPending && styles.hudPipActive]}
-          accessibilityLabel={
-            exceptionPending ? 'Forced exception waiting' : 'No exceptions'
-          }
-        >
-          {exceptionPending ? '●' : '○'}
         </Text>
         {onOpenGameMenu ? (
           <TouchableOpacity
@@ -322,17 +295,6 @@ export function FloorDashboard({
           <Stat label="GROSS" value={money(gross)} />
         </View>
 
-        {onCherryPick && (
-          <TouchableOpacity
-            style={styles.cherryPick}
-            accessibilityRole="button"
-            accessibilityLabel="Cherry-pick a customer to hand-play"
-            onPress={onCherryPick}
-          >
-            <Text style={styles.cherryPickText}>＋ Work a customer</Text>
-          </TouchableOpacity>
-        )}
-
         {/* Impressionistic staff strip */}
         <Text style={styles.sectionLabel}>FLOOR</Text>
         {staff.length === 0 ? (
@@ -370,18 +332,7 @@ export function FloorDashboard({
           <Text style={styles.emptyLine}>Quiet so far today.</Text>
         ) : (
           recentEvents.map((e) =>
-            e.kind === 'exception' ? (
-              <TouchableOpacity
-                key={e.key}
-                style={styles.alertRow}
-                accessibilityRole="button"
-                accessibilityLabel={`Exception: ${e.text}`}
-                onPress={() => onExceptionPress?.(e.customerId)}
-              >
-                <Text style={styles.alertPip}>●</Text>
-                <Text style={styles.alertText}>{e.text}</Text>
-              </TouchableOpacity>
-            ) : e.kind === 'match' ? (
+            e.kind === 'match' ? (
               <Text key={e.key} style={styles.matchLine}>
                 {e.text}
               </Text>
@@ -415,8 +366,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     letterSpacing: 1,
   },
-  hudPip: { fontSize: 14, color: colors.border },
-  hudPipActive: { color: colors.reward },
   regGauge: {
     minWidth: 72,
     gap: 3,
@@ -561,39 +510,5 @@ const styles = StyleSheet.create({
     color: colors.reward,
     fontWeight: '600',
     paddingVertical: 4,
-  },
-  alertRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.surface,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginVertical: 4,
-  },
-  cherryPick: {
-    marginTop: 16,
-    paddingVertical: 12,
-    borderRadius: 4,
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceRaised,
-  },
-  cherryPickText: {
-    fontFamily: 'monospace',
-    fontSize: 12,
-    color: colors.primary,
-    letterSpacing: 1,
-  },
-  alertPip: { fontSize: 12, color: colors.reward },
-  alertText: {
-    flex: 1,
-    fontFamily: 'monospace',
-    fontSize: 12,
-    color: colors.textPrimary,
   },
 });

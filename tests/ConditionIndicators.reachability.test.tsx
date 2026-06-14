@@ -62,7 +62,6 @@ describe('#205 condition indicators - reachable through the live pipeline', () =
       openHour: 9,
       closeHour: 19,
       cash: world.economy.cash,
-      exceptionPending: false,
       ups: 0,
       sold: 0,
       pendingWarm: 0,

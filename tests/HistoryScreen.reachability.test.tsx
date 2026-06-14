@@ -36,11 +36,13 @@ describe('#208 HistoryLog persistence + reachability', () => {
 
     // Drive a notable event through the live bus so the log fills in-world.
     bus.publish('clock:day_started', { day: 2 } as never);
-    bus.publish('floor:exception_raised', {
+    bus.publish('market:shock_started', {
       day: 2,
-      tick: 4,
-      customerId: 'c1',
-      department: 'sales',
+      shockId: 'fuel-spike',
+      instanceId: 'fuel-spike@2',
+      label: 'Fuel price spike',
+      segmentMagnitudes: {},
+      expectedEndDay: 9,
     } as never);
 
     const before = world.historyLog.getEntries();

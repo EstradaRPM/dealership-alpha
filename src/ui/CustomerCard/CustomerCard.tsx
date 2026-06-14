@@ -9,8 +9,8 @@ import type { CurrentVehicle } from '../../game/NPC';
  * machinery (#166–#171) consumes downstream.
  *
  * Stays pure: no game-logic reach, no dispatch. The composition root passes
- * the read-model in. Reusable from AdminConsole (current site), HandPlayModal
- * (the in-game inspect path), and the upcoming trade-escalation overlay.
+ * the read-model in. Reusable from AdminConsole (current site) and the
+ * trade-escalation overlay.
  */
 export interface CustomerCardModel {
   customerId: string;

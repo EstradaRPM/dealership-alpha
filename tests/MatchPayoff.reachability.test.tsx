@@ -131,7 +131,6 @@ describe('#199 match-payoff beat — reachable through the live pipeline', () =>
       openHour: 9,
       closeHour: 19,
       cash: 40_000,
-      exceptionPending: false,
       ups: 6,
       sold: 1,
       pendingWarm: 2,

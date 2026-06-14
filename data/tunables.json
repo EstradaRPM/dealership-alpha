@@ -15,8 +15,7 @@
       "summer": 1.15,
       "fall": 1.05,
       "winter": 0.85
-    },
-    "exceptionMustHandle": true
+    }
   },
   "demandModel": {
     "inventoryHalfSat": 12,
@@ -191,7 +190,6 @@
     "tickCostPerGate": 6,
     "defaultCustomerDifficulty": 0.5,
     "walkQualityFloor": 0.25,
-    "playtestLiveDefault": false,
     "approachChoices": [
       { "id": "rapport", "label": "Build rapport", "fitModifier": 0.1, "difficultyModifier": -0.05 },
       { "id": "direct", "label": "Direct pitch", "fitModifier": 0.0, "difficultyModifier": 0.0 },
@@ -308,24 +306,8 @@
     "skillMultiplierRange": [0.4, 1.1]
   },
   "staffDispatch": {
-    "exceptionFlagRates": {
-      "vip_customer": 0.05,
-      "high_dollar_deal": 0.10,
-      "irate_customer": 0.08,
-      "lemon_law_threat": 0.02,
-      "audit_trigger": 0.01
-    },
-    "gmExceptionFlagRates": {
-      "vip_customer": 0,
-      "high_dollar_deal": 0,
-      "irate_customer": 0,
-      "lemon_law_threat": 0.02,
-      "audit_trigger": 0.01
-    },
     "minDrainPerTick": 0.15,
-    "maxDrainPerTick": 0.60,
-    "exceptionSkillExpMin": 1.0,
-    "exceptionSkillExpMax": 2.0
+    "maxDrainPerTick": 0.60
   },
   "marketEconomy": {
     "compWindow": {

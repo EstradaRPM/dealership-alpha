@@ -62,8 +62,6 @@ export interface GameScreenProps {
   setRecapModalOpen: (open: boolean) => void;
   handleNextDay: () => void;
   handleDeptPress: (dept: DeptKey) => void;
-  openHandPlay: (customerId: string) => void;
-  cherryPick: () => void;
   openInGameMenu: () => void;
   persistCurrentSave: () => void;
   setLotVehicles: (v: readonly LotVehicle[]) => void;
@@ -89,8 +87,6 @@ export function GameScreen({
   setRecapModalOpen,
   handleNextDay,
   handleDeptPress,
-  openHandPlay,
-  cherryPick,
   openInGameMenu,
   persistCurrentSave,
   setLotVehicles,
@@ -119,9 +115,6 @@ export function GameScreen({
         openHour: RENDER_LOOP.openHour,
         closeHour: RENDER_LOOP.closeHour,
         cash: world.economy.cash,
-        exceptionPending: floor
-          .grabbableCustomers()
-          .some((c) => c.source === 'exception' && c.mustHandle),
         ups: funnel.walkedIn,
         sold: funnel.sold,
         pendingWarm: Math.max(0, funnel.walkedIn - funnel.staffEngaged),
@@ -372,8 +365,6 @@ export function GameScreen({
       <FloorDashboard
         model={floorModel}
         controls={floorControls}
-        onExceptionPress={openHandPlay}
-        onCherryPick={floor && floor.canGrab() ? cherryPick : undefined}
         onOpenGameMenu={openInGameMenu}
       />
     );

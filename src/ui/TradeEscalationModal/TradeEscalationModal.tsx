@@ -14,7 +14,7 @@ import {
  * Manager-attention trade overlay (#170) — the player approver's decision
  * surface when an *unusual* trade escalates with no manager to handle it (or an
  * ask over the player override). Opened by the composition root in response to
- * `trade:escalated`; the day is paused behind it (cf. HandPlayModal). This view
+ * `trade:escalated`; the day is paused behind it (via the render-loop hold). This view
  * only renders the honest figures and dispatches the player's decision — it
  * reaches no game-logic internals. The customer accept/reject on a proposed
  * counter (`rollCustomerCounterResponse`) runs behind the seam; the result

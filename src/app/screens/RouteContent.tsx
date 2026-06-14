@@ -33,7 +33,6 @@ import {
 import type { WorldState } from '../useWorldState';
 import type { SaveSlots } from '../useSaveSlots';
 import type { Levers } from '../useLevers';
-import type { Modals } from '../useModals';
 import type { DayLoop } from '../useDayLoop';
 import { TIER_FIXTURES, type TierFixture } from '../devFixtures';
 
@@ -45,7 +44,6 @@ export interface RouteContentProps {
   worldState: WorldState;
   saveSlots: SaveSlots;
   levers: Levers;
-  modals: Modals;
   dayLoop: DayLoop;
   floorLoop: FloorRenderLoop;
   loadActiveSlotIntoGame: () => Promise<void>;
@@ -68,7 +66,6 @@ export function RouteContent({
   worldState,
   saveSlots,
   levers,
-  modals,
   dayLoop,
   floorLoop,
   loadActiveSlotIntoGame,
@@ -281,8 +278,6 @@ export function RouteContent({
           setRecapModalOpen={dayLoop.setRecapModalOpen}
           handleNextDay={dayLoop.handleNextDay}
           handleDeptPress={handleDeptPress}
-          openHandPlay={modals.openHandPlay}
-          cherryPick={modals.cherryPick}
           openInGameMenu={saveSlots.openInGameMenu}
           persistCurrentSave={persistCurrentSave}
           setLotVehicles={setLotVehicles}

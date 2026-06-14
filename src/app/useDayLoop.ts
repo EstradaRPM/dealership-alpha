@@ -266,26 +266,6 @@ export function useDayLoop({
         ]);
       }
     };
-    const onExceptionRaised = ({
-      tick,
-      customerId,
-      department,
-    }: {
-      day: number;
-      tick: number;
-      customerId: string;
-      department: string;
-    }) =>
-      setFloorEvents((log) => [
-        ...log,
-        {
-          kind: 'exception',
-          key: `e${eventSeq.current++}`,
-          customerId,
-          text: `t${tick} · ${department} exception — needs you`,
-        },
-      ]);
-
     // Month-close hook (#123): clock:month_ended fans out during the Next Day
     // transition (advanceDay) when the ending day completes a month. Latching
     // the interstitial here interrupts at MANAGERIAL — the render loop holds
@@ -314,7 +294,6 @@ export function useDayLoop({
     bus.subscribe('career:game_over', onGameOver);
     bus.subscribe('deal:closed', onDealClosed);
     bus.subscribe('staff:auto_resolved', onAutoResolved);
-    bus.subscribe('floor:exception_raised', onExceptionRaised);
     return () => {
       bus.unsubscribe('floor:day_complete', onDayComplete);
       bus.unsubscribe('clock:month_ended', onMonthEnded);
@@ -322,7 +301,6 @@ export function useDayLoop({
       bus.unsubscribe('career:game_over', onGameOver);
       bus.unsubscribe('deal:closed', onDealClosed);
       bus.unsubscribe('staff:auto_resolved', onAutoResolved);
-      bus.unsubscribe('floor:exception_raised', onExceptionRaised);
     };
   }, []);
 

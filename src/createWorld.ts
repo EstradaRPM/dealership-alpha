@@ -768,10 +768,6 @@ export function createWorld(deps: {
             ? { bundle: s.bundle, visitArchetypeId: s.visitArchetypeId }
             : undefined;
         },
-        // GM-presence seam (#124): a staffed GM suppresses dramatic-case
-        // escalations (gmExceptionFlagRates), so StaffDispatch returns
-        // escalated:0 and the GM-gated batch sim-week can run unattended.
-        getHasGm: () => staffOrg.currentRoster.some(s => s.role_id === 'gm'),
         salesProcessDeps: {
           marketPriceFn: marketEconomy.marketPriceFn,
           vehicleCostFn: marketEconomy.vehicleCostFn,

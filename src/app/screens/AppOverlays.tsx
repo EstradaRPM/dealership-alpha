@@ -3,14 +3,12 @@ import type { EventBus } from '../../game/EventBus';
 import type { World } from '../../createWorld';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import type { SaveStore } from '../../game/SaveStore';
-import { HandPlayModal, type HandPlayOutcome } from '../../ui/HandPlayModal';
 import { TradeEscalationModal } from '../../ui/TradeEscalationModal';
 import { DiscountEscalationModal } from '../../ui/DiscountEscalationModal';
 import { DayRecapModal } from '../../ui/DayRecap';
 import { MonthCloseInterstitial } from '../../ui/MonthCloseInterstitial';
 import { ChapterCard } from '../../ui/NarrativeBeat';
 import { AdminConsole } from '../../ui/AdminConsole';
-import { HAND_PLAY_LIVE } from '../config';
 import type { Modals } from '../useModals';
 import type { DayLoop } from '../useDayLoop';
 
@@ -41,14 +39,10 @@ export function AppOverlays({
   bump,
 }: AppOverlaysProps) {
   const {
-    handSession,
-    handResult,
     tradeReview,
     tradeCounterResult,
     discountReview,
     discountCounterResult,
-    chooseApproach,
-    closeHandPlay,
     decideTrade,
     decideDiscount,
   } = modals;
@@ -63,33 +57,8 @@ export function AppOverlays({
     endCard,
   } = dayLoop;
 
-  const handOutcome: HandPlayOutcome | null = !handSession
-    ? null
-    : handResult == null
-      ? handSession.currentGate
-        ? {
-            status: 'continue',
-            gate: handSession.currentGate,
-            choices: handSession.choices.map((c) => ({
-              id: c.id,
-              label: c.label,
-            })),
-          }
-        : null
-      : handResult.status === 'walk'
-        ? { status: 'walk', cause: handResult.outcome.cause }
-        : { status: 'closed' };
-
   return (
     <>
-      <HandPlayModal
-        visible={handSession != null}
-        customerId={handSession?.customerId ?? null}
-        playLive={HAND_PLAY_LIVE}
-        outcome={handOutcome}
-        onChoose={chooseApproach}
-        onClose={closeHandPlay}
-      />
       <TradeEscalationModal
         visible={tradeReview != null}
         review={tradeReview}

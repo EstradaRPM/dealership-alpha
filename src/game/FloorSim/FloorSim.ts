@@ -54,9 +54,10 @@ export interface CapacityGate {
  * ticks rather than once-per-day. The department owns its own
  * throughput/threshold (StaffDispatch owns f(skill×tier)); FloorSim only
  * paces the invocation. `resolved` accrues to the routine queue;
- * `escalated` count drives the forced-exception channel (#103) — FloorSim
- * mints one grabbable exception ref + one floor:exception_raised per
- * escalated case. Structurally satisfied by
+ * `escalated` counts dramatic cases the department held for the player (a
+ * trade/discount review pending the player's decision via its own
+ * trade:escalated / discount:escalated event). FloorSim only tallies the
+ * count into `totalEscalated`. Structurally satisfied by
  * StaffDispatch/ServiceDispatch createFloorDrain().
  */
 export interface DeptDrain {
@@ -68,11 +69,11 @@ export interface DeptDrain {
 
 /**
  * Locked #99 grab-eligibility ref. Self-describing so the unified grab verb
- * (#104) treats ambient and exception customers uniformly. #102 mints
- * `source:'ambient'` / `mustHandle:false`; the forced-exception channel
- * (#103) mints `source:'exception'` with `mustHandle` from the
- * `floorSim.exceptionMustHandle` tunable policy. FloorSim is
- * department/tier-agnostic — `department` is opaque routing context.
+ * (#104) treats every grabbable customer uniformly. #102 mints
+ * `source:'ambient'` / `mustHandle:false`. The `'exception'` source is a
+ * reserved ref variant (no live producer since the dead forced-exception
+ * channel was removed in #275). FloorSim is department/tier-agnostic —
+ * `department` is opaque routing context.
  */
 export interface CustomerRef {
   readonly id: string;
@@ -160,7 +161,8 @@ export interface FloorSim {
   readonly totalWalked: number;
   /** Cumulative routine queue items auto-resolved by injected dept drains. */
   readonly totalResolved: number;
-  /** Cumulative dramatic cases forced into the exception channel (#103). */
+  /** Cumulative dramatic cases a drain held for the player (trade/discount
+   *  reviews pending a decision via their own escalation events). */
   readonly totalEscalated: number;
   /**
    * Ticks left in the day available to hand-play (#104). 0 once the day is
@@ -284,33 +286,15 @@ export function createFloorSim(deps: {
       );
     }
     if (drains) {
-      let escalatedThisTick = 0;
       for (const d of drains) {
         const out = d.drain({ day: ctx.day, tick });
         totalResolved += out.resolved;
-        escalatedThisTick += out.escalated;
-      }
-      // Step 4: forced-exception channel. Each dramatic case the drain
-      // refused becomes one grabbable exception ref + one heartbeat, emitted
-      // after the drain and before floor:tick (canonical #99 order). The
-      // department owns the f(skill×tier) threshold behind the seam; FloorSim
-      // is department/tier-agnostic so refs carry the default 'sales' routing
-      // context (unified-grab refinement is #104).
-      for (let i = 0; i < escalatedThisTick; i++) {
-        const ref: CustomerRef = {
-          id: `floor:exc:${ctx.day}:${tick}:${i}`,
-          source: 'exception',
-          mustHandle: cfg.exceptionMustHandle,
-          department: 'sales',
-        };
-        roster.push(ref);
-        totalEscalated += 1;
-        bus.publish('floor:exception_raised', {
-          day: ctx.day,
-          tick,
-          customerId: ref.id,
-          department: ref.department,
-        });
+        // A drain reports `escalated` for a dramatic case it held for the
+        // player (a trade/discount review pending a decision via its own
+        // trade:escalated / discount:escalated event). FloorSim only tallies
+        // the count; the held deal is surfaced + paused by the composition
+        // root's interrupt modals, not by a floor channel.
+        totalEscalated += out.escalated;
       }
     }
     bus.publish('floor:tick', {

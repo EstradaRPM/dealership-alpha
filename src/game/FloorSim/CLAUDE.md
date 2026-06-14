@@ -6,8 +6,15 @@ share / season. Day ends exactly at N ticks → control returns to `GameClock`.
 
 Skeleton (#98): arrivals + day-exhaustion. CapacityManager per-tick
 admittance + felt walk (#100): **landed**. Staff per-tick draining (#101):
-**landed**. Tick-cost hand-play (#102): **landed**. Forced-exception
-channel (#103): **landed**. Cross-department cherry-pick (#104): **landed**.
+**landed**. Tick-cost hand-play (#102): **landed**. Cross-department
+cherry-pick (#104): **landed**.
+
+The forced-exception channel (#103 — FloorSim minting grabbable exception
+refs + `floor:exception_raised` per held case) was **removed in #275** along
+with the dead HandPlay event it fed. A drain's `escalated` count is now only
+tallied into `totalEscalated`; the held case (a trade/discount review) is
+surfaced + paused by the composition root's interrupt modals via its own
+`trade:escalated` / `discount:escalated` event, not by a floor channel.
 
 ## Capacity seam (#100)
 Optional injected `capacity?: CapacityGate` (`admit(arrivals, {day,tick}) →
@@ -24,23 +31,20 @@ Optional injected `drains?: DeptDrain[]`. Each tick, after admit/walk and
 before `floor:tick`, every drain's `drain({day,tick}) → {resolved,escalated}`
 is invoked so a department auto-resolves its routine queue at a skill-scaled
 throughput, draining across ticks (not once-per-day). FloorSim only paces the
-invocation — the department owns its own throughput/threshold. `resolved` accumulates into `totalResolved`; `escalated` drives the
-forced-exception channel (#103, below). Seam omitted ⇒ no auto-resolution
+invocation — the department owns its own throughput/threshold. `resolved` accumulates into `totalResolved`; `escalated` is tallied into
+`totalEscalated` (was the #103 forced-exception channel, removed in #275 —
+see below). Seam omitted ⇒ no auto-resolution
 (skeleton behavior). Structurally satisfied by `createStaffFloorDrain` /
 `createServiceFloorDrain`.
 
-## Forced-exception channel (#103)
-StaffDispatch owns the escalation threshold `f(staff skill × role tier)`
-behind the drain seam — each dramatic-case flag rate is raised to a
-skill-lerped exponent (`staffDispatch.exceptionSkillExp{Min,Max}`), so a
-more skilled floor escalates fewer/rarer cases and a guaranteed (1.0) rate
-stays guaranteed. FloorSim consumes only the per-tick `escalated` count: for
-each, after the drain and **before** `floor:tick` (canonical step 4), it
-mints one grabbable exception `CustomerRef` (`source:'exception'`,
-`mustHandle` = `floorSim.exceptionMustHandle`, default `department:'sales'`
-since FloorSim is department/tier-agnostic — unified-grab refinement is
-#104) and emits one `floor:exception_raised`. `totalEscalated` exposes the
-cumulative count. Seam omitted ⇒ zero escalations (skeleton behavior).
+## Drain `escalated` tally (was the forced-exception channel #103)
+A drain reports a per-tick `escalated` count for dramatic cases it held for
+the player (a trade/discount review pending the player's decision). FloorSim
+only accumulates it into `totalEscalated` — it no longer mints exception
+refs or emits a floor event (the #103 channel + the dead HandPlay event it
+fed were removed in #275). The held case surfaces + pauses the floor through
+the composition root's `trade:escalated` / `discount:escalated` interrupt
+modals + the render-loop `hold`, not a floor channel.
 
 ## Cross-department cherry-pick (#104)
 The grab verb is department-agnostic: `grabbableCustomers()` is one roster of
@@ -91,7 +95,7 @@ interface rework. Load-bearing invariants for anyone touching this module:
   (`customerSource.spawn`, `capacity.admit`, per-dept `drain`, the unchanged
   #85 evaluator). EventBus is observability only.
 - **Canonical per-tick order:** spawn → admit/walk (`floor:customer_walked`)
-  → drain (`{resolved,escalated}`) → escalate (`floor:exception_raised`) →
+  → drain (`{resolved,escalated}`; escalated only tallied) →
   `floor:tick` (settled, emitted last) → day-end check (`floor:day_complete`).
 - **Determinism:** auto path `runDay()` deterministic from `(seed,day,ctx)`
   alone; interactive path from seed + ordered player-action log. Player actions
@@ -144,10 +148,8 @@ cadence (preserves headless testability + UI/logic separability).
 ## Events emitted (per simulated day, in order)
 1. `floor:customer_walked` — 0..n per tick, one per overflow customer,
    emitted before that tick's `floor:tick`.
-2. `floor:exception_raised` — 0..n per tick, one per dramatic case the
-   drain forced out; emitted after that tick's drain, before its `floor:tick`.
-3. `floor:tick` — ×`ticksPerDay`, ascending `tick = 1..ticksPerDay`.
-4. `floor:day_complete` — exactly once, immediately after the final
+2. `floor:tick` — ×`ticksPerDay`, ascending `tick = 1..ticksPerDay`.
+3. `floor:day_complete` — exactly once, immediately after the final
    `floor:tick`; control then returns to `GameClock`.
 
 Runs strictly between `clock:day_started` and the composition root calling

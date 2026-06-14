@@ -54,16 +54,10 @@ describe('HistoryLog (#208)', () => {
     expect(entries[1].day).toBe(1);
   });
 
-  it('captures escalations and market shocks', () => {
+  it('captures market shocks', () => {
     const bus = createEventBus();
     const log = createHistoryLog({ bus });
 
-    bus.publish('floor:exception_raised', {
-      day: 3,
-      tick: 5,
-      customerId: 'c2',
-      department: 'sales',
-    } as never);
     bus.publish('market:shock_started', {
       day: 3,
       shockId: 'fuel-spike',
@@ -74,7 +68,6 @@ describe('HistoryLog (#208)', () => {
     } as never);
 
     const kinds = log.getEntries().map((e) => e.kind);
-    expect(kinds).toContain('escalation');
     expect(kinds).toContain('market');
   });
 

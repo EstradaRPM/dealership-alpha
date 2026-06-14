@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { EventBus } from '../../game/EventBus';
 import type { FloorSim } from '../../game/FloorSim';
 import { loadTunables } from '../../game/data';
 
@@ -23,8 +22,9 @@ export interface FloorRenderLoop {
 /**
  * The live clock (#121). A wall-clock interval calls `floor.step()` at a
  * tunable base cadence scaled by the speed multiplier; Pause halts the
- * interval; `floor:exception_raised` auto-pauses and surfaces the alert.
- * Ambient grabbables (walks / cherry-picks) do NOT auto-pause.
+ * interval. A trade/discount escalation review suspends the loop via the
+ * injected `hold` (the modal is latched in the composition root), never by a
+ * floor channel.
  *
  * Game logic never sees wall-clock: speed/pause are pure render multipliers
  * over the deterministic `step()` — headless `runDay()` is unaffected.
@@ -34,7 +34,6 @@ export function useFloorRenderLoop(deps: {
   floor: FloorSim | null;
   /** FLOOR_OPEN and the loop should be driving (false ⇒ idle). */
   active: boolean;
-  bus: EventBus;
   /** Re-render after each step (and on skip-to-close). */
   onTick: () => void;
   /**
@@ -44,7 +43,7 @@ export function useFloorRenderLoop(deps: {
    */
   hold?: boolean;
 }): FloorRenderLoop {
-  const { floor, active, bus, onTick, hold = false } = deps;
+  const { floor, active, onTick, hold = false } = deps;
   const speeds = RENDER_LOOP.speedMultipliers;
   const [speed, setSpeed] = useState<number>(speeds[0]);
   const [paused, setPaused] = useState(false);
@@ -53,16 +52,7 @@ export function useFloorRenderLoop(deps: {
   const onTickRef = useRef(onTick);
   onTickRef.current = onTick;
 
-  // Forced-exception auto-pause. Ambient walks/cherry-picks deliberately do
-  // not subscribe here — only escalations halt the floor.
-  useEffect(() => {
-    if (!active) return;
-    const onException = () => setPaused(true);
-    bus.subscribe('floor:exception_raised', onException);
-    return () => bus.unsubscribe('floor:exception_raised', onException);
-  }, [bus, active]);
-
-  // Fresh day ⇒ clear any lingering auto-pause and reset to default speed.
+  // Fresh day ⇒ clear any lingering pause and reset to default speed.
   useEffect(() => {
     if (floor && active) {
       setPaused(false);

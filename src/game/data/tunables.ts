@@ -30,9 +30,6 @@ export const TunablesSchema = z.object({
       fall: z.number().nonnegative(),
       winter: z.number().nonnegative(),
     }),
-    // Forced-exception channel (#103): whether escalated cases minted into
-    // FloorSim's roster are flagged mustHandle (forced for the player).
-    exceptionMustHandle: z.boolean(),
   }),
   // Composite demand model (#128a). Lives behind the locked #125 DemandSource
   // seam: the live provider derives a single demandFactor from controllable
@@ -204,10 +201,6 @@ export const TunablesSchema = z.object({
     tickCostPerGate: z.number().int().positive(),
     defaultCustomerDifficulty: z.number().min(0).max(1),
     walkQualityFloor: z.number().min(0).max(1),
-    // Default for the hand-play spotlight modal (#118): false ⇒ opening the
-    // modal auto-pauses the day; true ⇒ the day keeps running live behind it
-    // (the #74/#105 felt-pacing comparison path).
-    playtestLiveDefault: z.boolean(),
     approachChoices: z
       .array(
         z.object({

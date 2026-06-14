@@ -25,7 +25,6 @@ day-stamped entry:
 | Event | kind | entry |
 | --- | --- | --- |
 | `deal:closed` | `sale` | "Sold a unit (cash/financed) — $N gross." |
-| `floor:exception_raised` | `escalation` | "Escalation on the … floor needed your call." |
 | `market:shock_started` | `market` | "Market shift: …" |
 | `market:shock_resolved` | `market` | "Market settled — … passed." |
 | `career:tier_up` | `tier` | "Promoted to Tier N." |

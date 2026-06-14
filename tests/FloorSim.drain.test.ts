@@ -67,21 +67,9 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
   };
 }
 
-const ZERO_FLAGS = {
-  vip_customer: 0,
-  high_dollar_deal: 0,
-  irate_customer: 0,
-  lemon_law_threat: 0,
-  audit_trigger: 0,
-};
-
 const STAFF_CONFIG: StaffDispatchConfig = {
-  exceptionFlagRates: ZERO_FLAGS,
-  gmExceptionFlagRates: ZERO_FLAGS,
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.6,
-  exceptionSkillExpMin: 1.0,
-  exceptionSkillExpMax: 3.0,
 };
 
 // Empty-lot Inventory stub — drain tests focus on cadence, not closes.
