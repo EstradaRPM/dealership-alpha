@@ -6,7 +6,7 @@ This repo is designed for iterative work by Codex, Claude Code, and future AI ag
 
 - Put task intent, dependencies, blockers, acceptance criteria, and out-of-scope notes in the GitHub issue.
 - Put implementation decisions that future work depends on in repo docs: the relevant module `CLAUDE.md` / `AGENTS.md`, an ADR, `docs/spec-condensed.md`, or a short `docs/*-recipe.md`.
-- Keep reusable wiring patterns in small recipe docs so later slices read one durable source instead of re-deriving prior code.
+- Keep reusable wiring patterns in small recipe docs so later slices read one durable source instead of re-deriving prior code. Existing recipes include `docs/generation-seam-recipe.md` (per-customer generate+wire) and `docs/save-migration-recipe.md` (worldSnapshot versioning — read before changing any persisted state).
 - Keep module public APIs narrow and documented through the module barrel plus the module agent doc.
 
 ## Context Packets
