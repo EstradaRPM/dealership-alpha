@@ -84,9 +84,11 @@ import {
   createTierManager,
   createBankruptcyMonitor,
   createIndictmentMonitor,
+  createCareerEndingsMonitor,
   type TierManager,
   type BankruptcyMonitor,
   type IndictmentMonitor,
+  type CareerEndingsMonitor,
   type CharacterProfile,
 } from './game/CareerProgression';
 import { createEndCardManager, type EndCardManager } from './game/EndCard';
@@ -138,6 +140,7 @@ export interface World {
   tierManager: TierManager;
   bankruptcyMonitor: BankruptcyMonitor;
   indictmentMonitor: IndictmentMonitor;
+  careerEndingsMonitor: CareerEndingsMonitor;
   endCardManager: EndCardManager;
   telemetry: Telemetry;
   historyLog: HistoryLog;
@@ -374,6 +377,20 @@ export function createWorld(deps: {
   // far (DealEngine, selling an un-reconditioned hidden lemon); `audit_failure`
   // and `deal:fraud_flag` remain unwired follow-ons (#271).
   const indictmentMonitor = createIndictmentMonitor({
+    bus,
+    economy,
+    tierManager,
+  });
+  // #272: CareerEndingsMonitor — the sole publisher of every SUCCESS ending
+  // EndCardManager consumes (`career:retired`, `career:pe_sellout`,
+  // `career:family_handoff`) plus the periodic `career:pe_offer_made`. Built
+  // earlier but never instantiated in the world (a composition orphan, #184/F1):
+  // until wired NONE of the win conditions could fire — a run could only end via
+  // a terminal failure (bankruptcy / indictment / AG complaint). It tracks
+  // retire/sellout/family-handoff eligibility off economy/tier/career-year and
+  // surfaces a Tier 3+ PE offer on a fixed cadence via `clock:overnight_payroll`.
+  // Its pending-offer state persists via the world snapshot (#188, envelope v8).
+  const careerEndingsMonitor = createCareerEndingsMonitor({
     bus,
     economy,
     tierManager,
@@ -865,6 +882,7 @@ export function createWorld(deps: {
     tierManager,
     bankruptcyMonitor,
     indictmentMonitor,
+    careerEndingsMonitor,
     endCardManager,
     telemetry,
     historyLog,

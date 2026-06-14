@@ -29,6 +29,13 @@ Player tier (1 → 3 in v1) + backstory-driven Day 1 modifiers + branding rebran
   `reconStatus !== 'complete'` with a `major`/`catastrophic` recon bucket — is
   retailed); `regulatory:audit_failure` and `deal:fraud_flag` remain unwired
   follow-ons (#271).
+- `CareerEndingsMonitor.getSerializableState()/restoreState()` — the pending PE
+  offer + last-offer day + ended flag is the world seam's `careerEndingsMonitor`
+  key (#272, envelope v8). Wired into `createWorld` alongside the failure
+  monitors; it is the sole publisher of every SUCCESS ending EndCardManager
+  consumes (`career:retired`, `career:pe_sellout`, `career:family_handoff`) plus
+  the periodic `career:pe_offer_made`. Until #272 it was a composition orphan, so
+  no win condition could fire — a run could only end via a terminal failure.
 
 ## Events
 - **Emits:** `career:tier_up`, `career:bankruptcy_*`, `career:debt_payment_made`, `career:indictment_*`, `career:retired`, `career:pe_offer_made`, `career:pe_sellout`, `career:family_handoff`.

@@ -303,6 +303,73 @@ describe('#271 composition root — IndictmentMonitor wired into the live world'
   });
 });
 
+describe('#272 composition root — CareerEndingsMonitor wired into the live world', () => {
+  it('routes a retire success ending to a converged game-over against the live composition', () => {
+    const bus = createEventBus();
+    const world = createWorld({
+      bus,
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+
+    const retired = jest.fn();
+    const gameOver = jest.fn();
+    bus.subscribe('career:retired', retired);
+    bus.subscribe('career:game_over', gameOver);
+
+    // Real career-endings tunables: retire needs cash >= 750k AND careerYear >= 8.
+    // careerYearFromDay uses DAYS_PER_YEAR (364): day 8*364 → careerYear 8.
+    // Start 50k → post 700k to clear the cash bar.
+    world.economy.postRevenue(700_000, 'test fixture');
+    const retireDay = 8 * 364;
+
+    expect(world.careerEndingsMonitor.canRetire(retireDay)).toBe(true);
+    expect(world.careerEndingsMonitor.retire(retireDay)).toBe(true);
+
+    // CareerEndingsMonitor (the sole publisher) fired its success ending, and the
+    // live-wired EndCardManager converged it into a single game-over.
+    expect(retired).toHaveBeenCalledTimes(1);
+    expect(gameOver).toHaveBeenCalledTimes(1);
+    expect(world.endCardManager.data?.reason).toBe('retire');
+    expect(world.careerEndingsMonitor.isEnded).toBe(true);
+  });
+
+  it('round-trips a pending PE offer through the world snapshot', () => {
+    const bus = createEventBus();
+    const world = createWorld({
+      bus,
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+
+    world.careerEndingsMonitor.restoreState({
+      currentOffer: { day: 100, tier: 3, amount: 1_750_000 },
+      lastOfferDay: 100,
+      isEnded: false,
+    });
+
+    const snap = snapshotWorld(world);
+    expect(snap.modules.careerEndingsMonitor).toEqual({
+      currentOffer: { day: 100, tier: 3, amount: 1_750_000 },
+      lastOfferDay: 100,
+      isEnded: false,
+    });
+
+    const rebuilt = createWorld({
+      bus: createEventBus(),
+      masterSeed: MASTER_SEED,
+      characterProfile: PROFILE,
+    });
+    expect(rebuilt.careerEndingsMonitor.currentOffer).toBeNull();
+    restoreWorld(JSON.parse(JSON.stringify(snap)), rebuilt);
+    expect(rebuilt.careerEndingsMonitor.currentOffer).toEqual({
+      day: 100,
+      tier: 3,
+      amount: 1_750_000,
+    });
+  });
+});
+
 describe('#206 composition root — ServiceDispatch wired into the floor seams', () => {
   it('auto-resolves Tier 2 service intake through a hired service advisor', () => {
     const bus = createEventBus();
