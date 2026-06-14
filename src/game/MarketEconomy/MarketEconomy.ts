@@ -29,9 +29,11 @@ import {
 import {
   loadAuctionSourcesConfig,
   loadDaysToSellCurvesConfig,
+  loadDemandElasticityConfig,
   loadMarketMarkupConfig,
   type AuctionSourcesConfig,
   type DaysToSellCurvesConfig,
+  type DemandElasticityConfig,
   type MarketMarkupConfig,
 } from './schemas';
 import { loadBrandTiersConfig, type BrandTiersConfig } from '../SalesProcess';
@@ -151,6 +153,7 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
   const brandTiers: BrandTiersConfig = deps.brandTiers ?? loadBrandTiersConfig();
   const auctionSources: AuctionSourcesConfig = loadAuctionSourcesConfig();
   const daysToSellConfig: DaysToSellCurvesConfig = loadDaysToSellCurvesConfig();
+  const elasticityConfig: DemandElasticityConfig = loadDemandElasticityConfig();
   const sourceLabels: Readonly<Record<string, string>> = (() => {
     const m: Record<string, string> = {};
     for (const s of auctionSources.sources) m[s.id] = s.label;
@@ -316,7 +319,7 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
           daysOnLot: vehicle.daysOnLot,
           compObservations: compHistory.liveCount(vehicle.category, getCurrentDay()),
         },
-        { config: daysToSellConfig },
+        { config: daysToSellConfig, elasticity: elasticityConfig },
       );
     },
     sourceLabelFor(sourceId: string) {

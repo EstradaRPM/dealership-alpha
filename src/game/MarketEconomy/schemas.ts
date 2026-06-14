@@ -250,16 +250,30 @@ export const MarketMarkupConfigSchema = z
   .strict();
 export type MarketMarkupConfig = z.infer<typeof MarketMarkupConfigSchema>;
 
+/**
+ * Slice #276 — the shared price-elasticity demand model tunables. Lives in its
+ * own file (not folded into days-to-sell-curves) because both the days-to-sell
+ * prediction and FloorSim arrivals (S5/S7) read it — keeping it separate means
+ * the arrival consumer never imports the days-to-sell baselines.
+ */
+export const DemandElasticityConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    priceSensitivity: z
+      .object({ above: positive, below: positive })
+      .strict(),
+    heatSensitivity: z.number().nonnegative(),
+  })
+  .strict();
+export type DemandElasticityConfig = z.infer<typeof DemandElasticityConfigSchema>;
+
 export const DaysToSellCurvesConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
     _doc: z.string().optional(),
     defaultBaselineDays: positive,
     segmentBaselines: z.record(z.string().min(1), positive),
-    priceSensitivity: z
-      .object({ above: positive, below: positive })
-      .strict(),
-    heatSensitivity: z.number().nonnegative(),
     aging: z
       .object({
         referenceDays: positive,
@@ -424,6 +438,16 @@ export function loadDaysToSellCurvesConfig(): DaysToSellCurvesConfig {
     raw,
     DaysToSellCurvesConfigSchema,
     'data/days-to-sell-curves.json',
+  );
+}
+
+export function loadDemandElasticityConfig(): DemandElasticityConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/demand-elasticity.json');
+  return parseData(
+    raw,
+    DemandElasticityConfigSchema,
+    'data/demand-elasticity.json',
   );
 }
 

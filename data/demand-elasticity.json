@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Slice #276 (Pricing/Demand spine S4) — the ONE price-elasticity demand model shared by the days-to-sell prediction (read side) and, later, FloorSim arrivals (S5/S7). demandMultiplier = exp(-priceSensitivity[above|below] × pricePosition) × exp(heatSensitivity × segmentHeat), where pricePosition = (ask - benchmark) / benchmark. Exponential ⇒ strictly positive + monotonic. Calibrated so at-benchmark → 1.0, +20% → ~0.25× (≈4× days-to-sell), -10% → ~2× (≈0.5×): priceSensitivity ≈ ln(4)/0.2 ≈ ln(0.5)/-0.1 ≈ 6.93. 'above'/'below' kept separate so #180 can tune the above-market bite vs below-market lift asymmetry independently (Pillar 4). Hard calibration is deferred to slice S9 / #180.",
+  "priceSensitivity": {
+    "above": 6.93,
+    "below": 6.93
+  },
+  "heatSensitivity": 2.0
+}

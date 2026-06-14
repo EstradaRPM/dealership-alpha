@@ -29,12 +29,24 @@ Design record: issue **#182** (locked). Read that before working any slice.
   optional `vehicle.daysOnLot`. Deterministic. The real-time pricing screen
   (#175) consumes it.
 - `computeAnchor(vehicle, deps?)` — pure, deterministic, no RNG.
-- `predictDaysToSell(input, deps?)` — pure engine for the above (slice #174).
-  `expectedDays = baseline(segment) × priceMult × heatMult × agingMult`, clamped;
-  `priceMult`/`heatMult` are exponential (strictly positive, monotonic). Tuned
-  so at-market → baseline, +20% → ~4×, −10% → 0.5×. Confidence falls with
-  extrapolation distance (above-market weighted heavier) and rises with live
-  comp count. Config: `data/days-to-sell-curves.json`.
+- `demandMultiplier(input, deps?)` — **the ONE price-elasticity demand model**
+  (slice #276, Pricing/Demand spine S4). Pure, deterministic. Given an ask vs.
+  the competitor benchmark + segment heat → a relative demand multiplier
+  (`1` = at-benchmark neutral-heat baseline, `<1` above market, `>1` below /
+  hot). `demandMultiplier = exp(-priceSensitivity[above|below] × pricePosition)
+  × exp(heatSensitivity × heat)` — strictly positive, monotonic, asymmetric
+  above/below. This is the **shared read-side model** (`pricing-demand-spine.md`
+  Pillar 3): `predictDaysToSell` reads it now; FloorSim arrivals (S5/S7) will
+  draw from the same function — no duplicate curve. Config:
+  `data/demand-elasticity.json`.
+- `predictDaysToSell(input, deps?)` — pure engine for the above (slice #174,
+  reworked #276). `expectedDays = baseline(segment) / demandMultiplier ×
+  agingMult`, clamped; the price/heat response is no longer local — it delegates
+  to the shared `demandMultiplier`. Tuned so at-market → baseline, +20% → ~4×,
+  −10% → 0.5×. Confidence falls with extrapolation distance (above-market
+  weighted heavier) and rises with live comp count. Configs:
+  `data/days-to-sell-curves.json` (baselines/aging/bounds/confidence) +
+  `data/demand-elasticity.json` (the shared elasticity curve).
 - Pricing-suggestion engine (#154, folded into #175) — pure, deterministic,
   no live state:
   - `suggestListPrice({ bookValue, marketPrice, strategy }, deps?)` →
@@ -147,9 +159,13 @@ fallback path per slice #155 AC.
 - `data/recon-surprise-events.json` — surprise event templates keyed by tail
   bucket (#162). The sampler picks one when a tail-bucket vehicle crosses the
   surprise threshold mid-recon.
-- `data/days-to-sell-curves.json` — per-segment baseline days + price/heat
-  sensitivities + aging shape + confidence params for the #174 predictor.
-  `priceSensitivity.above`/`below` are separate so #180 can tune asymmetry.
+- `data/days-to-sell-curves.json` — per-segment baseline days + aging shape +
+  bounds + confidence params for the #174 predictor. The price/heat response
+  moved to `data/demand-elasticity.json` (#276) so the days-to-sell consumer and
+  the FloorSim-arrival consumer share one curve.
+- `data/demand-elasticity.json` — the shared price-elasticity curve (#276):
+  `priceSensitivity.above`/`below` (kept separate so #180 can tune the
+  above-market bite vs below-market lift asymmetry) + `heatSensitivity`.
 - `data/pricing-strategies.json` — list-price strategy postures
   (`marketAggression` + `targetMarkupPct` per strategy), the default strategy,
   the position-indicator ratio bands, and the competitor-comparable spread for

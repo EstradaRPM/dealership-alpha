@@ -31,6 +31,13 @@ export type {
   DaysToSellDeps,
 } from './daysToSell';
 
+export { demandMultiplier } from './elasticity';
+export type {
+  ElasticityInput,
+  ElasticityResult,
+  ElasticityDeps,
+} from './elasticity';
+
 export {
   suggestListPrice,
   classifyPricePosition,
@@ -109,6 +116,8 @@ export {
   loadMarketShocksConfig,
   loadDaysToSellCurvesConfig,
   DaysToSellCurvesConfigSchema,
+  loadDemandElasticityConfig,
+  DemandElasticityConfigSchema,
   loadPricingStrategiesConfig,
   PricingStrategiesConfigSchema,
 } from './schemas';
@@ -131,6 +140,7 @@ export type {
   ReconSurpriseEventsConfig,
   ReconSurpriseTemplate,
   DaysToSellCurvesConfig,
+  DemandElasticityConfig,
   PricingStrategiesConfig,
   PricingStrategyEntry,
 } from './schemas';

@@ -1,7 +1,9 @@
 import {
   loadDaysToSellCurvesConfig,
   type DaysToSellCurvesConfig,
+  type DemandElasticityConfig,
 } from './schemas';
+import { demandMultiplier } from './elasticity';
 
 /**
  * Slice #174 — days-to-sell prediction engine.
@@ -12,6 +14,12 @@ import {
  * `predictDaysToSell(vehicle, askingPrice)` that resolves marketPrice + heat +
  * comp count from live state and delegates here; this module is the testable
  * core and never touches the anchor/provider machinery itself.
+ *
+ * Slice #276 (Pricing/Demand spine S4): the price/heat response is no longer
+ * computed locally — it reads the ONE shared `demandMultiplier` elasticity
+ * model (`elasticity.ts`), the same model FloorSim arrivals will draw from
+ * (S5/S7). `expectedDays = baseline / demandMultiplier × agingMult`, so the
+ * pricing screen's prediction and the floor's actual traffic can never diverge.
  */
 export interface DaysToSellInput {
   /** Honest retail market price for the vehicle (heat-inclusive). */
@@ -44,6 +52,8 @@ export interface DaysToSellPrediction {
 
 export interface DaysToSellDeps {
   readonly config?: DaysToSellCurvesConfig;
+  /** The shared price-elasticity model config (slice #276). */
+  readonly elasticity?: DemandElasticityConfig;
 }
 
 function clamp(x: number, lo: number, hi: number): number {
@@ -51,18 +61,19 @@ function clamp(x: number, lo: number, hi: number): number {
 }
 
 /**
- * Pure days-to-sell estimate.
+ * Pure days-to-sell estimate, derived from the shared elasticity model.
  *
  * ```
- * pricePosition = (asking - market) / market
- * priceMult     = exp(sensitivity[above|below] × pricePosition)   -- >market slower, <market faster
- * heatMult      = exp(-heatSensitivity × segmentHeat)             -- hot segment faster
- * agingMult     = 1 + weight × (daysOnLot / referenceDays)^exponent
- * expectedDays  = clamp(round(baseline × priceMult × heatMult × agingMult), min, max)
+ * demandMult   = demandMultiplier(ask vs market, heat)   -- the ONE shared model (#276)
+ * agingMult    = 1 + weight × (daysOnLot / referenceDays)^exponent
+ * expectedDays = clamp(round(baseline / demandMult × agingMult), min, max)
  * ```
  *
- * Calibrated (see data/days-to-sell-curves.json) so at-market → baseline,
- * +20% → ~4×, −10% → 0.5×.
+ * `baseline / demandMult`: more demand (hot segment or below-market ask) → sells
+ * in fewer days; less demand (above-market ask) → more days. This is the same
+ * `demandMultiplier` FloorSim will scale arrivals by (S5/S7), so the screen's
+ * promise and the floor's traffic stay one model. Calibrated (see
+ * data/demand-elasticity.json) so at-market → baseline, +20% → ~4×, −10% → 0.5×.
  */
 export function predictDaysToSell(
   input: DaysToSellInput,
@@ -85,14 +96,14 @@ export function predictDaysToSell(
     };
   }
 
-  const pricePosition = (input.askingPrice - input.marketPrice) / input.marketPrice;
-  const priceSensitivity =
-    pricePosition >= 0
-      ? config.priceSensitivity.above
-      : config.priceSensitivity.below;
-  const priceMult = Math.exp(priceSensitivity * pricePosition);
-
-  const heatMult = Math.exp(-config.heatSensitivity * input.segmentHeat);
+  const { pricePosition, demandMultiplier: demandMult } = demandMultiplier(
+    {
+      benchmarkPrice: input.marketPrice,
+      askingPrice: input.askingPrice,
+      segmentHeat: input.segmentHeat,
+    },
+    { config: deps.elasticity },
+  );
 
   const daysOnLot = Math.max(0, input.daysOnLot ?? 0);
   const agingMult =
@@ -101,7 +112,7 @@ export function predictDaysToSell(
       Math.pow(daysOnLot / config.aging.referenceDays, config.aging.exponent);
 
   const expectedDays = clamp(
-    Math.round(baseline * priceMult * heatMult * agingMult),
+    Math.round((baseline / demandMult) * agingMult),
     config.bounds.minDays,
     config.bounds.maxDays,
   );
