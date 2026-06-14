@@ -1,6 +1,7 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
+import { readAppCompositionSource } from './helpers/appComposition';
 import { render } from '@testing-library/react-native';
 import { createEventBus, type EventBus } from '../src/game/EventBus';
 import { createTierGate, type TierGate } from '../src/game/TierGate';
@@ -339,7 +340,7 @@ describe('#233 S3b — gate strip reachable on the live Home dashboard', () => {
   });
 
   it('App.tsx builds the gate strip off the live world and feeds buildHomeDashboard', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    const src = readAppCompositionSource();
     expect(src).toMatch(/buildGateStrip\(\s*world\.tierGate\.getProgress\(\)/);
     expect(src).toMatch(/gate: gateModel\.faces\.length > 0/);
   });

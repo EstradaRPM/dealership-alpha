@@ -1,6 +1,7 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
+import { readAppCompositionSource } from './helpers/appComposition';
 import { render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
@@ -93,7 +94,7 @@ describe('#205 condition indicators - reachable through the live pipeline', () =
   });
 
   it('App.tsx wires both indicators from the live world into the floor mode', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    const src = readAppCompositionSource();
 
     expect(src).toMatch(/pressure: world\.regulatoryMeter\.pressure/);
     expect(src).toMatch(/max: REGULATORY_TUNABLES\.pressureMax/);

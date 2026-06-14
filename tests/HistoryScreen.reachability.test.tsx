@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { readAppCompositionSource } from './helpers/appComposition';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import {
@@ -70,14 +71,14 @@ describe('#208 HistoryLog persistence + reachability', () => {
   });
 
   it('keeps the History screen mounted in the live App route graph', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    const src = readAppCompositionSource();
 
     expect(src).toMatch(
-      /import \{ HistoryScreen \} from '\.\/src\/ui\/HistoryScreen'/,
+      /import \{ HistoryScreen \} from '\.\.\/\.\.\/ui\/HistoryScreen'/,
     );
     expect(src).toMatch(/nav\.navigate\('history'\)/);
     expect(src).toMatch(/screen === 'history'/);
-    expect(src).toMatch(/onHistory=\{openHistory\}/);
+    expect(src).toMatch(/onHistory=\{saveSlots\.openHistory\}/);
     expect(src).toMatch(/world\.historyLog\.getEntries\(\)/);
   });
 });

@@ -1,6 +1,7 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
+import { readAppCompositionSource } from './helpers/appComposition';
 import { Text } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { AppShell, loadNavTabs, type ShellTab } from '../src/ui/AppShell';
@@ -103,7 +104,7 @@ describe('AppShell — controlled active tab survives a sub-screen round-trip', 
 
 describe('App.tsx wiring', () => {
   it('mounts the fixed nav and lifts the active tab out of the shell', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    const src = readAppCompositionSource();
     expect(src).toMatch(/loadNavTabs\(\)/);
     expect(src).not.toMatch(/resolveNavTabs/);
     expect(src).toMatch(/<StrategicTab/);

@@ -1,0 +1,389 @@
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, AppState } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { createSqliteDriverFactory } from '../game/SaveStore';
+import type {
+  DriverFactory,
+  MidDayCheckpoint,
+} from '../game/SaveStore';
+import { createWorld } from '../createWorld';
+import {
+  restoreWorld,
+  type PersistedWorldSnapshot,
+} from '../worldSnapshot';
+import { ThemeProvider } from '../ui/theme';
+import { useNavigator } from '../ui/Navigator';
+import { useFloorRenderLoop } from '../ui/FloorRenderLoop';
+import type { CharacterProfile } from '../game/CareerProgression';
+import type { DeptKey } from '../game/DepartmentQueue';
+import type { DayRecapModel } from '../ui/DayRecap';
+import { createAppServices, type AppServices } from './services';
+import { useWorldState } from './useWorldState';
+import { useSaveSlots } from './useSaveSlots';
+import { useLevers } from './useLevers';
+import { useModals } from './useModals';
+import { useDayLoop } from './useDayLoop';
+import { AppOverlays } from './screens/AppOverlays';
+import { RouteContent } from './screens/RouteContent';
+import {
+  HAND_PLAY_LIVE,
+  TRADE_POLICY,
+  PRICING_STRATEGIES,
+  HOURS_OF_OP,
+  readPersistedCashDelta,
+} from './config';
+
+export interface DealershipAppProps {
+  driverFactory?: DriverFactory;
+  onServicesReady?: (services: AppServices) => void;
+}
+
+// Composition root (#242). Owns the seed-free services, the Navigator, and the
+// five state-cluster hooks; wires them together and routes the active screen.
+// All heavy per-screen view-model building lives in ./screens/*; all state +
+// EventBus subscriptions live in the use* hooks. This file is the only place
+// the clusters meet — the cross-cutting load/reset orchestrators and the
+// floor render-loop hold flags.
+export function DealershipApp({
+  driverFactory,
+  onServicesReady,
+}: DealershipAppProps) {
+  const servicesRef = useRef<AppServices | null>(null);
+  if (servicesRef.current === null) {
+    servicesRef.current = createAppServices(
+      driverFactory ?? createSqliteDriverFactory(),
+    );
+  }
+  const services = servicesRef.current;
+  const { bus, saveStore, slotStore, legacyStore } = services;
+  useEffect(() => {
+    onServicesReady?.(servicesRef.current as AppServices);
+  }, [onServicesReady]);
+  const nav = useNavigator('loading');
+  const screen = nav.current.route;
+
+  const worldState = useWorldState(bus);
+  const {
+    world,
+    setWorld,
+    worldRef,
+    cash,
+    setCash,
+    lotVehicles,
+    setLotVehicles,
+    floorEvents,
+    setFloorEvents,
+    eventSeq,
+    profile,
+    setProfile,
+    newGameSeed,
+    setNewGameSeed,
+    bump,
+  } = worldState;
+
+  const saveSlots = useSaveSlots({
+    services,
+    worldRef,
+    nav,
+    loadActiveSlotIntoGame,
+    resetSessionState,
+  });
+  const { buildCurrentSaveState, persistCurrentSave } = saveSlots;
+
+  const levers = useLevers({ worldRef, persistCurrentSave, bump });
+
+  const modals = useModals({
+    bus,
+    world,
+    worldRef,
+    setLotVehicles,
+    setCash,
+    bump,
+  });
+
+  const dayLoop = useDayLoop({
+    services,
+    worldRef,
+    nav,
+    setLotVehicles,
+    setCash,
+    setFloorEvents,
+    eventSeq,
+    bump,
+    buildCurrentSaveState,
+  });
+
+  // The live clock (#121). Drives the owned FloorSim's step() at a tunable
+  // cadence; speed/pause are pure render multipliers (game logic is
+  // wall-clock-free). A hand-play modal open in auto-pause mode holds the
+  // interval without touching the player's pause state.
+  const floorLoop = useFloorRenderLoop({
+    floor: world?.dayLoop.currentFloor() ?? null,
+    active: world ? world.dayLoop.state().phase === 'FLOOR_OPEN' : false,
+    bus,
+    onTick: bump,
+    hold:
+      (modals.handSession != null && !HAND_PLAY_LIVE) ||
+      modals.tradeReview != null ||
+      modals.discountReview != null ||
+      screen === 'in-game-menu' ||
+      screen === 'kpi-dashboard' ||
+      screen === 'history' ||
+      (screen === 'settings' && world != null) ||
+      dayLoop.monthClose != null ||
+      dayLoop.chapterQueue.length > 0 ||
+      dayLoop.endCard != null,
+  });
+
+  // Build (and route into) the game from whichever slot is currently active.
+  // Called by the start menu's Continue/Load after it has selected the slot
+  // (#195). The slot must already hold a character; the menu never offers an
+  // empty/character-less slot for resume. Declared as a hoisted function so it
+  // can be handed to useSaveSlots above without a circular hook dependency.
+  async function loadActiveSlotIntoGame() {
+    const state = await saveStore.load();
+    if (!state?.character) return;
+    // Per-save masterSeed (#96): the SaveStore v1→v2 migration backfills the
+    // fixed legacy 42 for pre-#96 saves, so a number is guaranteed here; the
+    // ?? 42 is a defensive belt only.
+    const seed = typeof state.masterSeed === 'number' ? state.masterSeed : 42;
+    const character = state.character as CharacterProfile;
+    // Restore the persisted per-slot trade policy (#172) before any trade can
+    // resolve. The ref backs the live multiplier getter handed to createWorld.
+    if (typeof state.tradePolicy === 'string') {
+      levers.tradePolicyIdRef.current = state.tradePolicy;
+      levers.setTradePolicyId(state.tradePolicy);
+    } else {
+      levers.tradePolicyIdRef.current = TRADE_POLICY.defaultId;
+      levers.setTradePolicyId(TRADE_POLICY.defaultId);
+    }
+    // Restore the persisted per-slot list-price strategy (#154).
+    if (typeof state.pricingStrategy === 'string') {
+      levers.setPricingStrategyId(state.pricingStrategy);
+    } else {
+      levers.setPricingStrategyId(PRICING_STRATEGIES.defaultStrategy);
+    }
+    if (typeof state.hoursOfOp === 'string') {
+      levers.setHoursOfOpId(state.hoursOfOp);
+    } else {
+      levers.setHoursOfOpId(HOURS_OF_OP.defaultId);
+    }
+    const w = createWorld({
+      bus,
+      masterSeed: seed,
+      characterProfile: character,
+      getTradePolicyMultiplier: levers.getTradePolicyMultiplier,
+      getHoursOfOpTicksPerDay: levers.getHoursOfOpTicksPerDay,
+    });
+    // World-state restore (#188 tracer): rehydrate the persisted world
+    // snapshot (day + cash) onto the freshly-built World instead of leaving it
+    // reset to "night before Day 1". Done before the checkpoint-resume block
+    // below so the mid-day guard (`cp.day === clock.currentDay`) compares
+    // against the restored day.
+    if (state.world) {
+      // restoreWorld migrates the persisted (possibly older) snapshot to the
+      // current envelope shape before rehydrating (#196).
+      restoreWorld(state.world as PersistedWorldSnapshot, w);
+    }
+    setWorld(w);
+    setCash(w.economy.cash);
+    // Restore the persisted vs-yesterday baselines + the last computed delta
+    // split (#255), so the Home card shows the last closed day's delta right
+    // away. Pre-#255 saves lack all three fields → re-seed + blank delta.
+    dayLoop.prevDayCashRef.current =
+      typeof state.prevDayCash === 'number' ? state.prevDayCash : w.economy.cash;
+    dayLoop.prevDayAcquisitionSpendRef.current =
+      typeof state.prevDayAcquisitionSpend === 'number'
+        ? state.prevDayAcquisitionSpend
+        : w.economy.inventoryAcquisitionSpend;
+    dayLoop.setCashDelta(readPersistedCashDelta(state.cashDelta));
+    // Restore the persisted last-day recap (#253): the chip reflects the real
+    // last closed day, so a Day-15 save never shows "Night before Day 1". The
+    // modal does not auto-pop on load — it pops only on an actual day close.
+    dayLoop.setLastRecap((state.lastRecap as DayRecapModel | undefined) ?? null);
+    dayLoop.setRecapModalOpen(false);
+    setLotVehicles(w.inventory.getLotVehicles());
+    setProfile(character);
+    nav.reset('game');
+    // Mid-day cold-start resume (#122): if a checkpoint exists for the day the
+    // clock currently sits on, recreate the FloorSim and replay its action log
+    // to land in the byte-exact pre-background state. A stale checkpoint (the
+    // clock can't honor it) is discarded, never misapplied.
+    const cp: MidDayCheckpoint | null = await slotStore.readCheckpoint();
+    if (cp && cp.day === w.clock.currentDay) {
+      w.dayLoop.resume(cp);
+      bump();
+    } else if (cp) {
+      await slotStore.clearCheckpoint();
+    }
+  }
+
+  // Tear down all session state back to a clean menu. Hoisted for the same
+  // reason as loadActiveSlotIntoGame (handed to useSaveSlots above).
+  function resetSessionState() {
+    setProfile(null);
+    setWorld(null);
+    setLotVehicles([]);
+    setCash(0);
+    setFloorEvents([]);
+    dayLoop.reset();
+    modals.reset();
+  }
+
+  // New game → build the World from the freshly-minted seed that
+  // CharacterCreation just persisted (#96), seed the vs-yesterday baselines,
+  // and route in.
+  const startNewGame = (p: CharacterProfile) => {
+    const w = createWorld({
+      bus,
+      masterSeed: newGameSeed,
+      characterProfile: p,
+      getTradePolicyMultiplier: levers.getTradePolicyMultiplier,
+      getHoursOfOpTicksPerDay: levers.getHoursOfOpTicksPerDay,
+    });
+    setWorld(w);
+    setCash(w.economy.cash);
+    // Seed the vs-yesterday baselines (#230/#255): first day's delta is
+    // measured against the night-before-Day-1 cash + (zero) lifetime spend.
+    dayLoop.prevDayCashRef.current = w.economy.cash;
+    dayLoop.prevDayAcquisitionSpendRef.current =
+      w.economy.inventoryAcquisitionSpend;
+    dayLoop.setCashDelta(null);
+    // Fresh game → no recap yet; Home shows honest pre-Day-1 copy (#253).
+    dayLoop.setLastRecap(null);
+    dayLoop.setRecapModalOpen(false);
+    setProfile(p);
+    nav.reset('game');
+  };
+
+  // Boot to the start menu (#195). No auto-load into the last game — the
+  // player chooses New Game / Continue / Load.
+  useEffect(() => {
+    nav.reset('main-menu');
+  }, []);
+
+  // Pause-on-background → persist the mid-day checkpoint (#122). The OS gives
+  // no reliable "about to be killed" hook, so we snapshot on every
+  // background/inactive transition while the floor is open; resume replays it
+  // deterministically on the next cold start.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'background' && next !== 'inactive') return;
+      const cp = worldRef.current?.dayLoop.checkpoint();
+      if (cp) void slotStore.writeCheckpoint(cp);
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Bottom-nav dispatch (#76). Sales is the hand-play workspace, not a
+  // resolve-list — it opens the existing cherry-pick/hand-play path. The
+  // other four push the generic DepartmentScreen. Always responds.
+  const handleDeptPress = (dept: DeptKey) => {
+    if (dept === 'sales') {
+      modals.cherryPick();
+      return;
+    }
+    nav.navigate('department', { dept });
+  };
+
+  // After a save is wiped (EndCard "New Career" or the dev AdminConsole), the
+  // active slot is gone — return to the start menu (#195) rather than straight
+  // into character-creation, which would have no slot to write into.
+  const handleSaveCleared = () => {
+    resetSessionState();
+    nav.reset('main-menu');
+  };
+
+  const handleEndCardDismiss = () => {
+    const completed = dayLoop.endCard;
+    void (async () => {
+      try {
+        if (completed) {
+          await legacyStore.appendLegacy({
+            playerName: completed.playerName,
+            backstoryId: completed.backstoryId,
+            careerYear: completed.careerYear,
+            tierReached: completed.tierReached,
+            reason: completed.reason,
+            flavorText: completed.flavorText,
+            completedAt: new Date().toISOString(),
+          });
+        }
+        await saveStore.clear();
+        dayLoop.setEndCard(null);
+        handleSaveCleared();
+      } catch (err) {
+        console.error('End-card dismissal failed', err);
+      }
+    })();
+  };
+
+  // True while the management AppShell is on screen: its hero header bleeds
+  // behind the status bar, so the root SafeAreaView must NOT pad the top edge.
+  const floorIsOpen =
+    !!world &&
+    world.dayLoop.state().phase === 'FLOOR_OPEN' &&
+    !!world.dayLoop.currentFloor();
+  const shellOwnsTopInset =
+    screen === 'game' && !!profile && !!world && !floorIsOpen;
+  return (
+    <SafeAreaProvider>
+      {/* Single injectable theme (#225): every kit surface reads tokens from
+          here, so swapping this theme object re-skins the whole UI in one place. */}
+      <ThemeProvider>
+        <View style={styles.container}>
+          <SafeAreaView
+            style={styles.safeArea}
+            edges={
+              // The shell's hero header bleeds behind the status bar and pads
+              // its own content by the inset; every other screen keeps the top
+              // edge.
+              shellOwnsTopInset
+                ? ['bottom', 'left', 'right']
+                : ['top', 'bottom', 'left', 'right']
+            }
+          >
+            <RouteContent
+              nav={nav}
+              bus={bus}
+              saveStore={saveStore}
+              slotStore={slotStore}
+              worldState={worldState}
+              saveSlots={saveSlots}
+              levers={levers}
+              modals={modals}
+              dayLoop={dayLoop}
+              floorLoop={floorLoop}
+              loadActiveSlotIntoGame={loadActiveSlotIntoGame}
+              startNewGame={startNewGame}
+              handleDeptPress={handleDeptPress}
+              handleEndCardDismiss={handleEndCardDismiss}
+            />
+          </SafeAreaView>
+          <AppOverlays
+            modals={modals}
+            dayLoop={dayLoop}
+            world={world}
+            profile={profile}
+            bus={bus}
+            saveStore={saveStore}
+            handleSaveCleared={handleSaveCleared}
+            bump={bump}
+          />
+        </View>
+      </ThemeProvider>
+    </SafeAreaProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#111',
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#111',
+  },
+});

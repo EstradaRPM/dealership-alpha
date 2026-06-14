@@ -1,6 +1,7 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
+import { readAppCompositionSource } from './helpers/appComposition';
 import { render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
@@ -219,17 +220,16 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
   });
 
   it('App.tsx wires demandReadout from the live world into the Home tab', () => {
-    const src = fs.readFileSync(
-      path.join(__dirname, '..', 'App.tsx'),
-      'utf8',
-    );
+    const src = readAppCompositionSource();
     // Reads the live shaper and threads the model into the shell — the two
     // links that, if cut, would orphan the mechanic.
     expect(src).toMatch(/world\.demandShaper\.getObservedMix\(\)/);
     expect(src).toMatch(/targetingLevers: buildTargetingLevers\(world\)/);
     expect(src).toMatch(/coverageGap: buildCoverageGap\(demandEntries, lotVehicles\)/);
     expect(src).toMatch(/advertisingOptions: world\.demandControls\.advertisingOptions/);
-    expect(src).toMatch(/onSelectAdvertisingCampaign: handleSelectAdvertisingCampaign/);
+    expect(src).toMatch(
+      /onSelectAdvertisingCampaign: levers\.handleSelectAdvertisingCampaign/,
+    );
     expect(src).toMatch(/demandReadout=\{demandReadout\}/);
   });
 });

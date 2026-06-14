@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { readAppCompositionSource } from './helpers/appComposition';
 import {
   createInMemoryDriverFactory,
   createMultiSlotSaveStore,
@@ -86,12 +87,12 @@ describe('#200 Settings rollback reachability', () => {
   });
 
   it('keeps Settings mounted in the live App route graph', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    const src = readAppCompositionSource();
 
-    expect(src).toMatch(/import \{ SettingsScreen \} from '\.\/src\/ui\/SettingsScreen'/);
+    expect(src).toMatch(/import \{ SettingsScreen \} from '\.\.\/\.\.\/ui\/SettingsScreen'/);
     expect(src).toMatch(/nav\.navigate\('settings'\)/);
     expect(src).toMatch(/screen === 'settings'/);
-    expect(src).toMatch(/onSettings=\{openSettings\}/);
+    expect(src).toMatch(/onSettings=\{saveSlots\.openSettings\}/);
     expect(src).toMatch(/rollbackToSnapshot\(index\)/);
     expect(src).toMatch(/await saveStore\.save\(state\)/);
     expect(src).toMatch(/await loadActiveSlotIntoGame\(\)/);

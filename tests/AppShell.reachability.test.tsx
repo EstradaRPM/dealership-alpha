@@ -63,10 +63,15 @@ describe('#215 AppShell — 5-tab IA reachability', () => {
     ).not.toThrow();
   });
 
-  it('App.tsx mounts the Home + Operations tabs and the pinned day action', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+  it('GameScreen mounts the Home + Operations tabs and the pinned day action', () => {
+    // The live-game composition was extracted to src/app/screens/GameScreen.tsx
+    // (#242). The shell wiring this test guards lives there now.
+    const src = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'app', 'screens', 'GameScreen.tsx'),
+      'utf8',
+    );
     // The shell replaces the DayLoopShell + BottomNav management composition.
-    expect(src).toMatch(/from '\.\/src\/ui\/AppShell'/);
+    expect(src).toMatch(/from '\.\.\/\.\.\/ui\/AppShell'/);
     expect(src).toMatch(/type ShellTab\b/);
     expect(src).not.toMatch(/from '\.\/src\/ui\/DayLoopShell'/);
     // The fixed 5-tab IA is composed from the data-driven nav list.

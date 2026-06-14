@@ -1,0 +1,113 @@
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import type { World } from '../../createWorld';
+import type { Navigator } from '../../ui/Navigator';
+import type { LotVehicle } from '../../game/Inventory';
+import { PricingScreen } from '../../ui/PricingScreen';
+import {
+  suggestListPrice,
+  classifyPricePosition,
+  deriveCompetitorComps,
+} from '../../game/MarketEconomy';
+import { PRICING_STRATEGIES, AGED_THRESHOLD_DAYS } from '../config';
+
+export interface PricingScreenContainerProps {
+  world: World;
+  nav: Navigator;
+  vehicleId: string;
+  pricingStrategyId: string;
+  persistCurrentSave: () => void;
+  setLotVehicles: (v: readonly LotVehicle[]) => void;
+}
+
+// Pricing screen container (#242 extraction): assembles the valuation/comps/
+// suggestion model off the live World for one lot unit. Verbatim from App.tsx.
+export function PricingScreenContainer({
+  world,
+  nav,
+  vehicleId,
+  pricingStrategyId,
+  persistCurrentSave,
+  setLotVehicles,
+}: PricingScreenContainerProps) {
+  const v = world.inventory.getLotVehicles().find((x) => x.id === vehicleId);
+  if (!v) {
+    // Unit sold/abandoned while the screen was queued — bounce to the game.
+    nav.back();
+    return <View style={styles.container} />;
+  }
+  const { bookValue, marketPrice } = world.marketEconomy.valuationFor(v);
+  const strategyEntry =
+    PRICING_STRATEGIES.strategies[pricingStrategyId] ??
+    PRICING_STRATEGIES.strategies[PRICING_STRATEGIES.defaultStrategy];
+  const suggestion = suggestListPrice(
+    { bookValue, marketPrice, strategy: pricingStrategyId },
+    { config: PRICING_STRATEGIES },
+  );
+  const ucm = world.staffOrg.currentRoster.find(
+    (s) => s.role_id === 'used-car-manager',
+  );
+  return (
+    <>
+      <StatusBar style="light" />
+      <PricingScreen
+        vehicle={{
+          id: v.id,
+          year: v.year,
+          make: v.make,
+          model: v.model,
+          trim: v.trim,
+          bookValue,
+          marketPrice,
+          vehicleCost: v.purchasePrice + v.reconCost,
+          initialAskingPrice: v.askingPrice,
+          daysInInventory: v.daysInInventory,
+          carryingCostToDate: v.carryingCostToDate,
+          dailyCarryingCost: v.dailyCarryingCost,
+          aged: v.aged,
+          agedThresholdDays: AGED_THRESHOLD_DAYS,
+        }}
+        comps={deriveCompetitorComps(
+          marketPrice,
+          // #183: the live drifting roster (CompetitorMarket is now wired
+          // into the World), so the comparables panel reflects the actual
+          // post-drift market rather than the static base catalog.
+          [...world.competitorMarket.getCompetitors()],
+          { config: PRICING_STRATEGIES },
+        ).slice(0, 4)}
+        suggestion={{
+          price: suggestion.suggestedPrice,
+          source: ucm ? 'ucm' : 'heuristic',
+          pricingSkill: ucm?.skills['pricing'],
+          strategyLabel: strategyEntry.label,
+        }}
+        predictDays={(ask) =>
+          world.marketEconomy.predictDaysToSell(
+            { ...v, daysOnLot: v.daysInInventory },
+            ask,
+          )
+        }
+        classifyPosition={(ask) =>
+          classifyPricePosition(ask, marketPrice, {
+            config: PRICING_STRATEGIES,
+          })
+        }
+        enabled={world.dayLoop.state().ownershipUnlocked}
+        onCommit={(price) => {
+          world.inventory.setAskingPrice(v.id, price);
+          setLotVehicles(world.inventory.getLotVehicles());
+          persistCurrentSave();
+        }}
+        onClose={() => nav.back()}
+      />
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#111',
+  },
+});

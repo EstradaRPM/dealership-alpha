@@ -145,8 +145,13 @@ describe('#230 Home dashboard — reachable through the live pipeline', () => {
     expect(() => render(<HomeTab state={MANAGERIAL} dashboard={model} />)).not.toThrow();
   });
 
-  it('App.tsx builds the dashboard from the live world and mounts it on Home', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+  it('GameScreen builds the dashboard from the live world and mounts it on Home', () => {
+    // The live-game composition was extracted to src/app/screens/GameScreen.tsx
+    // (#242); the dashboard wiring this test guards lives there now.
+    const src = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'app', 'screens', 'GameScreen.tsx'),
+      'utf8',
+    );
     expect(src).toMatch(/buildHomeDashboard\(\{/);
     expect(src).toMatch(/reputation: world\.reputation\.reviewScore/);
     expect(src).toMatch(/currentDay: world\.clock\.currentDay/);

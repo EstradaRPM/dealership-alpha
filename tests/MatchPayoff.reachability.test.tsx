@@ -1,6 +1,7 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
+import { readAppCompositionSource } from './helpers/appComposition';
 import { render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
@@ -146,7 +147,7 @@ describe('#199 match-payoff beat — reachable through the live pipeline', () =>
   });
 
   it('App.tsx wires the close event into the toast + recap tally', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    const src = readAppCompositionSource();
     // The four links that, if cut, would orphan the beat: subscribe to the
     // close event, drop the match toast, thread the tally into the recap, and
     // reset it each day.

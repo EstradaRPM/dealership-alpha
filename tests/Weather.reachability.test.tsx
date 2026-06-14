@@ -1,6 +1,7 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
+import { readAppCompositionSource } from './helpers/appComposition';
 import { render, fireEvent } from '@testing-library/react-native';
 import { HomeTab, buildHomeDashboard } from '../src/ui/HomeTab';
 import type { HomeDashboardInputs } from '../src/ui/HomeTab';
@@ -264,7 +265,7 @@ describe('#231 Weather — reachable on the live Home calendar', () => {
   });
 
   it('App.tsx builds today + forecast off the live world and feeds buildHomeDashboard', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    const src = readAppCompositionSource();
     expect(src).toMatch(/world\.weather\.weatherForDay\(world\.clock\.currentDay\)/);
     expect(src).toMatch(/world\.weather\.weatherForDay\(world\.clock\.currentDay \+ 1\)/);
     expect(src).toMatch(/forecastTemperatureF: forecastWeather\.temperatureF/);
@@ -277,7 +278,7 @@ describe('#231 Weather — reachable on the live Home calendar', () => {
   });
 
   it('App.tsx derives the season lean off the live world and feeds it in', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    const src = readAppCompositionSource();
     expect(src).toMatch(/world\.weather\.wantLeanForDay\(world\.clock\.currentDay\)/);
     expect(src).toMatch(/seasonLean,/);
   });
@@ -321,7 +322,7 @@ describe('#231 Weather — reachable on the live Home calendar', () => {
   });
 
   it('App.tsx feeds today + tomorrow traffic outlook off the live world', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    const src = readAppCompositionSource();
     expect(src).toMatch(
       /trafficOutlook: world\.weather\.trafficOutlookForDay\(world\.clock\.currentDay\)/,
     );
@@ -362,7 +363,7 @@ describe('#231 Weather — reachable on the live Home calendar', () => {
   });
 
   it('App.tsx derives the attribute lean off the live world and feeds it in', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
+    const src = readAppCompositionSource();
     expect(src).toMatch(/world\.weather\.attributeLeanForDay\(world\.clock\.currentDay\)/);
     expect(src).toMatch(/weatherLean,/);
   });

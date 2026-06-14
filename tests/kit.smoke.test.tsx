@@ -1,6 +1,7 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
+import { readAppCompositionSource } from './helpers/appComposition';
 import { StyleSheet } from 'react-native';
 import { render } from '@testing-library/react-native';
 import {
@@ -135,8 +136,8 @@ describe('#225 theme is injectable — swap re-skins with no component edits', (
 // ThemeProvider in App.tsx, not just in isolated tests.
 describe('#225 the theme is mounted in the live App.tsx flow', () => {
   it('App.tsx imports ThemeProvider and wraps the render tree in it', () => {
-    const src = fs.readFileSync(path.join(__dirname, '..', 'App.tsx'), 'utf8');
-    expect(src).toMatch(/import \{ ThemeProvider \} from '\.\/src\/ui\/theme'/);
+    const src = readAppCompositionSource();
+    expect(src).toMatch(/import \{ ThemeProvider \} from '\.\.\/ui\/theme'/);
     expect(src).toMatch(/<ThemeProvider>/);
     expect(src).toMatch(/<\/ThemeProvider>/);
   });
