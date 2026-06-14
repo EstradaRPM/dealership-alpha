@@ -732,7 +732,7 @@ export function createWorld(deps: {
   // Per-day FloorSim seam set: CapacityManager / StaffDispatch / CustomerPool
   // behind the locked #99 seams. Invoked once per day → fresh per-day
   // instances.
-  const floorSeams: FloorSeamProvider = () => ({
+  const floorSeams: FloorSeamProvider = (slip) => ({
     capacity: capacityManager.createFloorGate(),
     drains: [
       createStaffFloorDrain({
@@ -744,6 +744,16 @@ export function createWorld(deps: {
         inventory,
         dealEngine,
         creditTiers: loadCreditTiers(),
+        // #247: seed the F&I auto-attach RNG instead of letting StaffDispatch
+        // fall back to its `Math.random` default. An unseeded draw in the live
+        // close path is a replay-determinism bug (the locked #122 constraint:
+        // a given save must replay identically) and made the back-gross — and
+        // thus cash — non-deterministic for the headless balance harness.
+        // Seeded per-DAY off masterSeed: a #122 mid-day resume re-runs the
+        // whole day's drains from tick 0, reproducing the same close order and
+        // therefore the same attach sequence, so day-granular seeding is
+        // replay-safe. The day comes off the morning slip the seam is built with.
+        fniRng: createRng(deriveSeed(masterSeed, 'fni.auto_attach', { day: slip.day })),
         getCustomerSession: (id) => {
           const s = customerPool.getSession(id);
           return s
