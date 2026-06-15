@@ -347,6 +347,10 @@ export const TunablesSchema = z.object({
       // Top UCM `pricing` skill at/above which the standing auto-pricing policy
       // is ON (intake auto-prices to the chosen posture); below = suggestion-only.
       pricing: z.number().min(0).max(100),
+      // Top UCM `t_o_closing` (turn-over/desking) skill at/above which the UCM
+      // desks ALL below-floor discounts (M3 #290); below = the understaffed path
+      // (a rare rate-gated slice escalates to the player, the rest walk).
+      t_o_closing: z.number().min(0).max(100),
     }),
   }),
   // Per-slot trade-acquisition policy (#172). `multiplier` scales the staff's

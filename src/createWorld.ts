@@ -34,6 +34,7 @@ import { createCapacityManager } from './game/CapacityManager';
 import type { CapacityManager } from './game/CapacityManager';
 import {
   createStaffFloorDrain,
+  isDiscountDeskingUnlocked,
   type HeldTradeReview,
   type HeldDiscountReview,
   type PlayerTradeDecision,
@@ -459,7 +460,8 @@ export function createWorld(deps: {
   // UCM's `pricing` skill clearing this threshold — not mere UCM presence (#285).
   // Loaded once; the lazy pricingPolicyFn closure reads the live roster each
   // acquisition. No magic number: the gate lives in tunables.
-  const autoPriceThreshold = loadTunables().managerGates.actThresholds.pricing;
+  const managerGateThresholds = loadTunables().managerGates.actThresholds;
+  const autoPriceThreshold = managerGateThresholds.pricing;
   const inventory = createInventory({
     bus,
     masterSeed,
@@ -936,6 +938,24 @@ export function createWorld(deps: {
         onTradeReviewHeld: (held) => heldTradeReviews.set(held.customerId, held),
         onDiscountReviewHeld: (held) =>
           heldDiscountReviews.set(held.customerId, held),
+        // #290 (channel-desk M3): the UCM auto-desks below-floor discounts only
+        // once its top `t_o_closing` skill clears the gate — reframing #288's
+        // presence gate onto the skill threshold (acting is earned). Read live
+        // off the roster each below-floor up so a mid-game hire/fire applies on
+        // the next deal; below the gate (or no UCM) the deal takes the
+        // understaffed path. The threshold + skill-axis knowledge stays here at
+        // the composition boundary, mirroring the M2 pricingPolicyFn gate.
+        getDiscountDeskingUnlocked: () => {
+          const ucmClosingSkills = staffOrg.currentRoster
+            .filter((s) => s.role_id === 'used-car-manager')
+            .map((s) => s.skills['t_o_closing'] ?? 0);
+          const topUcmClosingSkill =
+            ucmClosingSkills.length === 0 ? null : Math.max(...ucmClosingSkills);
+          return isDiscountDeskingUnlocked(
+            topUcmClosingSkill,
+            managerGateThresholds.t_o_closing,
+          );
+        },
       }),
       createServiceFloorDrain({
         bus,

@@ -7,6 +7,7 @@ import {
   createStaffDispatch,
   loadStaffDispatchConfig,
   discountAcceptProbability,
+  isDiscountDeskingUnlocked,
 } from '../src/game/StaffDispatch';
 import type {
   StaffDispatchConfig,
@@ -37,12 +38,13 @@ function makeStaff(
   effectiveness: number,
   id = `staff:mock:${effectiveness}`,
   roleId = 'salesperson',
+  skills: Record<string, number> = {},
 ): StaffWithComposites {
   const plain: Staff = {
     id,
     role_id: roleId,
     trait_ids: [],
-    skills: {},
+    skills,
     resources: { stamina: 80 },
     counters: { experience: 0, deals_closed: 0, days_employed: 0 },
   };
@@ -287,6 +289,7 @@ function setup(
     salesProcessDeps?: StaffDispatchDeps['salesProcessDeps'];
     wantVectorBias?: StaffDispatchDeps['wantVectorBias'];
     attributeLeanForDay?: StaffDispatchDeps['attributeLeanForDay'];
+    getDiscountDeskingUnlocked?: StaffDispatchDeps['getDiscountDeskingUnlocked'];
   } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
@@ -355,6 +358,9 @@ function setup(
     getTradePolicyMultiplier: opts.tradePolicyMultiplier,
     onTradeReviewHeld: (held) => heldTradeReviews.push(held),
     onDiscountReviewHeld: (held) => heldDiscountReviews.push(held),
+    // #290 (channel-desk M3): discount-desking gate. Omitted ⇒ locked (the
+    // understaffed path); the cliff tests pass a getter to exercise both sides.
+    getDiscountDeskingUnlocked: opts.getDiscountDeskingUnlocked,
   });
 
   return {
@@ -581,14 +587,22 @@ describe('StaffDispatch — discount escalation (#222)', () => {
     expect(w.closedDeals[0].agreedPrice).toBe(review.customerTargetPrice);
   });
 
-  it('hired used-car-manager auto-resolves the same discount exception', () => {
+  // Channel-desk M3 (#290): the UCM desks below-floor discounts only when its
+  // `t_o_closing` skill clears the gate (resolved at the composition root and
+  // passed in as `getDiscountDeskingUnlocked`). The cliff: unlocked ⇒ auto-desk;
+  // below the gate ⇒ the understaffed path (escalate/walk), even with a UCM on
+  // staff. The roster→skill distillation is exercised at the createWorld level;
+  // here we drive the gate getter directly to assert both sides of the cliff.
+  it('desking unlocked ⇒ UCM auto-resolves the discount exception', () => {
     const w = setup(
       [
         makeStaff(0.9, 'staff:sales'),
-        makeStaff(1.0, 'staff:used-car-manager', 'used-car-manager'),
+        makeStaff(1.0, 'staff:used-car-manager', 'used-car-manager', {
+          t_o_closing: 75,
+        }),
       ],
       BASE_CONFIG,
-      { salesProcessDeps: discountDeps },
+      { salesProcessDeps: discountDeps, getDiscountDeskingUnlocked: () => true },
     );
     w.sessions.set(
       'cust:manager-discount',
@@ -609,6 +623,37 @@ describe('StaffDispatch — discount escalation (#222)', () => {
       customerId: 'cust:manager-discount',
       outcome: 'closed',
     });
+  });
+
+  it('UCM below the desking gate ⇒ understaffed path (escalates, not auto-desked)', () => {
+    // A green UCM is on staff but its `t_o_closing` is under the threshold, so
+    // the desk can't yet act — the deal falls through to the understaffed
+    // escalation (escalationRate is 1 in DISCOUNT_EXCEPTION_CONFIG).
+    const w = setup(
+      [
+        makeStaff(0.9, 'staff:sales'),
+        makeStaff(1.0, 'staff:used-car-manager', 'used-car-manager', {
+          t_o_closing: 40,
+        }),
+      ],
+      BASE_CONFIG,
+      { salesProcessDeps: discountDeps, getDiscountDeskingUnlocked: () => false },
+    );
+    w.sessions.set(
+      'cust:green-ucm-discount',
+      makeSession(
+        'cust:green-ucm-discount',
+        makeFinanceVisit('cust:green-ucm-discount'),
+        { wealth: 15_000, agreeableness: 100 },
+      ),
+    );
+
+    admit(w.bus, 'cust:green-ucm-discount');
+
+    // Below the gate the deal is held for the player, not auto-desked.
+    expect(w.discountEscalations).toHaveLength(1);
+    expect(w.heldDiscountReviews).toHaveLength(1);
+    expect(w.closedDeals).toHaveLength(0);
   });
 
   it('player decline records discount_player_declined, distinct from no_close', () => {
@@ -1088,5 +1133,18 @@ describe('StaffDispatch — trade-policy multiplier wiring (#172)', () => {
     admit(conservative.bus, 'cust:1');
     expect(conservative.trades).toHaveLength(0);
     expect(conservative.escalations).toHaveLength(1);
+  });
+});
+
+describe('isDiscountDeskingUnlocked (#290 channel-desk M3)', () => {
+  it('is locked with no UCM (null skill), regardless of threshold', () => {
+    expect(isDiscountDeskingUnlocked(null, 60)).toBe(false);
+    expect(isDiscountDeskingUnlocked(null, 0)).toBe(false);
+  });
+
+  it('gates hard at the threshold — the earned-stripes cliff', () => {
+    expect(isDiscountDeskingUnlocked(59, 60)).toBe(false);
+    expect(isDiscountDeskingUnlocked(60, 60)).toBe(true);
+    expect(isDiscountDeskingUnlocked(75, 60)).toBe(true);
   });
 });

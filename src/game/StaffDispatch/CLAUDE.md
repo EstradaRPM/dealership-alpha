@@ -18,10 +18,13 @@ to the real machinery. Per customer (after exception roll + hold-floor):
    `outcome !== 'buy'` with a normal closeable price ⇒ `no_sale`/`no_close`.
    If the customer would buy only below the salesperson margin floor
    (`closeable=false`), this becomes the discount-escalation branch (#222,
-   reframed to the list-price axis by #281): a hired `used-car-manager` (the
-   used-desk owner, #288)
-   auto-resolves the exception through the same close path (ungated); without
-   one, a tunable, **rare** fraction of below-floor ups
+   reframed to the list-price axis by #281): the `used-car-manager` (the
+   used-desk owner, #288) auto-resolves the exception through the same close
+   path **only once its `t_o_closing` desking skill clears the gate** (channel-
+   desk M3, #290 — the composition root distills the top UCM `t_o_closing` and
+   passes the result through `getDiscountDeskingUnlocked`; reframes #288's
+   presence gate onto the skill threshold, *acting is earned*). Below the gate
+   (or no UCM) a tunable, **rare** fraction of below-floor ups
    (`staffDispatch.discountEscalationRate`, seeded on `(customerId, day)`)
    surface as the interactive event — StaffDispatch emits `discount:escalated`,
    holds the deal, and waits for the composition root's player decision closure.
@@ -113,7 +116,12 @@ $X"; defaults to the trade-evaluation config default), `getTradePolicyMultiplier
 `policyMultiplier`; live getter so a Settings change applies on the next trade;
 omitted ⇒ `1.0` market), `onTradeReviewHeld` (#201 — composition-root handoff
 for the player decision closure), `onDiscountReviewHeld` (#222 —
-composition-root handoff for held discount decisions).
+composition-root handoff for held discount decisions),
+`getDiscountDeskingUnlocked` (#290 — channel-desk M3 discount-desking gate; the
+composition root distills the top UCM `t_o_closing` skill vs
+`tunables.managerGates.actThresholds.t_o_closing` via `isDiscountDeskingUnlocked`
+and returns the boolean live off the roster; omitted ⇒ locked ⇒ the understaffed
+path).
 
 ### Known gaps
 Cash buyers don't carry a stamped behavioral `cashSpendFraction` on the
@@ -146,6 +154,13 @@ with #147.
   priorMisses, missPenalty)` — pure/deterministic acceptance-prob helper (#287)
   the discount roll delegates to and the modal reuses for its live, number-free
   price-input color. No replay impact.
+- `isDiscountDeskingUnlocked(ucmClosingSkill, threshold)` → boolean (#290,
+  channel-desk M3). Whether the UCM can *act* on below-floor discounts:
+  `ucmClosingSkill != null && ucmClosingSkill >= threshold`. Reframes #288's
+  UCM-*presence* gate onto the UCM's `t_o_closing` skill — sibling to
+  MarketEconomy's `isAutoPricingUnlocked` (M2). Pure; the composition root
+  supplies the top UCM `t_o_closing` skill (roster) + threshold
+  (`tunables.managerGates.actThresholds.t_o_closing`).
 - Types: `StaffDispatch`, `StaffDispatchDeps`, `StaffDispatchConfig`,
   `StaffDispatchCustomerSession`.
 

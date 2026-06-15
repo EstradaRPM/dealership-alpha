@@ -121,6 +121,20 @@ export interface StaffDispatchDeps {
    * submits a player decision.
    */
   onDiscountReviewHeld?: (held: HeldDiscountReview) => void;
+  /**
+   * Discount-desking gate (channel-desk M3, #290). `true` once the used-car
+   * desk can *act* on below-floor discounts — i.e. the top UCM's `t_o_closing`
+   * skill clears the data-driven threshold. When unlocked the UCM auto-desks
+   * ALL below-floor ups (authorizes the salesperson's counter down to cost and
+   * closes); below the gate (or no UCM) the deal falls through to the
+   * understaffed path — a rare rate-gated slice escalates to the player, the
+   * rest walk. The composition root distills the top UCM `t_o_closing` skill
+   * from the live roster and gates it through `isDiscountDeskingUnlocked`
+   * against `tunables.managerGates.actThresholds.t_o_closing`, mirroring the M2
+   * pricing gate. Omitted ⇒ locked (`false`) — acting is earned (legacy/test
+   * harnesses without the getter take the understaffed path).
+   */
+  getDiscountDeskingUnlocked?: () => boolean;
 }
 
 // Intentionally empty — dispatch is fully autonomous.
@@ -230,6 +244,25 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 const clampUnit = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
+
+/**
+ * Whether the used-car desk can *act* on below-floor discounts (channel-desk
+ * M3, #290 — reframes #288's UCM-*presence* gate onto the UCM's `t_o_closing`
+ * (turn-over/desking) skill threshold). The acting capability is earned: a UCM
+ * whose top `t_o_closing` skill meets the data-driven threshold desks ALL
+ * below-floor ups; below it (or with no UCM, `ucmClosingSkill == null`) the
+ * deal falls through to the understaffed path. Pure; the composition root
+ * supplies the top UCM `t_o_closing` skill (from the roster) and the threshold
+ * (from `tunables.managerGates.actThresholds.t_o_closing`). The cliff at the
+ * threshold is the earned-stripes beat, by design (manager-roles-channel-desk.md
+ * §3). Sibling to MarketEconomy's `isAutoPricingUnlocked` (M2).
+ */
+export function isDiscountDeskingUnlocked(
+  ucmClosingSkill: number | null,
+  threshold: number,
+): boolean {
+  return ucmClosingSkill != null && ucmClosingSkill >= threshold;
+}
 
 /**
  * Probability the customer accepts a counter at `counterPrice` given their
@@ -693,24 +726,23 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
           missPenalty: ev.missPenalty,
         };
 
-        const usedCarManagers = staffOrg.currentRoster.filter(
-          s => s.role_id === 'used-car-manager',
-        );
-        const hasManager = usedCarManagers.length > 0;
-
-        // A hired used-car-manager (the used desk owner) auto-adjudicates (never
-        // gated by frequency): they authorize the salesperson's counter (down to
-        // cost) and close it. Presence-gated for now; the t_o_closing threshold
-        // arrives in M3 (#290).
-        if (hasManager) {
+        // Channel-desk M3 (#290): the UCM auto-desks below-floor discounts only
+        // once its `t_o_closing` skill clears the gate (resolved at the
+        // composition root via `isDiscountDeskingUnlocked`). Acting is earned —
+        // a green UCM under the threshold can't yet desk for you, so the deal
+        // falls through to the understaffed path below. The desk authorizes the
+        // salesperson's counter (down to cost) and closes it; never frequency-
+        // gated. Omitted getter ⇒ locked (legacy/test harness ⇒ understaffed).
+        if (deps.getDiscountDeskingUnlocked?.() ?? false) {
           return resolveTradeThenClose(
             Math.max(review.minimumAcceptablePrice, review.salespersonCounter),
           );
         }
 
-        // Unstaffed: only a tunable, rare fraction of below-floor ups surface as
-        // an interactive manager-attention event. The rest simply walk — the
-        // salesperson couldn't hold the price and lost the deal.
+        // Understaffed (no UCM, or one under the desking gate): only a tunable,
+        // rare fraction of below-floor ups surface as an interactive
+        // manager-attention event. The rest simply walk — the salesperson
+        // couldn't hold the price and lost the deal.
         const escalates =
           createRng(
             deriveSeed(masterSeed, 'discount_escalation_roll', { customerId, day }),

@@ -2,6 +2,7 @@ export {
   createStaffDispatch,
   createStaffFloorDrain,
   discountAcceptProbability,
+  isDiscountDeskingUnlocked,
 } from './StaffDispatch';
 export type {
   StaffDispatch,
