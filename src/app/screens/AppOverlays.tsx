@@ -43,8 +43,10 @@ export function AppOverlays({
     tradeCounterResult,
     discountReview,
     discountCounterResult,
+    discountOutcome,
     decideTrade,
     decideDiscount,
+    dismissDiscount,
   } = modals;
   const {
     recapModalOpen,
@@ -70,6 +72,8 @@ export function AppOverlays({
         review={discountReview}
         onDecide={decideDiscount}
         counterResult={discountCounterResult}
+        outcome={discountOutcome}
+        onDismiss={dismissDiscount}
       />
       {/* Day-close reward beat (#253): pops over Home on day close,
           dismissable, and reopenable from the Today-region chip. Rendered

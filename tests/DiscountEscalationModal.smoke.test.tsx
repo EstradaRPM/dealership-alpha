@@ -16,11 +16,11 @@ const REVIEW: DiscountReview = {
     category: 'sedan',
   },
   marketPrice: 15_000,
-  customerAskPrice: 12_600,
-  salespersonFloorPrice: 13_200,
-  recommendedCounter: 12_900,
+  askingPrice: 15_500,
+  customerTargetPrice: 12_600,
+  salespersonCounter: 14_100,
   minimumAcceptablePrice: 11_800,
-  frontGrossAtFloor: 1_400,
+  frontGrossAtAsk: 3_700,
   canAcceptAsk: true,
 };
 
@@ -60,5 +60,19 @@ describe('DiscountEscalationModal smoke tests', () => {
         />,
       ),
     ).not.toThrow();
+  });
+
+  it('renders the sold buy/walk recap with a Done action', () => {
+    const screen = render(
+      <DiscountEscalationModal
+        visible
+        review={REVIEW}
+        onDecide={jest.fn()}
+        outcome={{ kind: 'sold', soldPrice: 13_000, frontGross: 1_200 }}
+        onDismiss={jest.fn()}
+      />,
+    );
+    expect(screen.getByText(/SOLD at/)).toBeTruthy();
+    expect(screen.getByText('Done')).toBeTruthy();
   });
 });

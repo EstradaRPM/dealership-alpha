@@ -421,11 +421,11 @@ export interface EventMap {
       category: string;
     };
     marketPrice: number;
-    customerAskPrice: number;
-    salespersonFloorPrice: number;
-    recommendedCounter: number;
+    askingPrice: number;
+    customerTargetPrice: number;
+    salespersonCounter: number;
     minimumAcceptablePrice: number;
-    frontGrossAtFloor: number;
+    frontGrossAtAsk: number;
     canAcceptAsk: boolean;
   };
 

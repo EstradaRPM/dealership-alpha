@@ -21,11 +21,14 @@ export interface DiscountReview {
     readonly category: string;
   };
   readonly marketPrice: number;
-  readonly customerAskPrice: number;
-  readonly salespersonFloorPrice: number;
-  readonly recommendedCounter: number;
+  /** Our list price — the top of the range. */
+  readonly askingPrice: number;
+  /** What the customer wants to pay (their target) — the bottom of the range. */
+  readonly customerTargetPrice: number;
+  /** The salesperson's failed counter — sits between the two, by skill. */
+  readonly salespersonCounter: number;
   readonly minimumAcceptablePrice: number;
-  readonly frontGrossAtFloor: number;
+  readonly frontGrossAtAsk: number;
   readonly canAcceptAsk: boolean;
 }
 
@@ -35,11 +38,23 @@ export type DiscountDecision =
   | { readonly kind: 'propose_counter'; readonly amount: number }
   | { readonly kind: 'decline' };
 
+/** Terminal buy/walk recap shown after the deal resolves. */
+export type DiscountOutcome =
+  | { readonly kind: 'sold'; readonly soldPrice: number; readonly frontGross: number }
+  | { readonly kind: 'walked' };
+
 interface Props {
   visible: boolean;
   review: DiscountReview | null;
   onDecide: (decision: DiscountDecision) => void;
-  counterResult?: { readonly amount: number; readonly accepted: boolean } | null;
+  counterResult?: {
+    readonly amount: number;
+    readonly accepted: boolean;
+    readonly attemptsRemaining?: number;
+  } | null;
+  /** When set, the negotiation has resolved — show the recap + a Done button. */
+  outcome?: DiscountOutcome | null;
+  onDismiss?: () => void;
 }
 
 const dollars = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
@@ -49,8 +64,16 @@ export function DiscountEscalationModal({
   review,
   onDecide,
   counterResult,
+  outcome,
+  onDismiss,
 }: Props) {
   const [counterText, setCounterText] = React.useState('');
+
+  // Reset the typed counter once the negotiation resolves, so a re-opened
+  // modal for the next customer starts clean.
+  React.useEffect(() => {
+    if (outcome != null) setCounterText('');
+  }, [outcome]);
 
   const parsedCounter = Number.parseInt(counterText.replace(/[^0-9]/g, ''), 10);
   const counterValid =
@@ -66,18 +89,36 @@ export function DiscountEscalationModal({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={() => onDecide({ kind: 'decline' })}
+      onRequestClose={() =>
+        outcome != null ? onDismiss?.() : onDecide({ kind: 'decline' })
+      }
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.kicker}>MANAGER ATTENTION - DISCOUNT</Text>
           <Text style={styles.customer}>{review?.customerId ?? '-'}</Text>
           <Text style={styles.banner}>
-            Customer wants more discount than the floor can authorize.
+            Customer wants to pay less than the salesperson can authorize.
           </Text>
 
           {review == null ? (
             <Text style={styles.muted}>No discount in review.</Text>
+          ) : outcome != null ? (
+            <View style={styles.body}>
+              <Text style={styles.vehicle}>{vehicleSummary}</Text>
+              {outcome.kind === 'sold' ? (
+                <Text style={[styles.recap, styles.accepted]}>
+                  {`SOLD at ${dollars(outcome.soldPrice)} — ${dollars(outcome.frontGross)} front gross.`}
+                </Text>
+              ) : (
+                <Text style={[styles.recap, styles.rejected]}>
+                  Customer walked. No deal.
+                </Text>
+              )}
+              <View style={styles.actions}>
+                <Action label="Done" onPress={() => onDismiss?.()} />
+              </View>
+            </View>
           ) : (
             <ScrollView
               style={styles.body}
@@ -85,27 +126,28 @@ export function DiscountEscalationModal({
             >
               <Text style={styles.vehicle}>{vehicleSummary}</Text>
 
-              <Row label="Market price" value={dollars(review.marketPrice)} />
               <Row
-                label="Customer asks"
-                value={dollars(review.customerAskPrice)}
+                label="Our list price"
+                value={dollars(review.askingPrice)}
                 emphasize
               />
               <Row
-                label="Sales floor"
-                value={dollars(review.salespersonFloorPrice)}
+                label="Customer target"
+                value={dollars(review.customerTargetPrice)}
+                emphasize
               />
               <Row
-                label="Recommended counter"
-                value={dollars(review.recommendedCounter)}
+                label="Salesperson's failed counter"
+                value={dollars(review.salespersonCounter)}
               />
+              <Row label="Market price" value={dollars(review.marketPrice)} />
               <Row
-                label="Minimum allowed"
+                label="Our cost floor"
                 value={dollars(review.minimumAcceptablePrice)}
               />
               <Row
-                label="Floor gross"
-                value={dollars(review.frontGrossAtFloor)}
+                label="Gross at list"
+                value={dollars(review.frontGrossAtAsk)}
               />
 
               {counterResult != null && (
@@ -117,18 +159,22 @@ export function DiscountEscalationModal({
                 >
                   {counterResult.accepted
                     ? `Customer took your ${dollars(counterResult.amount)} counter.`
-                    : `Customer rejected your ${dollars(counterResult.amount)} counter.`}
+                    : `Customer held — rejected your ${dollars(counterResult.amount)} counter. ${
+                        counterResult.attemptsRemaining === 1
+                          ? 'One more offer before they walk.'
+                          : `${counterResult.attemptsRemaining ?? 0} offers left before they walk.`
+                      }`}
                 </Text>
               )}
 
               <View style={styles.actions}>
                 <Action
-                  label={`Accept ask - ${dollars(review.customerAskPrice)}`}
+                  label={`Accept their price - ${dollars(review.customerTargetPrice)}`}
                   disabled={!review.canAcceptAsk}
                   onPress={() => onDecide({ kind: 'accept_ask' })}
                 />
                 <Action
-                  label={`Counter - ${dollars(review.recommendedCounter)}`}
+                  label={`Re-pitch counter - ${dollars(review.salespersonCounter)}`}
                   onPress={() => onDecide({ kind: 'accept_counter' })}
                 />
 
@@ -160,7 +206,7 @@ export function DiscountEscalationModal({
                 </View>
 
                 <Action
-                  label="Decline deal"
+                  label="Let them walk"
                   danger
                   onPress={() => onDecide({ kind: 'decline' })}
                 />
@@ -285,6 +331,13 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     fontSize: 12,
     marginTop: 12,
+  },
+  recap: {
+    fontFamily: 'monospace',
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 4,
+    marginBottom: 4,
   },
   accepted: { color: colors.positive },
   rejected: { color: colors.danger },

@@ -159,12 +159,23 @@ export interface DiscountReviewPayload {
     readonly mileage: number;
     readonly category: string;
   };
+  /** Competitor benchmark (book × markup) — for above/below-market labeling only. */
   readonly marketPrice: number;
-  readonly customerAskPrice: number;
-  readonly salespersonFloorPrice: number;
-  readonly recommendedCounter: number;
+  /** Our list price (the player-set askingPrice) — the top of the negotiation range. */
+  readonly askingPrice: number;
+  /** What the customer wants to pay (their reservation price) — the bottom of the range. */
+  readonly customerTargetPrice: number;
+  /**
+   * The salesperson's failed counter — between the customer's target and our
+   * ask, positioned tighter toward the ask the higher the salesperson's skill.
+   * The customer already balked at it; re-pitching rolls for acceptance.
+   */
+  readonly salespersonCounter: number;
+  /** Hard floor: vehicle cost. We never sell below it (a player counter under it abandons). */
   readonly minimumAcceptablePrice: number;
-  readonly frontGrossAtFloor: number;
+  /** Front gross if the customer paid full list. */
+  readonly frontGrossAtAsk: number;
+  /** True when the customer's target is at/above cost (we can meet it without a loss). */
   readonly canAcceptAsk: boolean;
 }
 
@@ -175,12 +186,14 @@ export type PlayerDiscountDecision =
   | { readonly kind: 'decline' };
 
 export type PlayerDiscountDecisionResult =
-  | { readonly status: 'closed' }
+  | { readonly status: 'closed'; readonly soldPrice: number; readonly frontGross: number }
   | { readonly status: 'abandoned' }
   | {
       readonly status: 'counter_rejected';
       readonly amount: number;
       readonly accepted: false;
+      /** Counter-offers the customer will still entertain before walking. */
+      readonly attemptsRemaining: number;
     };
 
 export interface HeldDiscountReview {
@@ -201,14 +214,22 @@ function lerp(a: number, b: number, t: number): number {
 const clampUnit = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 
 function rollDiscountCounterResponse(
-  customerAskPrice: number,
+  customerTargetPrice: number,
   counterPrice: number,
   priceSensitivity: number,
+  priorMisses: number,
+  missPenalty: number,
   seed: number,
 ): boolean {
-  if (counterPrice <= customerAskPrice) return true;
-  const gapFraction = (counterPrice - customerAskPrice) / Math.max(customerAskPrice, 1);
-  const acceptProb = clampUnit(1 - gapFraction * 1.6 * (1 + priceSensitivity));
+  // At/below the customer's target it's an automatic yes; above it, acceptance
+  // falls off with the gap, steepened by their price-sensitivity and cooled
+  // further by each prior swing-and-a-miss.
+  if (counterPrice <= customerTargetPrice) return true;
+  const gapFraction =
+    (counterPrice - customerTargetPrice) / Math.max(customerTargetPrice, 1);
+  const acceptProb = clampUnit(
+    1 - gapFraction * 1.6 * (1 + priceSensitivity) - priorMisses * missPenalty,
+  );
   return createRng(seed)() < acceptProb;
 }
 
@@ -553,22 +574,29 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
 
     if (close.outcome !== 'buy') {
       if (!close.closeable) {
-        const customerAskPrice = Math.max(0, Math.round(close.priceFormation.rawPrice));
-        const salespersonFloorPrice = Math.round(close.priceFormation.marginFloorPrice);
+        // Pricing/Demand spine S9 (#281): the customer's reservation sits below
+        // the salesperson's margin floor, so the deal can't close at the held
+        // price. Frame the negotiation as three numbers on the list-price axis:
+        // our ask (list), the customer's target (their reservation), and the
+        // salesperson's failed counter (between the two, tighter toward the ask
+        // the higher the salesperson's skill).
+        const askingPrice = Math.max(0, Math.round(close.priceFormation.askingPrice));
         const minimumAcceptablePrice = Math.round(close.priceFormation.vehicleCost);
-        const salesManagers = staffOrg.currentRoster.filter(
-          s => s.role_id === 'sales-manager',
+        const customerTargetPrice = Math.min(
+          askingPrice,
+          Math.max(0, Math.round(close.priceFormation.reservationPrice)),
         );
-        const manager = salesManagers.reduce<typeof salesManagers[number] | null>(
-          (best, s) => (!best || s.effectiveness > best.effectiveness ? s : best),
-          null,
-        );
-        const managerGive = manager
-          ? lerp(0.25, 0.75, clampUnit(manager.effectiveness))
-          : 0;
-        const recommendedCounter = Math.round(
-          salespersonFloorPrice -
-            (salespersonFloorPrice - customerAskPrice) * managerGive,
+        // NEGOTIATE composite of the working salesperson positions the failed
+        // counter: skill 1 → at the ask, skill 0 → at the customer's target.
+        const salesSkill = clampUnit(close.priceFormation.closingComposite.effectiveness);
+        const salespersonCounter = Math.round(
+          Math.min(
+            askingPrice,
+            Math.max(
+              minimumAcceptablePrice,
+              lerp(customerTargetPrice, askingPrice, salesSkill),
+            ),
+          ),
         );
         const review: DiscountReviewPayload = {
           customerId,
@@ -582,17 +610,60 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             category: vehicle.category,
           },
           marketPrice: Math.round(close.priceFormation.marketPrice),
-          customerAskPrice,
-          salespersonFloorPrice,
-          recommendedCounter: Math.max(minimumAcceptablePrice, recommendedCounter),
+          askingPrice,
+          customerTargetPrice,
+          salespersonCounter,
           minimumAcceptablePrice,
-          frontGrossAtFloor: Math.round(salespersonFloorPrice - close.priceFormation.vehicleCost),
-          canAcceptAsk: customerAskPrice >= minimumAcceptablePrice,
+          frontGrossAtAsk: askingPrice - minimumAcceptablePrice,
+          canAcceptAsk: customerTargetPrice >= minimumAcceptablePrice,
         };
 
-        if (manager) {
-          return resolveTradeThenClose(review.recommendedCounter);
+        const salesManagers = staffOrg.currentRoster.filter(
+          s => s.role_id === 'sales-manager',
+        );
+        const hasManager = salesManagers.length > 0;
+
+        // A hired sales-manager auto-adjudicates (never gated by frequency):
+        // they authorize the salesperson's counter (down to cost) and close it.
+        if (hasManager) {
+          return resolveTradeThenClose(
+            Math.max(review.minimumAcceptablePrice, review.salespersonCounter),
+          );
         }
+
+        // Unstaffed: only a tunable, rare fraction of below-floor ups surface as
+        // an interactive manager-attention event. The rest simply walk — the
+        // salesperson couldn't hold the price and lost the deal.
+        const ev = config.discountEvent;
+        const escalates =
+          createRng(
+            deriveSeed(masterSeed, 'discount_escalation_roll', { customerId, day }),
+          )() < ev.escalationRate;
+        if (!escalates) {
+          emitNoSale(customerId, salesperson.id, day, 'no_close');
+          return 'resolved';
+        }
+
+        // How many counter-offers this customer will entertain before walking:
+        // agreeableness scales across [min,max], plus seeded ±0.5 jitter. A
+        // disagreeable buyer walks after one swing-and-a-miss; an agreeable one
+        // haggles back and forth.
+        const agreeNorm = clampUnit(person.agreeableness / 100);
+        const attemptJitter =
+          createRng(
+            deriveSeed(masterSeed, 'discount_attempts', { customerId, day }),
+          )() - 0.5;
+        let attemptsRemaining = Math.max(
+          ev.minCounterAttempts,
+          Math.min(
+            ev.maxCounterAttempts,
+            Math.round(
+              lerp(ev.minCounterAttempts, ev.maxCounterAttempts, agreeNorm) +
+                attemptJitter,
+            ),
+          ),
+        );
+        let priorMisses = 0;
 
         deps.onDiscountReviewHeld?.({
           customerId,
@@ -607,7 +678,48 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                 return { status: 'abandoned' };
               }
               resolveTradeThenClose(agreedPrice);
-              return { status: 'closed' };
+              return {
+                status: 'closed',
+                soldPrice: agreedPrice,
+                frontGross: agreedPrice - review.minimumAcceptablePrice,
+              };
+            };
+
+            // A counter above the customer's target rolls for acceptance (gap ×
+            // their price-sensitivity, cooled by prior misses): some come down to
+            // reality, some won't. At/below their target it's an automatic yes.
+            // A rejected counter burns one attempt; once exhausted the customer
+            // walks instead of hearing another offer.
+            const attemptCounter = (
+              amount: number,
+            ): PlayerDiscountDecisionResult => {
+              const accepted = rollDiscountCounterResponse(
+                review.customerTargetPrice,
+                amount,
+                priceSensitivity,
+                priorMisses,
+                ev.missPenalty,
+                deriveSeed(masterSeed, 'discount_counter_response', {
+                  customerId,
+                  day,
+                  attempt: priorMisses,
+                }),
+              );
+              if (accepted) {
+                return settleDiscount(amount);
+              }
+              priorMisses += 1;
+              attemptsRemaining -= 1;
+              if (attemptsRemaining <= 0) {
+                emitNoSale(customerId, salesperson.id, day, 'discount_haggle_exhausted');
+                return { status: 'abandoned' };
+              }
+              return {
+                status: 'counter_rejected',
+                amount,
+                accepted: false,
+                attemptsRemaining,
+              };
             };
 
             if (decision.kind === 'decline') {
@@ -615,26 +727,13 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
               return { status: 'abandoned' };
             }
             if (decision.kind === 'accept_ask') {
-              return settleDiscount(review.customerAskPrice);
+              // Meet the customer at their target — a guaranteed close.
+              return settleDiscount(review.customerTargetPrice);
             }
             if (decision.kind === 'accept_counter') {
-              return settleDiscount(review.recommendedCounter);
+              return attemptCounter(review.salespersonCounter);
             }
-
-            const accepted = rollDiscountCounterResponse(
-              review.customerAskPrice,
-              decision.amount,
-              priceSensitivity,
-              deriveSeed(masterSeed, 'discount_counter_response', { customerId, day }),
-            );
-            if (!accepted) {
-              return {
-                status: 'counter_rejected',
-                amount: decision.amount,
-                accepted: false,
-              };
-            }
-            return settleDiscount(decision.amount);
+            return attemptCounter(decision.amount);
           },
         });
         bus.publish('discount:escalated', review);

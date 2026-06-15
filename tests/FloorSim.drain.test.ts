@@ -70,6 +70,12 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
 const STAFF_CONFIG: StaffDispatchConfig = {
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.6,
+  discountEvent: {
+    escalationRate: 1,
+    minCounterAttempts: 1,
+    maxCounterAttempts: 3,
+    missPenalty: 0.15,
+  },
 };
 
 // Empty-lot Inventory stub — drain tests focus on cadence, not closes.

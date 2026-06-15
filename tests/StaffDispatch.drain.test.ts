@@ -27,10 +27,18 @@ const MASTER_SEED = 42;
 
 /** A drain config with a flat per-tick budget (min == max ⇒ effectiveness-
  *  independent) so per-tick throughput is exact and deterministic. */
+const DISCOUNT_EVENT_CFG = {
+  escalationRate: 1,
+  minCounterAttempts: 1,
+  maxCounterAttempts: 3,
+  missPenalty: 0.15,
+} as const;
+
 function flatBudget(perTick: number): StaffDispatchConfig {
   return {
     minDrainPerTick: perTick,
     maxDrainPerTick: perTick,
+    discountEvent: DISCOUNT_EVENT_CFG,
   };
 }
 
@@ -39,6 +47,7 @@ function skillBudget(min: number, max: number): StaffDispatchConfig {
   return {
     minDrainPerTick: min,
     maxDrainPerTick: max,
+    discountEvent: DISCOUNT_EVENT_CFG,
   };
 }
 

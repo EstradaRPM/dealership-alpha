@@ -6,11 +6,14 @@ import type { TradeDecision, TradeReview } from '../ui/TradeEscalationModal';
 import type {
   DiscountDecision,
   DiscountReview,
+  DiscountOutcome,
 } from '../ui/DiscountEscalationModal';
 
 interface CounterResult {
   readonly amount: number;
   readonly accepted: boolean;
+  /** Discount-event only: counters the customer will still hear before walking. */
+  readonly attemptsRemaining?: number;
 }
 
 export interface ModalsDeps {
@@ -26,8 +29,11 @@ export interface Modals {
   tradeCounterResult: CounterResult | null;
   discountReview: DiscountReview | null;
   discountCounterResult: CounterResult | null;
+  discountOutcome: DiscountOutcome | null;
   decideTrade: (decision: TradeDecision) => void;
   decideDiscount: (decision: DiscountDecision) => void;
+  /** Dismiss the resolved discount recap (Done button). */
+  dismissDiscount: () => void;
   /** Reset all latched modal/escalation state (session teardown). */
   reset: () => void;
 }
@@ -51,6 +57,8 @@ export function useModals({
   );
   const [discountCounterResult, setDiscountCounterResult] =
     useState<CounterResult | null>(null);
+  const [discountOutcome, setDiscountOutcome] =
+    useState<DiscountOutcome | null>(null);
 
   const decideTrade = (decision: TradeDecision) => {
     if (!tradeReview) return;
@@ -86,11 +94,22 @@ export function useModals({
       setDiscountCounterResult({
         amount: result.amount,
         accepted: result.accepted,
+        attemptsRemaining: result.attemptsRemaining,
       });
       return;
     }
-    setDiscountReview(null);
+    // Terminal: keep the modal mounted to show a buy/walk recap; the Done
+    // button (dismissDiscount) clears it.
     setDiscountCounterResult(null);
+    setDiscountOutcome(
+      result.status === 'closed'
+        ? {
+            kind: 'sold',
+            soldPrice: result.soldPrice,
+            frontGross: result.frontGross,
+          }
+        : { kind: 'walked' },
+    );
     const w = worldRef.current;
     if (w) {
       setLotVehicles(w.inventory.getLotVehicles());
@@ -99,11 +118,18 @@ export function useModals({
     bump();
   };
 
+  const dismissDiscount = () => {
+    setDiscountReview(null);
+    setDiscountCounterResult(null);
+    setDiscountOutcome(null);
+  };
+
   const reset = () => {
     setTradeReview(null);
     setTradeCounterResult(null);
     setDiscountReview(null);
     setDiscountCounterResult(null);
+    setDiscountOutcome(null);
   };
 
   useEffect(() => {
@@ -143,33 +169,34 @@ export function useModals({
       customerId,
       vehicle,
       marketPrice,
-      customerAskPrice,
-      salespersonFloorPrice,
-      recommendedCounter,
+      askingPrice,
+      customerTargetPrice,
+      salespersonCounter,
       minimumAcceptablePrice,
-      frontGrossAtFloor,
+      frontGrossAtAsk,
       canAcceptAsk,
     }: {
       customerId: string;
       vehicle: DiscountReview['vehicle'];
       marketPrice: number;
-      customerAskPrice: number;
-      salespersonFloorPrice: number;
-      recommendedCounter: number;
+      askingPrice: number;
+      customerTargetPrice: number;
+      salespersonCounter: number;
       minimumAcceptablePrice: number;
-      frontGrossAtFloor: number;
+      frontGrossAtAsk: number;
       canAcceptAsk: boolean;
     }) => {
       setDiscountCounterResult(null);
+      setDiscountOutcome(null);
       setDiscountReview({
         customerId,
         vehicle,
         marketPrice,
-        customerAskPrice,
-        salespersonFloorPrice,
-        recommendedCounter,
+        askingPrice,
+        customerTargetPrice,
+        salespersonCounter,
         minimumAcceptablePrice,
-        frontGrossAtFloor,
+        frontGrossAtAsk,
         canAcceptAsk,
       });
     };
@@ -187,8 +214,10 @@ export function useModals({
     tradeCounterResult,
     discountReview,
     discountCounterResult,
+    discountOutcome,
     decideTrade,
     decideDiscount,
+    dismissDiscount,
     reset,
   };
 }

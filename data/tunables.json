@@ -312,7 +312,13 @@
   },
   "staffDispatch": {
     "minDrainPerTick": 0.15,
-    "maxDrainPerTick": 0.60
+    "maxDrainPerTick": 0.60,
+    "discountEvent": {
+      "escalationRate": 0.2,
+      "minCounterAttempts": 1,
+      "maxCounterAttempts": 3,
+      "missPenalty": 0.15
+    }
   },
   "marketEconomy": {
     "compWindow": {

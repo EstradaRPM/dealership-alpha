@@ -38,17 +38,17 @@ describe('App discount escalation reachability', () => {
           category: 'sedan',
         },
         marketPrice: 15_000,
-        customerAskPrice: 12_600,
-        salespersonFloorPrice: 13_200,
-        recommendedCounter: 12_900,
+        askingPrice: 15_500,
+        customerTargetPrice: 12_600,
+        salespersonCounter: 14_100,
         minimumAcceptablePrice: 11_800,
-        frontGrossAtFloor: 1_400,
+        frontGrossAtAsk: 3_700,
         canAcceptAsk: true,
       });
     });
 
     expect(screen.getByText(/MANAGER ATTENTION - DISCOUNT/)).toBeTruthy();
     expect(screen.getByText('cust:discount-review')).toBeTruthy();
-    expect(screen.getByText('Customer asks')).toBeTruthy();
+    expect(screen.getByText('Customer target')).toBeTruthy();
   });
 });

@@ -17,10 +17,30 @@ to the real machinery. Per customer (after exception roll + hold-floor):
 3. `closeAndPrice(...)` with the resolved meters + skill + priceSensitivity.
    `outcome !== 'buy'` with a normal closeable price ⇒ `no_sale`/`no_close`.
    If the customer would buy only below the salesperson margin floor
-   (`closeable=false`), this becomes the discount-escalation branch (#222):
-   a hired `sales-manager` auto-resolves the exception through the same close
-   path; without one, StaffDispatch emits `discount:escalated`, holds the deal,
-   and waits for the composition root's player decision closure.
+   (`closeable=false`), this becomes the discount-escalation branch (#222,
+   reframed to the list-price axis by #281): a hired `sales-manager`
+   auto-resolves the exception through the same close path (ungated); without
+   one, a tunable, **rare** fraction of below-floor ups
+   (`staffDispatch.discountEscalationRate`, seeded on `(customerId, day)`)
+   surface as the interactive event — StaffDispatch emits `discount:escalated`,
+   holds the deal, and waits for the composition root's player decision closure.
+   The rest simply walk (`no_sale`/`no_close`). The review carries three numbers
+   on the list-price axis — our ask (`priceFormation.askingPrice`), the
+   customer's target (`reservationPrice`), and the salesperson's **failed
+   counter** (`lerp(target, ask, NEGOTIATE-skill)`, clamped `[cost, ask]`,
+   tighter to the ask the higher the salesperson's skill). The held-review
+   `decide`: `accept_ask` meets the customer at their target (guaranteed close);
+   `accept_counter` re-pitches the failed counter and `propose_counter` offers a
+   custom price — both roll on gap × price-sensitivity (auto-yes at/below the
+   target). Each customer tolerates a bounded number of counter-offers before
+   walking — `counterAttempts` scales by agreeableness across
+   `[minCounterAttempts, maxCounterAttempts]` with seeded jitter — and every
+   rejected counter ("swing and a miss") burns one attempt *and* cools the next
+   roll by `missPenalty`. A rejected counter with attempts left returns
+   `counter_rejected` (`amount`, `attemptsRemaining`) and keeps the review open;
+   exhausting them walks the customer (`no_sale`/`discount_haggle_exhausted`).
+   `decline` walks immediately. A `closed` result returns
+   `{ soldPrice, frontGross }` for the modal's buy/walk recap.
 4. **Trade resolution (#169) + escalation (#170).** If the visit `hasTrade`
    (and the book seam is wired), `resolveTradeIn(...)` runs after the buy
    decision but before structuring, fed the escalation approver
@@ -134,7 +154,11 @@ with #147.
 
 ## Data
 - `data/tunables.json` — staff-dispatch section (`minDrainPerTick` /
-  `maxDrainPerTick` per-tick floor-drain throughput).
+  `maxDrainPerTick` per-tick floor-drain throughput; `discountEvent` (#281) —
+  `escalationRate` (rare default fraction of below-floor, unstaffed discounts
+  that surface as the interactive buy/walk event), `minCounterAttempts` /
+  `maxCounterAttempts` (haggle tolerance range, scaled by agreeableness), and
+  `missPenalty` (per-miss acceptance cool-off)).
 
 ## Escalation (held reviews only)
 The resolver returns `'escalated'` solely for the trade (#170) and discount

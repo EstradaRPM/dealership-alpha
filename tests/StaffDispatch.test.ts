@@ -65,6 +65,14 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
 const BASE_CONFIG: StaffDispatchConfig = {
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.60,
+  // Always escalate below-floor discounts in tests so the held-review path is
+  // deterministic; the frequency gate gets its own dedicated test.
+  discountEvent: {
+    escalationRate: 1,
+    minCounterAttempts: 1,
+    maxCounterAttempts: 3,
+    missPenalty: 0.15,
+  },
 };
 
 const DISCOUNT_EXCEPTION_CONFIG: SalesProcessConfig = {
@@ -234,10 +242,11 @@ interface DiscountEscalatedPayload {
   customerId: string;
   day: number;
   marketPrice: number;
-  customerAskPrice: number;
-  salespersonFloorPrice: number;
-  recommendedCounter: number;
+  askingPrice: number;
+  customerTargetPrice: number;
+  salespersonCounter: number;
   minimumAcceptablePrice: number;
+  frontGrossAtAsk: number;
   canAcceptAsk: boolean;
 }
 
@@ -550,19 +559,25 @@ describe('StaffDispatch — discount escalation (#222)', () => {
       day: 1,
       canAcceptAsk: true,
     });
+    // Spine framing (#281): list (ask) ≥ salesperson's failed counter ≥ target,
+    // the counter positioned by salesperson skill.
+    const review = w.discountEscalations[0];
+    expect(review.askingPrice).toBeGreaterThanOrEqual(review.salespersonCounter);
+    expect(review.salespersonCounter).toBeGreaterThanOrEqual(
+      review.customerTargetPrice,
+    );
 
     const result = w.heldDiscountReviews[0].decide({ kind: 'accept_ask' });
 
-    expect(result).toEqual({ status: 'closed' });
+    expect(result.status).toBe('closed');
     expect(w.closedDeals).toHaveLength(1);
     expect(w.events).toHaveLength(1);
     expect(w.events[0]).toMatchObject({
       customerId: 'cust:discount',
       outcome: 'closed',
     });
-    expect(w.closedDeals[0].agreedPrice).toBe(
-      w.discountEscalations[0].customerAskPrice,
-    );
+    // accept_ask meets the customer at their target — a guaranteed close.
+    expect(w.closedDeals[0].agreedPrice).toBe(review.customerTargetPrice);
   });
 
   it('hired sales-manager auto-resolves the same discount exception', () => {
@@ -619,6 +634,111 @@ describe('StaffDispatch — discount escalation (#222)', () => {
       outcome: 'no_sale',
       reason: 'discount_player_declined',
     });
+  });
+
+  it('frequency gate (rate 0) suppresses the event — the up just walks', () => {
+    const w = setup(
+      [makeStaff(0.9)],
+      { ...BASE_CONFIG, discountEvent: { ...BASE_CONFIG.discountEvent, escalationRate: 0 } },
+      { salesProcessDeps: discountDeps },
+    );
+    w.sessions.set(
+      'cust:no-escalate',
+      makeSession('cust:no-escalate', makeFinanceVisit('cust:no-escalate'), {
+        wealth: 15_000,
+        agreeableness: 100,
+      }),
+    );
+
+    admit(w.bus, 'cust:no-escalate');
+
+    // No interactive event, no held review — the below-floor up simply no-sales.
+    expect(w.discountEscalations).toHaveLength(0);
+    expect(w.heldDiscountReviews).toHaveLength(0);
+    expect(w.closedDeals).toHaveLength(0);
+    expect(w.events).toHaveLength(1);
+    expect(w.events[0]).toMatchObject({
+      customerId: 'cust:no-escalate',
+      outcome: 'no_sale',
+      reason: 'no_close',
+    });
+  });
+
+  it('a rejected counter burns an attempt; exhausting them walks the customer', () => {
+    // One attempt allowed: a single swing-and-a-miss ends it.
+    const w = setup(
+      [makeStaff(0.9)],
+      {
+        ...BASE_CONFIG,
+        discountEvent: {
+          ...BASE_CONFIG.discountEvent,
+          minCounterAttempts: 1,
+          maxCounterAttempts: 1,
+        },
+      },
+      { salesProcessDeps: discountDeps },
+    );
+    w.sessions.set(
+      'cust:exhaust',
+      makeSession('cust:exhaust', makeFinanceVisit('cust:exhaust'), {
+        wealth: 15_000,
+        agreeableness: 100,
+      }),
+    );
+    admit(w.bus, 'cust:exhaust');
+
+    const review = w.discountEscalations[0];
+    // A price far above their target is a sure rejection.
+    const result = w.heldDiscountReviews[0].decide({
+      kind: 'propose_counter',
+      amount: review.askingPrice + 50_000,
+    });
+
+    expect(result).toEqual({ status: 'abandoned' });
+    expect(w.closedDeals).toHaveLength(0);
+    expect(w.events).toHaveLength(1);
+    expect(w.events[0]).toMatchObject({
+      customerId: 'cust:exhaust',
+      outcome: 'no_sale',
+      reason: 'discount_haggle_exhausted',
+    });
+  });
+
+  it('with attempts to spare, a rejected counter keeps the review open', () => {
+    const w = setup(
+      [makeStaff(0.9)],
+      {
+        ...BASE_CONFIG,
+        discountEvent: {
+          ...BASE_CONFIG.discountEvent,
+          minCounterAttempts: 3,
+          maxCounterAttempts: 3,
+        },
+      },
+      { salesProcessDeps: discountDeps },
+    );
+    w.sessions.set(
+      'cust:haggle',
+      makeSession('cust:haggle', makeFinanceVisit('cust:haggle'), {
+        wealth: 15_000,
+        agreeableness: 100,
+      }),
+    );
+    admit(w.bus, 'cust:haggle');
+
+    const review = w.discountEscalations[0];
+    const result = w.heldDiscountReviews[0].decide({
+      kind: 'propose_counter',
+      amount: review.askingPrice + 50_000,
+    });
+
+    expect(result.status).toBe('counter_rejected');
+    if (result.status === 'counter_rejected') {
+      expect(result.attemptsRemaining).toBe(2);
+    }
+    // Review stays open — no terminal event yet.
+    expect(w.events).toHaveLength(0);
+    expect(w.closedDeals).toHaveLength(0);
   });
 });
 
