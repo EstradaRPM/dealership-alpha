@@ -4,68 +4,54 @@ import {
 } from '../src/game/DemandShaper';
 import { createRng } from '../src/game/NPC/Rng';
 
-const PERSONAS = [
-  'young_family',
-  'enthusiast',
-  'commuter',
-  'retiree',
-  'tradesperson',
-] as const;
+const SEGMENTS = ['sedan', 'truck', 'suv'] as const;
 
 const CONFIG = { windowSize: 60, trendEpsilon: 0.08 };
 
 function makeShaper(initialMix?: Record<string, number>) {
-  return createDemandShaper({ personas: PERSONAS, config: CONFIG, initialMix });
+  return createDemandShaper({ segments: SEGMENTS, config: CONFIG, initialMix });
 }
 
-describe('DemandShaper — mix normalization', () => {
-  it('defaults to a uniform, normalized mix', () => {
+describe('DemandShaper — heat-map normalization', () => {
+  it('defaults to a uniform, normalized heat map', () => {
     const mix = makeShaper().getMix();
-    for (const p of PERSONAS) expect(mix[p]).toBeCloseTo(1 / PERSONAS.length, 10);
-    const sum = PERSONAS.reduce((s, p) => s + mix[p], 0);
+    for (const s of SEGMENTS) expect(mix[s]).toBeCloseTo(1 / SEGMENTS.length, 10);
+    const sum = SEGMENTS.reduce((acc, s) => acc + mix[s], 0);
     expect(sum).toBeCloseTo(1, 10);
   });
 
   it('normalizes arbitrary raw weights to sum 1 while preserving ratios', () => {
     const shaper = makeShaper();
-    shaper.setMix({ young_family: 3, enthusiast: 1, commuter: 0, retiree: 0, tradesperson: 0 });
+    shaper.setMix({ sedan: 3, truck: 1, suv: 0 });
     const mix = shaper.getMix();
-    expect(mix.young_family).toBeCloseTo(0.75, 10);
-    expect(mix.enthusiast).toBeCloseTo(0.25, 10);
-    expect(mix.commuter).toBe(0);
-    expect(PERSONAS.reduce((s, p) => s + mix[p], 0)).toBeCloseTo(1, 10);
+    expect(mix.sedan).toBeCloseTo(0.75, 10);
+    expect(mix.truck).toBeCloseTo(0.25, 10);
+    expect(mix.suv).toBe(0);
+    expect(SEGMENTS.reduce((acc, s) => acc + mix[s], 0)).toBeCloseTo(1, 10);
   });
 
-  it('rejects unknown personas, negative weights, and an all-zero mix', () => {
+  it('rejects unknown segments, negative weights, and an all-zero map', () => {
     const shaper = makeShaper();
     expect(() => shaper.setMix({ ghost: 1 } as Record<string, number>)).toThrow();
-    expect(() => shaper.setMix({ young_family: -1 })).toThrow();
-    expect(() =>
-      shaper.setMix({ young_family: 0, enthusiast: 0, commuter: 0, retiree: 0, tradesperson: 0 }),
-    ).toThrow();
+    expect(() => shaper.setMix({ sedan: -1 })).toThrow();
+    expect(() => shaper.setMix({ sedan: 0, truck: 0, suv: 0 })).toThrow();
   });
 
-  it('layers active influence inputs over the baseline mix', () => {
-    const shaper = makeShaper({
-      young_family: 1,
-      enthusiast: 1,
-      commuter: 1,
-      retiree: 1,
-      tradesperson: 1,
-    });
+  it('layers active influence inputs over the baseline heat map', () => {
+    const shaper = makeShaper({ sedan: 1, truck: 1, suv: 1 });
     const before = shaper.getMix();
     shaper.setInfluenceInputs([
       {
         id: 'inventory-composition',
         label: 'Inventory composition',
         producer: 'inventory',
-        weights: { tradesperson: 2 },
+        weights: { truck: 2 },
         lagDays: 0,
       },
     ]);
     const after = shaper.getMix();
-    expect(after.tradesperson).toBeGreaterThan(before.tradesperson);
-    expect(after.young_family).toBeLessThan(before.young_family);
+    expect(after.truck).toBeGreaterThan(before.truck);
+    expect(after.sedan).toBeLessThan(before.sedan);
     const [input] = shaper.getInfluenceInputs();
     expect(input).toMatchObject({
       id: 'inventory-composition',
@@ -76,24 +62,18 @@ describe('DemandShaper — mix normalization', () => {
       elapsedDays: 0,
       removing: false,
     });
-    expect(input.weights.tradesperson).toBe(2);
-    expect(input.targetWeights.tradesperson).toBe(2);
+    expect(input.weights.truck).toBe(2);
+    expect(input.targetWeights.truck).toBe(2);
   });
 
   it('ramps changed influence targets over whole days', () => {
-    const shaper = makeShaper({
-      young_family: 1,
-      enthusiast: 1,
-      commuter: 1,
-      retiree: 1,
-      tradesperson: 1,
-    });
+    const shaper = makeShaper({ sedan: 1, truck: 1, suv: 1 });
     const before = shaper.getMix();
     shaper.upsertInfluenceInput({
       id: 'advertising:local-radio',
       label: 'Advertising: Local radio',
       producer: 'advertising',
-      weights: { young_family: 1.2, enthusiast: -0.2 },
+      weights: { suv: 1.2, truck: -0.2 },
       lagDays: 3,
       decayDays: 2,
     });
@@ -101,24 +81,18 @@ describe('DemandShaper — mix normalization', () => {
     expect(shaper.getMix()).toEqual(before);
     shaper.advanceInfluenceDay();
     const dayOne = shaper.getMix();
-    expect(dayOne.young_family).toBeGreaterThan(before.young_family);
-    expect(dayOne.young_family).toBeLessThan(
-      makeShaper({
-        young_family: 1,
-        enthusiast: 1,
-        commuter: 1,
-        retiree: 1,
-        tradesperson: 1,
-      }).getMix().young_family + 0.2,
+    expect(dayOne.suv).toBeGreaterThan(before.suv);
+    expect(dayOne.suv).toBeLessThan(
+      makeShaper({ sedan: 1, truck: 1, suv: 1 }).getMix().suv + 0.2,
     );
-    const partialWeight = shaper.getInfluenceInputs()[0].weights.young_family;
+    const partialWeight = shaper.getInfluenceInputs()[0].weights.suv;
     expect(partialWeight).toBeGreaterThan(0);
     expect(partialWeight).toBeLessThan(1.2);
 
     shaper.advanceInfluenceDay(2);
     const full = shaper.getInfluenceInputs()[0];
-    expect(full.weights.young_family).toBeCloseTo(1.2, 10);
-    expect(full.weights.enthusiast).toBeCloseTo(-0.2, 10);
+    expect(full.weights.suv).toBeCloseTo(1.2, 10);
+    expect(full.weights.truck).toBeCloseTo(-0.2, 10);
   });
 });
 
@@ -126,33 +100,33 @@ describe('DemandShaper — deterministic weighted draw', () => {
   it('produces an identical sequence for the same seed', () => {
     const a = makeShaper();
     const b = makeShaper();
-    const seqA = Array.from({ length: 50 }, () => a.drawPersona(createRng(7)));
-    const seqB = Array.from({ length: 50 }, () => b.drawPersona(createRng(7)));
+    const seqA = Array.from({ length: 50 }, () => a.drawSegment(createRng(7)));
+    const seqB = Array.from({ length: 50 }, () => b.drawSegment(createRng(7)));
     expect(seqA).toEqual(seqB);
   });
 
-  it('realized frequencies track the mix within tolerance over many draws', () => {
+  it('realized frequencies track the heat map within tolerance over many draws', () => {
     const shaper = makeShaper();
-    shaper.setMix({ young_family: 5, enthusiast: 3, commuter: 1, retiree: 1, tradesperson: 0 });
+    shaper.setMix({ sedan: 6, truck: 3, suv: 0 });
     const N = 20_000;
     const counts: Record<string, number> = {};
-    for (const p of PERSONAS) counts[p] = 0;
+    for (const s of SEGMENTS) counts[s] = 0;
     // One continuous RNG stream → a proper sample of the distribution.
     const rng = createRng(12345);
-    for (let i = 0; i < N; i++) counts[shaper.drawPersona(rng)]++;
+    for (let i = 0; i < N; i++) counts[shaper.drawSegment(rng)]++;
 
     const mix = shaper.getMix();
-    for (const p of PERSONAS) {
-      expect(counts[p] / N).toBeCloseTo(mix[p], 1); // within ~0.05
+    for (const s of SEGMENTS) {
+      expect(counts[s] / N).toBeCloseTo(mix[s], 1); // within ~0.05
     }
-    expect(counts.tradesperson).toBe(0); // zero weight ⇒ never drawn
+    expect(counts.suv).toBe(0); // zero weight ⇒ never drawn
   });
 });
 
 describe('DemandShaper — observed mix + trend', () => {
   it('reports zero shares before any arrivals', () => {
     const observed = makeShaper().getObservedMix();
-    expect(observed).toHaveLength(PERSONAS.length);
+    expect(observed).toHaveLength(SEGMENTS.length);
     for (const e of observed) {
       expect(e.count).toBe(0);
       expect(e.share).toBe(0);
@@ -162,64 +136,59 @@ describe('DemandShaper — observed mix + trend', () => {
 
   it('counts arrivals and computes shares over the trailing window', () => {
     const shaper = makeShaper();
-    shaper.recordArrival('young_family');
-    shaper.recordArrival('young_family');
-    shaper.recordArrival('commuter');
+    shaper.recordArrival('suv');
+    shaper.recordArrival('suv');
+    shaper.recordArrival('sedan');
     const observed = shaper.getObservedMix();
-    const yf = observed.find((e) => e.persona === 'young_family')!;
-    const cm = observed.find((e) => e.persona === 'commuter')!;
-    expect(yf.count).toBe(2);
-    expect(yf.share).toBeCloseTo(2 / 3, 10);
-    expect(cm.count).toBe(1);
+    const suv = observed.find((e) => e.segment === 'suv')!;
+    const sedan = observed.find((e) => e.segment === 'sedan')!;
+    expect(suv.count).toBe(2);
+    expect(suv.share).toBeCloseTo(2 / 3, 10);
+    expect(sedan.count).toBe(1);
   });
 
   it('caps the window at windowSize (oldest arrivals drop out)', () => {
     const shaper = createDemandShaper({
-      personas: PERSONAS,
+      segments: SEGMENTS,
       config: { windowSize: 4, trendEpsilon: 0.08 },
     });
-    // 4 enthusiasts then 4 commuters → window holds only the last 4 (commuters).
-    for (let i = 0; i < 4; i++) shaper.recordArrival('enthusiast');
-    for (let i = 0; i < 4; i++) shaper.recordArrival('commuter');
+    // 4 trucks then 4 sedans → window holds only the last 4 (sedans).
+    for (let i = 0; i < 4; i++) shaper.recordArrival('truck');
+    for (let i = 0; i < 4; i++) shaper.recordArrival('sedan');
     const observed = shaper.getObservedMix();
-    expect(observed.find((e) => e.persona === 'enthusiast')!.count).toBe(0);
-    expect(observed.find((e) => e.persona === 'commuter')!.count).toBe(4);
+    expect(observed.find((e) => e.segment === 'truck')!.count).toBe(0);
+    expect(observed.find((e) => e.segment === 'sedan')!.count).toBe(4);
   });
 
-  it('flags rising / falling trends when a persona shifts across the window halves', () => {
+  it('flags rising / falling trends when a segment shifts across the window halves', () => {
     const shaper = makeShaper();
-    // Older half: all commuters. Newer half: all enthusiasts.
-    for (let i = 0; i < 10; i++) shaper.recordArrival('commuter');
-    for (let i = 0; i < 10; i++) shaper.recordArrival('enthusiast');
+    // Older half: all sedans. Newer half: all trucks.
+    for (let i = 0; i < 10; i++) shaper.recordArrival('sedan');
+    for (let i = 0; i < 10; i++) shaper.recordArrival('truck');
     const observed = shaper.getObservedMix();
-    expect(observed.find((e) => e.persona === 'enthusiast')!.trend).toBe('rising');
-    expect(observed.find((e) => e.persona === 'commuter')!.trend).toBe('falling');
-    expect(observed.find((e) => e.persona === 'retiree')!.trend).toBe('steady');
+    expect(observed.find((e) => e.segment === 'truck')!.trend).toBe('rising');
+    expect(observed.find((e) => e.segment === 'sedan')!.trend).toBe('falling');
+    expect(observed.find((e) => e.segment === 'suv')!.trend).toBe('steady');
   });
 });
 
 describe('DemandShaper — snapshot/restore', () => {
   it('round-trips baseline, active inputs, and observed history exactly', () => {
     const original = makeShaper();
-    original.setMix({
-      young_family: 5,
-      enthusiast: 1,
-      commuter: 3,
-      retiree: 0,
-      tradesperson: 1,
-    });
-    original.recordArrival('young_family');
-    original.recordArrival('commuter');
-    original.recordArrival('young_family');
+    original.setMix({ sedan: 5, truck: 1, suv: 3 });
+    original.recordArrival('sedan');
+    original.recordArrival('suv');
+    original.recordArrival('sedan');
     original.upsertInfluenceInput({
       id: 'test-inventory',
       label: 'Inventory lean',
       producer: 'test',
-      weights: { commuter: 0.25, tradesperson: 0.15 },
+      weights: { suv: 0.25, truck: 0.15 },
       lagDays: 0,
     });
 
     const snap: DemandShaperSnapshot = original.snapshot();
+    expect(snap.schemaVersion).toBe(3);
     const reparsed = JSON.parse(JSON.stringify(snap)) as DemandShaperSnapshot;
 
     const rebuilt = makeShaper();
@@ -227,22 +196,38 @@ describe('DemandShaper — snapshot/restore', () => {
 
     expect(rebuilt.snapshot()).toEqual(reparsed);
     expect(rebuilt.getMix()).toEqual(original.getMix());
-    expect(rebuilt.getInfluenceInputs()[0].targetWeights.commuter).toBe(0.25);
+    expect(rebuilt.getInfluenceInputs()[0].targetWeights.suv).toBe(0.25);
     expect(rebuilt.getObservedMix()).toEqual(original.getObservedMix());
+  });
+
+  it('migrates legacy persona-keyed snapshots to the uniform segment default', () => {
+    const shaper = makeShaper({ sedan: 5, truck: 1, suv: 1 });
+    shaper.recordArrival('truck');
+    // A pre-#278 persona-keyed snapshot can't be re-keyed; it resets to uniform.
+    shaper.restore({
+      schemaVersion: 2,
+      baselineMix: { young_family: 1, enthusiast: 1, commuter: 1, retiree: 1, tradesperson: 1 },
+      activeInputs: [],
+      observedHistory: ['young_family', 'commuter'],
+    });
+    const mix = shaper.getMix();
+    for (const s of SEGMENTS) expect(mix[s]).toBeCloseTo(1 / SEGMENTS.length, 10);
+    expect(shaper.snapshot().observedHistory).toEqual([]);
+    expect(shaper.getInfluenceInputs()).toEqual([]);
   });
 
   it('caps restored observed history to the configured trailing window', () => {
     const shaper = createDemandShaper({
-      personas: PERSONAS,
+      segments: SEGMENTS,
       config: { windowSize: 2, trendEpsilon: 0.08 },
     });
     shaper.restore({
-      schemaVersion: 1,
-      baselineMix: { young_family: 1, enthusiast: 1, commuter: 1, retiree: 1, tradesperson: 1 },
+      schemaVersion: 3,
+      baselineMix: { sedan: 1, truck: 1, suv: 1 },
       activeInputs: [],
-      observedHistory: ['young_family', 'commuter', 'tradesperson'],
+      observedHistory: ['sedan', 'truck', 'suv'],
     });
 
-    expect(shaper.snapshot().observedHistory).toEqual(['commuter', 'tradesperson']);
+    expect(shaper.snapshot().observedHistory).toEqual(['truck', 'suv']);
   });
 });

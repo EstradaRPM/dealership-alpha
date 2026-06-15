@@ -117,7 +117,7 @@ import {
   createDemandShaper,
   type DemandInfluenceInput,
   type DemandShaper,
-  type PersonaMix,
+  type SegmentMix,
 } from './game/DemandShaper';
 
 export type StaffTaxonomy = ReturnType<typeof loadStaffTaxonomy>;
@@ -178,28 +178,28 @@ export function makeSeed(): number {
 
 type DemandShaperTunables = ReturnType<typeof loadTunables>['demandShaper'];
 
-function hasInfluence(weights: PersonaMix): boolean {
+function hasInfluence(weights: SegmentMix): boolean {
   return Object.values(weights).some((w) => Math.abs(w) > 0);
 }
 
 function selectLocationBaseline(
   masterSeed: number,
-  personas: readonly string[],
+  segments: readonly string[],
   config: DemandShaperTunables,
-): PersonaMix | undefined {
+): SegmentMix | undefined {
   const profiles = config.locationProfiles ?? [];
   if (profiles.length === 0) return undefined;
   const rng = createRng(deriveSeed(masterSeed, 'demand.shaper.location', {}));
   const profile = profiles[Math.floor(rng() * profiles.length) % profiles.length];
-  return Object.fromEntries(personas.map((p) => [p, profile.weights[p] ?? 0]));
+  return Object.fromEntries(segments.map((s) => [s, profile.weights[s] ?? 0]));
 }
 
 function scaledWeights(
   profile: Readonly<Record<string, number>>,
   scale: number,
-): PersonaMix {
+): SegmentMix {
   return Object.fromEntries(
-    Object.entries(profile).map(([persona, weight]) => [persona, weight * scale]),
+    Object.entries(profile).map(([segment, weight]) => [segment, weight * scale]),
   );
 }
 
@@ -213,13 +213,13 @@ function buildInventoryInfluence(
   for (const vehicle of lot) {
     categoryCounts[vehicle.category] = (categoryCounts[vehicle.category] ?? 0) + 1;
   }
-  const weights: PersonaMix = {};
+  const weights: SegmentMix = {};
   for (const [category, count] of Object.entries(categoryCounts)) {
     const categoryWeights = inventoryConfig.categoryWeights[category];
     if (!categoryWeights) continue;
     const scale = (count / lot.length) * inventoryConfig.maxWeight;
-    for (const [persona, weight] of Object.entries(categoryWeights)) {
-      weights[persona] = (weights[persona] ?? 0) + weight * scale;
+    for (const [segment, weight] of Object.entries(categoryWeights)) {
+      weights[segment] = (weights[segment] ?? 0) + weight * scale;
     }
   }
   if (!hasInfluence(weights)) return null;
@@ -288,12 +288,14 @@ function buildAdvertisingInfluence(
 }
 
 /**
- * Pricing-posture persona producer (#277, Pricing/Demand spine S5) — the empty
- * socket. Per the design spine, the player's price posture will skew *which
- * segment walks in* (the vehicle-type heat map, Pillar 1), not just arrival
- * volume. This is the wired-but-inert seam: it returns `null` (no persona
- * deltas) so the producer is registered and removable like the others while the
- * heat-map slice fills the body. Identity ⇒ zero behavior change.
+ * Pricing-posture segment producer (#277, Pricing/Demand spine S5) — the empty
+ * socket. The demand vector is now the per-segment heat map (#278, S6); this
+ * producer is where the player's price posture will skew *which segment walks
+ * in* (Pillar 1), distinct from the price → arrival *volume* seam
+ * (`computePricingTrafficMultiplier`). It stays wired-but-inert: returns `null`
+ * (no segment deltas) so it is registered and removable like the others until
+ * the calibration slice routes price posture into segment skew. Identity ⇒ zero
+ * behavior change.
  */
 function buildPricingInfluence(
   _config: DemandShaperTunables,
@@ -648,20 +650,21 @@ export function createWorld(deps: {
   // the id is minted and before `floor:tick` (canonical #99 order) — so
   // DepartmentQueue enqueues a `workspace` item and the staff floor drain has
   // someone to hold.
-  // #198: DemandShaper owns the per-day persona mix. The spawn draw below is
-  // weighted by it on the existing seeded per-spawn stream (replay/#122-safe),
-  // replacing the prior uniform round-robin. #211 selects a seeded
-  // location-profile baseline, then layers active influence producers
-  // (inventory composition + reputation) over it. Personas are the
-  // SALES_ARCHETYPES ids so the shaper stays free of a CustomerPool dep.
-  const demandShaperPersonas = SALES_ARCHETYPES.map((a) => a.personId);
+  // #198 / #278: DemandShaper owns the per-day **segment heat map** (sedan /
+  // truck / suv). The spawn draw below picks a segment from the heat map on the
+  // existing seeded per-spawn stream (replay/#122-safe), then rolls a visit
+  // archetype *within* that segment — personas demote to per-customer
+  // negotiation flavor; segment heat is the demand driver. #211 selects a
+  // seeded location-profile baseline, then layers active influence producers
+  // (inventory composition + reputation) over it.
   const demandShaperConfig = loadTunables().demandShaper;
+  const demandShaperSegments = demandShaperConfig.segments;
   const demandShaper = createDemandShaper({
-    personas: demandShaperPersonas,
+    segments: demandShaperSegments,
     config: demandShaperConfig,
     initialMix: selectLocationBaseline(
       masterSeed,
-      demandShaperPersonas,
+      demandShaperSegments,
       demandShaperConfig,
     ),
   });
@@ -722,21 +725,51 @@ export function createWorld(deps: {
   const archetypeByPersona = new Map(
     SALES_ARCHETYPES.map((a) => [a.personId, a]),
   );
+  // Within-segment archetype roll (#278): demand picks the *segment*; this table
+  // picks which visit archetype walks in for that segment (the negotiation
+  // flavor personas demote to). Resolved against SALES_ARCHETYPES so the heat
+  // map stays free of a CustomerPool dep.
+  const segmentArchetypes = new Map<string, { personId: string; weight: number }[]>(
+    Object.entries(demandShaperConfig.segmentArchetypes).map(([segment, weights]) => [
+      segment,
+      Object.entries(weights)
+        .filter(([personId]) => archetypeByPersona.has(personId))
+        .map(([personId, weight]) => ({ personId, weight })),
+    ]),
+  );
+  const drawArchetypeForSegment = (segment: string, rng: () => number) => {
+    const candidates = segmentArchetypes.get(segment) ?? [];
+    const total = candidates.reduce((sum, c) => sum + c.weight, 0);
+    if (total > 0) {
+      const r = rng() * total;
+      let cum = 0;
+      for (const candidate of candidates) {
+        cum += candidate.weight;
+        if (r < cum) return archetypeByPersona.get(candidate.personId)!;
+      }
+      return archetypeByPersona.get(candidates[candidates.length - 1].personId)!;
+    }
+    return SALES_ARCHETYPES[0];
+  };
 
   const customerSource: CustomerSource = {
     spawn({ day, tick, count }): readonly CustomerRef[] {
       const refs: CustomerRef[] = [];
       for (let i = 0; i < count; i++) {
         // Deterministic per-spawn RNG: same (day, tick, i) ⇒ same draw on
-        // replay. The persona is weighted by the live mix; segment/body-style
-        // demand stays emergent downstream of the chosen persona.
-        const drawRng = createRng(
+        // replay. Demand picks the *segment* from the heat map; a second
+        // independent seeded roll picks the within-segment visit archetype
+        // (the negotiation flavor). Body-style match stays emergent downstream.
+        const segmentRng = createRng(
           deriveSeed(masterSeed, 'demand.shaper.spawn', { day, tick, i }),
         );
+        const archetypeRng = createRng(
+          deriveSeed(masterSeed, 'demand.shaper.archetype', { day, tick, i }),
+        );
         syncDemandInfluences();
-        const persona = demandShaper.drawPersona(drawRng);
-        const a = archetypeByPersona.get(persona) ?? SALES_ARCHETYPES[0];
-        demandShaper.recordArrival(persona);
+        const segment = demandShaper.drawSegment(segmentRng);
+        demandShaper.recordArrival(segment);
+        const a = drawArchetypeForSegment(segment, archetypeRng);
         const id = customerPool.spawnCustomer(a.personId, a.visitId, a.label);
         const ref: CustomerRef = {
           id,

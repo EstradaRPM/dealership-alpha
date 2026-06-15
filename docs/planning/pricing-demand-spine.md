@@ -94,7 +94,7 @@ Sequencing respects dependencies; each slice lands verifiable.
 2. **Delete dead HandPlay event** (low-risk cleanup).
 3. **Unified demand model — read side** (Pillar 3): one elasticity model behind `daysToSell`; screen stops lying (still no arrival effect yet).
 4. **Price → arrivals** (Pillars 1+4, the boundary reopen): segment heat × posture drives FloorSim volume.
-5. **Vehicle-type heat map** producer + surface (Pillar 1): personas demote to negotiation traits.
+5. **Vehicle-type heat map** producer + surface (Pillar 1): personas demote to negotiation traits. ✓ shipped S6 (#278) — `DemandShaper` re-keyed to per-segment heat (sedan/truck/suv); spawn draws the segment, then a within-segment `segmentArchetypes` roll carries the negotiation flavor; readout reframed to "what's hot."
 6. **Discount event rework** on `askingPrice` (clean buy/walk).
 7. **Trade event** negative-equity distribution + honest presentation.
 8. **Intel/automation tiering** (Pillar 5): coarse T1 → UCM-sharp + auto-pricing policy at T3.

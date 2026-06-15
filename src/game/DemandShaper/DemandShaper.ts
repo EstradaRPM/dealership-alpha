@@ -1,20 +1,22 @@
 /**
- * DemandShaper (#198) — owns the per-day persona-mix weight vector over the
- * existing sales personas and turns it into a deterministic weighted spawn
- * draw. It also records realized arrivals into a trailing window so the
- * MANAGERIAL screen can show "who's been walking in" with trend arrows.
+ * DemandShaper (#198; re-keyed to vehicle-type segments in #278, Pricing/Demand
+ * spine S6) — owns the per-day **segment heat map** (a weight vector over the
+ * vehicle-type segments: sedan / truck / suv) and turns it into a deterministic
+ * weighted spawn draw. It also records realized arrivals into a trailing window
+ * so the MANAGERIAL screen can show "what's hot on the lot" with trend arrows.
  *
- * Segment / body-style demand stays emergent downstream (persona → preference →
- * pickVehicleFor → segment taxonomy). This module only shapes *which persona*
- * walks in; it never touches the locked #125 DemandContext (volume projection).
+ * Segment heat is now the demand driver. Buyer personas demote to per-customer
+ * negotiation traits: the composition root rolls a visit archetype *within* the
+ * drawn segment (the negotiation flavor), but the segment — which demand is in
+ * the market — comes from this heat map, not a persona distribution.
  *
- * Determinism (#122-safe): `drawPersona` is a pure function of the injected RNG.
+ * Determinism (#122-safe): `drawSegment` is a pure function of the injected RNG.
  * The composition root feeds it the existing seeded per-spawn stream, so a
- * replay reproduces the same persona sequence.
+ * replay reproduces the same segment sequence.
  */
 
-/** Normalized or raw persona-weight vector, keyed by persona id. */
-export type PersonaMix = Record<string, number>;
+/** Normalized or raw segment-heat weight vector, keyed by segment id. */
+export type SegmentMix = Record<string, number>;
 
 export type DemandTrend = 'rising' | 'steady' | 'falling';
 
@@ -23,11 +25,11 @@ export interface DemandInfluenceInput {
   readonly label: string;
   readonly producer: 'inventory' | 'reputation' | 'advertising' | 'pricing' | 'test';
   /**
-   * Target additive persona deltas. Positive values make that persona likelier;
-   * negative values lean demand away from that persona. The effective
-   * contribution ramps toward this target over lagDays.
+   * Target additive segment deltas. Positive values make that segment hotter;
+   * negative values cool it. The effective contribution ramps toward this
+   * target over lagDays.
    */
-  readonly weights: PersonaMix;
+  readonly weights: SegmentMix;
   /** Days for a changed target to ramp in. 0 means immediate. */
   readonly lagDays: number;
   /** Days for the lever to ramp out after removal. Defaults to lagDays. */
@@ -35,10 +37,10 @@ export interface DemandInfluenceInput {
 }
 
 export interface DemandInfluenceState extends DemandInfluenceInput {
-  /** Current effective additive deltas used by getMix/drawPersona/readout. */
-  readonly weights: PersonaMix;
+  /** Current effective additive deltas used by getMix/drawSegment/readout. */
+  readonly weights: SegmentMix;
   /** Requested target deltas; may differ from weights while lagging/decaying. */
-  readonly targetWeights: PersonaMix;
+  readonly targetWeights: SegmentMix;
   readonly lagDays: number;
   readonly decayDays: number;
   readonly elapsedDays: number;
@@ -46,18 +48,19 @@ export interface DemandInfluenceState extends DemandInfluenceInput {
 }
 
 export interface DemandShaperSnapshot {
-  readonly schemaVersion: 1 | 2;
-  readonly baselineMix: PersonaMix;
+  /** 1|2 are legacy persona-keyed schemas; 3 is the segment-keyed heat map. */
+  readonly schemaVersion: 1 | 2 | 3;
+  readonly baselineMix: SegmentMix;
   readonly activeInputs: readonly (DemandInfluenceInput | DemandInfluenceState)[];
   /** Oldest first, capped by config.windowSize on restore. */
   readonly observedHistory: readonly string[];
 }
 
 export interface ObservedMixEntry {
-  persona: string;
+  segment: string;
   /** Raw arrival count inside the current trailing window. */
   count: number;
-  /** Fraction of the window's arrivals (0–1). Sums to ~1 across personas. */
+  /** Fraction of the window's arrivals (0–1). Sums to ~1 across segments. */
   share: number;
   /** Newer-half vs older-half share comparison within the window. */
   trend: DemandTrend;
@@ -67,24 +70,24 @@ export interface DemandShaperConfig {
   /** Trailing arrivals retained for the observed-mix readout. */
   windowSize: number;
   /**
-   * Share delta (newer half − older half) below which a persona's trend reads
+   * Share delta (newer half − older half) below which a segment's trend reads
    * 'steady' rather than rising/falling. Damps single-arrival jitter.
    */
   trendEpsilon: number;
 }
 
 export interface DemandShaper {
-  /** The personas this shaper distributes over, in stable order. */
-  readonly personas: readonly string[];
-  /** The current per-day mix, normalized to sum 1. */
-  getMix(): PersonaMix;
+  /** The vehicle-type segments this shaper distributes over, in stable order. */
+  readonly segments: readonly string[];
+  /** The current per-day heat map, normalized to sum 1. */
+  getMix(): SegmentMix;
   /**
-   * Replace the mix. Weights are stored raw (re-normalized on read/draw); keys
-   * must be a subset of `personas`; missing personas default to weight 0.
+   * Replace the heat map. Weights are stored raw (re-normalized on read/draw);
+   * keys must be a subset of `segments`; missing segments default to weight 0.
    * This is the baseline; active influence inputs are layered on top.
    */
-  setMix(weights: PersonaMix): void;
-  /** Replace the live influence inputs layered over the baseline mix. */
+  setMix(weights: SegmentMix): void;
+  /** Replace the live influence inputs layered over the baseline heat map. */
   setInfluenceInputs(inputs: readonly DemandInfluenceInput[]): void;
   /** Add/update one producer without disturbing other producers. */
   upsertInfluenceInput(input: DemandInfluenceInput): void;
@@ -94,104 +97,104 @@ export interface DemandShaper {
   advanceInfluenceDay(days?: number): void;
   /** Live influence inputs with defensive copies for readout attribution. */
   getInfluenceInputs(): readonly DemandInfluenceState[];
-  /** Deterministic weighted persona draw from the current mix. */
-  drawPersona(rng: () => number): string;
-  /** Append a realized arrival to the trailing window. */
-  recordArrival(persona: string): void;
-  /** Per-persona count + share + trend over the current trailing window. */
+  /** Deterministic weighted segment draw from the current heat map. */
+  drawSegment(rng: () => number): string;
+  /** Append a realized arrival (by segment) to the trailing window. */
+  recordArrival(segment: string): void;
+  /** Per-segment count + share + trend over the current trailing window. */
   getObservedMix(): readonly ObservedMixEntry[];
   snapshot(): DemandShaperSnapshot;
   restore(snap: DemandShaperSnapshot): void;
 }
 
 export function createDefaultDemandShaperSnapshot(
-  personas: readonly string[],
+  segments: readonly string[],
 ): DemandShaperSnapshot {
   return {
-    schemaVersion: 2,
-    baselineMix: Object.fromEntries(personas.map((p) => [p, 1])),
+    schemaVersion: 3,
+    baselineMix: Object.fromEntries(segments.map((s) => [s, 1])),
     activeInputs: [],
     observedHistory: [],
   };
 }
 
 export function createDemandShaper(deps: {
-  personas: readonly string[];
+  segments: readonly string[];
   config: DemandShaperConfig;
   /** Initial weights (raw). Omitted ⇒ uniform (behavior-neutral baseline). */
-  initialMix?: PersonaMix;
+  initialMix?: SegmentMix;
 }): DemandShaper {
-  const personas = [...deps.personas];
-  if (personas.length === 0) {
-    throw new Error('DemandShaper requires at least one persona');
+  const segments = [...deps.segments];
+  if (segments.length === 0) {
+    throw new Error('DemandShaper requires at least one segment');
   }
-  const personaSet = new Set(personas);
+  const segmentSet = new Set(segments);
   const { windowSize, trendEpsilon } = deps.config;
 
   // Raw weights; normalized lazily on read/draw so set/normalize stay consistent.
-  let baselineWeights: PersonaMix = {};
+  let baselineWeights: SegmentMix = {};
   let activeInputs: DemandInfluenceState[] = [];
-  const validateWeights = (raw: PersonaMix): PersonaMix => {
-    const next: PersonaMix = {};
-    for (const p of personas) {
-      const w = raw[p] ?? 0;
-      if (w < 0) throw new Error(`DemandShaper weight for "${p}" is negative`);
-      next[p] = w;
+  const validateWeights = (raw: SegmentMix): SegmentMix => {
+    const next: SegmentMix = {};
+    for (const s of segments) {
+      const w = raw[s] ?? 0;
+      if (w < 0) throw new Error(`DemandShaper weight for "${s}" is negative`);
+      next[s] = w;
     }
     for (const key of Object.keys(raw)) {
-      if (!personaSet.has(key)) {
-        throw new Error(`DemandShaper: unknown persona "${key}"`);
+      if (!segmentSet.has(key)) {
+        throw new Error(`DemandShaper: unknown segment "${key}"`);
       }
     }
-    const sum = personas.reduce((s, p) => s + next[p], 0);
-    if (sum <= 0) throw new Error('DemandShaper mix sums to 0 — no persona can spawn');
+    const sum = segments.reduce((acc, s) => acc + next[s], 0);
+    if (sum <= 0) throw new Error('DemandShaper mix sums to 0 — no segment can spawn');
     return next;
   };
-  const validateInfluenceWeights = (raw: PersonaMix): PersonaMix => {
-    const next: PersonaMix = {};
-    for (const p of personas) {
-      const w = raw[p] ?? 0;
+  const validateInfluenceWeights = (raw: SegmentMix): SegmentMix => {
+    const next: SegmentMix = {};
+    for (const s of segments) {
+      const w = raw[s] ?? 0;
       if (!Number.isFinite(w)) {
-        throw new Error(`DemandShaper influence weight for "${p}" is not finite`);
+        throw new Error(`DemandShaper influence weight for "${s}" is not finite`);
       }
-      next[p] = w;
+      next[s] = w;
     }
     for (const key of Object.keys(raw)) {
-      if (!personaSet.has(key)) {
-        throw new Error(`DemandShaper: unknown persona "${key}"`);
+      if (!segmentSet.has(key)) {
+        throw new Error(`DemandShaper: unknown segment "${key}"`);
       }
     }
     return next;
   };
-  const setWeights = (raw: PersonaMix): void => {
+  const setWeights = (raw: SegmentMix): void => {
     const next = validateWeights(raw);
     baselineWeights = next;
   };
   setWeights(
-    deps.initialMix ?? Object.fromEntries(personas.map((p) => [p, 1])),
+    deps.initialMix ?? Object.fromEntries(segments.map((s) => [s, 1])),
   );
 
-  const zeroWeights = (): PersonaMix =>
-    Object.fromEntries(personas.map((p) => [p, 0]));
+  const zeroWeights = (): SegmentMix =>
+    Object.fromEntries(segments.map((s) => [s, 0]));
 
-  const copyWeights = (weights: PersonaMix): PersonaMix =>
-    Object.fromEntries(personas.map((p) => [p, weights[p] ?? 0]));
+  const copyWeights = (weights: SegmentMix): SegmentMix =>
+    Object.fromEntries(segments.map((s) => [s, weights[s] ?? 0]));
 
-  const hasDelta = (weights: PersonaMix): boolean =>
-    personas.some((p) => Math.abs(weights[p] ?? 0) > 1e-9);
+  const hasDelta = (weights: SegmentMix): boolean =>
+    segments.some((s) => Math.abs(weights[s] ?? 0) > 1e-9);
 
-  const sameWeights = (a: PersonaMix, b: PersonaMix): boolean =>
-    personas.every((p) => Math.abs((a[p] ?? 0) - (b[p] ?? 0)) <= 1e-9);
+  const sameWeights = (a: SegmentMix, b: SegmentMix): boolean =>
+    segments.every((s) => Math.abs((a[s] ?? 0) - (b[s] ?? 0)) <= 1e-9);
 
   const lerpWeights = (
-    from: PersonaMix,
-    to: PersonaMix,
+    from: SegmentMix,
+    to: SegmentMix,
     progress: number,
-  ): PersonaMix =>
+  ): SegmentMix =>
     Object.fromEntries(
-      personas.map((p) => [
-        p,
-        (from[p] ?? 0) + ((to[p] ?? 0) - (from[p] ?? 0)) * progress,
+      segments.map((s) => [
+        s,
+        (from[s] ?? 0) + ((to[s] ?? 0) - (from[s] ?? 0)) * progress,
       ]),
     );
 
@@ -312,35 +315,35 @@ export function createDemandShaper(deps: {
     }
   };
 
-  const normalized = (): PersonaMix => {
-    const combined: PersonaMix = {};
-    for (const p of personas) {
-      combined[p] = Math.max(
+  const normalized = (): SegmentMix => {
+    const combined: SegmentMix = {};
+    for (const s of segments) {
+      combined[s] = Math.max(
         0,
-        baselineWeights[p] +
-          activeInputs.reduce((sum, input) => sum + (input.weights[p] ?? 0), 0),
+        baselineWeights[s] +
+          activeInputs.reduce((sum, input) => sum + (input.weights[s] ?? 0), 0),
       );
     }
-    const sum = personas.reduce((s, p) => s + combined[p], 0);
-    if (sum <= 0) throw new Error('DemandShaper mix sums to 0 — no persona can spawn');
-    const mix: PersonaMix = {};
-    for (const p of personas) mix[p] = combined[p] / sum;
+    const sum = segments.reduce((acc, s) => acc + combined[s], 0);
+    if (sum <= 0) throw new Error('DemandShaper mix sums to 0 — no segment can spawn');
+    const mix: SegmentMix = {};
+    for (const s of segments) mix[s] = combined[s] / sum;
     return mix;
   };
 
   // Trailing arrival window (oldest first). Capped at windowSize.
   const window: string[] = [];
 
-  const countIn = (slice: readonly string[], persona: string): number =>
-    slice.reduce((n, p) => (p === persona ? n + 1 : n), 0);
+  const countIn = (slice: readonly string[], segment: string): number =>
+    slice.reduce((n, s) => (s === segment ? n + 1 : n), 0);
 
-  const trendFor = (persona: string): DemandTrend => {
+  const trendFor = (segment: string): DemandTrend => {
     const mid = Math.floor(window.length / 2);
     const older = window.slice(0, mid);
     const newer = window.slice(mid);
     if (older.length === 0 || newer.length === 0) return 'steady';
-    const olderShare = countIn(older, persona) / older.length;
-    const newerShare = countIn(newer, persona) / newer.length;
+    const olderShare = countIn(older, segment) / older.length;
+    const newerShare = countIn(newer, segment) / newer.length;
     const delta = newerShare - olderShare;
     if (delta > trendEpsilon) return 'rising';
     if (delta < -trendEpsilon) return 'falling';
@@ -348,38 +351,38 @@ export function createDemandShaper(deps: {
   };
 
   return {
-    personas,
+    segments,
     getMix: () => normalized(),
     setMix: (w) => setWeights(w),
-    drawPersona: (rng) => {
+    drawSegment: (rng) => {
       const mix = normalized();
       const r = rng();
       let cum = 0;
-      for (const p of personas) {
-        cum += mix[p];
-        if (r < cum) return p;
+      for (const s of segments) {
+        cum += mix[s];
+        if (r < cum) return s;
       }
-      // Floating-point fallthrough: return the last persona.
-      return personas[personas.length - 1];
+      // Floating-point fallthrough: return the last segment.
+      return segments[segments.length - 1];
     },
-    recordArrival: (persona) => {
-      if (!personaSet.has(persona)) {
-        throw new Error(`DemandShaper: cannot record unknown persona "${persona}"`);
+    recordArrival: (segment) => {
+      if (!segmentSet.has(segment)) {
+        throw new Error(`DemandShaper: cannot record unknown segment "${segment}"`);
       }
-      window.push(persona);
+      window.push(segment);
       if (window.length > windowSize) window.shift();
     },
     getObservedMix: () => {
       const total = window.length;
-      return personas.map((persona) => ({
-        persona,
-        count: countIn(window, persona),
-        share: total === 0 ? 0 : countIn(window, persona) / total,
-        trend: trendFor(persona),
+      return segments.map((segment) => ({
+        segment,
+        count: countIn(window, segment),
+        share: total === 0 ? 0 : countIn(window, segment) / total,
+        trend: trendFor(segment),
       }));
     },
     snapshot: () => ({
-      schemaVersion: 2,
+      schemaVersion: 3,
       baselineMix: { ...baselineWeights },
       activeInputs: activeInputs.map(snapshotInput),
       observedHistory: [...window],
@@ -396,7 +399,17 @@ export function createDemandShaper(deps: {
     advanceInfluenceDay: advanceInfluences,
     getInfluenceInputs: () => activeInputs.map(snapshotInput),
     restore: (snap) => {
-      if (snap.schemaVersion !== 1 && snap.schemaVersion !== 2) {
+      // Legacy persona-keyed snapshots (#198 schemas 1|2) cannot be re-keyed to
+      // segments cleanly, so they migrate to the behavior-neutral default
+      // (uniform segment baseline, no inputs, empty history) — same discipline
+      // as the original v1→v2 migration. Only schema 3 round-trips exactly.
+      if (snap.schemaVersion === 1 || snap.schemaVersion === 2) {
+        setWeights(Object.fromEntries(segments.map((s) => [s, 1])));
+        activeInputs = [];
+        window.length = 0;
+        return;
+      }
+      if (snap.schemaVersion !== 3) {
         throw new Error(
           `DemandShaper snapshot schema ${snap.schemaVersion} is not supported`,
         );
@@ -404,11 +417,11 @@ export function createDemandShaper(deps: {
       setWeights(snap.baselineMix);
       activeInputs = snap.activeInputs.map(restoreInput);
       window.length = 0;
-      for (const persona of snap.observedHistory) {
-        if (!personaSet.has(persona)) {
-          throw new Error(`DemandShaper: cannot restore unknown persona "${persona}"`);
+      for (const segment of snap.observedHistory) {
+        if (!segmentSet.has(segment)) {
+          throw new Error(`DemandShaper: cannot restore unknown segment "${segment}"`);
         }
-        window.push(persona);
+        window.push(segment);
       }
       while (window.length > windowSize) window.shift();
     },

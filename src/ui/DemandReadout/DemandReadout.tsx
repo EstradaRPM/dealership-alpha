@@ -5,13 +5,14 @@ import { useTheme } from '../theme';
 import { Surface, SectionHeader, ProgressBar, Icon, type IconName, type IconProps } from '../kit';
 
 /**
- * Pure read-model for the MANAGERIAL "who's been walking in" readout (#198).
- * The composition root assembles this off `DemandShaper.getObservedMix()`,
- * mapping each persona id to its human label. The view renders bars + trend
- * arrows and dispatches nothing.
+ * Pure read-model for the MANAGERIAL "what's hot on the lot" segment-heat
+ * readout (#198, re-keyed to vehicle-type segments in #278). The composition
+ * root assembles this off `DemandShaper.getObservedMix()`, mapping each segment
+ * id to its human label. The view renders bars + trend arrows and dispatches
+ * nothing.
  */
 export interface DemandReadoutEntry {
-  persona: string;
+  segment: string;
   label: string;
   /** Fraction of the trailing window (0–1). */
   share: number;
@@ -20,7 +21,7 @@ export interface DemandReadoutEntry {
 }
 
 export interface DemandTargetingLean {
-  persona: string;
+  segment: string;
   label: string;
   /** Raw additive influence weight from the lever. */
   weight: number;
@@ -119,10 +120,11 @@ function TargetingLeverRow({ lever }: { lever: DemandTargetingLever }) {
 }
 
 /**
- * Observed persona-mix card: per-persona share bars + rising/steady/falling
- * trend glyphs over the trailing arrival window. The card paints no top-level
- * title — HomeTab's "Market" region header is the only header (#257); internal
- * sections read as `SectionHeader`s / quiet captions. Read-only; smoke tests only.
+ * Segment-heat card: per-segment share bars + rising/steady/falling trend
+ * glyphs over the trailing arrival window — "what's hot on the lot" (#278). The
+ * card paints no top-level title — HomeTab's "Market" region header is the only
+ * header (#257); internal sections read as `SectionHeader`s / quiet captions.
+ * Read-only; smoke tests only.
  */
 export function DemandReadout({ model }: { model: DemandReadoutModel }) {
   const t = useTheme();
@@ -141,15 +143,15 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
   return (
     <Surface testID="demand-readout">
       {model.totalObserved === 0 ? (
-        <Text style={empty}>No traffic yet — open the lot to see the mix.</Text>
+        <Text style={empty}>No traffic yet — open the lot to see what's hot.</Text>
       ) : (
         model.entries.map((entry) => (
-          <DemandRow key={entry.persona} entry={entry} />
+          <DemandRow key={entry.segment} entry={entry} />
         ))
       )}
 
       <View style={dividedSection}>
-        <SectionHeader title="Who You're Targeting" />
+        <SectionHeader title="What You're Promoting" />
         <View style={{ marginTop: t.spacing.sm }}>
           {model.targetingLevers && model.targetingLevers.length > 0 ? (
             model.targetingLevers.map((lever) => (

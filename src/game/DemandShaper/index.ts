@@ -8,7 +8,7 @@ export type {
   DemandShaperSnapshot,
   DemandInfluenceInput,
   DemandInfluenceState,
-  PersonaMix,
+  SegmentMix,
   DemandTrend,
   ObservedMixEntry,
 } from './DemandShaper';

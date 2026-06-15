@@ -1,19 +1,16 @@
 import React from 'react';
-import * as fs from 'fs';
-import * as path from 'path';
 import { readAppCompositionSource } from './helpers/appComposition';
 import { render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
-import { SALES_ARCHETYPES } from '../src/game/CustomerPool';
 import { createRng } from '../src/game/NPC/Rng';
 import { HomeTab } from '../src/ui/HomeTab';
 import type { DemandReadoutModel, DemandTargetingLever } from '../src/ui/DemandReadout';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
-// Anti-orphan (#198): the observed-mix readout must be reachable through the
-// real game-logic → model → shell pipeline, and actually wired into App.tsx —
-// not just an isolated component render. This is the guard against the
+// Anti-orphan (#198 / #278): the segment-heat readout must be reachable through
+// the real game-logic → model → shell pipeline, and actually wired into App.tsx
+// — not just an isolated component render. This is the guard against the
 // recurring "mechanic built but never surfaced" failure.
 
 const PROFILE: CharacterProfile = {
@@ -28,9 +25,12 @@ const PROFILE: CharacterProfile = {
   },
 };
 
-const PERSONA_LABELS: Record<string, string> = Object.fromEntries(
-  SALES_ARCHETYPES.map((a) => [a.personId, a.label]),
-);
+const SEGMENTS = ['sedan', 'truck', 'suv'] as const;
+const SEGMENT_LABELS: Record<string, string> = {
+  sedan: 'Sedans',
+  truck: 'Trucks',
+  suv: 'SUVs',
+};
 
 function targetingLeversFor(world: ReturnType<typeof createWorld>): DemandTargetingLever[] {
   return world.demandShaper.getInfluenceInputs().map((input) => ({
@@ -38,9 +38,9 @@ function targetingLeversFor(world: ReturnType<typeof createWorld>): DemandTarget
     label: input.label,
     lean: Object.entries(input.weights)
       .filter(([, weight]) => weight > 0)
-      .map(([persona, weight]) => ({
-        persona,
-        label: PERSONA_LABELS[persona] ?? persona,
+      .map(([segment, weight]) => ({
+        segment,
+        label: SEGMENT_LABELS[segment] ?? segment,
         weight,
       })),
   }));
@@ -48,13 +48,13 @@ function targetingLeversFor(world: ReturnType<typeof createWorld>): DemandTarget
 
 function countDraws(
   world: ReturnType<typeof createWorld>,
-  persona: string,
+  segment: string,
   seed: number,
 ): number {
   const rng = createRng(seed);
   let count = 0;
   for (let i = 0; i < 2_000; i++) {
-    if (world.demandShaper.drawPersona(rng) === persona) count++;
+    if (world.demandShaper.drawSegment(rng) === segment) count++;
   }
   return count;
 }
@@ -66,14 +66,14 @@ function recordSeededArrivals(
 ): void {
   const rng = createRng(seed);
   for (let i = 0; i < count; i++) {
-    world.demandShaper.recordArrival(world.demandShaper.drawPersona(rng));
+    world.demandShaper.recordArrival(world.demandShaper.drawSegment(rng));
   }
 }
 
 // Build a real world, stock the lot at the cold-start auction board (demand is
 // gated on inventory depth, #128a — an empty lot draws nobody), then run a real
 // Day 1 through the composed seams so the createWorld customerSource draws
-// personas from DemandShaper and records each arrival.
+// segments from DemandShaper and records each arrival.
 function runRealDay() {
   const bus = createEventBus();
   const world = createWorld({ bus, masterSeed: 42, characterProfile: PROFILE });
@@ -90,19 +90,19 @@ function runRealDay() {
   return world;
 }
 
-describe('#198 demand readout — reachable through the live pipeline', () => {
-  it('uses a seeded location-profile baseline instead of a uniform world mix', () => {
+describe('#198 / #278 demand readout — reachable through the live pipeline', () => {
+  it('uses a seeded location-profile baseline instead of a uniform world heat map', () => {
     const bus = createEventBus();
     const world = createWorld({ bus, masterSeed: 42, characterProfile: PROFILE });
     const baseline = world.demandShaper.snapshot().baselineMix;
-    const values = SALES_ARCHETYPES.map((a) => baseline[a.personId]);
+    const values = SEGMENTS.map((s) => baseline[s]);
     expect(new Set(values).size).toBeGreaterThan(1);
   });
 
   it('wires inventory composition and reputation as live influence producers', () => {
     const busA = createEventBus();
     const truckWorld = createWorld({ bus: busA, masterSeed: 42, characterProfile: PROFILE });
-    const beforeTruckDraws = countDraws(truckWorld, 'tradesperson', 777);
+    const beforeTruckDraws = countDraws(truckWorld, 'truck', 777);
     const truckListing = truckWorld.inventory
       .getAuctionListings()
       .filter((l) => l.category === 'truck' && l.askingPrice <= truckWorld.economy.cash)
@@ -114,7 +114,7 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
         .getInfluenceInputs()
         .some((input) => input.id === 'inventory-composition'),
     ).toBe(true);
-    const afterTruckDraws = countDraws(truckWorld, 'tradesperson', 777);
+    const afterTruckDraws = countDraws(truckWorld, 'truck', 777);
     expect(afterTruckDraws).toBeGreaterThan(beforeTruckDraws);
 
     const busB = createEventBus();
@@ -134,7 +134,8 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
         .getInfluenceInputs()
         .some((input) => input.id === 'reputation'),
     ).toBe(true);
-    expect(afterRepMix.enthusiast).toBeGreaterThan(beforeRepMix.enthusiast);
+    // Low reputation leaves the bargain / work-truck crowd (lowWeights → truck).
+    expect(afterRepMix.truck).toBeGreaterThan(beforeRepMix.truck);
   });
 
   it('reaches the advertising lever and drifts the observed readout after lag days', () => {
@@ -144,16 +145,17 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
       world.demandControls.advertisingOptions.some((option) => option.id === 'local-radio'),
     ).toBe(true);
 
-    const before = countDraws(world, 'young_family', 31337);
+    // Local radio aims at practical family/commute shoppers (suv weight highest).
+    const before = countDraws(world, 'suv', 31337);
     world.demandControls.setAdvertisingCampaign('local-radio');
     expect(world.demandControls.getAdvertisingCampaignId()).toBe('local-radio');
-    expect(countDraws(world, 'young_family', 31337)).toBe(before);
+    expect(countDraws(world, 'suv', 31337)).toBe(before);
 
     bus.publish('clock:day_started', { day: 1 });
-    const dayOne = countDraws(world, 'young_family', 31337);
+    const dayOne = countDraws(world, 'suv', 31337);
     bus.publish('clock:day_started', { day: 2 });
     bus.publish('clock:day_started', { day: 3 });
-    const full = countDraws(world, 'young_family', 31337);
+    const full = countDraws(world, 'suv', 31337);
 
     expect(dayOne).toBeGreaterThan(before);
     expect(full).toBeGreaterThan(dayOne);
@@ -166,15 +168,15 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
     });
     recordSeededArrivals(baseline, 9090, 60);
     recordSeededArrivals(world, 9090, 60);
-    const baselineYoungFamily = baseline
+    const baselineSuv = baseline
       .demandShaper
       .getObservedMix()
-      .find((entry) => entry.persona === 'young_family')!;
-    const advertisedYoungFamily = world
+      .find((entry) => entry.segment === 'suv')!;
+    const advertisedSuv = world
       .demandShaper
       .getObservedMix()
-      .find((entry) => entry.persona === 'young_family')!;
-    expect(advertisedYoungFamily.count).toBeGreaterThan(baselineYoungFamily.count);
+      .find((entry) => entry.segment === 'suv')!;
+    expect(advertisedSuv.count).toBeGreaterThan(baselineSuv.count);
 
     const levers = targetingLeversFor(world);
     expect(levers.some((lever) => lever.label === 'Advertising: Local radio')).toBe(true);
@@ -192,15 +194,15 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
     const observed = world.demandShaper.getObservedMix();
     const demandReadout: DemandReadoutModel = {
       entries: observed.map((e) => ({
-        persona: e.persona,
-        label: PERSONA_LABELS[e.persona] ?? e.persona,
+        segment: e.segment,
+        label: SEGMENT_LABELS[e.segment] ?? e.segment,
         share: e.share,
         count: e.count,
         trend: e.trend,
       })),
       totalObserved: observed.reduce((s, e) => s + e.count, 0),
       targetingLevers: targetingLeversFor(world),
-      coverageGap: { category: 'truck', label: 'trucks', wantedCount: 1, stockCount: 0 },
+      coverageGap: { category: 'truck', label: 'Trucks', wantedCount: 1, stockCount: 0 },
     };
 
     const state = world.dayLoop.state();
@@ -210,11 +212,11 @@ describe('#198 demand readout — reachable through the live pipeline', () => {
       <HomeTab state={state} demandReadout={demandReadout} />,
     );
 
-    // The readout is mounted and shows the observed persona mix. (No internal
-    // card title — the Market region header owns it, #257.)
+    // The readout is mounted and shows the segment heat map. (No internal card
+    // title — the Market region header owns it, #257.)
     expect(getByText('Market')).toBeTruthy();
-    expect(getByText('Young Family')).toBeTruthy();
-    expect(getByText("Who You're Targeting")).toBeTruthy();
+    expect(getByText('SUVs')).toBeTruthy();
+    expect(getByText("What You're Promoting")).toBeTruthy();
     expect(getAllByText(/Reputation|Inventory composition/).length).toBeGreaterThan(0);
     expect(getByText(/recent buyers wanted trucks; you\s*stock 0/i)).toBeTruthy();
   });

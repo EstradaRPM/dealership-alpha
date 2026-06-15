@@ -24,7 +24,6 @@
  * balance numbers stay in data/. Add a policy by appending to POLICIES.
  */
 import type { World } from '../../src/createWorld';
-import { loadTunables } from '../../src/game/data';
 
 export interface PolicyContext {
   readonly world: World;
@@ -41,9 +40,6 @@ export interface Policy {
 }
 
 // ── Shared decision helpers ──────────────────────────────────────────────────
-
-const COVERAGE_BY_PERSONA: Readonly<Record<string, string>> =
-  loadTunables().demandShaper.coverageCategoryByPersona ?? {};
 
 function rosterCount(world: World, roleId: string): number {
   return world.staffOrg.currentRoster.filter((s) => s.role_id === roleId).length;
@@ -78,12 +74,12 @@ function hireUpTo(
   }
 }
 
-/** Observed-demand → per-category buy priority (higher = buy first). */
+/** Observed segment heat → per-category buy priority (higher = buy first).
+ *  The heat map is keyed by VehicleCategory, so a segment *is* a buy category. */
 function demandCategoryPriority(world: World): Record<string, number> {
   const out: Record<string, number> = {};
   for (const entry of world.demandShaper.getObservedMix()) {
-    const category = COVERAGE_BY_PERSONA[entry.persona];
-    if (category) out[category] = (out[category] ?? 0) + entry.share;
+    out[entry.segment] = (out[entry.segment] ?? 0) + entry.share;
   }
   return out;
 }

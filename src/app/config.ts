@@ -13,7 +13,6 @@ import { loadStaffArchetypes, loadStaffTaxonomy } from '../game/NPC';
 import { loadPricingStrategiesConfig } from '../game/MarketEconomy';
 import { loadRegulatoryTunables } from '../game/Reputation';
 import { loadTierConfig } from '../game/CareerProgression';
-import { SALES_ARCHETYPES } from '../game/CustomerPool';
 import type { World } from '../createWorld';
 import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
@@ -124,16 +123,12 @@ export function buildHiringRoleOptions(tier: number): PersonnelRoleOption[] {
     });
 }
 
-// persona id → human label for the #198 observed-mix readout. Sourced from the
-// same SALES_ARCHETYPES table the spawn draw resolves against — never a magic
-// string list.
-export const PERSONA_LABELS: Record<string, string> = Object.fromEntries(
-  SALES_ARCHETYPES.map((a) => [a.personId, a.label]),
-);
-const DEMAND_SHAPER = loadTunables().demandShaper;
-const COVERAGE_CATEGORY_LABELS: Record<string, string> = {
-  sedan: 'sedans',
-  truck: 'trucks',
+// segment id → human label for the #198 / #278 segment-heat readout. The heat
+// map's dimension is the VehicleCategory universe, so these double as the
+// coverage-gap labels.
+export const SEGMENT_LABELS: Record<string, string> = {
+  sedan: 'Sedans',
+  truck: 'Trucks',
   suv: 'SUVs',
 };
 
@@ -145,9 +140,9 @@ export function buildTargetingLevers(world: World): DemandTargetingLever[] {
       .filter(([, weight]) => weight > 0)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 3)
-      .map(([persona, weight]) => ({
-        persona,
-        label: PERSONA_LABELS[persona] ?? persona,
+      .map(([segment, weight]) => ({
+        segment,
+        label: SEGMENT_LABELS[segment] ?? segment,
         weight,
       })),
   }));
@@ -157,12 +152,12 @@ export function buildCoverageGap(
   entries: readonly DemandReadoutEntry[],
   lotVehicles: readonly LotVehicle[],
 ): DemandCoverageGap | null {
-  const personaCategory = DEMAND_SHAPER.coverageCategoryByPersona ?? {};
+  // Heat map is keyed by segment, so a readout entry *is* a wanted segment —
+  // no persona→category projection needed (#278).
   const wantedByCategory: Record<string, number> = {};
   for (const entry of entries) {
-    const category = personaCategory[entry.persona];
-    if (!category) continue;
-    wantedByCategory[category] = (wantedByCategory[category] ?? 0) + entry.count;
+    wantedByCategory[entry.segment] =
+      (wantedByCategory[entry.segment] ?? 0) + entry.count;
   }
   const stockedByCategory: Record<string, number> = {};
   for (const vehicle of lotVehicles) {
@@ -177,7 +172,7 @@ export function buildCoverageGap(
   if (!category || wantedCount == null) return null;
   return {
     category,
-    label: COVERAGE_CATEGORY_LABELS[category] ?? category,
+    label: SEGMENT_LABELS[category] ?? category,
     wantedCount,
     stockCount: stockedByCategory[category] ?? 0,
   };

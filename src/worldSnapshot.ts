@@ -51,7 +51,7 @@ import {
   createDefaultHistoryLogSnapshot,
   type HistoryLogSnapshot,
 } from './game/HistoryLog';
-import { SALES_ARCHETYPES } from './game/CustomerPool';
+import { loadTunables } from './game/data';
 import {
   createDefaultDemandShaperSnapshot,
   type DemandShaperSnapshot,
@@ -136,7 +136,7 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
       modules: {
         ...snap.modules,
         demandShaper: createDefaultDemandShaperSnapshot(
-          SALES_ARCHETYPES.map((a) => a.personId),
+          loadTunables().demandShaper.segments,
         ),
       },
     }),

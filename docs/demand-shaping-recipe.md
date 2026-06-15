@@ -30,43 +30,49 @@ return conclusions with `file:line` pointers.
 
 ## Current Mechanic Shape
 
-`DemandShaper` owns the sales persona-mix weight vector. The mix controls which
-persona is drawn for customer spawning. Observed arrivals are recorded into a
-trailing window so the MANAGERIAL readout can show "who has been walking in."
+`DemandShaper` owns the per-segment **heat map** weight vector (sedan / truck /
+suv). The heat map controls which *segment* is drawn for customer spawning;
+buyer personas demote to a within-segment archetype roll (negotiation flavor).
+Observed arrivals are recorded into a trailing window so the MANAGERIAL readout
+can show "what's hot on the lot." Re-keyed from persona-mix to segments in #278.
 
 Canonical model:
 
 ```text
-current mix = normalized(baseline persona weights + active influence inputs)
-spawn persona = weighted draw from current mix on injected seeded RNG
-observed readout = trailing window of realized arrivals
+current heat = normalized(baseline segment weights + active influence inputs)
+spawn segment = weighted draw from current heat on injected seeded RNG
+spawn archetype = within-segment roll over segmentArchetypes (a 2nd seeded RNG)
+observed readout = trailing window of realized segment arrivals
 targeting readout = active influence inputs with per-lever attribution
 ```
 
-Segment/body-style demand is emergent through the existing persona -> preference
--> vehicle match chain. Do not introduce a second segment-demand distribution.
+Body-style match stays emergent through the archetype -> preference -> vehicle
+match chain. The heat map decides *which segment* is in demand; the matcher
+decides *which unit*. Do not introduce a second segment-demand distribution.
 
 ## Main Seams
 
 - Logic module: `src/game/DemandShaper/`
   - Public surface through `src/game/DemandShaper/index.ts`.
-  - `createDemandShaper({ personas, config, initialMix? })`.
+  - `createDemandShaper({ segments, config, initialMix? })`.
   - `getMix()`, `setMix()`, `setInfluenceInputs()`, `upsertInfluenceInput()`,
     `removeInfluenceInput()`, `advanceInfluenceDay()`, `getInfluenceInputs()`.
-  - `drawPersona(rng)` must stay deterministic from the injected RNG.
-  - `recordArrival(persona)`, `getObservedMix()`.
+  - `drawSegment(rng)` must stay deterministic from the injected RNG.
+  - `recordArrival(segment)`, `getObservedMix()`.
   - `snapshot()` / `restore()` persist baseline, lagged active input state,
-    observed history.
+    observed history (schema 3, segment-keyed).
 
 - Composition root: `src/createWorld.ts`
-  - Builds `DemandShaper` from `SALES_ARCHETYPES.map(a => a.personId)`.
+  - Builds `DemandShaper` from `data/tunables.json` -> `demandShaper.segments`.
   - Loads `data/tunables.json` -> `demandShaper`.
   - Builds location baseline for new worlds.
   - Syncs inventory/reputation influence inputs from live game state.
-  - Owns the reserved advertising control (`world.demandControls`) and stores
-    that lever's target/current lag state inside DemandShaper.
+  - Owns the advertising control (`world.demandControls`) and stores that
+    lever's target/current lag state inside DemandShaper.
   - Advances influence lag/decay on `clock:day_started`.
-  - Draws persona inside the customer spawn seam and records the arrival.
+  - Draws the segment inside the customer spawn seam, records the arrival, then
+    rolls a `segmentArchetypes` visit archetype within the segment to mint the
+    customer (the negotiation flavor).
 
 - UI readout: `src/ui/DemandReadout/`
   - Renders observed mix, targeting levers, and lot-coverage gap.
@@ -90,8 +96,8 @@ Current input shape is typed target deltas with attribution and lag:
 DemandInfluenceInput = {
   id: string
   label: string
-  producer: 'inventory' | 'reputation' | 'advertising' | 'test'
-  weights: Partial<Record<personaId, number>> // target deltas, +/- allowed
+  producer: 'inventory' | 'reputation' | 'advertising' | 'pricing' | 'test'
+  weights: Partial<Record<segmentId, number>> // target deltas, +/- allowed
   lagDays: number
   decayDays?: number
 }
@@ -100,8 +106,8 @@ DemandInfluenceInput = {
 `getInfluenceInputs()` returns lag state for readout/persistence: current
 effective `weights`, `targetWeights`, `lagDays`, `decayDays`, `elapsedDays`,
 `producer`, and `removing`. `getMix()` normalizes
-`baselineMix + current effective deltas`; over-subtracted persona weights clamp
-to zero, but the all-zero mix still throws.
+`baselineMix + current effective deltas`; over-subtracted segment weights clamp
+to zero, but the all-zero heat map still throws.
 
 Preserve the readout contract: every active lever must remain attributable in
 "Who You're Targeting." Advertising/marketing should attach as another producer
@@ -116,11 +122,12 @@ Known groups:
 
 - `windowSize`
 - `trendEpsilon`
+- `segments`
+- `segmentArchetypes`
 - `locationProfiles`
 - `inventoryInfluence`
 - `reputationInfluence`
 - `advertisingInfluence`
-- `coverageCategoryByPersona`
 
 Add new values here when they are balance/content knobs. Do not bury balance
 numbers in code.
@@ -141,8 +148,9 @@ when feasible.
 
 - No forward oracle. The readout shows observed history plus targeting levers.
 - No direct UI access to game-logic internals. App composes a model.
-- No bypass of seeded RNG. `drawPersona(rng)` consumes the injected stream.
-- No second demand taxonomy. Persona mix remains canonical.
+- No bypass of seeded RNG. `drawSegment(rng)` consumes the injected stream.
+- No second demand taxonomy. The segment heat map remains canonical; personas
+  are negotiation flavor only.
 - No EventBus use unless a true cross-module event is needed.
 - No dark mechanics. Every player-facing slice needs a live reachability test.
 - No SaveStore edits for module state. Persist through `worldSnapshot`.

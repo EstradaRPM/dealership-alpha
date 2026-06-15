@@ -661,16 +661,14 @@ describe('DemandShaper through the world seam (#210)', () => {
     const seed = 9876;
     const { world: original } = build(seed);
     original.demandShaper.setMix({
-      young_family: 4,
-      enthusiast: 1,
-      commuter: 2,
-      retiree: 0,
-      tradesperson: 3,
+      sedan: 4,
+      truck: 3,
+      suv: 2,
     });
-    original.demandShaper.recordArrival('tradesperson');
-    original.demandShaper.recordArrival('young_family');
-    original.demandShaper.recordArrival('tradesperson');
-    original.demandShaper.recordArrival('commuter');
+    original.demandShaper.recordArrival('truck');
+    original.demandShaper.recordArrival('suv');
+    original.demandShaper.recordArrival('truck');
+    original.demandShaper.recordArrival('sedan');
 
     const snap = snapshotWorld(original);
     const reparsed = JSON.parse(JSON.stringify(snap)) as WorldSnapshot;
@@ -705,9 +703,9 @@ describe('DemandShaper through the world seam (#210)', () => {
       .getInfluenceInputs()
       .find((input) => input.producer === 'advertising')!;
     expect(originalInput).toBeDefined();
-    expect(originalInput.weights.young_family).toBeGreaterThan(0);
-    expect(originalInput.weights.young_family).toBeLessThan(
-      originalInput.targetWeights.young_family,
+    expect(originalInput.weights.suv).toBeGreaterThan(0);
+    expect(originalInput.weights.suv).toBeLessThan(
+      originalInput.targetWeights.suv,
     );
 
     const snap = snapshotWorld(original);
@@ -832,7 +830,7 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     const { world } = build(4242);
     const current = snapshotWorld(world);
     const { demandShaper, regulatoryMeter, ...legacyModules } = current.modules;
-    expect(demandShaper.schemaVersion).toBe(2);
+    expect(demandShaper.schemaVersion).toBe(3);
     expect(regulatoryMeter.pressure).toBe(0);
     const persisted: PersistedWorldSnapshot = {
       version: 1,
@@ -843,13 +841,11 @@ describe('world-snapshot versioning + migrations (#196)', () => {
 
     expect(migrated.version).toBe(WORLD_SNAPSHOT_VERSION);
     expect(migrated.modules.demandShaper).toEqual({
-      schemaVersion: 2,
+      schemaVersion: 3,
       baselineMix: {
-        young_family: 1,
-        enthusiast: 1,
-        commuter: 1,
-        retiree: 1,
-        tradesperson: 1,
+        sedan: 1,
+        truck: 1,
+        suv: 1,
       },
       activeInputs: [],
       observedHistory: [],
@@ -962,7 +958,7 @@ describe('snapshotWorld / restoreWorld seam (#188)', () => {
     expect(typeof snap.modules.regulatoryMeter.pressure).toBe('number');
     expect(typeof snap.modules.regulatoryMeter.isTerminal).toBe('boolean');
     expect(typeof snap.modules.regulatoryMeter.suspensionDaysRemaining).toBe('number');
-    expect(snap.modules.demandShaper.schemaVersion).toBe(2);
+    expect(snap.modules.demandShaper.schemaVersion).toBe(3);
     expect(Array.isArray(snap.modules.demandShaper.activeInputs)).toBe(true);
     expect(Array.isArray(snap.modules.demandShaper.observedHistory)).toBe(true);
   });

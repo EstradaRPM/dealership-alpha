@@ -59,14 +59,23 @@ export const TunablesSchema = z.object({
     // response is sourced from MarketEconomy's shared demandMultiplier.
     pricingTrafficWeight: z.number().nonnegative(),
   }),
-  // Demand-shaping persona mix (#198). DemandShaper turns a per-day persona
-  // weight vector into a deterministic weighted spawn draw and tracks realized
-  // arrivals in a trailing window for the MANAGERIAL "who's been walking in"
-  // readout. windowSize = arrivals retained; trendEpsilon = share delta below
-  // which a persona reads 'steady' (damps single-arrival jitter).
+  // Demand-shaping vehicle-type heat map (#198, re-keyed to segments in #278,
+  // Pricing/Demand spine S6). DemandShaper turns a per-day per-segment heat
+  // vector into a deterministic weighted spawn draw and tracks realized
+  // arrivals in a trailing window for the MANAGERIAL "what's hot" readout.
+  // windowSize = arrivals retained; trendEpsilon = share delta below which a
+  // segment reads 'steady' (damps single-arrival jitter). `segments` is the
+  // ordered heat-map dimension (the VehicleCategory universe); `segmentArchetypes`
+  // is the within-segment visit-archetype roll that demotes personas to
+  // per-customer negotiation flavor (segment heat drives demand, not personas).
   demandShaper: z.object({
     windowSize: z.number().int().positive(),
     trendEpsilon: z.number().min(0).max(1),
+    segments: z.array(z.string().min(1)).min(1),
+    segmentArchetypes: z.record(
+      z.string().min(1),
+      z.record(z.string().min(1), z.number().nonnegative()),
+    ),
     locationProfiles: z
       .array(
         z.object({
@@ -110,9 +119,6 @@ export const TunablesSchema = z.object({
           }),
         ),
       })
-      .optional(),
-    coverageCategoryByPersona: z
-      .record(z.string().min(1), z.string().min(1))
       .optional(),
   }),
   // Weather / season substrate (#231). Per-day weather is a pure deterministic

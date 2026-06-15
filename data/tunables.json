@@ -32,55 +32,63 @@
   "demandShaper": {
     "windowSize": 60,
     "trendEpsilon": 0.08,
+    "segments": ["sedan", "truck", "suv"],
     "locationProfiles": [
       {
         "id": "north-industrial",
         "label": "North industrial corridor",
         "weights": {
-          "young_family": 1.0,
-          "enthusiast": 0.85,
-          "commuter": 1.05,
-          "retiree": 0.7,
-          "tradesperson": 1.4
+          "sedan": 0.95,
+          "truck": 1.4,
+          "suv": 0.85
         }
       },
       {
         "id": "suburban-schoolbelt",
         "label": "Suburban schoolbelt",
         "weights": {
-          "young_family": 1.35,
-          "enthusiast": 0.75,
-          "commuter": 1.15,
-          "retiree": 0.9,
-          "tradesperson": 0.85
+          "sedan": 1.0,
+          "truck": 0.85,
+          "suv": 1.25
         }
       },
       {
         "id": "retirement-lake",
         "label": "Retirement lake towns",
         "weights": {
-          "young_family": 0.85,
-          "enthusiast": 0.8,
-          "commuter": 0.95,
-          "retiree": 1.45,
-          "tradesperson": 0.95
+          "sedan": 0.9,
+          "truck": 0.95,
+          "suv": 1.3
         }
       }
     ],
+    "segmentArchetypes": {
+      "sedan": {
+        "commuter": 0.6,
+        "enthusiast": 0.4
+      },
+      "truck": {
+        "tradesperson": 1.0
+      },
+      "suv": {
+        "young_family": 0.6,
+        "retiree": 0.4
+      }
+    },
     "inventoryInfluence": {
       "maxWeight": 0.9,
       "categoryWeights": {
         "sedan": {
-          "commuter": 0.8,
-          "retiree": 0.35
+          "sedan": 0.8,
+          "suv": 0.15
         },
         "truck": {
-          "tradesperson": 1.0,
-          "enthusiast": 0.25
+          "truck": 0.9,
+          "suv": 0.15
         },
         "suv": {
-          "young_family": 0.85,
-          "retiree": 0.25
+          "suv": 0.85,
+          "sedan": 0.15
         }
       }
     },
@@ -88,13 +96,12 @@
       "neutralReviewScore": 50,
       "maxWeight": 0.7,
       "highWeights": {
-        "young_family": 0.65,
-        "retiree": 0.55,
-        "commuter": 0.25
+        "suv": 0.6,
+        "sedan": 0.3
       },
       "lowWeights": {
-        "enthusiast": 0.55,
-        "tradesperson": 0.35
+        "truck": 0.4,
+        "sedan": 0.4
       }
     },
     "advertisingInfluence": {
@@ -106,19 +113,12 @@
           "lagDays": 3,
           "decayDays": 2,
           "weights": {
-            "young_family": 0.85,
-            "commuter": 0.55,
-            "enthusiast": -0.2
+            "suv": 0.85,
+            "sedan": 0.55,
+            "truck": -0.2
           }
         }
       ]
-    },
-    "coverageCategoryByPersona": {
-      "young_family": "suv",
-      "enthusiast": "sedan",
-      "commuter": "sedan",
-      "retiree": "suv",
-      "tradesperson": "truck"
     }
   },
   "weather": {

@@ -39,7 +39,7 @@ import {
   TRADE_POLICY,
   PRICING_STRATEGY_OPTIONS,
   DAYS_PER_MONTH,
-  PERSONA_LABELS,
+  SEGMENT_LABELS,
   humanizeRole,
   staffTaxonomy,
   buildTargetingLevers,
@@ -188,14 +188,14 @@ export function GameScreen({
     advertisingCampaignId: world.demandControls.getAdvertisingCampaignId(),
     onSelectAdvertisingCampaign: levers.handleSelectAdvertisingCampaign,
   };
-  // Observed persona-mix readout (#198). Read live off DemandShaper each
+  // Segment-heat readout (#198 / #278). Read live off DemandShaper each
   // render; reflects the trailing arrival window at MANAGERIAL time. #211
   // layers the active influence producers and the lot-coverage gap onto the
   // same read model so the mechanic stays reachable in the live flow.
   const observed = world.demandShaper.getObservedMix();
   const demandEntries: DemandReadoutEntry[] = observed.map((e) => ({
-    persona: e.persona,
-    label: PERSONA_LABELS[e.persona] ?? e.persona,
+    segment: e.segment,
+    label: SEGMENT_LABELS[e.segment] ?? e.segment,
     share: e.share,
     count: e.count,
     trend: e.trend,
