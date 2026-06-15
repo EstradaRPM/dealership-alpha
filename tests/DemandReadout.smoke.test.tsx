@@ -3,8 +3,17 @@ import { render } from '@testing-library/react-native';
 import {
   DemandReadout,
   classifyHeatBand,
+  classifyHeatBandFine,
   type DemandReadoutModel,
+  type HeatBandThresholds,
 } from '../src/ui/DemandReadout';
+
+const THRESHOLDS: HeatBandThresholds = {
+  hot: 1.15,
+  cold: 0.85,
+  veryHot: 1.35,
+  veryCold: 0.65,
+};
 
 const MODEL: DemandReadoutModel = {
   totalObserved: 10,
@@ -61,11 +70,35 @@ describe('DemandReadout smoke', () => {
   });
 
   it('classifies heat bands off share × segment count (#280): even = warm, over = hot, under = cold', () => {
-    const thresholds = { hot: 1.15, cold: 0.85 };
     // Three segments: even share is 1/3 ⇒ heat 1.0 (warm).
-    expect(classifyHeatBand(1 / 3, 3, thresholds)).toBe('warm');
-    expect(classifyHeatBand(0.5, 3, thresholds)).toBe('hot'); // 1.5×
-    expect(classifyHeatBand(0.2, 3, thresholds)).toBe('cold'); // 0.6×
+    expect(classifyHeatBand(1 / 3, 3, THRESHOLDS)).toBe('warm');
+    expect(classifyHeatBand(0.5, 3, THRESHOLDS)).toBe('hot'); // 1.5×
+    expect(classifyHeatBand(0.2, 3, THRESHOLDS)).toBe('cold'); // 0.6×
+  });
+
+  it('classifies fine 5-band heat for the sharp UCM read (#284): resolves the two extremes the coarse read flattens', () => {
+    // 1.5× reads merely "hot" coarse, but "very hot" once a UCM sharpens it.
+    expect(classifyHeatBand(0.5, 3, THRESHOLDS)).toBe('hot');
+    expect(classifyHeatBandFine(0.5, 3, THRESHOLDS)).toBe('very-hot'); // ≥1.35
+    expect(classifyHeatBandFine(0.42, 3, THRESHOLDS)).toBe('hot'); // 1.26×, <1.35
+    expect(classifyHeatBandFine(1 / 3, 3, THRESHOLDS)).toBe('warm'); // 1.0×
+    expect(classifyHeatBandFine(0.25, 3, THRESHOLDS)).toBe('cold'); // 0.75×
+    expect(classifyHeatBandFine(0.2, 3, THRESHOLDS)).toBe('very-cold'); // 0.6×, ≤0.65
+  });
+
+  it('renders the fine readout heat index when present (#284)', () => {
+    const { getByText, getByLabelText } = render(
+      <DemandReadout
+        model={{
+          ...MODEL,
+          heatBands: [
+            { segment: 'suv', label: 'SUVs', band: 'very-hot', heatIndex: 1.5 },
+          ],
+        }}
+      />,
+    );
+    expect(getByText('1.50×')).toBeTruthy();
+    expect(getByLabelText('SUVs demand Very Hot')).toBeTruthy();
   });
 
   it('shows an empty hint before any traffic is observed', () => {

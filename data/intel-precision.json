@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "coarse": {
+    "heatGranularity": "coarse",
+    "suggestionBandPct": 0.12,
+    "daysRangePct": 0.5,
+    "confidenceScale": 0.6
+  },
+  "sharp": {
+    "heatGranularity": "fine",
+    "suggestionBandPct": 0.04,
+    "daysRangePct": 0.15,
+    "confidenceScale": 1.0,
+    "skillReference": 70
+  }
+}

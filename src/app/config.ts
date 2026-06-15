@@ -10,7 +10,12 @@ import { loadTunables } from '../game/data';
 import { loadTradePolicyConfig } from '../game/DealEngine';
 import { loadInventoryConfig } from '../game/Inventory';
 import { loadStaffArchetypes, loadStaffTaxonomy } from '../game/NPC';
-import { loadPricingStrategiesConfig } from '../game/MarketEconomy';
+import {
+  loadPricingStrategiesConfig,
+  resolveIntelPrecision,
+  type IntelPrecision,
+  type PricingStaffRead,
+} from '../game/MarketEconomy';
 import { loadRegulatoryTunables } from '../game/Reputation';
 import { loadTierConfig } from '../game/CareerProgression';
 import type { World } from '../createWorld';
@@ -18,7 +23,11 @@ import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
 import type { PersonnelRoleOption } from '../ui/PersonnelScreen';
 import type { CashDeltaSplit } from '../ui/HomeTab';
-import { classifyHeatBand } from '../ui/DemandReadout';
+import {
+  classifyHeatBand,
+  classifyHeatBandFine,
+  heatIndexFor,
+} from '../ui/DemandReadout';
 import type {
   DemandCoverageGap,
   DemandReadoutEntry,
@@ -156,27 +165,57 @@ export function buildTargetingLevers(world: World): DemandTargetingLever[] {
 export const HEAT_BAND_THRESHOLDS: HeatBandThresholds =
   loadTunables().demandShaper.heatBands;
 
+// Pricing-intel precision (#284, S12): distill the roster to the narrow read
+// MarketEconomy needs (the top UCM's pricing skill, or null when none is on
+// staff) and resolve the coarse↔sharp profile. One profile feeds the heat
+// console's band resolution AND the pricing screen's confidence/range/band
+// tightness, so the player's whole read sharpens together when a UCM is hired.
+export function buildPricingStaffRead(world: World): PricingStaffRead {
+  const ucmSkills = world.staffOrg.currentRoster
+    .filter((s) => s.role_id === 'used-car-manager')
+    .map((s) => s.skills['pricing'] ?? 0);
+  return {
+    ucmPricingSkill: ucmSkills.length === 0 ? null : Math.max(...ucmSkills),
+  };
+}
+
+export function resolvePricingIntel(world: World): IntelPrecision {
+  return resolveIntelPrecision(buildPricingStaffRead(world));
+}
+
 // Forward demand signal (#280): band the LIVE heat vector the spawn draw uses
-// (`getMix()` — the same model, no separate display source) into HOT/WARM/COLD
-// per segment, hottest-first so the player reads what to stock and price to.
+// (`getMix()` — the same model, no separate display source) per segment,
+// hottest-first so the player reads what to stock and price to. Precision (#284)
+// selects the band resolution: coarse hot/warm/cold by gut, or — once a UCM is
+// on staff — a fine 5-band read with the numeric heat index exposed.
 export function buildHeatConsole(
   world: World,
+  precision: IntelPrecision,
   thresholds: HeatBandThresholds = HEAT_BAND_THRESHOLDS,
 ): HeatBandEntry[] {
   const mix = world.demandShaper.getMix();
   const segments = world.demandShaper.segments;
+  const fine = precision.heatGranularity === 'fine';
   return segments
     .map((segment) => {
       const share = mix[segment] ?? 0;
       return {
         segment,
         label: SEGMENT_LABELS[segment] ?? segment,
-        band: classifyHeatBand(share, segments.length, thresholds),
+        band: fine
+          ? classifyHeatBandFine(share, segments.length, thresholds)
+          : classifyHeatBand(share, segments.length, thresholds),
         share,
+        heatIndex: fine ? heatIndexFor(share, segments.length) : undefined,
       };
     })
     .sort((a, b) => b.share - a.share)
-    .map(({ segment, label, band }) => ({ segment, label, band }));
+    .map(({ segment, label, band, heatIndex }) => ({
+      segment,
+      label,
+      band,
+      ...(heatIndex != null ? { heatIndex } : {}),
+    }));
 }
 
 export function buildCoverageGap(

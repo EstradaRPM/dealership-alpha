@@ -300,6 +300,40 @@ export const DaysToSellCurvesConfigSchema = z
   .strict();
 export type DaysToSellCurvesConfig = z.infer<typeof DaysToSellCurvesConfigSchema>;
 
+// Intel-precision tiering (#284, Pricing/Demand spine S12). How sharp the
+// pricing read is — coarse when the player prices by gut (no UCM), sharp once a
+// Used-Car Manager is on staff. `heatGranularity` selects the heat-map band
+// resolution; the three numeric knobs widen/tighten the surfaced bands.
+const IntelPrecisionLevelSchema = z
+  .object({
+    heatGranularity: z.enum(['coarse', 'fine']),
+    /** Half-width fraction of the surfaced suggested-price band. */
+    suggestionBandPct: z.number().nonnegative(),
+    /** Half-width fraction of the surfaced days-to-sell range. */
+    daysRangePct: z.number().nonnegative(),
+    /** Multiplier on the raw days-to-sell confidence (coarse caps it low). */
+    confidenceScale: unit,
+  })
+  .strict();
+
+export const IntelPrecisionConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    /** Profile applied when no UCM is on staff — price-by-gut intel. */
+    coarse: IntelPrecisionLevelSchema,
+    /**
+     * Profile applied with a UCM on staff. The numeric knobs lerp from `coarse`
+     * toward these as the UCM's `pricing` skill rises to `skillReference`, so a
+     * green UCM is only a touch sharper than gut and a seasoned one is pinpoint.
+     */
+    sharp: IntelPrecisionLevelSchema.extend({
+      skillReference: positive,
+    }).strict(),
+  })
+  .strict();
+export type IntelPrecisionConfig = z.infer<typeof IntelPrecisionConfigSchema>;
+
 const PricingStrategyEntrySchema = z
   .object({
     label: z.string().min(1),
@@ -459,4 +493,10 @@ export function loadPricingStrategiesConfig(): PricingStrategiesConfig {
     PricingStrategiesConfigSchema,
     'data/pricing-strategies.json',
   );
+}
+
+export function loadIntelPrecisionConfig(): IntelPrecisionConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/intel-precision.json');
+  return parseData(raw, IntelPrecisionConfigSchema, 'data/intel-precision.json');
 }

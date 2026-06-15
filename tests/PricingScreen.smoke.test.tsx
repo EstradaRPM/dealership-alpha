@@ -4,6 +4,24 @@ import {
   PricingScreen,
   type PricingScreenProps,
 } from '../src/ui/PricingScreen';
+import type { IntelPrecision } from '../src/game/MarketEconomy';
+
+// Sharp = a UCM on staff (tight bands, full confidence); coarse = price by gut
+// (wide bands, capped confidence). Mirrors data/intel-precision.json (#284).
+const SHARP: IntelPrecision = {
+  level: 'sharp',
+  heatGranularity: 'fine',
+  suggestionBandPct: 0.04,
+  daysRangePct: 0.15,
+  confidenceScale: 1,
+};
+const COARSE: IntelPrecision = {
+  level: 'coarse',
+  heatGranularity: 'coarse',
+  suggestionBandPct: 0.12,
+  daysRangePct: 0.5,
+  confidenceScale: 0.6,
+};
 
 const BASE: PricingScreenProps = {
   vehicle: {
@@ -32,6 +50,7 @@ const BASE: PricingScreenProps = {
     pricingSkill: 72,
     strategyLabel: 'Market',
   },
+  precision: SHARP,
   predictDays: () => ({ expectedDays: 30, confidence: 0.6 }),
   classifyPosition: () => 'at-market',
   enabled: true,
@@ -83,6 +102,27 @@ describe('PricingScreen smoke tests', () => {
     };
     const { getByText } = render(<PricingScreen {...noUcm} />);
     expect(getByText(/Hire a Used-Car Manager/)).toBeTruthy();
+  });
+
+  it('coarse intel (no UCM) widens the days range and caps confidence; sharp tightens both (#284)', () => {
+    const coarse = render(<PricingScreen {...BASE} precision={COARSE} />);
+    // expectedDays 30 ± 50% ⇒ a broad 15–45 spread; confidence 0.6 × 0.6 cap.
+    expect(coarse.getByText('15 – 45')).toBeTruthy();
+    expect(coarse.getByText('36% confidence')).toBeTruthy();
+
+    const sharp = render(<PricingScreen {...BASE} precision={SHARP} />);
+    // ± 15% ⇒ a tight 26–35; full confidence (× 1.0).
+    expect(sharp.getByText('26 – 35')).toBeTruthy();
+    expect(sharp.getByText('60% confidence')).toBeTruthy();
+  });
+
+  it('the suggested-price band widens under coarse intel and tightens under sharp (#284)', () => {
+    // $22,000 ± 12% (coarse) ⇒ a wide band; rounded to the $50 step.
+    const coarse = render(<PricingScreen {...BASE} precision={COARSE} />);
+    expect(coarse.getByText('$19,350 – $24,650')).toBeTruthy();
+    // ± 4% (sharp) ⇒ a tight band the player can actually act on.
+    const sharp = render(<PricingScreen {...BASE} precision={SHARP} />);
+    expect(sharp.getByText('$21,100 – $22,900')).toBeTruthy();
   });
 
   it('is read-only when disabled (apply does nothing)', () => {

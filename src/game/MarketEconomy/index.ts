@@ -31,6 +31,14 @@ export type {
   DaysToSellDeps,
 } from './daysToSell';
 
+export { resolveIntelPrecision } from './intelPrecision';
+export type {
+  IntelPrecision,
+  IntelLevel,
+  PricingStaffRead,
+  IntelPrecisionDeps,
+} from './intelPrecision';
+
 export { demandMultiplier } from './elasticity';
 export type {
   ElasticityInput,
@@ -120,6 +128,8 @@ export {
   DemandElasticityConfigSchema,
   loadPricingStrategiesConfig,
   PricingStrategiesConfigSchema,
+  loadIntelPrecisionConfig,
+  IntelPrecisionConfigSchema,
 } from './schemas';
 export type {
   MarketAnchorConfig,
@@ -143,6 +153,7 @@ export type {
   DemandElasticityConfig,
   PricingStrategiesConfig,
   PricingStrategyEntry,
+  IntelPrecisionConfig,
 } from './schemas';
 export {
   ReconVarianceConfigSchema,

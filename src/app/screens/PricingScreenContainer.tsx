@@ -10,7 +10,11 @@ import {
   classifyPricePosition,
   deriveCompetitorComps,
 } from '../../game/MarketEconomy';
-import { PRICING_STRATEGIES, AGED_THRESHOLD_DAYS } from '../config';
+import {
+  PRICING_STRATEGIES,
+  AGED_THRESHOLD_DAYS,
+  resolvePricingIntel,
+} from '../config';
 
 export interface PricingScreenContainerProps {
   world: World;
@@ -82,6 +86,9 @@ export function PricingScreenContainer({
           pricingSkill: ucm?.skills['pricing'],
           strategyLabel: strategyEntry.label,
         }}
+        // Intel precision (#284): coarse band/range/confidence by gut, sharp
+        // once a UCM is on staff — resolved from the same roster as `ucm` above.
+        precision={resolvePricingIntel(world)}
         predictDays={(ask) =>
           world.marketEconomy.predictDaysToSell(
             { ...v, daysOnLot: v.daysInInventory },

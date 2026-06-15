@@ -45,6 +45,7 @@ import {
   buildTargetingLevers,
   buildCoverageGap,
   buildHeatConsole,
+  resolvePricingIntel,
 } from '../config';
 
 export interface GameScreenProps {
@@ -202,10 +203,12 @@ export function GameScreen({
     trend: e.trend,
   }));
   const demandReadout: DemandReadoutModel = {
-    // Forward heat console (#280): the live spawn-driving heat vector, banded
-    // hot/warm/cold — the signal the player stocks and prices to. Distinct from
-    // the trailing observed window below, which confirms what actually walked in.
-    heatBands: buildHeatConsole(world),
+    // Forward heat console (#280): the live spawn-driving heat vector — the
+    // signal the player stocks and prices to. Distinct from the trailing
+    // observed window below, which confirms what actually walked in. Band
+    // resolution sharpens with the pricing-intel tier (#284): coarse by gut,
+    // fine 5-band + index once a UCM is on staff.
+    heatBands: buildHeatConsole(world, resolvePricingIntel(world)),
     entries: demandEntries,
     totalObserved: observed.reduce((sum, e) => sum + e.count, 0),
     targetingLevers: buildTargetingLevers(world),

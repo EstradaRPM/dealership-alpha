@@ -29,14 +29,26 @@ export interface DemandReadoutEntry {
   trend: DemandTrend;
 }
 
-/** Coarse demand temperature for a segment. */
-export type HeatBand = 'hot' | 'warm' | 'cold';
+/**
+ * Demand temperature for a segment. The coarse readout (no UCM) only ever emits
+ * the middle three; the fine readout (UCM on staff, #284) adds the two extremes.
+ */
+export type HeatBand = 'very-hot' | 'hot' | 'warm' | 'cold' | 'very-cold';
 
 export interface HeatBandThresholds {
   /** share × segmentCount at/above which a segment reads HOT. */
   hot: number;
   /** share × segmentCount at/below which a segment reads COLD. */
   cold: number;
+  /** Fine-band edge: at/above this a hot segment reads VERY HOT (#284). */
+  veryHot: number;
+  /** Fine-band edge: at/below this a cold segment reads VERY COLD (#284). */
+  veryCold: number;
+}
+
+/** A segment's normalized heat as a multiple of an even split (1.0 = fair share). */
+export function heatIndexFor(share: number, segmentCount: number): number {
+  return share * segmentCount;
 }
 
 /**
@@ -50,8 +62,26 @@ export function classifyHeatBand(
   segmentCount: number,
   thresholds: HeatBandThresholds,
 ): HeatBand {
-  const heat = share * segmentCount;
+  const heat = heatIndexFor(share, segmentCount);
   if (heat >= thresholds.hot) return 'hot';
+  if (heat <= thresholds.cold) return 'cold';
+  return 'warm';
+}
+
+/**
+ * Fine 5-band classification surfaced once a UCM sharpens the read (#284). Same
+ * heat index as the coarse band, but resolves the two extremes the gut read
+ * can't distinguish — a merely-warm-hot from a red-hot segment.
+ */
+export function classifyHeatBandFine(
+  share: number,
+  segmentCount: number,
+  thresholds: HeatBandThresholds,
+): HeatBand {
+  const heat = heatIndexFor(share, segmentCount);
+  if (heat >= thresholds.veryHot) return 'very-hot';
+  if (heat >= thresholds.hot) return 'hot';
+  if (heat <= thresholds.veryCold) return 'very-cold';
   if (heat <= thresholds.cold) return 'cold';
   return 'warm';
 }
@@ -60,6 +90,8 @@ export interface HeatBandEntry {
   segment: string;
   label: string;
   band: HeatBand;
+  /** Numeric heat index, present only in the fine (UCM) readout (#284). */
+  heatIndex?: number;
 }
 
 export interface DemandTargetingLean {
@@ -97,9 +129,11 @@ export interface DemandReadoutModel {
 
 /** Warm→cool temperature ramp + glyph for each heat band. */
 const HEAT_BANDS: Record<HeatBand, { label: string; tone: BadgeTone; icon: IconName }> = {
+  'very-hot': { label: 'Very Hot', tone: 'reward', icon: 'trending-up' },
   hot: { label: 'Hot', tone: 'reward', icon: 'trending-up' },
   warm: { label: 'Warm', tone: 'neutral', icon: 'arrow-forward' },
   cold: { label: 'Cold', tone: 'info', icon: 'trending-down' },
+  'very-cold': { label: 'Very Cold', tone: 'info', icon: 'trending-down' },
 };
 
 function HeatRow({ entry }: { entry: HeatBandEntry }) {
@@ -116,12 +150,25 @@ function HeatRow({ entry }: { entry: HeatBandEntry }) {
     color: t.colors.textSecondary,
     flex: 1,
   };
+  const indexText: TextStyle = {
+    ...t.typography.caption,
+    color: t.colors.textMuted,
+    fontVariant: ['tabular-nums'],
+  };
   return (
     <View style={row} accessibilityRole="text">
       <Icon name={band.icon} size="sm" tone={band.tone === 'neutral' ? 'muted' : band.tone === 'reward' ? 'positive' : 'primary'} />
       <Text style={label} numberOfLines={1}>
         {entry.label}
       </Text>
+      {entry.heatIndex != null && (
+        <Text
+          style={indexText}
+          accessibilityLabel={`${entry.label} heat index ${entry.heatIndex.toFixed(2)}`}
+        >
+          {entry.heatIndex.toFixed(2)}×
+        </Text>
+      )}
       <View accessibilityLabel={`${entry.label} demand ${band.label}`}>
         <Badge label={band.label} tone={band.tone} variant="soft" />
       </View>

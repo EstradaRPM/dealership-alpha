@@ -70,6 +70,19 @@ Design record: issue **#182** (locked). Read that before working any slice.
     `±competitorSpread` band around market. Takes a narrow structural
     competitor input so MarketEconomy stays decoupled from CompetitorMarket.
   - Config: `data/pricing-strategies.json` (`loadPricingStrategiesConfig`).
+- `resolveIntelPrecision(read, deps?)` → `IntelPrecision` (slice #284, Pricing/
+  Demand spine S12). Pure, deterministic. Maps a narrow `PricingStaffRead`
+  (`{ ucmPricingSkill: number | null }`) to the precision profile the pricing
+  surfaces read: `heatGranularity` (`coarse` 3-band vs `fine` 5-band + numeric
+  index), `suggestionBandPct`, `daysRangePct`, `confidenceScale`. No UCM ⇒ the
+  flat `coarse` profile; a UCM on staff ⇒ `sharp` granularity, with the numeric
+  knobs lerped from coarse toward sharp as the UCM's `pricing` skill rises to
+  `skillReference` (a green hire ≈ gut, a seasoned one pinpoint). The
+  composition root distills the roster (`buildPricingStaffRead`) and feeds one
+  profile to BOTH the Demand Heat console band resolution and the pricing
+  screen's days-range/confidence/suggestion-band, so the whole read sharpens
+  together. MarketEconomy stays decoupled from StaffOrg — it only ever sees the
+  pricing skill. Config: `data/intel-precision.json`.
 - `createCompHistory(deps?)` — rolling-window comp store with snapshot/restore.
 - `createSegmentHeat(deps)` — composer for `personality + drift + shock`.
 - Five typed loaders + Zod schemas under `./schemas.ts`.
@@ -173,6 +186,11 @@ fallback path per slice #155 AC.
 - `data/demand-elasticity.json` — the shared price-elasticity curve (#276):
   `priceSensitivity.above`/`below` (kept separate so #180 can tune the
   above-market bite vs below-market lift asymmetry) + `heatSensitivity`.
+- `data/intel-precision.json` — the coarse (no-UCM) and sharp (UCM) precision
+  profiles for `resolveIntelPrecision` (#284): per-level `heatGranularity` +
+  `suggestionBandPct` + `daysRangePct` + `confidenceScale`, plus the sharp
+  level's `skillReference` (the UCM `pricing` skill at which the read is fully
+  sharp). Precision-delta calibration is deferred to the S14 balance pass.
 - `data/pricing-strategies.json` — list-price strategy postures
   (`marketAggression` + `targetMarkupPct` per strategy), the default strategy,
   the position-indicator ratio bands, and the competitor-comparable spread for

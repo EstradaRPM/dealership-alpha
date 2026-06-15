@@ -1,4 +1,9 @@
-export { DemandReadout, classifyHeatBand } from './DemandReadout';
+export {
+  DemandReadout,
+  classifyHeatBand,
+  classifyHeatBandFine,
+  heatIndexFor,
+} from './DemandReadout';
 export type {
   DemandCoverageGap,
   DemandReadoutEntry,

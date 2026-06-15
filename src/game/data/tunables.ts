@@ -80,6 +80,11 @@ export const TunablesSchema = z.object({
     heatBands: z.object({
       hot: z.number().positive(),
       cold: z.number().positive(),
+      // Fine-band edges surfaced once a UCM sharpens the read (#284). `veryHot`
+      // is the multiple at/above which a hot segment reads VERY HOT; `veryCold`
+      // the multiple at/below which a cold one reads VERY COLD.
+      veryHot: z.number().positive(),
+      veryCold: z.number().positive(),
     }),
     segments: z.array(z.string().min(1)).min(1),
     segmentArchetypes: z.record(

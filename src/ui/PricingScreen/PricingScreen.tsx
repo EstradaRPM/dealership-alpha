@@ -9,7 +9,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { colors } from '../theme';
-import type { PricePosition } from '../../game/MarketEconomy';
+import type { PricePosition, IntelPrecision } from '../../game/MarketEconomy';
 
 /** Static per-vehicle facts the screen renders. The vehicle doesn't change
  *  while the screen is open, so these are computed once by the composition
@@ -56,6 +56,12 @@ export interface PricingScreenProps {
   vehicle: PricingScreenVehicle;
   comps: readonly PricingScreenComp[];
   suggestion: PricingScreenSuggestion;
+  /**
+   * Pricing-intel precision (#284): how sharp the read is. Coarse (no UCM)
+   * widens the suggested-price band + days-to-sell range and caps confidence;
+   * sharp (UCM on staff) tightens them toward pinpoint as skill rises.
+   */
+  precision: IntelPrecision;
   /** Live days-to-sell predictor for an ask (delegates to MarketEconomy #174). */
   predictDays: (askingPrice: number) => { expectedDays: number; confidence: number };
   /** Live market-position classifier for an ask (MarketEconomy bands). */
@@ -79,6 +85,22 @@ const POSITION_META: Record<PricePosition, { label: string; color: string }> = {
 
 function money(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
+}
+
+/**
+ * Surface a point estimate as a precision-scaled band. A wide `pct` (coarse, no
+ * UCM) reads as a broad guess; a tight `pct` (sharp UCM) collapses toward the
+ * point. Returns a single string when both edges round to the same display unit.
+ */
+function bandText(
+  value: number,
+  pct: number,
+  fmt: (n: number) => string,
+  round: (n: number) => number,
+): string {
+  const lo = round(value * (1 - pct));
+  const hi = round(value * (1 + pct));
+  return lo === hi ? fmt(lo) : `${fmt(lo)} – ${fmt(hi)}`;
 }
 
 function clampStep(v: number, min: number, max: number): number {
@@ -186,6 +208,7 @@ export function PricingScreen({
   vehicle,
   comps,
   suggestion,
+  precision,
   predictDays,
   classifyPosition,
   enabled,
@@ -210,6 +233,21 @@ export function PricingScreen({
 
   const posFor = (v: number) => (max > min ? (v - min) / (max - min) : 0);
   const prediction = predictDays(ask);
+  // Intel precision (#284): coarse caps confidence and widens the days/price
+  // bands; sharp (UCM) tightens both and lifts confidence toward the raw model.
+  const shownConfidence = prediction.confidence * precision.confidenceScale;
+  const daysText = bandText(
+    prediction.expectedDays,
+    precision.daysRangePct,
+    (n) => `${n}`,
+    Math.round,
+  );
+  const suggestionText = bandText(
+    suggestion.price,
+    precision.suggestionBandPct,
+    money,
+    (n) => clampStep(n, 0, Number.MAX_SAFE_INTEGER),
+  );
   const position = classifyPosition(ask);
   const posMeta = POSITION_META[position];
   const projectedGross =
@@ -300,9 +338,9 @@ export function PricingScreen({
         <View style={styles.dualRow}>
           <View style={[styles.card, styles.half]}>
             <Text style={styles.cardLabel}>Predicted days to sell</Text>
-            <Text style={styles.bigStat}>{prediction.expectedDays}</Text>
+            <Text style={styles.bigStat}>{daysText}</Text>
             <Text style={styles.subtle}>
-              {Math.round(prediction.confidence * 100)}% confidence
+              {Math.round(shownConfidence * 100)}% confidence
             </Text>
           </View>
           <View style={[styles.card, styles.half]}>
@@ -326,7 +364,9 @@ export function PricingScreen({
             {suggestion.source === 'ucm' ? 'Used-Car Manager' : 'Suggested price'}
           </Text>
           <View style={styles.suggestRow}>
-            <Text style={styles.suggestPrice}>{money(suggestion.price)}</Text>
+            <Text style={styles.suggestPrice} numberOfLines={1}>
+              {suggestionText}
+            </Text>
             <TouchableOpacity
               style={[styles.applyBtn, !enabled && styles.disabled]}
               disabled={!enabled}
@@ -505,7 +545,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  suggestPrice: { fontSize: 22, fontWeight: '800', color: colors.reward },
+  suggestPrice: { flexShrink: 1, fontSize: 22, fontWeight: '800', color: colors.reward },
   applyBtn: {
     backgroundColor: colors.primaryDim,
     paddingVertical: 8,

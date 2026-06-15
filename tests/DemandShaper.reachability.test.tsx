@@ -5,7 +5,7 @@ import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { createRng } from '../src/game/NPC/Rng';
 import { HomeTab } from '../src/ui/HomeTab';
-import { buildHeatConsole } from '../src/app/config';
+import { buildHeatConsole, resolvePricingIntel } from '../src/app/config';
 import type { DemandReadoutModel, DemandTargetingLever } from '../src/ui/DemandReadout';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
@@ -226,10 +226,12 @@ describe('#198 / #278 demand readout — reachable through the live pipeline', (
     const world = runRealDay();
     // The console must read the SAME vector drawSegment uses — getMix() — not a
     // separate display model. buildHeatConsole derives bands straight off it.
-    const console = buildHeatConsole(world);
+    // Fresh world has no UCM ⇒ coarse precision ⇒ the 3-band readout (#284).
+    const console = buildHeatConsole(world, resolvePricingIntel(world));
     expect(console.map((e) => e.segment).sort()).toEqual([...SEGMENTS].sort());
     for (const entry of console) {
       expect(['hot', 'warm', 'cold']).toContain(entry.band);
+      expect(entry.heatIndex).toBeUndefined();
       expect(entry.label).toBe(SEGMENT_LABELS[entry.segment]);
     }
     // Hottest-first: sorted by the live heat vector's per-segment share.
@@ -256,7 +258,9 @@ describe('#198 / #278 demand readout — reachable through the live pipeline', (
     // Reads the live shaper and threads the model into the shell — the two
     // links that, if cut, would orphan the mechanic.
     expect(src).toMatch(/world\.demandShaper\.getObservedMix\(\)/);
-    expect(src).toMatch(/heatBands: buildHeatConsole\(world\)/);
+    expect(src).toMatch(
+      /heatBands: buildHeatConsole\(world, resolvePricingIntel\(world\)\)/,
+    );
     expect(src).toMatch(/targetingLevers: buildTargetingLevers\(world\)/);
     expect(src).toMatch(/coverageGap: buildCoverageGap\(demandEntries, lotVehicles\)/);
     expect(src).toMatch(/advertisingOptions: world\.demandControls\.advertisingOptions/);

@@ -34,7 +34,9 @@
     "trendEpsilon": 0.08,
     "heatBands": {
       "hot": 1.15,
-      "cold": 0.85
+      "cold": 0.85,
+      "veryHot": 1.35,
+      "veryCold": 0.65
     },
     "segments": ["sedan", "truck", "suv"],
     "locationProfiles": [
