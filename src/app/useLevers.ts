@@ -24,6 +24,8 @@ export interface Levers {
   tradePolicyIdRef: React.MutableRefObject<string>;
   pricingStrategyId: string;
   setPricingStrategyId: (id: string) => void;
+  pricingStrategyIdRef: React.MutableRefObject<string>;
+  getPricingStrategy: () => string;
   selectedHiringRoleId: string;
   setSelectedHiringRoleId: (id: string) => void;
   /** Live getters handed to createWorld so a mid-game change applies without
@@ -63,10 +65,16 @@ export function useLevers({
   tradePolicyIdRef.current = tradePolicyId;
   const getTradePolicyMultiplier = () =>
     resolveTradePolicyMultiplier(tradePolicyIdRef.current, TRADE_POLICY);
-  // Per-slot list-price strategy (#154). Drives the pricing screen suggestion.
+  // Per-slot list-price strategy (#154). Drives the pricing screen suggestion
+  // and — once a UCM is on staff (#285) — the standing auto-pricing policy. The
+  // ref feeds the live getter handed to createWorld so a mid-game toggle change
+  // applies to the next acquisition without rebuilding the world.
   const [pricingStrategyId, setPricingStrategyId] = useState(
     PRICING_STRATEGIES.defaultStrategy,
   );
+  const pricingStrategyIdRef = useRef(PRICING_STRATEGIES.defaultStrategy);
+  pricingStrategyIdRef.current = pricingStrategyId;
+  const getPricingStrategy = () => pricingStrategyIdRef.current;
   const [selectedHiringRoleId, setSelectedHiringRoleId] = useState(
     DEFAULT_HIRING_ROLE_ID,
   );
@@ -88,8 +96,11 @@ export function useLevers({
     persistCurrentSave();
   };
 
-  // Persist the list-price strategy choice into the active slot (#154).
+  // Persist the list-price strategy choice into the active slot (#154). The ref
+  // updates immediately so the live policy getter reflects the new posture
+  // before the persist resolves (#285).
   const handleSelectPricingStrategy = (id: string) => {
+    pricingStrategyIdRef.current = id;
     setPricingStrategyId(id);
     persistCurrentSave({ pricingStrategy: id });
   };
@@ -108,6 +119,8 @@ export function useLevers({
     tradePolicyIdRef,
     pricingStrategyId,
     setPricingStrategyId,
+    pricingStrategyIdRef,
+    getPricingStrategy,
     selectedHiringRoleId,
     setSelectedHiringRoleId,
     getHoursOfOpTicksPerDay,

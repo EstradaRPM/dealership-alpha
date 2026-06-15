@@ -80,6 +80,36 @@ export function suggestListPrice(
   };
 }
 
+export interface IntakeAskInput extends SuggestListPriceInput {
+  /**
+   * True once the standing auto-pricing policy is unlocked (Pricing/Demand
+   * spine S13, #285 — a Used-Car Manager on staff). When unlocked, intake
+   * stamps the strategy's book↔market target; when locked, the strategy is
+   * suggestion-only and intake sits at the honest market suggestion.
+   */
+  readonly automationUnlocked: boolean;
+}
+
+/**
+ * The default `askingPrice` an incoming unit is stamped with at intake
+ * (Pricing/Demand spine S13, #285). The strategy toggle graduates from a
+ * suggestion into a *standing policy* once automation is unlocked: a UCM on
+ * staff lets the desk auto-price the book to the chosen posture. Below that
+ * gate the toggle is suggestion-only, so the default ask sits at the honest
+ * market suggestion (the pre-S13 behavior) and the player prices by hand.
+ *
+ * Pure, deterministic — the composition root resolves `bookValue`/`marketPrice`
+ * from the live providers and the unlock gate from the roster, then this turns
+ * those into the one number Inventory stamps.
+ */
+export function resolveIntakeAsk(
+  input: IntakeAskInput,
+  deps?: PricingSuggestionDeps,
+): number {
+  if (!input.automationUnlocked) return Math.round(input.marketPrice);
+  return suggestListPrice(input, deps).suggestedPrice;
+}
+
 /**
  * Classify an ask against honest market using the configured ratio bands.
  * `marketPrice <= 0` is treated as `wishful` (no honest reference to beat).

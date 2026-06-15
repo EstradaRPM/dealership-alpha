@@ -1,5 +1,6 @@
 import {
   suggestListPrice,
+  resolveIntakeAsk,
   classifyPricePosition,
   deriveCompetitorComps,
   loadPricingStrategiesConfig,
@@ -54,6 +55,41 @@ describe('suggestListPrice', () => {
     const a = suggestListPrice({ ...base, strategy: 'aggressive' }, { config });
     const b = suggestListPrice({ ...base, strategy: 'aggressive' }, { config });
     expect(a).toEqual(b);
+  });
+});
+
+describe('resolveIntakeAsk (#285, spine S13)', () => {
+  const base = { bookValue: 18000, marketPrice: 22000 };
+
+  test('locked (no UCM) → ask sits at the honest market suggestion, strategy ignored', () => {
+    const market = resolveIntakeAsk(
+      { ...base, strategy: 'market', automationUnlocked: false },
+      { config },
+    );
+    const aggressive = resolveIntakeAsk(
+      { ...base, strategy: 'aggressive', automationUnlocked: false },
+      { config },
+    );
+    expect(market).toBe(22000);
+    // Suggestion-only: the toggle does NOT move the default ask below the gate.
+    expect(aggressive).toBe(22000);
+  });
+
+  test('unlocked (UCM) → ask follows the strategy target', () => {
+    const aggressive = resolveIntakeAsk(
+      { ...base, strategy: 'aggressive', automationUnlocked: true },
+      { config },
+    );
+    const value = resolveIntakeAsk(
+      { ...base, strategy: 'value', automationUnlocked: true },
+      { config },
+    );
+    expect(aggressive).toBe(
+      suggestListPrice({ ...base, strategy: 'aggressive' }, { config })
+        .suggestedPrice,
+    );
+    expect(aggressive).toBeGreaterThan(22000);
+    expect(value).toBeLessThan(22000);
   });
 });
 

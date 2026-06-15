@@ -39,6 +39,13 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   `marketEconomy.marketPriceFn`.
 - `setAskingPrice(vehicleId, price)` is the MANAGERIAL Pricing-lever sink
   (clamps `<0`→0, rounds, unknown id = no-op).
+- **#285 (spine S13):** the optional `pricingPolicyFn` dep is the standing
+  auto-pricing policy — it returns the default `askingPrice` an incoming unit is
+  stamped with. The composition root encapsulates the strategy posture AND the
+  automation gate (a UCM on staff): unlocked ⇒ the strategy's book↔market target
+  (`MarketEconomy.resolveIntakeAsk`); locked ⇒ the honest market suggestion
+  (`suggestedRetail`). Omit the dep ⇒ `askingPrice = suggestedRetail` (the
+  pre-S13 default). `setAskingPrice` still overrides any unit per the player.
 
 ## Auction volume (#129)
 - `auctionConfig.minListings`/`maxListings` = steady-state daily board size.

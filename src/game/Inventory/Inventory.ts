@@ -123,6 +123,16 @@ export interface InventoryDeps {
    * `LotVehicle`, which carries every anchor field the provider reads.
    */
   marketPriceFn?: (v: LotVehicle) => number;
+  /**
+   * Standing auto-pricing policy (#285, Pricing/Demand spine S13). Returns the
+   * default `askingPrice` a freshly-acquired unit is stamped with — the close's
+   * transaction anchor. The composition root encapsulates the strategy posture
+   * AND the automation gate (a UCM on staff): unlocked ⇒ the strategy's
+   * book↔market target; locked ⇒ the honest market suggestion. Omit (test
+   * harnesses) to fall back to `suggestedRetail` — the pre-S13 behavior where
+   * the default ask sits at market.
+   */
+  pricingPolicyFn?: (v: LotVehicle) => number;
   reconVariance?: ReconVarianceConfig;
   reconSurprises?: ReconSurpriseEventsConfig;
   auctionSourceReliability?: AuctionSourceReliability;
@@ -142,6 +152,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
   const bookValueFn =
     deps.bookValueFn ?? ((v: LotVehicle) => v.purchasePrice + v.reconCost);
   const marketPriceFn = deps.marketPriceFn;
+  const pricingPolicyFn = deps.pricingPolicyFn;
 
   let currentDay = 1;
   let auctionListings: AuctionListing[] = [];
@@ -293,7 +304,14 @@ export function createInventory(deps: InventoryDeps): Inventory {
     };
     if (!marketPriceFn) return vehicle;
     const suggestedRetail = Math.max(0, Math.round(marketPriceFn(vehicle)));
-    return { ...vehicle, suggestedRetail, askingPrice: suggestedRetail };
+    // #285: the standing auto-pricing policy stamps the default ask. When a
+    // pricing policy is wired (UCM on staff → strategy auto-prices intake) the
+    // default ask follows the policy target; otherwise it sits at the market
+    // suggestion (suggestion-only — the toggle just drives the pricing screen).
+    const askingPrice = pricingPolicyFn
+      ? Math.max(0, Math.round(pricingPolicyFn({ ...vehicle, suggestedRetail })))
+      : suggestedRetail;
+    return { ...vehicle, suggestedRetail, askingPrice };
   }
 
   /**

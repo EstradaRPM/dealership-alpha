@@ -171,6 +171,11 @@ export function GameScreen({
     pricingStrategyOptions: PRICING_STRATEGY_OPTIONS,
     pricingStrategyId: levers.pricingStrategyId,
     onSelectPricingStrategy: levers.handleSelectPricingStrategy,
+    // #285 (spine S13): the strategy is a standing auto-pricing policy once a
+    // UCM is on staff (the same roster signal S12's intel-precision reads).
+    autoPricingActive: world.staffOrg.currentRoster.some(
+      (s) => s.role_id === 'used-car-manager',
+    ),
     onOpenAuction: () => nav.navigate('auction'),
     onOpenHiring: () => nav.navigate('personnel'),
     rosterCount: world.staffOrg.currentRoster.length,

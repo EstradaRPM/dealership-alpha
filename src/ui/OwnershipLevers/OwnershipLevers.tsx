@@ -66,6 +66,13 @@ export interface OwnershipLeversProps {
   pricingStrategyOptions: readonly PricingStrategyLeverOption[];
   pricingStrategyId: string;
   onSelectPricingStrategy: (id: string) => void;
+  /**
+   * Standing auto-pricing policy active (#285, spine S13). True once a UCM is
+   * on staff — the strategy then auto-prices incoming inventory to its
+   * book↔market target. False ⇒ suggestion-only (the toggle only drives the
+   * per-vehicle pricing screen; the player prices by hand).
+   */
+  autoPricingActive: boolean;
   onOpenAuction: () => void;
   onOpenHiring: () => void;
   rosterCount: number;
@@ -152,6 +159,7 @@ export function OwnershipLevers({
   pricingStrategyOptions,
   pricingStrategyId,
   onSelectPricingStrategy,
+  autoPricingActive,
   onOpenAuction,
   onOpenHiring,
   rosterCount,
@@ -212,6 +220,22 @@ export function OwnershipLevers({
         {selectedStrategy && (
           <Text style={styles.policyBlurb}>{selectedStrategy.blurb}</Text>
         )}
+        {/* #285 (spine S13): the toggle is a standing auto-pricing policy once a
+            UCM is on staff; below that it's suggestion-only. State the mode so
+            the player knows whether incoming inventory is auto-priced. */}
+        <Text
+          style={[
+            styles.policyStatus,
+            autoPricingActive
+              ? styles.policyStatusOn
+              : styles.policyStatusOff,
+          ]}
+          testID="auto-pricing-status"
+        >
+          {autoPricingActive
+            ? `Auto-pricing on — incoming inventory lists at your ${selectedStrategy?.label ?? 'chosen'} target. Override any unit below.`
+            : 'Suggestion only — hire a Used-Car Manager to auto-price incoming inventory.'}
+        </Text>
         {vehicles.length === 0 ? (
           <Text style={styles.empty}>No vehicles on the lot.</Text>
         ) : (
@@ -423,5 +447,17 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 10,
     lineHeight: 17,
+  },
+  policyStatus: {
+    fontSize: 11,
+    marginTop: 6,
+    lineHeight: 15,
+    fontWeight: '600',
+  },
+  policyStatusOn: {
+    color: colors.positive,
+  },
+  policyStatusOff: {
+    color: colors.textMuted,
   },
 });

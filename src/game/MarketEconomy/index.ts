@@ -48,6 +48,7 @@ export type {
 
 export {
   suggestListPrice,
+  resolveIntakeAsk,
   classifyPricePosition,
   deriveCompetitorComps,
 } from './pricingSuggestion';
@@ -56,6 +57,7 @@ export type {
   PricePosition,
   SuggestListPriceInput,
   SuggestListPriceResult,
+  IntakeAskInput,
   PricingSuggestionDeps,
   ComparableCompetitorInput,
   CompetitorComp,

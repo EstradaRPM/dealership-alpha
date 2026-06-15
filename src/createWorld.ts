@@ -48,6 +48,7 @@ import {
   loadReconVarianceConfig,
   rollRecon,
   deriveReconSeed,
+  resolveIntakeAsk,
   type MarketEconomy,
 } from './game/MarketEconomy';
 import { createStaffMorale, type StaffMorale } from './game/StaffMorale';
@@ -331,6 +332,15 @@ export function createWorld(deps: {
    * tunable default.
    */
   getHoursOfOpTicksPerDay?: () => number;
+  /**
+   * Per-slot list-price strategy id (#285, Pricing/Demand spine S13). A live
+   * getter (not a value) so a mid-game toggle change applies to the next
+   * acquisition without rebuilding the world — the composition root reads the
+   * persisted slot selection. Feeds the standing auto-pricing policy: once a
+   * UCM is on staff the strategy auto-stamps each incoming unit's default ask
+   * to its book↔market target. Omitted ⇒ the configured default strategy.
+   */
+  getPricingStrategy?: () => string;
 }): World {
   const {
     bus,
@@ -339,6 +349,7 @@ export function createWorld(deps: {
     tradeEscalationOverride,
     getTradePolicyMultiplier,
     getHoursOfOpTicksPerDay,
+    getPricingStrategy,
   } = deps;
 
   // Default initialDay = 1: the clock sits on "night before Day 1" so the
@@ -459,6 +470,27 @@ export function createWorld(deps: {
     // contract, mirroring the trade-ask seam below.
     marketPriceFn: (v) =>
       marketEconomy.marketPriceFn(v as unknown as PricedVehicleInput),
+    // #285 (spine S13): the strategy toggle is a standing auto-pricing policy.
+    // The default ask follows the chosen book↔market posture once a UCM is on
+    // staff (the used-car desk that prices the book); with no UCM it's
+    // suggestion-only and the default ask sits at the market suggestion. The
+    // unlock gate + strategy live here at the composition boundary — Inventory
+    // and MarketEconomy stay decoupled from StaffOrg. `staffOrg` is referenced
+    // lazily (declared below); the closure only runs at acquisition time, long
+    // after construction. `getPricingStrategy` returning '' falls back to the
+    // config default inside `resolveIntakeAsk`.
+    pricingPolicyFn: (v) => {
+      const priced = v as unknown as PricedVehicleInput;
+      const automationUnlocked = staffOrg.currentRoster.some(
+        (s) => s.role_id === 'used-car-manager',
+      );
+      return resolveIntakeAsk({
+        bookValue: marketEconomy.bookValueFn(priced),
+        marketPrice: marketEconomy.marketPriceFn(priced),
+        strategy: getPricingStrategy?.() ?? '',
+        automationUnlocked,
+      });
+    },
   });
   // #271: getCurrentDay feeds the lemon-law exposure emit (selling an
   // un-reconditioned hidden lemon → `regulatory:lemon_law_incident`), the live

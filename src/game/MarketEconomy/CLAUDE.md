@@ -62,6 +62,13 @@ Design record: issue **#182** (locked). Read that before working any slice.
     (`book × (1 + targetMarkupPct)`) is the minimum, so even a Value posture
     never lists below cost-plus-target. Unknown strategy id falls back to the
     config default.
+  - `resolveIntakeAsk({ bookValue, marketPrice, strategy, automationUnlocked },
+    deps?)` → the default `askingPrice` stamped at intake (#285, spine S13).
+    `automationUnlocked` (a UCM on staff) ⇒ `suggestListPrice(...).suggestedPrice`
+    (the strategy's book↔market target); locked ⇒ `round(marketPrice)`
+    (suggestion-only — the toggle doesn't move the default ask). Pure. The
+    composition root resolves the inputs (live providers + roster gate) and wires
+    it through `Inventory.pricingPolicyFn`.
   - `classifyPricePosition(ask, marketPrice, deps?)` → `PricePosition`
     (`fire-sale | below-market | at-market | above-market | wishful`) via the
     configured ask/market ratio bands.

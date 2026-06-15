@@ -31,6 +31,7 @@ const BASE: OwnershipLeversProps = {
   ],
   pricingStrategyId: 'market',
   onSelectPricingStrategy: jest.fn(),
+  autoPricingActive: false,
   onOpenAuction: jest.fn(),
   onOpenHiring: jest.fn(),
   rosterCount: 2,
@@ -85,6 +86,24 @@ describe('OwnershipLevers smoke tests', () => {
     // Pricing card renders first → its "Aggressive" chip is the first match.
     fireEvent.press(getAllByText('Aggressive')[0]);
     expect(onSelectPricingStrategy).toHaveBeenCalledWith('aggressive');
+  });
+
+  it('states suggestion-only when no UCM is on staff (#285)', () => {
+    const { getByTestId } = render(
+      <OwnershipLevers {...BASE} autoPricingActive={false} />,
+    );
+    expect(getByTestId('auto-pricing-status').props.children).toMatch(
+      /Suggestion only/,
+    );
+  });
+
+  it('states the standing policy is active once auto-pricing unlocks (#285)', () => {
+    const { getByTestId } = render(
+      <OwnershipLevers {...BASE} autoPricingActive pricingStrategyId="aggressive" />,
+    );
+    expect(getByTestId('auto-pricing-status').props.children).toMatch(
+      /Auto-pricing on/,
+    );
   });
 
   it('tapping a vehicle row opens the pricing screen', () => {

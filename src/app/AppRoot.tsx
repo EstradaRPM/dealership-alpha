@@ -172,6 +172,7 @@ export function DealershipApp({
       characterProfile: character,
       getTradePolicyMultiplier: levers.getTradePolicyMultiplier,
       getHoursOfOpTicksPerDay: levers.getHoursOfOpTicksPerDay,
+      getPricingStrategy: levers.getPricingStrategy,
     });
     // World-state restore (#188 tracer): rehydrate the persisted world
     // snapshot (day + cash) onto the freshly-built World instead of leaving it
@@ -238,6 +239,7 @@ export function DealershipApp({
       characterProfile: p,
       getTradePolicyMultiplier: levers.getTradePolicyMultiplier,
       getHoursOfOpTicksPerDay: levers.getHoursOfOpTicksPerDay,
+      getPricingStrategy: levers.getPricingStrategy,
     });
     setWorld(w);
     setCash(w.economy.cash);
