@@ -69,7 +69,8 @@ to the real machinery. Per customer (after exception roll + hold-floor):
      modal decision; accepted asks/counters emit `trade:resolved` and continue
      through the same `deal:closed` / `staff:auto_resolved` path, declined trades
      emit `staff:auto_resolved` with `trade_player_declined`, and rejected player
-     counters leave the review open.
+     counters leave the review open. A `closed` decision returns the settled
+     `{ agreedAllowance }` for the modal's honest buy/walk recap (#283).
    No trade / no book seam → closes without a trade.
 5. `dealEngine.computeAutoFni(effectiveness×100, unlockedRoles, fniRng)` →
    `dealEngine.closeDeal(...)` with the realized price, F&I attaches, and the

@@ -965,7 +965,10 @@ describe('StaffDispatch — trade escalation (#170)', () => {
     expect(w.heldTradeReviews).toHaveLength(1);
     const result = w.heldTradeReviews[0].decide({ kind: 'accept_counter' });
 
-    expect(result).toEqual({ status: 'closed' });
+    expect(result).toEqual({
+      status: 'closed',
+      agreedAllowance: w.trades[0].agreedAllowance,
+    });
     expect(w.trades).toHaveLength(1);
     expect(w.trades[0]).toMatchObject({
       customerId: 'cust:1',

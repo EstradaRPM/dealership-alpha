@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import type { EventBus } from '../game/EventBus';
 import type { World } from '../createWorld';
 import type { LotVehicle } from '../game/Inventory';
-import type { TradeDecision, TradeReview } from '../ui/TradeEscalationModal';
+import type {
+  TradeDecision,
+  TradeReview,
+  TradeOutcome,
+} from '../ui/TradeEscalationModal';
 import type {
   DiscountDecision,
   DiscountReview,
@@ -29,11 +33,14 @@ export interface ModalsDeps {
 export interface Modals {
   tradeReview: TradeReview | null;
   tradeCounterResult: CounterResult | null;
+  tradeOutcome: TradeOutcome | null;
   discountReview: DiscountReview | null;
   discountCounterResult: CounterResult | null;
   discountOutcome: DiscountOutcome | null;
   decideTrade: (decision: TradeDecision) => void;
   decideDiscount: (decision: DiscountDecision) => void;
+  /** Dismiss the resolved trade recap (Done button). */
+  dismissTrade: () => void;
   /** Dismiss the resolved discount recap (Done button). */
   dismissDiscount: () => void;
   /** Reset all latched modal/escalation state (session teardown). */
@@ -54,6 +61,7 @@ export function useModals({
   const [tradeReview, setTradeReview] = useState<TradeReview | null>(null);
   const [tradeCounterResult, setTradeCounterResult] =
     useState<CounterResult | null>(null);
+  const [tradeOutcome, setTradeOutcome] = useState<TradeOutcome | null>(null);
   const [discountReview, setDiscountReview] = useState<DiscountReview | null>(
     null,
   );
@@ -76,8 +84,14 @@ export function useModals({
       });
       return;
     }
-    setTradeReview(null);
+    // Terminal: keep the modal mounted to show a buy/walk recap; the Done
+    // button (dismissTrade) clears it.
     setTradeCounterResult(null);
+    setTradeOutcome(
+      result.status === 'closed'
+        ? { kind: 'booked', agreedAllowance: result.agreedAllowance }
+        : { kind: 'walked' },
+    );
     const w = worldRef.current;
     if (w) {
       setLotVehicles(w.inventory.getLotVehicles());
@@ -121,6 +135,12 @@ export function useModals({
     bump();
   };
 
+  const dismissTrade = () => {
+    setTradeReview(null);
+    setTradeCounterResult(null);
+    setTradeOutcome(null);
+  };
+
   const dismissDiscount = () => {
     setDiscountReview(null);
     setDiscountCounterResult(null);
@@ -130,6 +150,7 @@ export function useModals({
   const reset = () => {
     setTradeReview(null);
     setTradeCounterResult(null);
+    setTradeOutcome(null);
     setDiscountReview(null);
     setDiscountCounterResult(null);
     setDiscountOutcome(null);
@@ -156,6 +177,7 @@ export function useModals({
       staffConfidence: number;
     }) => {
       setTradeCounterResult(null);
+      setTradeOutcome(null);
       setTradeReview({
         customerId,
         currentVehicle,
@@ -230,11 +252,13 @@ export function useModals({
   return {
     tradeReview,
     tradeCounterResult,
+    tradeOutcome,
     discountReview,
     discountCounterResult,
     discountOutcome,
     decideTrade,
     decideDiscount,
+    dismissTrade,
     dismissDiscount,
     reset,
   };

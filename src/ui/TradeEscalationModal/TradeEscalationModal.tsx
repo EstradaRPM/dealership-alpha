@@ -51,6 +51,11 @@ export type TradeDecision =
   | { readonly kind: 'propose_counter'; readonly amount: number }
   | { readonly kind: 'decline' };
 
+/** Terminal buy/walk recap shown after the trade resolves (#283). */
+export type TradeOutcome =
+  | { readonly kind: 'booked'; readonly agreedAllowance: number }
+  | { readonly kind: 'walked' };
+
 interface Props {
   visible: boolean;
   /** The escalated trade, or null while closed. */
@@ -62,6 +67,10 @@ interface Props {
    * accept/reject roll resolves. `null` while none pending.
    */
   counterResult?: { readonly amount: number; readonly accepted: boolean } | null;
+  /** When set, the trade has resolved — show the recap + a Done button (#283). */
+  outcome?: TradeOutcome | null;
+  /** Dismiss the resolved recap. */
+  onDismiss?: () => void;
 }
 
 const dollars = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
@@ -71,8 +80,16 @@ export function TradeEscalationModal({
   review,
   onDecide,
   counterResult,
+  outcome,
+  onDismiss,
 }: Props) {
   const [counterText, setCounterText] = React.useState('');
+
+  // Reset the typed counter once the trade resolves, so a re-opened modal for
+  // the next customer starts clean.
+  React.useEffect(() => {
+    if (outcome != null) setCounterText('');
+  }, [outcome]);
 
   const parsedCounter = Number.parseInt(counterText.replace(/[^0-9]/g, ''), 10);
   const counterValid = Number.isFinite(parsedCounter) && parsedCounter > 0;
@@ -82,12 +99,19 @@ export function TradeEscalationModal({
     ? `${cv.year} ${cv.make} ${cv.model} · ${cv.mileage.toLocaleString('en-US')} mi · ${cv.condition}`
     : '—';
 
+  // The honest "why the ask is high" signal (#283): how far the lien exceeds
+  // the trade's wholesale book. A positive gap is the negative equity the
+  // customer is rolling — surfaced explicitly so a big ask reads as logical.
+  const negativeEquity = review ? review.payoff - review.book : 0;
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={() => onDecide({ kind: 'decline' })}
+      onRequestClose={() =>
+        outcome != null ? onDismiss?.() : onDecide({ kind: 'decline' })
+      }
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
@@ -99,6 +123,22 @@ export function TradeEscalationModal({
 
           {review == null ? (
             <Text style={styles.muted}>No trade in review.</Text>
+          ) : outcome != null ? (
+            <View style={styles.body}>
+              <Text style={styles.vehicle}>{vehicleSummary}</Text>
+              {outcome.kind === 'booked' ? (
+                <Text style={[styles.recap, styles.accepted]}>
+                  {`Trade booked at ${dollars(outcome.agreedAllowance)} allowance. Deal closed.`}
+                </Text>
+              ) : (
+                <Text style={[styles.recap, styles.rejected]}>
+                  Trade declined. Customer walked.
+                </Text>
+              )}
+              <View style={styles.actions}>
+                <Action label="Done" onPress={() => onDismiss?.()} />
+              </View>
+            </View>
           ) : (
             <ScrollView
               style={styles.body}
@@ -112,6 +152,13 @@ export function TradeEscalationModal({
                 label="Lien payoff"
                 value={review.payoff > 0 ? dollars(review.payoff) : '—'}
               />
+              {negativeEquity > 0 && (
+                <Row
+                  label="Underwater by"
+                  value={dollars(negativeEquity)}
+                  danger
+                />
+              )}
               <Row label="Our target" value={dollars(review.target)} />
               <Row
                 label="Staff counter"
@@ -187,15 +234,25 @@ function Row({
   label,
   value,
   emphasize,
+  danger,
 }: {
   label: string;
   value: string;
   emphasize?: boolean;
+  danger?: boolean;
 }) {
   return (
     <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, emphasize && styles.rowValueEmphasize]}>
+      <Text style={[styles.rowLabel, danger && styles.rowLabelDanger]}>
+        {label}
+      </Text>
+      <Text
+        style={[
+          styles.rowValue,
+          emphasize && styles.rowValueEmphasize,
+          danger && styles.rowValueDanger,
+        ]}
+      >
         {value}
       </Text>
     </View>
@@ -276,8 +333,17 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   rowLabel: { fontFamily: 'monospace', fontSize: 12, color: colors.textMuted },
+  rowLabelDanger: { color: colors.danger },
   rowValue: { fontFamily: 'monospace', fontSize: 12, color: colors.textSecondary },
   rowValueEmphasize: { color: colors.textPrimary, fontWeight: '700' },
+  rowValueDanger: { color: colors.danger, fontWeight: '700' },
+  recap: {
+    fontFamily: 'monospace',
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 4,
+    marginBottom: 4,
+  },
   counterResult: {
     fontFamily: 'monospace',
     fontSize: 12,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import {
   TradeEscalationModal,
   type TradeReview,
@@ -55,6 +55,54 @@ describe('TradeEscalationModal smoke tests', () => {
         />,
       ),
     ).not.toThrow();
+  });
+
+  it('surfaces the negative-equity gap when the lien exceeds book', () => {
+    const screen = render(
+      <TradeEscalationModal
+        visible
+        review={{ ...REVIEW, book: 6_000, payoff: 9_000 }}
+        onDecide={jest.fn()}
+      />,
+    );
+    expect(screen.getByText('Underwater by')).toBeTruthy();
+    expect(screen.getByText('$3,000')).toBeTruthy();
+  });
+
+  it('hides the negative-equity gap for a free-and-clear / above-water trade', () => {
+    const screen = render(
+      <TradeEscalationModal visible review={REVIEW} onDecide={jest.fn()} />,
+    );
+    expect(screen.queryByText('Underwater by')).toBeNull();
+  });
+
+  it('shows a booked recap + Done button on a resolved trade', () => {
+    const onDismiss = jest.fn();
+    const screen = render(
+      <TradeEscalationModal
+        visible
+        review={REVIEW}
+        onDecide={jest.fn()}
+        outcome={{ kind: 'booked', agreedAllowance: 5_500 }}
+        onDismiss={onDismiss}
+      />,
+    );
+    expect(screen.getByText(/Trade booked at \$5,500/)).toBeTruthy();
+    fireEvent.press(screen.getByText('Done'));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a walked recap on a declined trade', () => {
+    const screen = render(
+      <TradeEscalationModal
+        visible
+        review={REVIEW}
+        onDecide={jest.fn()}
+        outcome={{ kind: 'walked' }}
+        onDismiss={jest.fn()}
+      />,
+    );
+    expect(screen.getByText(/Customer walked/)).toBeTruthy();
   });
 
   it('renders a resolved counter result (accepted / rejected) without crashing', () => {

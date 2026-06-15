@@ -41,11 +41,13 @@ export function AppOverlays({
   const {
     tradeReview,
     tradeCounterResult,
+    tradeOutcome,
     discountReview,
     discountCounterResult,
     discountOutcome,
     decideTrade,
     decideDiscount,
+    dismissTrade,
     dismissDiscount,
   } = modals;
   const {
@@ -66,6 +68,8 @@ export function AppOverlays({
         review={tradeReview}
         onDecide={decideTrade}
         counterResult={tradeCounterResult}
+        outcome={tradeOutcome}
+        onDismiss={dismissTrade}
       />
       <DiscountEscalationModal
         visible={discountReview != null}

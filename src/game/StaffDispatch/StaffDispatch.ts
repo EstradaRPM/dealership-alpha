@@ -133,7 +133,9 @@ export type PlayerTradeDecision =
   | { readonly kind: 'decline' };
 
 export type PlayerTradeDecisionResult =
-  | { readonly status: 'closed' }
+  // `agreedAllowance` = the settled trade allowance, surfaced to the modal's
+  // buy/walk recap line (#283) so a booked trade reads as an honest figure.
+  | { readonly status: 'closed'; readonly agreedAllowance: number }
   | { readonly status: 'abandoned' }
   | {
       readonly status: 'counter_rejected';
@@ -540,7 +542,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                   staffConfidence: tradeConditionRead?.confidence ?? 0,
                 });
                 closeDealAtPrice(agreedPrice, agreedAllowance - review.payoff);
-                return { status: 'closed' };
+                return { status: 'closed', agreedAllowance };
               };
 
               if (decision.kind === 'decline') {
