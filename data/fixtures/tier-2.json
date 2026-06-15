@@ -343,8 +343,8 @@
             }
           },
           {
-            "id": "staff:poached_sales_manager:1:0",
-            "role_id": "sales-manager",
+            "id": "staff:poached_used_car_manager:1:0",
+            "role_id": "used-car-manager",
             "trait_ids": [
               "transparency",
               "charisma",
@@ -355,6 +355,7 @@
               "product_knowledge": 84.4450386366412,
               "communication": 77.49120082046456,
               "rapport_building": 56.31597765634504,
+              "condition_reading": 71.20480358134952,
               "pricing": 69.07583197582431,
               "t_o_closing": 81.43623319033028
             },
@@ -381,7 +382,7 @@
             95
           ],
           [
-            "staff:poached_sales_manager:1:0",
+            "staff:poached_used_car_manager:1:0",
             95
           ]
         ]

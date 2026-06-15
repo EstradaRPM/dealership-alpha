@@ -95,7 +95,7 @@ describe('CapacityManager — capacity calculation', () => {
     const roster = [
       makeStaff('s1', 'salesperson'),
       makeStaff('s2', 'salesperson'),
-      makeStaff('s3', 'sales-manager'),
+      makeStaff('s3', 'used-car-manager'),
     ];
     const { capacity } = makeSetup(roster, BASE_CONFIG, 1);
     expect(capacity.getDailyCapacity()).toBe(5); // 2 + 1 + 1 + 1

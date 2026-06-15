@@ -134,14 +134,15 @@
     }
   },
 
-  "poached_sales_manager": {
-    "role_id": "sales-manager",
+  "poached_used_car_manager": {
+    "role_id": "used-car-manager",
     "trait_pool": ["closer", "aggressiveness", "charisma", "ego", "transparency"],
     "trait_count": { "min": 3, "max": 4 },
     "skills": {
       "product_knowledge": { "mu": 78, "sigma": 7 },
       "communication": { "mu": 75, "sigma": 7 },
       "rapport_building": { "mu": 70, "sigma": 8 },
+      "condition_reading": { "mu": 73, "sigma": 8 },
       "pricing": { "mu": 72, "sigma": 8 },
       "t_o_closing": { "mu": 74, "sigma": 8 }
     },

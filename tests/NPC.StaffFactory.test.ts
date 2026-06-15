@@ -115,15 +115,15 @@ describe('StaffFactory.promoteStaff', () => {
       expect.arrayContaining(['product_knowledge', 'communication', 'rapport_building']),
     );
 
-    const promoted = promoteStaff(s, 'sales-manager', taxonomy);
-    expect(promoted.role_id).toBe('sales-manager');
+    const promoted = promoteStaff(s, 'used-car-manager', taxonomy);
+    expect(promoted.role_id).toBe('used-car-manager');
     // Salesperson-tier skills retained.
     expect(Object.keys(promoted.skills)).toEqual(
       expect.arrayContaining(['product_knowledge', 'communication', 'rapport_building']),
     );
     // Manager-tier skills now present.
     expect(Object.keys(promoted.skills)).toEqual(
-      expect.arrayContaining(['pricing', 't_o_closing']),
+      expect.arrayContaining(['condition_reading', 'pricing', 't_o_closing']),
     );
     // Existing skill values preserved.
     expect(promoted.skills.product_knowledge).toBe(s.skills.product_knowledge);
@@ -142,7 +142,7 @@ describe('StaffFactory.promoteStaff', () => {
       { archetypeId: 'career_salesperson', hireDay: 1, slot: 0 },
       deps,
     );
-    const promoted = promoteStaff(s, 'sales-manager', taxonomy);
+    const promoted = promoteStaff(s, 'used-car-manager', taxonomy);
     const before = promoted.effectiveness;
     promoted.skills.pricing = 90;
     expect(promoted.effectiveness).toBeGreaterThan(before);

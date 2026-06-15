@@ -10,15 +10,8 @@
     "tier": "customer-facing",
     "department": "sales",
     "grants_skills": ["product_knowledge", "communication", "rapport_building"],
-    "promotes_to": ["sales-manager", "f&i-manager"],
+    "promotes_to": ["used-car-manager", "f&i-manager"],
     "promotion_gates": { "effectiveness": 0.6, "trustworthiness": 0.65 }
-  },
-  "sales-manager": {
-    "tier": "manager",
-    "department": "sales",
-    "grants_skills": ["pricing", "t_o_closing"],
-    "promotes_to": ["gm"],
-    "promotion_gates": { "effectiveness": 0.75, "trustworthiness": 0.7 }
   },
   "f&i-manager": {
     "tier": "manager",
@@ -52,7 +45,7 @@
   "used-car-manager": {
     "tier": "manager",
     "department": "sales",
-    "grants_skills": ["condition_reading", "pricing"],
+    "grants_skills": ["condition_reading", "pricing", "t_o_closing"],
     "promotes_to": ["gm"],
     "promotion_gates": { "effectiveness": 0.7, "trustworthiness": 0.65 },
     "hireTier": 2

@@ -693,13 +693,15 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
           missPenalty: ev.missPenalty,
         };
 
-        const salesManagers = staffOrg.currentRoster.filter(
-          s => s.role_id === 'sales-manager',
+        const usedCarManagers = staffOrg.currentRoster.filter(
+          s => s.role_id === 'used-car-manager',
         );
-        const hasManager = salesManagers.length > 0;
+        const hasManager = usedCarManagers.length > 0;
 
-        // A hired sales-manager auto-adjudicates (never gated by frequency):
-        // they authorize the salesperson's counter (down to cost) and close it.
+        // A hired used-car-manager (the used desk owner) auto-adjudicates (never
+        // gated by frequency): they authorize the salesperson's counter (down to
+        // cost) and close it. Presence-gated for now; the t_o_closing threshold
+        // arrives in M3 (#290).
         if (hasManager) {
           return resolveTradeThenClose(
             Math.max(review.minimumAcceptablePrice, review.salespersonCounter),

@@ -12,9 +12,9 @@
  *                a slim cash cushion. The floor / worst case.
  *   - competent — follows the readouts (the reference "good player"): moderate
  *                tier-scaled lot matched to observed demand, a couple
- *                salespeople + a sales-manager, a healthy cushion.
+ *                salespeople + a used-car-manager, a healthy cushion.
  *   - optimal   — exploits everything: tier-scaled lot (capped so carrying cost
- *                doesn't drown it), full manager bench (GM/UCM/sales-manager to
+ *                doesn't drown it), full manager bench (GM/UCM to
  *                capture escalations + cheaper floorplan), demand-matched
  *                stocking + an advertising push, margin pricing, acquisitive
  *                trade policy.
@@ -163,9 +163,9 @@ const competentPolicy: Policy = {
       lotTargetForTier(COMPETENT.salespeopleByTier, tier, COMPETENT.salespeopleFallback),
       COMPETENT.cashBuffer,
     );
-    // A sales-manager (once tier permits) absorbs discount escalations so good
-    // deals close instead of stalling on the floor.
-    hireUpTo(world, 'sales-manager', 1, COMPETENT.cashBuffer);
+    // A used-car-manager (once tier permits) owns the used desk and absorbs
+    // discount escalations so good deals close instead of stalling on the floor.
+    hireUpTo(world, 'used-car-manager', 1, COMPETENT.cashBuffer);
     stockLot(
       world,
       lotTargetForTier(COMPETENT.lotByTier, tier, COMPETENT.lotFallback),
@@ -202,9 +202,8 @@ const optimalPolicy: Policy = {
       lotTargetForTier(OPTIMAL.salespeopleByTier, tier, OPTIMAL.salespeopleFallback),
       OPTIMAL.cashBuffer,
     );
-    // Full manager bench: sales-manager (discount escalations), GM (trade
-    // escalations + dramatic-case suppression), UCM (confident trade reads).
-    hireUpTo(world, 'sales-manager', 1, OPTIMAL.cashBuffer);
+    // Full manager bench: UCM (used desk — discount escalations + confident
+    // trade reads), GM (trade escalations + dramatic-case suppression).
     hireUpTo(world, 'used-car-manager', 1, OPTIMAL.cashBuffer);
     hireUpTo(world, 'gm', 1, OPTIMAL.cashBuffer);
 

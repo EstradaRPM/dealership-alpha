@@ -581,11 +581,11 @@ describe('StaffDispatch — discount escalation (#222)', () => {
     expect(w.closedDeals[0].agreedPrice).toBe(review.customerTargetPrice);
   });
 
-  it('hired sales-manager auto-resolves the same discount exception', () => {
+  it('hired used-car-manager auto-resolves the same discount exception', () => {
     const w = setup(
       [
         makeStaff(0.9, 'staff:sales'),
-        makeStaff(1.0, 'staff:sales-manager', 'sales-manager'),
+        makeStaff(1.0, 'staff:used-car-manager', 'used-car-manager'),
       ],
       BASE_CONFIG,
       { salesProcessDeps: discountDeps },

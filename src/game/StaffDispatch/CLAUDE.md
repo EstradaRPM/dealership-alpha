@@ -18,7 +18,8 @@ to the real machinery. Per customer (after exception roll + hold-floor):
    `outcome !== 'buy'` with a normal closeable price ⇒ `no_sale`/`no_close`.
    If the customer would buy only below the salesperson margin floor
    (`closeable=false`), this becomes the discount-escalation branch (#222,
-   reframed to the list-price axis by #281): a hired `sales-manager`
+   reframed to the list-price axis by #281): a hired `used-car-manager` (the
+   used-desk owner, #288)
    auto-resolves the exception through the same close path (ungated); without
    one, a tunable, **rare** fraction of below-floor ups
    (`staffDispatch.discountEscalationRate`, seeded on `(customerId, day)`)

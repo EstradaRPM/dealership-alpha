@@ -20,10 +20,10 @@ const validRoles: StaffRoleCatalog = {
     tier: 'customer-facing',
     department: 'sales',
     grants_skills: ['product_knowledge'],
-    promotes_to: ['sales-manager'],
+    promotes_to: ['used-car-manager'],
     promotion_gates: {},
   },
-  'sales-manager': {
+  'used-car-manager': {
     tier: 'manager',
     department: 'sales',
     grants_skills: ['pricing'],
@@ -144,7 +144,7 @@ describe('v1 staff catalog content', () => {
   it('contains v1 in-scope roles only (no body department)', () => {
     expect(roles['lot-porter']).toBeDefined();
     expect(roles.salesperson).toBeDefined();
-    expect(roles['sales-manager']).toBeDefined();
+    expect(roles['used-car-manager']).toBeDefined();
     expect(roles['f&i-manager']).toBeDefined();
     expect(roles.technician).toBeDefined();
     expect(roles['service-advisor']).toBeDefined();
