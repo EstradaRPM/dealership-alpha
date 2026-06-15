@@ -8,7 +8,10 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
+import { discountAcceptProbability } from '../../game/StaffDispatch';
+import { acceptanceHeatBands, bandForProb, bandColor } from './acceptanceHeat';
 
 export interface DiscountReview {
   readonly customerId: string;
@@ -30,6 +33,17 @@ export interface DiscountReview {
   readonly minimumAcceptablePrice: number;
   readonly frontGrossAtAsk: number;
   readonly canAcceptAsk: boolean;
+  // Acceptance-heat readout (#287).
+  /** Max counter-offers the customer hears before walking — the pip denominator. */
+  readonly counterAttempts: number;
+  /** Counters missed at open (always 0; the modal tracks live from counterResult). */
+  readonly priorMisses: number;
+  /** Acceptance prob of the salesperson's failed counter — the opening read. */
+  readonly salespersonCounterAcceptProb: number;
+  /** Customer price-sensitivity (0..1) — colors the live price input. */
+  readonly priceSensitivity: number;
+  /** Per-miss acceptance cool-off — the live color reflects accumulated misses. */
+  readonly missPenalty: number;
 }
 
 export type DiscountDecision =
@@ -51,6 +65,8 @@ interface Props {
     readonly amount: number;
     readonly accepted: boolean;
     readonly attemptsRemaining?: number;
+    /** Acceptance prob of the just-rejected offer — the new headline (#287). */
+    readonly acceptProb?: number;
   } | null;
   /** When set, the negotiation has resolved — show the recap + a Done button. */
   outcome?: DiscountOutcome | null;
@@ -58,6 +74,7 @@ interface Props {
 }
 
 const dollars = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
+const pct = (p: number): string => `${Math.round(p * 100)}%`;
 
 export function DiscountEscalationModal({
   visible,
@@ -68,6 +85,7 @@ export function DiscountEscalationModal({
   onDismiss,
 }: Props) {
   const [counterText, setCounterText] = React.useState('');
+  const bands = React.useMemo(() => acceptanceHeatBands(), []);
 
   // Reset the typed counter once the negotiation resolves, so a re-opened
   // modal for the next customer starts clean.
@@ -83,6 +101,47 @@ export function DiscountEscalationModal({
   const vehicleSummary = review
     ? `${review.vehicle.year} ${review.vehicle.make} ${review.vehicle.model} · ${review.vehicle.mileage.toLocaleString('en-US')} mi`
     : '-';
+
+  // Patience: pips total = counterAttempts; the haggle drains them, and each
+  // miss also cools every future roll (priorMisses feeds the live color).
+  const remaining = counterResult?.attemptsRemaining ?? review?.counterAttempts ?? 0;
+  const priorMisses = (review?.counterAttempts ?? 0) - remaining;
+
+  // The reactive headline: the salesperson's failed-counter prob until the
+  // player commits an offer, then that committed offer's resolved prob.
+  const headlineProb =
+    counterResult?.acceptProb ?? review?.salespersonCounterAcceptProb ?? 0;
+  const headlineBand = bandForProb(headlineProb, bands);
+  const headlineColor = bandColor(headlineBand);
+
+  // Coarse, number-free color on the price input as directional feel — the
+  // exact % only ever resolves on a committed offer, never as you type.
+  const liveBand =
+    review != null && counterValid
+      ? bandForProb(
+          discountAcceptProbability(
+            review.customerTargetPrice,
+            parsedCounter,
+            review.priceSensitivity,
+            priorMisses,
+            review.missPenalty,
+          ),
+          bands,
+        )
+      : null;
+  const inputBorderColor = liveBand ? bandColor(liveBand) : colors.border;
+
+  // A brief pulse whenever the headline number changes (open → first commit →
+  // each subsequent commit), so the slope of the read is felt, not just read.
+  const pulse = React.useRef(new Animated.Value(1)).current;
+  React.useEffect(() => {
+    pulse.setValue(0.4);
+    Animated.timing(pulse, {
+      toValue: 1,
+      duration: 280,
+      useNativeDriver: true,
+    }).start();
+  }, [headlineProb, pulse]);
 
   return (
     <Modal
@@ -126,61 +185,57 @@ export function DiscountEscalationModal({
             >
               <Text style={styles.vehicle}>{vehicleSummary}</Text>
 
-              <Row
-                label="Our list price"
-                value={dollars(review.askingPrice)}
-                emphasize
-              />
-              <Row
-                label="Customer target"
-                value={dollars(review.customerTargetPrice)}
-                emphasize
-              />
-              <Row
-                label="Salesperson's failed counter"
-                value={dollars(review.salespersonCounter)}
-              />
-              <Row label="Market price" value={dollars(review.marketPrice)} />
-              <Row
-                label="Our cost floor"
-                value={dollars(review.minimumAcceptablePrice)}
-              />
-              <Row
-                label="Gross at list"
-                value={dollars(review.frontGrossAtAsk)}
-              />
-
-              {counterResult != null && (
-                <Text
+              {/* Acceptance-heat readout: the centerpiece. */}
+              <View style={styles.heatBlock}>
+                <Animated.Text
                   style={[
-                    styles.counterResult,
-                    counterResult.accepted ? styles.accepted : styles.rejected,
+                    styles.heatPct,
+                    { color: headlineColor, opacity: pulse },
                   ]}
+                  accessibilityLabel={`Acceptance ${pct(headlineProb)}, ${headlineBand.label}`}
                 >
-                  {counterResult.accepted
-                    ? `Customer took your ${dollars(counterResult.amount)} counter.`
-                    : `Customer held — rejected your ${dollars(counterResult.amount)} counter. ${
-                        counterResult.attemptsRemaining === 1
-                          ? 'One more offer before they walk.'
-                          : `${counterResult.attemptsRemaining ?? 0} offers left before they walk.`
-                      }`}
+                  {pct(headlineProb)}
+                </Animated.Text>
+                <Text style={[styles.heatBand, { color: headlineColor }]}>
+                  {headlineBand.label}
                 </Text>
-              )}
+                <Text style={styles.heatCaption}>
+                  {counterResult != null
+                    ? `Your ${dollars(counterResult.amount)} counter — rejected.`
+                    : `Salesperson's ${dollars(review.salespersonCounter)} counter — and they balked.`}
+                </Text>
+              </View>
+
+              {/* Patience: a pip dies per swing-and-a-miss. */}
+              <View style={styles.pipsRow}>
+                <Text style={styles.pipsLabel}>Patience</Text>
+                <View style={styles.pips}>
+                  {Array.from({ length: review.counterAttempts }).map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.pip,
+                        i < remaining ? styles.pipLive : styles.pipDead,
+                      ]}
+                    />
+                  ))}
+                </View>
+              </View>
 
               <View style={styles.actions}>
                 <Action
-                  label={`Accept their price - ${dollars(review.customerTargetPrice)}`}
+                  label="Meet their target - guaranteed close"
                   disabled={!review.canAcceptAsk}
                   onPress={() => onDecide({ kind: 'accept_ask' })}
                 />
                 <Action
-                  label={`Re-pitch counter - ${dollars(review.salespersonCounter)}`}
+                  label={`Re-pitch ${dollars(review.salespersonCounter)} counter`}
                   onPress={() => onDecide({ kind: 'accept_counter' })}
                 />
 
                 <View style={styles.counterRow}>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { borderColor: inputBorderColor }]}
                     value={counterText}
                     onChangeText={setCounterText}
                     keyboardType="number-pad"
@@ -216,25 +271,6 @@ export function DiscountEscalationModal({
         </View>
       </View>
     </Modal>
-  );
-}
-
-function Row({
-  label,
-  value,
-  emphasize,
-}: {
-  label: string;
-  value: string;
-  emphasize?: boolean;
-}) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, emphasize && styles.rowValueEmphasize]}>
-        {value}
-      </Text>
-    </View>
   );
 }
 
@@ -319,19 +355,47 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: 12,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 5,
+  heatBlock: {
+    alignItems: 'center',
+    paddingVertical: 12,
   },
-  rowLabel: { fontFamily: 'monospace', fontSize: 12, color: colors.textMuted },
-  rowValue: { fontFamily: 'monospace', fontSize: 12, color: colors.textSecondary },
-  rowValueEmphasize: { color: colors.textPrimary, fontWeight: '700' },
-  counterResult: {
+  heatPct: {
+    fontFamily: 'monospace',
+    fontSize: 52,
+    fontWeight: '700',
+    lineHeight: 58,
+  },
+  heatBand: {
     fontFamily: 'monospace',
     fontSize: 12,
-    marginTop: 12,
+    fontWeight: '700',
+    letterSpacing: 3,
+    marginTop: 2,
   },
+  heatCaption: {
+    fontFamily: 'monospace',
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  pipsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  pipsLabel: { fontFamily: 'monospace', fontSize: 12, color: colors.textMuted },
+  pips: { flexDirection: 'row' },
+  pip: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginLeft: 6,
+  },
+  pipLive: { backgroundColor: colors.primary },
+  pipDead: { backgroundColor: colors.borderMuted },
   recap: {
     fontFamily: 'monospace',
     fontSize: 14,

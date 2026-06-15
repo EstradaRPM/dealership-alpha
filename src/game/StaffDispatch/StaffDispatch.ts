@@ -177,6 +177,20 @@ export interface DiscountReviewPayload {
   readonly frontGrossAtAsk: number;
   /** True when the customer's target is at/above cost (we can meet it without a loss). */
   readonly canAcceptAsk: boolean;
+  /**
+   * Acceptance-heat readout fields (#287). The modal frames the negotiation as
+   * a reactive accept-% rather than a raw "N offers left" countdown.
+   */
+  /** Max counter-offers the customer will hear before walking — the pip denominator. */
+  readonly counterAttempts: number;
+  /** Counters already missed at escalation time (always 0; the modal tracks live). */
+  readonly priorMisses: number;
+  /** Acceptance prob of the salesperson's already-failed counter — the opening read. */
+  readonly salespersonCounterAcceptProb: number;
+  /** Customer price-sensitivity (0..1) — lets the modal color the live price input. */
+  readonly priceSensitivity: number;
+  /** Per-miss acceptance cool-off — the modal's live color reflects it. */
+  readonly missPenalty: number;
 }
 
 export type PlayerDiscountDecision =
@@ -194,6 +208,8 @@ export type PlayerDiscountDecisionResult =
       readonly accepted: false;
       /** Counter-offers the customer will still entertain before walking. */
       readonly attemptsRemaining: number;
+      /** Acceptance prob of the just-rejected offer — the modal slams this headline (#287). */
+      readonly acceptProb: number;
     };
 
 export interface HeldDiscountReview {
@@ -213,6 +229,30 @@ function lerp(a: number, b: number, t: number): number {
 
 const clampUnit = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 
+/**
+ * Probability the customer accepts a counter at `counterPrice` given their
+ * hidden target. At/below the target it's an automatic yes (1); above it,
+ * acceptance falls off with the gap — steepened by their price-sensitivity and
+ * cooled further by each prior swing-and-a-miss (`priorMisses × missPenalty`).
+ * Pure/deterministic: the accept *roll* (rollDiscountCounterResponse) stays
+ * seeded, but this probability is the read the discount modal surfaces as its
+ * acceptance-heat number (#287). No replay impact.
+ */
+export function discountAcceptProbability(
+  customerTargetPrice: number,
+  counterPrice: number,
+  priceSensitivity: number,
+  priorMisses: number,
+  missPenalty: number,
+): number {
+  if (counterPrice <= customerTargetPrice) return 1;
+  const gapFraction =
+    (counterPrice - customerTargetPrice) / Math.max(customerTargetPrice, 1);
+  return clampUnit(
+    1 - gapFraction * 1.6 * (1 + priceSensitivity) - priorMisses * missPenalty,
+  );
+}
+
 function rollDiscountCounterResponse(
   customerTargetPrice: number,
   counterPrice: number,
@@ -221,16 +261,16 @@ function rollDiscountCounterResponse(
   missPenalty: number,
   seed: number,
 ): boolean {
-  // At/below the customer's target it's an automatic yes; above it, acceptance
-  // falls off with the gap, steepened by their price-sensitivity and cooled
-  // further by each prior swing-and-a-miss.
-  if (counterPrice <= customerTargetPrice) return true;
-  const gapFraction =
-    (counterPrice - customerTargetPrice) / Math.max(customerTargetPrice, 1);
-  const acceptProb = clampUnit(
-    1 - gapFraction * 1.6 * (1 + priceSensitivity) - priorMisses * missPenalty,
+  return (
+    createRng(seed)() <
+    discountAcceptProbability(
+      customerTargetPrice,
+      counterPrice,
+      priceSensitivity,
+      priorMisses,
+      missPenalty,
+    )
   );
-  return createRng(seed)() < acceptProb;
 }
 
 // Per-gate patience drain rate: v1 balanced default (matches CustomerPool).
@@ -598,6 +638,34 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             ),
           ),
         );
+
+        // Acceptance-heat readout (#287): the opening read the player starts
+        // with (the salesperson's failed counter, at zero prior misses) and the
+        // patience budget (how many counters this customer hears before walking
+        // — agreeableness across [min,max] with seeded ±0.5 jitter).
+        const ev = config.discountEvent;
+        const salespersonCounterAcceptProb = discountAcceptProbability(
+          customerTargetPrice,
+          salespersonCounter,
+          priceSensitivity,
+          0,
+          ev.missPenalty,
+        );
+        const agreeNorm = clampUnit(person.agreeableness / 100);
+        const counterAttempts = Math.max(
+          ev.minCounterAttempts,
+          Math.min(
+            ev.maxCounterAttempts,
+            Math.round(
+              lerp(ev.minCounterAttempts, ev.maxCounterAttempts, agreeNorm) +
+                (createRng(
+                  deriveSeed(masterSeed, 'discount_attempts', { customerId, day }),
+                )() -
+                  0.5),
+            ),
+          ),
+        );
+
         const review: DiscountReviewPayload = {
           customerId,
           day,
@@ -616,6 +684,11 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
           minimumAcceptablePrice,
           frontGrossAtAsk: askingPrice - minimumAcceptablePrice,
           canAcceptAsk: customerTargetPrice >= minimumAcceptablePrice,
+          counterAttempts,
+          priorMisses: 0,
+          salespersonCounterAcceptProb,
+          priceSensitivity,
+          missPenalty: ev.missPenalty,
         };
 
         const salesManagers = staffOrg.currentRoster.filter(
@@ -634,7 +707,6 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         // Unstaffed: only a tunable, rare fraction of below-floor ups surface as
         // an interactive manager-attention event. The rest simply walk — the
         // salesperson couldn't hold the price and lost the deal.
-        const ev = config.discountEvent;
         const escalates =
           createRng(
             deriveSeed(masterSeed, 'discount_escalation_roll', { customerId, day }),
@@ -644,25 +716,10 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
           return 'resolved';
         }
 
-        // How many counter-offers this customer will entertain before walking:
-        // agreeableness scales across [min,max], plus seeded ±0.5 jitter. A
-        // disagreeable buyer walks after one swing-and-a-miss; an agreeable one
-        // haggles back and forth.
-        const agreeNorm = clampUnit(person.agreeableness / 100);
-        const attemptJitter =
-          createRng(
-            deriveSeed(masterSeed, 'discount_attempts', { customerId, day }),
-          )() - 0.5;
-        let attemptsRemaining = Math.max(
-          ev.minCounterAttempts,
-          Math.min(
-            ev.maxCounterAttempts,
-            Math.round(
-              lerp(ev.minCounterAttempts, ev.maxCounterAttempts, agreeNorm) +
-                attemptJitter,
-            ),
-          ),
-        );
+        // The patience budget (counterAttempts) is computed above for the review
+        // payload; the live haggle drains it. A disagreeable buyer walks after
+        // one swing-and-a-miss; an agreeable one haggles back and forth.
+        let attemptsRemaining = counterAttempts;
         let priorMisses = 0;
 
         deps.onDiscountReviewHeld?.({
@@ -693,6 +750,17 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             const attemptCounter = (
               amount: number,
             ): PlayerDiscountDecisionResult => {
+              // The prob driving this offer's roll — surfaced as the modal's
+              // headline so the player reads the customer's rigidity off its
+              // movement. Same inputs feed the seeded roll, so the displayed
+              // number is exactly what was rolled against.
+              const acceptProb = discountAcceptProbability(
+                review.customerTargetPrice,
+                amount,
+                priceSensitivity,
+                priorMisses,
+                ev.missPenalty,
+              );
               const accepted = rollDiscountCounterResponse(
                 review.customerTargetPrice,
                 amount,
@@ -719,6 +787,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                 amount,
                 accepted: false,
                 attemptsRemaining,
+                acceptProb,
               };
             };
 

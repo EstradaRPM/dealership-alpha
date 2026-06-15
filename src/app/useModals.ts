@@ -14,6 +14,8 @@ interface CounterResult {
   readonly accepted: boolean;
   /** Discount-event only: counters the customer will still hear before walking. */
   readonly attemptsRemaining?: number;
+  /** Discount-event only: acceptance prob of the just-rejected offer (#287). */
+  readonly acceptProb?: number;
 }
 
 export interface ModalsDeps {
@@ -95,6 +97,7 @@ export function useModals({
         amount: result.amount,
         accepted: result.accepted,
         attemptsRemaining: result.attemptsRemaining,
+        acceptProb: result.acceptProb,
       });
       return;
     }
@@ -175,6 +178,11 @@ export function useModals({
       minimumAcceptablePrice,
       frontGrossAtAsk,
       canAcceptAsk,
+      counterAttempts,
+      priorMisses,
+      salespersonCounterAcceptProb,
+      priceSensitivity,
+      missPenalty,
     }: {
       customerId: string;
       vehicle: DiscountReview['vehicle'];
@@ -185,6 +193,11 @@ export function useModals({
       minimumAcceptablePrice: number;
       frontGrossAtAsk: number;
       canAcceptAsk: boolean;
+      counterAttempts: number;
+      priorMisses: number;
+      salespersonCounterAcceptProb: number;
+      priceSensitivity: number;
+      missPenalty: number;
     }) => {
       setDiscountCounterResult(null);
       setDiscountOutcome(null);
@@ -198,6 +211,11 @@ export function useModals({
         minimumAcceptablePrice,
         frontGrossAtAsk,
         canAcceptAsk,
+        counterAttempts,
+        priorMisses,
+        salespersonCounterAcceptProb,
+        priceSensitivity,
+        missPenalty,
       });
     };
 

@@ -427,6 +427,13 @@ export interface EventMap {
     minimumAcceptablePrice: number;
     frontGrossAtAsk: number;
     canAcceptAsk: boolean;
+    // Acceptance-heat readout (#287): the modal frames the negotiation as a
+    // reactive accept-% rather than a raw "N offers left" countdown.
+    counterAttempts: number;
+    priorMisses: number;
+    salespersonCounterAcceptProb: number;
+    priceSensitivity: number;
+    missPenalty: number;
   };
 
   // StaffOrg — roster changes

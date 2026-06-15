@@ -1,4 +1,8 @@
-export { createStaffDispatch, createStaffFloorDrain } from './StaffDispatch';
+export {
+  createStaffDispatch,
+  createStaffFloorDrain,
+  discountAcceptProbability,
+} from './StaffDispatch';
 export type {
   StaffDispatch,
   StaffDispatchDeps,

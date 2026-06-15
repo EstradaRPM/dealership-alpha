@@ -320,6 +320,13 @@
       "missPenalty": 0.15
     }
   },
+  "discountAcceptanceHeat": {
+    "bands": [
+      { "id": "flexible", "minProb": 0.6, "colorKey": "positive", "label": "FLEXIBLE" },
+      { "id": "mixed", "minProb": 0.35, "colorKey": "reward", "label": "MIXED" },
+      { "id": "rigid", "minProb": 0, "colorKey": "danger", "label": "RIGID" }
+    ]
+  },
   "marketEconomy": {
     "compWindow": {
       "sizePerSegment": 40,

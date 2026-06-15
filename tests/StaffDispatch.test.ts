@@ -6,6 +6,7 @@ import { createDepartmentQueue } from '../src/game/DepartmentQueue';
 import {
   createStaffDispatch,
   loadStaffDispatchConfig,
+  discountAcceptProbability,
 } from '../src/game/StaffDispatch';
 import type {
   StaffDispatchConfig,
@@ -735,10 +736,45 @@ describe('StaffDispatch — discount escalation (#222)', () => {
     expect(result.status).toBe('counter_rejected');
     if (result.status === 'counter_rejected') {
       expect(result.attemptsRemaining).toBe(2);
+      // The just-rejected wild over-ask reads as a near-zero acceptance prob —
+      // the headline number the modal surfaces (#287).
+      expect(result.acceptProb).toBeGreaterThanOrEqual(0);
+      expect(result.acceptProb).toBeLessThan(0.05);
     }
     // Review stays open — no terminal event yet.
     expect(w.events).toHaveLength(0);
     expect(w.closedDeals).toHaveLength(0);
+  });
+});
+
+// ── Acceptance-heat pure helper (#287) ───────────────────────────────────────
+
+describe('discountAcceptProbability — pure acceptance-heat read', () => {
+  it('is a certainty at or below the customer target', () => {
+    expect(discountAcceptProbability(20_000, 20_000, 0.5, 0, 0.15)).toBe(1);
+    expect(discountAcceptProbability(20_000, 18_000, 0.5, 0, 0.15)).toBe(1);
+  });
+
+  it('falls off as the counter climbs above the target', () => {
+    const near = discountAcceptProbability(20_000, 20_500, 0.5, 0, 0.15);
+    const far = discountAcceptProbability(20_000, 23_000, 0.5, 0, 0.15);
+    expect(near).toBeGreaterThan(far);
+    expect(near).toBeLessThan(1);
+    expect(far).toBeGreaterThanOrEqual(0);
+  });
+
+  it('steepens with price-sensitivity and cools with prior misses', () => {
+    const base = discountAcceptProbability(20_000, 21_000, 0.2, 0, 0.15);
+    const sensitive = discountAcceptProbability(20_000, 21_000, 0.9, 0, 0.15);
+    const cooled = discountAcceptProbability(20_000, 21_000, 0.2, 2, 0.15);
+    expect(sensitive).toBeLessThan(base);
+    expect(cooled).toBeLessThan(base);
+  });
+
+  it('clamps to the unit interval', () => {
+    const p = discountAcceptProbability(20_000, 60_000, 0.9, 5, 0.15);
+    expect(p).toBeGreaterThanOrEqual(0);
+    expect(p).toBeLessThanOrEqual(1);
   });
 });
 

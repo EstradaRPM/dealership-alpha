@@ -44,11 +44,19 @@ describe('App discount escalation reachability', () => {
         minimumAcceptablePrice: 11_800,
         frontGrossAtAsk: 3_700,
         canAcceptAsk: true,
+        counterAttempts: 3,
+        priorMisses: 0,
+        salespersonCounterAcceptProb: 0.58,
+        priceSensitivity: 0.5,
+        missPenalty: 0.15,
       });
     });
 
     expect(screen.getByText(/MANAGER ATTENTION - DISCOUNT/)).toBeTruthy();
     expect(screen.getByText('cust:discount-review')).toBeTruthy();
-    expect(screen.getByText('Customer target')).toBeTruthy();
+    // The reframed readout (#287): a reactive acceptance % + patience meter,
+    // not the old static "Customer target" row.
+    expect(screen.getByText('58%')).toBeTruthy();
+    expect(screen.getByText('Patience')).toBeTruthy();
   });
 });

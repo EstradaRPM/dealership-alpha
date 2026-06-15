@@ -22,6 +22,11 @@ const REVIEW: DiscountReview = {
   minimumAcceptablePrice: 11_800,
   frontGrossAtAsk: 3_700,
   canAcceptAsk: true,
+  counterAttempts: 3,
+  priorMisses: 0,
+  salespersonCounterAcceptProb: 0.58,
+  priceSensitivity: 0.5,
+  missPenalty: 0.15,
 };
 
 describe('DiscountEscalationModal smoke tests', () => {
@@ -37,29 +42,32 @@ describe('DiscountEscalationModal smoke tests', () => {
     ).not.toThrow();
   });
 
-  it('renders the escalated discount with decisions without crashing', () => {
-    expect(() =>
-      render(
-        <DiscountEscalationModal
-          visible
-          review={REVIEW}
-          onDecide={jest.fn()}
-        />,
-      ),
-    ).not.toThrow();
+  it('renders the escalated discount with the opening acceptance read', () => {
+    const screen = render(
+      <DiscountEscalationModal visible review={REVIEW} onDecide={jest.fn()} />,
+    );
+    // Opening headline is the salesperson's failed-counter prob (58%); the raw
+    // "N offers left" countdown is gone.
+    expect(screen.getByText('58%')).toBeTruthy();
+    expect(screen.queryByText(/offers left/)).toBeNull();
   });
 
-  it('renders a rejected counter result without crashing', () => {
-    expect(() =>
-      render(
-        <DiscountEscalationModal
-          visible
-          review={REVIEW}
-          onDecide={jest.fn()}
-          counterResult={{ amount: 13_000, accepted: false }}
-        />,
-      ),
-    ).not.toThrow();
+  it('slams the headline to the just-rejected offer prob on a committed counter', () => {
+    const screen = render(
+      <DiscountEscalationModal
+        visible
+        review={REVIEW}
+        onDecide={jest.fn()}
+        counterResult={{
+          amount: 13_000,
+          accepted: false,
+          attemptsRemaining: 2,
+          acceptProb: 0.24,
+        }}
+      />,
+    );
+    expect(screen.getByText('24%')).toBeTruthy();
+    expect(screen.queryByText(/offers left/)).toBeNull();
   });
 
   it('renders the sold buy/walk recap with a Done action', () => {

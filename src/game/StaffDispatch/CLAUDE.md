@@ -36,8 +36,16 @@ to the real machinery. Per customer (after exception roll + hold-floor):
    walking — `counterAttempts` scales by agreeableness across
    `[minCounterAttempts, maxCounterAttempts]` with seeded jitter — and every
    rejected counter ("swing and a miss") burns one attempt *and* cools the next
-   roll by `missPenalty`. A rejected counter with attempts left returns
-   `counter_rejected` (`amount`, `attemptsRemaining`) and keeps the review open;
+   roll by `missPenalty`. The accept roll is `createRng(seed)() <
+   discountAcceptProbability(...)` — an exported **pure** helper (#287) the modal
+   reuses to read the customer's price-rigidity off a reactive acceptance-%
+   instead of a raw "N offers left" countdown. The held review surfaces
+   `counterAttempts` (pip denominator), `priorMisses`, `priceSensitivity`,
+   `missPenalty`, and the opening acceptProb of the salesperson's failed counter
+   (`salespersonCounterAcceptProb`) so the modal needs no further lookups. A
+   rejected counter with attempts left returns `counter_rejected` (`amount`,
+   `attemptsRemaining`, and the just-rejected offer's `acceptProb`) and keeps the
+   review open;
    exhausting them walks the customer (`no_sale`/`discount_haggle_exhausted`).
    `decline` walks immediately. A `closed` result returns
    `{ soldPrice, frontGross }` for the modal's buy/walk recap.
@@ -132,6 +140,10 @@ with #147.
   trade/discount review); FloorSim only tallies the count (the #103
   forced-exception channel was removed in #275).
 - `loadStaffDispatchConfig` — reads dispatch tunables.
+- `discountAcceptProbability(customerTargetPrice, counterPrice, priceSensitivity,
+  priorMisses, missPenalty)` — pure/deterministic acceptance-prob helper (#287)
+  the discount roll delegates to and the modal reuses for its live, number-free
+  price-input color. No replay impact.
 - Types: `StaffDispatch`, `StaffDispatchDeps`, `StaffDispatchConfig`,
   `StaffDispatchCustomerSession`.
 
