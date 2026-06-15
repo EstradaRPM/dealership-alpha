@@ -71,6 +71,16 @@ export const TunablesSchema = z.object({
   demandShaper: z.object({
     windowSize: z.number().int().positive(),
     trendEpsilon: z.number().min(0).max(1),
+    // Heat-console band thresholds (#280). The console reads the live heat
+    // vector (getMix(), the same vector drawSegment uses) and expresses each
+    // segment's normalized share as a multiple of an even split (share ×
+    // segmentCount, so 1.0 = fair share). `hot`/`cold` are the multiples at
+    // which a segment reads HOT / COLD; between them is WARM. Coarse bands by
+    // design — precision tiering arrives with the UCM intel slice.
+    heatBands: z.object({
+      hot: z.number().positive(),
+      cold: z.number().positive(),
+    }),
     segments: z.array(z.string().min(1)).min(1),
     segmentArchetypes: z.record(
       z.string().min(1),

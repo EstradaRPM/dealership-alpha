@@ -18,10 +18,13 @@ import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
 import type { PersonnelRoleOption } from '../ui/PersonnelScreen';
 import type { CashDeltaSplit } from '../ui/HomeTab';
+import { classifyHeatBand } from '../ui/DemandReadout';
 import type {
   DemandCoverageGap,
   DemandReadoutEntry,
   DemandTargetingLever,
+  HeatBandEntry,
+  HeatBandThresholds,
 } from '../ui/DemandReadout';
 
 // Tier-keyed hero art for the shell's header backdrop. Metro requires static
@@ -146,6 +149,34 @@ export function buildTargetingLevers(world: World): DemandTargetingLever[] {
         weight,
       })),
   }));
+}
+
+// Heat-console band thresholds (#280) — single-sourced from tunables, no magic
+// numbers in the composition root.
+export const HEAT_BAND_THRESHOLDS: HeatBandThresholds =
+  loadTunables().demandShaper.heatBands;
+
+// Forward demand signal (#280): band the LIVE heat vector the spawn draw uses
+// (`getMix()` — the same model, no separate display source) into HOT/WARM/COLD
+// per segment, hottest-first so the player reads what to stock and price to.
+export function buildHeatConsole(
+  world: World,
+  thresholds: HeatBandThresholds = HEAT_BAND_THRESHOLDS,
+): HeatBandEntry[] {
+  const mix = world.demandShaper.getMix();
+  const segments = world.demandShaper.segments;
+  return segments
+    .map((segment) => {
+      const share = mix[segment] ?? 0;
+      return {
+        segment,
+        label: SEGMENT_LABELS[segment] ?? segment,
+        band: classifyHeatBand(share, segments.length, thresholds),
+        share,
+      };
+    })
+    .sort((a, b) => b.share - a.share)
+    .map(({ segment, label, band }) => ({ segment, label, band }));
 }
 
 export function buildCoverageGap(

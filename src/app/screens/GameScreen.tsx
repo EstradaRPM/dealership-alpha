@@ -44,6 +44,7 @@ import {
   staffTaxonomy,
   buildTargetingLevers,
   buildCoverageGap,
+  buildHeatConsole,
 } from '../config';
 
 export interface GameScreenProps {
@@ -201,6 +202,10 @@ export function GameScreen({
     trend: e.trend,
   }));
   const demandReadout: DemandReadoutModel = {
+    // Forward heat console (#280): the live spawn-driving heat vector, banded
+    // hot/warm/cold — the signal the player stocks and prices to. Distinct from
+    // the trailing observed window below, which confirms what actually walked in.
+    heatBands: buildHeatConsole(world),
     entries: demandEntries,
     totalObserved: observed.reduce((sum, e) => sum + e.count, 0),
     targetingLevers: buildTargetingLevers(world),

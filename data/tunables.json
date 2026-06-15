@@ -32,6 +32,10 @@
   "demandShaper": {
     "windowSize": 60,
     "trendEpsilon": 0.08,
+    "heatBands": {
+      "hot": 1.15,
+      "cold": 0.85
+    },
     "segments": ["sedan", "truck", "suv"],
     "locationProfiles": [
       {

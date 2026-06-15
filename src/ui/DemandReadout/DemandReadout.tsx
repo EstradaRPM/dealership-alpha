@@ -2,7 +2,16 @@ import React from 'react';
 import { View, Text, StyleSheet, type ViewStyle, type TextStyle } from 'react-native';
 import type { DemandTrend } from '../../game/DemandShaper';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader, ProgressBar, Icon, type IconName, type IconProps } from '../kit';
+import {
+  Surface,
+  SectionHeader,
+  ProgressBar,
+  Icon,
+  Badge,
+  type BadgeTone,
+  type IconName,
+  type IconProps,
+} from '../kit';
 
 /**
  * Pure read-model for the MANAGERIAL "what's hot on the lot" segment-heat
@@ -18,6 +27,39 @@ export interface DemandReadoutEntry {
   share: number;
   count: number;
   trend: DemandTrend;
+}
+
+/** Coarse demand temperature for a segment. */
+export type HeatBand = 'hot' | 'warm' | 'cold';
+
+export interface HeatBandThresholds {
+  /** share × segmentCount at/above which a segment reads HOT. */
+  hot: number;
+  /** share × segmentCount at/below which a segment reads COLD. */
+  cold: number;
+}
+
+/**
+ * Classify a segment's normalized heat share into a coarse band. `share` is the
+ * segment's slice of the live heat vector (sums to 1 across segments), so
+ * `share × segmentCount` expresses it as a multiple of a fair, even split:
+ * 1.0 = even, >1 over-weighted (hotter), <1 under-weighted (cooler). Pure.
+ */
+export function classifyHeatBand(
+  share: number,
+  segmentCount: number,
+  thresholds: HeatBandThresholds,
+): HeatBand {
+  const heat = share * segmentCount;
+  if (heat >= thresholds.hot) return 'hot';
+  if (heat <= thresholds.cold) return 'cold';
+  return 'warm';
+}
+
+export interface HeatBandEntry {
+  segment: string;
+  label: string;
+  band: HeatBand;
 }
 
 export interface DemandTargetingLean {
@@ -41,11 +83,50 @@ export interface DemandCoverageGap {
 }
 
 export interface DemandReadoutModel {
+  /**
+   * Forward demand signal (#280): the live per-segment heat vector that drives
+   * spawns, banded HOT/WARM/COLD. Sorted hottest-first. Absent ⇒ console hidden.
+   */
+  heatBands?: readonly HeatBandEntry[];
   entries: readonly DemandReadoutEntry[];
   /** Total arrivals in the trailing window (0 ⇒ "no data yet"). */
   totalObserved: number;
   targetingLevers?: readonly DemandTargetingLever[];
   coverageGap?: DemandCoverageGap | null;
+}
+
+/** Warm→cool temperature ramp + glyph for each heat band. */
+const HEAT_BANDS: Record<HeatBand, { label: string; tone: BadgeTone; icon: IconName }> = {
+  hot: { label: 'Hot', tone: 'reward', icon: 'trending-up' },
+  warm: { label: 'Warm', tone: 'neutral', icon: 'arrow-forward' },
+  cold: { label: 'Cold', tone: 'info', icon: 'trending-down' },
+};
+
+function HeatRow({ entry }: { entry: HeatBandEntry }) {
+  const t = useTheme();
+  const band = HEAT_BANDS[entry.band];
+  const row: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.spacing.sm,
+    paddingVertical: t.spacing.xs,
+  };
+  const label: TextStyle = {
+    ...t.typography.body,
+    color: t.colors.textSecondary,
+    flex: 1,
+  };
+  return (
+    <View style={row} accessibilityRole="text">
+      <Icon name={band.icon} size="sm" tone={band.tone === 'neutral' ? 'muted' : band.tone === 'reward' ? 'positive' : 'primary'} />
+      <Text style={label} numberOfLines={1}>
+        {entry.label}
+      </Text>
+      <View accessibilityLabel={`${entry.label} demand ${band.label}`}>
+        <Badge label={band.label} tone={band.tone} variant="soft" />
+      </View>
+    </View>
+  );
 }
 
 /** Trend glyph + tone, in the same idiom as GateStrip's faces. */
@@ -140,15 +221,33 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: t.colors.borderMuted,
   };
+  const hasHeat = model.heatBands && model.heatBands.length > 0;
   return (
     <Surface testID="demand-readout">
-      {model.totalObserved === 0 ? (
-        <Text style={empty}>No traffic yet — open the lot to see what's hot.</Text>
-      ) : (
-        model.entries.map((entry) => (
-          <DemandRow key={entry.segment} entry={entry} />
-        ))
+      {hasHeat && (
+        <View testID="demand-heat-console">
+          <SectionHeader title="Demand Heat" />
+          <Text style={{ ...empty, marginTop: t.spacing.xxs, marginBottom: t.spacing.xs }}>
+            What buyers want right now — stock and price to it.
+          </Text>
+          {model.heatBands!.map((entry) => (
+            <HeatRow key={entry.segment} entry={entry} />
+          ))}
+        </View>
       )}
+
+      <View style={hasHeat ? dividedSection : undefined}>
+        {hasHeat && <SectionHeader title="Who's Been Walking In" />}
+        <View style={hasHeat ? { marginTop: t.spacing.sm } : undefined}>
+          {model.totalObserved === 0 ? (
+            <Text style={empty}>No traffic yet — open the lot to see what's hot.</Text>
+          ) : (
+            model.entries.map((entry) => (
+              <DemandRow key={entry.segment} entry={entry} />
+            ))
+          )}
+        </View>
+      </View>
 
       <View style={dividedSection}>
         <SectionHeader title="What You're Promoting" />

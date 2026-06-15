@@ -5,6 +5,7 @@ import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { createRng } from '../src/game/NPC/Rng';
 import { HomeTab } from '../src/ui/HomeTab';
+import { buildHeatConsole } from '../src/app/config';
 import type { DemandReadoutModel, DemandTargetingLever } from '../src/ui/DemandReadout';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
@@ -221,11 +222,41 @@ describe('#198 / #278 demand readout — reachable through the live pipeline', (
     expect(getByText(/recent buyers wanted trucks; you\s*stock 0/i)).toBeTruthy();
   });
 
+  it('bands the live spawn-driving heat vector into the Home heat console (#280)', () => {
+    const world = runRealDay();
+    // The console must read the SAME vector drawSegment uses — getMix() — not a
+    // separate display model. buildHeatConsole derives bands straight off it.
+    const console = buildHeatConsole(world);
+    expect(console.map((e) => e.segment).sort()).toEqual([...SEGMENTS].sort());
+    for (const entry of console) {
+      expect(['hot', 'warm', 'cold']).toContain(entry.band);
+      expect(entry.label).toBe(SEGMENT_LABELS[entry.segment]);
+    }
+    // Hottest-first: sorted by the live heat vector's per-segment share.
+    const mix = world.demandShaper.getMix();
+    const hottest = [...SEGMENTS].sort((a, b) => mix[b] - mix[a])[0];
+    expect(console[0].segment).toBe(hottest);
+
+    const state = world.dayLoop.state();
+    const { getByTestId } = render(
+      <HomeTab
+        state={state}
+        demandReadout={{
+          heatBands: console,
+          entries: [],
+          totalObserved: 0,
+        }}
+      />,
+    );
+    expect(getByTestId('demand-heat-console')).toBeTruthy();
+  });
+
   it('App.tsx wires demandReadout from the live world into the Home tab', () => {
     const src = readAppCompositionSource();
     // Reads the live shaper and threads the model into the shell — the two
     // links that, if cut, would orphan the mechanic.
     expect(src).toMatch(/world\.demandShaper\.getObservedMix\(\)/);
+    expect(src).toMatch(/heatBands: buildHeatConsole\(world\)/);
     expect(src).toMatch(/targetingLevers: buildTargetingLevers\(world\)/);
     expect(src).toMatch(/coverageGap: buildCoverageGap\(demandEntries, lotVehicles\)/);
     expect(src).toMatch(/advertisingOptions: world\.demandControls\.advertisingOptions/);

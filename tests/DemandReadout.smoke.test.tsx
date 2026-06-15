@@ -1,6 +1,10 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
-import { DemandReadout, type DemandReadoutModel } from '../src/ui/DemandReadout';
+import {
+  DemandReadout,
+  classifyHeatBand,
+  type DemandReadoutModel,
+} from '../src/ui/DemandReadout';
 
 const MODEL: DemandReadoutModel = {
   totalObserved: 10,
@@ -32,6 +36,36 @@ describe('DemandReadout smoke', () => {
     expect(getByText('Inventory composition')).toBeTruthy();
     expect(getByText('SUVs +42')).toBeTruthy();
     expect(getByText(/recent buyers wanted trucks; you\s*stock 0/i)).toBeTruthy();
+  });
+
+  it('renders the heat console (#280): a HOT/WARM/COLD band per segment, with its own header above the trailing window', () => {
+    const { getByText, getByTestId, getByLabelText } = render(
+      <DemandReadout
+        model={{
+          ...MODEL,
+          heatBands: [
+            { segment: 'suv', label: 'SUVs', band: 'hot' },
+            { segment: 'truck', label: 'Trucks', band: 'warm' },
+            { segment: 'sedan', label: 'Sedans', band: 'cold' },
+          ],
+        }}
+      />,
+    );
+    expect(getByTestId('demand-heat-console')).toBeTruthy();
+    expect(getByText('Demand Heat')).toBeTruthy();
+    // The console reads as its own region; the trailing window gets its header.
+    expect(getByText("Who's Been Walking In")).toBeTruthy();
+    expect(getByLabelText('SUVs demand Hot')).toBeTruthy();
+    expect(getByLabelText('Trucks demand Warm')).toBeTruthy();
+    expect(getByLabelText('Sedans demand Cold')).toBeTruthy();
+  });
+
+  it('classifies heat bands off share × segment count (#280): even = warm, over = hot, under = cold', () => {
+    const thresholds = { hot: 1.15, cold: 0.85 };
+    // Three segments: even share is 1/3 ⇒ heat 1.0 (warm).
+    expect(classifyHeatBand(1 / 3, 3, thresholds)).toBe('warm');
+    expect(classifyHeatBand(0.5, 3, thresholds)).toBe('hot'); // 1.5×
+    expect(classifyHeatBand(0.2, 3, thresholds)).toBe('cold'); // 0.6×
   });
 
   it('shows an empty hint before any traffic is observed', () => {
