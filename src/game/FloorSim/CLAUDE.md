@@ -112,8 +112,11 @@ interface rework. Load-bearing invariants for anyone touching this module:
   spine (`docs/planning/pricing-demand-spine.md` §7): price posture rides the
   locked #125 `pricing.trafficMultiplier` composite (alongside inventory depth
   and weather) via `computePricingTrafficMultiplier`, so FloorSim's contract is
-  unchanged — it still consumes one scalar. Ships at identity
-  (`demandModel.pricingTrafficWeight = 0` ⇒ ×1). `dealershipId` reserved as a
+  unchanged — it still consumes one scalar. **Armed in #279 (S7):**
+  `demandModel.pricingTrafficWeight = 1` and the per-vehicle response comes from
+  MarketEconomy's shared `demandMultiplier` (`marketEconomy.demandMultiplierFor`),
+  so a lot priced above market draws less traffic and the floor's arrivals match
+  the pricing screen's days-to-sell (one model). `dealershipId` reserved as a
   seed-derivation context key for v2 dealer-group.
 - **3-phase day:** floor-open → floor-closes (`floor:day_complete` ≠ advance
   clock) → after-hours (managerial, OUT of FloorSim). Clock advance is always
@@ -132,8 +135,8 @@ keeping `step()` pure w.r.t. injected state.
 
 **`demandFactor` (#128a, additive #99 amendment — design-record note on
 #99/#107).** One optional scalar so the full controllable-lever economics
-(inventory depth × quality + weather + **pricing posture (#277, identity
-default)**; marketing later) stay behind the locked #125 `DemandSource` seam
+(inventory depth × quality + weather + **pricing posture (#277 seam, armed
+#279)**; marketing later) stay behind the locked #125 `DemandSource` seam
 and never widen this contract again. It is
 the only arrival input that can floor traffic at ~0 (empty lot ⇒ no draw)
 or exceed 1 (busy high-volume store) — rep/share/season can't. Arrival model

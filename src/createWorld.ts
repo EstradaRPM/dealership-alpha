@@ -920,9 +920,12 @@ export function createWorld(deps: {
       // slots in here later"). It is the per-DAY variance; FloorSim's
       // seasonArrivalMultiplier stays the coarse SEASON baseline — orthogonal,
       // no double-counting. Pure projection of (masterSeed, day) ⇒ replay-safe.
-      // #277 S5: the price → arrivals rider joins the same composite. Ships at
-      // identity (pricingTrafficWeight 0 ⇒ ×1 ⇒ no behavior change); the
-      // calibration slice arms it with MarketEconomy's shared demandMultiplier.
+      // #277 S5 / #279 S7: the price → arrivals rider joins the same composite.
+      // S7 ARMS it — the per-vehicle response is MarketEconomy's shared
+      // `demandMultiplier` (the ONE model days-to-sell reads, Pillar 3), so a
+      // lot priced above market draws less traffic, below market more, and a
+      // hot segment tolerates the ask. `pricingTrafficWeight` (data) blends the
+      // lot-wide mean toward identity for S14 calibration.
       const lot = inventory.getLotVehicles();
       return {
         ...slip,
@@ -932,9 +935,11 @@ export function createWorld(deps: {
           trafficMultiplier:
             computeDemandFactor(lot, demandModelCfg) *
             weather.volumeMultiplierForDay(ctx.day) *
-            computePricingTrafficMultiplier(lot, {
-              weight: demandModelCfg.pricingTrafficWeight,
-            }),
+            computePricingTrafficMultiplier(
+              lot,
+              { weight: demandModelCfg.pricingTrafficWeight },
+              (v) => marketEconomy.demandMultiplierFor(v, v.askingPrice),
+            ),
         },
       };
     },

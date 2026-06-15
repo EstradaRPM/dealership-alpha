@@ -130,5 +130,8 @@ now a real price-elastic demand input, not a flat stub. The composition root
 rides the price → arrivals rider (`computePricingTrafficMultiplier`) onto that
 field alongside the inventory-depth `demandFactor` and the weather rider;
 `project()` still forwards the single composite to FloorSim's `demandFactor`
-unchanged. Ships at identity (`demandModel.pricingTrafficWeight = 0`). See
+unchanged. **Armed in #279 (S7):** `pricingTrafficWeight = 1` and the rider's
+per-vehicle response is MarketEconomy's shared `demandMultiplier`
+(`demandMultiplierFor`), so price posture now actually moves arrivals and the
+floor matches the pricing screen's days-to-sell. See
 `docs/planning/pricing-demand-spine.md` §7.

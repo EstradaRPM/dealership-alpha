@@ -180,3 +180,54 @@ describe('MarketEconomy wiring reads the shared model (#276)', () => {
     expect(wired).toBe(pure);
   });
 });
+
+describe('demandMultiplierFor — the FloorSim arrival seam reads the one model (#279 S7)', () => {
+  const market = createMarketEconomy();
+  const civic: AnchorVehicleInput = {
+    templateId: 'vanda_sedan',
+    brand: 'vanda',
+    year: 2020,
+    mileage: 40000,
+    category: 'sedan',
+    condition: 'average',
+  };
+  const benchmark = market.valuationFor(civic).marketPrice;
+
+  it('at-market ⇒ ≈1, above ⇒ <1 (less traffic), below ⇒ >1 (more)', () => {
+    expect(market.demandMultiplierFor(civic, benchmark)).toBeCloseTo(1, 6);
+    expect(
+      market.demandMultiplierFor(civic, Math.round(benchmark * 1.15)),
+    ).toBeLessThan(1);
+    expect(
+      market.demandMultiplierFor(civic, Math.round(benchmark * 0.9)),
+    ).toBeGreaterThan(1);
+  });
+
+  it('arrivals respond to the SAME curve days-to-sell predicts from', () => {
+    // A richer demand multiplier must mean a faster predicted sale, and vice
+    // versa — the one-model promise (Pillar 3): screen and floor never diverge.
+    const cheapAsk = Math.round(benchmark * 0.9);
+    const dearAsk = Math.round(benchmark * 1.15);
+    const cheapDemand = market.demandMultiplierFor(civic, cheapAsk);
+    const dearDemand = market.demandMultiplierFor(civic, dearAsk);
+    expect(cheapDemand).toBeGreaterThan(dearDemand);
+    expect(market.predictDaysToSell(civic, cheapAsk).expectedDays).toBeLessThan(
+      market.predictDaysToSell(civic, dearAsk).expectedDays,
+    );
+  });
+
+  it('elasticity is conditioned by heat: hotter segment tolerates the ask better', () => {
+    // Same ask, two heats injected via the pure model with the seam's resolved
+    // benchmark — a hot segment yields more demand than a cold one (Pillar 4).
+    const ask = Math.round(benchmark * 1.1);
+    const hot = demandMultiplier(
+      { benchmarkPrice: benchmark, askingPrice: ask, segmentHeat: 0.2 },
+      elasticityDeps,
+    ).demandMultiplier;
+    const cold = demandMultiplier(
+      { benchmarkPrice: benchmark, askingPrice: ask, segmentHeat: -0.2 },
+      elasticityDeps,
+    ).demandMultiplier;
+    expect(hot).toBeGreaterThan(cold);
+  });
+});

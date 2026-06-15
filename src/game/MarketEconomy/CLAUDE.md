@@ -36,9 +36,16 @@ Design record: issue **#182** (locked). Read that before working any slice.
   hot). `demandMultiplier = exp(-priceSensitivity[above|below] × pricePosition)
   × exp(heatSensitivity × heat)` — strictly positive, monotonic, asymmetric
   above/below. This is the **shared read-side model** (`pricing-demand-spine.md`
-  Pillar 3): `predictDaysToSell` reads it now; FloorSim arrivals (S5/S7) will
-  draw from the same function — no duplicate curve. Config:
+  Pillar 3): `predictDaysToSell` reads it; FloorSim arrivals draw from the same
+  function via `demandMultiplierFor` (S7) — no duplicate curve. Config:
   `data/demand-elasticity.json`.
+- `marketEconomy.demandMultiplierFor(vehicle, askingPrice)` → relative demand
+  multiplier (slice #279, Pricing/Demand spine S7). Resolves the competitor
+  benchmark + segment heat from live state — the SAME read backing
+  `predictDaysToSell` — and delegates to the shared `demandMultiplier`. The
+  composition root injects it as the per-vehicle `vehicleResponse` of
+  `computePricingTrafficMultiplier`, so the floor's realized arrivals and the
+  pricing screen's days-to-sell read one curve (Pillar 3). Pure, deterministic.
 - `predictDaysToSell(input, deps?)` — pure engine for the above (slice #174,
   reworked #276). `expectedDays = baseline(segment) / demandMultiplier ×
   agingMult`, clamped; the price/heat response is no longer local — it delegates

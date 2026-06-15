@@ -32,14 +32,17 @@ describe('computePricingTrafficMultiplier (#277 S5)', () => {
     expect(computePricingTrafficMultiplier(lot(5), { weight: 0 })).toBe(1);
   });
 
-  it('the data default is weight 0 (the seam ships unarmed)', () => {
+  it('the data default is armed (weight > 0) since S7 (#279)', () => {
     const cfg = loadTunables().demandModel;
-    expect(cfg.pricingTrafficWeight).toBe(0);
+    expect(cfg.pricingTrafficWeight).toBeGreaterThan(0);
+    // Armed weight + an above-market response ⇒ traffic is suppressed (<1).
     expect(
-      computePricingTrafficMultiplier(lot(5), {
-        weight: cfg.pricingTrafficWeight,
-      }),
-    ).toBe(1);
+      computePricingTrafficMultiplier(
+        lot(5),
+        { weight: cfg.pricingTrafficWeight },
+        () => 0.5,
+      ),
+    ).toBeLessThan(1);
   });
 
   it('identity when no per-vehicle response is injected, even at weight > 0', () => {

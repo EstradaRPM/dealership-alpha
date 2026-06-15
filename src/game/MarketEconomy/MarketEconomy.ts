@@ -4,6 +4,7 @@ import {
   predictDaysToSell,
   type DaysToSellPrediction,
 } from './daysToSell';
+import { demandMultiplier } from './elasticity';
 import {
   createCompHistory,
   type CompHistory,
@@ -104,6 +105,18 @@ export interface MarketEconomy extends LiveProviders {
     vehicle: AnchorVehicleInput & { daysOnLot?: number },
     askingPrice: number,
   ): DaysToSellPrediction;
+  /**
+   * Relative demand multiplier for `vehicle` at `askingPrice` (slice #279,
+   * Pricing/Demand spine S7). Resolves the competitor benchmark + segment heat
+   * from live state and delegates to the ONE shared `demandMultiplier`
+   * elasticity model — the *same* read that backs `predictDaysToSell`. Exposed
+   * so FloorSim's arrival seam draws traffic from that one model (Pillar 3,
+   * "one model, two consumers"): `1` = at-benchmark neutral-heat baseline, `<1`
+   * over-priced/cold (slower traffic), `>1` under-priced/hot (faster). Pure,
+   * deterministic — no RNG. The composition root injects it as the
+   * per-vehicle `vehicleResponse` of `computePricingTrafficMultiplier`.
+   */
+  demandMultiplierFor(vehicle: AnchorVehicleInput, askingPrice: number): number;
   /**
    * Source catalog label lookup. Returns the human label for a known source
    * id, or the id itself if absent (defensive — a missing source is a data
@@ -321,6 +334,17 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
         },
         { config: daysToSellConfig, elasticity: elasticityConfig },
       );
+    },
+    demandMultiplierFor(vehicle, askingPrice) {
+      const anchor = computeAnchor(vehicle, anchorDeps);
+      const heat = segmentHeatFn(vehicle);
+      // Same heat-inclusive competitor benchmark predictDaysToSell resolves —
+      // so the screen's days-to-sell and the floor's arrivals read one curve.
+      const marketPrice = Math.round(anchor * (1 + heat) * markupFor(vehicle));
+      return demandMultiplier(
+        { benchmarkPrice: marketPrice, askingPrice, segmentHeat: heat },
+        { config: elasticityConfig },
+      ).demandMultiplier;
     },
     sourceLabelFor(sourceId: string) {
       return sourceLabels[sourceId] ?? sourceId;
