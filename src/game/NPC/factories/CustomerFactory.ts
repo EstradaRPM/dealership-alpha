@@ -73,6 +73,15 @@ export interface CreateCustomerDeps {
    * and a `currentVehicle` was rolled; omit to skip allowanceAsk entirely.
    */
   tradeAskFn?: (currentVehicle: CurrentVehicle, seed: number) => number;
+  /**
+   * Honest wholesale book seam (#282). Threaded into `rollCurrentVehicle` so a
+   * financed owner's `loanPayoff` is derived relative to the trade's current
+   * book value (controlled LTV × loan-age × depreciation distribution) instead
+   * of a value-blind dollar draw. Composed at the root from the live
+   * MarketEconomy `bookValueFn` (the same one backing `tradeAskFn`). Omit and a
+   * financed owner's `currentVehicle.loanPayoff` comes back `null`.
+   */
+  bookValueFn?: (currentVehicle: CurrentVehicle) => number;
 }
 
 export interface CustomerBundle {
@@ -210,6 +219,7 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
         masterSeed,
         config: deps.currentVehicleConfig,
         creditTier: deps.classifyCreditTier(credit),
+        bookValueFn: deps.bookValueFn,
       },
     );
   }

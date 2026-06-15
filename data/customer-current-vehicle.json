@@ -4,6 +4,23 @@
   "yearBounds": [2008, 2024],
   "mileagePerYear": 12000,
 
+  "financing": {
+    "_doc": "Loan-payoff model (#282). payoff = currentBook × (ltvAtOrigination × remainingPrincipal ÷ depreciation). Tier-keyed: sub-prime borrows more, stretches the term, pays a higher APR. deepTailWeight is the negative-equity tail knob (calibration S14).",
+    "ltvAtOrigination": {
+      "A": { "mu": 0.90, "sigma": 0.09 },
+      "B": { "mu": 1.00, "sigma": 0.11 },
+      "C": { "mu": 1.10, "sigma": 0.13 },
+      "D": { "mu": 1.20, "sigma": 0.16 }
+    },
+    "ltvClamp": [0.50, 1.70],
+    "termMonths": { "A": 60, "B": 66, "C": 72, "D": 75 },
+    "aprAnnual": { "A": 0.05, "B": 0.08, "C": 0.12, "D": 0.16 },
+    "annualDepreciation": 0.15,
+    "deepTailWeight": 0.20,
+    "freshCutoff": 0.28,
+    "ratioClamp": [0.0, 2.5]
+  },
+
   "templates": {
     "vanda_sedan":     { "brand": "vanda",    "make": "Honda",     "model": "Civic",          "category": "sedan" },
     "toraya_sedan":    { "brand": "toraya",   "make": "Toyota",    "model": "Camry",          "category": "sedan" },
@@ -38,13 +55,7 @@
       "ageOffset":         { "mu": 6.0, "sigma": 2.5 },
       "mileageMultiplier": { "mu": 1.05, "sigma": 0.25 },
       "conditionWeights":  { "clean": 0.20, "average": 0.55, "rough": 0.25 },
-      "financeProbability": 0.75,
-      "payoffByTier": {
-        "A": { "mu": 6500,  "sigma": 3000 },
-        "B": { "mu": 9500,  "sigma": 3500 },
-        "C": { "mu": 13000, "sigma": 4500 },
-        "D": { "mu": 16500, "sigma": 5500 }
-      }
+      "financeProbability": 0.75
     },
 
     "enthusiast": {
@@ -57,13 +68,7 @@
       "ageOffset":         { "mu": 3.0, "sigma": 1.8 },
       "mileageMultiplier": { "mu": 0.80, "sigma": 0.20 },
       "conditionWeights":  { "clean": 0.55, "average": 0.35, "rough": 0.10 },
-      "financeProbability": 0.65,
-      "payoffByTier": {
-        "A": { "mu": 14000, "sigma": 5500 },
-        "B": { "mu": 18000, "sigma": 6000 },
-        "C": { "mu": 22000, "sigma": 7000 },
-        "D": { "mu": 25000, "sigma": 8000 }
-      }
+      "financeProbability": 0.65
     },
 
     "commuter": {
@@ -76,13 +81,7 @@
       "ageOffset":         { "mu": 7.5, "sigma": 2.5 },
       "mileageMultiplier": { "mu": 1.20, "sigma": 0.25 },
       "conditionWeights":  { "clean": 0.15, "average": 0.55, "rough": 0.30 },
-      "financeProbability": 0.65,
-      "payoffByTier": {
-        "A": { "mu": 5000,  "sigma": 2500 },
-        "B": { "mu": 7500,  "sigma": 3000 },
-        "C": { "mu": 11000, "sigma": 4000 },
-        "D": { "mu": 14500, "sigma": 5000 }
-      }
+      "financeProbability": 0.65
     },
 
     "retiree": {
@@ -95,13 +94,7 @@
       "ageOffset":         { "mu": 5.5, "sigma": 2.0 },
       "mileageMultiplier": { "mu": 0.70, "sigma": 0.20 },
       "conditionWeights":  { "clean": 0.55, "average": 0.35, "rough": 0.10 },
-      "financeProbability": 0.30,
-      "payoffByTier": {
-        "A": { "mu": 4500,  "sigma": 2500 },
-        "B": { "mu": 7000,  "sigma": 3000 },
-        "C": { "mu": 10000, "sigma": 4000 },
-        "D": { "mu": 13000, "sigma": 5000 }
-      }
+      "financeProbability": 0.30
     },
 
     "tradesperson": {
@@ -114,13 +107,7 @@
       "ageOffset":         { "mu": 8.5, "sigma": 3.0 },
       "mileageMultiplier": { "mu": 1.35, "sigma": 0.30 },
       "conditionWeights":  { "clean": 0.10, "average": 0.45, "rough": 0.45 },
-      "financeProbability": 0.70,
-      "payoffByTier": {
-        "A": { "mu": 9000,  "sigma": 4000 },
-        "B": { "mu": 13500, "sigma": 5000 },
-        "C": { "mu": 18000, "sigma": 6000 },
-        "D": { "mu": 22000, "sigma": 7000 }
-      }
+      "financeProbability": 0.70
     }
   }
 }

@@ -516,6 +516,10 @@ export function createWorld(deps: {
       // #165: stamp a deterministic `currentVehicle` on every customer so
       // the trade-in slices (#166–#171) have real history to work against.
       currentVehicleConfig: loadCustomerCurrentVehicleConfig(),
+      // #282: derive a financed owner's loanPayoff relative to the trade's
+      // current book (controlled LTV × loan-age × depreciation) — same live
+      // provider that backs the trade-ask seam below.
+      bookValueFn: tradeBookValue,
       // #166: stamp `hasTrade` on every sales visit via the composite
       // (archetype × paymentMethod × creditTier) incidence matrix.
       tradeIncidenceConfig: loadTradeIncidenceConfig(),

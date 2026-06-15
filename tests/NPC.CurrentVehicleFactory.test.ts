@@ -18,6 +18,13 @@ const creditTiers = loadCreditTiers();
 const classifyCreditTier = (credit: number) =>
   classifyCredit(credit, creditTiers);
 
+// Payoff is now derived *relative to* the trade's current book value (#282), so
+// a book seam is required to get a non-null lien. A flat book keeps the
+// payoff/book *ratio* — the quantity the distribution shape is about — isolated
+// from the (irrelevant here) book magnitude.
+const FLAT_BOOK = 18000;
+const flatBookValueFn = () => FLAT_BOOK;
+
 const npcDeps = {
   masterSeed: 12345,
   personArchetypes,
@@ -25,6 +32,7 @@ const npcDeps = {
   traits,
   currentVehicleConfig: config,
   classifyCreditTier,
+  bookValueFn: flatBookValueFn,
 };
 
 const archetypeIds = Object.keys(personArchetypes);
@@ -46,12 +54,19 @@ describe('customer-current-vehicle.json — coverage', () => {
           expect(config.templates[tid]!.category).toBe(cat);
         }
       }
-      // every credit tier has a payoff distribution
-      for (const tier of ['A', 'B', 'C', 'D'] as const) {
-        expect(profile.payoffByTier[tier]).toBeDefined();
-      }
       expect(id).toBe(id); // hush unused
     }
+  });
+
+  it('financing model carries per-tier terms for every credit tier', () => {
+    const fin = config.financing;
+    for (const tier of ['A', 'B', 'C', 'D'] as const) {
+      expect(fin.ltvAtOrigination[tier]).toBeDefined();
+      expect(fin.termMonths[tier]).toBeGreaterThan(0);
+      expect(fin.aprAnnual[tier]).toBeGreaterThanOrEqual(0);
+    }
+    expect(fin.deepTailWeight).toBeGreaterThanOrEqual(0);
+    expect(fin.deepTailWeight).toBeLessThanOrEqual(1);
   });
 });
 
@@ -141,7 +156,7 @@ describe('rollCurrentVehicle — loanPayoff', () => {
     for (let i = 0; i < n; i++) {
       const cv = rollCurrentVehicle(
         { personArchetypeId: id, day: 1, slot: i },
-        { masterSeed: 31337, config, creditTier: tier },
+        { masterSeed: 31337, config, creditTier: tier, bookValueFn: flatBookValueFn },
       );
       if (cv.loanPayoff !== null) {
         financed++;
@@ -248,5 +263,72 @@ describe('rollCurrentVehicle — distribution sanity', () => {
         expect(cv.year).toBeLessThanOrEqual(hi);
       }
     }
+  });
+});
+
+// ── Negative-equity distribution shape (#282) ────────────────────────────────
+
+describe('rollCurrentVehicle — negative-equity distribution (#282)', () => {
+  // Collect payoff/book ratios across every archetype × tier. Ratio > 1 means
+  // underwater (lien over book); ratio < 1 means equity-positive.
+  function sampleRatios(
+    cfg: typeof config,
+    n: number,
+  ): number[] {
+    const ratios: number[] = [];
+    for (const id of archetypeIds) {
+      for (const tier of ['A', 'B', 'C', 'D'] as const) {
+        for (let i = 0; i < n; i++) {
+          const cv = rollCurrentVehicle(
+            { personArchetypeId: id, day: 2, slot: i },
+            { masterSeed: 4242, config: cfg, creditTier: tier, bookValueFn: flatBookValueFn },
+          );
+          if (cv.loanPayoff !== null) ratios.push(cv.loanPayoff / FLAT_BOOK);
+        }
+      }
+    }
+    return ratios;
+  }
+
+  const ratios = sampleRatios(config, 250);
+  const frac = (pred: (r: number) => boolean) =>
+    ratios.filter(pred).length / ratios.length;
+  const median = (() => {
+    const s = [...ratios].sort((a, b) => a - b);
+    return s[Math.floor(s.length / 2)];
+  })();
+
+  it('produces a meaningful sample of financed trades', () => {
+    expect(ratios.length).toBeGreaterThan(1000);
+  });
+
+  it('centers mild: median payoff is near book (within ±20%)', () => {
+    expect(median).toBeGreaterThan(0.6);
+    expect(median).toBeLessThan(1.2);
+  });
+
+  it('mild majority — most trades are equity-positive or only mildly underwater', () => {
+    // ≤ 1.15 = no worse than 15% underwater. Should be the clear majority.
+    expect(frac((r) => r <= 1.15)).toBeGreaterThan(0.7);
+  });
+
+  it('steep negative equity is occasional, deeply-underwater is the rare tail', () => {
+    expect(frac((r) => r > 1.3)).toBeLessThan(0.2); // steep: occasional
+    expect(frac((r) => r > 1.5)).toBeLessThan(0.06); // deep: rare tail
+  });
+
+  it('no absurd liens — every payoff stays within the configured ratio clamp', () => {
+    const [, hi] = config.financing.ratioClamp;
+    expect(Math.max(...ratios)).toBeLessThanOrEqual(hi);
+    // And nothing approaching the old "$5k car / $35k payoff" (~7×) absurdity.
+    expect(frac((r) => r > 2.0)).toBeLessThan(0.01);
+  });
+
+  it('deepTailWeight is the tunable that fattens the underwater tail', () => {
+    const lightTail = { ...config, financing: { ...config.financing, deepTailWeight: 0.02 } };
+    const heavyTail = { ...config, financing: { ...config.financing, deepTailWeight: 0.6 } };
+    const underwater = (cfg: typeof config) =>
+      sampleRatios(cfg, 250).filter((r) => r > 1.0).length;
+    expect(underwater(heavyTail)).toBeGreaterThan(underwater(lightTail));
   });
 });
