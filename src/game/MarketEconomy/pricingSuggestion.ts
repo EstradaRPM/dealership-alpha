@@ -111,6 +111,25 @@ export function resolveIntakeAsk(
 }
 
 /**
+ * Whether the standing auto-pricing policy is unlocked (channel-desk M2, #289 —
+ * reframes #285's presence gate onto the UCM's `pricing` skill threshold). The
+ * *acting* capability is earned: a Used-Car Manager whose top `pricing` skill
+ * meets the data-driven threshold runs the standing policy; below it (or with no
+ * UCM, `ucmPricingSkill == null`) the toggle is suggestion-only and the player
+ * prices by hand. Intel precision (#284, the *advise* side) stays free on UCM
+ * presence — only this act gate scales with skill. Pure; the composition root
+ * supplies the top UCM pricing skill (from the roster) and the threshold (from
+ * `tunables.managerGates.actThresholds.pricing`). The cliff at the threshold is
+ * the earned-stripes beat, by design (see manager-roles-channel-desk.md §3).
+ */
+export function isAutoPricingUnlocked(
+  ucmPricingSkill: number | null,
+  threshold: number,
+): boolean {
+  return ucmPricingSkill != null && ucmPricingSkill >= threshold;
+}
+
+/**
  * Classify an ask against honest market using the configured ratio bands.
  * `marketPrice <= 0` is treated as `wishful` (no honest reference to beat).
  */

@@ -49,6 +49,7 @@ export type {
 export {
   suggestListPrice,
   resolveIntakeAsk,
+  isAutoPricingUnlocked,
   classifyPricePosition,
   deriveCompetitorComps,
 } from './pricingSuggestion';

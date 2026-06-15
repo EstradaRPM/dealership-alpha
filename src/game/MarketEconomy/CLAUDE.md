@@ -69,6 +69,13 @@ Design record: issue **#182** (locked). Read that before working any slice.
     (suggestion-only — the toggle doesn't move the default ask). Pure. The
     composition root resolves the inputs (live providers + roster gate) and wires
     it through `Inventory.pricingPolicyFn`.
+  - `isAutoPricingUnlocked(ucmPricingSkill, threshold)` → boolean (#289,
+    channel-desk M2). Whether the standing policy's `automationUnlocked` is on:
+    `ucmPricingSkill != null && ucmPricingSkill >= threshold`. Reframes #285's
+    UCM-*presence* gate onto the UCM's `pricing` skill — *acting* (auto-pricing)
+    is earned, while *advising* (intel precision, `resolveIntelPrecision`) stays
+    free on presence. Pure; the composition root supplies the top UCM pricing
+    skill (roster) + threshold (`tunables.managerGates.actThresholds.pricing`).
   - `classifyPricePosition(ask, marketPrice, deps?)` → `PricePosition`
     (`fire-sale | below-market | at-market | above-market | wishful`) via the
     configured ask/market ratio bands.

@@ -333,6 +333,22 @@ export const TunablesSchema = z.object({
       defaultId: z.string().min(1),
     }),
   }),
+  // Channel-desk manager capability gates (#289+, see
+  // docs/planning/manager-roles-channel-desk.md §3). Each *acting* capability
+  // earns a hard threshold on its own skill axis: above the gate the manager
+  // handles all cases, below (or no manager) is the understaffed path. `advise`
+  // capabilities (intel precision #284, appraisal tightness) stay free on hire
+  // and aren't gated here — only the act side. M2 (#289) consumes `pricing`
+  // (auto-pricing standing policy); M3/M4 add `t_o_closing` / `condition_reading`
+  // siblings. Thresholds are on the 0–100 skill scale; magnitudes are
+  // placeholders pending the S14 calibration pass (#286).
+  managerGates: z.object({
+    actThresholds: z.object({
+      // Top UCM `pricing` skill at/above which the standing auto-pricing policy
+      // is ON (intake auto-prices to the chosen posture); below = suggestion-only.
+      pricing: z.number().min(0).max(100),
+    }),
+  }),
   // Per-slot trade-acquisition policy (#172). `multiplier` scales the staff's
   // internal trade-in acceptance target in DealEngine.evaluateTrade. The
   // composition root resolves the selected id to its multiplier

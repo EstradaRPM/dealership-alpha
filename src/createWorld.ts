@@ -49,6 +49,7 @@ import {
   rollRecon,
   deriveReconSeed,
   resolveIntakeAsk,
+  isAutoPricingUnlocked,
   type MarketEconomy,
 } from './game/MarketEconomy';
 import { createStaffMorale, type StaffMorale } from './game/StaffMorale';
@@ -454,6 +455,11 @@ export function createWorld(deps: {
     bus,
     getCurrentDay: () => clock.currentDay,
   });
+  // #289 (channel-desk M2): the standing auto-pricing policy is gated on the top
+  // UCM's `pricing` skill clearing this threshold — not mere UCM presence (#285).
+  // Loaded once; the lazy pricingPolicyFn closure reads the live roster each
+  // acquisition. No magic number: the gate lives in tunables.
+  const autoPriceThreshold = loadTunables().managerGates.actThresholds.pricing;
   const inventory = createInventory({
     bus,
     masterSeed,
@@ -470,19 +476,28 @@ export function createWorld(deps: {
     // contract, mirroring the trade-ask seam below.
     marketPriceFn: (v) =>
       marketEconomy.marketPriceFn(v as unknown as PricedVehicleInput),
-    // #285 (spine S13): the strategy toggle is a standing auto-pricing policy.
-    // The default ask follows the chosen book↔market posture once a UCM is on
-    // staff (the used-car desk that prices the book); with no UCM it's
-    // suggestion-only and the default ask sits at the market suggestion. The
-    // unlock gate + strategy live here at the composition boundary — Inventory
-    // and MarketEconomy stay decoupled from StaffOrg. `staffOrg` is referenced
-    // lazily (declared below); the closure only runs at acquisition time, long
-    // after construction. `getPricingStrategy` returning '' falls back to the
-    // config default inside `resolveIntakeAsk`.
+    // #285 (spine S13) → #289 (M2): the strategy toggle is a standing
+    // auto-pricing policy. The default ask follows the chosen book↔market posture
+    // once the used-car desk can *act* on pricing — i.e. the top UCM's `pricing`
+    // skill clears the gate (M2 reframes #285's presence gate onto the skill
+    // threshold); below the gate (or no UCM) it's suggestion-only and the default
+    // ask sits at the market suggestion (the player prices by hand). The unlock
+    // gate + strategy live here at the composition boundary — Inventory and
+    // MarketEconomy stay decoupled from StaffOrg. `staffOrg` is referenced lazily
+    // (declared below); the closure only runs at acquisition time, long after
+    // construction. `getPricingStrategy` returning '' falls back to the config
+    // default inside `resolveIntakeAsk`.
     pricingPolicyFn: (v) => {
       const priced = v as unknown as PricedVehicleInput;
-      const automationUnlocked = staffOrg.currentRoster.some(
-        (s) => s.role_id === 'used-car-manager',
+      // Top UCM pricing skill (null = no UCM on staff) vs the data-driven gate.
+      const ucmPricingSkills = staffOrg.currentRoster
+        .filter((s) => s.role_id === 'used-car-manager')
+        .map((s) => s.skills['pricing'] ?? 0);
+      const topUcmPricingSkill =
+        ucmPricingSkills.length === 0 ? null : Math.max(...ucmPricingSkills);
+      const automationUnlocked = isAutoPricingUnlocked(
+        topUcmPricingSkill,
+        autoPriceThreshold,
       );
       return resolveIntakeAsk({
         bookValue: marketEconomy.bookValueFn(priced),

@@ -1,6 +1,10 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
+import { isAutoPricingUnlocked } from '../src/game/MarketEconomy';
+import { loadTunables } from '../src/game/data';
 import type { CharacterProfile } from '../src/game/CareerProgression';
+
+const PRICING_GATE = loadTunables().managerGates.actThresholds.pricing;
 
 const PROFILE: CharacterProfile = {
   name: 'Ray Estrada',
@@ -31,8 +35,15 @@ function buyCheapest(world: ReturnType<typeof createWorld>): string {
   return bought!.id;
 }
 
-describe('#285 auto-pricing policy — reachable through the live world (spine S13)', () => {
-  it('suggestion-only below the gate; the strategy auto-prices intake once a UCM is on staff', () => {
+describe('#289 auto-pricing gate — UCM pricing-skill threshold (channel-desk M2)', () => {
+  it('is the pure earned-stripes cliff: null/below the gate locked, at/above unlocked', () => {
+    expect(isAutoPricingUnlocked(null, PRICING_GATE)).toBe(false);
+    expect(isAutoPricingUnlocked(PRICING_GATE - 1, PRICING_GATE)).toBe(false);
+    expect(isAutoPricingUnlocked(PRICING_GATE, PRICING_GATE)).toBe(true);
+    expect(isAutoPricingUnlocked(PRICING_GATE + 1, PRICING_GATE)).toBe(true);
+  });
+
+  it('suggestion-only with no UCM AND with a below-gate UCM; auto-prices only once pricing clears the gate', () => {
     const bus = createEventBus();
     // Aggressive posture: above market when the policy is live.
     const world = createWorld({
@@ -50,21 +61,29 @@ describe('#285 auto-pricing policy — reachable through the live world (spine S
       .find((v) => v.id === noUcmId)!;
     expect(noUcm.askingPrice).toBe(noUcm.suggestedRetail);
 
-    // --- Hire a UCM (the used-car desk). Automation unlocks. ---
+    // --- Hire a UCM (the used-car desk). ---
     // UCM hireTier is 2; force the dealership to tier 2 so the role is hireable.
     const tierState = world.tierManager.getSerializableState();
     world.tierManager.restoreState({ ...tierState, currentTier: 2 });
     const candidate = world.staffOrg.getCandidates('used-car-manager')[0];
     expect(candidate).toBeDefined();
     world.staffOrg.hire(candidate.candidateId);
-    expect(
-      world.staffOrg.currentRoster.some(
-        (s) => s.role_id === 'used-car-manager',
-      ),
-    ).toBe(true);
+    const ucmStaff = world.staffOrg.currentRoster.find(
+      (s) => s.role_id === 'used-car-manager',
+    )!;
+    expect(ucmStaff).toBeDefined();
 
-    // --- With the UCM on staff, intake auto-prices to the Aggressive target,
-    //     which lists above the market suggestion. ---
+    // --- Below-gate UCM: presence alone is NOT enough (the #289 reframe).
+    //     A green manager who can't yet price the book leaves intake at the
+    //     suggestion — the player still prices by hand. ---
+    ucmStaff.skills['pricing'] = Math.max(0, PRICING_GATE - 10);
+    const greenId = buyCheapest(world);
+    const green = world.inventory.getLotVehicles().find((v) => v.id === greenId)!;
+    expect(green.askingPrice).toBe(green.suggestedRetail);
+
+    // --- At/above the gate: the desk can act, so intake auto-prices to the
+    //     Aggressive target, which lists above the market suggestion. ---
+    ucmStaff.skills['pricing'] = Math.min(100, PRICING_GATE + 10);
     const ucmId = buyCheapest(world);
     const ucm = world.inventory.getLotVehicles().find((v) => v.id === ucmId)!;
     expect(ucm.askingPrice).toBeGreaterThan(ucm.suggestedRetail);
