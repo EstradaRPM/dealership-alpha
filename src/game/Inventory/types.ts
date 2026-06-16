@@ -89,6 +89,18 @@ export interface LotVehicle {
   readonly reconCost: number;
   readonly category: VehicleCategory;
   readonly arrivalDay: number;
+  /**
+   * First day the unit is offered to the auto-sim walk-in pool (#295). Every
+   * vehicle *acquired during play* — an auction buy or a customer trade — is
+   * held off the walk-in pool for a short frontline-prep window
+   * (`arrivalDay + frontlineHoldDays`, default 2) so the player gets an
+   * interaction window before a simmed customer can buy it; auction and trade
+   * behave identically. Opening seed inventory (#296) is exempt
+   * (`frontlineDay = arrivalDay`, sellable at open). The hold is enforced ONLY
+   * at the StaffDispatch match seam — held units still appear in
+   * `getLotVehicles()` and still accrue carrying cost.
+   */
+  readonly frontlineDay: number;
   readonly daysInInventory: number;
   /**
    * Accumulated floorplan + carrying cost posted against this unit since it

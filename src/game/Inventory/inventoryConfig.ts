@@ -30,6 +30,11 @@ const CarryingConfigSchema = z.object({
 const InventoryConfigSchema = z.object({
   inspection: InspectionConfigSchema,
   carrying: CarryingConfigSchema,
+  // Frontline-prep hold (#295). Days an acquired unit (auction buy or customer
+  // trade) is held off the walk-in sellable pool after arrival, so the player
+  // gets an interaction window before a simmed customer can buy it. Auction and
+  // trade behave identically; seed inventory (#296) is exempt.
+  frontlineHoldDays: z.number().int().nonnegative(),
 });
 
 export type InspectionConfig = z.infer<typeof InspectionConfigSchema>;

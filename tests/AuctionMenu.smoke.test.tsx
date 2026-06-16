@@ -36,6 +36,7 @@ const mockLotVehicle: LotVehicle = {
   reconCost: 500,
   category: 'sedan',
   arrivalDay: 1,
+  frontlineDay: 1,
   daysInInventory: 3,
   carryingCostToDate: 60,
   dailyCarryingCost: 20,

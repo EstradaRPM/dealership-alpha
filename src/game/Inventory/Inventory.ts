@@ -376,6 +376,10 @@ export function createInventory(deps: InventoryDeps): Inventory {
       reconCost: 0,
       category: args.category,
       arrivalDay: currentDay,
+      // #295: acquired units (auction buy + customer trade) are held off the
+      // walk-in pool for the frontline-prep window. Auction and trade behave
+      // identically here — both stamp the same hold from arrival.
+      frontlineDay: currentDay + inventoryConfig.frontlineHoldDays,
       daysInInventory: 0,
       carryingCostToDate: 0,
       dailyCarryingCost: 0,
@@ -687,7 +691,14 @@ export function createInventory(deps: InventoryDeps): Inventory {
       }
       lotVehicles.clear();
       for (const vehicle of snap.lotVehicles) {
-        lotVehicles.set(vehicle.id, vehicle);
+        // #295 migration: pre-frontline-hold saves carry no `frontlineDay`.
+        // Those units were already sellable, so default to `arrivalDay` (no
+        // retroactive hold) rather than leaving it undefined (which the
+        // StaffDispatch `<=` filter would read as permanently held).
+        lotVehicles.set(vehicle.id, {
+          ...vehicle,
+          frontlineDay: vehicle.frontlineDay ?? vehicle.arrivalDay,
+        });
       }
     },
 

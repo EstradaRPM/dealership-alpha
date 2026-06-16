@@ -109,6 +109,26 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   0) throws the same wide lemon tails as a fringe auction lane. So a trade can
   hide a lemon exactly like an auction buy.
 
+## Frontline-hold on acquired units (#295)
+- Every `LotVehicle` carries `frontlineDay` — the first day it is offered to the
+  auto-sim walk-in pool. `buildAcquiredVehicle` (shared by `buyFromAuction` and
+  `acquireFromTrade`) stamps `arrivalDay + frontlineHoldDays`
+  (`tunables.json#inventory.frontlineHoldDays`, default 2), so **auction buys and
+  customer trades behave identically** — both are held off walk-ins for a short
+  frontline-prep window so the player gets an interaction window before a simmed
+  customer can buy a just-acquired unit.
+- The hold is enforced **only** at the StaffDispatch match seam
+  (`v.frontlineDay <= day`), NOT in `getLotVehicles()`: held units still appear
+  in the lot view and still accrue carrying cost during the hold — only walk-in
+  matching is blocked.
+- Auction's only differentiator is the pre-buy paid inspection (below): pay a day
+  + the fee to reveal a pinpointed recon band and avoid the hidden-lemon surprise;
+  a trade can't be pre-inspected. Both then carry the same post-buy frontline-hold.
+- Seed inventory (#296) is exempt (`frontlineDay = arrivalDay`, sellable at open).
+- Persistence: `frontlineDay` rides the `LotVehicle` spread in `snapshot()`.
+  `restore()` migrates pre-#295 saves by defaulting a missing `frontlineDay` to
+  `arrivalDay` (those units were already sellable — never a retroactive hold).
+
 ## Recon process (#162)
 - Vehicles enter `reconStatus='in_progress'` on purchase. The auction-listed
   recon estimate is preserved as `reconEstimate`; the realized cost is rolled

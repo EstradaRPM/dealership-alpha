@@ -17,6 +17,7 @@ function veh(askingPrice: number): LotVehicle {
     reconCost: 500,
     category: 'sedan',
     arrivalDay: 1,
+    frontlineDay: 1,
     daysInInventory: 0,
     suggestedRetail: 11_000,
     askingPrice,

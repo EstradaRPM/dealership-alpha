@@ -444,7 +444,14 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       // weather-aligned units. Omitted seam ⇒ undefined ⇒ no effect.
       attributeLean: deps.attributeLeanForDay?.(day),
     };
-    const lot = deps.inventory.getLotVehicles();
+    // #295 frontline-hold: a vehicle acquired during play (auction buy or
+    // customer trade) is held off the walk-in pool until its `frontlineDay`, so
+    // the player gets an interaction window before a simmed customer can buy it.
+    // Enforced ONLY here — held units still show in `getLotVehicles()` and still
+    // accrue carrying cost; only walk-in matching is blocked.
+    const lot = deps.inventory
+      .getLotVehicles()
+      .filter((v) => v.frontlineDay <= day);
     const match = pickVehicleForMatch(matchCustomer, lot, pickDeps);
     if (!match) {
       emitNoSale(customerId, salesperson.id, day, 'no_fit');

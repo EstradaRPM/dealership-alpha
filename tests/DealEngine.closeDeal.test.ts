@@ -189,6 +189,7 @@ describe('DealEngine.closeDeal — lemon-law exposure (#271)', () => {
       reconCost: 0,
       category: 'sedan',
       arrivalDay: 1,
+      frontlineDay: 1,
       daysInInventory: 0,
       carryingCostToDate: 0,
       dailyCarryingCost: 0,

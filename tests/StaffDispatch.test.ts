@@ -197,6 +197,7 @@ function makeLotVehicle(id: string, overrides: Partial<LotVehicle> = {}): LotVeh
     reconCost: 500,
     category: 'sedan',
     arrivalDay: 0,
+    frontlineDay: 0,
     daysInInventory: 0,
     carryingCostToDate: 0,
     dailyCarryingCost: 0,
@@ -447,6 +448,29 @@ describe('StaffDispatch — real close path (#147)', () => {
     expect(typeof events[0].matchQuality).toBe('number');
     expect(events[0].matchQuality).toBeGreaterThanOrEqual(0);
     expect(events[0].matchQuality).toBeLessThanOrEqual(1);
+  });
+
+  it('#295 frontline-hold: an acquired unit is held off the walk-in pool until its frontlineDay', () => {
+    // A unit acquired on day 1 with the default 2-day hold has frontlineDay 3:
+    // absent from the match pool on days 1 and 2, present on day 3. The lot
+    // carries only this held unit, so before frontlineDay the customer no-fits.
+    const { bus, sessions, events } = setup([makeStaff(0.9)], BASE_CONFIG, {
+      lot: [makeLotVehicle('veh:held', { arrivalDay: 1, frontlineDay: 3 })],
+    });
+    sessions.set('cust:d1', makeSession('cust:d1', makeFinanceVisit('cust:d1')));
+    sessions.set('cust:d2', makeSession('cust:d2', makeFinanceVisit('cust:d2')));
+    sessions.set('cust:d3', makeSession('cust:d3', makeFinanceVisit('cust:d3')));
+
+    admit(bus, 'cust:d1', 1);
+    expect(events[0].outcome).toBe('no_sale');
+    expect(events[0].reason).toBe('no_fit');
+
+    admit(bus, 'cust:d2', 2);
+    expect(events[1].outcome).toBe('no_sale');
+    expect(events[1].reason).toBe('no_fit');
+
+    admit(bus, 'cust:d3', 3);
+    expect(events[2].outcome).toBe('closed');
   });
 
   it('a no_sale carries no match quality (#199)', () => {

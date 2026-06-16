@@ -134,6 +134,7 @@ function makeLotVehicle(id: string): LotVehicle {
     reconCost: 500,
     category: 'sedan',
     arrivalDay: 0,
+    frontlineDay: 0,
     daysInInventory: 0,
     carryingCostToDate: 0,
     dailyCarryingCost: 0,

@@ -368,7 +368,8 @@
       "overheadPerDay": 8,
       "reconFadePerDay": 3,
       "agedThresholdDays": 45
-    }
+    },
+    "frontlineHoldDays": 2
   },
   "ownership": {
     "hoursOfOp": {

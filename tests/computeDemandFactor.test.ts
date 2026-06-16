@@ -19,6 +19,7 @@ function veh(condition: VehicleCondition): LotVehicle {
     reconCost: 500,
     category: 'sedan',
     arrivalDay: 1,
+    frontlineDay: 1,
     daysInInventory: 0,
     suggestedRetail: 11_000,
     askingPrice: 11_000,

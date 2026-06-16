@@ -10,7 +10,11 @@ to the real machinery. Per customer (after exception roll + hold-floor):
 
 1. `pickVehicleForMatch(customer, inventory.getLotVehicles(), { tier })` — pure
    match against the live lot, returning the matched id + want-axis match
-   quality (#199). No fit ⇒ `no_sale`/`no_fit`.
+   quality (#199). No fit ⇒ `no_sale`/`no_fit`. **The lot is first filtered by
+   the #295 frontline-hold (`v.frontlineDay <= day`)**: a unit acquired during
+   play (auction buy or customer trade) is held off this walk-in pool until its
+   `frontlineDay` so the player gets an interaction window — this is the sole
+   enforcement point for the hold (Inventory still lists + carries held units).
 2. `resolveSalesProcess(...)` against the matched vehicle, using the
    salesperson's effectiveness/trustworthiness composite via
    `makeSalespersonProfile`. Walk ⇒ `no_sale`/`<WalkCause>`.
