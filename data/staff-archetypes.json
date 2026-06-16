@@ -190,6 +190,7 @@
     "skills": {
       "condition_reading": { "mu": 42, "sigma": 10 },
       "pricing":           { "mu": 50, "sigma": 9 },
+      "t_o_closing":       { "mu": 46, "sigma": 9 },
       "mechanical_aptitude": { "mu": 48, "sigma": 10 }
     },
     "resources": {
@@ -204,6 +205,7 @@
     "skills": {
       "condition_reading": { "mu": 78, "sigma": 7 },
       "pricing":           { "mu": 72, "sigma": 8 },
+      "t_o_closing":       { "mu": 70, "sigma": 8 },
       "mechanical_aptitude": { "mu": 70, "sigma": 8 }
     },
     "resources": {

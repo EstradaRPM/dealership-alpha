@@ -39,13 +39,17 @@
     "tier": "manager",
     "growth_rate": 0.2,
     "cap": 100,
-    "composite_mapping": { "effectiveness": 0.7, "trustworthiness": 0.3 }
+    "composite_mapping": { "effectiveness": 0.7, "trustworthiness": 0.3 },
+    "growth_counter": "deals_closed",
+    "cap_headroom": { "mu": 15, "sigma": 8 }
   },
   "t_o_closing": {
     "tier": "manager",
     "growth_rate": 0.2,
     "cap": 100,
-    "composite_mapping": { "effectiveness": 0.8, "trustworthiness": 0.2 }
+    "composite_mapping": { "effectiveness": 0.8, "trustworthiness": 0.2 },
+    "growth_counter": "deals_closed",
+    "cap_headroom": { "mu": 15, "sigma": 8 }
   },
   "finance_structuring": {
     "tier": "manager",
@@ -87,6 +91,8 @@
     "tier": "manager",
     "growth_rate": 0.2,
     "cap": 100,
-    "composite_mapping": { "effectiveness": 0.7, "trustworthiness": 0.3 }
+    "composite_mapping": { "effectiveness": 0.7, "trustworthiness": 0.3 },
+    "growth_counter": "days_employed",
+    "cap_headroom": { "mu": 15, "sigma": 8 }
   }
 }

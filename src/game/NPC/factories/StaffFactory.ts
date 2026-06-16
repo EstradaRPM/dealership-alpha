@@ -2,6 +2,7 @@ import { createRng, deriveSeed, type SeedContext } from '../Rng';
 import type {
   Staff,
   StaffRoleCatalog,
+  StaffSkill,
   StaffSkillCatalog,
 } from '../schemas/staff';
 import type { StaffArchetypeCatalog } from '../schemas/staff-archetype';
@@ -24,7 +25,19 @@ export interface CreateStaffDeps {
 export interface StaffWithComposites extends Staff {
   readonly effectiveness: number;
   readonly trustworthiness: number;
+  /**
+   * Channel-desk M7 (#294) — Model B *effective* skill per axis, derived (never
+   * mutated) from `base + growth(counter)` clamped to the per-hire cap. This is
+   * what every capability gate/refinement reads (S12, M2–M6). The dormant
+   * `counters` only change overnight (StaffOrg's `clock:day_ended` accrual), so
+   * each read of this getter is constant within an open day ⇒ replay-safe
+   * (#122). Like `effectiveness`/`trustworthiness` it is a non-enumerable
+   * derived getter, so it never serializes (no save migration).
+   */
+  readonly effectiveSkills: Readonly<Record<string, number>>;
 }
+
+export const SKILL_CAP_HEADROOM_NAMESPACE = 'npc.staff.skillCapHeadroom';
 
 function gaussian(rng: () => number, mu: number, sigma: number): number {
   // Box-Muller. Guard against u1 === 0 (would produce -Infinity).
@@ -75,9 +88,69 @@ function computeComposite(
   return total;
 }
 
+/**
+ * Channel-desk M7 (#294) — the per-hire growth ceiling on one skill axis,
+ * rolled deterministically from the staff id (`min(skill cap, base +
+ * max(0, gaussian(headroom)))`). Seeded so a given hire's cap is stable across
+ * the game's lifetime and reproducible on reload (the cap is derived, never
+ * stored ⇒ no migration). A cheap hire plateaus low; you keep them or replace
+ * with a higher-cap pro.
+ */
+function rollPerHireCap(
+  masterSeed: number,
+  staffId: string,
+  skillId: string,
+  base: number,
+  def: StaffSkill,
+): number {
+  if (!def.cap_headroom) return Math.min(def.cap, base);
+  const seed = deriveSeed(masterSeed, SKILL_CAP_HEADROOM_NAMESPACE, {
+    staffId,
+    skillId,
+  });
+  const rng = createRng(seed);
+  const headroom = Math.max(0, gaussian(rng, def.cap_headroom.mu, def.cap_headroom.sigma));
+  return Math.min(def.cap, base + headroom);
+}
+
+/**
+ * Channel-desk M7 (#294) — Model B effective skill on one axis:
+ * `clamp(base + growth_rate × counter, base, perHireCap)`. With zero counters
+ * (a fresh hire) effective === base, so the M2–M6 gates behave identically at
+ * hire time; growth only accrues as the dormant counters tick up overnight.
+ */
+export function effectiveSkillValue(
+  staff: Staff,
+  skillId: string,
+  def: StaffSkill | undefined,
+  masterSeed: number,
+): number {
+  const base = staff.skills[skillId] ?? 0;
+  if (!def) return base;
+  const perHireCap = rollPerHireCap(masterSeed, staff.id, skillId, base, def);
+  const growth = def.growth_counter
+    ? def.growth_rate * (staff.counters[def.growth_counter] ?? 0)
+    : 0;
+  return Math.min(perHireCap, base + growth);
+}
+
+/** Effective skill across every axis the staff carries (#294). */
+export function computeEffectiveSkills(
+  staff: Staff,
+  skills: StaffSkillCatalog,
+  masterSeed: number,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const skillId of Object.keys(staff.skills)) {
+    out[skillId] = effectiveSkillValue(staff, skillId, skills[skillId], masterSeed);
+  }
+  return out;
+}
+
 function attachComposites(
   plain: Staff,
   skills: StaffSkillCatalog,
+  masterSeed: number,
 ): StaffWithComposites {
   Object.defineProperty(plain, 'effectiveness', {
     get: () => computeComposite(plain, skills, 'effectiveness'),
@@ -86,6 +159,11 @@ function attachComposites(
   });
   Object.defineProperty(plain, 'trustworthiness', {
     get: () => computeComposite(plain, skills, 'trustworthiness'),
+    enumerable: false,
+    configurable: true,
+  });
+  Object.defineProperty(plain, 'effectiveSkills', {
+    get: () => computeEffectiveSkills(plain, skills, masterSeed),
     enumerable: false,
     configurable: true,
   });
@@ -102,8 +180,9 @@ function attachComposites(
 export function rehydrateStaff(
   staff: Staff,
   taxonomy: StaffTaxonomy,
+  masterSeed = 0,
 ): StaffWithComposites {
-  return attachComposites(staff, taxonomy.skills);
+  return attachComposites(staff, taxonomy.skills, masterSeed);
 }
 
 export function createStaff(
@@ -167,13 +246,14 @@ export function createStaff(
     },
   };
 
-  return attachComposites(plain, taxonomy.skills);
+  return attachComposites(plain, taxonomy.skills, masterSeed);
 }
 
 export function promoteStaff(
   staff: Staff,
   toRoleId: string,
   taxonomy: StaffTaxonomy,
+  masterSeed = 0,
 ): StaffWithComposites {
   const target = taxonomy.roles[toRoleId];
   if (!target) {
@@ -204,5 +284,5 @@ export function promoteStaff(
     skills: nextSkills,
   };
 
-  return attachComposites(next, taxonomy.skills);
+  return attachComposites(next, taxonomy.skills, masterSeed);
 }

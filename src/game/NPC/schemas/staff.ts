@@ -8,12 +8,29 @@ export const STAFF_DEPARTMENTS = ['sales', 'service', 'body'] as const;
 export const StaffDepartmentSchema = z.enum(STAFF_DEPARTMENTS);
 export type StaffDepartment = z.infer<typeof StaffDepartmentSchema>;
 
+// Channel-desk M7 (#294) — Model B derived skill growth. A manager's effective
+// skill = base (rolled at hire) + growth(counter), clamped to a per-hire cap.
+// `growth_counter` names which dormant `StaffCounters` field drives growth on
+// this axis (`deals_closed` → desking/negotiation, `days_employed` → general
+// read); omit it and the axis is static. `cap_headroom` is the per-hire growth
+// ceiling distribution: cap = min(skill cap, base + max(0, gaussian(mu, sigma)))
+// rolled deterministically from the staff id, so a cheap hire plateaus below the
+// top capabilities (preserving the hire-vs-grow decision). Magnitudes are
+// placeholders — calibration is deferred to S14 (#286).
+export const SkillCapHeadroomSchema = z
+  .object({ mu: z.number().nonnegative(), sigma: z.number().nonnegative() })
+  .strict();
+
 export const StaffSkillSchema = z
   .object({
     tier: StaffTierSchema,
     growth_rate: z.number().positive(),
     cap: z.number().min(0).max(100),
     composite_mapping: z.record(z.string().min(1), z.number()).optional(),
+    growth_counter: z
+      .enum(['experience', 'deals_closed', 'days_employed'])
+      .optional(),
+    cap_headroom: SkillCapHeadroomSchema.optional(),
   })
   .strict();
 

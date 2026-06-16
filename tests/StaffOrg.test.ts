@@ -445,3 +445,71 @@ describe('StaffOrg — GM hire-tier gating', () => {
     }
   });
 });
+
+// ── Model B skill-growth accrual (#294) ─────────────────────────────────────
+
+describe('StaffOrg — Model B skill growth (#294)', () => {
+  function hireUcm() {
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const staffOrg = createStaffOrg({
+      bus, economy, masterSeed: MASTER_SEED, taxonomy, archetypes,
+      config: CHEAP_CONFIG, getTier: () => 3,
+    });
+    clock.advanceDay();
+    const cand = staffOrg.getCandidates('used-car-manager')[0];
+    staffOrg.hire(cand.candidateId);
+    const ucm = staffOrg.currentRoster.find((s) => s.role_id === 'used-car-manager')!;
+    return { bus, clock, staffOrg, ucm };
+  }
+
+  function publishClose(bus: ReturnType<typeof createEventBus>): void {
+    bus.publish('deal:closed', {
+      customerId: 'c', vehicleId: 'v', agreedPrice: 20_000, frontGross: 1_500,
+      backGross: 500, daysInInventory: 10, paymentMethod: 'cash',
+      downPayment: 20_000, loanAmount: 0, term: 0, apr: 0,
+    });
+  }
+
+  it('starts a freshly-hired UCM at zero counters', () => {
+    const { ucm } = hireUcm();
+    expect(ucm.counters).toEqual({ experience: 0, deals_closed: 0, days_employed: 0 });
+  });
+
+  it('effective skill is constant within the open day; growth applies overnight', () => {
+    const { bus, clock, ucm } = hireUcm();
+    const basePricing = ucm.effectiveSkills.pricing;
+
+    // Deals close *during* the day — counters and effective skill do NOT move.
+    for (let i = 0; i < 5; i++) publishClose(bus);
+    expect(ucm.counters.deals_closed).toBe(0);
+    expect(ucm.effectiveSkills.pricing).toBeCloseTo(basePricing, 10);
+
+    // Overnight: counters accrue, effective skill steps up.
+    clock.advanceDay();
+    expect(ucm.counters.deals_closed).toBe(5);
+    expect(ucm.counters.days_employed).toBe(1);
+    expect(ucm.effectiveSkills.pricing).toBeGreaterThan(basePricing);
+  });
+
+  it('resets the day tally each morning (no double-count across days)', () => {
+    const { bus, clock, ucm } = hireUcm();
+    for (let i = 0; i < 3; i++) publishClose(bus);
+    clock.advanceDay();
+    expect(ucm.counters.deals_closed).toBe(3);
+    // A day with no closes accrues tenure but no deals.
+    clock.advanceDay();
+    expect(ucm.counters.deals_closed).toBe(3);
+    expect(ucm.counters.days_employed).toBe(2);
+  });
+
+  it('grows the tenure-driven condition read toward (but capped below) 100', () => {
+    const { clock, ucm } = hireUcm();
+    const baseReading = ucm.effectiveSkills.condition_reading;
+    for (let d = 0; d < 200; d++) clock.advanceDay();
+    const grown = ucm.effectiveSkills.condition_reading;
+    expect(grown).toBeGreaterThan(baseReading);
+    expect(grown).toBeLessThanOrEqual(taxonomy.skills.condition_reading.cap);
+  });
+});

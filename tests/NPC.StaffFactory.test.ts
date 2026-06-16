@@ -105,6 +105,83 @@ describe('StaffFactory composite getters', () => {
   });
 });
 
+describe('StaffFactory effective skill growth (Model B, #294)', () => {
+  const ucm = () =>
+    createStaff({ archetypeId: 'entry_used_car_manager', hireDay: 1, slot: 0 }, deps);
+
+  it('exposes effectiveSkills as a derived (non-enumerable) getter', () => {
+    const s = ucm();
+    expect(Object.keys(s)).not.toContain('effectiveSkills');
+    expect(typeof s.effectiveSkills.pricing).toBe('number');
+  });
+
+  it('effective === base at zero counters (gates behave identically at hire)', () => {
+    const s = ucm();
+    expect(s.counters).toEqual({ experience: 0, deals_closed: 0, days_employed: 0 });
+    for (const skillId of Object.keys(s.skills)) {
+      expect(s.effectiveSkills[skillId]).toBeCloseTo(s.skills[skillId], 10);
+    }
+  });
+
+  it('grows desking skills with deals_closed and the read with days_employed', () => {
+    const s = ucm();
+    const basePricing = s.skills.pricing;
+    const baseClosing = s.skills.t_o_closing;
+    const baseReading = s.skills.condition_reading;
+
+    s.counters.deals_closed = 10;
+    expect(s.effectiveSkills.pricing).toBeGreaterThan(basePricing);
+    expect(s.effectiveSkills.t_o_closing).toBeGreaterThan(baseClosing);
+    // deals don't move the tenure-driven read…
+    expect(s.effectiveSkills.condition_reading).toBeCloseTo(baseReading, 10);
+
+    s.counters.days_employed = 10;
+    expect(s.effectiveSkills.condition_reading).toBeGreaterThan(baseReading);
+  });
+
+  it('applies growth_rate × counter linearly below the cap', () => {
+    const s = ucm();
+    const rate = taxonomy.skills.pricing.growth_rate;
+    s.counters.deals_closed = 3;
+    expect(s.effectiveSkills.pricing).toBeCloseTo(s.skills.pricing + rate * 3, 6);
+  });
+
+  it('clamps effective skill to the per-hire cap (never runs away to 100)', () => {
+    const s = ucm();
+    s.counters.deals_closed = 1_000_000;
+    s.counters.days_employed = 1_000_000;
+    const cap = taxonomy.skills.pricing.cap; // 100
+    const capped = s.effectiveSkills.pricing;
+    expect(capped).toBeLessThanOrEqual(cap);
+    // A green hire plateaus *below* the axis cap (per-hire headroom), so an
+    // unbounded counter does not reach 100.
+    expect(capped).toBeGreaterThan(s.skills.pricing);
+    expect(capped).toBeLessThan(cap);
+    // Stable under further counter growth — it has hit its ceiling.
+    s.counters.deals_closed = 5_000_000;
+    expect(s.effectiveSkills.pricing).toBeCloseTo(capped, 10);
+  });
+
+  it('leaves axes without a growth_counter static regardless of counters', () => {
+    const s = createStaff(
+      { archetypeId: 'career_salesperson', hireDay: 1, slot: 0 },
+      deps,
+    );
+    const base = s.skills.communication; // no growth_counter
+    s.counters.deals_closed = 500;
+    s.counters.days_employed = 500;
+    expect(s.effectiveSkills.communication).toBeCloseTo(base, 10);
+  });
+
+  it('per-hire cap is deterministic for a given staff id', () => {
+    const a = ucm();
+    const b = ucm();
+    a.counters.deals_closed = 1_000_000;
+    b.counters.deals_closed = 1_000_000;
+    expect(a.effectiveSkills.pricing).toBeCloseTo(b.effectiveSkills.pricing, 10);
+  });
+});
+
 describe('StaffFactory.promoteStaff', () => {
   it('retains existing skills cumulatively and adds new role grants', () => {
     const s = createStaff(

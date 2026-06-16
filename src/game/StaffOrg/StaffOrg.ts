@@ -105,11 +105,36 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   const rolePool = new Map<string, string[]>();
 
   let currentDay = 1;
+  // Channel-desk M7 (#294): the day's closed-deal tally, accrued onto each
+  // roster member's `deals_closed` counter overnight (NOT live), so effective
+  // skill stays constant within an open day. Transient — reset every
+  // `day_started`, deterministically rebuilt from `deal:closed` on a #122
+  // replay; the durable growth lives in the (serialized) counters.
+  let dayDealsClosed = 0;
 
   bus.subscribe('clock:day_started', ({ day }) => {
     currentDay = day;
+    dayDealsClosed = 0;
     candidatePool.clear();
     rolePool.clear();
+  });
+
+  bus.subscribe('deal:closed', () => {
+    dayDealsClosed += 1;
+  });
+
+  // Model B skill growth (#294): accrue the dormant experience counters once
+  // per day, at the front of the overnight sequence. Effective skill is *derived*
+  // from these counters (StaffFactory.computeEffectiveSkills), so recomputing
+  // them here — and only here — means the derived skill is constant within each
+  // open day and steps up overnight toward the per-hire cap. Counters serialize
+  // on `Staff`, so the growth persists with no migration.
+  bus.subscribe('clock:day_ended', () => {
+    for (const s of roster) {
+      s.counters.days_employed += 1;
+      s.counters.deals_closed += dayDealsClosed;
+      s.counters.experience += dayDealsClosed;
+    }
   });
 
   bus.subscribe('staff:quit', ({ staffId }) => {
@@ -170,7 +195,7 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       currentDay = snap.currentDay;
       roster.length = 0;
       for (const s of snap.roster) {
-        roster.push(rehydrateStaff(s, taxonomy));
+        roster.push(rehydrateStaff(s, taxonomy, masterSeed));
       }
     },
 
@@ -232,7 +257,9 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       let bestSkill = -Infinity;
       for (const s of roster) {
         if (s.role_id !== 'used-car-manager') continue;
-        const skill = s.skills[CONDITION_READING_SKILL_ID] ?? 0;
+        // Effective (grown) skill, M7 (#294) — appraisal advice sharpens as the
+        // UCM's `condition_reading` grows with tenure, same as the gates.
+        const skill = s.effectiveSkills[CONDITION_READING_SKILL_ID] ?? 0;
         if (skill > bestSkill || (skill === bestSkill && best !== null && s.id < best.id)) {
           best = s;
           bestSkill = skill;

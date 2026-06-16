@@ -517,7 +517,7 @@ export function createWorld(deps: {
       // Top UCM pricing skill (null = no UCM on staff) vs the data-driven gate.
       const ucmPricingSkills = staffOrg.currentRoster
         .filter((s) => s.role_id === 'used-car-manager')
-        .map((s) => s.skills['pricing'] ?? 0);
+        .map((s) => s.effectiveSkills['pricing'] ?? 0);
       const topUcmPricingSkill =
         ucmPricingSkills.length === 0 ? null : Math.max(...ucmPricingSkills);
       const automationUnlocked = isAutoPricingUnlocked(
@@ -564,7 +564,7 @@ export function createWorld(deps: {
     autoSourceFn: (listings) => {
       const ucmReadingSkills = staffOrg.currentRoster
         .filter((s) => s.role_id === 'used-car-manager')
-        .map((s) => s.skills['condition_reading'] ?? 0);
+        .map((s) => s.effectiveSkills['condition_reading'] ?? 0);
       const topUcmReading =
         ucmReadingSkills.length === 0 ? null : Math.max(...ucmReadingSkills);
       if (!isSourcingUnlocked(topUcmReading, sourcingActThreshold)) return [];
@@ -995,7 +995,7 @@ export function createWorld(deps: {
           );
           if (ucms.length === 0) return null;
           const bestSkill = ucms.reduce(
-            (m, s) => Math.max(m, s.skills['condition_reading'] ?? 0),
+            (m, s) => Math.max(m, s.effectiveSkills['condition_reading'] ?? 0),
             0,
           );
           return { confidence: Math.min(1, Math.max(0, bestSkill / 100)) };
@@ -1016,7 +1016,7 @@ export function createWorld(deps: {
           resolveTradeApprover(
             staffOrg.currentRoster.map((s) => ({
               role: s.role_id,
-              conditionReading: s.skills['condition_reading'] ?? 0,
+              conditionReading: s.effectiveSkills['condition_reading'] ?? 0,
               skill: {
                 effectiveness: s.effectiveness,
                 trustworthiness: s.trustworthiness ?? 0,
@@ -1045,7 +1045,7 @@ export function createWorld(deps: {
         getDiscountDeskingUnlocked: () => {
           const ucmClosingSkills = staffOrg.currentRoster
             .filter((s) => s.role_id === 'used-car-manager')
-            .map((s) => s.skills['t_o_closing'] ?? 0);
+            .map((s) => s.effectiveSkills['t_o_closing'] ?? 0);
           const topUcmClosingSkill =
             ucmClosingSkills.length === 0 ? null : Math.max(...ucmClosingSkills);
           return isDiscountDeskingUnlocked(
@@ -1060,7 +1060,7 @@ export function createWorld(deps: {
         getDeskingDrift: () => {
           const ucmClosingSkills = staffOrg.currentRoster
             .filter((s) => s.role_id === 'used-car-manager')
-            .map((s) => s.skills['t_o_closing'] ?? 0);
+            .map((s) => s.effectiveSkills['t_o_closing'] ?? 0);
           if (ucmClosingSkills.length === 0) return null;
           return {
             ucmClosingSkill: Math.max(...ucmClosingSkills),
@@ -1073,7 +1073,7 @@ export function createWorld(deps: {
         getTradeAllowanceDrift: () => {
           const ucmReadingSkills = staffOrg.currentRoster
             .filter((s) => s.role_id === 'used-car-manager')
-            .map((s) => s.skills['condition_reading'] ?? 0);
+            .map((s) => s.effectiveSkills['condition_reading'] ?? 0);
           if (ucmReadingSkills.length === 0) return null;
           return {
             conditionReadingSkill: Math.max(...ucmReadingSkills),

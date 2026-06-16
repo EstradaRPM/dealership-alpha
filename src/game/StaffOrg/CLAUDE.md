@@ -22,9 +22,31 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
   the same vehicle get different (but skill-bounded) bands.
 - Tunables in `data/tunables.json#staffOrg.conditionRead`.
 
+## Skill growth — Model B (#294, channel-desk M7)
+- A roster member's **effective** skill is *derived, never mutated*:
+  `effective = base (rolled at hire) + growth_rate × counter`, clamped to a
+  **per-hire cap** (`min(axis cap, base + headroom)`, headroom rolled
+  deterministically from the staff id — see `StaffFactory.computeEffectiveSkills`).
+  Exposed as the non-enumerable `staff.effectiveSkills` getter; **this is what
+  every capability gate/refinement reads** (M2–M6 + `assessCondition`).
+- StaffOrg accrues the dormant `counters` **overnight only** (on `clock:day_ended`):
+  `days_employed += 1` and `deals_closed += (the day's `deal:closed` count)` for
+  every roster member. Because the counters change only overnight, the derived
+  effective skill is **constant within an open day** (replay-safe, #122) and
+  steps up between days toward the per-hire cap. The in-day close tally is
+  transient (reset each `day_started`, rebuilt deterministically on replay); the
+  durable growth lives in the serialized counters → **no save migration**.
+- Which counter drives which axis is data (`data/staff-skills.json#<skill>.growth_counter`):
+  `pricing`/`t_o_closing` → `deals_closed`; `condition_reading` → `days_employed`.
+  Axes without a `growth_counter` stay static. Magnitudes (`growth_rate`,
+  `cap_headroom`) are placeholders — calibration deferred to S14 (#286).
+
 ## Events
 - **Emits:** `staff:hired` (with `hiringCost`), `staff:fired`.
-- **Consumes:** `clock:overnight_payroll` (post payroll expenses via `Economy`).
+- **Consumes:** `clock:day_ended` (Model B counter accrual, #294),
+  `clock:day_started` (reset candidate pool + day close tally), `deal:closed`
+  (day close tally), `staff:quit`, `clock:overnight_payroll` (post payroll
+  expenses via `Economy`).
 
 ## Hiring constraints
 - **Role hire-tier gate:** `getCandidates(roleId)` throws if the role's `hireTier` exceeds the current dealership tier (`deps.getTier`).
