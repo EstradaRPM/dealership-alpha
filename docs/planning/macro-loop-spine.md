@@ -67,6 +67,8 @@ Built with the same philosophy as the brands (multi-axis, no single "best"):
 - **scarcity** (can't just buy five A-players),
 - **poaching / retention** risk.
 
+**Calibration anchor:** the real-industry per-salesperson performance ladder (5 grades, units/PVR/close-rate bands) lives in [`staff-performance-ladder.md`](./staff-performance-ladder.md). Staff "grades" must never be called "tiers" (dealership tiers own the word).
+
 ## 6. Act 2 engine — the multi-axis brand portfolio
 
 Brands are **economic archetypes on independent axes**, so there is **no single best buy** and a real balancing game emerges. Prestige is an *emergent reading* of the axes, never the axis itself.
@@ -132,5 +134,5 @@ The gate-numbers open item is resolved at the structural level. Decision record 
 ## Open / deliberately un-tuned
 
 - **Gate numbers** — structure LOCKED 2026-06-11, see §12. Numeric thresholds are tuned by the #247 balance harness against `data/tier-pacing-targets.json`, **after** the staff-teeth pass.
-- **Staff risk/reward teeth** (§5) — identified; needs its own design/build pass to set cost curves, scarcity, salary drain, poaching. Real-industry salesperson calibration ladder captured in issue #249; resolve the staff-"tier" naming collision there (dealership tiers own the word).
+- **Staff risk/reward teeth** (§5) — identified; needs its own design/build pass to set cost curves, scarcity, salary drain, poaching. Real-industry salesperson calibration ladder captured in [`staff-performance-ladder.md`](./staff-performance-ladder.md) (was issue #249); resolve the staff-"grade" naming collision there (dealership tiers own the word).
 - **Monetization model — PARKED, own axis.** On-record positioning is *premium, niche*. An F2P "IAP to grant a franchise license" was floated and flagged as the **pay-to-skip trap** (it monetizes the courtship's core tension and cuts against premium positioning). If ever F2P, monetize cosmetics/convenience that don't touch the progression spine — never the gate.
