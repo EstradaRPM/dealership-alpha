@@ -485,6 +485,46 @@ export function loadDemandElasticityConfig(): DemandElasticityConfig {
   );
 }
 
+// UCM sourcing posture-lean policy + auto-fill (channel-desk M6, #293). The
+// lean is a normalized preference blend across margin / condition /
+// vehicle-type(demand-fit); the engine scores the board against it and
+// auto-buys the best affordable fits. All numbers are placeholders pending the
+// S14 calibration pass (#286).
+const SourcingLeanSchema = z
+  .object({
+    margin: z.number().nonnegative(),
+    condition: z.number().nonnegative(),
+    demandFit: z.number().nonnegative(),
+  })
+  .strict();
+
+export const SourcingConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    /** Default per-slot lean before the player tunes the dial. */
+    defaultLean: SourcingLeanSchema,
+    /** condition id → [0,1] desirability used by the condition axis. */
+    conditionScores: z.record(ConditionEnum, unit),
+    /** Book-relative gross spread that scores a full 1.0 on the margin axis. */
+    marginReference: positive,
+    /** Sensitivity of the demand-fit axis to a category's share above uniform. */
+    demandFitGain: z.number().nonnegative(),
+    /** Minimum (drift-perceived) composite score the UCM will auto-buy at. */
+    buyThreshold: unit,
+    /** Cash the UCM keeps unspent — a floor it never auto-buys below. */
+    cashReserve: z.number().nonnegative(),
+  })
+  .strict();
+export type SourcingConfig = z.infer<typeof SourcingConfigSchema>;
+export type SourcingLeanConfig = z.infer<typeof SourcingLeanSchema>;
+
+export function loadSourcingConfig(): SourcingConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/sourcing.json');
+  return parseData(raw, SourcingConfigSchema, 'data/sourcing.json');
+}
+
 export function loadPricingStrategiesConfig(): PricingStrategiesConfig {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw: unknown = require('../../../data/pricing-strategies.json');

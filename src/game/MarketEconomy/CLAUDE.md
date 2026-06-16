@@ -94,6 +94,33 @@ Design record: issue **#182** (locked). Read that before working any slice.
     `±competitorSpread` band around market. Takes a narrow structural
     competitor input so MarketEconomy stays decoupled from CompetitorMarket.
   - Config: `data/pricing-strategies.json` (`loadPricingStrategiesConfig`).
+- Sourcing posture-lean engine (#293, channel-desk M6) — pure, deterministic,
+  no live state (`sourcing.ts`):
+  - `isSourcingUnlocked(ucmConditionReadingSkill, threshold)` → boolean. The act
+    gate for UCM auto-fill, on the **same `condition_reading` axis** that gates
+    M4 trade auto-approve (manager-roles-channel-desk.md §3) — acting (buying for
+    you) is earned, the appraisal *advice* (#163) stays free on hire.
+  - `selectAutoBuys({ candidates, lean, segmentCount, cashOnHand, drift? }, deps?)`
+    → the listing ids the UCM auto-buys. Scores each `SourcingCandidate`
+    (`{ listingId, cost, book, condition, demandShare }`) against the normalized
+    lean across three axes — margin (book-relative gross vs `marginReference`),
+    condition (`conditionScores`), and demand-fit (the category's DemandShaper
+    share vs the uniform baseline, `demandFitGain`) — then greedily buys in
+    descending fit while the score clears `buyThreshold` and cumulative cost
+    stays within `cashOnHand − cashReserve`. **M5 drift (#292):** `drift`
+    (`SourcingDrift = { conditionReadingSkill, seed, config }`) adds a two-sided
+    `signedSkillDrift` mis-perception to each candidate's *perceived* fit — a
+    green UCM both over-buys poor fits and skips good ones (off-lean buys, both
+    worse than lean-optimal), a sharp one (≥ `skillReference`) holds the lean
+    exactly. Deterministic in `(skill, seed)`; the root seeds it per-day. Omit
+    `drift` ⇒ exact lean-optimal picks.
+  - `scoreCandidate(candidate, lean, segmentCount, deps?)` / `normalizeLean(lean)`
+    — the pure axis-blend + weight normalization, exported for tests.
+  - The composition root owns the inputs: book via `bookValueFn`, demand share
+    via `DemandShaper.getMix()`, cost = `askingPrice + reconCost`, the gate from
+    the roster's top UCM `condition_reading`. Wired through `Inventory.autoSourceFn`.
+  - Config: `data/sourcing.json` (`loadSourcingConfig`). All numbers are
+    placeholders pending the S14 calibration pass (#286).
 - `resolveIntelPrecision(read, deps?)` → `IntelPrecision` (slice #284, Pricing/
   Demand spine S12). Pure, deterministic. Maps a narrow `PricingStaffRead`
   (`{ ucmPricingSkill: number | null }`) to the precision profile the pricing
@@ -215,6 +242,11 @@ fallback path per slice #155 AC.
   `suggestionBandPct` + `daysRangePct` + `confidenceScale`, plus the sharp
   level's `skillReference` (the UCM `pricing` skill at which the read is fully
   sharp). Precision-delta calibration is deferred to the S14 balance pass.
+- `data/sourcing.json` — UCM sourcing auto-fill tunables (#293): `defaultLean`
+  (the balanced margin/condition/demand-fit blend before the player tunes the
+  dial), per-condition `conditionScores`, `marginReference` (book-relative gross
+  scoring 1.0), `demandFitGain`, `buyThreshold`, and the `cashReserve` floor. All
+  placeholders pending the S14 calibration pass (#286).
 - `data/pricing-strategies.json` — list-price strategy postures
   (`marketAggression` + `targetMarkupPct` per strategy), the default strategy,
   the position-indicator ratio bands, and the competitor-comparable spread for

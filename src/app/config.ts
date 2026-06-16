@@ -12,9 +12,11 @@ import { loadInventoryConfig } from '../game/Inventory';
 import { loadStaffArchetypes, loadStaffTaxonomy } from '../game/NPC';
 import {
   loadPricingStrategiesConfig,
+  loadSourcingConfig,
   resolveIntelPrecision,
   type IntelPrecision,
   type PricingStaffRead,
+  type SourcingLean,
 } from '../game/MarketEconomy';
 import { loadRegulatoryTunables } from '../game/Reputation';
 import { loadTierConfig } from '../game/CareerProgression';
@@ -85,6 +87,14 @@ export const PRICING_STRATEGY_OPTIONS = Object.entries(
   PRICING_STRATEGIES.strategies,
 ).map(([id, s]) => ({ id, label: s.label, blurb: s.blurb }));
 export const REGULATORY_TUNABLES = loadRegulatoryTunables();
+
+// UCM sourcing posture-lean (#293, channel-desk M6). Seed-free; the per-slot
+// lean (margin/condition/demand-fit blend) persists per save slot and drives the
+// UCM's auto-fill once `condition_reading` clears the act gate. Default =
+// balanced. The dial UI is the mockup pass; the persistence seam lands now so a
+// player's tuned lean round-trips through the save.
+export const SOURCING_CONFIG = loadSourcingConfig();
+export const DEFAULT_SOURCING_LEAN: SourcingLean = SOURCING_CONFIG.defaultLean;
 
 // Tier ladder labels for the shell header (#215). Seed-free.
 export const TIER_CONFIG = loadTierConfig();
@@ -251,6 +261,22 @@ export function buildCoverageGap(
 // Month-close cadence — sourced from the same tunable GameClock uses, never
 // a magic number. clock:month_ended fires on endingDay % daysPerMonth === 0.
 export const DAYS_PER_MONTH = loadTunables().clock.daysPerMonth;
+
+// Shape-check the persisted sourcing lean (#293) coming back out of the untyped
+// save envelope; anything malformed degrades to the balanced default so a
+// pre-#293 save (or a corrupt blob) never crashes the auto-fill.
+export function readPersistedSourcingLean(value: unknown): SourcingLean {
+  if (value == null || typeof value !== 'object') return DEFAULT_SOURCING_LEAN;
+  const { margin, condition, demandFit } = value as Partial<SourcingLean>;
+  return typeof margin === 'number' &&
+    margin >= 0 &&
+    typeof condition === 'number' &&
+    condition >= 0 &&
+    typeof demandFit === 'number' &&
+    demandFit >= 0
+    ? { margin, condition, demandFit }
+    : DEFAULT_SOURCING_LEAN;
+}
 
 // Shape-check the persisted cash-delta split (#255) coming back out of the
 // untyped save envelope; anything malformed degrades to "no delta yet".

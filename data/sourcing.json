@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "_doc": "UCM sourcing posture-lean policy + auto-fill (channel-desk M6, #293). The lean is a preference blend across three axes — margin / condition / vehicle-type(demand-fit) — NOT numeric quotas. The UCM scores the daily auction board against the (normalized) lean and auto-buys the best fits it can afford, with execution-fidelity drift by condition_reading skill (M5). All numbers are placeholders; hard calibration is the S14 balance pass (#286).",
+  "defaultLean": { "margin": 1, "condition": 1, "demandFit": 1 },
+  "conditionScores": { "clean": 1.0, "average": 0.55, "rough": 0.15 },
+  "marginReference": 0.25,
+  "demandFitGain": 1.0,
+  "buyThreshold": 0.45,
+  "cashReserve": 5000
+}

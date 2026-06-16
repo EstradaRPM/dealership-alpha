@@ -51,6 +51,25 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   `askingPrice = suggestedRetail` (the pre-S13 default). `setAskingPrice` still
   overrides any unit per the player.
 
+## UCM sourcing auto-fill (#293, channel-desk M6)
+- Optional `autoSourceFn(listings) → readonly string[]` dep. Called inside
+  `prepareDay` **after** the board is generated + the lot pass, so auto-bought
+  units land on the lot for the upcoming day (`arrivalDay = that day`, like a
+  manual prep-window buy) and start carrying the next day. It receives the fresh
+  board (NOT the paid-inspection holds — those are the player's deliberate picks,
+  never auto-bought) and returns the listing ids to buy; Inventory buys each via
+  the shared `buyFromAuctionImpl`.
+- The **whole decision lives at the composition root** so Inventory stays
+  decoupled from StaffOrg/MarketEconomy/DemandShaper: the act gate (top UCM
+  `condition_reading` clearing `managerGates.actThresholds.condition_reading`,
+  shared with the M4 trade-approve gate), the player's sourcing lean
+  (margin/condition/demand-fit), each candidate's book value + demand-fit + cost,
+  the cash check, and the M5 off-lean drift. The pure scoring/selection engine is
+  `MarketEconomy.selectAutoBuys` / `isSourcingUnlocked`.
+- Omit the dep (test harnesses, no UCM) ⇒ no auto-fill; the player buys the board
+  by hand. Manual `buyFromAuction` + per-unit `setAskingPrice` always live
+  (Pillar 5: delegation is permission, not amputation).
+
 ## Auction volume (#129)
 - `auctionConfig.minListings`/`maxListings` = steady-state daily board size.
 - Optional `auctionConfig.earlyGame { throughDay, minListings, maxListings }`

@@ -65,6 +65,20 @@ export type {
   CompetitorComp,
 } from './pricingSuggestion';
 
+export {
+  isSourcingUnlocked,
+  normalizeLean,
+  scoreCandidate,
+  selectAutoBuys,
+} from './sourcing';
+export type {
+  SourcingLean,
+  SourcingCandidate,
+  SourcingDrift,
+  SelectAutoBuysInput,
+  SourcingDeps,
+} from './sourcing';
+
 export { createShockScheduler } from './shocks';
 export type {
   ActiveShockInstance,
@@ -134,6 +148,8 @@ export {
   PricingStrategiesConfigSchema,
   loadIntelPrecisionConfig,
   IntelPrecisionConfigSchema,
+  loadSourcingConfig,
+  SourcingConfigSchema,
 } from './schemas';
 export type {
   MarketAnchorConfig,
@@ -158,6 +174,8 @@ export type {
   PricingStrategiesConfig,
   PricingStrategyEntry,
   IntelPrecisionConfig,
+  SourcingConfig,
+  SourcingLeanConfig,
 } from './schemas';
 export {
   ReconVarianceConfigSchema,

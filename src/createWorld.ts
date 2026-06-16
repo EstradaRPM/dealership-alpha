@@ -51,7 +51,11 @@ import {
   deriveReconSeed,
   resolveIntakeAsk,
   isAutoPricingUnlocked,
+  isSourcingUnlocked,
+  selectAutoBuys,
+  loadSourcingConfig,
   type MarketEconomy,
+  type SourcingLean,
 } from './game/MarketEconomy';
 import { createStaffMorale, type StaffMorale } from './game/StaffMorale';
 import {
@@ -344,6 +348,16 @@ export function createWorld(deps: {
    * to its book↔market target. Omitted ⇒ the configured default strategy.
    */
   getPricingStrategy?: () => string;
+  /**
+   * Per-slot UCM sourcing posture-lean (#293, channel-desk M6). A live getter
+   * (not a value) so a mid-game dial change applies on the next day's board
+   * scan without rebuilding the world — the composition root reads the persisted
+   * slot lean. Drives the UCM's auto-fill: above the `condition_reading` gate the
+   * desk scores the daily auction board against this margin/condition/demand-fit
+   * blend and auto-buys the best affordable fits (off-lean drift by skill, M5).
+   * Omitted ⇒ the configured default (balanced) lean. Manual buy always lives.
+   */
+  getSourcingLean?: () => SourcingLean;
 }): World {
   const {
     bus,
@@ -353,6 +367,7 @@ export function createWorld(deps: {
     getTradePolicyMultiplier,
     getHoursOfOpTicksPerDay,
     getPricingStrategy,
+    getSourcingLean,
   } = deps;
 
   // Default initialDay = 1: the clock sits on "night before Day 1" so the
@@ -465,6 +480,11 @@ export function createWorld(deps: {
   const managerGateThresholds = managerGates.actThresholds;
   const executionDrift = managerGates.executionDrift;
   const autoPriceThreshold = managerGateThresholds.pricing;
+  // #293 (channel-desk M6): the default sourcing lean used until the player tunes
+  // the dial. The auto-fill act gate shares the `condition_reading` threshold
+  // with the M4 trade auto-approve (manager-roles-channel-desk.md §3).
+  const sourcingConfig = loadSourcingConfig();
+  const sourcingActThreshold = managerGateThresholds.condition_reading;
   const inventory = createInventory({
     bus,
     masterSeed,
@@ -525,6 +545,60 @@ export function createWorld(deps: {
         marketPrice: marketEconomy.marketPriceFn(priced),
         strategy: getPricingStrategy?.() ?? '',
         automationUnlocked,
+        drift,
+      });
+    },
+    // #293 (channel-desk M6): UCM sourcing auto-fill. The whole decision is owned
+    // here at the composition boundary so Inventory stays decoupled from
+    // StaffOrg/MarketEconomy/DemandShaper. Act gate: the top UCM's
+    // `condition_reading` clears the threshold (shared with M4 trade approve —
+    // acting is earned, the appraisal *advice* in `getTradeConditionRead` stays
+    // free on hire). Above it, score the fresh board against the player's lean —
+    // margin (book vs full acquisition cost), condition tier, and demand-fit
+    // (the player-facing DemandShaper heat map, the same signal the heat console
+    // surfaces) — and auto-buy the best affordable fits, with M5 off-lean drift
+    // by `condition_reading`. `staffOrg`/`demandShaper` are referenced lazily
+    // (declared below); the closure only runs on the daily board scan, long after
+    // construction. The empty roster at construction-time prep ⇒ gate closed ⇒
+    // no auto-buy then. Player manual buy + per-unit override always live.
+    autoSourceFn: (listings) => {
+      const ucmReadingSkills = staffOrg.currentRoster
+        .filter((s) => s.role_id === 'used-car-manager')
+        .map((s) => s.skills['condition_reading'] ?? 0);
+      const topUcmReading =
+        ucmReadingSkills.length === 0 ? null : Math.max(...ucmReadingSkills);
+      if (!isSourcingUnlocked(topUcmReading, sourcingActThreshold)) return [];
+
+      const mix = demandShaper.getMix();
+      const candidates = listings
+        .filter((l) => l.inspectionStatus !== 'pending')
+        .map((l) => ({
+          listingId: l.id,
+          cost: l.askingPrice + l.reconCost,
+          book: marketEconomy.bookValueFn(l as unknown as PricedVehicleInput),
+          condition: l.condition,
+          demandShare: mix[l.category] ?? 0,
+        }));
+
+      // M5 (#292): above the gate the UCM aims at the lean; its
+      // `condition_reading` governs the gap (off-lean buys). Seed per-day so a
+      // #122 mid-day resume reproduces the same picks (skill constant within a day).
+      const drift =
+        topUcmReading != null
+          ? {
+              conditionReadingSkill: topUcmReading,
+              seed: deriveSeed(masterSeed, 'sourcing_autofill_drift', {
+                day: clock.currentDay,
+              }),
+              config: executionDrift.condition_reading,
+            }
+          : undefined;
+
+      return selectAutoBuys({
+        candidates,
+        lean: getSourcingLean?.() ?? sourcingConfig.defaultLean,
+        segmentCount: demandShaper.segments.length,
+        cashOnHand: economy.cash,
         drift,
       });
     },

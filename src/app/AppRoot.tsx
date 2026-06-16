@@ -32,6 +32,7 @@ import {
   PRICING_STRATEGIES,
   HOURS_OF_OP,
   readPersistedCashDelta,
+  readPersistedSourcingLean,
 } from './config';
 
 export interface DealershipAppProps {
@@ -166,6 +167,12 @@ export function DealershipApp({
     } else {
       levers.setHoursOfOpId(HOURS_OF_OP.defaultId);
     }
+    // Restore the persisted per-slot UCM sourcing lean (#293) before the world
+    // builds, so the first board scan auto-buys to the player's saved posture.
+    // The ref backs the live getter handed to createWorld.
+    const restoredLean = readPersistedSourcingLean(state.sourcingLean);
+    levers.sourcingLeanRef.current = restoredLean;
+    levers.setSourcingLean(restoredLean);
     const w = createWorld({
       bus,
       masterSeed: seed,
@@ -173,6 +180,7 @@ export function DealershipApp({
       getTradePolicyMultiplier: levers.getTradePolicyMultiplier,
       getHoursOfOpTicksPerDay: levers.getHoursOfOpTicksPerDay,
       getPricingStrategy: levers.getPricingStrategy,
+      getSourcingLean: levers.getSourcingLean,
     });
     // World-state restore (#188 tracer): rehydrate the persisted world
     // snapshot (day + cash) onto the freshly-built World instead of leaving it
@@ -240,6 +248,7 @@ export function DealershipApp({
       getTradePolicyMultiplier: levers.getTradePolicyMultiplier,
       getHoursOfOpTicksPerDay: levers.getHoursOfOpTicksPerDay,
       getPricingStrategy: levers.getPricingStrategy,
+      getSourcingLean: levers.getSourcingLean,
     });
     setWorld(w);
     setCash(w.economy.cash);

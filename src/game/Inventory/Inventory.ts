@@ -133,6 +133,20 @@ export interface InventoryDeps {
    * the default ask sits at market.
    */
   pricingPolicyFn?: (v: LotVehicle) => number;
+  /**
+   * UCM sourcing auto-fill (#293, channel-desk M6). Receives the freshly
+   * generated daily auction board and returns the listing ids the used-car desk
+   * auto-buys this day. The composition root owns the whole decision — the act
+   * gate (top UCM `condition_reading`), the player's sourcing lean, the
+   * per-candidate book/demand-fit signals, the cash check, and the M5 drift —
+   * so Inventory stays decoupled from StaffOrg/MarketEconomy/DemandShaper. Runs
+   * inside `prepareDay` after the board + lot pass, so auto-bought units land on
+   * the lot for the upcoming day (arrivalDay = that day, like a manual prep-buy)
+   * and start carrying the next day. Omit (test harnesses, no UCM) ⇒ no
+   * auto-fill; the player buys the board by hand. Manual `buyFromAuction` always
+   * lives (Pillar 5: delegation is permission, not amputation).
+   */
+  autoSourceFn?: (listings: readonly AuctionListing[]) => readonly string[];
   reconVariance?: ReconVarianceConfig;
   reconSurprises?: ReconSurpriseEventsConfig;
   auctionSourceReliability?: AuctionSourceReliability;
@@ -153,6 +167,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
     deps.bookValueFn ?? ((v: LotVehicle) => v.purchasePrice + v.reconCost);
   const marketPriceFn = deps.marketPriceFn;
   const pricingPolicyFn = deps.pricingPolicyFn;
+  const autoSourceFn = deps.autoSourceFn;
 
   let currentDay = 1;
   let auctionListings: AuctionListing[] = [];
@@ -171,6 +186,78 @@ export function createInventory(deps: InventoryDeps): Inventory {
     auctionListings = generateAuctionListings(day, masterSeed, vehicleData);
     advanceInspections(day);
     accrueDay(day);
+    autoSource();
+  }
+
+  /**
+   * UCM sourcing auto-fill (#293, M6). After the board + lot pass, the used-car
+   * desk auto-buys the listings the composition root selected against the
+   * player's sourcing lean (gated on `condition_reading`; off-lean drift by
+   * skill). Runs on the fresh board only — paid-inspection holds (#164) are the
+   * player's deliberate picks and are never auto-bought. Each id came from the
+   * current board, so `buyFromAuction` resolves it; bought units get
+   * `arrivalDay = currentDay` and start carrying the next day (matching a manual
+   * prep-window buy). No-op when no auto-fill is wired or nothing scores in.
+   */
+  function autoSource(): void {
+    if (!autoSourceFn) return;
+    const ids = autoSourceFn(auctionListings);
+    for (const id of ids) buyFromAuctionImpl(id);
+  }
+
+  function buyFromAuctionImpl(listingId: string): void {
+    const pending = pendingInspections.get(listingId);
+    const listing = pending ?? auctionListings.find((l) => l.id === listingId);
+    if (!listing) throw new Error(`No auction listing "${listingId}"`);
+    if (listing.inspectionStatus === 'pending') {
+      throw new Error(
+        `Listing "${listingId}" has a pending inspection — purchase blocked until day ${listing.inspectionAvailableDay}`,
+      );
+    }
+
+    // Categorized as stock acquisition (#255): the Home cash delta breaks
+    // this out as "into stock" instead of coloring a deliberate buy as a
+    // loss. Inspection/recon/carrying stay uncategorized (operating spend).
+    economy.postExpense(
+      listing.askingPrice,
+      `Auction purchase: ${listing.id}`,
+      'inventoryAcquisition',
+    );
+
+    const reliability = sourceReliability.reliability[listing.sourceId] ?? 0.5;
+    const lotVehicle = buildAcquiredVehicle({
+      id: listing.id,
+      templateId: listing.templateId,
+      brand: listing.brand,
+      year: listing.year,
+      make: listing.make,
+      model: listing.model,
+      trim: listing.trim,
+      mileage: listing.mileage,
+      condition: listing.condition,
+      conditionReport: listing.conditionReport,
+      purchasePrice: listing.askingPrice,
+      category: listing.category,
+      reconEstimate: listing.reconCost,
+      sourceReliability: reliability,
+    });
+    lotVehicles.set(lotVehicle.id, lotVehicle);
+    auctionListings = auctionListings.filter((l) => l.id !== listingId);
+    pendingInspections.delete(listingId);
+
+    bus.publish('inventory:vehicle_purchased', {
+      day: currentDay,
+      vehicleId: lotVehicle.id,
+      cost: listing.askingPrice,
+      templateId: lotVehicle.templateId,
+      brand: lotVehicle.brand,
+      make: lotVehicle.make,
+      year: lotVehicle.year,
+      mileage: lotVehicle.mileage,
+      condition: lotVehicle.condition,
+      category: lotVehicle.category,
+      reconCost: lotVehicle.reconEstimate,
+    });
   }
 
   /**
@@ -508,58 +595,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
     },
 
     buyFromAuction(listingId) {
-      const pending = pendingInspections.get(listingId);
-      const listing = pending ?? auctionListings.find((l) => l.id === listingId);
-      if (!listing) throw new Error(`No auction listing "${listingId}"`);
-      if (listing.inspectionStatus === 'pending') {
-        throw new Error(
-          `Listing "${listingId}" has a pending inspection — purchase blocked until day ${listing.inspectionAvailableDay}`,
-        );
-      }
-
-      // Categorized as stock acquisition (#255): the Home cash delta breaks
-      // this out as "into stock" instead of coloring a deliberate buy as a
-      // loss. Inspection/recon/carrying stay uncategorized (operating spend).
-      economy.postExpense(
-        listing.askingPrice,
-        `Auction purchase: ${listing.id}`,
-        'inventoryAcquisition',
-      );
-
-      const reliability = sourceReliability.reliability[listing.sourceId] ?? 0.5;
-      const lotVehicle = buildAcquiredVehicle({
-        id: listing.id,
-        templateId: listing.templateId,
-        brand: listing.brand,
-        year: listing.year,
-        make: listing.make,
-        model: listing.model,
-        trim: listing.trim,
-        mileage: listing.mileage,
-        condition: listing.condition,
-        conditionReport: listing.conditionReport,
-        purchasePrice: listing.askingPrice,
-        category: listing.category,
-        reconEstimate: listing.reconCost,
-        sourceReliability: reliability,
-      });
-      lotVehicles.set(lotVehicle.id, lotVehicle);
-      auctionListings = auctionListings.filter((l) => l.id !== listingId);
-      pendingInspections.delete(listingId);
-
-      bus.publish('inventory:vehicle_purchased', {
-        day: currentDay,
-        vehicleId: lotVehicle.id,
-        cost: listing.askingPrice,
-        templateId: lotVehicle.templateId,
-        brand: lotVehicle.brand,
-        make: lotVehicle.make,
-        year: lotVehicle.year,
-        mileage: lotVehicle.mileage,
-        condition: lotVehicle.condition,
-        category: lotVehicle.category,
-        reconCost: lotVehicle.reconEstimate,
-      });
+      buyFromAuctionImpl(listingId);
     },
 
     sellVehicle(vehicleId, salePrice) {

@@ -6,7 +6,9 @@ import {
   TRADE_POLICY,
   PRICING_STRATEGIES,
   DEFAULT_HIRING_ROLE_ID,
+  DEFAULT_SOURCING_LEAN,
 } from './config';
+import type { SourcingLean } from '../game/MarketEconomy';
 
 export interface LeversDeps {
   worldRef: React.MutableRefObject<World | null>;
@@ -26,6 +28,11 @@ export interface Levers {
   setPricingStrategyId: (id: string) => void;
   pricingStrategyIdRef: React.MutableRefObject<string>;
   getPricingStrategy: () => string;
+  sourcingLean: SourcingLean;
+  setSourcingLean: (lean: SourcingLean) => void;
+  sourcingLeanRef: React.MutableRefObject<SourcingLean>;
+  getSourcingLean: () => SourcingLean;
+  handleSetSourcingLean: (lean: SourcingLean) => void;
   selectedHiringRoleId: string;
   setSelectedHiringRoleId: (id: string) => void;
   /** Live getters handed to createWorld so a mid-game change applies without
@@ -75,6 +82,16 @@ export function useLevers({
   const pricingStrategyIdRef = useRef(PRICING_STRATEGIES.defaultStrategy);
   pricingStrategyIdRef.current = pricingStrategyId;
   const getPricingStrategy = () => pricingStrategyIdRef.current;
+  // Per-slot UCM sourcing lean (#293, channel-desk M6). The ref feeds the live
+  // getter handed to createWorld so a mid-game dial change applies on the next
+  // day's board scan without rebuilding the world. The dial UI is the mockup
+  // pass; the lean still round-trips through the save from now on.
+  const [sourcingLean, setSourcingLean] = useState<SourcingLean>(
+    DEFAULT_SOURCING_LEAN,
+  );
+  const sourcingLeanRef = useRef<SourcingLean>(DEFAULT_SOURCING_LEAN);
+  sourcingLeanRef.current = sourcingLean;
+  const getSourcingLean = () => sourcingLeanRef.current;
   const [selectedHiringRoleId, setSelectedHiringRoleId] = useState(
     DEFAULT_HIRING_ROLE_ID,
   );
@@ -110,6 +127,15 @@ export function useLevers({
     persistCurrentSave({ hoursOfOp: id });
   };
 
+  // Persist the sourcing lean into the active slot (#293). The ref updates
+  // immediately so the live getter reflects the new lean before the persist
+  // resolves — the next board scan auto-buys to it.
+  const handleSetSourcingLean = (lean: SourcingLean) => {
+    sourcingLeanRef.current = lean;
+    setSourcingLean(lean);
+    persistCurrentSave({ sourcingLean: lean });
+  };
+
   return {
     hoursOfOpId,
     setHoursOfOpId,
@@ -121,6 +147,11 @@ export function useLevers({
     setPricingStrategyId,
     pricingStrategyIdRef,
     getPricingStrategy,
+    sourcingLean,
+    setSourcingLean,
+    sourcingLeanRef,
+    getSourcingLean,
+    handleSetSourcingLean,
     selectedHiringRoleId,
     setSelectedHiringRoleId,
     getHoursOfOpTicksPerDay,
