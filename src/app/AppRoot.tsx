@@ -252,6 +252,12 @@ export function DealershipApp({
     });
     setWorld(w);
     setCash(w.economy.cash);
+    // Prime the lot view from the freshly-built world so the #296 day-one seed
+    // inventory (1 SUV / 1 truck / 1 sedan) is visible at open. Seed units are
+    // inserted at construction with no `inventory:vehicle_purchased` emit, so
+    // without this pull the reactive lot state stays `[]` until the first
+    // inventory event (an auction buy) fires — the load path already does this.
+    setLotVehicles(w.inventory.getLotVehicles());
     // Seed the vs-yesterday baselines (#230/#255): first day's delta is
     // measured against the night-before-Day-1 cash + (zero) lifetime spend.
     dayLoop.prevDayCashRef.current = w.economy.cash;
