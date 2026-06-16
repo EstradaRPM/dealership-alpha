@@ -54,10 +54,9 @@ function evalAsk(
 // ── Data file ─────────────────────────────────────────────────────────────────
 
 describe('trade-evaluation.json — shape', () => {
-  it('has a real counter window, a partial defensive pull, and a mid skill gate', () => {
+  it('has a real counter window, a positive generosity premium, and a mid skill gate', () => {
     expect(CFG.counterWindowFraction).toBeGreaterThan(0);
-    expect(CFG.confidencePenaltyFraction).toBeGreaterThan(0);
-    expect(CFG.confidencePenaltyFraction).toBeLessThan(1);
+    expect(CFG.appraisalGenerosityPremium).toBeGreaterThan(0);
     expect(CFG.counterGiveWeight).toBeGreaterThan(0);
     expect(CFG.skillCounterThreshold).toBeGreaterThan(0);
     expect(CFG.skillCounterThreshold).toBeLessThan(1);
@@ -67,7 +66,7 @@ describe('trade-evaluation.json — shape', () => {
 // ── Action boundaries (honest read → target == book at market policy) ──────────
 
 describe('evaluateTrade — action boundaries', () => {
-  // With an honest read (confidence 1), defensiveFactor = 1 and target = book.
+  // With an honest read (confidence 1), generosity factor = 1 and target = book.
   it('accepts an ask at or below book', () => {
     expect(evalAsk(BOOK, MID, HONEST_READ).action).toBe('accept');
     expect(evalAsk(BOOK - 1, MID, HONEST_READ).action).toBe('accept');
@@ -157,23 +156,45 @@ describe('evaluateTrade — skilled near book, weak over- or under-pays', () => 
     expect(weak.counterAmount!).toBeGreaterThan(strong.counterAmount!);
   });
 
-  it('a poor/absent condition read under-pays: pulls the target below book', () => {
-    // No UCM (null) → confidence 0 → maximal defensive pull → target < book.
+  it('a poor/absent condition read over-pays: pushes the target above book (#291/M4)', () => {
+    // No UCM (null) → confidence 0 → max generosity premium → target > book, so
+    // an ask AT book is comfortably accepted at the generous (thin-margin) floor.
     const noRead = evalAsk(BOOK, STRONG, null);
-    // With the target below book, an ask AT book now exceeds it → no longer a
-    // clean accept; the defensive staff would rather counter under book.
-    expect(noRead.action).toBe('counter');
-    expect(noRead.counterAmount!).toBeLessThan(BOOK);
+    expect(noRead.action).toBe('accept');
+    // And an ask slightly above book — which a tight (honest-read) desk would
+    // counter under — still accepts on the generous no-UCM target.
+    const aboveBook = Math.round(BOOK * (1 + CFG.appraisalGenerosityPremium / 2));
+    expect(evalAsk(aboveBook, STRONG, null).action).toBe('accept');
+    expect(evalAsk(aboveBook, STRONG, HONEST_READ).action).toBe('counter');
   });
 
-  it('higher read confidence raises the accept ceiling', () => {
-    // An ask between the defensive target and book accepts with an honest read
-    // but counters with a poor one.
+  it('trade target is monotonic in condition_reading, no-UCM = the generous floor (#291/M4)', () => {
+    // Locked ordering (manager-roles-channel-desk.md §4): higher condition-read
+    // confidence ⇒ tighter allowance target ⇒ better margin; the no-UCM
+    // (confidence 0) target is the most generous = the margin floor. Read the
+    // exposed `target` off a far-above ask so every tier yields a real figure.
+    const ask = BOOK * 5;
+    const targets = [0, 0.25, 0.5, 0.75, 1].map(
+      (c) => evalAsk(ask, STRONG, readAt(c)).target,
+    );
+    for (let i = 1; i < targets.length; i++) {
+      expect(targets[i]).toBeLessThan(targets[i - 1]);
+    }
+    // No UCM reads as zero confidence ⇒ exactly the generous floor.
+    expect(evalAsk(ask, STRONG, null).target).toBe(targets[0]);
+    // Floor sits above book (thinnest margin); full confidence tightens to book.
+    expect(targets[0]).toBeGreaterThan(BOOK);
+    expect(targets[targets.length - 1]).toBe(BOOK);
+  });
+
+  it('higher read confidence tightens the target — lower margin floor at no UCM (#291/M4)', () => {
+    // An ask between book and the generous no-UCM target accepts with a poor
+    // (absent) read but counters with an honest one (tighter → better margin).
     const honestTarget = BOOK; // confidence 1
-    const poorTarget = BOOK * (1 - CFG.confidencePenaltyFraction); // confidence 0
+    const poorTarget = BOOK * (1 + CFG.appraisalGenerosityPremium); // confidence 0
     const between = Math.round((honestTarget + poorTarget) / 2);
-    expect(evalAsk(between, MID, HONEST_READ).action).toBe('accept');
-    expect(evalAsk(between, MID, null).action).toBe('counter');
+    expect(evalAsk(between, MID, null).action).toBe('accept');
+    expect(evalAsk(between, MID, HONEST_READ).action).toBe('counter');
   });
 });
 

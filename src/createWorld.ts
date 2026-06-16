@@ -79,6 +79,7 @@ import {
 import {
   classifyCredit,
   generateTradeAsk,
+  resolveTradeApprover,
   loadTradeAllowanceNoiseConfig,
   type TradeBookValueFn,
 } from './game/DealEngine';
@@ -906,27 +907,30 @@ export function createWorld(deps: {
           );
           return { confidence: Math.min(1, Math.max(0, bestSkill / 100)) };
         },
-        // #170: escalation approver resolved with GM > UCM > player priority.
-        // The highest-ranking manager on the roster reviews an unusual trade via
-        // the extended evaluator; with none hired this returns null and the
-        // trade routes to the player overlay.
-        getTradeApprover: () => {
-          const roster = staffOrg.currentRoster;
-          const gms = roster.filter((s) => s.role_id === 'gm');
-          const ucms = roster.filter((s) => s.role_id === 'used-car-manager');
-          const pool = gms.length > 0 ? gms : ucms;
-          if (pool.length === 0) return null;
-          const best = pool.reduce((m, s) =>
-            s.effectiveness > m.effectiveness ? s : m,
-          );
-          return {
-            role: gms.length > 0 ? 'gm' : 'ucm',
-            skill: {
-              effectiveness: best.effectiveness,
-              trustworthiness: best.trustworthiness ?? 0,
-            },
-          };
-        },
+        // #170 → #291 (channel-desk M4): escalation approver, GM > UCM > player.
+        // The GM is the empire layer and trumps the gate (never gated). Below it,
+        // the UCM may auto-approve an unusual trade ONLY once its top
+        // `condition_reading` clears the act gate — reframing #170's presence
+        // gate onto the skill threshold (acting is earned; the appraisal *advice*
+        // in getTradeConditionRead stays free on hire). Read live off the roster
+        // so a mid-game hire/fire applies on the next trade; below the gate (or no
+        // UCM) this returns null and the trade routes to the player overlay. The
+        // threshold + skill-axis knowledge stays here at the composition boundary,
+        // mirroring the M2/M3 gates. The branching itself lives in the pure
+        // `resolveTradeApprover` (DealEngine) — the root only maps its live
+        // StaffOrg roster down to the narrow approver-candidate read.
+        getTradeApprover: () =>
+          resolveTradeApprover(
+            staffOrg.currentRoster.map((s) => ({
+              role: s.role_id,
+              conditionReading: s.skills['condition_reading'] ?? 0,
+              skill: {
+                effectiveness: s.effectiveness,
+                trustworthiness: s.trustworthiness ?? 0,
+              },
+            })),
+            managerGateThresholds.condition_reading,
+          ),
         // #170: per-slot player override. Omitted ⇒ config default.
         getTradeEscalationOverride:
           tradeEscalationOverride !== undefined

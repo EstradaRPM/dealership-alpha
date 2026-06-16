@@ -1,7 +1,10 @@
 import {
   resolveTradeIn,
+  isTradeApprovalUnlocked,
+  resolveTradeApprover,
   rollCustomerCounterResponse,
   loadTradeEvalConfig,
+  type ApproverCandidate,
   type NegotiationSkill,
   type TradeApprover,
   type TradeBookValueFn,
@@ -37,7 +40,7 @@ const MID = skillAt(0.5);
 const STRONG = skillAt(0.95);
 
 const readAt = (confidence: number): TradeConditionRead => ({ confidence });
-const HONEST_READ = readAt(1.0); // confidence 1 ⇒ defensiveFactor 1 ⇒ target == book
+const HONEST_READ = readAt(1.0); // confidence 1 ⇒ generosity factor 1 ⇒ target == book
 
 function resolve(
   partial: Partial<TradeResolutionInput> & { allowanceAsk: number },
@@ -303,6 +306,72 @@ describe('rollCustomerCounterResponse', () => {
     };
     expect(rate(11_500)).toBeGreaterThan(rate(10_500));
     expect(rate(10_500)).toBeGreaterThan(rate(9_500));
+  });
+});
+
+// ── Channel-desk trade-approval gate (#291/M4) ───────────────────────────────
+
+describe('isTradeApprovalUnlocked', () => {
+  it('is locked with no UCM (null skill), regardless of threshold', () => {
+    expect(isTradeApprovalUnlocked(null, 60)).toBe(false);
+    expect(isTradeApprovalUnlocked(null, 0)).toBe(false);
+  });
+
+  it('gates hard at the threshold — the earned-stripes cliff', () => {
+    expect(isTradeApprovalUnlocked(59, 60)).toBe(false);
+    expect(isTradeApprovalUnlocked(60, 60)).toBe(true);
+    expect(isTradeApprovalUnlocked(82, 60)).toBe(true);
+  });
+});
+
+describe('resolveTradeApprover (#291/M4 — GM > gated-UCM > player)', () => {
+  const THRESHOLD = 60;
+  const ucm = (conditionReading: number, effectiveness = 0.5): ApproverCandidate => ({
+    role: 'used-car-manager',
+    conditionReading,
+    skill: { effectiveness, trustworthiness: 0.5 },
+  });
+  const gm = (effectiveness = 0.5): ApproverCandidate => ({
+    role: 'gm',
+    conditionReading: 0,
+    skill: { effectiveness, trustworthiness: 0.5 },
+  });
+  const salesperson: ApproverCandidate = {
+    role: 'salesperson',
+    conditionReading: 99,
+    skill: { effectiveness: 0.9, trustworthiness: 0.5 },
+  };
+
+  it('no manager on staff ⇒ null (escalates to the player)', () => {
+    expect(resolveTradeApprover([], THRESHOLD)).toBeNull();
+    expect(resolveTradeApprover([salesperson], THRESHOLD)).toBeNull();
+  });
+
+  it('a below-gate UCM does NOT approve — escalates to the player (the act gate)', () => {
+    expect(resolveTradeApprover([ucm(THRESHOLD - 1)], THRESHOLD)).toBeNull();
+  });
+
+  it('an at/above-gate UCM approves (earned)', () => {
+    expect(resolveTradeApprover([ucm(THRESHOLD)], THRESHOLD)?.role).toBe('ucm');
+    expect(resolveTradeApprover([ucm(THRESHOLD + 20)], THRESHOLD)?.role).toBe('ucm');
+  });
+
+  it('the GM trumps the gate — approves even with no condition_reading', () => {
+    const r = resolveTradeApprover([gm()], THRESHOLD);
+    expect(r?.role).toBe('gm');
+    // GM present alongside a below-gate UCM ⇒ still the GM.
+    expect(resolveTradeApprover([gm(), ucm(0)], THRESHOLD)?.role).toBe('gm');
+  });
+
+  it('gates on the TOP UCM condition_reading but approves with the best NEGOTIATE closer', () => {
+    // A green UCM (high closer) + a sharp UCM (clears the gate, weaker closer):
+    // the gate clears off the sharp reader; the approver is the best negotiator.
+    const r = resolveTradeApprover(
+      [ucm(THRESHOLD - 5, 0.95), ucm(THRESHOLD + 5, 0.4)],
+      THRESHOLD,
+    );
+    expect(r?.role).toBe('ucm');
+    expect(r?.skill.effectiveness).toBe(0.95);
   });
 });
 

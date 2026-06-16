@@ -381,10 +381,11 @@
     }
   },
   "managerGates": {
-    "_doc": "Channel-desk manager capability gates (#289+, docs/planning/manager-roles-channel-desk.md §3). Each acting capability earns a hard threshold on its own skill axis (0–100). M2 (#289) consumes pricing: top UCM pricing >= threshold unlocks the standing auto-pricing policy; below = suggestion-only. M3 (#290) consumes t_o_closing: top UCM t_o_closing >= threshold lets the UCM desk ALL below-floor discounts; below = the understaffed path (rare rate-gated escalation, the rest walk). M4 adds condition_reading. Placeholder magnitudes — calibrated in the S14 pass (#286). Green UCM ~50, seasoned ~72–82, so 60 sits each gate as an earned mid-career step.",
+    "_doc": "Channel-desk manager capability gates (#289+, docs/planning/manager-roles-channel-desk.md §3). Each acting capability earns a hard threshold on its own skill axis (0–100). M2 (#289) consumes pricing: top UCM pricing >= threshold unlocks the standing auto-pricing policy; below = suggestion-only. M3 (#290) consumes t_o_closing: top UCM t_o_closing >= threshold lets the UCM desk ALL below-floor discounts; below = the understaffed path (rare rate-gated escalation, the rest walk). M4 (#291) consumes condition_reading: top UCM condition_reading >= threshold lets the UCM auto-approve ALL escalated trades (the GM trumps this gate); below = the unusual trade escalates to the player. Appraisal advice (getTradeConditionRead) stays free on hire and is NOT gated here — only the act side. Placeholder magnitudes — calibrated in the S14 pass (#286). Green UCM ~50, seasoned ~72–82, so 60 sits each gate as an earned mid-career step.",
     "actThresholds": {
       "pricing": 60,
-      "t_o_closing": 60
+      "t_o_closing": 60,
+      "condition_reading": 60
     }
   },
   "tradePolicy": {

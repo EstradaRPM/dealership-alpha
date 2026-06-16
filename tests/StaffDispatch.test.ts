@@ -854,9 +854,10 @@ describe('StaffDispatch — config', () => {
 
 // ── Trade resolution (#169) ──────────────────────────────────────────────────
 
-// With the default null condition read: confidence 0 ⇒ defensiveFactor
-// 1 − 0.15 = 0.85 ⇒ target = TRADE_BOOK × 0.85 = 5_100.
-const TRADE_TARGET = 5_100;
+// Channel-desk margin (#291/M4): the default null condition read ⇒ confidence
+// 0 ⇒ generosity factor 1 + 0.15 = 1.15 ⇒ target = TRADE_BOOK × 1.15 = 6_900
+// (the generous no-UCM floor; a sharp UCM tightens it down toward book).
+const TRADE_TARGET = 6_900;
 
 describe('StaffDispatch — routine trade resolution (#169)', () => {
   it('routine accept: trade:resolved fires before deal:closed; allowance nets into the note', () => {
@@ -897,10 +898,10 @@ describe('StaffDispatch — routine trade resolution (#169)', () => {
 
   it('routine counter: customer takes a held counter below their ask', () => {
     const w = setup([makeStaff(0.9)]);
-    // ask 6_000: above target (5_100) but inside the routine gap (≤ 25%).
+    // ask 7_500: above target (6_900) but inside the routine gap (≤ 25% ⇒ 8_625).
     w.sessions.set(
       'cust:1',
-      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 6_000), {
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 7_500), {
         currentVehicle: makeTradeVehicle(null),
       }),
     );
@@ -909,7 +910,7 @@ describe('StaffDispatch — routine trade resolution (#169)', () => {
     expect(w.trades).toHaveLength(1);
     expect(w.trades[0].action).toBe('counter');
     expect(w.trades[0].hadCounter).toBe(true);
-    expect(w.trades[0].agreedAllowance).toBeLessThan(6_000);
+    expect(w.trades[0].agreedAllowance).toBeLessThan(7_500);
     expect(w.trades[0].agreedAllowance).toBeGreaterThanOrEqual(TRADE_TARGET);
     expect(w.events.filter(e => e.outcome === 'closed')).toHaveLength(1);
   });
@@ -937,7 +938,7 @@ describe('StaffDispatch — routine trade resolution (#169)', () => {
   it('negative equity (allowance < payoff, small overhang) ⇒ no_sale reason=trade_negative_equity, no deal', () => {
     const w = setup([makeStaff(0.9)]);
     // ask 5_000 ≤ target ⇒ routine accept; payoff 5_500 is within the escalation
-    // margin (target×1.1 = 5_610) so it stays routine, but the buyer is underwater.
+    // margin (target×1.1 = 7_590) so it stays routine, but the buyer is underwater.
     w.sessions.set(
       'cust:1',
       makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 5_000), {
@@ -952,29 +953,43 @@ describe('StaffDispatch — routine trade resolution (#169)', () => {
     expect(w.events[0].reason).toBe('trade_negative_equity');
   });
 
-  it('a UCM condition read lifts the target (higher confidence ⇒ less defensive)', () => {
-    // High-confidence read ⇒ defensiveFactor 1 ⇒ target = TRADE_BOOK (6_000).
-    // An ask of 6_000 now accepts rather than drawing a counter.
+  it('a UCM condition read tightens the target (higher confidence ⇒ better margin, #291/M4)', () => {
+    // High-confidence read ⇒ generosity factor 1 ⇒ target = TRADE_BOOK (6_000),
+    // tighter than the generous no-UCM floor (6_900). An ask of 6_500 that the
+    // no-UCM desk would accept (≤ 6_900) now draws a counter under the ask.
     const w = setup([makeStaff(0.9)], BASE_CONFIG, {
       tradeConditionRead: () => ({ confidence: 1.0 }),
     });
     w.sessions.set(
       'cust:1',
-      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 6_000), {
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 6_500), {
         currentVehicle: makeTradeVehicle(null),
       }),
     );
     admit(w.bus, 'cust:1');
     expect(w.trades).toHaveLength(1);
-    expect(w.trades[0].action).toBe('accept');
-    expect(w.trades[0].agreedAllowance).toBe(6_000);
+    expect(w.trades[0].action).toBe('counter');
+    expect(w.trades[0].agreedAllowance).toBeLessThan(6_500);
+    expect(w.trades[0].agreedAllowance).toBeGreaterThanOrEqual(TRADE_BOOK);
+
+    // Contrast: the same ask on the generous no-UCM floor accepts outright.
+    const noUcm = setup([makeStaff(0.9)]);
+    noUcm.sessions.set(
+      'cust:1',
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 6_500), {
+        currentVehicle: makeTradeVehicle(null),
+      }),
+    );
+    admit(noUcm.bus, 'cust:1');
+    expect(noUcm.trades[0].action).toBe('accept');
+    expect(noUcm.trades[0].agreedAllowance).toBe(6_500);
   });
 });
 
 // ── Manager-attention escalation (#170) ──────────────────────────────────────
 
 describe('StaffDispatch — trade escalation (#170)', () => {
-  // ask 9_000: above target 5_100 and beyond the routine gap ⇒ unusual.
+  // ask 9_000: above target 6_900 and beyond the routine gap (≤ 8_625) ⇒ unusual.
   const unusualAsk = (w: Wired) =>
     w.sessions.set(
       'cust:1',
@@ -1065,10 +1080,11 @@ describe('StaffDispatch — trade escalation (#170)', () => {
   it('a manager who declines beyond the extended window ⇒ no_sale reason=trade_manager_declined', () => {
     const gm: () => TradeApprover = () => ({ role: 'gm', skill: { effectiveness: 0.1, trustworthiness: 0.5 } });
     const w = setup([makeStaff(0.9)], BASE_CONFIG, { tradeApprover: gm });
-    // ask 9_000 = target 5_100 × 1.76 — beyond the manager window (×1.6) + weak closer.
+    // ask 13_000 = target 6_900 × 1.88 — beyond the manager window (×1.6 ⇒
+    // 11_040) + weak closer ⇒ even the manager declines.
     w.sessions.set(
       'cust:1',
-      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 9_000), {
+      makeSession('cust:1', withTrade(makeFinanceVisit('cust:1'), 13_000), {
         currentVehicle: makeTradeVehicle(null),
       }),
     );
@@ -1084,9 +1100,9 @@ describe('StaffDispatch — trade escalation (#170)', () => {
 // ── Trade-acquisition policy multiplier (#172) ────────────────────────────────
 
 describe('StaffDispatch — trade-policy multiplier wiring (#172)', () => {
-  // Default null read ⇒ defensiveFactor 0.85, so target = TRADE_BOOK × policy ×
-  // 0.85. Market (1.0) ⇒ 5_100; aggressive (1.1) ⇒ 5_610; conservative (0.92)
-  // ⇒ 4_692. The getter must reach resolveTradeIn, shifting the accept/counter/
+  // Default null read ⇒ generosity factor 1.15, so target = TRADE_BOOK × policy ×
+  // 1.15. Market (1.0) ⇒ 6_900; aggressive (1.1) ⇒ 7_590; conservative (0.92)
+  // ⇒ 6_348. The getter must reach resolveTradeIn, shifting the accept/counter/
   // escalation boundary.
   const tradeAsk = (w: Wired, ask: number) =>
     w.sessions.set(
@@ -1097,31 +1113,31 @@ describe('StaffDispatch — trade-policy multiplier wiring (#172)', () => {
     );
 
   it('aggressive policy lifts the target so a market-counter ask is accepted at the ask', () => {
-    // ask 5_600: above market target (5_100 → counter) but below the aggressive
-    // target (5_610 → accept).
+    // ask 7_200: above market target (6_900 → counter) but below the aggressive
+    // target (7_590 → accept).
     const market = setup([makeStaff(0.9)]);
-    tradeAsk(market, 5_600);
+    tradeAsk(market, 7_200);
     admit(market.bus, 'cust:1');
     expect(market.trades[0].action).toBe('counter');
     expect(market.trades[0].hadCounter).toBe(true);
-    expect(market.trades[0].agreedAllowance).toBeLessThan(5_600);
+    expect(market.trades[0].agreedAllowance).toBeLessThan(7_200);
 
     const aggressive = setup([makeStaff(0.9)], BASE_CONFIG, {
       tradePolicyMultiplier: () => 1.1,
     });
-    tradeAsk(aggressive, 5_600);
+    tradeAsk(aggressive, 7_200);
     admit(aggressive.bus, 'cust:1');
     expect(aggressive.trades[0].action).toBe('accept');
     expect(aggressive.trades[0].hadCounter).toBe(false);
-    expect(aggressive.trades[0].agreedAllowance).toBe(5_600);
+    expect(aggressive.trades[0].agreedAllowance).toBe(7_200);
   });
 
   it('conservative policy lowers the target so a market-routine ask escalates instead', () => {
-    // ask 6_300: inside the market routine band (≤ 5_100 × 1.25 = 6_375) but
-    // beyond the conservative band (≤ 4_692 × 1.25 = 5_865). No approver ⇒ the
+    // ask 8_200: inside the market routine band (≤ 6_900 × 1.25 = 8_625) but
+    // beyond the conservative band (≤ 6_348 × 1.25 = 7_935). No approver ⇒ the
     // conservative trade routes to the player overlay.
     const market = setup([makeStaff(0.9)]);
-    tradeAsk(market, 6_300);
+    tradeAsk(market, 8_200);
     admit(market.bus, 'cust:1');
     expect(market.trades).toHaveLength(1);
     expect(market.escalations).toHaveLength(0);
@@ -1129,7 +1145,7 @@ describe('StaffDispatch — trade-policy multiplier wiring (#172)', () => {
     const conservative = setup([makeStaff(0.9)], BASE_CONFIG, {
       tradePolicyMultiplier: () => 0.92,
     });
-    tradeAsk(conservative, 6_300);
+    tradeAsk(conservative, 8_200);
     admit(conservative.bus, 'cust:1');
     expect(conservative.trades).toHaveLength(0);
     expect(conservative.escalations).toHaveLength(1);

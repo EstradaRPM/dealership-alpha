@@ -12,6 +12,8 @@ export {
   loadTradeEvalConfig,
   TradeEvalConfigSchema,
   resolveTradeIn,
+  isTradeApprovalUnlocked,
+  resolveTradeApprover,
   rollCustomerCounterResponse,
   loadTradePolicyConfig,
   resolveTradePolicyMultiplier,
@@ -32,6 +34,7 @@ export type {
   TradeResolutionInput,
   TradeResolutionDeps,
   TradeApprover,
+  ApproverCandidate,
   TradeReviewPayload,
   CustomerCounterInput,
 } from './trade';

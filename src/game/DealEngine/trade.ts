@@ -108,7 +108,7 @@ export const TradeEvalConfigSchema = z
     schemaVersion: z.literal(1),
     _doc: z.string().optional(),
     counterWindowFraction: z.number().min(0),
-    confidencePenaltyFraction: z.number().min(0).max(1),
+    appraisalGenerosityPremium: z.number().min(0),
     counterGiveWeight: z.number().min(0).max(1),
     skillCounterThreshold: z.number().min(0).max(1),
     // ── Routine auto-resolution gate (#169) ──
@@ -281,8 +281,8 @@ export interface TradeEvalDeps {
  *
  *   book          = bookValueFn(currentVehicle)              honest wholesale
  *   confidence    = conditionRead?.confidence ?? 0           0 when no UCM reads it
- *   defensive     = 1 − (1 − confidence)·confidencePenaltyFraction
- *   target        = book × policyMultiplier × defensive      internal max allowance
+ *   generosity    = 1 + (1 − confidence)·appraisalGenerosityPremium
+ *   target        = book × policyMultiplier × generosity     internal max allowance
  *
  *   ask ≤ target                          → ACCEPT  (we'd have paid at least this)
  *   target < ask ≤ target·(1+window)      → COUNTER at counterAmount
@@ -292,12 +292,13 @@ export interface TradeEvalDeps {
  *
  *   counterAmount = round( target + (ask − target)·(1 − effectiveness)·counterGiveWeight )
  *
- * The two skill seams pull the counter in opposite directions, the source of the
- * "skilled staff counter near book; weak staff over- or under-pay" behavior:
- *   • Low condition-read confidence (poor/absent UCM) pulls `target` below book
- *     → defensive under-pay.
+ * The two skill seams both pull toward thinner margin when weak — the source of the
+ * channel-desk "no UCM = floor, a sharp desk tightens" behavior (#291/M4):
+ *   • Low condition-read confidence (poor/absent UCM) pushes `target` ABOVE book
+ *     → generous over-allowance (thin margin). A top UCM tightens it to ≈ book
+ *     (best margin). Monotonic in skill; no UCM (confidence 0) = the floor.
  *   • Low NEGOTIATE effectiveness drifts the counter up toward the ask
- *     → over-pay. A perfect closer holds exactly at `target ≈ book × policy`.
+ *     → over-pay. A perfect closer holds exactly at `target`.
  */
 export function evaluateTrade(
   input: TradeEvalInput,
@@ -309,8 +310,12 @@ export function evaluateTrade(
 
   const book = deps.bookValueFn(currentVehicle);
   const confidence = conditionRead?.confidence ?? 0;
-  const defensiveFactor = 1 - (1 - confidence) * cfg.confidencePenaltyFraction;
-  const target = book * policyMultiplier * defensiveFactor;
+  // Channel-desk margin (#291/M4): a green/absent appraiser pads the allowance
+  // ABOVE book to avoid blowing the deal (generous → thin margin); a sharp UCM
+  // tightens it down toward honest book (better margin). Monotonic in skill,
+  // no UCM (confidence 0) = the most generous allowance = the margin floor.
+  const generosityFactor = 1 + (1 - confidence) * cfg.appraisalGenerosityPremium;
+  const target = book * policyMultiplier * generosityFactor;
 
   const dollars = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
 
@@ -322,7 +327,7 @@ export function evaluateTrade(
       target: roundedTarget,
       rationale: `Ask ${dollars(allowanceAsk)} ≤ internal target ${dollars(
         target,
-      )} (book ${dollars(book)} × policy ${policyMultiplier} × read-confidence factor ${defensiveFactor.toFixed(
+      )} (book ${dollars(book)} × policy ${policyMultiplier} × generosity factor ${generosityFactor.toFixed(
         2,
       )}); accepted.`,
     };
@@ -384,6 +389,72 @@ export interface TradeApprover {
   readonly role: 'gm' | 'ucm';
   /** The approver's resolved NEGOTIATE composite (drives the extended counter). */
   readonly skill: NegotiationSkill;
+}
+
+/**
+ * Channel-desk trade auto-approval gate (#291/M4). The UCM may silently approve
+ * an *escalated* trade only once its `condition_reading` skill clears the act
+ * threshold — the advise/act split (manager-roles-channel-desk.md §3): the
+ * appraisal *advice* (`getTradeConditionRead`/#163) is free on hire and sharpens
+ * with skill, but auto-approving *for* the player is earned. `null` (no UCM on
+ * staff) ⇒ never unlocked. Hard cliff at the threshold (the earned-stripes beat);
+ * the GM, when present, trumps this gate at the composition root. Pure — sibling
+ * to `isAutoPricingUnlocked` (M2) / `isDiscountDeskingUnlocked` (M3).
+ */
+export function isTradeApprovalUnlocked(
+  ucmConditionReadingSkill: number | null,
+  threshold: number,
+): boolean {
+  return (
+    ucmConditionReadingSkill !== null && ucmConditionReadingSkill >= threshold
+  );
+}
+
+/**
+ * A roster member as the approver resolver sees it (#291/M4) — the narrow read
+ * the composition root maps its StaffOrg roster down to, so DealEngine never
+ * depends on StaffOrg. `role` is the raw `role_id`; only `gm` / `used-car-manager`
+ * participate.
+ */
+export interface ApproverCandidate {
+  readonly role: string;
+  /** The candidate's `condition_reading` skill (0–100); gates the UCM approver. */
+  readonly conditionReading: number;
+  /** Resolved NEGOTIATE composite — drives the extended counter when approving. */
+  readonly skill: NegotiationSkill;
+}
+
+/**
+ * Resolve the escalation approver from the roster with GM > UCM > player
+ * priority and the channel-desk `condition_reading` gate (#291/M4 — replaces
+ * #170's presence gate). The GM is the empire layer and **trumps the gate**
+ * (never gated). Below it, a UCM may auto-approve an escalated trade only once
+ * the *top* UCM `condition_reading` clears `conditionReadingThreshold` — the
+ * act gate (appraisal *advice* stays free on hire; see `isTradeApprovalUnlocked`).
+ * Returns the best-NEGOTIATE candidate of the winning pool (drives the extended
+ * counter; appraisal confidence stays the best condition reader elsewhere, §6),
+ * or `null` (no qualifying manager) ⇒ the trade escalates to the player. Pure.
+ */
+export function resolveTradeApprover(
+  candidates: readonly ApproverCandidate[],
+  conditionReadingThreshold: number,
+): TradeApprover | null {
+  const bestBy = (pool: readonly ApproverCandidate[]): ApproverCandidate =>
+    pool.reduce((m, c) => (c.skill.effectiveness > m.skill.effectiveness ? c : m));
+
+  const gms = candidates.filter((c) => c.role === 'gm');
+  if (gms.length > 0) return { role: 'gm', skill: bestBy(gms).skill };
+
+  const ucms = candidates.filter((c) => c.role === 'used-car-manager');
+  if (ucms.length === 0) return null;
+  const topConditionReading = ucms.reduce(
+    (m, c) => Math.max(m, c.conditionReading),
+    0,
+  );
+  if (!isTradeApprovalUnlocked(topConditionReading, conditionReadingThreshold)) {
+    return null;
+  }
+  return { role: 'ucm', skill: bestBy(ucms).skill };
 }
 
 export interface TradeResolutionDeps {

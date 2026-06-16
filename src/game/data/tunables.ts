@@ -351,6 +351,11 @@ export const TunablesSchema = z.object({
       // desks ALL below-floor discounts (M3 #290); below = the understaffed path
       // (a rare rate-gated slice escalates to the player, the rest walk).
       t_o_closing: z.number().min(0).max(100),
+      // Top UCM `condition_reading` skill at/above which the UCM auto-approves
+      // ALL escalated trades (M4 #291); below (or no UCM) = the unusual trade
+      // escalates to the player. The GM trumps this gate. The appraisal-advice
+      // side (#163 trade-confidence read) is free on hire and NOT gated here.
+      condition_reading: z.number().min(0).max(100),
     }),
   }),
   // Per-slot trade-acquisition policy (#172). `multiplier` scales the staff's
