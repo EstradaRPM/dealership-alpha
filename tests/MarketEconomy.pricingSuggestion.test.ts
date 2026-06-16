@@ -93,6 +93,83 @@ describe('resolveIntakeAsk (#285, spine S13)', () => {
   });
 });
 
+describe('resolveIntakeAsk execution drift (channel-desk M5 #292)', () => {
+  const base = { bookValue: 18000, marketPrice: 22000 };
+  const driftConfig = { maxDriftFraction: 0.2, skillReference: 90 };
+  const target = suggestListPrice(
+    { ...base, strategy: 'market' },
+    { config },
+  ).suggestedPrice;
+
+  // Average |ask − target| over a spread of seeds at a given UCM pricing skill.
+  const meanDeviation = (skill: number): number => {
+    let total = 0;
+    const n = 300;
+    for (let i = 0; i < n; i++) {
+      const ask = resolveIntakeAsk(
+        {
+          ...base,
+          strategy: 'market',
+          automationUnlocked: true,
+          drift: { ucmPricingSkill: skill, seed: 1000 + i, config: driftConfig },
+        },
+        { config },
+      );
+      total += Math.abs(ask - target);
+    }
+    return total / n;
+  };
+
+  test('drift is deterministic in (skill, seed)', () => {
+    const input = {
+      ...base,
+      strategy: 'market',
+      automationUnlocked: true,
+      drift: { ucmPricingSkill: 50, seed: 777, config: driftConfig },
+    } as const;
+    expect(resolveIntakeAsk(input, { config })).toBe(
+      resolveIntakeAsk(input, { config }),
+    );
+  });
+
+  test('higher skill → tighter adherence (smaller mis-price)', () => {
+    expect(meanDeviation(30)).toBeGreaterThan(meanDeviation(60));
+    expect(meanDeviation(60)).toBeGreaterThan(meanDeviation(85));
+  });
+
+  test('a UCM at/above skillReference nails the target exactly', () => {
+    const ask = resolveIntakeAsk(
+      {
+        ...base,
+        strategy: 'market',
+        automationUnlocked: true,
+        drift: { ucmPricingSkill: 90, seed: 5, config: driftConfig },
+      },
+      { config },
+    );
+    expect(ask).toBe(target);
+  });
+
+  test('never lists below the gross floor even with a sloppy desk', () => {
+    // Thin-margin unit: the suggestion is floored, so any downward drift must
+    // still clamp at the floor (the desk won't sell under cost-plus-target).
+    const thin = { bookValue: 20000, marketPrice: 20200 };
+    const floor = suggestListPrice({ ...thin, strategy: 'value' }, { config }).floor;
+    for (let i = 0; i < 200; i++) {
+      const ask = resolveIntakeAsk(
+        {
+          ...thin,
+          strategy: 'value',
+          automationUnlocked: true,
+          drift: { ucmPricingSkill: 0, seed: i, config: driftConfig },
+        },
+        { config },
+      );
+      expect(ask).toBeGreaterThanOrEqual(floor);
+    }
+  });
+});
+
 describe('classifyPricePosition', () => {
   const market = 20000;
 

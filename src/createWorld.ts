@@ -461,7 +461,9 @@ export function createWorld(deps: {
   // UCM's `pricing` skill clearing this threshold — not mere UCM presence (#285).
   // Loaded once; the lazy pricingPolicyFn closure reads the live roster each
   // acquisition. No magic number: the gate lives in tunables.
-  const managerGateThresholds = loadTunables().managerGates.actThresholds;
+  const managerGates = loadTunables().managerGates;
+  const managerGateThresholds = managerGates.actThresholds;
+  const executionDrift = managerGates.executionDrift;
   const autoPriceThreshold = managerGateThresholds.pricing;
   const inventory = createInventory({
     bus,
@@ -502,11 +504,28 @@ export function createWorld(deps: {
         topUcmPricingSkill,
         autoPriceThreshold,
       );
+      // M5 (#292): once the desk can auto-price, the UCM aims at the strategy's
+      // suggested target; its `pricing` skill governs the gap. A green-but-gated
+      // UCM mis-prices the unit off the target (two-sided scatter), a sharp one
+      // nails it. Seed per-(vehicle, day) so a #122 mid-day resume reproduces the
+      // same ask. Only the unlocked branch reads `drift` (skill is non-null there).
+      const drift =
+        automationUnlocked && topUcmPricingSkill != null
+          ? {
+              ucmPricingSkill: topUcmPricingSkill,
+              seed: deriveSeed(masterSeed, 'pricing_intake_drift', {
+                vehicleId: v.id,
+                day: clock.currentDay,
+              }),
+              config: executionDrift.pricing,
+            }
+          : undefined;
       return resolveIntakeAsk({
         bookValue: marketEconomy.bookValueFn(priced),
         marketPrice: marketEconomy.marketPriceFn(priced),
         strategy: getPricingStrategy?.() ?? '',
         automationUnlocked,
+        drift,
       });
     },
   });
@@ -959,6 +978,33 @@ export function createWorld(deps: {
             topUcmClosingSkill,
             managerGateThresholds.t_o_closing,
           );
+        },
+        // #292 (channel-desk M5): once the desk acts on a below-floor up, the
+        // UCM's `t_o_closing` skill governs how far its counter drifts off the
+        // salesperson's hold (toward worse). Same roster distillation as the gate
+        // above; null (no UCM) ⇒ no drift. The seed is derived inside StaffDispatch.
+        getDeskingDrift: () => {
+          const ucmClosingSkills = staffOrg.currentRoster
+            .filter((s) => s.role_id === 'used-car-manager')
+            .map((s) => s.skills['t_o_closing'] ?? 0);
+          if (ucmClosingSkills.length === 0) return null;
+          return {
+            ucmClosingSkill: Math.max(...ucmClosingSkills),
+            config: executionDrift.t_o_closing,
+          };
+        },
+        // #292 (channel-desk M5): the UCM's `condition_reading` skill governs how
+        // loosely the appraisal target drifts off the M4 monotonic-margin baseline
+        // (toward worse). null (no UCM) ⇒ no drift. Seed derived in StaffDispatch.
+        getTradeAllowanceDrift: () => {
+          const ucmReadingSkills = staffOrg.currentRoster
+            .filter((s) => s.role_id === 'used-car-manager')
+            .map((s) => s.skills['condition_reading'] ?? 0);
+          if (ucmReadingSkills.length === 0) return null;
+          return {
+            conditionReadingSkill: Math.max(...ucmReadingSkills),
+            config: executionDrift.condition_reading,
+          };
         },
       }),
       createServiceFloorDrain({

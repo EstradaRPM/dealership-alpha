@@ -59,6 +59,7 @@ export type {
   SuggestListPriceInput,
   SuggestListPriceResult,
   IntakeAskInput,
+  IntakeAskDrift,
   PricingSuggestionDeps,
   ComparableCompetitorInput,
   CompetitorComp,

@@ -386,6 +386,12 @@
       "pricing": 60,
       "t_o_closing": 60,
       "condition_reading": 60
+    },
+    "executionDrift": {
+      "_doc": "Execution-fidelity drift (M5 #292, docs/planning/manager-roles-channel-desk.md §4). Above an act gate the UCM aims at the player's setpoint; skill governs the gap (skill = fidelity + success). deficit = clamp01(1 - skill/skillReference); the drift fraction fills [0, deficit*maxDriftFraction) (signed two-sided for pricing mis-pricing, one-sided-worse for desking/trade), scaled by NPC.skillDriftFraction/signedSkillDrift and deterministic in (skill, seed). A green-but-gated UCM (~60) drifts noticeably; a seasoned one (skillReference ~90) holds tight. Placeholder magnitudes — calibrated in the S14 pass (#286).",
+      "pricing": { "maxDriftFraction": 0.08, "skillReference": 90 },
+      "t_o_closing": { "maxDriftFraction": 0.25, "skillReference": 90 },
+      "condition_reading": { "maxDriftFraction": 0.1, "skillReference": 90 }
     }
   },
   "tradePolicy": {

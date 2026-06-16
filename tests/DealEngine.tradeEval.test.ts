@@ -219,3 +219,53 @@ describe('evaluateTrade — trade policy multiplier', () => {
     expect(r.action).not.toBe('accept');
   });
 });
+
+describe('evaluateTrade — allowance execution drift (channel-desk M5 #292)', () => {
+  const driftConfig = { maxDriftFraction: 0.2, skillReference: 90 };
+  // A far-above ask so the exposed target is a real figure at every tier.
+  const ASK = BOOK * 3;
+
+  const targetWithDrift = (skill: number, seed: number): number =>
+    evaluateTrade(
+      {
+        currentVehicle: CV,
+        allowanceAsk: ASK,
+        skill: STRONG,
+        // Honest read isolates the drift from the M4 generosity baseline (which
+        // is 0 at confidence 1, so target == book before drift).
+        conditionRead: HONEST_READ,
+        allowanceDrift: { conditionReadingSkill: skill, seed, config: driftConfig },
+      },
+      { bookValueFn: constBook },
+    ).target;
+
+  it('is deterministic in (skill, seed)', () => {
+    expect(targetWithDrift(50, 321)).toBe(targetWithDrift(50, 321));
+  });
+
+  it('loosens the target ABOVE the M4 baseline (toward worse) for a weak UCM', () => {
+    // Baseline at honest read = book; drift only loosens it upward.
+    const baseline = evalAsk(ASK, STRONG, HONEST_READ).target;
+    expect(baseline).toBe(BOOK);
+    // Average across seeds: a green UCM's target sits above the baseline.
+    let total = 0;
+    const n = 200;
+    for (let i = 0; i < n; i++) total += targetWithDrift(20, i);
+    expect(total / n).toBeGreaterThan(baseline);
+  });
+
+  it('higher condition_reading → tighter target (closer to the M4 baseline)', () => {
+    const meanTarget = (skill: number): number => {
+      let total = 0;
+      const n = 200;
+      for (let i = 0; i < n; i++) total += targetWithDrift(skill, i);
+      return total / n;
+    };
+    expect(meanTarget(30)).toBeGreaterThan(meanTarget(60));
+    expect(meanTarget(60)).toBeGreaterThan(meanTarget(85));
+  });
+
+  it('a UCM at/above skillReference holds exactly at the M4 baseline (no drift)', () => {
+    expect(targetWithDrift(90, 1)).toBe(BOOK);
+  });
+});

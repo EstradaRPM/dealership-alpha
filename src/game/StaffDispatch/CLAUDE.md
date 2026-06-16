@@ -121,7 +121,17 @@ composition-root handoff for held discount decisions),
 composition root distills the top UCM `t_o_closing` skill vs
 `tunables.managerGates.actThresholds.t_o_closing` via `isDiscountDeskingUnlocked`
 and returns the boolean live off the roster; omitted ⇒ locked ⇒ the understaffed
-path).
+path), `getDeskingDrift` (#292 — channel-desk M5; once the desk acts, the top UCM
+`t_o_closing` skill + `managerGates.executionDrift.t_o_closing` config drive a
+seeded weakening of the desked counter off the salesperson's hold toward the
+customer's target — thinner gross, toward worse; omitted/`null` ⇒ no drift, the
+desk holds at the salesperson's counter), `getTradeAllowanceDrift` (#292 —
+channel-desk M5; the top UCM `condition_reading` skill +
+`managerGates.executionDrift.condition_reading` config loosen the appraisal target
+off the M4 monotonic-margin baseline via `resolveTradeIn`'s `allowanceDrift`;
+omitted/`null` ⇒ no drift). Both drift getters return the skill+config off the
+live roster; StaffDispatch derives the per-(customer, day) seed so they're
+replay-safe (#122).
 
 ### Known gaps
 Cash buyers don't carry a stamped behavioral `cashSpendFraction` on the

@@ -62,13 +62,23 @@ Design record: issue **#182** (locked). Read that before working any slice.
     (`book × (1 + targetMarkupPct)`) is the minimum, so even a Value posture
     never lists below cost-plus-target. Unknown strategy id falls back to the
     config default.
-  - `resolveIntakeAsk({ bookValue, marketPrice, strategy, automationUnlocked },
-    deps?)` → the default `askingPrice` stamped at intake (#285, spine S13).
-    `automationUnlocked` (a UCM on staff) ⇒ `suggestListPrice(...).suggestedPrice`
+  - `resolveIntakeAsk({ bookValue, marketPrice, strategy, automationUnlocked,
+    drift? }, deps?)` → the default `askingPrice` stamped at intake (#285, spine
+    S13). `automationUnlocked` (a UCM on staff) ⇒ `suggestListPrice(...).suggestedPrice`
     (the strategy's book↔market target); locked ⇒ `round(marketPrice)`
     (suggestion-only — the toggle doesn't move the default ask). Pure. The
     composition root resolves the inputs (live providers + roster gate) and wires
     it through `Inventory.pricingPolicyFn`.
+    - **Execution drift (channel-desk M5, #292):** when unlocked and `drift`
+      (`IntakeAskDrift = { ucmPricingSkill, seed, config }`) is supplied, the
+      realized ask scatters off the suggested target by `NPC.signedSkillDrift`
+      (two-sided mis-price — too high sits, too low leaves money), clamped at the
+      gross floor (a sloppy desk still won't list under cost-plus-target). A green
+      UCM mis-prices, a sharp one (≥ `skillReference`) nails the target. Omit
+      `drift` ⇒ exactly the target (legacy/tests). The composition root seeds it
+      per-(vehicle, day) ⇒ replay-safe. `config` = `managerGates.executionDrift.pricing`.
+      This is the *act*-side precision sibling to the *advise*-side
+      `resolveIntelPrecision` (S12) — both read the top UCM `pricing` skill.
   - `isAutoPricingUnlocked(ucmPricingSkill, threshold)` → boolean (#289,
     channel-desk M2). Whether the standing policy's `automationUnlocked` is on:
     `ucmPricingSkill != null && ucmPricingSkill >= threshold`. Reframes #285's

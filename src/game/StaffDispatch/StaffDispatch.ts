@@ -13,7 +13,8 @@ import type {
   TradeReviewPayload,
 } from '../DealEngine';
 import { resolveTradeIn, rollCustomerCounterResponse } from '../DealEngine';
-import type { Person, Visit } from '../NPC';
+import type { Person, Visit, SkillDriftConfig } from '../NPC';
+import { skillDriftFraction } from '../NPC';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import { loadStaffDispatchConfig, type StaffDispatchConfig } from './staffDispatchData';
 import {
@@ -135,6 +136,36 @@ export interface StaffDispatchDeps {
    * harnesses without the getter take the understaffed path).
    */
   getDiscountDeskingUnlocked?: () => boolean;
+  /**
+   * Discount-desking execution-fidelity drift (channel-desk M5, #292). When the
+   * desk acts on a below-floor up (gate unlocked) the UCM *aims* at the
+   * salesperson's hold; its `t_o_closing` skill governs the gap. The realized
+   * desk counter weakens off that hold toward the customer's target (a thinner
+   * gross — always toward worse), scaled by `skillDriftFraction`. The
+   * composition root supplies the top UCM `t_o_closing` skill + the
+   * `managerGates.executionDrift.t_o_closing` config; StaffDispatch derives the
+   * per-(customer, day) seed so it's replay-safe (#122). Omitted/`null` ⇒ no
+   * drift (the desk holds exactly at the salesperson's counter — the pre-M5
+   * behavior; legacy/test harnesses).
+   */
+  getDeskingDrift?: () => {
+    readonly ucmClosingSkill: number;
+    readonly config: SkillDriftConfig;
+  } | null;
+  /**
+   * Trade-allowance execution-fidelity drift (channel-desk M5, #292). The UCM's
+   * `condition_reading` skill governs how loosely the appraisal target drifts
+   * off the M4 monotonic-margin baseline (a looser over-allowance → thinner
+   * margin, always toward worse). The composition root supplies the top UCM
+   * `condition_reading` skill + the `managerGates.executionDrift.condition_reading`
+   * config; StaffDispatch derives the per-(customer, day) seed and threads the
+   * result into `resolveTradeIn`. Omitted/`null` ⇒ no drift (the target sits at
+   * the M4 baseline — legacy/test harnesses).
+   */
+  getTradeAllowanceDrift?: () => {
+    readonly conditionReadingSkill: number;
+    readonly config: SkillDriftConfig;
+  } | null;
 }
 
 // Intentionally empty — dispatch is fully autonomous.
@@ -529,6 +560,20 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         deps.tradeBookValueFn
       ) {
         const tradeConditionRead = deps.getTradeConditionRead?.() ?? null;
+        // M5 (#292): the UCM's condition_reading skill loosens the appraisal
+        // target off the M4 baseline (toward worse). Seeded per (customer, day)
+        // ⇒ replay-safe; omitted getter ⇒ no drift (the M4 baseline).
+        const allowanceDriftRead = deps.getTradeAllowanceDrift?.() ?? null;
+        const allowanceDrift = allowanceDriftRead
+          ? {
+              conditionReadingSkill: allowanceDriftRead.conditionReadingSkill,
+              seed: deriveSeed(masterSeed, 'trade_allowance_drift', {
+                customerId,
+                day,
+              }),
+              config: allowanceDriftRead.config,
+            }
+          : undefined;
         const tradeRes = resolveTradeIn(
           {
             currentVehicle: person.currentVehicle,
@@ -536,6 +581,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             allowanceAsk: visit.allowanceAsk,
             skill: { effectiveness, trustworthiness },
             conditionRead: tradeConditionRead,
+            allowanceDrift,
           },
           {
             bookValueFn: deps.tradeBookValueFn,
@@ -734,8 +780,25 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         // salesperson's counter (down to cost) and closes it; never frequency-
         // gated. Omitted getter ⇒ locked (legacy/test harness ⇒ understaffed).
         if (deps.getDiscountDeskingUnlocked?.() ?? false) {
+          // M5 (#292): the desk aims at the salesperson's hold; the UCM's
+          // `t_o_closing` skill governs the gap. A green-but-gated desk concedes
+          // off the hold toward the customer's target (a weaker counter → thinner
+          // gross, always toward worse); a sharp desk holds tight. Seeded per
+          // (customer, day) ⇒ replay-safe. No drift getter ⇒ hold at the counter.
+          const drift = deps.getDeskingDrift?.();
+          let deskCounter = review.salespersonCounter;
+          if (drift) {
+            const give = skillDriftFraction(
+              drift.ucmClosingSkill,
+              deriveSeed(masterSeed, 'discount_desking_drift', { customerId, day }),
+              drift.config,
+            );
+            deskCounter =
+              review.salespersonCounter -
+              give * (review.salespersonCounter - review.customerTargetPrice);
+          }
           return resolveTradeThenClose(
-            Math.max(review.minimumAcceptablePrice, review.salespersonCounter),
+            Math.max(review.minimumAcceptablePrice, Math.round(deskCounter)),
           );
         }
 

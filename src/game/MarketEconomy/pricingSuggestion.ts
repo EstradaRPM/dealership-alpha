@@ -2,6 +2,7 @@ import {
   loadPricingStrategiesConfig,
   type PricingStrategiesConfig,
 } from './schemas';
+import { signedSkillDrift, type SkillDriftConfig } from '../NPC';
 
 /**
  * Pricing-suggestion engine (#154, folded into #175).
@@ -80,6 +81,23 @@ export function suggestListPrice(
   };
 }
 
+/**
+ * Execution-fidelity drift inputs for the auto-priced intake ask (channel-desk
+ * M5, #292). When the standing policy is unlocked the UCM *aims* at the
+ * strategy's suggested target; skill governs the gap. A green-but-gated UCM
+ * mis-prices off the target (two-sided scatter — too high sits, too low leaves
+ * money); a sharp UCM nails it. Omit (legacy/tests) ⇒ the ask sits exactly at
+ * the suggested target (no drift). Deterministic in `(ucmPricingSkill, seed)`.
+ */
+export interface IntakeAskDrift {
+  /** Top UCM `pricing` skill (0–100) — drives the drift span. */
+  readonly ucmPricingSkill: number;
+  /** Per-(vehicle, day) seed the composition root derives — replay-safe (#122). */
+  readonly seed: number;
+  /** `managerGates.executionDrift.pricing`. */
+  readonly config: SkillDriftConfig;
+}
+
 export interface IntakeAskInput extends SuggestListPriceInput {
   /**
    * True once the standing auto-pricing policy is unlocked (Pricing/Demand
@@ -88,6 +106,11 @@ export interface IntakeAskInput extends SuggestListPriceInput {
    * suggestion-only and intake sits at the honest market suggestion.
    */
   readonly automationUnlocked: boolean;
+  /**
+   * Execution-fidelity drift on the auto-priced target (M5, #292). Applied only
+   * on the unlocked path; omit ⇒ the ask sits exactly at the suggested target.
+   */
+  readonly drift?: IntakeAskDrift;
 }
 
 /**
@@ -98,6 +121,11 @@ export interface IntakeAskInput extends SuggestListPriceInput {
  * gate the toggle is suggestion-only, so the default ask sits at the honest
  * market suggestion (the pre-S13 behavior) and the player prices by hand.
  *
+ * Execution-fidelity drift (M5, #292): when unlocked and `drift` is supplied the
+ * realized ask scatters off the suggested target by a skill-scaled, seeded
+ * fraction (`signedSkillDrift`), clamped at the gross floor — a green UCM
+ * mis-prices, a sharp one nails the target. Omit `drift` ⇒ exactly the target.
+ *
  * Pure, deterministic — the composition root resolves `bookValue`/`marketPrice`
  * from the live providers and the unlock gate from the roster, then this turns
  * those into the one number Inventory stamps.
@@ -107,7 +135,16 @@ export function resolveIntakeAsk(
   deps?: PricingSuggestionDeps,
 ): number {
   if (!input.automationUnlocked) return Math.round(input.marketPrice);
-  return suggestListPrice(input, deps).suggestedPrice;
+  const suggestion = suggestListPrice(input, deps);
+  if (!input.drift) return suggestion.suggestedPrice;
+  // M5 (#292): the UCM aims at the suggested target; skill governs the gap. The
+  // realized ask scatters off it (two-sided mis-price), but never below the
+  // gross floor — a sloppy desk still won't list under cost-plus-target.
+  const { ucmPricingSkill, seed, config } = input.drift;
+  const drifted =
+    suggestion.suggestedPrice *
+    (1 + signedSkillDrift(ucmPricingSkill, seed, config));
+  return Math.max(suggestion.floor, Math.round(drifted));
 }
 
 /**

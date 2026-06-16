@@ -58,6 +58,9 @@ export type {
 export type { TradeIncidenceConfig } from './schemas/trade-incidence';
 export { TradeIncidenceConfigSchema } from './schemas/trade-incidence';
 
+export { skillDriftFraction, signedSkillDrift } from './SkillDrift';
+export type { SkillDriftConfig } from './SkillDrift';
+
 export { loadPersonArchetypes, loadVisitArchetypes } from './CustomerArchetypes';
 
 export { loadCustomerTunables } from './CustomerTunables';

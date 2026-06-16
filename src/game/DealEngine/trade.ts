@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createRng } from '../NPC/Rng';
-import type { CurrentVehicle } from '../NPC';
+import { skillDriftFraction } from '../NPC';
+import type { CurrentVehicle, SkillDriftConfig } from '../NPC';
 import { parseData, loadTunables } from '../data';
 
 /**
@@ -250,6 +251,25 @@ export interface TradeEvaluation {
   readonly rationale: string;
 }
 
+/**
+ * Execution-fidelity drift on the appraisal target (channel-desk M5, #292).
+ * Above the trade act gate the UCM *aims* at honest book (tightened by the M4
+ * monotonic margin); its `condition_reading` skill governs the gap. A
+ * green-but-gated UCM lets the allowance target drift looser (a fatter
+ * over-allowance → thinner margin, always toward worse); a sharp one holds tight.
+ * Sits ON TOP of the M4 generosity baseline (unified — both key on
+ * `condition_reading` and both loosen when worse). Omit ⇒ no drift (legacy/tests).
+ * Deterministic in `(conditionReadingSkill, seed)`.
+ */
+export interface TradeAllowanceDrift {
+  /** Top UCM `condition_reading` skill (0–100) — drives the drift span. */
+  readonly conditionReadingSkill: number;
+  /** Per-(customer, day) seed the composition root derives — replay-safe (#122). */
+  readonly seed: number;
+  /** `managerGates.executionDrift.condition_reading`. */
+  readonly config: SkillDriftConfig;
+}
+
 export interface TradeEvalInput {
   readonly currentVehicle: CurrentVehicle;
   /** What the customer wants for the trade (`generateTradeAsk` output). */
@@ -258,6 +278,11 @@ export interface TradeEvalInput {
   readonly skill: NegotiationSkill;
   /** UCM condition read on the trade, or `null` when no UCM is on staff. */
   readonly conditionRead: TradeConditionRead | null;
+  /**
+   * Execution-fidelity drift on the allowance target (M5, #292). Omit ⇒ no
+   * drift — the target sits at the M4 monotonic-margin baseline.
+   */
+  readonly allowanceDrift?: TradeAllowanceDrift;
 }
 
 export interface TradeEvalDeps {
@@ -306,7 +331,8 @@ export function evaluateTrade(
 ): TradeEvaluation {
   const cfg = deps.config ?? loadTradeEvalConfig();
   const policyMultiplier = deps.policyMultiplier ?? 1.0;
-  const { currentVehicle, allowanceAsk, skill, conditionRead } = input;
+  const { currentVehicle, allowanceAsk, skill, conditionRead, allowanceDrift } =
+    input;
 
   const book = deps.bookValueFn(currentVehicle);
   const confidence = conditionRead?.confidence ?? 0;
@@ -314,7 +340,19 @@ export function evaluateTrade(
   // ABOVE book to avoid blowing the deal (generous → thin margin); a sharp UCM
   // tightens it down toward honest book (better margin). Monotonic in skill,
   // no UCM (confidence 0) = the most generous allowance = the margin floor.
-  const generosityFactor = 1 + (1 - confidence) * cfg.appraisalGenerosityPremium;
+  // M5 (#292): the UCM's execution fidelity adds a skill-scaled, seeded loosening
+  // ON TOP of that baseline — a green-but-gated desk lets the target drift looser
+  // still (toward worse); a sharp one holds at the M4 baseline. Unified: both
+  // key on `condition_reading` and both loosen when worse.
+  const driftLoosening = allowanceDrift
+    ? skillDriftFraction(
+        allowanceDrift.conditionReadingSkill,
+        allowanceDrift.seed,
+        allowanceDrift.config,
+      )
+    : 0;
+  const generosityFactor =
+    1 + (1 - confidence) * cfg.appraisalGenerosityPremium + driftLoosening;
   const target = book * policyMultiplier * generosityFactor;
 
   const dollars = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
@@ -377,6 +415,12 @@ export interface TradeResolutionInput {
   readonly skill: NegotiationSkill;
   /** UCM condition read on the trade, or `null` when no UCM is on staff. */
   readonly conditionRead: TradeConditionRead | null;
+  /**
+   * Execution-fidelity drift on the allowance target (M5, #292). Passed through
+   * to both the salesperson and manager `evaluateTrade` passes (it's an appraisal
+   * property, not a negotiator one). Omit ⇒ no drift.
+   */
+  readonly allowanceDrift?: TradeAllowanceDrift;
 }
 
 /**
@@ -610,12 +654,18 @@ export function resolveTradeIn(
 ): TradeResolution {
   const cfg = deps.config ?? loadTradeEvalConfig();
   const policyMultiplier = deps.policyMultiplier ?? 1.0;
-  const { currentVehicle, allowanceAsk, skill, conditionRead, loanPayoff } =
-    input;
+  const {
+    currentVehicle,
+    allowanceAsk,
+    skill,
+    conditionRead,
+    loanPayoff,
+    allowanceDrift,
+  } = input;
   const payoff = loanPayoff ?? 0;
 
   const evaluation = evaluateTrade(
-    { currentVehicle, allowanceAsk, skill, conditionRead },
+    { currentVehicle, allowanceAsk, skill, conditionRead, allowanceDrift },
     { bookValueFn: deps.bookValueFn, policyMultiplier, config: cfg },
   );
 
@@ -656,7 +706,13 @@ export function resolveTradeIn(
   if (approver && !forcePlayer) {
     // Manager re-decides with the extended counter range + their own skill.
     const managerEval = evaluateTrade(
-      { currentVehicle, allowanceAsk, skill: approver.skill, conditionRead },
+      {
+        currentVehicle,
+        allowanceAsk,
+        skill: approver.skill,
+        conditionRead,
+        allowanceDrift,
+      },
       {
         bookValueFn: deps.bookValueFn,
         policyMultiplier,

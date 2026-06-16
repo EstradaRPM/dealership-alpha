@@ -12,6 +12,18 @@ const WeatherSeasonSchema = z
   })
   .strict();
 
+// Per-capability execution-fidelity drift tuning (M5 #292). Structurally the
+// `SkillDriftConfig` consumed by `NPC.skillDriftFraction`/`signedSkillDrift`
+// (defined locally — the data module must not import a game module: that would
+// cycle through NPC → data). `maxDriftFraction` is the drift as skill → 0;
+// `skillReference` is the skill at which drift floors out.
+const SkillDriftConfigSchema = z
+  .object({
+    maxDriftFraction: z.number().min(0),
+    skillReference: z.number().positive().max(100),
+  })
+  .strict();
+
 export const TunablesSchema = z.object({
   schemaVersion: z.literal(1),
   clock: z.object({
@@ -356,6 +368,27 @@ export const TunablesSchema = z.object({
       // escalates to the player. The GM trumps this gate. The appraisal-advice
       // side (#163 trade-confidence read) is free on hire and NOT gated here.
       condition_reading: z.number().min(0).max(100),
+    }),
+    // Execution-fidelity drift (M5 #292, manager-roles-channel-desk.md §4). Above
+    // an act gate the UCM aims at the player's setpoint; skill governs the gap.
+    // Per-capability `{ maxDriftFraction (drift as skill→0), skillReference
+    // (skill at which drift floors out) }`, scaled deterministically by
+    // `NPC.skillDriftFraction`/`signedSkillDrift`. Always drift toward worse
+    // (looser allowances / weaker counters / mis-priced units), never ignoring
+    // the player. Magnitudes are placeholders pending the S14 calibration pass.
+    executionDrift: z.object({
+      // Auto-pricing target adherence: the realized intake ask scatters off the
+      // strategy's suggested target (two-sided mis-price), clamped at the gross
+      // floor. Keyed on the top UCM `pricing` skill.
+      pricing: SkillDriftConfigSchema,
+      // Discount-desking counter quality: the UCM-desked counter weakens off the
+      // salesperson's hold toward the customer's target (one-sided, thinner
+      // gross), floored at vehicle cost. Keyed on the top UCM `t_o_closing` skill.
+      t_o_closing: SkillDriftConfigSchema,
+      // Trade allowance tightness: the appraisal target loosens above the M4
+      // monotonic margin (one-sided, looser allowance). Keyed on the top UCM
+      // `condition_reading` skill.
+      condition_reading: SkillDriftConfigSchema,
     }),
   }),
   // Per-slot trade-acquisition policy (#172). `multiplier` scales the staff's

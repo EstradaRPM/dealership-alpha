@@ -30,6 +30,7 @@ export type {
   TradeAction,
   NegotiationSkill,
   TradeConditionRead,
+  TradeAllowanceDrift,
   TradeResolution,
   TradeResolutionInput,
   TradeResolutionDeps,

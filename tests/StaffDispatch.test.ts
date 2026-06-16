@@ -290,6 +290,8 @@ function setup(
     wantVectorBias?: StaffDispatchDeps['wantVectorBias'];
     attributeLeanForDay?: StaffDispatchDeps['attributeLeanForDay'];
     getDiscountDeskingUnlocked?: StaffDispatchDeps['getDiscountDeskingUnlocked'];
+    getDeskingDrift?: StaffDispatchDeps['getDeskingDrift'];
+    getTradeAllowanceDrift?: StaffDispatchDeps['getTradeAllowanceDrift'];
   } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
@@ -361,6 +363,9 @@ function setup(
     // #290 (channel-desk M3): discount-desking gate. Omitted ⇒ locked (the
     // understaffed path); the cliff tests pass a getter to exercise both sides.
     getDiscountDeskingUnlocked: opts.getDiscountDeskingUnlocked,
+    // #292 (channel-desk M5): execution-fidelity drift getters.
+    getDeskingDrift: opts.getDeskingDrift,
+    getTradeAllowanceDrift: opts.getTradeAllowanceDrift,
   });
 
   return {
@@ -654,6 +659,54 @@ describe('StaffDispatch — discount escalation (#222)', () => {
     expect(w.discountEscalations).toHaveLength(1);
     expect(w.heldDiscountReviews).toHaveLength(1);
     expect(w.closedDeals).toHaveLength(0);
+  });
+
+  // Channel-desk M5 (#292): once the desk acts, the UCM's `t_o_closing` skill
+  // governs how far its counter drifts off the salesperson's hold toward the
+  // customer's target (a weaker counter → thinner gross, always toward worse).
+  it('desking drift weakens a green UCM counter below the salesperson hold', () => {
+    const driftConfig = { maxDriftFraction: 0.4, skillReference: 90 };
+    const makeDeskWorld = (getDeskingDrift?: () => { ucmClosingSkill: number; config: typeof driftConfig } | null) =>
+      setup(
+        [
+          makeStaff(0.9, 'staff:sales'),
+          makeStaff(1.0, 'staff:used-car-manager', 'used-car-manager', {
+            t_o_closing: 75,
+          }),
+        ],
+        BASE_CONFIG,
+        {
+          salesProcessDeps: discountDeps,
+          getDiscountDeskingUnlocked: () => true,
+          getDeskingDrift,
+        },
+      );
+
+    // No drift: the desk holds exactly at the salesperson's counter (clamped).
+    const wHold = makeDeskWorld(undefined);
+    wHold.sessions.set(
+      'cust:desk-hold',
+      makeSession('cust:desk-hold', makeFinanceVisit('cust:desk-hold'), {
+        wealth: 15_000,
+        agreeableness: 100,
+      }),
+    );
+    admit(wHold.bus, 'cust:desk-hold');
+    expect(wHold.closedDeals).toHaveLength(1);
+    const holdPrice = wHold.closedDeals[0].agreedPrice;
+
+    // Green UCM with drift: the realized desk counter sits BELOW the hold (worse).
+    const wDrift = makeDeskWorld(() => ({ ucmClosingSkill: 0, config: driftConfig }));
+    wDrift.sessions.set(
+      'cust:desk-hold',
+      makeSession('cust:desk-hold', makeFinanceVisit('cust:desk-hold'), {
+        wealth: 15_000,
+        agreeableness: 100,
+      }),
+    );
+    admit(wDrift.bus, 'cust:desk-hold');
+    expect(wDrift.closedDeals).toHaveLength(1);
+    expect(wDrift.closedDeals[0].agreedPrice).toBeLessThan(holdPrice);
   });
 
   it('player decline records discount_player_declined, distinct from no_close', () => {
