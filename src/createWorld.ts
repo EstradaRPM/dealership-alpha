@@ -25,7 +25,11 @@ import {
   type CustomerPool,
 } from './game/CustomerPool';
 import { createEconomy, type Economy } from './game/Economy';
-import { createInventory, type Inventory } from './game/Inventory';
+import {
+  createInventory,
+  generateStartingInventory,
+  type Inventory,
+} from './game/Inventory';
 import { loadTunables } from './game/data';
 import { computeDemandFactor } from './computeDemandFactor';
 import { computePricingTrafficMultiplier } from './computePricingTrafficMultiplier';
@@ -602,6 +606,23 @@ export function createWorld(deps: {
         drift,
       });
     },
+    // #296: seed the day-one frontline lot (1 SUV / 1 truck / 1 sedan,
+    // value-banded, condition-capped, recon-complete, frontline-ready). Owned at
+    // t=0 — no cash debit, no purchase event. Cost basis = the live book value;
+    // the default ask = the live market retail (suggestion-only at game start —
+    // no UCM to auto-price yet). The composition root adapts MarketEconomy's live
+    // providers at this boundary (same documented runtime cast as `marketPriceFn`
+    // above) so Inventory stays MarketEconomy-decoupled. Deterministic from
+    // `masterSeed` (#122) and persisted via the inventory snapshot; on a restore
+    // the persisted lot overwrites it.
+    startingInventory: () =>
+      generateStartingInventory({
+        masterSeed,
+        bookValueFn: (v) =>
+          marketEconomy.bookValueFn(v as unknown as PricedVehicleInput),
+        retailValueFn: (v) =>
+          marketEconomy.marketPriceFn(v as unknown as PricedVehicleInput),
+      }),
   });
   // #271: getCurrentDay feeds the lemon-law exposure emit (selling an
   // un-reconditioned hidden lemon → `regulatory:lemon_law_incident`), the live

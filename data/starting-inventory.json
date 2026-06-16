@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "_doc": "#296 day-one frontline seed. Three fixed body-type slots (1 SUV / 1 truck / 1 sedan) so the player can match some walk-in from minute one. Each slot draws a value-banded template from its category — `candidateTrials` deterministic draws (template x condition x year x mileage), the first whose live retail lands in [targetRetail*(1-tolerancePct), targetRetail*(1+tolerancePct)] wins (closest-to-target if none land in band) — so total starting equity barely moves between saves. Condition is capped to clean/average (never rough) and units ship recon-complete: no hidden-lemon tail in the starter set. Only make/year/mileage vary for flavor.",
+  "candidateTrials": 32,
+  "slots": [
+    {
+      "category": "suv",
+      "targetRetail": 15000,
+      "tolerancePct": 0.18,
+      "allowedConditions": ["clean", "average"]
+    },
+    {
+      "category": "truck",
+      "targetRetail": 18000,
+      "tolerancePct": 0.18,
+      "allowedConditions": ["clean", "average"]
+    },
+    {
+      "category": "sedan",
+      "targetRetail": 12000,
+      "tolerancePct": 0.18,
+      "allowedConditions": ["clean", "average"]
+    }
+  ]
+}

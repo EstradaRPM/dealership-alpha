@@ -17,3 +17,14 @@ export type {
   CarryingConfig,
 } from './inventoryConfig';
 export { computeDailyCarryingCost, floorplanAprForTier } from './carryingCost';
+export {
+  generateStartingInventory,
+  loadStartingInventoryConfig,
+} from './startingInventory';
+export type {
+  StartingInventoryConfig,
+  StartingSlot,
+  StartingInventorySpec,
+  SeedCandidateVehicle,
+  GenerateStartingInventoryDeps,
+} from './startingInventory';

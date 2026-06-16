@@ -18,6 +18,7 @@ import { loadVehicleData } from './vehicleData';
 import { loadInventoryConfig, type InventoryConfig } from './inventoryConfig';
 import { computeDailyCarryingCost, floorplanAprForTier } from './carryingCost';
 import type { VehicleData } from './vehicleData';
+import type { StartingInventorySpec } from './startingInventory';
 import type { AuctionListing, LotVehicle, TradeAcquisitionInput } from './types';
 
 /**
@@ -147,6 +148,19 @@ export interface InventoryDeps {
    * lives (Pillar 5: delegation is permission, not amputation).
    */
   autoSourceFn?: (listings: readonly AuctionListing[]) => readonly string[];
+  /**
+   * Day-one frontline seed (#296). Returns the opening-lot specs (1 SUV / 1
+   * truck / 1 sedan, value-banded, condition-capped) the lot is seeded with at
+   * construction — owned at t=0 (no cash debit, no purchase event), recon-complete
+   * and frontline-ready (`arrivalDay = frontlineDay = 0`, exempt from the #295
+   * acquired-unit hold). The composition root owns the generation (it adapts the
+   * live MarketEconomy book/retail providers) so Inventory stays decoupled. Called
+   * exactly once, synchronously, during construction. Omit (test harnesses) ⇒ an
+   * empty opening lot. On a restore the World is built (and seeded) first, then
+   * `restore()` overwrites the lot with the persisted set — the seed is harmless
+   * there and the persisted units (the same seed) take over.
+   */
+  startingInventory?: () => readonly StartingInventorySpec[];
   reconVariance?: ReconVarianceConfig;
   reconSurprises?: ReconSurpriseEventsConfig;
   auctionSourceReliability?: AuctionSourceReliability;
@@ -406,6 +420,50 @@ export function createInventory(deps: InventoryDeps): Inventory {
   }
 
   /**
+   * Build a recon-complete opening-stock unit from a seed spec (#296). Unlike
+   * `buildAcquiredVehicle` this rolls no hidden recon and posts no money: seed
+   * units are already-owned stock, recon-complete on arrival (no hidden-lemon
+   * tail in the starter set) and frontline-ready at open
+   * (`arrivalDay = frontlineDay = 0`, exempt from the #295 acquired-unit hold).
+   * The default ask sits at the live market retail the generator resolved (no
+   * UCM on staff at game start ⇒ suggestion-only, like any intake).
+   */
+  function buildSeedVehicle(spec: StartingInventorySpec): LotVehicle {
+    const reconDaysTotal =
+      reconVariance.reconDaysByCondition[spec.condition] ?? 5;
+    return {
+      id: spec.id,
+      templateId: spec.templateId,
+      brand: spec.brand,
+      year: spec.year,
+      make: spec.make,
+      model: spec.model,
+      trim: spec.trim,
+      mileage: spec.mileage,
+      condition: spec.condition,
+      conditionReport: spec.conditionReport,
+      purchasePrice: spec.purchasePrice,
+      // Recon is complete, so the full estimate is the sunk total.
+      reconCost: spec.reconEstimate,
+      category: spec.category,
+      arrivalDay: 0,
+      frontlineDay: 0,
+      daysInInventory: 0,
+      carryingCostToDate: 0,
+      dailyCarryingCost: 0,
+      aged: false,
+      suggestedRetail: spec.suggestedRetail,
+      askingPrice: spec.suggestedRetail,
+      reconStatus: 'complete',
+      reconEstimate: spec.reconEstimate,
+      reconRealizedCost: spec.reconEstimate,
+      reconDaysRemaining: 0,
+      reconDaysTotal,
+      reconBucket: 'within',
+    };
+  }
+
+  /**
    * Materialize a customer's accepted trade-in onto the lot (#171). Cost basis
    * is the agreed allowance and NO Economy expense is posted — the allowance is
    * already offset against the deal cash in the close structure (#169). The
@@ -564,6 +622,19 @@ export function createInventory(deps: InventoryDeps): Inventory {
       });
     }
     return updated;
+  }
+
+  // #296: seed the opening lot once, synchronously at construction. These are
+  // already-owned opening stock — no cash debit and no `inventory:vehicle_purchased`
+  // emit (which would record a bogus wholesale comp / cash delta). The demand
+  // influence reads the lot pull-based downstream, so no event is needed. On a
+  // restore the World is built (and seeded) first, then `restore()` clears + reloads
+  // the persisted lot — this seed is replaced there.
+  if (deps.startingInventory) {
+    for (const spec of deps.startingInventory()) {
+      const vehicle = buildSeedVehicle(spec);
+      lotVehicles.set(vehicle.id, vehicle);
+    }
   }
 
   bus.subscribe('clock:managerial_prep', ({ upcomingDay }) => {

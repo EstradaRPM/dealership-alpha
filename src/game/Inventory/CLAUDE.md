@@ -129,6 +129,40 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   `restore()` migrates pre-#295 saves by defaulting a missing `frontlineDay` to
   `arrivalDay` (those units were already sellable — never a retroactive hold).
 
+## Day-one frontline seed (#296)
+- New saves otherwise start with an **empty lot** and bootstrap entirely from the
+  auction board, so nothing is frontline-ready at open. The optional
+  `startingInventory: () => readonly StartingInventorySpec[]` dep seeds a small,
+  fair, frontline-ready opening lot at construction: **three fixed body-type slots
+  — 1 SUV / 1 truck / 1 sedan** — one unit on each axis of the demand heat-map, so
+  the player can match *some* walk-in from minute one.
+- Seed units are **already-owned opening stock**: inserted straight into
+  `lotVehicles` with **no cash debit and no `inventory:vehicle_purchased` emit**
+  (which would record a bogus wholesale comp / cash delta). `buildSeedVehicle`
+  builds them **recon-complete** (`reconStatus='complete'`, `reconCost =
+  reconEstimate`, `reconBucket='within'` — no hidden-lemon tail in the starter
+  set) and **frontline-ready** (`arrivalDay = frontlineDay = 0`, exempt from the
+  #295 acquired-unit hold so they're sellable at open). Default ask = the live
+  market retail (suggestion-only — no UCM on staff at game start).
+- The generation is pure + deterministic (`generateStartingInventory`,
+  `startingInventory.ts`): per slot it draws `candidateTrials` value-banded
+  candidates seeded from `masterSeed` and takes the first whose **live retail**
+  lands in the slot's band (`targetRetail ± tolerancePct`, closest-to-target if
+  none do), capping condition to `clean`/`average`. So total starting equity
+  barely moves between saves (no beater/jackpot trio); only make/year/mileage vary
+  for flavor. Cost basis = the live **book** value; the composition root adapts
+  MarketEconomy's `bookValueFn`/`marketPriceFn` at the boundary, so Inventory stays
+  MarketEconomy-decoupled. Config: `data/starting-inventory.json`.
+- Persistence: the seed units ride the `LotVehicle` spread in `snapshot()` like
+  any unit. On a **restore** the World is built (and seeded) first, then
+  `restore()` clears + reloads the persisted lot — the construction seed is
+  harmless there and the persisted units (the same seed) take over. Omit the dep
+  (test harnesses) ⇒ an empty opening lot.
+- NOTE: the cold-start `clock:managerial_prep` for Day 1 (DayLoopController) runs
+  the daily lot pass at world construction, so seed units show `daysInInventory=1`
+  and accrue one prep-day of floorplan carry before Day 1 is played — a
+  consequence of the spec's `arrivalDay=0`, not an acquisition debit.
+
 ## Recon process (#162)
 - Vehicles enter `reconStatus='in_progress'` on purchase. The auction-listed
   recon estimate is preserved as `reconEstimate`; the realized cost is rolled

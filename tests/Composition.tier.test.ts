@@ -38,9 +38,11 @@ describe('#79 composition root — CareerProgression tier-up over a run', () => 
     // Day 2): arrivalDay matches the upcoming day.
     const [listing] = listings;
     world.inventory.buyFromAuction(listing.id);
-    const lot = world.inventory.getLotVehicles();
-    expect(lot).toHaveLength(1);
-    expect(lot[0].arrivalDay).toBe(1);
+    // The lot opens with the #296 seed (1 SUV / truck / sedan at arrivalDay 0),
+    // so fetch the freshly-bought unit by id rather than assuming an empty lot.
+    const bought = world.inventory.getLotVehicle(listing.id);
+    expect(bought).toBeDefined();
+    expect(bought!.arrivalDay).toBe(1);
   });
 
   it('#250: advances Tier 1 → 2 off the live tier-gate month-verdict streak', () => {
@@ -301,8 +303,9 @@ describe('#272 composition root — CareerEndingsMonitor wired into the live wor
 
     // Real career-endings tunables: retire needs cash >= 750k AND careerYear >= 8.
     // careerYearFromDay uses DAYS_PER_YEAR (364): day 8*364 → careerYear 8.
-    // Start 50k → post 700k to clear the cash bar.
-    world.economy.postRevenue(700_000, 'test fixture');
+    // Post well clear of the bar (the #296 seed lot trims a few dollars of Day-1
+    // floorplan carry off the 50k start, so don't bank on an exact 50k).
+    world.economy.postRevenue(750_000, 'test fixture');
     const retireDay = 8 * 364;
 
     expect(world.careerEndingsMonitor.canRetire(retireDay)).toBe(true);

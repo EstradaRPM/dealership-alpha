@@ -42,7 +42,9 @@ describe('#273 askingPrice anchor — live createWorld intake', () => {
     );
 
     world.inventory.buyFromAuction(listing!.id);
-    const unit = world.inventory.getLotVehicles()[0];
+    // The lot is seeded with #296 opening stock, so the freshly-bought unit is
+    // not necessarily index 0 — fetch it by its listing id.
+    const unit = world.inventory.getLotVehicle(listing!.id);
     expect(unit).toBeDefined();
 
     expect(unit!.askingPrice).toBe(expectedAsk);
