@@ -6,9 +6,9 @@
 
 Premium, one-time-purchase, single-player mobile dealership-business simulation for iOS + Android. Day-cycle, decision-driven, sim-medium realism (real F&I products, real loan mechanics, real industry KPIs, A/B/C/D credit tiers, fictional OEM analogues). DMS-realism work UI + noir-illustrated narrative beats. Solo dev, niche audience.
 
-## v1 scope
+## Tier ladder & build frontier
 
-Tier 1 → 3 vertical slice: **gravel yard → paved lot → small showroom**. Tier 4 (franchise) and Tier 5 (multi-store) are post-launch updates. Single active career save + legacy wall of completed careers.
+The game spans the full tier ladder: **gravel yard → paved lot → small showroom → franchise → multi-store group**. Implementation builds tier by tier; the current frontier is **Tiers 1–3**. Higher tiers are **not-yet-built, not cut**. Single active career save + legacy wall of completed careers.
 
 ## Tier-aware failure paths
 
@@ -22,7 +22,7 @@ Surviving lower-tier failure modes is itself the progression reward. Failure out
 
 - React Native + Expo, TypeScript (strict).
 - Local SQLite via `expo-sqlite` (only `SaveStore` touches it).
-- No backend in v1; save layer designed for future cloud-sync bolt-on.
+- No backend currently; save layer designed for future cloud-sync bolt-on.
 - GitHub Actions CI: typecheck + tests on every push.
 - EAS Build for iOS/Android binaries. TestFlight + Google Internal Testing for dev distribution.
 
@@ -45,7 +45,7 @@ Original 12 from issue #1:
 | `SaveStore` | SQLite persistence, weekly rolling snapshots |
 | `EventBus` | Typed pub/sub (the only cross-module channel) |
 
-Added during v1 slice (see each module's `CLAUDE.md`): `CapacityManager`, `FollowUpPool`, `NPC`, `ServiceQueue`, `ServiceDispatch`, `StaffDispatch`, `StaffMorale`, plus `data/` loader.
+Added during implementation (see each module's `CLAUDE.md`): `CapacityManager`, `FollowUpPool`, `NPC`, `ServiceQueue`, `ServiceDispatch`, `StaffDispatch`, `StaffMorale`, plus `data/` loader.
 
 Read the per-module `src/game/<Name>/CLAUDE.md` for public API, events, and data files. The canonical event catalog is `src/game/EventBus/events.ts`.
 
@@ -78,7 +78,7 @@ Roles use real industry titles (Salesperson, Service Advisor, F&I Manager, Sales
 
 ## F&I & financing
 
-v1 starts trimmed: **VSC + GAP** only. More products (T&W, ETCH, prepaid maintenance, key replacement) unlock with the F&I Manager hire. Loans model APR, term, monthly payment. Credit tiers simplified to **A / B / C / D**. PVR, F&I PPRU and similar advanced KPIs surface in UI only after GM hire.
+F&I starts trimmed: **VSC + GAP** only. More products (T&W, ETCH, prepaid maintenance, key replacement) unlock with the F&I Manager hire. Loans model APR, term, monthly payment. Credit tiers simplified to **A / B / C / D**. PVR, F&I PPRU and similar advanced KPIs surface in UI only after GM hire.
 
 ## Department unlocks
 
@@ -86,7 +86,7 @@ v1 starts trimmed: **VSC + GAP** only. More products (T&W, ETCH, prepaid mainten
 - BDC follow-up — from start (morning callback task).
 - Service — unlocks at Tier 2.
 - Full F&I — unlocks with F&I Manager hire.
-- Bodyshop — **deferred to v2+** (out of scope).
+- Bodyshop — unlocks at **Tier 3** (collision-repair mirror of Service).
 
 ## Capacity vs demand
 
@@ -108,18 +108,20 @@ Capacity ceiling = function of facility tier + staff count. Demand emergent. Whe
 - **Deep modules, narrow interfaces.** One public surface per module via `index.ts` barrel. Consumers import from `'@/game/<Module>'`, never from a file inside.
 - **All cross-module communication goes through `EventBus`.** No module imports another's internals.
 - **All tunables in `data/*.json`.** No magic numbers in code. Loaded via `parseData` (typed schema).
-- **Static-now subsystems exposed via interfaces** (`OEMSource`, `CompetitorSource`, etc.) so v2 procedural replacements drop in without changing consumers.
+- **Static-now subsystems exposed via interfaces** (`OEMSource`, `CompetitorSource`, etc.) so richer procedural replacements drop in later without changing consumers.
 - **Small commits, each verifiable.** No multi-day branches without intermediate landings.
 - **UI is fully separable from game logic.** Logic never imports UI; UI never reaches into logic internals.
 
 ## Testing rules
 
 - Every game-logic module has isolation tests on its **public interface**. Test external behavior, never implementation details. Refactor-safe.
-- UI gets **smoke tests only** (renders without crashing on a representative fixture). **No snapshot tests in v1.**
+- UI gets **smoke tests only** (renders without crashing on a representative fixture). **No snapshot tests.**
 
-## Out of scope for v1 (do NOT add without checking issue #1)
+## Not part of this product (do NOT add without checking issue #1)
 
-Bodyshop · service-to-sales conversion · lease retention · equity mining · leases as financing product · state-by-state regulatory variation · holdback / factory incentives / allocation politics · real-time market pricing · reactive competitor simulation · procedural OEM generator · player-character RPG skill layer · cloud save · multi-save slots · Lottie/sprite animation pipeline · multiplayer / social · period-piece content · Tier 4-5 gameplay.
+Genuinely outside the design — not build-order deferrals: player-character RPG skill layer · cloud save · Lottie/sprite animation pipeline · multiplayer / social · period-piece content.
+
+Everything that is part of the design but not yet built — Bodyshop, higher-tier gameplay, richer competitor/OEM simulation, service-to-sales conversion, equity mining — is **not-yet-built, not out of scope**. It gets built when its tier comes up.
 
 ## When to re-read issue #1
 

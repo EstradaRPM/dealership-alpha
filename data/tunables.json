@@ -371,6 +371,10 @@
     },
     "frontlineHoldDays": 2
   },
+  "installedBase": {
+    "_doc": "InstalledBase owner registry (#298, parent #297). `loyaltySeedScale` maps a deal's satisfaction-at-sale retentionSeed ∈ [0,1] onto an owner's initial loyalty (loyalty = clamp01(retentionSeed × scale)). Ships at 1.0 (identity); the S14 balance pass (#286) tunes how strongly a good sale seeds future service-retention without touching code.",
+    "loyaltySeedScale": 1.0
+  },
   "ownership": {
     "hoursOfOp": {
       "options": [

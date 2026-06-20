@@ -45,7 +45,7 @@ export const TunablesSchema = z.object({
   }),
   // Composite demand model (#128a). Lives behind the locked #125 DemandSource
   // seam: the live provider derives a single demandFactor from controllable
-  // levers (v1: inventory depth × quality) and rides it on the existing
+  // levers (currently: inventory depth × quality) and rides it on the existing
   // pricing.trafficMultiplier field. FloorSim consumes only the projected
   // scalar — no magic numbers in the provider.
   demandModel: z.object({

@@ -153,7 +153,7 @@ describe('#232 TierGate — progressive face unlock (decision 2: fewer lit early
     expect(t3.faces.map((f) => f.id).sort()).toEqual(['cash', 'csi', 'gross', 'units']);
   });
 
-  it('never lights the dormant stepped facility face in v1', () => {
+  it('never lights the dormant stepped facility face', () => {
     const p = makeHarness({ tier: 3 }).gate.getProgress();
     expect(p.faces.some((f) => f.id === 'facility')).toBe(false);
   });

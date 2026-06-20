@@ -27,7 +27,7 @@ import {
 
 const clampUnit = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 
-// Per-gate patience drain rate: v1 balanced default; replace with per-archetype data when tuning.
+// Per-gate patience drain rate: balanced default; replace with per-archetype data when tuning.
 const ARCHETYPE_IMPATIENCE = 0.25;
 
 // Stub vehicle used until Inventory wiring lands; values produce a realistic Tier-1 range.

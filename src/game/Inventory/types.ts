@@ -119,8 +119,8 @@ export interface LotVehicle {
    */
   readonly aged: boolean;
   /**
-   * Market-suggested retail (vAuto-style). v1 has no market/economy engine,
-   * so this is a flat cost-basis placeholder (`purchasePrice + reconCost`);
+   * Market-suggested retail (vAuto-style). With no market/economy engine wired,
+   * this is a flat cost-basis placeholder (`purchasePrice + reconCost`);
    * the future simulated retail-value engine drops in here without changing
    * the Pricing lever or any consumer.
    */

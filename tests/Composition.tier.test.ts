@@ -367,6 +367,10 @@ describe('#206 composition root — ServiceDispatch wired into the floor seams',
     bus.subscribe('service:ticket_closed', e => closed.push(e));
 
     world.serviceQueue.restore({ schemaVersion: 1, currentTier: 2 });
+    // service-advisor has hireTier 2; the hire gate reads the TierManager, so
+    // bump the dealership tier too (not just the ServiceQueue's tier).
+    const tierState = world.tierManager.getSerializableState();
+    world.tierManager.restoreState({ ...tierState, currentTier: 2 });
     const [advisor] = world.staffOrg.getCandidates('service-advisor');
     world.staffOrg.hire(advisor.candidateId);
 

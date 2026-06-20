@@ -27,7 +27,7 @@ import { POLICIES, policyById } from './policies';
 import { PROFILE } from './runner';
 import { deriveSeeds } from './seeds';
 
-/** v1 scope is Tiers 1–3; Tier 1 is the normal start, so we capture 2 + 3. */
+/** Current tier frontier is Tiers 1–3; Tier 1 is the normal start, so we capture 2 + 3. */
 const TARGET_TIERS = [2, 3] as const;
 /** Upper bound on in-game days to reach the top target tier before giving up.
  *  Untuned thresholds (see recipe) can make the climb long; this caps runtime

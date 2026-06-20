@@ -35,8 +35,8 @@ import type {
  *   gauge vs threshold + trend arrow. No catch-up (a balance isn't a flow).
  * - **Trend** (`csi`): a `signals[id]` closure sampled nightly into a rolling
  *   window → climbing/flat/sliding. Not a daily pace.
- * - **Stepped** (`facility`): dormant in v1 — its teeth re-home onto the T4+ OEM
- *   stream (decision 4); the schema is present, no v1 tier activates it.
+ * - **Stepped** (`facility`): dormant for now — its teeth re-home onto the T4+ OEM
+ *   stream (decision 4); the schema is present, no current tier activates it.
  *
  * The active faces per tier come from `config.tiers[tier]` (progressive unlock —
  * fewer faces lit early, decision 2). Accumulators run every month regardless;
@@ -259,8 +259,8 @@ export function createTierGate(deps: TierGateDeps): TierGate {
         };
       }
       case 'stepped':
-        // Facility/image is dormant in v1 (decision 4 re-homes its teeth onto
-        // the T4+ OEM stream). No v1 tier activates it; skip defensively.
+        // Facility/image is dormant for now (decision 4 re-homes its teeth onto
+        // the T4+ OEM stream). No current tier activates it; skip defensively.
         return null;
     }
   }

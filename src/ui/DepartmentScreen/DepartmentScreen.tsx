@@ -18,7 +18,7 @@ import { colors } from '../theme';
  *
  * `renderItem` / `background` are deliberate seams: art (vehicle models,
  * lot/shop backdrops, customer icons) and richer rows layer on later WITHOUT
- * reworking resolve logic. Unused in v1 — present so downstream slices don't
+ * reworking resolve logic. Unused for now — present so downstream slices don't
  * touch the resolve path.
  */
 export interface DepartmentScreenProps {

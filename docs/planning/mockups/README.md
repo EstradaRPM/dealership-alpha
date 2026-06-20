@@ -26,7 +26,7 @@ Performance dashboard with a time-range selector (Today / 7D / 30D / Quarter). S
 
 ### `inventory.png` — Inventory browser + pricing screen
 Stock management and the real-time pricing surface. Shows: lot summary (Total Units, Avg Days on Lot, **Aging Units** %, Avg Gross), filter/sort + All Lots/My Lot tabs, a 2-column grid of **vehicle cards** (photo, status badge — HIGH DEMAND / FRESH ARRIVAL / AGING UNIT / PRICE DROP / HOT LEAD, year-make-model-trim, stock #, days-on-lot, acq cost, asking price, **front-end gross**), and an expanded **pricing card** (acquisition cost, recon, current asking, market average, days-on-lot, a **LOWER PRICE ↔ MAX PROFIT slider**, and three strategy chips: **More Leads / Balanced / Max Profit**).
-**Bears on:** the real-time pricing screen, price-drift/aging signals, the pricing-policy dial (and later the SM who runs it), the gross×volume tradeoff made tangible.
+**Bears on:** the real-time pricing screen, price-drift/aging signals, the pricing-policy dial (and later the UCM/NCM who runs it), the gross×volume tradeoff made tangible.
 
 ---
 

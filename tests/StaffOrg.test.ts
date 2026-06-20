@@ -342,17 +342,16 @@ describe('StaffOrg — F&I Manager hire-tier gating', () => {
     expect(() => staffOrg.getCandidates('f&i-manager')).toThrow(StaffOrgError);
   });
 
-  it('getCandidates for f&i-manager throws with message mentioning tier 2', () => {
+  it('getCandidates for f&i-manager throws with message mentioning tier 3', () => {
     const { clock, staffOrg } = makeSetupWithTier(1);
     clock.advanceDay();
-    expect(() => staffOrg.getCandidates('f&i-manager')).toThrow(/tier 2/i);
+    expect(() => staffOrg.getCandidates('f&i-manager')).toThrow(/tier 3/i);
   });
 
-  it('getCandidates for f&i-manager succeeds at Tier 2', () => {
+  it('getCandidates for f&i-manager throws at Tier 2', () => {
     const { clock, staffOrg } = makeSetupWithTier(2);
     clock.advanceDay();
-    const candidates = staffOrg.getCandidates('f&i-manager');
-    expect(candidates.length).toBeGreaterThan(0);
+    expect(() => staffOrg.getCandidates('f&i-manager')).toThrow(StaffOrgError);
   });
 
   it('getCandidates for f&i-manager succeeds at Tier 3', () => {
@@ -377,12 +376,12 @@ describe('StaffOrg — F&I Manager hire-tier gating', () => {
       // no getTier dep
     });
     clock.advanceDay();
-    // Should not throw even though f&i-manager has hireTier: 2
+    // Should not throw even though f&i-manager has hireTier: 3
     expect(() => staffOrg.getCandidates('f&i-manager')).not.toThrow();
   });
 
   it('all f&i-manager candidates have product_presentation and finance_structuring skills', () => {
-    const { clock, staffOrg } = makeSetupWithTier(2);
+    const { clock, staffOrg } = makeSetupWithTier(3);
     clock.advanceDay();
     const candidates = staffOrg.getCandidates('f&i-manager');
     for (const c of candidates) {
@@ -423,21 +422,21 @@ describe('StaffOrg — GM hire-tier gating', () => {
     expect(() => staffOrg.getCandidates('gm')).toThrow(StaffOrgError);
   });
 
-  it('getCandidates for gm throws with message mentioning tier 3', () => {
+  it('getCandidates for gm throws with message mentioning tier 6', () => {
     const { clock, staffOrg } = makeSetupWithTier(2);
     clock.advanceDay();
-    expect(() => staffOrg.getCandidates('gm')).toThrow(/tier 3/i);
+    expect(() => staffOrg.getCandidates('gm')).toThrow(/tier 6/i);
   });
 
-  it('getCandidates for gm succeeds at Tier 3', () => {
-    const { clock, staffOrg } = makeSetupWithTier(3);
+  it('getCandidates for gm succeeds at Tier 6', () => {
+    const { clock, staffOrg } = makeSetupWithTier(6);
     clock.advanceDay();
     const candidates = staffOrg.getCandidates('gm');
     expect(candidates.length).toBeGreaterThan(0);
   });
 
   it('all gm candidates have role_id gm', () => {
-    const { clock, staffOrg } = makeSetupWithTier(3);
+    const { clock, staffOrg } = makeSetupWithTier(6);
     clock.advanceDay();
     const candidates = staffOrg.getCandidates('gm');
     for (const c of candidates) {

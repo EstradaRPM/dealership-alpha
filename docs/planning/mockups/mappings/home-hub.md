@@ -38,7 +38,7 @@
 ## Residue — ADJUDICATED 2026-06-10
 
 1. **Inventory placement** (user's explicit ask) → **Operations sub-surface**, NOT a Home tile and NOT a 6th tab. Reasoning from long-term scope:
-   - Inventory/pricing is a **per-store operational** surface whose altitude **rises in place**: per-car pricing (T1) → pricing *policy/dial* once the SM absorbs it (T4) → delegated-with-override + background-store in the multi-store endgame. Operations is the stable nav home for "running *this* store"; the surface's *contents* change altitude, its *location* doesn't.
+   - Inventory/pricing is a **per-store operational** surface whose altitude **rises in place**: per-car pricing (T1) → pricing *policy/dial* once the UCM/NCM absorbs it (T4) → delegated-with-override + background-store in the multi-store endgame. Operations is the stable nav home for "running *this* store"; the surface's *contents* change altitude, its *location* doesn't.
    - **Multi-store (one active):** Home becomes active-store / empire-level; inventory is per-store, so it must live in per-store Operations.
    - **Home-base (spine §9) preserved correctly:** "never locks away" = the Operations→Inventory surface stays reachable for manual override, NOT that pricing is pinned to Home.
    - **T1 micro-loop pull preserved without hard-wiring:** Home carries a *contextual pre-open inventory nudge* (the 128-units quick-stat + e.g. "12 unpriced" / "lot thin on SUVs") that deep-links into Operations→Inventory. Prominent early, fades as it delegates; Home never structurally depends on a verb that goes away.

@@ -94,6 +94,11 @@ import {
 import type { PricedVehicleInput } from './game/SalesProcess';
 import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
 import {
+  createInstalledBase,
+  loadInstalledBaseConfig,
+  type InstalledBase,
+} from './game/InstalledBase';
+import {
   createTierManager,
   createBankruptcyMonitor,
   createIndictmentMonitor,
@@ -147,6 +152,7 @@ export interface World {
   staffMorale: StaffMorale;
   capacityManager: CapacityManager;
   followUpPool: FollowUpPool;
+  installedBase: InstalledBase;
   reputation: Reputation;
   regulatoryMeter: RegulatoryMeter;
   serviceQueue: ServiceQueue;
@@ -638,7 +644,7 @@ export function createWorld(deps: {
   // canonical deal:closed (with the five deal-structuring fields) fires
   // instead of synthesizing a SalesProcess emit against a stub vehicle.
   const creditTiers = loadCreditTiers();
-  // #183: CompetitorMarket — the static v1 rival roster with weekly drift.
+  // #183: CompetitorMarket — the static rival roster with weekly drift.
   // Built earlier but never instantiated in the world (a dark module): its
   // `market:competitive_pressure` (CustomerPool poaching) and #158
   // `competitor:price_changed` (one of emergent-C's four demand fuels) never
@@ -766,6 +772,16 @@ export function createWorld(deps: {
     bus,
     pool: customerPool,
     tunables: loadCustomerTunables().followUp,
+  });
+
+  // InstalledBase (#298, parent #297): the per-owner Service-annuity registry.
+  // Accrues one owner record per sale by joining `inventory:vehicle_sold` (the
+  // vehicle snapshot) with `deal:closed` (customerId↔vehicleId) and
+  // `customer:resolved` (the satisfaction-at-sale `retentionSeed` loyalty seed).
+  // Registry + persistence only this slice — no return cadence yet.
+  const installedBase = createInstalledBase({
+    bus,
+    config: loadInstalledBaseConfig(),
   });
 
   // ServiceQueue (#80): starts silent (default initialTier=1 < minTierRequired
@@ -1122,7 +1138,7 @@ export function createWorld(deps: {
   // #99 DayContext, where the arrival model scales expected traffic by it.
   // reviewScore is the lag indicator on the [satisfactionMin, satisfactionMax]
   // = [0,100] scale → normalized to FloorSim's [0,1] reputation input.
-  // #128a: the composite controllable-lever traffic multiplier (v1: inventory
+  // #128a: the composite controllable-lever traffic multiplier (currently: inventory
   // depth × quality) rides the locked #125 `pricing.trafficMultiplier`. The
   // demand math stays behind this seam; DayLoopController.project() forwards
   // it to FloorSim's #99 `demandFactor`. An empty lot ⇒ factor 0 ⇒ no draw.
@@ -1182,6 +1198,7 @@ export function createWorld(deps: {
     staffMorale,
     capacityManager,
     followUpPool,
+    installedBase,
     reputation,
     regulatoryMeter,
     serviceQueue,

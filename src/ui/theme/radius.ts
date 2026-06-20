@@ -1,7 +1,7 @@
 /**
  * Corner-radius scale. Semantic by surface kind — a `card`, a `control`, a
  * `pill` — not by literal px, so the neo-skeuo softness can be dialed in one
- * place. v2 themes (flatter, rounder) swap these values, not consumers.
+ * place. Future themes (flatter, rounder) swap these values, not consumers.
  */
 export const radius = {
   /** Square — dividers, full-bleed strips. */

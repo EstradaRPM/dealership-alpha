@@ -1,7 +1,7 @@
 # MarketEconomy
 
 Peer to `Economy/` (a money ledger). MarketEconomy owns the *valuation* surface
-— anchor, comps, personality, shocks, providers, news. v1 slices #155/#156/#157
+— anchor, comps, personality, shocks, providers, news. Slices #155/#156/#157
 ship the skeleton + closed-form anchor + per-save personality + comp-history
 rolling window. Subsequent slices (#158–#181) bolt onto the same factory.
 

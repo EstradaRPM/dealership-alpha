@@ -179,7 +179,7 @@ describe('StaffOrg.assessCondition (#163)', () => {
   });
 
   it('ignores non-UCM staff even if they happen to have a condition_reading skill record', () => {
-    // No non-UCM archetype carries condition_reading in v1, so simply hiring
+    // No non-UCM archetype carries condition_reading currently, so simply hiring
     // an unrelated role must yield null (no UCM on roster).
     const setup = makeSetup();
     setup.clock.advanceDay();

@@ -4,7 +4,7 @@ Pure evaluator deep module for skill-driven customer resolution (PRD #85). **No 
 
 ## Status
 
-Slices #86–#94 landed. #86: versioned tunable data files + typed schemas/loaders. #87: the pure `vehicleSpaced` accessor. #88: the seeded gate-quality engine, two-meter roll-up, and the four injected seam interfaces with v1 stubs. #89: nonnegotiable gating — seeded axis classification, skill-gated QUALIFY reveal, and the named walk model (patience-drain / trust-collapse / DEMO hard-fail). #90: quadrant close model + price formation (`closeAndPrice`). **#91 landed** — `CustomerPool` now drives resolution through `resolveSalesProcess` + `closeAndPrice`. **#94 landed** — HITL calibration distribution test (`tests/SalesProcess.calibration.test.ts`): 600 seeded NPC-archetype customers through the full S1→S6 chain under a competent (0.75/0.75) staff profile, asserting the PRD bands (≥85% positive / 10–12% apathetic / 3–5% negative-but-deal / warm-walk-dominant). Calibration was pure `data/sales-process.json` tuning (jitterBand, core weights, walk.patienceFloor, close thresholds) — no code change. **#273/#274 landed** — the Pricing/Demand spine made `askingPrice` the transaction anchor (#273) and replaced the price-formation discount formula with an explicit per-customer reservation-price model (#274, see below); the calibration was re-tuned for the new model (`price.reservationBase`/`valueLift`/`sensitivityDrag` + `close.trustFloor`), realizing 85.7% positive / 10.2% apathetic / 4.2% negative-deal / 100% warm. Still no EventBus participation from SalesProcess itself (pure library).
+Slices #86–#94 landed. #86: versioned tunable data files + typed schemas/loaders. #87: the pure `vehicleSpaced` accessor. #88: the seeded gate-quality engine, two-meter roll-up, and the four injected seam interfaces with static stubs. #89: nonnegotiable gating — seeded axis classification, skill-gated QUALIFY reveal, and the named walk model (patience-drain / trust-collapse / DEMO hard-fail). #90: quadrant close model + price formation (`closeAndPrice`). **#91 landed** — `CustomerPool` now drives resolution through `resolveSalesProcess` + `closeAndPrice`. **#94 landed** — HITL calibration distribution test (`tests/SalesProcess.calibration.test.ts`): 600 seeded NPC-archetype customers through the full S1→S6 chain under a competent (0.75/0.75) staff profile, asserting the PRD bands (≥85% positive / 10–12% apathetic / 3–5% negative-but-deal / warm-walk-dominant). Calibration was pure `data/sales-process.json` tuning (jitterBand, core weights, walk.patienceFloor, close thresholds) — no code change. **#273/#274 landed** — the Pricing/Demand spine made `askingPrice` the transaction anchor (#273) and replaced the price-formation discount formula with an explicit per-customer reservation-price model (#274, see below); the calibration was re-tuned for the new model (`price.reservationBase`/`valueLift`/`sensitivityDrag` + `close.trustFloor`), realizing 85.7% positive / 10.2% apathetic / 4.2% negative-deal / 100% warm. Still no EventBus participation from SalesProcess itself (pure library).
 
 ## Public API (`index.ts`)
 
@@ -18,7 +18,7 @@ Data loaders + schemas only (this slice):
 
 All loaders use the shared `parseData` typed-schema pattern; no `JSON.parse + as` shortcuts.
 
-Seams (#88) — four injected interfaces, v1 static stubs (PRD decisions 2, 7, 8):
+Seams (#88) — four injected interfaces, static stubs (PRD decisions 2, 7, 8):
 
 - `SalespersonSkill.skillFor(gate) → GateSkill {effectiveness, trustworthiness}`. Ships `GREEN_SALESPERSON` (hardcoded green profile) + `makeSalespersonProfile(overrides, base?)` (admin-console override path; unit-clamped). StaffOrg wiring is a follow-on.
 - `vehicleSpaced` (#87) is the 2nd seam.
@@ -91,7 +91,7 @@ Vehicle-attribute accessor + weather tilt (#231 S4):
   `score` (via the optional `PickVehicleDeps.attributeLean`, wired from
   `Weather.attributeLeanForDay`), tilting toward weather-aligned units while
   leaving `matchQuality` (want-axis fit) untouched. `ATTRIBUTE_AXES` /
-  `ATTRIBUTE_NEUTRAL` exported for callers. v1 inventory carries no convertibles,
+  `ATTRIBUTE_NEUTRAL` exported for callers. Current inventory carries no convertibles,
   so `openAir` is inert until such a template exists.
 
 Accessor (#87):

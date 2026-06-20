@@ -12,7 +12,7 @@ badge decrement.
 ## Scope
 - Drives **Service / BDC / Office / Lot**. Sales is NOT a resolve-list — the
   Sales tab routes to the hand-play workspace, so this never mounts for sales.
-- `renderItem` / `background` are unused in v1. They exist so art (vehicle
+- `renderItem` / `background` are unused for now. They exist so art (vehicle
   models, lot/shop backdrops, customer icons) and richer rows layer on later
   without touching resolve logic — do not delete them as "dead".
 

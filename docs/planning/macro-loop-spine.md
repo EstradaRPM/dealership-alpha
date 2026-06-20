@@ -46,7 +46,7 @@ The spine is a single column: at each tier a specific hire absorbs a specific la
 | **T1** | Micro used lot | nobody | Source + price every car, watch the floor for escalations. You do everything. (Proven *fun*, not tedium.) |
 | **T2** | Small independent used | 2nd salesperson; service advisor | Set the **service profit dials** (upcharge vs. fair, price gates). First policy-you-set vs. work-you-do. Still pricing by hand. |
 | **T3** | CPO / large independent | **UCM** absorbs sourcing | **Sourcing becomes strategy** — you set the mandate, the UCM hunts. Run a widening bank of profit dials at scale (service **+ body shop + F&I**). Train your people. Body/F&I are *more dials*, not new verbs. |
-| **T4** | Single franchise | **SM** absorbs pricing-within-policy + 2nd escalation | Run the **OEM relationship** — allocation, incentives, gross-vs-volume. Your first **brand-archetype** decision. You stop touching individual cars. |
+| **T4** | Single franchise | **NCM** joins (OEM-gated) to run the new channel; UCM owns the used desk (SM dropped — desking folded onto UCM) | Run the **OEM relationship** — allocation, incentives, gross-vs-volume. Your first **brand-archetype** decision. You stop touching individual cars. |
 | **T5** | High-volume franchise | **BDC** absorbs lead-gen | Run **demand** — campaigns, reading market/competitor signals. Graduate from managing supply to steering demand. (Industrial version of the demand levers that exist from T1.) |
 | **T6** | Multi-franchise group | **GM** absorbs the entire single store | Become a **CEO**: pick/develop/place GMs, set each store's posture, choose the next acquisition. |
 | **T7** | Dealer group (summit) | GMs run every store | **Pure portfolio** + the prestige/synergy endgame. |
@@ -58,7 +58,7 @@ Built with the same philosophy as the brands (multi-axis, no single "best"):
 - **Multi-axis archetypes** — a UCM who reads trucks but not exotics; a GM who drives volume but bleeds gross.
 - **Fixed talent *ceiling* that experience + training fill toward** (Football-Manager style) — so scouting raw talent is a real decision.
 - **Scarce + poachable labor market**; retention costs money.
-- **Every profit dial is modulated by the operator running it** — F&I mgr → F&I dials, service advisor → service dials, UCM → sourcing, SM → pricing, GM → whole store. Not a flat number; the person multiplies through the engine.
+- **Every profit dial is modulated by the operator running it** — F&I mgr → F&I dials, service advisor → service dials, UCM → used sourcing/pricing/desking, NCM → new pricing/desking (OEM-gated), GM → whole store. Not a flat number; the person multiplies through the engine. (Sales Manager dropped — channel-desk model, see `manager-roles-channel-desk.md`.)
 - **Act-2 master puzzle:** match operator archetype → brand archetype → market.
 
 **Known build gap (surfaced by playtest):** the current staff system has **zero risk/reward** — all hires cost the same with no ongoing cost, so "insta-hire the best" is free and trivial. The teeth that make hiring a *decision*, and which this spine requires:

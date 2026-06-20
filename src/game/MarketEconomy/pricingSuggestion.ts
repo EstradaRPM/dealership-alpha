@@ -210,7 +210,7 @@ export interface CompetitorComp {
  * Derive each competitor's comparable asking price for a unit at the given
  * honest market price. A competitor's `pricing` lean maps linearly onto a
  * `±competitorSpread` band: 0.5 → market, 1.0 → market × (1 + spread),
- * 0.0 → market × (1 − spread). Static in v1 — comps don't move with the
+ * 0.0 → market × (1 − spread). Static for now — comps don't move with the
  * player's own ask, so the screen computes them once.
  */
 export function deriveCompetitorComps(

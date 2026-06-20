@@ -28,16 +28,16 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 - Deep modules, narrow interfaces.
 - Game logic is fully separable from UI. UI renders state and dispatches actions — it never reaches into game-logic internals.
 - Cross-module communication goes through the `EventBus`. No module calls another's internals.
-- **Module boundary convention:** every module lives in its own directory under `src/game/<ModuleName>/` and exposes its public surface only through `index.ts` (a barrel). Consumers import from `'@/game/<ModuleName>'` (or the relative path to the directory), never from a file inside it. Anything not re-exported from `index.ts` is private. No lint rule enforces this in v1 — it is a review-time convention.
+- **Module boundary convention:** every module lives in its own directory under `src/game/<ModuleName>/` and exposes its public surface only through `index.ts` (a barrel). Consumers import from `'@/game/<ModuleName>'` (or the relative path to the directory), never from a file inside it. Anything not re-exported from `index.ts` is private. No lint rule enforces this — it is a review-time convention.
 - All tunables (OEM tables, customer archetypes, F&I products, tier definitions, balance numbers) live in versioned data files under `data/`. No magic numbers in code.
-- Subsystems whose v1 implementation is intentionally simple (static OEMs, static competitors, regulatory meter) are exposed via interfaces so v2 replacements drop in without changing consumers.
+- Subsystems whose current implementation is intentionally simple (static OEMs, static competitors, regulatory meter) are exposed via interfaces so richer replacements drop in later without changing consumers.
 - Small commits, each verifiable. No multi-day branches without intermediate landings.
 
 ## Stack
 
 - React Native + Expo, TypeScript
 - Local SQLite via `expo-sqlite` (accessed only through the `SaveStore` module)
-- No backend in v1; save layer designed for future cloud-sync bolt-on
+- No backend currently; save layer designed for future cloud-sync bolt-on
 - GitHub Actions for CI (typecheck + tests on push)
 - EAS Build for iOS/Android binaries
 
@@ -47,7 +47,7 @@ Game logic lives under `src/game/<Module>/`. Each module directory contains a `C
 
 Original 12 (issue #1): `GameClock`, `CustomerPool`, `DepartmentQueue`, `StaffOrg`, `Inventory`, `DealEngine`, `Economy`, `Reputation`, `CompetitorMarket`, `CareerProgression`, `SaveStore`, `EventBus`.
 
-Added during v1 slice: `CapacityManager`, `FollowUpPool`, `NPC`, `ServiceQueue`, `ServiceDispatch`, `StaffDispatch`, `StaffMorale`. Plus `data/` (JSON loader + tunables schema; not an EventBus participant).
+Added during implementation: `CapacityManager`, `FollowUpPool`, `NPC`, `ServiceQueue`, `ServiceDispatch`, `StaffDispatch`, `StaffMorale`. Plus `data/` (JSON loader + tunables schema; not an EventBus participant).
 
 UI (planned, not yet implemented): `HomeView`, `DepartmentScreens`, `SalesWorkspace`, `FollowupView`, `KPIDashboard`, `NarrativeBeat`, `CharacterCreation`, `EndCard`.
 
@@ -57,7 +57,7 @@ The canonical event catalog is `src/game/EventBus/events.ts` — every event nam
 
 - Every game-logic module gets isolation tests on its public interface. Test external behavior, never implementation details.
 - UI gets smoke tests only (renders without crashing).
-- No snapshot tests in v1.
+- No snapshot tests.
 
 ## Common commands
 
@@ -69,6 +69,6 @@ The canonical event catalog is `src/game/EventBus/events.ts` — every event nam
 
 CI runs `typecheck` + `test` on every push (`.github/workflows/ci.yml`).
 
-## v1 scope reminder
+## Tier build frontier
 
-Tier 1-3 vertical slice (gravel yard → paved lot → small showroom). Out-of-scope items are listed explicitly in issue #1 — consult before adding anything that isn't already in scope.
+The full tier ladder is the product (gravel yard → paved lot → showroom → franchise → group). The current implementation frontier is Tiers 1-3; higher tiers are **not-yet-built, not cut**. Items genuinely outside the design (multiplayer, cloud save, RPG skill layer, etc.) are listed in issue #1 — consult before adding one of those.

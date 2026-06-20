@@ -18,7 +18,7 @@ import type {
 // ── DemandContext: the locked #125 "morning slip" ────────────────────────────
 //
 // Per-day, per-department demand-context payload the economy fills and the
-// composition root projects down. v1 fills it with a dumb stub, but the SHAPE
+// composition root projects down. The current default fills it with a dumb stub, but the SHAPE
 // is fixed by the #125 design record so #114 and the future economy drop in
 // without reopening this seam. FloorSim's locked #99 4-scalar `DayContext`
 // stays UNTOUCHED — all richness rides this slip; the composition root
@@ -76,7 +76,7 @@ export interface MarketGrowthContext {
 }
 
 /** Brand reshapes both volume and segment mix (#125 decision 9). Collection
- *  is length-1 in v1; multibrand is real but career-tier-gated. */
+ *  is length-1 for now; multibrand is real but career-tier-gated. */
 export interface BrandProfile {
   readonly brandId: string;
   readonly volumeBias: number;
@@ -105,10 +105,10 @@ export interface DemandContext {
   /** Per-day traffic filter riding FloorSim's season mechanism (#125
    *  decision 7) — NOT market growth. */
   readonly season: Season;
-  /** Length-1 in v1; multibrand/multi-store career-tier-gated (#125 d9). */
+  /** Length-1 for now; multibrand/multi-store career-tier-gated (#125 d9). */
   readonly brands: readonly BrandProfile[];
   readonly stores: readonly StoreProfile[];
-  /** Reserved seed-derivation key for v2 dealer-group (aligns with #99's
+  /** Reserved seed-derivation key for the future dealer-group (aligns with #99's
    *  reserved dealershipId). */
   readonly dealershipId: string;
 }
@@ -129,7 +129,7 @@ export interface DemandSource {
  * discipline #125 applied to the slip. The real economy will want richer
  * feedback (e.g. segment-resolved draw) — additive fields here keep
  * `endDay()`'s signature stable so the economy drops in without reopening
- * this HITL seam. `realizedDraw` is the only concrete v1 signal.
+ * this HITL seam. `realizedDraw` is the only concrete signal today.
  */
 export interface DayOutcome {
   readonly realizedDraw: number;
@@ -163,10 +163,10 @@ function stubStream(headcount: number): DemandStream {
 }
 
 /**
- * Dumb v1 stub provider. Fills every #125 field with neutral placeholders so
+ * Dumb stub provider. Fills every #125 field with neutral placeholders so
  * #111/#114 build against the stable contract while the real economy is
- * deliberately downstream. Sales is the only `pipelineActive` department in
- * v1; service/bodyshop come back dormant (#125 decision 10).
+ * deliberately downstream. Sales is the only `pipelineActive` department
+ * today; service/bodyshop come back dormant (#125 decision 10).
  */
 export function createStubDemandSource(): DemandSource {
   return {
@@ -193,7 +193,7 @@ export function createStubDemandSource(): DemandSource {
   };
 }
 
-/** No-op decision sink — the v1 default until the economy is wired (#114). */
+/** No-op decision sink — the default until the economy is wired (#114). */
 export function createNullDecisionSink(): DecisionSink {
   return { record: () => {} };
 }
@@ -274,7 +274,7 @@ export interface DayLoopControllerDeps {
    *  The controller is the composition-root actor that owns this call — per
    *  the #99 invariant, FloorSim never advances the clock itself. */
   clock: GameClock;
-  /** Omitted ⇒ dumb v1 stub (same omitted-default pattern as FloorSim seams). */
+  /** Omitted ⇒ dumb stub (same omitted-default pattern as FloorSim seams). */
   demandSource?: DemandSource;
   /** Omitted ⇒ no-op sink. */
   decisionSink?: DecisionSink;
@@ -331,7 +331,7 @@ export interface DayLoopController {
 /**
  * Headless orchestrator. First responsibility only (#111): own the narrow
  * provider seam (slip source + decision sink) and create/own a FloorSim per
- * day. Marketing/economy resolution stays behind the seam (stub in v1).
+ * day. Marketing/economy resolution stays behind the seam (currently a stub).
  */
 export function createDayLoopController(
   deps: DayLoopControllerDeps,

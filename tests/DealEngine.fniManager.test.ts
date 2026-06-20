@@ -123,7 +123,7 @@ describe('DealEngine.computeAutoFni — attach rate skill scaling', () => {
       characterProfile: PROFILE,
     });
     world.tierManager.restoreState({
-      currentTier: 2,
+      currentTier: 3,
       businessName: '',
       accentColor: '#38bdf8',
       fontId: 'prestige',

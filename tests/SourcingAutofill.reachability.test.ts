@@ -20,10 +20,10 @@ const PROFILE: CharacterProfile = {
 
 type World = ReturnType<typeof createWorld>;
 
-/** Hire a UCM (hireTier 2) onto the roster and return their mutable Staff. */
+/** Hire a UCM (hireTier 3) onto the roster and return their mutable Staff. */
 function hireUcm(world: World) {
   const tierState = world.tierManager.getSerializableState();
-  world.tierManager.restoreState({ ...tierState, currentTier: 2 });
+  world.tierManager.restoreState({ ...tierState, currentTier: 3 });
   const candidate = world.staffOrg.getCandidates('used-car-manager')[0];
   expect(candidate).toBeDefined();
   world.staffOrg.hire(candidate.candidateId);

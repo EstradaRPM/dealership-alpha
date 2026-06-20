@@ -20,5 +20,5 @@ Dealership reputation score + marketing → demand feedback loop. Drifts overnig
 ## Data
 - `data/tunables.json` — reputation section (drift rate, hit magnitudes, marketing curve).
 
-## v1 simplification
-The marketing → demand curve is a static lookup in v1. The interface allows a v2 replacement (dynamic marketing campaigns) without changing consumers.
+## Current simplification
+The marketing → demand curve is a static lookup for now. The interface allows a richer replacement (dynamic marketing campaigns) later without changing consumers.

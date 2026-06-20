@@ -11,6 +11,10 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 - **Emits:** `inventory:vehicle_purchased`, `inventory:vehicle_sold`,
   `inventory:vehicle_acquired_via_trade` (#171),
   `economy:carrying_cost_posted` (#173).
+  - `inventory:vehicle_sold` carries `powertrain` (#298) — the join seam
+    InstalledBase reads. The catalog is ICE-only today, so the sell + recon-
+    abandon emits stamp the `DEFAULT_POWERTRAIN` (`'ice'`) constant; EV/hybrid
+    templates flow through unchanged when the powertrain axis is modeled.
 - **Consumes:**
   - `trade:resolved` (#171) — an accepted/countered customer trade materializes
     onto the lot via `acquireFromTrade` (only `accept`/`counter` emit the event;
@@ -236,4 +240,4 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 - Wired into `snapshotWorld`/`restoreWorld` under the `inventory` key.
 
 ## Notes
-- The auction generator is intentionally simple in v1 (random draw weighted by brand share). It is exposed via interface so a v2 replacement drops in cleanly.
+- The auction generator is intentionally simple for now (random draw weighted by brand share). It is exposed via interface so a richer replacement drops in cleanly.

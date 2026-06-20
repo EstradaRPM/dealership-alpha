@@ -84,8 +84,8 @@ export interface TrendFaceProgress {
 }
 
 /**
- * The live progress for one active gate face. Facility (stepped) is dormant in
- * v1 (its image-standard teeth re-home onto the T4+ OEM stream, decision 4), so
+ * The live progress for one active gate face. Facility (stepped) is dormant
+ * for now (its image-standard teeth re-home onto the T4+ OEM stream, decision 4), so
  * it is absent from the union until that slice lands.
  */
 export type FaceProgress =

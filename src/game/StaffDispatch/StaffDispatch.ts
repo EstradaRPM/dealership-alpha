@@ -339,7 +339,7 @@ function rollDiscountCounterResponse(
   );
 }
 
-// Per-gate patience drain rate: v1 balanced default (matches CustomerPool).
+// Per-gate patience drain rate: balanced default (matches CustomerPool).
 const ARCHETYPE_IMPATIENCE = 0.25;
 
 /**

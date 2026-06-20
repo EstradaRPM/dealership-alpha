@@ -191,7 +191,7 @@ SECTIONS = [
         ("Service", {1: "No", 2: "Yes"}, "Unlocks Tier 2."),
         ("Full F&I (product shelf)", {1: "VSC+GAP only", 2: "Full (w/ F&I mgr)"},
             "Full shelf unlocks with F&I Manager hire."),
-        ("Parts / Bodyshop", {1: "No"}, "Bodyshop currently out of scope — revisit under no-v1/v2."),
+        ("Parts / Bodyshop", {1: "No", 3: "Yes"}, "Bodyshop unlocks at Tier 3 (collision mirror of Service)."),
     ]),
     ("VERBS / MECHANICS UNLOCKED (new decisions)", [
         ("New player VERB added this tier", {}, "The new DECISION, not just bigger numbers. Critical row."),

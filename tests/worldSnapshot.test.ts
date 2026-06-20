@@ -234,7 +234,7 @@ describe('StaffOrg + StaffMorale snapshot/restore (#190)', () => {
     const seed = 204;
     const { world: original } = build(seed);
     original.tierManager.restoreState({
-      currentTier: 2,
+      currentTier: 3,
       businessName: '',
       accentColor: '#38bdf8',
       fontId: 'prestige',

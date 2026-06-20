@@ -36,7 +36,7 @@ invariant FloorSim never advances the clock itself.
 
 - `DemandSource.slipFor({day,department}) → DemandContext` — the "morning
   slip". The real economy (deliberately post-#74, co-calibrated with #105)
-  drops in here; v1 uses `createStubDemandSource()` (dumb neutral fill, sales
+  drops in here; the current default is `createStubDemandSource()` (dumb neutral fill, sales
   the only `pipelineActive` department — service/bodyshop dormant per #125
   decision 10).
 - `DecisionSink.record(DayDecision)` — the day hands back a `DayOutcome`
@@ -45,7 +45,7 @@ invariant FloorSim never advances the clock itself.
   `endDay` — additive `DayOutcome` fields keep `endDay()` stable so the
   economy drops in without reopening this seam). Success-coupling +
   marketing-lag math lives **entirely behind the seam** (#125 decisions
-  6/8). v1 default `createNullDecisionSink()`.
+  6/8). Current default `createNullDecisionSink()`.
 - Both seams follow FloorSim's omitted-default pattern (omit ⇒ stub/no-op).
 
 `DemandContext` shape is **LOCKED by design record #125** — reserved fields
@@ -109,7 +109,7 @@ a later slice); `floor:day_complete` clears the cell.
 ## Public API (`index.ts`)
 - `createDayLoopController({ bus, seed, clock, demandSource?, decisionSink? })`.
 - `checkpoint()` / `resume(cp)` (#122); type `ReplayAction`.
-- `createStubDemandSource()` / `createNullDecisionSink()` — v1 stubs.
+- `createStubDemandSource()` / `createNullDecisionSink()` — current stubs.
 - Types: `DayLoopController`, `DayLoopState`, `LifecyclePhase`,
   `FloorSeamProvider`, `DemandSource`, `DecisionSink`, `DayDecision`,
   `DayOutcome`, `DemandContext` (+ its component types).

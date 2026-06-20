@@ -64,7 +64,7 @@ per-make/model rule. Wiring: `createWorld` passes
 argmax score — a positive lean tilts toward weather-aligned units (AWD in snow,
 open-tops in summer) while leaving `matchQuality` (want-axis fit, the #199
 payoff) untouched. Zero lean ⇒ zero effect (calm-day / lean-less back-compat).
-The lean is surfaced on the Home card as "Weather favors: AWD / 4WD". Note: v1
+The lean is surfaced on the Home card as "Weather favors: AWD / 4WD". Note: current
 inventory has no convertibles, so `openAir` is dormant (schema in place for a
 future template). Config: `weather.attributeAxisLeans { bySeason, byCondition }`.
 

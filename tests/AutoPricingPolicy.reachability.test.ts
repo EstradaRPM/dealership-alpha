@@ -62,9 +62,9 @@ describe('#289 auto-pricing gate — UCM pricing-skill threshold (channel-desk M
     expect(noUcm.askingPrice).toBe(noUcm.suggestedRetail);
 
     // --- Hire a UCM (the used-car desk). ---
-    // UCM hireTier is 2; force the dealership to tier 2 so the role is hireable.
+    // UCM hireTier is 3; force the dealership to tier 3 so the role is hireable.
     const tierState = world.tierManager.getSerializableState();
-    world.tierManager.restoreState({ ...tierState, currentTier: 2 });
+    world.tierManager.restoreState({ ...tierState, currentTier: 3 });
     const candidate = world.staffOrg.getCandidates('used-car-manager')[0];
     expect(candidate).toBeDefined();
     world.staffOrg.hire(candidate.candidateId);

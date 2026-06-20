@@ -136,12 +136,12 @@ describe('loadStaffTaxonomy', () => {
   });
 });
 
-describe('v1 staff catalog content', () => {
+describe('staff catalog content', () => {
   const taxonomy = loadStaffTaxonomy();
   const { roles, skills } = taxonomy;
   const COMPOSITES = new Set(['effectiveness', 'trustworthiness']);
 
-  it('contains v1 in-scope roles only (no body department)', () => {
+  it('contains the current catalog roles', () => {
     expect(roles['lot-porter']).toBeDefined();
     expect(roles.salesperson).toBeDefined();
     expect(roles['used-car-manager']).toBeDefined();
@@ -150,9 +150,6 @@ describe('v1 staff catalog content', () => {
     expect(roles['service-advisor']).toBeDefined();
     expect(roles['service-manager']).toBeDefined();
     expect(roles.gm).toBeDefined();
-    for (const role of Object.values(roles)) {
-      expect(role.department).not.toBe('body');
-    }
   });
 
   it('every role.grants_skills entry exists in the skill catalog', () => {

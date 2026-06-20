@@ -11,7 +11,7 @@ import { scoreCompetitor } from './ScoreCompetitor';
  * share of the population.
  *
  * Optional `filter` slices the population without changing the function
- * signature — adding new customer facets (segment, region, credit tier) in v2
+ * signature — adding new customer facets (segment, region, credit tier) later
  * comes for free.
  *
  * Returned shares sum to ~1 when at least one visit yields a non-zero score

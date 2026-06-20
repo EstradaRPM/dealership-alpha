@@ -155,6 +155,7 @@ describe('MarketEconomy — segmentHeat composer wired through providers (#157)'
       category: v.category,
       purchasePrice: v.purchasePrice,
       reconCost: v.reconCost,
+      powertrain: 'ice',
     });
 
     const heated = me.bookValueFn(civic());
@@ -248,6 +249,7 @@ describe('MarketEconomy — segmentHeat composer wired through providers (#157)'
       category: v.category,
       purchasePrice: v.purchasePrice,
       reconCost: v.reconCost,
+      powertrain: 'ice',
     });
     expect(me.compHistory.segmentDrift('truck', day)).toBe(0);
   });

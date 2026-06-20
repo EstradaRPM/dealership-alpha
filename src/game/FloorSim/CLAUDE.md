@@ -117,7 +117,7 @@ interface rework. Load-bearing invariants for anyone touching this module:
   MarketEconomy's shared `demandMultiplier` (`marketEconomy.demandMultiplierFor`),
   so a lot priced above market draws less traffic and the floor's arrivals match
   the pricing screen's days-to-sell (one model). `dealershipId` reserved as a
-  seed-derivation context key for v2 dealer-group.
+  seed-derivation context key for the future dealer-group.
 - **3-phase day:** floor-open → floor-closes (`floor:day_complete` ≠ advance
   clock) → after-hours (managerial, OUT of FloorSim). Clock advance is always
   a separate player-gated composition-root action. FloorSim never calls

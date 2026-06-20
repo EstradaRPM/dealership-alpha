@@ -78,8 +78,8 @@ export function createTierManager(deps: TierManagerDeps): TierManager {
   const config = deps.config ?? loadTierConfig();
   const streaksByTier = deps.streaksByTier;
 
-  // The top tier in v1 (gravel → paved → showroom). Leaving it doesn't advance
-  // (no T4 in v1) — it arms the franchise dossier instead.
+  // The current top tier (gravel → paved → showroom). Leaving it doesn't advance
+  // (T4 not built yet) — it arms the franchise dossier instead.
   const maxTier = config.tiers.length;
 
   let currentTier = 1;

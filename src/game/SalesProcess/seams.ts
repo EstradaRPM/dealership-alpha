@@ -3,7 +3,7 @@ import { GATES, type Gate } from './salesProcessData';
 /**
  * Injected seam interfaces (PRD #85 decisions 2, 7, 8). The evaluator never
  * learns staff names, real prices, or the dynamic economy — it consumes these
- * narrow seams. v1 ships trivial static stubs; StaffOrg wiring and the dynamic
+ * narrow seams. It ships trivial static stubs; StaffOrg wiring and the dynamic
  * internal economy are tracked follow-ons that drop in without evaluator change.
  */
 
@@ -76,21 +76,21 @@ export function makeSalespersonProfile(
 }
 
 /**
- * v1 static cost stub: all-in = acquisition + recon. Deliberately trivial;
+ * Static cost stub: all-in = acquisition + recon. Deliberately trivial;
  * the dynamic auction↔trade↔retail economy is a spun-off follow-on (decision 8).
  */
 export const staticVehicleCost: VehicleCostFn = (v) =>
   v.purchasePrice + v.reconCost;
 
-/** v1 static market markup over all-in cost. Placeholder seam, not a balance knob. */
+/** Static market markup over all-in cost. Placeholder seam, not a balance knob. */
 const STATIC_MARKET_MARKUP = 1.25;
 
-/** v1 static market-price stub (decision 8). */
+/** Static market-price stub (decision 8). */
 export const staticMarketPrice: MarketPriceFn = (v) =>
   Math.round(staticVehicleCost(v) * STATIC_MARKET_MARKUP);
 
 /**
- * v1 static book-value stub: acquisition cost ≈ wholesale book for healthy
+ * Static book-value stub: acquisition cost ≈ wholesale book for healthy
  * auction buys. Reconditioning is value-add, not book.
  */
 export const staticBookValue: BookValueFn = (v) => v.purchasePrice;

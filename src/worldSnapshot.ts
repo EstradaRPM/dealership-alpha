@@ -27,6 +27,7 @@ import type { World } from './createWorld';
 import type { GameClockSnapshot } from './game/GameClock';
 import type { EconomySnapshot } from './game/Economy';
 import type { InventorySnapshot } from './game/Inventory';
+import type { InstalledBaseSnapshot } from './game/InstalledBase';
 import type { StaffOrgSnapshot } from './game/StaffOrg';
 import type { StaffMoraleSnapshot } from './game/StaffMorale';
 import type { MarketEconomySnapshot } from './game/MarketEconomy';
@@ -60,7 +61,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 8;
+export const WORLD_SNAPSHOT_VERSION = 9;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -71,6 +72,8 @@ export type WorldSnapshot = {
     readonly gameClock: GameClockSnapshot;
     readonly economy: EconomySnapshot;
     readonly inventory: InventorySnapshot;
+    // Per-owner Service-annuity registry: owner records + loyalty (#298).
+    readonly installedBase: InstalledBaseSnapshot;
     readonly staffOrg: StaffOrgSnapshot;
     readonly staffMorale: StaffMoraleSnapshot;
     readonly marketEconomy: MarketEconomySnapshot;
@@ -197,6 +200,15 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         },
       },
     }),
+    8: (snap) => ({
+      version: 9,
+      modules: {
+        ...snap.modules,
+        // Behavior-neutral: pre-#298 saves materialize an empty installed base
+        // (the registry only accrues from sales made after this version).
+        installedBase: { schemaVersion: 1, owners: [] },
+      },
+    }),
   };
 
 /**
@@ -205,7 +217,7 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
  * snapshot from a newer runtime, or a gap with no registered step, throws
  * rather than silently restoring a mismatched shape. `migrations`/`target` are
  * injectable so a version bump can be exercised in tests without shipping a
- * real v2.
+ * real new version.
  */
 export function migrateWorldSnapshot(
   persisted: PersistedWorldSnapshot,
@@ -238,6 +250,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       gameClock: world.clock.snapshot(),
       economy: world.economy.snapshot(),
       inventory: world.inventory.snapshot(),
+      installedBase: world.installedBase.snapshot(),
       staffOrg: world.staffOrg.snapshot(),
       staffMorale: world.staffMorale.snapshot(),
       marketEconomy: world.marketEconomy.snapshot(),
@@ -272,6 +285,7 @@ export function restoreWorld(
   world.clock.restore(snap.modules.gameClock);
   world.economy.restore(snap.modules.economy);
   world.inventory.restore(snap.modules.inventory);
+  world.installedBase.restore(snap.modules.installedBase);
   // StaffOrg roster restores first so StaffMorale rehydrates onto the same ids.
   world.staffOrg.restore(snap.modules.staffOrg);
   world.staffMorale.restore(snap.modules.staffMorale);

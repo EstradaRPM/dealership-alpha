@@ -7,7 +7,7 @@
  * so the look can be re-skinned in one place.
  *
  * Roles are semantic, not literal — pick by meaning (surface, danger, reward),
- * never by hex value. v2 theming (light mode, per-tier tints) drops in here
+ * never by hex value. Future theming (light mode, per-tier tints) drops in here
  * without touching consumers.
  */
 

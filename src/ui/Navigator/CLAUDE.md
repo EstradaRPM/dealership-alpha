@@ -36,7 +36,7 @@ Routes and their params live in `RouteParamMap`. A route whose param type is
 adding a key to `RouteParamMap` — there is no untyped/string-keyed path.
 
 ## When to reconsider React Navigation
-This in-house module is deliberate for v1's shallow, modal-style flow. Revisit
+This in-house module is deliberate for the current shallow, modal-style flow. Revisit
 the build-vs-adopt decision only when **3 or more** of the following are true:
 
 1. **Deep linking** — launching into a specific screen from a URL/notification.

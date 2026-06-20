@@ -2,7 +2,7 @@
  * Public types for the SaveStore module.
  *
  * SaveStore is the sole gateway to persistent game state. Consumers hand it
- * a plain serializable state object; the backing storage (SQLite in v1,
+ * a plain serializable state object; the backing storage (SQLite today,
  * potentially a cloud-sync layer later) is hidden behind a StorageDriver.
  */
 
@@ -16,7 +16,7 @@ export interface SaveStore {
 
 /**
  * Narrow seam between SaveStore and whatever persists bytes.
- * v1 implementations: in-memory (tests), expo-sqlite (device).
+ * Current implementations: in-memory (tests), expo-sqlite (device).
  */
 export interface StorageDriver {
   read(): Promise<string | null>;
@@ -53,7 +53,7 @@ export interface SlotMetadata {
 /**
  * Produces an independent StorageDriver per logical key. Each key addresses
  * its own isolated cell so slots (and the slot index) never collide.
- * v1 factories: keyed in-memory (tests), per-key sqlite db (device).
+ * Current factories: keyed in-memory (tests), per-key sqlite db (device).
  */
 export type DriverFactory = (key: string) => StorageDriver;
 

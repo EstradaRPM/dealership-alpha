@@ -22,6 +22,15 @@ import type { StartingInventorySpec } from './startingInventory';
 import type { AuctionListing, LotVehicle, TradeAcquisitionInput } from './types';
 
 /**
+ * Powertrain stamped on every `inventory:vehicle_sold` (#298). The vehicle
+ * catalog has no powertrain axis yet — every unit is internal-combustion — so
+ * this is the single honest value, not a placeholder guess. When EV/hybrid
+ * templates are modeled the value is sourced per-vehicle here; the join seam
+ * downstream (InstalledBase) is already powertrain-aware.
+ */
+const DEFAULT_POWERTRAIN = 'ice' as const;
+
+/**
  * Persistence surface for Inventory (#189, parent #186). Module-owned
  * `schemaVersion`, same convention as GameClock/Economy. Captures the full
  * mutable lot state so a load restores the exact lot the player left — lot
@@ -119,7 +128,7 @@ export interface InventoryDeps {
    * Live market-price provider (#273). Sets a freshly-acquired unit's
    * `suggestedRetail` (and thus its default `askingPrice`) to the market
    * suggestion rather than the cost-basis placeholder. Omit to fall back to
-   * `purchasePrice + reconEstimate` (the v1 stub) — test harnesses that don't
+   * `purchasePrice + reconEstimate` (the cost-basis stub) — test harnesses that don't
    * wire MarketEconomy keep the cost-basis default. Receives the built
    * `LotVehicle`, which carries every anchor field the provider reads.
    */
@@ -690,6 +699,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
         category: vehicle.category,
         purchasePrice: vehicle.purchasePrice,
         reconCost: vehicle.reconCost,
+        powertrain: DEFAULT_POWERTRAIN,
       });
       return vehicle;
     },
@@ -801,6 +811,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
         category: v.category,
         purchasePrice: v.purchasePrice,
         reconCost: v.reconCost,
+        powertrain: DEFAULT_POWERTRAIN,
       });
     },
   };

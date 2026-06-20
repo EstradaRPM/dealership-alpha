@@ -182,7 +182,7 @@ export interface TradePolicyOption {
 }
 
 export interface TradePolicyConfig {
-  /** Policy applied when a slot has no persisted choice (v1: `market`). */
+  /** Policy applied when a slot has no persisted choice (default: `market`). */
   readonly defaultId: string;
   readonly policies: readonly TradePolicyOption[];
 }

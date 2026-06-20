@@ -295,6 +295,13 @@ export interface EventMap {
     category: string;
     purchasePrice: number;
     reconCost: number;
+    /**
+     * Powertrain axis (#298). The join seam InstalledBase reads to register an
+     * owner's vehicle type without re-deriving it. The catalog is ICE-only
+     * today, so Inventory emits `'ice'`; EV/hybrid templates flow through here
+     * unchanged when the powertrain axis is modeled.
+     */
+    powertrain: 'ice' | 'hybrid' | 'ev';
   };
 
   // FollowUpPool — a walked customer's heat decayed to zero; no longer actionable
@@ -480,7 +487,7 @@ export interface EventMap {
   // CapacityManager — customer turned away (demand exceeded capacity)
   'capacity:missed_opportunity': { day: number; customerId: string; label: string };
 
-  // Reputation — customer satisfaction penalty (stub; Reputation module consumes this in v2)
+  // Reputation — customer satisfaction penalty (stub; Reputation module will consume this later)
   'reputation:satisfaction_hit': { day: number; amount: number; reason: string };
 
   // CareerProgression — player's dealership advanced to the next tier

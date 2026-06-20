@@ -1,6 +1,6 @@
 # CompetitorMarket
 
-Static (v1) competitor roster. Each competitor has a personality, price point, and weekly stat drift. Publishes daily competitive pressure that `CustomerPool` consumes for poach decisions.
+Static competitor roster. Each competitor has a personality, price point, and weekly stat drift. Publishes daily competitive pressure that `CustomerPool` consumes for poach decisions.
 
 ## Public API (`index.ts`)
 - `createCompetitorMarket()` → `CompetitorMarket`. Exposes `getCompetitors`, `getCompetitor`, `snapshot/restore` (#191), `dispose`.
@@ -16,7 +16,7 @@ Static (v1) competitor roster. Each competitor has a personality, price point, a
 ## Data
 - `data/competitors.json`, `data/competitor-archetypes.json`, `data/competitor-personality-drift.json`, `data/brands.json`, `data/brand-market-share.json`.
 
-## v1 simplification
+## Current simplification
 Static roster; weekly drift only. ADR-0001 §10 documents the pressure-publish contract — read it before changing the publish/consume shape.
 
 ## Persistence & determinism (#183 → #191)

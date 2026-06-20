@@ -265,7 +265,7 @@ export function createDemandShaper(deps: {
         removing: input.removing,
       };
     }
-    // v1 snapshots stored already-effective additive weights only.
+    // Legacy snapshots stored already-effective additive weights only.
     return materializeInput({
       id: input.id,
       label: input.label,

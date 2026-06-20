@@ -184,7 +184,7 @@ describe('BoundCheck — visit archetypes (visit fields)', () => {
 
 // ── Staff archetypes — skills + resources ─────────────────────────────────────
 // rollSkill clamps to [0, cap].  For the authored μ/σ values, clamping
-// probability is negligible (< 0.1% per sample for all v1 archetypes), so the
+// probability is negligible (< 0.1% per sample for all current archetypes), so the
 // full mean + σ check holds within our tolerances.
 
 describe('BoundCheck — staff archetypes (skills + resources)', () => {

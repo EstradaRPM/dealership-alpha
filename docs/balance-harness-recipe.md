@@ -86,10 +86,10 @@ defaults** — once per MANAGERIAL phase, off the public `World` surface only.
 - **naive** — ignores the demand readout. One salesperson, a thin fixed lot
   bought cheapest-first, a slim cash cushion. The floor / worst case.
 - **competent** — the reference "good player": tier-scaled lot **matched to the
-  observed-demand readout**, a couple salespeople + a sales-manager (to absorb
+  observed-demand readout**, a couple salespeople + a UCM (to absorb
   discount escalations), a healthy cushion.
 - **optimal** — exploits everything: tier-scaled lot (capped so carrying cost
-  doesn't drown it), the full manager bench (GM/UCM/sales-manager), an
+  doesn't drown it), the full manager bench (GM/UCM/NCM), an
   advertising push, margin pricing, an acquisitive trade policy.
 
 The per-policy **numbers** (lot targets, headcounts, cash buffers) are the bot's

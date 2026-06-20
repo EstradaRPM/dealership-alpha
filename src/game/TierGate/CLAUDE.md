@@ -46,8 +46,8 @@ Five semantic face ids; their kinds/labels/targets/active-per-tier are all data
 `tiers[tier]` (progressive unlock — fewer lit early, decision 2: T1 units+cash,
 T2 adds gross, T3 adds csi). Accumulators run every month regardless; activeness
 only selects what `getProgress`/the verdict surface. **Facility** (stepped) is
-dormant in v1 — its image-standard teeth re-home onto the T4+ OEM stream
-(decision 4); schema present, no v1 tier activates it.
+dormant for now — its image-standard teeth re-home onto the T4+ OEM stream
+(decision 4); schema present, no current tier activates it.
 
 ## Events
 - **Emits:** `tierGate:month_verdict` — the single 4-band verdict
@@ -78,6 +78,6 @@ the verdict, then the month resets.
   def, so `streak` never grades or lights as a gate face.
 
 ## Scope notes
-- v1 = T1–T3 (units/gross/cash/csi progressively). OEM stair-step second stream
-  (T4) + multi-store digest (T6) are out of scope (decisions 4/5). The 4-band
+- Current frontier = T1–T3 (units/gross/cash/csi progressively). OEM stair-step second stream
+  (T4) + multi-store digest (T6) are not-yet-built (decisions 4/5). The 4-band
   visual celebration polish lands with S3b.

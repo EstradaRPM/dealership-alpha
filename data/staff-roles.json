@@ -19,7 +19,7 @@
     "grants_skills": ["finance_structuring", "product_presentation"],
     "promotes_to": ["gm"],
     "promotion_gates": { "effectiveness": 0.7, "trustworthiness": 0.8 },
-    "hireTier": 2
+    "hireTier": 3
   },
   "technician": {
     "tier": "worker",
@@ -33,14 +33,16 @@
     "department": "service",
     "grants_skills": ["communication", "diagnostic_clarity", "write_up_accuracy", "upsell"],
     "promotes_to": ["service-manager"],
-    "promotion_gates": { "effectiveness": 0.6, "trustworthiness": 0.7 }
+    "promotion_gates": { "effectiveness": 0.6, "trustworthiness": 0.7 },
+    "hireTier": 2
   },
   "service-manager": {
     "tier": "manager",
     "department": "service",
     "grants_skills": ["shop_throughput", "warranty_handling"],
     "promotes_to": ["gm"],
-    "promotion_gates": { "effectiveness": 0.75, "trustworthiness": 0.7 }
+    "promotion_gates": { "effectiveness": 0.75, "trustworthiness": 0.7 },
+    "hireTier": 5
   },
   "used-car-manager": {
     "tier": "manager",
@@ -48,7 +50,7 @@
     "grants_skills": ["condition_reading", "pricing", "t_o_closing"],
     "promotes_to": ["gm"],
     "promotion_gates": { "effectiveness": 0.7, "trustworthiness": 0.65 },
-    "hireTier": 2
+    "hireTier": 3
   },
   "gm": {
     "tier": "gm",
@@ -56,6 +58,6 @@
     "grants_skills": [],
     "promotes_to": [],
     "promotion_gates": {},
-    "hireTier": 3
+    "hireTier": 6
   }
 }

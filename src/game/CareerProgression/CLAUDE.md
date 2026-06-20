@@ -1,6 +1,6 @@
 # CareerProgression
 
-Player tier (1 → 3 in v1) + backstory-driven Day 1 modifiers + branding rebrand flow on tier-up.
+Player tier (currently 1 → 3) + backstory-driven Day 1 modifiers + branding rebrand flow on tier-up.
 
 ## Public API (`index.ts`)
 - `createTierManager()` → `TierManager`.
@@ -18,7 +18,7 @@ Player tier (1 → 3 in v1) + backstory-driven Day 1 modifiers + branding rebran
   months (T1→T2: 1, T2→T3: 2, T3→T4: 3 — `data/tier-gate.json` `streak`,
   injected by the composition root as `streaksByTier`; identity fallback when
   omitted). Any below-meet month resets the streak strictly to 0.
-- Reaching the **T3** streak does NOT auto-advance (no T4 in v1): it sets the
+- Reaching the **T3** streak does NOT auto-advance (T4 not built yet): it sets the
   persisted `dossierReady` flag and surfaces it on the Home gate strip. Act 2
   entry is player-initiated franchise courtship (parked #223).
 - Exposes `monthStreak`, `requiredStreak`, `dossierReady` getters for the gate
@@ -67,5 +67,5 @@ Player tier (1 → 3 in v1) + backstory-driven Day 1 modifiers + branding rebran
 - `data/failure-tunables.json` — bankruptcy + indictment + regulatory tunables.
 - `data/career-endings.json` — retire / sellout / family-handoff thresholds.
 
-## v1 scope
-Tiers 1–3 only (gravel yard → paved lot → small showroom). Anything beyond tier 3 is out of scope for v1 — see issue #1.
+## Current tier frontier
+Tiers 1–3 are built (gravel yard → paved lot → small showroom). Higher tiers are not-yet-built — see issue #1.

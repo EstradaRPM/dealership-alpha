@@ -59,9 +59,9 @@ they happen to sell" (exogenous market position). The same dealer-stat
 vector under a different brand yields a different market outcome — exactly
 the IRL relationship.
 
-Brand evolution is the OEM module's concern. v1 OEM tables are static *by
-scope choice*, not because the competitor model locked it in. v2 dynamic
-OEM behavior drops in without changing competitor data.
+Brand evolution is the OEM module's concern. Current OEM tables are static *by
+current choice*, not because the competitor model locked it in. Dynamic
+OEM behavior drops in later without changing competitor data.
 
 ### 4. Scoring is pairwise; market share is caller-side aggregation
 
@@ -80,7 +80,7 @@ Mechanically, the score combines:
 
 Per-segment market share, per-region market share, per-financing-posture
 share — all of these are caller-side `filter + aggregate` over the same
-pairwise function. Adding a new customer facet in v2 (e.g. `segment`) does
+pairwise function. Adding a new customer facet later (e.g. `segment`) does
 not change `scoreCompetitor`'s signature; it only adds slicing dimensions
 available to callers.
 
@@ -123,7 +123,7 @@ Each is filed as its own follow-up issue when its parent module exists.
   SPACED weights and (eventually) brand affinity. Slice ordering must
   respect this dependency.
 - The pairwise-scoring + caller-side-aggregation contract is what makes the
-  v1 → v2 → v3 evolution drop-in: richer customer facets become slicing
+  incremental evolution drop-in: richer customer facets become slicing
   dimensions without function-signature churn.
 
 ## Open items deferred

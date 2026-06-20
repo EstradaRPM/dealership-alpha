@@ -175,10 +175,10 @@ Player's daily accessible pool
 
 `CompetitorMarket` publishes daily pressure via `EventBus`; `CustomerPool`
 consumes it when rolling today's customers. Multi-brand career progression
-(post-v1) sums slices across brand pools.
+(later tiers) sums slices across brand pools.
 
-**v1 stays at brand granularity, not segment granularity.** Cross-segment
-shopping (Camry shopper considering CR-V) is a v2 nuance.
+**Currently stays at brand granularity, not segment granularity.** Cross-segment
+shopping (Camry shopper considering CR-V) is a later nuance.
 
 ### 11. Trait math — tagged effects in data
 
@@ -275,7 +275,7 @@ Bound-check harness (#3) doubles as a balance lint for data authoring.
 
 **Out of scope:** hash/RNG internals (private), gameplay outcomes (no
 DealEngine/CustomerPool consumers in this slice), snapshot tests
-(forbidden in v1).
+(not used).
 
 ## Consequences
 
@@ -297,5 +297,5 @@ DealEngine/CustomerPool consumers in this slice), snapshot tests
 - `int` (intelligence) mechanics — agreed it exists as a Person trait; its
   consumer-side effects (lowball resistance, F&I scrutiny) are deal-engine
   concerns, deferred to later slices.
-- Segment-level customer pool granularity — v2.
-- Dynamic brand market-share — v2.
+- Segment-level customer pool granularity — later.
+- Dynamic brand market-share — later.
