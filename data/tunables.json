@@ -372,8 +372,23 @@
     "frontlineHoldDays": 2
   },
   "installedBase": {
-    "_doc": "InstalledBase owner registry (#298, parent #297). `loyaltySeedScale` maps a deal's satisfaction-at-sale retentionSeed ∈ [0,1] onto an owner's initial loyalty (loyalty = clamp01(retentionSeed × scale)). Ships at 1.0 (identity); the S14 balance pass (#286) tunes how strongly a good sale seeds future service-retention without touching code.",
-    "loyaltySeedScale": 1.0
+    "_doc": "InstalledBase owner registry + return cadence (#298/#300, parent #297). `loyaltySeedScale` maps a deal's satisfaction-at-sale retentionSeed ∈ [0,1] onto an owner's initial loyalty. `returnCadence` is the service-due interval in game days per powertrain (EVs cycle least often). `jobCategoryDrift` walks early→late job categories as the car ages: each band applies while ageDays < untilAgeDays, the last (no untilAgeDays) is the catch-all. `returnRoll` carries the convenience/price-sensitivity terms of P(return) = clamp01(loyalty × reputation × convenience − priceSensitivity). All numbers are S14 (#286) calibration placeholders.",
+    "loyaltySeedScale": 1.0,
+    "returnCadence": {
+      "ice": 120,
+      "hybrid": 150,
+      "ev": 240
+    },
+    "jobCategoryDrift": [
+      { "category": "oil_filters", "untilAgeDays": 365 },
+      { "category": "tires_brakes", "untilAgeDays": 1095 },
+      { "category": "drivetrain", "untilAgeDays": 2190 },
+      { "category": "electronics" }
+    ],
+    "returnRoll": {
+      "convenience": 0.9,
+      "priceSensitivity": 0.05
+    }
   },
   "ownership": {
     "hoursOfOp": {

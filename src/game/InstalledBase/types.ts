@@ -1,15 +1,45 @@
 /**
- * InstalledBase types (#298, parent #297).
+ * InstalledBase types (#298/#300, parent #297).
  *
  * The living per-owner registry that is the foundation of the Service annuity.
- * This slice is the registry + persistence only — no return cadence yet.
+ * #298 built the registry + persistence; #300 adds the return cadence + the
+ * job-category drift that emits the day's returning-owner stream.
  */
+
+/**
+ * The four service job categories, in early→late drift order. Which one a
+ * returning owner is due for is selected by the car's age (#300). Mirrors the
+ * Service parts categories the downstream ServiceDemand/PartsInventory work
+ * will stock against.
+ */
+export type JobCategory =
+  | 'oil_filters'
+  | 'tires_brakes'
+  | 'drivetrain'
+  | 'electronics';
+
+/**
+ * One entry in the day's returning-owner stream (#300). Carries the customer +
+ * vehicle identity and the due job category, so ServiceDemand can compose it
+ * into the day's NPC-bound service intake without re-joining the registry.
+ */
+export interface ReturningOwner {
+  readonly ownerId: string;
+  readonly customerId: string;
+  readonly vehicleId: string;
+  /** VehicleCategory of the owner's car (e.g. 'sedan'). */
+  readonly category: string;
+  readonly powertrain: OwnerPowertrain;
+  /** The maintenance category the car's age makes it due for. */
+  readonly jobCategory: JobCategory;
+  /** Car age in game days at the time of this return (`day − saleDay`). */
+  readonly ageDays: number;
+}
 
 /**
  * Vehicle powertrain axis. Joined from the sold-vehicle snapshot
  * (`inventory:vehicle_sold`), never re-derived inside this module. Drives the
- * later service-due cadence (EVs cycle less, throw no oil changes); inert in
- * this slice beyond being captured on the owner record.
+ * service-due cadence (#300 — EVs cycle least often).
  */
 export type OwnerPowertrain = 'ice' | 'hybrid' | 'ev';
 

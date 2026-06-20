@@ -556,6 +556,26 @@ export interface EventMap {
     reputationHit: number;
   };
 
+  // InstalledBase (#300, parent #297) — the day's returning-owner service
+  // stream. Emitted on clock:day_started after each due owner's seeded return
+  // roll, for the future ServiceDemand to compose into the NPC-bound service
+  // intake. Fires every day (possibly with an empty `returns`) so consumers get
+  // a reliable daily signal. Deterministic from masterSeed + day + ownerId
+  // (#122 replay-safe). Each entry carries the customer + vehicle identity and
+  // the age-selected due job category.
+  'installedBase:returns_ready': {
+    day: number;
+    returns: ReadonlyArray<{
+      ownerId: string;
+      customerId: string;
+      vehicleId: string;
+      category: string;
+      powertrain: 'ice' | 'hybrid' | 'ev';
+      jobCategory: 'oil_filters' | 'tires_brakes' | 'drivetrain' | 'electronics';
+      ageDays: number;
+    }>;
+  };
+
   // ServiceQueue — daily service intake items generated at Tier 2+
   'service:intake_ready': {
     day: number;

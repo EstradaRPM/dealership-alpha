@@ -774,14 +774,19 @@ export function createWorld(deps: {
     tunables: loadCustomerTunables().followUp,
   });
 
-  // InstalledBase (#298, parent #297): the per-owner Service-annuity registry.
-  // Accrues one owner record per sale by joining `inventory:vehicle_sold` (the
-  // vehicle snapshot) with `deal:closed` (customerId↔vehicleId) and
-  // `customer:resolved` (the satisfaction-at-sale `retentionSeed` loyalty seed).
-  // Registry + persistence only this slice — no return cadence yet.
+  // InstalledBase (#298/#300, parent #297): the per-owner Service-annuity
+  // registry. Accrues one owner record per sale by joining
+  // `inventory:vehicle_sold` (the vehicle snapshot) with `deal:closed`
+  // (customerId↔vehicleId) and `customer:resolved` (the satisfaction-at-sale
+  // `retentionSeed` loyalty seed). #300 adds the return cadence: each morning it
+  // rolls the due owners' returns and publishes `installedBase:returns_ready`
+  // for the future ServiceDemand. Reputation is read live (normalized to [0,1])
+  // via an injected getter so the module stays Reputation-free.
   const installedBase = createInstalledBase({
     bus,
     config: loadInstalledBaseConfig(),
+    masterSeed,
+    reputation: () => Math.max(0, Math.min(1, reputation.reviewScore / 100)),
   });
 
   // ServiceQueue (#80): starts silent (default initialTier=1 < minTierRequired
