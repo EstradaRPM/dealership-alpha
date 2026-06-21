@@ -10,6 +10,13 @@ const ServiceDispatchConfigSchema = z.object({
   // per FloorSim tick, lerped by effectiveness. Fractional; accumulated.
   minDrainPerTick: z.number().min(0),
   maxDrainPerTick: z.number().min(0),
+  // #304 parts gate. The tier at/above which the rush emergency-order path is
+  // unlocked (PRD #297 story 13 — "as my operation matures"); below it an
+  // under-stock job is a flat miss. Placeholder pending calibration (#286).
+  rushUnlockTier: z.number().int().min(1),
+  // The CSI hit a missed (under-stocked, turned-away) job emits, feeding base
+  // health / Reputation. Placeholder magnitude pending calibration (#286).
+  missCsiHit: z.number().min(0),
 });
 
 export type ServiceDispatchConfig = z.infer<typeof ServiceDispatchConfigSchema>;

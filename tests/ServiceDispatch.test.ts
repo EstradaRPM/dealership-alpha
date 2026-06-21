@@ -8,6 +8,7 @@ import {
 } from '../src/game/ServiceDispatch';
 import type { StaffOrg } from '../src/game/StaffOrg';
 import type { StaffWithComposites, Staff } from '../src/game/NPC';
+import type { PartCategory } from '../src/game/PartsInventory';
 
 const MASTER_SEED = 42;
 
@@ -56,6 +57,8 @@ const ALWAYS_RESOLVE_CONFIG: ServiceDispatchConfig = {
   maxRevenueMultiplier: 1.0,
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.60,
+  rushUnlockTier: 3,
+  missCsiHit: 4,
 };
 
 const NEVER_RESOLVE_CONFIG: ServiceDispatchConfig = {
@@ -65,6 +68,8 @@ const NEVER_RESOLVE_CONFIG: ServiceDispatchConfig = {
   maxRevenueMultiplier: 1.0,
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.60,
+  rushUnlockTier: 3,
+  missCsiHit: 4,
 };
 
 const NORMAL_CONFIG: ServiceDispatchConfig = {
@@ -74,6 +79,8 @@ const NORMAL_CONFIG: ServiceDispatchConfig = {
   maxRevenueMultiplier: 1.30,
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.60,
+  rushUnlockTier: 3,
+  missCsiHit: 4,
 };
 
 function makeItem(over: Partial<{
@@ -321,6 +328,218 @@ describe('ServiceDispatch — floor drain', () => {
 
     expect(totals).toEqual({ resolved: 0, escalated: 0 });
     expect(queue.getBadgeCount('service')).toBe(2);
+  });
+});
+
+// ── #304 parts gate ──────────────────────────────────────────────────────────
+
+/**
+ * Minimal PartsInventory stub exposing only what the parts gate touches
+ * (`consume` / `rushOrder`). Tracks per-category stock and records rush orders,
+ * so the tests assert ServiceDispatch's behaviour on its public interface
+ * without coupling to PartsInventory internals.
+ */
+function makeStubParts(initial: Partial<Record<PartCategory, number>> = {}) {
+  const stock: Record<PartCategory, number> = {
+    oil_filters: 0,
+    tires_brakes: 0,
+    drivetrain: 0,
+    electronics: 0,
+    ...initial,
+  };
+  const rushed: PartCategory[] = [];
+  return {
+    consume(cat: PartCategory): boolean {
+      if (stock[cat] > 0) {
+        stock[cat] -= 1;
+        return true;
+      }
+      return false;
+    },
+    rushOrder(cat: PartCategory, _qty = 1): void {
+      rushed.push(cat);
+    },
+    stock,
+    rushed,
+  };
+}
+
+describe('ServiceDispatch — parts gate consume-on-complete', () => {
+  it('consumes one matching-category part and emits parts_consumed + ticket_closed', () => {
+    const bus = createEventBus();
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const queue = createDepartmentQueue({ bus });
+    const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
+    const parts = makeStubParts({ oil_filters: 2 });
+    createServiceDispatch({
+      bus, staffOrg, queue, economy, masterSeed: MASTER_SEED,
+      config: ALWAYS_RESOLVE_CONFIG, partsInventory: parts,
+    });
+    const consumed: Array<{ jobCategory: string }> = [];
+    const closed: unknown[] = [];
+    bus.subscribe('service:parts_consumed', e => consumed.push(e));
+    bus.subscribe('service:ticket_closed', e => closed.push(e));
+
+    const cashBefore = economy.cash;
+    bus.publish('service:intake_ready', {
+      day: 1,
+      items: [makeItem({ serviceItemId: 'svc:1', jobCategory: 'oil_filters' })],
+    });
+
+    expect(parts.stock.oil_filters).toBe(1);
+    expect(consumed).toHaveLength(1);
+    expect(consumed[0].jobCategory).toBe('oil_filters');
+    expect(closed).toHaveLength(1);
+    expect(economy.cash).toBeGreaterThan(cashBefore);
+    expect(queue.getBadgeCount('service')).toBe(0);
+    expect(parts.rushed).toHaveLength(0);
+  });
+
+  it('does not consume a part when the advisor fails to auto-resolve', () => {
+    const bus = createEventBus();
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const queue = createDepartmentQueue({ bus });
+    const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
+    const parts = makeStubParts({ oil_filters: 2 });
+    createServiceDispatch({
+      bus, staffOrg, queue, economy, masterSeed: MASTER_SEED,
+      config: NEVER_RESOLVE_CONFIG, partsInventory: parts,
+    });
+    bus.publish('service:intake_ready', {
+      day: 1,
+      items: [makeItem({ serviceItemId: 'svc:1' })],
+    });
+    expect(parts.stock.oil_filters).toBe(2);
+  });
+});
+
+describe('ServiceDispatch — parts gate miss (rush locked)', () => {
+  it('turns the job away: job_missed with lost revenue + CSI hit, no ticket_closed, no revenue', () => {
+    const bus = createEventBus();
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const queue = createDepartmentQueue({ bus });
+    const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
+    const parts = makeStubParts({ oil_filters: 0 });
+    createServiceDispatch({
+      bus, staffOrg, queue, economy, masterSeed: MASTER_SEED,
+      config: ALWAYS_RESOLVE_CONFIG, partsInventory: parts,
+      isRushUnlocked: () => false,
+    });
+    const missed: Array<{ lostRevenue: number; csiHit: number; jobCategory: string; customerId: string }> = [];
+    const closed: unknown[] = [];
+    bus.subscribe('service:job_missed', e => missed.push(e));
+    bus.subscribe('service:ticket_closed', e => closed.push(e));
+
+    const cashBefore = economy.cash;
+    bus.publish('service:intake_ready', {
+      day: 1,
+      items: [makeItem({ serviceItemId: 'svc:1', baseRevenue: 75, customerId: 'cust-9' })],
+    });
+
+    expect(missed).toHaveLength(1);
+    expect(missed[0].lostRevenue).toBe(75);
+    expect(missed[0].csiHit).toBe(ALWAYS_RESOLVE_CONFIG.missCsiHit);
+    expect(missed[0].jobCategory).toBe('oil_filters');
+    expect(missed[0].customerId).toBe('cust-9');
+    expect(closed).toHaveLength(0);
+    expect(economy.cash).toBe(cashBefore);
+    // The turned-away ticket is cleared from the queue (not left lingering).
+    expect(queue.getBadgeCount('service')).toBe(0);
+    expect(parts.rushed).toHaveLength(0);
+  });
+});
+
+describe('ServiceDispatch — parts gate rush (unlocked)', () => {
+  it('rush-orders the part and completes the job at full revenue', () => {
+    const bus = createEventBus();
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const queue = createDepartmentQueue({ bus });
+    const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
+    const parts = makeStubParts({ tires_brakes: 0 });
+    createServiceDispatch({
+      bus, staffOrg, queue, economy, masterSeed: MASTER_SEED,
+      config: ALWAYS_RESOLVE_CONFIG, partsInventory: parts,
+      isRushUnlocked: () => true,
+    });
+    const rushed: Array<{ revenue: number; jobCategory: string }> = [];
+    const missed: unknown[] = [];
+    const closed: unknown[] = [];
+    bus.subscribe('service:job_rushed', e => rushed.push(e));
+    bus.subscribe('service:job_missed', e => missed.push(e));
+    bus.subscribe('service:ticket_closed', e => closed.push(e));
+
+    const cashBefore = economy.cash;
+    bus.publish('service:intake_ready', {
+      day: 1,
+      items: [makeItem({ serviceItemId: 'svc:1', jobCategory: 'tires_brakes', baseRevenue: 120 })],
+    });
+
+    expect(parts.rushed).toEqual(['tires_brakes']);
+    expect(rushed).toHaveLength(1);
+    expect(rushed[0].revenue).toBe(120);
+    expect(missed).toHaveLength(0);
+    expect(closed).toHaveLength(1);
+    expect(economy.cash).toBeGreaterThan(cashBefore);
+    expect(queue.getBadgeCount('service')).toBe(0);
+  });
+});
+
+describe('ServiceDispatch — parts gate cadence-invariance', () => {
+  // Three oil-filter jobs against a stock of 2, rush locked: the first two
+  // consume a part and close, the third misses. Legacy once-per-intake path and
+  // per-tick floor drain must produce the identical (event, ticketId) sequence.
+  function intakeOf(day: number) {
+    return {
+      day,
+      items: [0, 1, 2].map(i =>
+        makeItem({ serviceItemId: `svc:${i}`, jobCategory: 'oil_filters', baseRevenue: 75 }),
+      ),
+    };
+  }
+
+  function recordLog(bus: ReturnType<typeof createEventBus>): Array<[string, string]> {
+    const log: Array<[string, string]> = [];
+    bus.subscribe('service:parts_consumed', e => log.push(['consumed', e.serviceItemId]));
+    bus.subscribe('service:job_missed', e => log.push(['missed', e.serviceItemId]));
+    bus.subscribe('service:ticket_closed', e => log.push(['closed', e.serviceItemId]));
+    return log;
+  }
+
+  it('legacy path and per-tick drain yield identical outcomes', () => {
+    // Legacy path.
+    const busA = createEventBus();
+    const econA = createEconomy({ bus: busA, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const queueA = createDepartmentQueue({ bus: busA });
+    const partsA = makeStubParts({ oil_filters: 2 });
+    createServiceDispatch({
+      bus: busA, staffOrg: makeStaffOrg([makeAdvisor(0.8)]), queue: queueA, economy: econA,
+      masterSeed: MASTER_SEED, config: ALWAYS_RESOLVE_CONFIG, partsInventory: partsA, isRushUnlocked: () => false,
+    });
+    const logA = recordLog(busA);
+    busA.publish('service:intake_ready', intakeOf(1));
+
+    // Per-tick drain path.
+    const busB = createEventBus();
+    const econB = createEconomy({ bus: busB, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const queueB = createDepartmentQueue({ bus: busB });
+    const partsB = makeStubParts({ oil_filters: 2 });
+    const drainB = createServiceFloorDrain({
+      bus: busB, staffOrg: makeStaffOrg([makeAdvisor(0.8)]), queue: queueB, economy: econB,
+      masterSeed: MASTER_SEED, config: ALWAYS_RESOLVE_CONFIG, partsInventory: partsB, isRushUnlocked: () => false,
+    });
+    const logB = recordLog(busB);
+    busB.publish('service:intake_ready', intakeOf(1));
+    drainTicks(drainB, 12);
+
+    expect(logA).toEqual([
+      ['consumed', 'svc:0'], ['closed', 'svc:0'],
+      ['consumed', 'svc:1'], ['closed', 'svc:1'],
+      ['missed', 'svc:2'],
+    ]);
+    expect(logB).toEqual(logA);
+    expect(partsA.stock.oil_filters).toBe(0);
+    expect(partsB.stock.oil_filters).toBe(0);
+    expect(econA.cash).toBe(econB.cash);
   });
 });
 

@@ -105,6 +105,8 @@ const SERVICE_CONFIG: ServiceDispatchConfig = {
   maxRevenueMultiplier: 1.0,
   minDrainPerTick: 0.15,
   maxDrainPerTick: 0.6,
+  rushUnlockTier: 3,
+  missCsiHit: 4,
 };
 
 function seedSalesQueue(bus: EventBus, n: number, day = baseCtx.day) {

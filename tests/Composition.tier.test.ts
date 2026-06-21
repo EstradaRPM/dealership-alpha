@@ -374,6 +374,13 @@ describe('#206 composition root — ServiceDispatch wired into the floor seams',
     const [advisor] = world.staffOrg.getCandidates('service-advisor');
     world.staffOrg.hire(advisor.candidateId);
 
+    // #304 parts gate: a completed job now consumes a matching-category part,
+    // and at Tier 2 the rush path is still locked, so an unstocked job misses
+    // instead of closing. Stock every category so the advisor can close tickets.
+    for (const cat of ['oil_filters', 'tires_brakes', 'drivetrain', 'electronics'] as const) {
+      world.partsInventory.addStock(cat, 50, 10);
+    }
+
     // Cold-start Day 1 does not advance the clock, so ServiceQueue's
     // day_started intake starts on the next played day.
     world.dayLoop.nextDay().runDay();

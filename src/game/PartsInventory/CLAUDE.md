@@ -9,9 +9,9 @@ no age field.
 **Built so far (#299): stock-in + consumption + the coverage read-model seam +
 persistence. (#301): par-level procurement — per-category reorder point +
 target, supplier-tier lead time + reliability, the rush emergency order, and the
-coverage-gap read-model.** The Body-Shop parts categories and the
-consume-on-`service:ticket_closed` / rush-on-miss dispatch wiring are later #297
-slices.
+coverage-gap read-model. (#304): the ServiceDispatch parts gate now calls
+`consume` on a completed job and `rushOrder` on an under-stock miss (see that
+module).** The Body-Shop parts categories are a later #297 slice.
 
 ## Public API (`index.ts`)
 - `createPartsInventory({ economy, config?, masterSeed? })` → `PartsInventory`.

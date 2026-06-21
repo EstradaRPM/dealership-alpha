@@ -4,6 +4,7 @@ import type { StaffOrg } from '../StaffOrg';
 import type { DepartmentQueue } from '../DepartmentQueue';
 import type { QueueItem } from '../DepartmentQueue';
 import type { DeptDrain } from '../FloorSim';
+import type { PartCategory, PartsInventory } from '../PartsInventory';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import { loadServiceDispatchConfig, type ServiceDispatchConfig } from './serviceDispatchData';
 
@@ -14,6 +15,20 @@ export interface ServiceDispatchDeps {
   economy: Economy;
   masterSeed: number;
   config?: ServiceDispatchConfig;
+  /**
+   * #304 parts gate. Optional: when absent, a completed job resolves without
+   * consuming a part (pre-#304 callers + isolation tests that don't exercise
+   * the gate). When provided, every completed job consumes one matching-category
+   * unit; an under-stock miss routes to the rush or lost-revenue path.
+   */
+  partsInventory?: Pick<PartsInventory, 'consume' | 'rushOrder'>;
+  /**
+   * #304 whether the rush emergency-order path is unlocked yet (the
+   * operation-maturity gate, PRD #297 story 13). Absent / false ⇒ an under-stock
+   * job is a flat miss; true ⇒ it rush-orders the part at a premium and
+   * completes. Read per-call so a mid-game tier-up flips it live.
+   */
+  isRushUnlocked?: () => boolean;
 }
 
 // Intentionally empty — dispatch is fully autonomous.
@@ -24,6 +39,12 @@ interface ServiceIntakeItem {
   serviceItemId: string;
   label: string;
   baseRevenue: number;
+  /** #304 the due job/parts category — selects the PartsInventory unit the
+   *  parts gate consumes (and rush-orders / reports on a miss). */
+  jobCategory: PartCategory;
+  /** #304 customer + vehicle identity, carried so a miss/rush names them. */
+  customerId: string;
+  vehicleId: string;
 }
 
 function lerp(a: number, b: number, t: number): number {
@@ -34,12 +55,14 @@ function lerp(a: number, b: number, t: number): number {
 /**
  * Builds the per-item service auto-resolution closure shared by the legacy
  * once-per-intake path and the per-tick floor drain (#101). Behaviour — advisor
- * pick, skill-scaled auto chance, upsell-scaled revenue, events, RNG keying on
- * (serviceItemId, day) — is identical regardless of caller, so cadence changes
- * never change outcomes. Returns true iff the item was resolved.
+ * pick, skill-scaled auto chance, upsell-scaled revenue, the #304 parts gate,
+ * events, RNG keying on (serviceItemId, day) — is identical regardless of
+ * caller, so cadence changes never change outcomes. Both paths consume parts in
+ * the same FIFO order, so the same jobs get a part and the same jobs miss.
+ * Returns true iff the item was handled (closed OR turned away as a miss).
  */
 function makeServiceResolver(deps: ServiceDispatchDeps) {
-  const { bus, staffOrg, queue, economy, masterSeed } = deps;
+  const { bus, staffOrg, queue, economy, masterSeed, partsInventory, isRushUnlocked } = deps;
   const config = deps.config ?? loadServiceDispatchConfig();
 
   return function resolveServiceItem(
@@ -72,8 +95,6 @@ function makeServiceResolver(deps: ServiceDispatchDeps) {
 
     if (rng() > autoChance) return false;
 
-    queue.resolveItem(item.serviceItemId);
-
     const revenueMultiplier = lerp(
       config.minRevenueMultiplier,
       config.maxRevenueMultiplier,
@@ -81,8 +102,60 @@ function makeServiceResolver(deps: ServiceDispatchDeps) {
     );
     const revenue = Math.round(item.baseRevenue * revenueMultiplier);
 
+    // #304 parts gate. Completing a job consumes one matching-category part.
+    // No part on hand → the under-stock path: a rush order (premium, completes)
+    // once unlocked, else a miss (lost revenue + CSI hit). Skipped entirely when
+    // no PartsInventory is wired (pre-#304 callers / isolation tests).
+    if (partsInventory && !partsInventory.consume(item.jobCategory)) {
+      queue.resolveItem(item.serviceItemId);
+      if (isRushUnlocked?.()) {
+        partsInventory.rushOrder(item.jobCategory, 1);
+        if (revenue > 0) {
+          economy.postRevenue(revenue, `Service (rush) — ${item.label}`);
+        }
+        bus.publish('service:job_rushed', {
+          serviceItemId: item.serviceItemId,
+          day,
+          customerId: item.customerId,
+          vehicleId: item.vehicleId,
+          jobCategory: item.jobCategory,
+          revenue,
+          advisorId: advisor.id,
+        });
+        bus.publish('service:ticket_closed', {
+          serviceItemId: item.serviceItemId,
+          day,
+          revenue,
+          advisorId: advisor.id,
+        });
+        return true;
+      }
+      bus.publish('service:job_missed', {
+        serviceItemId: item.serviceItemId,
+        day,
+        customerId: item.customerId,
+        vehicleId: item.vehicleId,
+        jobCategory: item.jobCategory,
+        lostRevenue: revenue,
+        csiHit: config.missCsiHit,
+        advisorId: advisor.id,
+      });
+      return true;
+    }
+
+    queue.resolveItem(item.serviceItemId);
+
     if (revenue > 0) {
       economy.postRevenue(revenue, `Service — ${item.label}`);
+    }
+
+    if (partsInventory) {
+      bus.publish('service:parts_consumed', {
+        serviceItemId: item.serviceItemId,
+        day,
+        jobCategory: item.jobCategory,
+        advisorId: advisor.id,
+      });
     }
 
     bus.publish('service:ticket_closed', {
@@ -105,6 +178,9 @@ export function createServiceDispatch(deps: ServiceDispatchDeps): ServiceDispatc
           serviceItemId: item.serviceItemId,
           label: item.label,
           baseRevenue: item.baseRevenue,
+          jobCategory: item.jobCategory,
+          customerId: item.customerId,
+          vehicleId: item.vehicleId,
         },
         day,
       );
@@ -141,14 +217,20 @@ export function createServiceFloorDrain(deps: ServiceDispatchDeps): DeptDrain {
 
   function fromQueuedServiceItem(item: QueueItem): { item: ServiceIntakeItem; day: number } | null {
     if (item.dept !== 'service' || item.type !== 'routine') return null;
-    // The enriched intake carries baseRevenue onto the queue item (#303), so a
-    // restored (post-load) item resolves at its real revenue without the retired
-    // flat intake table.
+    // The enriched intake carries baseRevenue + the job/parts category +
+    // customer/vehicle onto the queue item (#303/#304), so a restored
+    // (post-load) or pre-drain-bootstrap item resolves at its real revenue and
+    // through the parts gate without the retired flat intake table. A legacy
+    // pre-#304 snapshot lacks jobCategory; fall back to the first category so
+    // the gate still consumes deterministically.
     return {
       item: {
         serviceItemId: item.id,
         label: item.label,
         baseRevenue: item.baseRevenue ?? 0,
+        jobCategory: item.jobCategory ?? 'oil_filters',
+        customerId: item.customerId ?? '',
+        vehicleId: item.vehicleId ?? '',
       },
       day: item.createdDay,
     };
@@ -167,6 +249,9 @@ export function createServiceFloorDrain(deps: ServiceDispatchDeps): DeptDrain {
         serviceItemId: item.serviceItemId,
         label: item.label,
         baseRevenue: item.baseRevenue,
+        jobCategory: item.jobCategory,
+        customerId: item.customerId,
+        vehicleId: item.vehicleId,
       }, day);
     }
   });

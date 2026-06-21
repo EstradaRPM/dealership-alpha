@@ -299,7 +299,9 @@
     "minRevenueMultiplier": 0.80,
     "maxRevenueMultiplier": 1.30,
     "minDrainPerTick": 0.15,
-    "maxDrainPerTick": 0.60
+    "maxDrainPerTick": 0.60,
+    "rushUnlockTier": 3,
+    "missCsiHit": 4
   },
   "fniAutoAttach": {
     "baseAttachRates": {

@@ -123,7 +123,7 @@ import {
 } from './game/Reputation';
 import { createServiceDemand, type ServiceDemand } from './game/ServiceDemand';
 import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
-import { createServiceFloorDrain } from './game/ServiceDispatch';
+import { createServiceFloorDrain, loadServiceDispatchConfig } from './game/ServiceDispatch';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createHistoryLog, type HistoryLog } from './game/HistoryLog';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
@@ -812,6 +812,10 @@ export function createWorld(deps: {
   bus.subscribe('clock:day_started', ({ day }) => {
     partsInventory.advanceDay(day);
   });
+  // #304 the rush emergency-order unlock tier (operation-maturity gate, PRD
+  // #297) the Service parts-gate reads. Loaded once; the drain below closes over
+  // it for its per-day isRushUnlocked predicate.
+  const serviceDispatchConfig = loadServiceDispatchConfig();
 
   // ServiceDemand (#302, parent #297): the pure mix composer. On each
   // installedBase:returns_ready it folds the returning owners in as the primary
@@ -1173,6 +1177,13 @@ export function createWorld(deps: {
         queue: departmentQueue,
         economy,
         masterSeed,
+        // #304 parts gate: a completed service job consumes one matching-category
+        // PartsInventory unit; an under-stock miss rush-orders (once the rush
+        // tier is unlocked at rushUnlockTier) or is a flat miss (lost revenue +
+        // CSI hit). rushUnlockTier is the operation-maturity gate (PRD #297).
+        partsInventory,
+        isRushUnlocked: () =>
+          tierManager.currentTier >= serviceDispatchConfig.rushUnlockTier,
       }),
     ],
     customerSource,

@@ -12,6 +12,16 @@ export interface QueueItem {
    *  item so the per-tick floor drain can resolve a restored (post-load) item
    *  without the retired flat intake table. */
   readonly baseRevenue?: number;
+  /** Service items only (#304): the due job/parts category and the vehicle,
+   *  carried on the queue item so the parts-gate resolves a restored
+   *  (post-load) or pre-drain-bootstrap item against the right PartsInventory
+   *  category (and can name the customer/vehicle on a miss/rush). */
+  readonly jobCategory?:
+    | 'oil_filters'
+    | 'tires_brakes'
+    | 'drivetrain'
+    | 'electronics';
+  readonly vehicleId?: string;
 }
 
 /**

@@ -91,7 +91,10 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
         dept: 'service',
         label: item.label,
         createdDay: day,
+        customerId: item.customerId,
         baseRevenue: item.baseRevenue,
+        jobCategory: item.jobCategory,
+        vehicleId: item.vehicleId,
       });
     }
   });

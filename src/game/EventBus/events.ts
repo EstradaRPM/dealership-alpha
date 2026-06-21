@@ -644,6 +644,51 @@ export interface EventMap {
     revenue: number;
     advisorId: string;
   };
+
+  // ServiceDispatch parts gate (#304, parent #297) — emitted by the shared
+  // service resolver, which the legacy once-per-intake path AND the per-tick
+  // floor drain both call (identical outcomes; only cadence differs). All three
+  // fire within the same resolve step as service:ticket_closed, downstream of
+  // service:intake_ready in the clock:day_started dispatch.
+
+  // A completed job consumed one matching-category part from PartsInventory.
+  // Fires immediately before the service:ticket_closed for that same ticket.
+  'service:parts_consumed': {
+    serviceItemId: string;
+    day: number;
+    jobCategory: 'oil_filters' | 'tires_brakes' | 'drivetrain' | 'electronics';
+    advisorId: string;
+  };
+
+  // No matching part on hand and rush ordering not yet unlocked: the job is
+  // turned away. The would-be ticket revenue is lost and a CSI hit feeds back
+  // into base health / Reputation. TERMINAL for the ticket — no
+  // service:ticket_closed fires for a missed job.
+  'service:job_missed': {
+    serviceItemId: string;
+    day: number;
+    customerId: string;
+    vehicleId: string;
+    jobCategory: 'oil_filters' | 'tires_brakes' | 'drivetrain' | 'electronics';
+    lostRevenue: number;
+    csiHit: number;
+    advisorId: string;
+  };
+
+  // No matching part on hand but rush ordering is unlocked: an emergency rush
+  // order (the premium supplier tier in PartsInventory) lets the job complete
+  // instead of missing. Fires immediately before the service:ticket_closed for
+  // that ticket; the premium cost is the rush-tier cash debit PartsInventory
+  // posts on the order.
+  'service:job_rushed': {
+    serviceItemId: string;
+    day: number;
+    customerId: string;
+    vehicleId: string;
+    jobCategory: 'oil_filters' | 'tires_brakes' | 'drivetrain' | 'electronics';
+    revenue: number;
+    advisorId: string;
+  };
 }
 
 export type EventName = keyof EventMap;
