@@ -296,10 +296,13 @@
   "serviceDispatch": {
     "minAutoResolveRate": 0.40,
     "maxAutoResolveRate": 0.92,
-    "minRevenueMultiplier": 0.80,
-    "maxRevenueMultiplier": 1.30,
-    "minDrainPerTick": 0.15,
-    "maxDrainPerTick": 0.60,
+    "competitivePriceMultiplier": 0.85,
+    "premiumPriceMultiplier": 1.35,
+    "minPerSlotThroughput": 0.15,
+    "maxPerSlotThroughput": 0.60,
+    "baysByTier": { "1": 2, "2": 4, "3": 6 },
+    "maxWaitTicks": 60,
+    "unservedCsiHit": 3,
     "rushUnlockTier": 3,
     "missCsiHit": 4
   },

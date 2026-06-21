@@ -123,7 +123,12 @@ import {
 } from './game/Reputation';
 import { createServiceDemand, type ServiceDemand } from './game/ServiceDemand';
 import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
-import { createServiceFloorDrain, loadServiceDispatchConfig } from './game/ServiceDispatch';
+import {
+  createServiceFloorDrain,
+  createServiceReadModel,
+  loadServiceDispatchConfig,
+  type ServiceReadModel,
+} from './game/ServiceDispatch';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createHistoryLog, type HistoryLog } from './game/HistoryLog';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
@@ -161,6 +166,11 @@ export interface World {
   installedBase: InstalledBase;
   partsInventory: PartsInventory;
   serviceDemand: ServiceDemand;
+  // #305 live service capacity read-model for the Service page + floor card.
+  serviceReadModel: ServiceReadModel;
+  // #305 service pricing-posture dial [0,1] (competitive↔premium).
+  getServicePricingPosture(): number;
+  setServicePricingPosture(value: number): void;
   reputation: Reputation;
   regulatoryMeter: RegulatoryMeter;
   serviceQueue: ServiceQueue;
@@ -817,6 +827,18 @@ export function createWorld(deps: {
   // it for its per-day isRushUnlocked predicate.
   const serviceDispatchConfig = loadServiceDispatchConfig();
 
+  // #305 service pricing posture — the single competitive↔premium dial [0,1]
+  // (0 = competitive labor + markup, 1 = premium). A stored player setting,
+  // neutral by default; the dial UI + persistence are a later slice (the dial
+  // value also feeds InstalledBase's return-roll price-sensitivity term then).
+  // Exposed on the World seam so a Settings/Service-page lever can drive it.
+  let servicePricingPosture = 0.5;
+
+  // #305 live service capacity read-model (waiting / in-progress / avg-wait /
+  // utilization) for the Service page + floor card. Long-lived; each per-day
+  // service drain writes the live snapshot into this same instance.
+  const serviceReadModel = createServiceReadModel();
+
   // ServiceDemand (#302, parent #297): the pure mix composer. On each
   // installedBase:returns_ready it folds the returning owners in as the primary
   // stream, adds a conquest floor of fresh walk-ins (scaled by reputation ×
@@ -1184,6 +1206,13 @@ export function createWorld(deps: {
         partsInventory,
         isRushUnlocked: () =>
           tierManager.currentTier >= serviceDispatchConfig.rushUnlockTier,
+        // #305 capacity + posture + read-model. facilityTier snapshots the
+        // current tier (this seam is rebuilt per-day, so a tier-up applies the
+        // next day); bays scale off it. getPricingPosture reads the live dial.
+        // The drain writes the capacity read-model every tick.
+        facilityTier: tierManager.currentTier,
+        getPricingPosture: () => servicePricingPosture,
+        readModel: serviceReadModel,
       }),
     ],
     customerSource,
@@ -1261,6 +1290,16 @@ export function createWorld(deps: {
     installedBase,
     partsInventory,
     serviceDemand,
+    // #305 live service capacity read-model (waiting / in-progress / avg-wait /
+    // utilization) for the Service page + floor card.
+    serviceReadModel,
+    // #305 service pricing posture dial [0,1] (competitive↔premium). Getter +
+    // setter so a Settings/Service-page lever can drive it; persistence is a
+    // later slice.
+    getServicePricingPosture: () => servicePricingPosture,
+    setServicePricingPosture: (v: number) => {
+      servicePricingPosture = v < 0 ? 0 : v > 1 ? 1 : v;
+    },
     reputation,
     regulatoryMeter,
     serviceQueue,

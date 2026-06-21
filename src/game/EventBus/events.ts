@@ -689,6 +689,25 @@ export interface EventMap {
     revenue: number;
     advisorId: string;
   };
+
+  // ServiceDispatch capacity gate (#305, parent #297) — a job that backed up in
+  // the queue past serviceDispatch.maxWaitTicks because concurrent capacity
+  // (slots = min(bays, advisors on duty)) couldn't reach it leaves UNSERVED.
+  // Distinct from service:job_missed (a parts-stockout): this is capacity
+  // starvation, not a stockout. TERMINAL for the ticket — no
+  // service:ticket_closed fires. The would-be revenue is lost and a CSI hit
+  // feeds back into base health / Reputation. Drain path only (the legacy
+  // once-per-intake path has no capacity model).
+  'service:job_unserved': {
+    serviceItemId: string;
+    day: number;
+    customerId: string;
+    vehicleId: string;
+    jobCategory: 'oil_filters' | 'tires_brakes' | 'drivetrain' | 'electronics';
+    lostRevenue: number;
+    csiHit: number;
+    waitTicks: number;
+  };
 }
 
 export type EventName = keyof EventMap;

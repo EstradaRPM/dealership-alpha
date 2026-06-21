@@ -101,10 +101,13 @@ function staffExtras(bus: import('../src/game/EventBus').EventBus): Pick<
 const SERVICE_CONFIG: ServiceDispatchConfig = {
   minAutoResolveRate: 1.0,
   maxAutoResolveRate: 1.0,
-  minRevenueMultiplier: 1.0,
-  maxRevenueMultiplier: 1.0,
-  minDrainPerTick: 0.15,
-  maxDrainPerTick: 0.6,
+  competitivePriceMultiplier: 1.0,
+  premiumPriceMultiplier: 1.0,
+  minPerSlotThroughput: 0.15,
+  maxPerSlotThroughput: 0.6,
+  baysByTier: { '1': 2, '2': 4, '3': 6 },
+  maxWaitTicks: 9999,
+  unservedCsiHit: 3,
   rushUnlockTier: 3,
   missCsiHit: 4,
 };

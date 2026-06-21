@@ -4,12 +4,30 @@ import { parseData } from '../data/loadJson';
 const ServiceDispatchConfigSchema = z.object({
   minAutoResolveRate: z.number().min(0).max(1),
   maxAutoResolveRate: z.number().min(0).max(1),
-  minRevenueMultiplier: z.number().min(0),
-  maxRevenueMultiplier: z.number().min(0),
-  // Per-tick floor-drain throughput (#101): service items an advisor works
-  // per FloorSim tick, lerped by effectiveness. Fractional; accumulated.
-  minDrainPerTick: z.number().min(0),
-  maxDrainPerTick: z.number().min(0),
+  // #305 pricing-posture revenue. The per-ticket revenue multiplier on
+  // baseRevenue at the two ends of the single competitive↔premium dial
+  // (labor rate + parts markup, modeled together). posture 0 ⇒ competitive,
+  // posture 1 ⇒ premium; the live multiplier lerps between them. Replaces the
+  // retired flat upsell multiplier. Placeholders pending calibration (#286).
+  competitivePriceMultiplier: z.number().min(0),
+  premiumPriceMultiplier: z.number().min(0),
+  // #305 per-slot floor-drain throughput: service jobs ONE bay/advisor slot
+  // works per FloorSim tick, lerped by that slot's advisor effectiveness.
+  // Day throughput = sum over the min(bays, advisors) busiest slots.
+  // Fractional; accumulated across ticks. (Was min/maxDrainPerTick — a single
+  // shop-wide rate; now per-slot so concurrency scales with bays AND staff.)
+  minPerSlotThroughput: z.number().min(0),
+  maxPerSlotThroughput: z.number().min(0),
+  // #305 structural bay count by facility tier — the concurrency ceiling that
+  // pairs with advisors-on-duty (slots = min(bays, advisors)). Coarse, not
+  // micromanaged. Keyed by tier string ("1"|"2"|"3").
+  baysByTier: z.record(z.string(), z.number().int().nonnegative()),
+  // #305 the FloorSim-tick age at which a still-waiting job leaves UNSERVED
+  // (capacity starvation, distinct from a parts miss). Placeholder pending #286.
+  maxWaitTicks: z.number().int().min(1),
+  // #305 the CSI hit an unserved (capacity-starved, timed-out) job emits.
+  // Placeholder magnitude pending calibration (#286).
+  unservedCsiHit: z.number().min(0),
   // #304 parts gate. The tier at/above which the rush emergency-order path is
   // unlocked (PRD #297 story 13 — "as my operation matures"); below it an
   // under-stock job is a flat miss. Placeholder pending calibration (#286).

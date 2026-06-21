@@ -4,6 +4,7 @@ import { createDepartmentQueue } from '../src/game/DepartmentQueue';
 import {
   createServiceDispatch,
   createServiceFloorDrain,
+  createServiceReadModel,
   type ServiceDispatchConfig,
 } from '../src/game/ServiceDispatch';
 import type { StaffOrg } from '../src/game/StaffOrg';
@@ -50,13 +51,20 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
   };
 }
 
+// competitive==premium==1.0 so per-ticket revenue == baseRevenue regardless of
+// posture; maxWaitTicks high so capacity-starvation eviction never fires in the
+// throughput/parts tests. baysByTier gives ≥1 bay so a single advisor = 1 slot,
+// reproducing the pre-#305 single-rate throughput.
 const ALWAYS_RESOLVE_CONFIG: ServiceDispatchConfig = {
   minAutoResolveRate: 1.0,
   maxAutoResolveRate: 1.0,
-  minRevenueMultiplier: 1.0,
-  maxRevenueMultiplier: 1.0,
-  minDrainPerTick: 0.15,
-  maxDrainPerTick: 0.60,
+  competitivePriceMultiplier: 1.0,
+  premiumPriceMultiplier: 1.0,
+  minPerSlotThroughput: 0.15,
+  maxPerSlotThroughput: 0.60,
+  baysByTier: { '1': 2, '2': 4, '3': 6 },
+  maxWaitTicks: 9999,
+  unservedCsiHit: 3,
   rushUnlockTier: 3,
   missCsiHit: 4,
 };
@@ -64,10 +72,13 @@ const ALWAYS_RESOLVE_CONFIG: ServiceDispatchConfig = {
 const NEVER_RESOLVE_CONFIG: ServiceDispatchConfig = {
   minAutoResolveRate: 0.0,
   maxAutoResolveRate: 0.0,
-  minRevenueMultiplier: 1.0,
-  maxRevenueMultiplier: 1.0,
-  minDrainPerTick: 0.15,
-  maxDrainPerTick: 0.60,
+  competitivePriceMultiplier: 1.0,
+  premiumPriceMultiplier: 1.0,
+  minPerSlotThroughput: 0.15,
+  maxPerSlotThroughput: 0.60,
+  baysByTier: { '1': 2, '2': 4, '3': 6 },
+  maxWaitTicks: 9999,
+  unservedCsiHit: 3,
   rushUnlockTier: 3,
   missCsiHit: 4,
 };
@@ -75,10 +86,13 @@ const NEVER_RESOLVE_CONFIG: ServiceDispatchConfig = {
 const NORMAL_CONFIG: ServiceDispatchConfig = {
   minAutoResolveRate: 0.40,
   maxAutoResolveRate: 0.92,
-  minRevenueMultiplier: 0.80,
-  maxRevenueMultiplier: 1.30,
-  minDrainPerTick: 0.15,
-  maxDrainPerTick: 0.60,
+  competitivePriceMultiplier: 1.0,
+  premiumPriceMultiplier: 1.0,
+  minPerSlotThroughput: 0.15,
+  maxPerSlotThroughput: 0.60,
+  baysByTier: { '1': 2, '2': 4, '3': 6 },
+  maxWaitTicks: 9999,
+  unservedCsiHit: 3,
   rushUnlockTier: 3,
   missCsiHit: 4,
 };
@@ -543,6 +557,234 @@ describe('ServiceDispatch — parts gate cadence-invariance', () => {
   });
 });
 
+// ── #305 pricing posture / capacity / read-model ─────────────────────────────
+
+function svcConfig(over: Partial<ServiceDispatchConfig> = {}): ServiceDispatchConfig {
+  return { ...ALWAYS_RESOLVE_CONFIG, ...over };
+}
+
+function makeDrainSetupX(
+  roster: StaffWithComposites[],
+  opts: {
+    config?: ServiceDispatchConfig;
+    facilityTier?: number;
+    readModel?: ReturnType<typeof createServiceReadModel>;
+    getPricingPosture?: () => number;
+  } = {},
+) {
+  const bus = createEventBus();
+  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+  const queue = createDepartmentQueue({ bus });
+  const staffOrg = makeStaffOrg(roster);
+  const drain = createServiceFloorDrain({
+    bus,
+    staffOrg,
+    queue,
+    economy,
+    masterSeed: MASTER_SEED,
+    config: opts.config ?? NORMAL_CONFIG,
+    facilityTier: opts.facilityTier,
+    readModel: opts.readModel,
+    getPricingPosture: opts.getPricingPosture,
+  });
+  return { bus, economy, queue, drain };
+}
+
+describe('ServiceDispatch — #305 pricing-posture revenue', () => {
+  // competitive 0.5×, premium 1.5× on a $100 ticket.
+  const POSTURE_CONFIG = svcConfig({
+    competitivePriceMultiplier: 0.5,
+    premiumPriceMultiplier: 1.5,
+  });
+
+  function revenueAtPosture(posture: number): number {
+    const bus = createEventBus();
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const queue = createDepartmentQueue({ bus });
+    const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
+    createServiceDispatch({
+      bus, staffOrg, queue, economy, masterSeed: MASTER_SEED,
+      config: POSTURE_CONFIG, getPricingPosture: () => posture,
+    });
+    let revenue = 0;
+    bus.subscribe('service:ticket_closed', e => { revenue = e.revenue; });
+    bus.publish('service:intake_ready', {
+      day: 1,
+      items: [makeItem({ serviceItemId: 'svc:1', baseRevenue: 100 })],
+    });
+    return revenue;
+  }
+
+  it('scales per-ticket revenue by the competitive↔premium dial, not flat upsell', () => {
+    expect(revenueAtPosture(0)).toBe(50); // competitive end: 100 × 0.5
+    expect(revenueAtPosture(1)).toBe(150); // premium end: 100 × 1.5
+    expect(revenueAtPosture(0.5)).toBe(100); // midpoint
+    expect(revenueAtPosture(1)).toBeGreaterThan(revenueAtPosture(0));
+  });
+
+  it('advisor upsell skill no longer changes revenue (posture-only)', () => {
+    function revWithUpsell(upsell: number): number {
+      const bus = createEventBus();
+      const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+      const queue = createDepartmentQueue({ bus });
+      createServiceDispatch({
+        bus, staffOrg: makeStaffOrg([makeAdvisor(0.8, upsell)]), queue, economy,
+        masterSeed: MASTER_SEED, config: POSTURE_CONFIG, getPricingPosture: () => 0.5,
+      });
+      let revenue = 0;
+      bus.subscribe('service:ticket_closed', e => { revenue = e.revenue; });
+      bus.publish('service:intake_ready', { day: 1, items: [makeItem({ serviceItemId: 'svc:1', baseRevenue: 100 })] });
+      return revenue;
+    }
+    expect(revWithUpsell(0)).toBe(revWithUpsell(100));
+  });
+});
+
+describe('ServiceDispatch — #305 capacity = min(bays, advisors on duty)', () => {
+  // Flat per-slot rate isolates the slot count from advisor skill.
+  const FLAT = svcConfig({ minPerSlotThroughput: 0.5, maxPerSlotThroughput: 0.5 });
+
+  function resolvedWith(roster: StaffWithComposites[], facilityTier: number): number {
+    const { bus, drain } = makeDrainSetupX(roster, { config: FLAT, facilityTier });
+    bus.publish('service:intake_ready', makeIntakePayload(1, 30));
+    return drainTicks(drain, 20).resolved;
+  }
+
+  function advisors(n: number): StaffWithComposites[] {
+    return Array.from({ length: n }, (_, i) => makeAdvisor(0.8, 50, `adv-${i}`));
+  }
+
+  it('adding advisors beyond bays does not raise throughput (bay-bound)', () => {
+    // Tier 1 = 2 bays. 2 advisors saturate them; 4 advisors clear no more.
+    const twoAdv = resolvedWith(advisors(2), 1);
+    const fourAdv = resolvedWith(advisors(4), 1);
+    expect(fourAdv).toBe(twoAdv);
+    // And both clear strictly more than a single advisor (1 slot).
+    expect(twoAdv).toBeGreaterThan(resolvedWith(advisors(1), 1));
+  });
+
+  it('adding bays beyond advisors does not raise throughput (advisor-bound)', () => {
+    // 1 advisor = 1 slot whether the facility has 2 bays (T1) or 6 (T3).
+    expect(resolvedWith(advisors(1), 3)).toBe(resolvedWith(advisors(1), 1));
+  });
+
+  it('no advisors ⇒ no throughput regardless of bays', () => {
+    expect(resolvedWith([], 3)).toBe(0);
+  });
+});
+
+describe('ServiceDispatch — #305 per-slot throughput scales with advisor skill', () => {
+  function resolvedAtSkill(eff: number): number {
+    const { bus, drain } = makeDrainSetupX([makeAdvisor(eff)], {
+      config: svcConfig(), // min 0.15 / max 0.60 per-slot
+      facilityTier: 1,
+    });
+    bus.publish('service:intake_ready', makeIntakePayload(1, 30));
+    return drainTicks(drain, 30).resolved;
+  }
+
+  it('a sharper advisor clears more jobs over the same ticks', () => {
+    expect(resolvedAtSkill(0.95)).toBeGreaterThan(resolvedAtSkill(0.05));
+  });
+});
+
+describe('ServiceDispatch — #305 overflow → wait → unserved + CSI', () => {
+  it('jobs backed up past maxWaitTicks leave unserved with a CSI hit and no ticket_closed', () => {
+    const config = svcConfig({
+      minPerSlotThroughput: 0.5,
+      maxPerSlotThroughput: 0.5,
+      maxWaitTicks: 5,
+    });
+    const { bus, economy, drain } = makeDrainSetupX([makeAdvisor(0.8)], {
+      config,
+      facilityTier: 1,
+    });
+    const closed: Array<{ serviceItemId: string }> = [];
+    const unserved: Array<{ serviceItemId: string; csiHit: number; waitTicks: number }> = [];
+    bus.subscribe('service:ticket_closed', e => closed.push(e));
+    bus.subscribe('service:job_unserved', e => unserved.push(e));
+
+    const cashBefore = economy.cash;
+    bus.publish('service:intake_ready', makeIntakePayload(1, 8));
+    drainTicks(drain, 40);
+
+    // Every job is terminal exactly once — served or unserved, never both.
+    expect(closed.length).toBeGreaterThan(0);
+    expect(unserved.length).toBeGreaterThan(0);
+    expect(closed.length + unserved.length).toBe(8);
+    const closedIds = new Set(closed.map(e => e.serviceItemId));
+    expect(unserved.every(e => !closedIds.has(e.serviceItemId))).toBe(true);
+
+    // Each unserved job carries the configured CSI hit and waited past the cap.
+    for (const e of unserved) {
+      expect(e.csiHit).toBe(config.unservedCsiHit);
+      expect(e.waitTicks).toBeGreaterThan(config.maxWaitTicks);
+    }
+    // Revenue only posts for served jobs (the backlog earns nothing).
+    expect(economy.cash).toBeGreaterThan(cashBefore);
+  });
+});
+
+describe('ServiceDispatch — #305 live capacity read-model', () => {
+  it('reports waiting / in-progress / avg-wait / utilization accurately', () => {
+    const readModel = createServiceReadModel();
+    // Fresh model before any tick: zeros (closed shop).
+    expect(readModel.read()).toEqual({
+      slots: 0, inProgress: 0, waiting: 0, avgWaitTicks: 0, utilization: 0,
+    });
+
+    const config = svcConfig({ minPerSlotThroughput: 0.5, maxPerSlotThroughput: 0.5 });
+    const { bus, drain } = makeDrainSetupX([makeAdvisor(0.8)], {
+      config,
+      facilityTier: 1, // 2 bays, 1 advisor → 1 slot
+      readModel,
+    });
+    bus.publish('service:intake_ready', makeIntakePayload(1, 5));
+
+    // Tick 1: 1 slot busy, full backlog still waiting (rate 0.5 ⇒ 0 served yet).
+    drain.drain({ day: 1, tick: 1 });
+    let load = readModel.read();
+    expect(load.slots).toBe(1);
+    expect(load.inProgress).toBe(1);
+    expect(load.utilization).toBe(1);
+    expect(load.waiting).toBe(5);
+    expect(load.avgWaitTicks).toBe(1);
+
+    // Drain it down; the backlog shrinks.
+    drainTicks(drain, 30);
+    load = readModel.read();
+    expect(load.waiting).toBe(0);
+    expect(load.inProgress).toBe(0);
+    expect(load.utilization).toBe(0);
+  });
+
+  it('utilization is partial when jobs are fewer than slots', () => {
+    const readModel = createServiceReadModel();
+    const { bus, drain } = makeDrainSetupX(
+      [makeAdvisor(0.8, 50, 'a'), makeAdvisor(0.8, 50, 'b'), makeAdvisor(0.8, 50, 'c'), makeAdvisor(0.8, 50, 'd')],
+      { config: svcConfig(), facilityTier: 1, readModel }, // 2 bays, 4 advisors → 2 slots
+    );
+    bus.publish('service:intake_ready', makeIntakePayload(1, 1)); // a single job
+    drain.drain({ day: 1, tick: 1 });
+    const load = readModel.read();
+    expect(load.slots).toBe(2);
+    expect(load.inProgress).toBe(1);
+    expect(load.utilization).toBe(0.5);
+  });
+
+  it('with no advisors slots is 0, utilization 0, and the backlog grows', () => {
+    const readModel = createServiceReadModel();
+    const { bus, drain } = makeDrainSetupX([], { config: svcConfig(), facilityTier: 1, readModel });
+    bus.publish('service:intake_ready', makeIntakePayload(1, 3));
+    drain.drain({ day: 1, tick: 1 });
+    const load = readModel.read();
+    expect(load.slots).toBe(0);
+    expect(load.utilization).toBe(0);
+    expect(load.inProgress).toBe(0);
+    expect(load.waiting).toBe(3);
+  });
+});
+
 // ── Config loading ────────────────────────────────────────────────────────────
 
 describe('ServiceDispatch — config', () => {
@@ -551,7 +793,10 @@ describe('ServiceDispatch — config', () => {
     const cfg = loadServiceDispatchConfig();
     expect(cfg.minAutoResolveRate).toBeGreaterThanOrEqual(0);
     expect(cfg.maxAutoResolveRate).toBeLessThanOrEqual(1);
-    expect(cfg.minRevenueMultiplier).toBeGreaterThan(0);
-    expect(cfg.maxRevenueMultiplier).toBeGreaterThanOrEqual(cfg.minRevenueMultiplier);
+    expect(cfg.competitivePriceMultiplier).toBeGreaterThan(0);
+    expect(cfg.premiumPriceMultiplier).toBeGreaterThanOrEqual(cfg.competitivePriceMultiplier);
+    expect(cfg.maxPerSlotThroughput).toBeGreaterThanOrEqual(cfg.minPerSlotThroughput);
+    expect(cfg.baysByTier['1']).toBeGreaterThan(0);
+    expect(cfg.maxWaitTicks).toBeGreaterThan(0);
   });
 });
