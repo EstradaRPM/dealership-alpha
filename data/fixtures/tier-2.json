@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 9,
+    "version": 10,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -2790,6 +2790,10 @@
       "installedBase": {
         "schemaVersion": 1,
         "owners": []
+      },
+      "partsInventory": {
+        "schemaVersion": 1,
+        "lots": []
       }
     }
   },

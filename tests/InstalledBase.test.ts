@@ -291,11 +291,14 @@ describe('InstalledBase through the world seam (#298)', () => {
   it('migrates a pre-#298 save by materializing an empty installed base', () => {
     const { world } = buildWorld(4242);
     const current = snapshotWorld(world);
-    const { installedBase, ...legacyModules } = current.modules;
+    // installedBase was introduced at the v8→v9 step; a genuine pre-#298 save is
+    // version 8 and carries neither installedBase nor any later-added key
+    // (partsInventory, v9→v10). Strip both to reconstruct that vintage.
+    const { installedBase, partsInventory, ...legacyModules } = current.modules;
     expect(installedBase).toEqual({ schemaVersion: 1, owners: [] });
 
     const persisted: PersistedWorldSnapshot = {
-      version: WORLD_SNAPSHOT_VERSION - 1,
+      version: 8,
       modules: legacyModules,
     };
     const migrated = migrateWorldSnapshot(persisted);
@@ -303,6 +306,11 @@ describe('InstalledBase through the world seam (#298)', () => {
     expect(migrated.modules.installedBase).toEqual({
       schemaVersion: 1,
       owners: [],
+    });
+    // The same upgrade run also materializes empty parts stock (v9→v10).
+    expect(migrated.modules.partsInventory).toEqual({
+      schemaVersion: 1,
+      lots: [],
     });
   });
 });

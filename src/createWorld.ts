@@ -99,6 +99,10 @@ import {
   type InstalledBase,
 } from './game/InstalledBase';
 import {
+  createPartsInventory,
+  type PartsInventory,
+} from './game/PartsInventory';
+import {
   createTierManager,
   createBankruptcyMonitor,
   createIndictmentMonitor,
@@ -153,6 +157,7 @@ export interface World {
   capacityManager: CapacityManager;
   followUpPool: FollowUpPool;
   installedBase: InstalledBase;
+  partsInventory: PartsInventory;
   reputation: Reputation;
   regulatoryMeter: RegulatoryMeter;
   serviceQueue: ServiceQueue;
@@ -789,6 +794,14 @@ export function createWorld(deps: {
     reputation: () => Math.max(0, Math.min(1, reputation.reviewScore / 100)),
   });
 
+  // PartsInventory (#299, parent #297): the supply-side half of the Service
+  // profit center. Mirrors the vehicle Inventory discipline — stock-in debits
+  // cash now, a unit is recouped only when a matching job consumes it; over-
+  // stock is dead capital. This slice exposes manual stock-in + consumption +
+  // the coverage read-model; the ServiceDispatch parts-gate that calls
+  // `consume` on a closed ticket, and par-level procurement, are later slices.
+  const partsInventory = createPartsInventory({ economy });
+
   // ServiceQueue (#80): starts silent (default initialTier=1 < minTierRequired
   // 2), follows career:tier_up off the bus, and once at Tier 2 emits a daily
   // service:intake_ready that DepartmentQueue pushes into the Service lane —
@@ -1204,6 +1217,7 @@ export function createWorld(deps: {
     capacityManager,
     followUpPool,
     installedBase,
+    partsInventory,
     reputation,
     regulatoryMeter,
     serviceQueue,

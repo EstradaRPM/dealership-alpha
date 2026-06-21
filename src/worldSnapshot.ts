@@ -28,6 +28,7 @@ import type { GameClockSnapshot } from './game/GameClock';
 import type { EconomySnapshot } from './game/Economy';
 import type { InventorySnapshot } from './game/Inventory';
 import type { InstalledBaseSnapshot } from './game/InstalledBase';
+import type { PartsInventorySnapshot } from './game/PartsInventory';
 import type { StaffOrgSnapshot } from './game/StaffOrg';
 import type { StaffMoraleSnapshot } from './game/StaffMorale';
 import type { MarketEconomySnapshot } from './game/MarketEconomy';
@@ -61,7 +62,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 9;
+export const WORLD_SNAPSHOT_VERSION = 10;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -74,6 +75,8 @@ export type WorldSnapshot = {
     readonly inventory: InventorySnapshot;
     // Per-owner Service-annuity registry: owner records + loyalty (#298).
     readonly installedBase: InstalledBaseSnapshot;
+    // Service parts stock: part lots (category/qty/unitCost) (#299).
+    readonly partsInventory: PartsInventorySnapshot;
     readonly staffOrg: StaffOrgSnapshot;
     readonly staffMorale: StaffMoraleSnapshot;
     readonly marketEconomy: MarketEconomySnapshot;
@@ -209,6 +212,15 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         installedBase: { schemaVersion: 1, owners: [] },
       },
     }),
+    9: (snap) => ({
+      version: 10,
+      modules: {
+        ...snap.modules,
+        // Behavior-neutral: pre-#299 saves materialize empty parts stock
+        // (the player stocks parts only after this version).
+        partsInventory: { schemaVersion: 1, lots: [] },
+      },
+    }),
   };
 
 /**
@@ -251,6 +263,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       economy: world.economy.snapshot(),
       inventory: world.inventory.snapshot(),
       installedBase: world.installedBase.snapshot(),
+      partsInventory: world.partsInventory.snapshot(),
       staffOrg: world.staffOrg.snapshot(),
       staffMorale: world.staffMorale.snapshot(),
       marketEconomy: world.marketEconomy.snapshot(),
@@ -286,6 +299,7 @@ export function restoreWorld(
   world.economy.restore(snap.modules.economy);
   world.inventory.restore(snap.modules.inventory);
   world.installedBase.restore(snap.modules.installedBase);
+  world.partsInventory.restore(snap.modules.partsInventory);
   // StaffOrg roster restores first so StaffMorale rehydrates onto the same ids.
   world.staffOrg.restore(snap.modules.staffOrg);
   world.staffMorale.restore(snap.modules.staffMorale);
