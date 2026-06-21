@@ -121,6 +121,7 @@ import {
   type RegulatoryMeter,
   type Reputation,
 } from './game/Reputation';
+import { createServiceDemand, type ServiceDemand } from './game/ServiceDemand';
 import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
 import { createServiceFloorDrain } from './game/ServiceDispatch';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
@@ -159,6 +160,7 @@ export interface World {
   followUpPool: FollowUpPool;
   installedBase: InstalledBase;
   partsInventory: PartsInventory;
+  serviceDemand: ServiceDemand;
   reputation: Reputation;
   regulatoryMeter: RegulatoryMeter;
   serviceQueue: ServiceQueue;
@@ -811,6 +813,24 @@ export function createWorld(deps: {
     partsInventory.advanceDay(day);
   });
 
+  // ServiceDemand (#302, parent #297): the pure mix composer. On each
+  // installedBase:returns_ready it folds the returning owners in as the primary
+  // stream, adds a conquest floor of fresh walk-ins (scaled by reputation ×
+  // service marketing — no service-marketing lever yet, so it defaults to 0 =
+  // floor only), composes their job/parts category mix (usual split + seasonal
+  // lean from Weather + base-age drift + powertrain skew aggregated off the live
+  // installed base + RNG variance), and publishes serviceDemand:intake_ready.
+  // Built AFTER InstalledBase + Weather (its upstream providers, seam recipe).
+  // The consumer rewire (ServiceQueue reading this stream instead of its
+  // synthetic seed × day roll) is a later slice — nothing consumes the event yet.
+  const serviceDemand: ServiceDemand = createServiceDemand({
+    bus,
+    masterSeed,
+    reputation: () => Math.max(0, Math.min(1, reputation.reviewScore / 100)),
+    season: (day) => weather.weatherForDay(day).season,
+    baseOwners: () => installedBase.getOwners(),
+  });
+
   // ServiceQueue (#80): starts silent (default initialTier=1 < minTierRequired
   // 2), follows career:tier_up off the bus, and once at Tier 2 emits a daily
   // service:intake_ready that DepartmentQueue pushes into the Service lane —
@@ -1227,6 +1247,7 @@ export function createWorld(deps: {
     followUpPool,
     installedBase,
     partsInventory,
+    serviceDemand,
     reputation,
     regulatoryMeter,
     serviceQueue,

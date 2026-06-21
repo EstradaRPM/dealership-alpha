@@ -1,0 +1,51 @@
+{
+  "_doc": "ServiceDemand mix composer (#302, parent #297). The conquest job/parts-category mix = usualSplit base + seasonalLean + base-age drift + powertrain skew + RNG variance. All magnitudes are first-pass placeholders tuned in the S14 balance pass (#286).",
+  "schemaVersion": 1,
+  "usualSplit": {
+    "oil_filters": 0.5,
+    "tires_brakes": 0.28,
+    "drivetrain": 0.13,
+    "electronics": 0.09
+  },
+  "jobRevenue": {
+    "oil_filters": 80,
+    "tires_brakes": 300,
+    "drivetrain": 750,
+    "electronics": 350
+  },
+  "conquest": {
+    "floor": 1,
+    "scale": 6
+  },
+  "baseAgeDrift": {
+    "referenceAgeDays": 1095,
+    "categoryShift": {
+      "oil_filters": -0.25,
+      "tires_brakes": 0.05,
+      "drivetrain": 0.12,
+      "electronics": 0.08
+    }
+  },
+  "powertrainSkew": {
+    "ice": { "oil_filters": 1.0, "tires_brakes": 1.0, "drivetrain": 1.0, "electronics": 1.0 },
+    "hybrid": { "oil_filters": 0.85, "tires_brakes": 1.0, "drivetrain": 1.0, "electronics": 1.15 },
+    "ev": { "oil_filters": 0.2, "tires_brakes": 1.1, "drivetrain": 0.9, "electronics": 1.6 }
+  },
+  "conquestPowertrainMix": {
+    "ice": 0.7,
+    "hybrid": 0.2,
+    "ev": 0.1
+  },
+  "conquestVehicleCategories": {
+    "sedan": 0.4,
+    "suv": 0.35,
+    "truck": 0.25
+  },
+  "seasonalLean": {
+    "winter": { "tires_brakes": 0.12, "electronics": 0.05, "oil_filters": -0.05 },
+    "spring": { "oil_filters": 0.05, "tires_brakes": 0.03 },
+    "summer": { "drivetrain": 0.06, "oil_filters": 0.04 },
+    "fall": { "tires_brakes": 0.06, "electronics": 0.03 }
+  },
+  "rngVariance": 0.15
+}

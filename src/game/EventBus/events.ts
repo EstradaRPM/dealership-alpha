@@ -576,6 +576,28 @@ export interface EventMap {
     }>;
   };
 
+  // ServiceDemand (#302, parent #297) — the day's enriched service intake.
+  // Composed on each installedBase:returns_ready: the returning owners folded in
+  // as the primary stream plus a conquest floor of fresh walk-ins (scaled by
+  // reputation × service marketing), each ticket carrying customer + vehicle
+  // identity, the due job/parts category, and the base ticket revenue. This is
+  // the stream that replaces ServiceQueue's synthetic seed × day roll (consumer
+  // rewire is a later slice). Deterministic from masterSeed + day + the live
+  // installed base (#122 replay-safe).
+  'serviceDemand:intake_ready': {
+    day: number;
+    intake: ReadonlyArray<{
+      ticketId: string;
+      source: 'return' | 'conquest';
+      customerId: string;
+      vehicleId: string;
+      category: string;
+      powertrain: 'ice' | 'hybrid' | 'ev';
+      jobCategory: 'oil_filters' | 'tires_brakes' | 'drivetrain' | 'electronics';
+      baseRevenue: number;
+    }>;
+  };
+
   // ServiceQueue — daily service intake items generated at Tier 2+
   'service:intake_ready': {
     day: number;
