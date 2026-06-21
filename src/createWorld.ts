@@ -100,6 +100,7 @@ import {
 } from './game/InstalledBase';
 import {
   createPartsInventory,
+  loadPartsInventoryConfig,
   type PartsInventory,
 } from './game/PartsInventory';
 import {
@@ -794,13 +795,21 @@ export function createWorld(deps: {
     reputation: () => Math.max(0, Math.min(1, reputation.reviewScore / 100)),
   });
 
-  // PartsInventory (#299, parent #297): the supply-side half of the Service
+  // PartsInventory (#299/#301, parent #297): the supply-side half of the Service
   // profit center. Mirrors the vehicle Inventory discipline — stock-in debits
   // cash now, a unit is recouped only when a matching job consumes it; over-
-  // stock is dead capital. This slice exposes manual stock-in + consumption +
-  // the coverage read-model; the ServiceDispatch parts-gate that calls
-  // `consume` on a closed ticket, and par-level procurement, are later slices.
-  const partsInventory = createPartsInventory({ economy });
+  // stock is dead capital. #301 adds par-level procurement: each morning the
+  // module receives due orders and runs its reorder sweep, driven off
+  // clock:day_started. The ServiceDispatch parts-gate that calls `consume` on a
+  // closed ticket (and fires `rushOrder` on a miss) is a later slice.
+  const partsInventory = createPartsInventory({
+    economy,
+    config: loadPartsInventoryConfig(),
+    masterSeed,
+  });
+  bus.subscribe('clock:day_started', ({ day }) => {
+    partsInventory.advanceDay(day);
+  });
 
   // ServiceQueue (#80): starts silent (default initialTier=1 < minTierRequired
   // 2), follows career:tier_up off the bus, and once at Tier 2 emits a daily

@@ -2,6 +2,7 @@ import {
   createPartsInventory,
   PART_CATEGORIES,
   type PartsInventory,
+  type PartsInventoryConfig,
 } from '../src/game/PartsInventory';
 
 /**
@@ -188,6 +189,216 @@ describe('PartsInventory (#299)', () => {
     });
   });
 
+  describe('procurement (#301)', () => {
+    // A fully on-time config (reliability 1.0) so arrival days are deterministic
+    // for the par-level / lead-time / trade-off assertions. The determinism test
+    // below uses a sub-1.0 reliability to exercise the seeded on-time roll.
+    const CONFIG: PartsInventoryConfig = {
+      defaultTier: 'standard',
+      categories: {
+        oil_filters: { baseUnitCost: 20, reorderPoint: 2, target: 10 },
+        tires_brakes: { baseUnitCost: 200, reorderPoint: 1, target: 4 },
+        drivetrain: { baseUnitCost: 1000, reorderPoint: 0, target: 2 },
+        electronics: { baseUnitCost: 500, reorderPoint: 0, target: 2 },
+      },
+      supplierTiers: {
+        economy: { costMultiplier: 0.8, leadTimeDays: 8, reliability: 1, delayPenaltyDays: 5 },
+        standard: { costMultiplier: 1.0, leadTimeDays: 4, reliability: 1, delayPenaltyDays: 2 },
+        oem_direct: { costMultiplier: 1.5, leadTimeDays: 2, reliability: 1, delayPenaltyDays: 1 },
+        rush: { costMultiplier: 2.0, leadTimeDays: 1, reliability: 1, delayPenaltyDays: 1 },
+      },
+    };
+
+    function buildProc() {
+      const economy = createEconomySpy();
+      const parts = createPartsInventory({ economy, config: CONFIG, masterSeed: 7 });
+      return { parts, economy };
+    }
+
+    it('seeds each category policy from the data defaults', () => {
+      const { parts } = buildProc();
+      expect(parts.getPolicy('oil_filters')).toEqual({
+        reorderPoint: 2,
+        target: 10,
+        tier: 'standard',
+      });
+    });
+
+    const ordersFor = (parts: PartsInventory, category: string) =>
+      parts.getPendingOrders().filter((o) => o.category === category);
+
+    it('places a reorder to target when on-hand falls to the reorder point', () => {
+      const { parts } = buildProc();
+      parts.addStock('oil_filters', 3, 20); // on-hand 3, above reorderPoint 2
+
+      parts.advanceDay(1); // 3 > 2 → no oil_filters reorder
+      expect(ordersFor(parts, 'oil_filters')).toHaveLength(0);
+
+      parts.consume('oil_filters'); // on-hand → 2, == reorderPoint
+      parts.advanceDay(2);
+
+      const orders = ordersFor(parts, 'oil_filters');
+      expect(orders).toHaveLength(1);
+      // Fills to target: target 10 − (onHand 2 + onOrder 0) = 8 units.
+      expect(orders[0]).toMatchObject({
+        category: 'oil_filters',
+        qty: 8,
+        tier: 'standard',
+        placedDay: 2,
+        arrivalDay: 6, // placedDay 2 + standard leadTime 4, on time
+      });
+    });
+
+    it('debits cash at order placement, not at arrival', () => {
+      const { parts, economy } = buildProc();
+      parts.setPolicy('oil_filters', { reorderPoint: 2, target: 5 });
+      // Park the other categories so only oil_filters orders.
+      for (const c of ['tires_brakes', 'drivetrain', 'electronics'] as const) {
+        parts.setPolicy(c, { reorderPoint: 0, target: 0 });
+      }
+      parts.advanceDay(1); // oil_filters 0 <= 2 → orders 5 @ (20 × 1.0)
+      expect(economy.total).toBe(100); // cash out now
+      expect(parts.getStock('oil_filters')).toBe(0); // nothing arrived yet
+
+      parts.advanceDay(5); // arrival day — stock lands, no further debit
+      expect(parts.getStock('oil_filters')).toBe(5);
+      expect(economy.total).toBe(100);
+    });
+
+    it('does not re-order while an inbound order already covers the gap to target', () => {
+      const { parts } = buildProc();
+      parts.advanceDay(1); // drivetrain reorderPoint 0, on-hand 0 → orders 2
+      expect(ordersFor(parts, 'drivetrain')).toHaveLength(1);
+      expect(parts.getOnOrder('drivetrain')).toBe(2);
+
+      parts.advanceDay(2); // still 0 on hand, but 2 on order == target → no new order
+      expect(ordersFor(parts, 'drivetrain')).toHaveLength(1);
+    });
+
+    it('an order arrives as stock only after the supplier-tier lead time', () => {
+      const { parts } = buildProc();
+      parts.advanceDay(0); // tires_brakes: on-hand 0 == reorderPoint 1? 0 <= 1 → orders 4
+      const order = parts
+        .getPendingOrders()
+        .find((o) => o.category === 'tires_brakes');
+      expect(order?.arrivalDay).toBe(4); // standard leadTime 4
+
+      parts.advanceDay(3); // before arrival
+      expect(parts.getStock('tires_brakes')).toBe(0);
+
+      parts.advanceDay(4); // arrival day
+      expect(parts.getStock('tires_brakes')).toBe(4);
+      expect(parts.getOnOrder('tires_brakes')).toBe(0);
+    });
+
+    it('supplier tiers trade unit cost against lead time', () => {
+      const economy = createEconomySpy();
+      const parts = createPartsInventory({ economy, config: CONFIG, masterSeed: 7 });
+      parts.setPolicy('tires_brakes', { tier: 'economy' });
+      parts.advanceDay(0);
+      const economyOrder = parts
+        .getPendingOrders()
+        .find((o) => o.category === 'tires_brakes')!;
+
+      const e2 = createEconomySpy();
+      const p2 = createPartsInventory({ economy: e2, config: CONFIG, masterSeed: 7 });
+      p2.setPolicy('tires_brakes', { tier: 'oem_direct' });
+      p2.advanceDay(0);
+      const oemOrder = p2
+        .getPendingOrders()
+        .find((o) => o.category === 'tires_brakes')!;
+
+      // Economy: cheaper unit cost (200 × 0.8 = 160) but slower (lead 8 → day 8).
+      expect(economyOrder.unitCost).toBe(160);
+      expect(economyOrder.arrivalDay).toBe(8);
+      // OEM-direct: pricier (200 × 1.5 = 300) but faster (lead 2 → day 2).
+      expect(oemOrder.unitCost).toBe(300);
+      expect(oemOrder.arrivalDay).toBe(2);
+      expect(economyOrder.unitCost).toBeLessThan(oemOrder.unitCost);
+      expect(economyOrder.arrivalDay).toBeGreaterThan(oemOrder.arrivalDay);
+    });
+
+    it('rushOrder places an on-demand premium order at the rush tier', () => {
+      const { parts, economy } = buildProc();
+      parts.advanceDay(0); // settle any auto-orders for unrelated categories
+      const before = economy.total;
+
+      parts.rushOrder('electronics'); // default qty 1
+      const rush = parts
+        .getPendingOrders()
+        .filter((o) => o.category === 'electronics' && o.tier === 'rush');
+      expect(rush).toHaveLength(1);
+      // Premium unit cost: 500 × 2.0 = 1000, fast arrival (rush leadTime 1).
+      expect(rush[0]).toMatchObject({ qty: 1, unitCost: 1000, arrivalDay: 1 });
+      expect(economy.total).toBe(before + 1000);
+    });
+
+    it('rushOrder is a no-op when qty <= 0', () => {
+      const { parts, economy } = buildProc();
+      parts.advanceDay(0);
+      const before = parts.getPendingOrders().length;
+      parts.rushOrder('electronics', 0);
+      expect(parts.getPendingOrders()).toHaveLength(before);
+      void economy;
+    });
+
+    it('coverage-gap read-model reports demand vs on-hand + in-flight per category', () => {
+      const { parts } = buildProc();
+      parts.addStock('oil_filters', 4, 20);
+      parts.rushOrder('oil_filters', 3); // 3 in flight
+
+      const gap = parts.getCoverageGap({ oil_filters: 12 });
+      expect(gap.oil_filters).toEqual({
+        demand: 12,
+        onHand: 4,
+        onOrder: 3,
+        gap: 5, // 12 − 4 − 3
+      });
+      // Unmentioned categories key to a 0-demand row.
+      expect(gap.drivetrain).toEqual({
+        demand: 0,
+        onHand: 0,
+        onOrder: 0,
+        gap: 0,
+      });
+    });
+
+    it('setPolicy floors par levels at 0 and ignores an unknown tier', () => {
+      const { parts } = buildProc();
+      parts.setPolicy('oil_filters', {
+        reorderPoint: -5,
+        target: -1,
+        // @ts-expect-error exercising the runtime guard against a bad tier
+        tier: 'nonsense',
+      });
+      expect(parts.getPolicy('oil_filters')).toEqual({
+        reorderPoint: 0,
+        target: 0,
+        tier: 'standard', // unchanged
+      });
+    });
+
+    it('lead-time / reliability draws are deterministic under a fixed seed', () => {
+      const flaky: PartsInventoryConfig = {
+        ...CONFIG,
+        supplierTiers: {
+          ...CONFIG.supplierTiers,
+          standard: { ...CONFIG.supplierTiers.standard, reliability: 0.5 },
+        },
+      };
+      const run = () => {
+        const economy = createEconomySpy();
+        const parts = createPartsInventory({ economy, config: flaky, masterSeed: 42 });
+        for (let day = 0; day < 30; day++) {
+          if (day % 3 === 0) parts.consume('oil_filters');
+          parts.advanceDay(day);
+        }
+        return parts.getPendingOrders();
+      };
+      expect(run()).toEqual(run());
+    });
+  });
+
   describe('persistence', () => {
     it('round-trips part lots through snapshot/restore', () => {
       const { parts } = build();
@@ -196,7 +407,7 @@ describe('PartsInventory (#299)', () => {
       parts.consume('oil_filters');
 
       const snap = parts.snapshot();
-      expect(snap.schemaVersion).toBe(1);
+      expect(snap.schemaVersion).toBe(2);
 
       const { parts: rebuilt } = build();
       rebuilt.restore(snap);
@@ -231,6 +442,51 @@ describe('PartsInventory (#299)', () => {
       expect(parts.getLots()).toEqual([
         { category: 'drivetrain', qty: 2, unitCost: 500 },
       ]);
+    });
+
+    it('round-trips procurement policies and in-flight orders (#301)', () => {
+      const economy = createEconomySpy();
+      const parts = createPartsInventory({ economy, masterSeed: 9 });
+      parts.setPolicy('drivetrain', { reorderPoint: 2, target: 6, tier: 'oem_direct' });
+      parts.advanceDay(0); // places auto-orders
+      parts.rushOrder('electronics', 1);
+
+      const snap = parts.snapshot();
+      expect(snap.schemaVersion).toBe(2);
+
+      const rebuilt = createPartsInventory({
+        economy: createEconomySpy(),
+        masterSeed: 9,
+      });
+      rebuilt.restore(snap);
+
+      expect(rebuilt.getPolicy('drivetrain')).toEqual({
+        reorderPoint: 2,
+        target: 6,
+        tier: 'oem_direct',
+      });
+      expect(rebuilt.getPendingOrders()).toEqual(parts.getPendingOrders());
+
+      // Behavior continues identically post-restore: advancing both to the same
+      // day arrives the same orders and re-orders identically.
+      parts.advanceDay(20);
+      rebuilt.advanceDay(20);
+      expect(rebuilt.getLots()).toEqual(parts.getLots());
+      expect(rebuilt.getPendingOrders()).toEqual(parts.getPendingOrders());
+    });
+
+    it('restores a legacy #299 v1 snapshot with default policies + empty orders', () => {
+      const economy = createEconomySpy();
+      const parts = createPartsInventory({ economy });
+      parts.restore({
+        schemaVersion: 1,
+        lots: [{ category: 'tires_brakes', qty: 2, unitCost: 250 }],
+      });
+
+      expect(parts.getStock('tires_brakes')).toBe(2);
+      expect(parts.getPendingOrders()).toHaveLength(0);
+      // Policies fall back to the data defaults rather than throwing.
+      expect(parts.getPolicy('oil_filters').tier).toBeDefined();
     });
   });
 });

@@ -390,6 +390,22 @@
       "priceSensitivity": 0.05
     }
   },
+  "partsInventory": {
+    "_doc": "PartsInventory par-level procurement (#301, parent #297). `categories` carries each Service part category's `baseUnitCost` (the standard-tier unit price) plus its default `reorderPoint`/`target` par levels. `supplierTiers` trade unit cost against lead time and reliability: `costMultiplier` scales baseUnitCost, `leadTimeDays` is the scheduled arrival delay, `reliability` ∈ [0,1] is the per-order on-time probability (a failed seeded roll adds `delayPenaltyDays`). `defaultTier` is the tier a category procures at until the player picks another. All numbers are S14 (#286) calibration placeholders.",
+    "defaultTier": "standard",
+    "categories": {
+      "oil_filters": { "baseUnitCost": 20, "reorderPoint": 6, "target": 18 },
+      "tires_brakes": { "baseUnitCost": 250, "reorderPoint": 4, "target": 10 },
+      "drivetrain": { "baseUnitCost": 900, "reorderPoint": 1, "target": 3 },
+      "electronics": { "baseUnitCost": 600, "reorderPoint": 1, "target": 3 }
+    },
+    "supplierTiers": {
+      "economy": { "costMultiplier": 0.85, "leadTimeDays": 7, "reliability": 0.8, "delayPenaltyDays": 4 },
+      "standard": { "costMultiplier": 1.0, "leadTimeDays": 4, "reliability": 0.92, "delayPenaltyDays": 2 },
+      "oem_direct": { "costMultiplier": 1.25, "leadTimeDays": 2, "reliability": 0.98, "delayPenaltyDays": 1 },
+      "rush": { "costMultiplier": 1.6, "leadTimeDays": 1, "reliability": 0.99, "delayPenaltyDays": 1 }
+    }
+  },
   "ownership": {
     "hoursOfOp": {
       "options": [
