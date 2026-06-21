@@ -91,6 +91,7 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
         dept: 'service',
         label: item.label,
         createdDay: day,
+        baseRevenue: item.baseRevenue,
       });
     }
   });

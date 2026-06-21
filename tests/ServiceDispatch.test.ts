@@ -76,15 +76,37 @@ const NORMAL_CONFIG: ServiceDispatchConfig = {
   maxDrainPerTick: 0.60,
 };
 
+function makeItem(over: Partial<{
+  serviceItemId: string;
+  source: 'return' | 'conquest';
+  customerId: string;
+  vehicleId: string;
+  category: string;
+  powertrain: 'ice' | 'hybrid' | 'ev';
+  jobCategory: 'oil_filters' | 'tires_brakes' | 'drivetrain' | 'electronics';
+  baseRevenue: number;
+  label: string;
+}> = {}) {
+  return {
+    serviceItemId: 'svc:return:1:0',
+    source: 'return' as const,
+    customerId: 'cust-1',
+    vehicleId: 'veh-1',
+    category: 'sedan',
+    powertrain: 'ice' as const,
+    jobCategory: 'oil_filters' as const,
+    baseRevenue: 75,
+    label: 'Oil & filter service',
+    ...over,
+  };
+}
+
 function makeIntakePayload(day: number, count = 2) {
   return {
     day,
-    items: Array.from({ length: count }, (_, i) => ({
-      serviceItemId: `svc:oil_change:${day}:${i}`,
-      type: 'oil_change',
-      label: 'Oil change',
-      baseRevenue: 75,
-    })),
+    items: Array.from({ length: count }, (_, i) =>
+      makeItem({ serviceItemId: `svc:return:${day}:${i}` }),
+    ),
   };
 }
 
@@ -174,7 +196,7 @@ describe('ServiceDispatch — always auto-resolve', () => {
     const cashBefore = economy.cash;
     bus.publish('service:intake_ready', {
       day: 1,
-      items: [{ serviceItemId: 'svc:recall:1:0', type: 'recall', label: 'Recall inspection', baseRevenue: 0 }],
+      items: [makeItem({ serviceItemId: 'svc:return:1:0', baseRevenue: 0 })],
     });
     expect(economy.cash).toBe(cashBefore);
   });
@@ -208,10 +230,10 @@ describe('ServiceDispatch — ticket_closed payload', () => {
     bus.subscribe('service:ticket_closed', e => events.push(e));
     bus.publish('service:intake_ready', {
       day: 7,
-      items: [{ serviceItemId: 'svc:oil_change:7:0', type: 'oil_change', label: 'Oil change', baseRevenue: 75 }],
+      items: [makeItem({ serviceItemId: 'svc:return:7:0' })],
     });
     expect(events).toHaveLength(1);
-    expect(events[0].serviceItemId).toBe('svc:oil_change:7:0');
+    expect(events[0].serviceItemId).toBe('svc:return:7:0');
     expect(events[0].day).toBe(7);
     expect(events[0].advisorId).toBe('svc-advisor:test');
     expect(events[0].revenue).toBeGreaterThan(0);
@@ -232,7 +254,7 @@ describe('ServiceDispatch — advisor skill affects resolve rate', () => {
       bus.subscribe('service:ticket_closed', () => { resolved++; });
       bus.publish('service:intake_ready', {
         day: i + 1,
-        items: [{ serviceItemId: `svc:oil_change:${i}:0`, type: 'oil_change', label: 'Oil change', baseRevenue: 75 }],
+        items: [makeItem({ serviceItemId: `svc:return:${i}:0` })],
       });
     }
     return resolved;

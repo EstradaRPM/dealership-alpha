@@ -326,10 +326,15 @@ describe('FloorSim — per-tick service routine draining (#101)', () => {
     bus.publish('service:intake_ready', {
       day: baseCtx.day,
       items: Array.from({ length: 8 }, (_, i) => ({
-        serviceItemId: `svc:oil:${i}`,
-        type: 'oil_change',
-        label: 'Oil change',
+        serviceItemId: `svc:return:${i}`,
+        source: 'return' as const,
+        customerId: `cust-${i}`,
+        vehicleId: `veh-${i}`,
+        category: 'sedan',
+        powertrain: 'ice' as const,
+        jobCategory: 'oil_filters' as const,
         baseRevenue: 75,
+        label: 'Oil & filter service',
       })),
     });
 

@@ -1,25 +1,38 @@
 # ServiceQueue
 
-Daily service-department intake generator. Active at Tier 2+. Produces a batch of service items each morning that flow into `DepartmentQueue` (Service lane).
+The **Tier-2 gate** on the Service department's daily intake. Active at Tier 2+.
+It no longer synthesizes intake from a flat `seed × day` table — instead it
+subscribes to ServiceDemand's enriched, NPC-bound stream
+(`serviceDemand:intake_ready`, #302), applies the tier gate, and re-publishes it
+as `service:intake_ready` for `DepartmentQueue` (Service lane) + `ServiceDispatch`
+(#303).
 
 ## Public API (`index.ts`)
-- `createServiceQueue()` → `ServiceQueue`.
-- `loadServiceQueueConfig` — reads service-intake tunables.
-- Types: `ServiceQueue`, `ServiceQueueDeps`, `ServiceQueueConfig`, `ServiceIntakeItemDef`.
+- `createServiceQueue({ bus, initialTier?, config? })` → `ServiceQueue`.
+- `loadServiceQueueConfig` — reads the tier gate + job-category labels.
+- Types: `ServiceQueue`, `ServiceQueueDeps`, `ServiceQueueConfig`,
+  `ServiceQueueSnapshot`.
 
 ## Events
-- **Emits:** `service:intake_ready` (list of items with `serviceItemId`, `type`, `label`, `baseRevenue`).
-- **Consumes:** `clock:day_started` (at Tier 2+), `career:tier_up` (start producing intake once Tier 2 is reached).
+- **Emits:** `service:intake_ready` — each item carries the customer + vehicle
+  identity (`customerId`, `vehicleId`, `category`, `powertrain`), the due
+  `jobCategory`, the `source` (`return` | `conquest`), the `baseRevenue`, and a
+  display `label` (derived from the job category via config).
+- **Consumes:** `serviceDemand:intake_ready` (the upstream mix), `career:tier_up`
+  (start re-publishing once Tier 2 is reached).
 
 ## Data
-- `data/service-intake.json` — intake item types, base revenue, generation rates.
+- `data/service-intake.json` — `minTierRequired` + `jobLabels` (per
+  `JobCategory`). The old `intakeItems`/`dailyIntakeMin`/`dailyIntakeMax` flat
+  table is retired (#303).
 
 ## Tier gate
-Do nothing at Tier 1 — service is unlocked at Tier 2. Check tier from `CareerProgression` before generating.
+Do nothing below `minTierRequired` (2) — service is unlocked at Tier 2. Tier is
+followed off the bus (`career:tier_up`) and seeded by `initialTier`.
 
 ## Persistence (#193)
 - `snapshot()/restore()` (barrel-exported `ServiceQueueSnapshot`) carry only the
-  tier gate (`currentTier`) — daily intake regenerates deterministically from
-  `masterSeed + day`. Wired into `snapshotWorld`/`restoreWorld` under the
-  `serviceQueue` key so the Tier 2+ unlock survives a load without waiting for
-  the next `career:tier_up`.
+  tier gate (`currentTier`) — daily intake is never stored; it regenerates
+  deterministically from `masterSeed + day` inside ServiceDemand. Wired into
+  `snapshotWorld`/`restoreWorld` under the `serviceQueue` key so the Tier 2+
+  unlock survives a load without waiting for the next `career:tier_up`.

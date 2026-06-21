@@ -821,8 +821,8 @@ export function createWorld(deps: {
   // lean from Weather + base-age drift + powertrain skew aggregated off the live
   // installed base + RNG variance), and publishes serviceDemand:intake_ready.
   // Built AFTER InstalledBase + Weather (its upstream providers, seam recipe).
-  // The consumer rewire (ServiceQueue reading this stream instead of its
-  // synthetic seed × day roll) is a later slice — nothing consumes the event yet.
+  // ServiceQueue (below) is the consumer: it gates this stream by tier and
+  // re-publishes it as service:intake_ready (#303).
   const serviceDemand: ServiceDemand = createServiceDemand({
     bus,
     masterSeed,
@@ -831,11 +831,13 @@ export function createWorld(deps: {
     baseOwners: () => installedBase.getOwners(),
   });
 
-  // ServiceQueue (#80): starts silent (default initialTier=1 < minTierRequired
-  // 2), follows career:tier_up off the bus, and once at Tier 2 emits a daily
+  // ServiceQueue (#80, rewired #303): the Tier-2 gate on the Service intake.
+  // Starts silent (default initialTier=1 < minTierRequired 2), follows
+  // career:tier_up off the bus, and once at Tier 2 subscribes to ServiceDemand's
+  // enriched serviceDemand:intake_ready and re-publishes it as a daily
   // service:intake_ready that DepartmentQueue pushes into the Service lane —
   // surfaced/resolved by the generic DepartmentScreen with no extra wiring.
-  const serviceQueue = createServiceQueue({ bus, masterSeed });
+  const serviceQueue = createServiceQueue({ bus });
   // EndCardManager (#84): all terminal failure paths + success endings
   // converge here and re-emit a single career:game_over carrying the
   // assembled EndCardData. Wired in the live world (not just tests) so the

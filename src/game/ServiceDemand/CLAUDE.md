@@ -6,10 +6,10 @@ Each day it assembles the enriched service intake: the installed-base returns
 walk-ins scaled by reputation × service marketing. Every ticket carries customer
 + vehicle identity, the due job/parts category, and the base ticket revenue.
 
-**This is the stream that replaces ServiceQueue's synthetic `seed × day` roll —
-the consumer rewire (ServiceQueue/DepartmentQueue reading this instead) is a
-later #297 slice. Nothing consumes `serviceDemand:intake_ready` yet** (mirrors
-how #300 emitted `installedBase:returns_ready` for a not-yet-built consumer).
+**This is the stream that replaces ServiceQueue's synthetic `seed × day` roll.**
+Since #303, `ServiceQueue` consumes `serviceDemand:intake_ready`, gates it by
+tier, and re-publishes it as the enriched `service:intake_ready` that
+`DepartmentQueue` (Service lane) + `ServiceDispatch` read.
 
 ## Public API (`index.ts`)
 - `createServiceDemand({ bus, masterSeed, config?, reputation?, serviceMarketing?, season, baseOwners })`

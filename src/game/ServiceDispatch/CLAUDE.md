@@ -7,8 +7,9 @@ Auto-resolves service queue items using on-duty service advisors. Service-side a
   subscribes to `service:intake_ready` and resolves immediately.
 - `createServiceFloorDrain()` → `DeptDrain` (the locked #99 per-tick `drain`
   seam FloorSim drives, #101). Per-day instance; captures intake payloads
-  (the queue item alone lacks `baseRevenue`) and resolves up to a skill-scaled
-  number per tick via the **same resolver** as the legacy path — identical
+  (and sweeps already-queued items, which carry `baseRevenue` since #303) and
+  resolves up to a skill-scaled number per tick via the **same resolver** as the
+  legacy path — identical
   outcomes, only the cadence differs. Composition wires one path or the other
   per FloorSim day, never both. Service has no exception channel, so
   `escalated` is always 0.

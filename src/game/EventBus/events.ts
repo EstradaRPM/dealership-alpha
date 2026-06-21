@@ -598,14 +598,28 @@ export interface EventMap {
     }>;
   };
 
-  // ServiceQueue — daily service intake items generated at Tier 2+
+  // ServiceQueue (#80, rewired #303 parent #297) — the day's enriched, NPC-bound
+  // service intake. ServiceQueue subscribes to serviceDemand:intake_ready,
+  // applies the Tier-2 gate, and re-publishes the stream (the synthetic seed×day
+  // roll is retired) for DepartmentQueue (Service lane) + ServiceDispatch. Each
+  // item carries the customer + vehicle identity, the due job/parts category, the
+  // base ticket revenue, and a display label. ORDERING: fires within the
+  // clock:day_started dispatch, downstream of
+  // installedBase:returns_ready → serviceDemand:intake_ready (InstalledBase →
+  // ServiceDemand → ServiceQueue), so the Service lane is populated before the
+  // day's drain. Silent below Tier 2.
   'service:intake_ready': {
     day: number;
     items: ReadonlyArray<{
       serviceItemId: string;
-      type: string;
-      label: string;
+      source: 'return' | 'conquest';
+      customerId: string;
+      vehicleId: string;
+      category: string;
+      powertrain: 'ice' | 'hybrid' | 'ev';
+      jobCategory: 'oil_filters' | 'tires_brakes' | 'drivetrain' | 'electronics';
       baseRevenue: number;
+      label: string;
     }>;
   };
 

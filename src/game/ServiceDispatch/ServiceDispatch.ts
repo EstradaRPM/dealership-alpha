@@ -4,7 +4,6 @@ import type { StaffOrg } from '../StaffOrg';
 import type { DepartmentQueue } from '../DepartmentQueue';
 import type { QueueItem } from '../DepartmentQueue';
 import type { DeptDrain } from '../FloorSim';
-import { loadServiceQueueConfig } from '../ServiceQueue';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import { loadServiceDispatchConfig, type ServiceDispatchConfig } from './serviceDispatchData';
 
@@ -120,15 +119,15 @@ export function createServiceDispatch(deps: ServiceDispatchDeps): ServiceDispatc
  * department, FloorSim's per-tick counterpart to `createServiceDispatch`'s
  * legacy once-per-intake path. A per-day instance; the composition root wires
  * one (or the legacy path, never both) per FloorSim day. It captures intake
- * payloads (the queue item alone lacks `baseRevenue`) without resolving them,
- * then each tick resolves up to a skill-scaled number via the **same resolver**
+ * payloads (and sweeps any already-queued items, which carry `baseRevenue` since
+ * #303) without resolving them, then each tick resolves up to a skill-scaled
+ * number via the **same resolver**
  * as the legacy path — identical outcomes, only the cadence differs. Service
  * has no exception channel, so `escalated` is always 0.
  */
 export function createServiceFloorDrain(deps: ServiceDispatchDeps): DeptDrain {
   const { bus, staffOrg } = deps;
   const config = deps.config ?? loadServiceDispatchConfig();
-  const intakeConfig = loadServiceQueueConfig();
   const resolveServiceItem = makeServiceResolver({ ...deps, config });
 
   const pending: Array<{ item: ServiceIntakeItem; day: number }> = [];
@@ -142,15 +141,14 @@ export function createServiceFloorDrain(deps: ServiceDispatchDeps): DeptDrain {
 
   function fromQueuedServiceItem(item: QueueItem): { item: ServiceIntakeItem; day: number } | null {
     if (item.dept !== 'service' || item.type !== 'routine') return null;
-    const match = /^svc:(.+):\d+:\d+$/.exec(item.id);
-    const def = intakeConfig.intakeItems.find((d) =>
-      d.id === match?.[1] || d.label === item.label,
-    );
+    // The enriched intake carries baseRevenue onto the queue item (#303), so a
+    // restored (post-load) item resolves at its real revenue without the retired
+    // flat intake table.
     return {
       item: {
         serviceItemId: item.id,
         label: item.label,
-        baseRevenue: def?.baseRevenue ?? 0,
+        baseRevenue: item.baseRevenue ?? 0,
       },
       day: item.createdDay,
     };

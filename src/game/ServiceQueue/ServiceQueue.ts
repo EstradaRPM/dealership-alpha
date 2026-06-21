@@ -1,19 +1,18 @@
 import type { EventBus } from '../EventBus';
-import { createRng, deriveSeed } from '../NPC/Rng';
 import { loadServiceQueueConfig, type ServiceQueueConfig } from './serviceQueueData';
 
 export interface ServiceQueueDeps {
   bus: EventBus;
-  masterSeed: number;
   initialTier?: number;
   config?: ServiceQueueConfig;
 }
 
 /**
- * Save/load blob (#193). The module regenerates its daily intake
- * deterministically from `masterSeed + day`, so the only carried state is the
- * tier gate — restoring it keeps the Tier 2+ unlock honored after a load
- * without waiting for the next `career:tier_up`.
+ * Save/load blob (#193). The module holds no generated intake — the day's
+ * tickets flow live from ServiceDemand and regenerate deterministically from
+ * `masterSeed + day` (#303). The only carried state is the tier gate; restoring
+ * it keeps the Tier 2+ unlock honored after a load without waiting for the next
+ * `career:tier_up`.
  */
 export interface ServiceQueueSnapshot {
   readonly schemaVersion: 1;
@@ -26,8 +25,17 @@ export interface ServiceQueue {
   restore(snap: ServiceQueueSnapshot): void;
 }
 
+/**
+ * ServiceQueue (#80, rewired #303 parent #297) — the Tier-2 gate on the Service
+ * profit center's daily intake. It no longer synthesizes intake from a flat
+ * `seed × day` table; instead it subscribes to ServiceDemand's enriched,
+ * NPC-bound stream (`serviceDemand:intake_ready`), applies the tier gate, and
+ * re-publishes it as `service:intake_ready` for DepartmentQueue (Service lane)
+ * + ServiceDispatch. Each item carries the customer + vehicle identity, the due
+ * job/parts category, the base ticket revenue, and a display label.
+ */
 export function createServiceQueue(deps: ServiceQueueDeps): ServiceQueue {
-  const { bus, masterSeed } = deps;
+  const { bus } = deps;
   const config = deps.config ?? loadServiceQueueConfig();
 
   let currentTier = deps.initialTier ?? 1;
@@ -36,32 +44,20 @@ export function createServiceQueue(deps: ServiceQueueDeps): ServiceQueue {
     currentTier = toTier;
   });
 
-  bus.subscribe('clock:day_started', ({ day }) => {
+  bus.subscribe('serviceDemand:intake_ready', ({ day, intake }) => {
     if (currentTier < config.minTierRequired) return;
 
-    const rng = createRng(deriveSeed(masterSeed, 'service_queue', { day }));
-
-    const count =
-      config.dailyIntakeMin +
-      Math.floor(rng() * (config.dailyIntakeMax - config.dailyIntakeMin + 1));
-
-    const items: Array<{
-      serviceItemId: string;
-      type: string;
-      label: string;
-      baseRevenue: number;
-    }> = [];
-
-    for (let slot = 0; slot < count; slot++) {
-      const idx = Math.floor(rng() * config.intakeItems.length);
-      const def = config.intakeItems[idx];
-      items.push({
-        serviceItemId: `svc:${def.id}:${day}:${slot}`,
-        type: def.id,
-        label: def.label,
-        baseRevenue: def.baseRevenue,
-      });
-    }
+    const items = intake.map((entry) => ({
+      serviceItemId: entry.ticketId,
+      source: entry.source,
+      customerId: entry.customerId,
+      vehicleId: entry.vehicleId,
+      category: entry.category,
+      powertrain: entry.powertrain,
+      jobCategory: entry.jobCategory,
+      baseRevenue: entry.baseRevenue,
+      label: config.jobLabels[entry.jobCategory],
+    }));
 
     bus.publish('service:intake_ready', { day, items });
   });

@@ -1,11 +1,10 @@
 {
-  "intakeItems": [
-    { "id": "oil_change", "label": "Oil change", "baseRevenue": 75 },
-    { "id": "brake_job", "label": "Brake job", "baseRevenue": 280 },
-    { "id": "recall", "label": "Recall inspection", "baseRevenue": 0 },
-    { "id": "diagnostic", "label": "Diagnostic check", "baseRevenue": 125 }
-  ],
-  "dailyIntakeMin": 1,
-  "dailyIntakeMax": 3,
-  "minTierRequired": 2
+  "_doc": "ServiceQueue tier gate + job-category display labels (#303, parent #297). The synthetic seed×day intake table is retired — the day's service intake now flows from ServiceDemand (serviceDemand:intake_ready). ServiceQueue only gates by tier and re-publishes that enriched, NPC-bound stream as service:intake_ready, deriving the queue/economy display label from the due job category here.",
+  "minTierRequired": 2,
+  "jobLabels": {
+    "oil_filters": "Oil & filter service",
+    "tires_brakes": "Tires & brakes",
+    "drivetrain": "Drivetrain repair",
+    "electronics": "Electronics diagnostic"
+  }
 }

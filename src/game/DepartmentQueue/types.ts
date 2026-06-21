@@ -8,6 +8,10 @@ export interface QueueItem {
   readonly label: string;
   readonly createdDay: number;
   readonly customerId?: string;
+  /** Service items only (#303): the base ticket revenue, carried on the queue
+   *  item so the per-tick floor drain can resolve a restored (post-load) item
+   *  without the retired flat intake table. */
+  readonly baseRevenue?: number;
 }
 
 /**
