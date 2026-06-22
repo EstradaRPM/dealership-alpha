@@ -7,6 +7,16 @@ export {
   returnProbability,
   selectJobCategory,
 } from './returnCadence';
+export {
+  isGouging,
+  resolveServiceOutcome,
+  shouldDefect,
+  isRepeatBuyerDue,
+} from './serviceFeedback';
+export type {
+  ServiceOutcomeKind,
+  ServiceOutcomeEffect,
+} from './serviceFeedback';
 export type {
   InstalledBase,
   InstalledBaseSnapshot,
@@ -14,4 +24,5 @@ export type {
   OwnerPowertrain,
   JobCategory,
   ReturningOwner,
+  RepeatBuyerLead,
 } from './types';

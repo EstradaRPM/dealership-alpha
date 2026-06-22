@@ -393,6 +393,28 @@
     "returnRoll": {
       "convenience": 0.9,
       "priceSensitivity": 0.05
+    },
+    "feedback": {
+      "goodLoyaltyBonus": 0.04,
+      "goodCsiBonus": 0.04,
+      "missLoyaltyPenalty": 0.15,
+      "missCsiPenalty": 0.15,
+      "unservedLoyaltyPenalty": 0.1,
+      "unservedCsiPenalty": 0.1,
+      "gougeLoyaltyPenalty": 0.06,
+      "gougeCsiPenalty": 0.06,
+      "fairPostureThreshold": 0.66,
+      "reputationMissHit": -3,
+      "reputationUnservedHit": -2,
+      "reputationGougeHit": -1
+    },
+    "defection": {
+      "badVisitsToDefect": 3,
+      "noReturnsToDefect": 4
+    },
+    "repeatBuyer": {
+      "ageOutDays": 1460,
+      "minLoyalty": 0.6
     }
   },
   "partsInventory": {

@@ -800,11 +800,22 @@ export function createWorld(deps: {
   // rolls the due owners' returns and publishes `installedBase:returns_ready`
   // for the future ServiceDemand. Reputation is read live (normalized to [0,1])
   // via an injected getter so the module stays Reputation-free.
+  // #305/#306 service pricing posture — the single competitive↔premium dial
+  // [0,1] (0 = competitive labor + markup, 1 = premium). A stored player
+  // setting, neutral by default; the dial UI + persistence are a later slice.
+  // Declared before InstalledBase so the feedback loop's gouging gate (#306) can
+  // read it live; ServiceDispatch reads the same value for its revenue dial.
+  // Exposed on the World seam so a Settings/Service-page lever can drive it.
+  let servicePricingPosture = 0.5;
+
   const installedBase = createInstalledBase({
     bus,
     config: loadInstalledBaseConfig(),
     masterSeed,
     reputation: () => Math.max(0, Math.min(1, reputation.reviewScore / 100)),
+    // #306 a premium posture turns served jobs into "gouging" — owners shop
+    // around (loyalty/CSI drop, Reputation dings).
+    getPricingPosture: () => servicePricingPosture,
   });
 
   // PartsInventory (#299/#301, parent #297): the supply-side half of the Service
@@ -826,13 +837,6 @@ export function createWorld(deps: {
   // #297) the Service parts-gate reads. Loaded once; the drain below closes over
   // it for its per-day isRushUnlocked predicate.
   const serviceDispatchConfig = loadServiceDispatchConfig();
-
-  // #305 service pricing posture — the single competitive↔premium dial [0,1]
-  // (0 = competitive labor + markup, 1 = premium). A stored player setting,
-  // neutral by default; the dial UI + persistence are a later slice (the dial
-  // value also feeds InstalledBase's return-roll price-sensitivity term then).
-  // Exposed on the World seam so a Settings/Service-page lever can drive it.
-  let servicePricingPosture = 0.5;
 
   // #305 live service capacity read-model (waiting / in-progress / avg-wait /
   // utilization) for the Service page + floor card. Long-lived; each per-day
@@ -1010,6 +1014,24 @@ export function createWorld(deps: {
     }
     return SALES_ARCHETYPES[0];
   };
+
+  // #306 warm repeat-buyer leads: an aged-out, still-loyal owner re-enters Sales.
+  // InstalledBase emits the lead; the root maps its prior-vehicle `category`
+  // onto a matching sales archetype (so the lead walks in wanting the kind of
+  // car the player is likely stocked for — naturally a stronger match) and
+  // spawns it into CustomerPool. Seeded on (day, ownerId) ⇒ replay-safe (#122).
+  bus.subscribe('installedBase:repeat_buyer_ready', ({ day, leads }) => {
+    for (const lead of leads) {
+      const rng = createRng(
+        deriveSeed(masterSeed, 'installed_base.repeat_buyer', {
+          day,
+          ownerId: lead.ownerId,
+        }),
+      );
+      const arch = drawArchetypeForSegment(lead.category, rng);
+      customerPool.spawnCustomer(arch.personId, arch.visitId, `Repeat Buyer: ${arch.label}`);
+    }
+  });
 
   const customerSource: CustomerSource = {
     spawn({ day, tick, count }): readonly CustomerRef[] {

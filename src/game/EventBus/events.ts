@@ -576,6 +576,34 @@ export interface EventMap {
     }>;
   };
 
+  // InstalledBase repeat-buyer leads (#306, parent #297) — the day's aged-out,
+  // still-loyal owners re-entering Sales as warm repeat buyers. Emitted on
+  // clock:day_started alongside installedBase:returns_ready (fires every day,
+  // possibly empty). The composition root maps each lead's `category` onto a
+  // matching sales archetype and spawns it into CustomerPool. One lead per
+  // ownership (deduped by the owner's persisted `repeatLeadEmitted`).
+  'installedBase:repeat_buyer_ready': {
+    day: number;
+    leads: ReadonlyArray<{
+      ownerId: string;
+      customerId: string;
+      vehicleId: string;
+      category: string;
+      loyalty: number;
+    }>;
+  };
+
+  // InstalledBase permanent defection (#306, parent #297) — an owner left the
+  // base for good: sustained bad service experiences (`reason` carries the last
+  // outcome — 'missed'/'unserved'/'gouged') or sustained non-returns
+  // ('sustained_non_return'). Terminal for that ownership record.
+  'installedBase:owner_defected': {
+    day: number;
+    ownerId: string;
+    customerId: string;
+    reason: string;
+  };
+
   // ServiceDemand (#302, parent #297) — the day's enriched service intake.
   // Composed on each installedBase:returns_ready: the returning owners folded in
   // as the primary stream plus a conquest floor of fresh walk-ins (scaled by

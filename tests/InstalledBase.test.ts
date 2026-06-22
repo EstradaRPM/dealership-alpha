@@ -6,10 +6,16 @@ import {
   cadenceForPowertrain,
   returnProbability,
   selectJobCategory,
+  isGouging,
+  resolveServiceOutcome,
+  shouldDefect,
+  isRepeatBuyerDue,
   type InstalledBase,
   type InstalledBaseConfig,
   type ReturningOwner,
+  type RepeatBuyerLead,
 } from '../src/game/InstalledBase';
+import type { EventPayload } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import {
   snapshotWorld,
@@ -43,6 +49,22 @@ const CONFIG: InstalledBaseConfig = {
     { category: 'electronics' },
   ],
   returnRoll: { convenience: 0.9, priceSensitivity: 0.05 },
+  feedback: {
+    goodLoyaltyBonus: 0.04,
+    goodCsiBonus: 0.04,
+    missLoyaltyPenalty: 0.15,
+    missCsiPenalty: 0.15,
+    unservedLoyaltyPenalty: 0.1,
+    unservedCsiPenalty: 0.1,
+    gougeLoyaltyPenalty: 0.06,
+    gougeCsiPenalty: 0.06,
+    fairPostureThreshold: 0.66,
+    reputationMissHit: -3,
+    reputationUnservedHit: -2,
+    reputationGougeHit: -1,
+  },
+  defection: { badVisitsToDefect: 3, noReturnsToDefect: 4 },
+  repeatBuyer: { ageOutDays: 1460, minLoyalty: 0.6 },
 };
 
 /**
@@ -146,6 +168,10 @@ describe('InstalledBase accrual (#298)', () => {
       powertrain: 'ev', // joined from inventory:vehicle_sold
       saleDay: 7, // from inventory:vehicle_sold.day
       loyalty: 0.6, // seeded from retentionSeed × scale(1.0)
+      csi: 0.6, // CSI starts at the same satisfaction-at-sale seed (#306)
+      consecutiveBadVisits: 0,
+      consecutiveNoReturns: 0,
+      repeatLeadEmitted: false,
     });
     expect(base.getOwner('c1::v1')).toEqual(owner);
   });
@@ -295,7 +321,8 @@ describe('InstalledBase through the world seam (#298)', () => {
     // version 8 and carries neither installedBase nor any later-added key
     // (partsInventory, v9→v10). Strip both to reconstruct that vintage.
     const { installedBase, partsInventory, ...legacyModules } = current.modules;
-    expect(installedBase).toEqual({ schemaVersion: 1, owners: [] });
+    // A fresh world snapshots at the current module schema (v2, #306).
+    expect(installedBase).toEqual({ schemaVersion: 2, owners: [] });
 
     const persisted: PersistedWorldSnapshot = {
       version: 8,
@@ -546,5 +573,333 @@ describe('InstalledBase return cadence through the world seam (#300)', () => {
     bus.publish('clock:day_started', { day: 1 });
     expect(streams).toHaveLength(1);
     expect(streams[0]).toEqual({ day: 1, returns: [] });
+  });
+});
+
+// ── #306: loyalty/CSI feedback, defection, repeat-buyer leads ────────────────
+
+describe('InstalledBase service feedback (#306, pure)', () => {
+  it('a fair-price close raises loyalty + CSI; a gouged close drops both', () => {
+    const fair = resolveServiceOutcome({ kind: 'closed', posture: 0.5, config: CONFIG });
+    expect(fair.loyaltyDelta).toBeGreaterThan(0);
+    expect(fair.csiDelta).toBeGreaterThan(0);
+    expect(fair.isBadVisit).toBe(false);
+    expect(fair.reputationHit).toBe(0);
+
+    const gouged = resolveServiceOutcome({ kind: 'closed', posture: 0.9, config: CONFIG });
+    expect(gouged.loyaltyDelta).toBeLessThan(0);
+    expect(gouged.csiDelta).toBeLessThan(0);
+    expect(gouged.isBadVisit).toBe(true);
+    expect(gouged.reputationHit).toBeLessThan(0);
+  });
+
+  it('misses and unserved jobs drop loyalty + CSI and ding Reputation', () => {
+    for (const kind of ['missed', 'unserved'] as const) {
+      const e = resolveServiceOutcome({ kind, posture: 0.5, config: CONFIG });
+      expect(e.loyaltyDelta).toBeLessThan(0);
+      expect(e.csiDelta).toBeLessThan(0);
+      expect(e.isBadVisit).toBe(true);
+      expect(e.reputationHit).toBeLessThan(0);
+    }
+  });
+
+  it('gates gouging on the fair-posture threshold', () => {
+    expect(isGouging(0.66, CONFIG)).toBe(false);
+    expect(isGouging(0.67, CONFIG)).toBe(true);
+  });
+
+  it('shouldDefect fires on either sustained bad visits or sustained non-returns', () => {
+    expect(shouldDefect({ consecutiveBadVisits: 2, consecutiveNoReturns: 2 }, CONFIG)).toBe(false);
+    expect(shouldDefect({ consecutiveBadVisits: 3, consecutiveNoReturns: 0 }, CONFIG)).toBe(true);
+    expect(shouldDefect({ consecutiveBadVisits: 0, consecutiveNoReturns: 4 }, CONFIG)).toBe(true);
+  });
+
+  it('isRepeatBuyerDue gates on age-out, loyalty floor, and the once-only flag', () => {
+    const loyal = { loyalty: 0.7, repeatLeadEmitted: false };
+    expect(isRepeatBuyerDue(loyal, 1459, CONFIG)).toBe(false); // not aged out yet
+    expect(isRepeatBuyerDue(loyal, 1460, CONFIG)).toBe(true);
+    expect(isRepeatBuyerDue({ loyalty: 0.5, repeatLeadEmitted: false }, 2000, CONFIG)).toBe(false); // below floor
+    expect(isRepeatBuyerDue({ loyalty: 0.7, repeatLeadEmitted: true }, 2000, CONFIG)).toBe(false); // already emitted
+  });
+});
+
+describe('InstalledBase feedback loop (#306)', () => {
+  /** Emit a served-job close for an owner via the intake map → ticket_closed. */
+  function close(bus: EventBus, customerId: string, vehicleId: string, day: number): void {
+    const serviceItemId = `svc-${customerId}-${vehicleId}-${day}`;
+    bus.publish('service:intake_ready', {
+      day,
+      items: [
+        {
+          serviceItemId,
+          source: 'return',
+          customerId,
+          vehicleId,
+          category: 'sedan',
+          powertrain: 'ice',
+          jobCategory: 'oil_filters',
+          baseRevenue: 200,
+          label: 'Oil change',
+        },
+      ],
+    });
+    bus.publish('service:ticket_closed', { serviceItemId, day, revenue: 200, advisorId: 'a1' });
+  }
+
+  function miss(bus: EventBus, customerId: string, vehicleId: string, day: number): void {
+    bus.publish('service:job_missed', {
+      serviceItemId: `m-${day}`,
+      day,
+      customerId,
+      vehicleId,
+      jobCategory: 'tires_brakes',
+      lostRevenue: 300,
+      csiHit: 4,
+      advisorId: 'a1',
+    });
+  }
+
+  it('a fair-price close raises the owner loyalty + CSI', () => {
+    const { bus, base } = build();
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', retentionSeed: 0.5 });
+    const before = base.getOwner('c1::v1')!;
+    expect(before.csi).toBeCloseTo(0.5, 10);
+
+    close(bus, 'c1', 'v1', 130);
+    const after = base.getOwner('c1::v1')!;
+    expect(after.loyalty).toBeGreaterThan(before.loyalty);
+    expect(after.csi).toBeGreaterThan(before.csi);
+    expect(after.consecutiveBadVisits).toBe(0);
+  });
+
+  it('a miss lowers loyalty + CSI and emits a Reputation hit', () => {
+    const { bus, base } = build();
+    const hits: EventPayload<'reputation:satisfaction_hit'>[] = [];
+    bus.subscribe('reputation:satisfaction_hit', (p) => hits.push(p));
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', retentionSeed: 0.8 });
+
+    miss(bus, 'c1', 'v1', 130);
+    const owner = base.getOwner('c1::v1')!;
+    expect(owner.loyalty).toBeCloseTo(0.65, 10); // 0.8 − 0.15
+    expect(owner.csi).toBeCloseTo(0.65, 10);
+    expect(owner.consecutiveBadVisits).toBe(1);
+    expect(hits).toHaveLength(1);
+    expect(hits[0].amount).toBe(-3);
+    expect(hits[0].reason).toBe('service_missed');
+  });
+
+  it('a premium (gouging) posture turns a close into a loyalty/CSI drop + Reputation hit', () => {
+    const bus = createEventBus();
+    const base = createInstalledBase({ bus, config: CONFIG, getPricingPosture: () => 0.9 });
+    const hits: EventPayload<'reputation:satisfaction_hit'>[] = [];
+    bus.subscribe('reputation:satisfaction_hit', (p) => hits.push(p));
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', retentionSeed: 0.8 });
+
+    close(bus, 'c1', 'v1', 130);
+    const owner = base.getOwner('c1::v1')!;
+    expect(owner.loyalty).toBeCloseTo(0.74, 10); // 0.8 − 0.06
+    expect(owner.consecutiveBadVisits).toBe(1);
+    expect(hits).toHaveLength(1);
+    expect(hits[0].reason).toBe('service_gouged');
+  });
+
+  it('sustained bad experiences permanently defect an owner', () => {
+    const { bus, base } = build();
+    const defections: EventPayload<'installedBase:owner_defected'>[] = [];
+    bus.subscribe('installedBase:owner_defected', (p) => defections.push(p));
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', retentionSeed: 0.9 });
+
+    miss(bus, 'c1', 'v1', 130);
+    miss(bus, 'c1', 'v1', 260);
+    expect(base.size).toBe(1); // 2 bad visits < threshold (3)
+    miss(bus, 'c1', 'v1', 390);
+
+    expect(base.size).toBe(0); // 3rd bad visit defects
+    expect(base.getOwner('c1::v1')).toBeUndefined();
+    expect(defections).toHaveLength(1);
+    expect(defections[0].ownerId).toBe('c1::v1');
+    expect(defections[0].reason).toBe('missed');
+  });
+
+  it('a good visit resets the bad-visit streak (no defection)', () => {
+    const { bus, base } = build();
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', retentionSeed: 0.9 });
+    miss(bus, 'c1', 'v1', 130);
+    miss(bus, 'c1', 'v1', 260);
+    close(bus, 'c1', 'v1', 390); // resets streak
+    miss(bus, 'c1', 'v1', 520);
+    miss(bus, 'c1', 'v1', 650);
+    expect(base.size).toBe(1); // streak never reached 3 consecutively
+    expect(base.getOwner('c1::v1')!.consecutiveBadVisits).toBe(2);
+  });
+
+  it('a conquest close (no matching owner) touches no owner record', () => {
+    const { bus, base } = build();
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', retentionSeed: 0.5 });
+    const before = base.getOwner('c1::v1')!;
+    // intake_ready carries only a conquest ticket → ticket_closed maps to nobody.
+    bus.publish('service:intake_ready', {
+      day: 130,
+      items: [
+        {
+          serviceItemId: 'conq-1',
+          source: 'conquest',
+          customerId: 'stranger',
+          vehicleId: 'x9',
+          category: 'sedan',
+          powertrain: 'ice',
+          jobCategory: 'oil_filters',
+          baseRevenue: 200,
+          label: 'Oil change',
+        },
+      ],
+    });
+    bus.publish('service:ticket_closed', { serviceItemId: 'conq-1', day: 130, revenue: 200, advisorId: 'a1' });
+    expect(base.getOwner('c1::v1')).toEqual(before);
+  });
+});
+
+describe('InstalledBase non-return defection (#306)', () => {
+  // P = loyalty(low) × reputation(0) → 0, so a due owner never returns and the
+  // non-return counter climbs each cadence cycle until it defects.
+  it('sustained non-returns defect an owner out of the base', () => {
+    const bus = createEventBus();
+    const base = createInstalledBase({
+      bus,
+      config: CONFIG,
+      masterSeed: 1,
+      reputation: () => 0, // P(return) = 0 every cycle
+    });
+    const defections: EventPayload<'installedBase:owner_defected'>[] = [];
+    bus.subscribe('installedBase:owner_defected', (p) => defections.push(p));
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', powertrain: 'ice', saleDay: 1, retentionSeed: 0.9 });
+
+    // ICE cadence 120 → due at 121, 241, 361, 481 (ageDays 120/240/360/480).
+    for (const day of [121, 241, 361]) bus.publish('clock:day_started', { day });
+    expect(base.size).toBe(1); // 3 non-returns < threshold (4)
+    bus.publish('clock:day_started', { day: 481 });
+
+    expect(base.size).toBe(0); // 4th non-return defects
+    expect(defections).toHaveLength(1);
+    expect(defections[0].reason).toBe('sustained_non_return');
+  });
+
+  it('a return resets the non-return streak', () => {
+    // Reputation high enough that P(return)=1 every cycle (loyalty 1 × rep 1 ×
+    // convenience 2 = 2 → clamped) so the owner always returns and never defects.
+    const bus = createEventBus();
+    const base = createInstalledBase({
+      bus,
+      config: { ...CONFIG, returnRoll: { convenience: 2, priceSensitivity: 0 } },
+      reputation: () => 1,
+    });
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', powertrain: 'ice', saleDay: 1, retentionSeed: 1 });
+    for (const day of [121, 241, 361, 481, 601]) bus.publish('clock:day_started', { day });
+    expect(base.size).toBe(1);
+    expect(base.getOwner('c1::v1')!.consecutiveNoReturns).toBe(0);
+  });
+});
+
+describe('InstalledBase repeat-buyer leads (#306)', () => {
+  function buildLeads() {
+    const bus = createEventBus();
+    const base = createInstalledBase({ bus, config: CONFIG, reputation: () => 1 });
+    const streams: RepeatBuyerLead[][] = [];
+    bus.subscribe('installedBase:repeat_buyer_ready', (p) => streams.push([...p.leads]));
+    return { bus, base, streams };
+  }
+
+  it('emits a repeat_buyer_ready stream every day (empty before age-out)', () => {
+    const { bus, streams } = buildLeads();
+    bus.publish('clock:day_started', { day: 1 });
+    expect(streams).toHaveLength(1);
+    expect(streams[0]).toEqual([]);
+  });
+
+  it('a loyal owner whose car ages out emits a warm lead exactly once', () => {
+    const { bus, base, streams } = buildLeads();
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', category: 'suv', saleDay: 1, retentionSeed: 0.9 });
+
+    bus.publish('clock:day_started', { day: 1000 }); // age 999 < 1460
+    expect(streams[streams.length - 1]).toEqual([]);
+
+    bus.publish('clock:day_started', { day: 1461 }); // age 1460 ≥ ageOutDays
+    expect(streams[streams.length - 1]).toEqual([
+      { ownerId: 'c1::v1', customerId: 'c1', vehicleId: 'v1', category: 'suv', loyalty: 0.9 },
+    ]);
+    expect(base.getOwner('c1::v1')!.repeatLeadEmitted).toBe(true);
+
+    // Does not re-emit on a later day.
+    bus.publish('clock:day_started', { day: 1600 });
+    expect(streams[streams.length - 1]).toEqual([]);
+  });
+
+  it('a low-loyalty aged-out owner emits no lead', () => {
+    const { bus, streams } = buildLeads();
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', saleDay: 1, retentionSeed: 0.4 });
+    bus.publish('clock:day_started', { day: 1461 });
+    expect(streams[streams.length - 1]).toEqual([]);
+  });
+
+  it('spawns a warm sales customer through the world seam', () => {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed: 306, characterProfile: PROFILE });
+    const arrivals: EventPayload<'customer:arrived'>[] = [];
+    bus.subscribe('customer:arrived', (p) => arrivals.push(p));
+
+    bus.publish('installedBase:repeat_buyer_ready', {
+      day: 1,
+      leads: [
+        { ownerId: 'c1::v1', customerId: 'c1', vehicleId: 'v1', category: 'suv', loyalty: 0.9 },
+      ],
+    });
+
+    expect(arrivals).toHaveLength(1);
+    expect(arrivals[0].label).toContain('Repeat Buyer');
+    // The lead is now a live session in the pool.
+    expect(world.customerPool.getSession(arrivals[0].customerId)).toBeDefined();
+  });
+});
+
+describe('InstalledBase feedback persistence (#306)', () => {
+  it('round-trips the new feedback fields', () => {
+    const { bus, base } = build();
+    emitSale(bus, { customerId: 'c1', vehicleId: 'v1', retentionSeed: 0.8 });
+    bus.publish('service:job_missed', {
+      serviceItemId: 'm1', day: 130, customerId: 'c1', vehicleId: 'v1',
+      jobCategory: 'tires_brakes', lostRevenue: 300, csiHit: 4, advisorId: 'a1',
+    });
+
+    const snap = base.snapshot();
+    expect(snap.schemaVersion).toBe(2);
+    const reparsed = JSON.parse(JSON.stringify(snap)) as typeof snap;
+
+    const { base: fresh } = build();
+    fresh.restore(reparsed);
+    expect(fresh.getOwners()).toEqual(base.getOwners());
+    expect(fresh.getOwner('c1::v1')!.consecutiveBadVisits).toBe(1);
+  });
+
+  it('migrates a pre-#306 (schemaVersion 1) blob with neutral defaults', () => {
+    const { base: fresh } = build();
+    fresh.restore({
+      schemaVersion: 1,
+      owners: [
+        {
+          ownerId: 'c1::v1',
+          customerId: 'c1',
+          vehicleId: 'v1',
+          category: 'sedan',
+          powertrain: 'ice',
+          saleDay: 3,
+          loyalty: 0.7,
+        },
+      ],
+    });
+    const owner = fresh.getOwner('c1::v1')!;
+    expect(owner.csi).toBe(0.7); // defaulted to loyalty
+    expect(owner.consecutiveBadVisits).toBe(0);
+    expect(owner.consecutiveNoReturns).toBe(0);
+    expect(owner.repeatLeadEmitted).toBe(false);
   });
 });

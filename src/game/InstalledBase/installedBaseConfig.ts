@@ -39,11 +39,50 @@ const ReturnRollSchema = z.object({
   priceSensitivity: z.number().min(0),
 });
 
+// #306 service-outcome feedback. Loyalty/CSI deltas per outcome (all magnitudes
+// non-negative; the resolver signs the penalties). `fairPostureThreshold` is the
+// pricing-posture [0,1] above which a closed ticket counts as gouging (drops
+// loyalty/CSI + dings Reputation) instead of a fair-price win. The `reputation*`
+// terms are the satisfaction-hit amounts (≤ 0) fed to Reputation on the three
+// CSI signals (misses, long waits / unserved, gouging).
+const FeedbackSchema = z.object({
+  goodLoyaltyBonus: z.number().min(0),
+  goodCsiBonus: z.number().min(0),
+  missLoyaltyPenalty: z.number().min(0),
+  missCsiPenalty: z.number().min(0),
+  unservedLoyaltyPenalty: z.number().min(0),
+  unservedCsiPenalty: z.number().min(0),
+  gougeLoyaltyPenalty: z.number().min(0),
+  gougeCsiPenalty: z.number().min(0),
+  fairPostureThreshold: z.number().min(0).max(1),
+  reputationMissHit: z.number().max(0),
+  reputationUnservedHit: z.number().max(0),
+  reputationGougeHit: z.number().max(0),
+});
+
+// #306 permanent defection: an owner leaves the base for good once either
+// counter reaches its threshold (sustained bad experiences OR sustained
+// non-returns).
+const DefectionSchema = z.object({
+  badVisitsToDefect: z.number().int().positive(),
+  noReturnsToDefect: z.number().int().positive(),
+});
+
+// #306 repeat-buyer leads: a loyal owner whose car has aged past `ageOutDays`
+// (and whose loyalty clears `minLoyalty`) re-enters Sales as a warm lead.
+const RepeatBuyerSchema = z.object({
+  ageOutDays: z.number().int().positive(),
+  minLoyalty: z.number().min(0).max(1),
+});
+
 const InstalledBaseConfigSchema = z.object({
   loyaltySeedScale: z.number().nonnegative(),
   returnCadence: ReturnCadenceSchema,
   jobCategoryDrift: z.array(JobCategoryBandSchema).min(1),
   returnRoll: ReturnRollSchema,
+  feedback: FeedbackSchema,
+  defection: DefectionSchema,
+  repeatBuyer: RepeatBuyerSchema,
 });
 
 export type InstalledBaseConfig = z.infer<typeof InstalledBaseConfigSchema>;
