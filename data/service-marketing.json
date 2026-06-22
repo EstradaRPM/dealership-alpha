@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "_doc": "ServiceMarketing tunables (#307, parent #297). The two service-marketing arms, kept distinct from sales advertising. RETENTION campaigns lift the installed base's return rate (added to the return roll's `convenience` term, which also slows the no-return defection path); pick one campaign or none. The CONQUEST special is a single category-targeted push the player aims at a job category (e.g. tires_brakes = a 'brake special'): it raises conquest volume (scales ServiceDemand's serviceMarketing input by `volumeBoost`) and multiplies the promoted category's weight in the incoming mix by `1 + categoryBias`, so you can manufacture demand to clear over-stocked parts. Each active arm debits its `dailyCost` from Economy each day. All magnitudes are placeholders tuned in the S14 balance pass (#286).",
+  "retentionCampaigns": [
+    {
+      "id": "loyalty_mailer",
+      "label": "Loyalty mailer",
+      "blurb": "Periodic service reminders plus a small loyalty perk nudge owners back to the bay.",
+      "dailyCost": 35,
+      "returnLift": 0.08
+    },
+    {
+      "id": "maintenance_plan",
+      "label": "Prepaid maintenance push",
+      "blurb": "Sell prepaid maintenance plans up front — the strongest retention lever, and the priciest.",
+      "dailyCost": 90,
+      "returnLift": 0.18
+    }
+  ],
+  "conquestSpecial": {
+    "dailyCost": 60,
+    "volumeBoost": 0.7,
+    "categoryBias": 1.5
+  }
+}

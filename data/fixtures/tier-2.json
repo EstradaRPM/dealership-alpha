@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 10,
+    "version": 11,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -181,7 +181,8 @@
             "reconRealizedCost": 1126,
             "reconDaysRemaining": 0,
             "reconDaysTotal": 5,
-            "reconBucket": "within"
+            "reconBucket": "within",
+            "frontlineDay": 6
           },
           {
             "id": "auction-day19-4-vanda_suv",
@@ -209,7 +210,8 @@
             "reconRealizedCost": 453,
             "reconDaysRemaining": 0,
             "reconDaysTotal": 3,
-            "reconBucket": "within"
+            "reconBucket": "within",
+            "frontlineDay": 19
           },
           {
             "id": "auction-day27-0-chevreau_suv",
@@ -237,7 +239,8 @@
             "reconRealizedCost": 547,
             "reconDaysRemaining": 0,
             "reconDaysTotal": 3,
-            "reconBucket": "within"
+            "reconBucket": "within",
+            "frontlineDay": 27
           },
           {
             "id": "auction-day28-7-chevreau_suv",
@@ -265,7 +268,8 @@
             "reconRealizedCost": 1143,
             "reconDaysRemaining": 1,
             "reconDaysTotal": 5,
-            "reconBucket": "within"
+            "reconBucket": "within",
+            "frontlineDay": 28
           },
           {
             "id": "auction-day30-2-chevreau_suv",
@@ -293,9 +297,43 @@
             "reconRealizedCost": 1164,
             "reconDaysRemaining": 3,
             "reconDaysTotal": 5,
-            "reconBucket": "within"
+            "reconBucket": "within",
+            "frontlineDay": 30
           }
         ]
+      },
+      "installedBase": {
+        "schemaVersion": 2,
+        "owners": []
+      },
+      "partsInventory": {
+        "schemaVersion": 2,
+        "lots": [],
+        "policies": {
+          "oil_filters": {
+            "reorderPoint": 6,
+            "target": 18,
+            "tier": "standard"
+          },
+          "tires_brakes": {
+            "reorderPoint": 4,
+            "target": 10,
+            "tier": "standard"
+          },
+          "drivetrain": {
+            "reorderPoint": 1,
+            "target": 3,
+            "tier": "standard"
+          },
+          "electronics": {
+            "reorderPoint": 1,
+            "target": 3,
+            "tier": "standard"
+          }
+        },
+        "pendingOrders": [],
+        "currentDay": 0,
+        "orderSeq": 0
       },
       "staffOrg": {
         "schemaVersion": 1,
@@ -1582,6 +1620,11 @@
         "schemaVersion": 1,
         "currentTier": 2
       },
+      "serviceMarketing": {
+        "schemaVersion": 1,
+        "retentionCampaignId": "none",
+        "conquestCategory": "none"
+      },
       "departmentQueue": {
         "schemaVersion": 1,
         "queues": {
@@ -2313,124 +2356,14 @@
         "events": []
       },
       "demandShaper": {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "baselineMix": {
-          "young_family": 1.35,
-          "enthusiast": 0.75,
-          "commuter": 1.15,
-          "retiree": 0.9,
-          "tradesperson": 0.85
+          "sedan": 1,
+          "truck": 1,
+          "suv": 1
         },
-        "activeInputs": [
-          {
-            "id": "reputation",
-            "label": "Reputation 100",
-            "producer": "reputation",
-            "weights": {
-              "young_family": 0.45499999999999996,
-              "enthusiast": 0,
-              "commuter": 0.175,
-              "retiree": 0.385,
-              "tradesperson": 0
-            },
-            "targetWeights": {
-              "young_family": 0.45499999999999996,
-              "enthusiast": 0,
-              "commuter": 0.175,
-              "retiree": 0.385,
-              "tradesperson": 0
-            },
-            "lagDays": 0,
-            "decayDays": 0,
-            "elapsedDays": 0,
-            "removing": false
-          },
-          {
-            "id": "inventory-composition",
-            "label": "Inventory composition (5 units)",
-            "producer": "inventory",
-            "weights": {
-              "young_family": 0.765,
-              "enthusiast": 0,
-              "commuter": 0,
-              "retiree": 0.225,
-              "tradesperson": 0
-            },
-            "targetWeights": {
-              "young_family": 0.765,
-              "enthusiast": 0,
-              "commuter": 0,
-              "retiree": 0.225,
-              "tradesperson": 0
-            },
-            "lagDays": 0,
-            "decayDays": 0,
-            "elapsedDays": 0,
-            "removing": false
-          }
-        ],
-        "observedHistory": [
-          "tradesperson",
-          "young_family",
-          "young_family",
-          "young_family",
-          "commuter",
-          "young_family",
-          "young_family",
-          "young_family",
-          "retiree",
-          "tradesperson",
-          "young_family",
-          "tradesperson",
-          "commuter",
-          "commuter",
-          "young_family",
-          "young_family",
-          "commuter",
-          "young_family",
-          "young_family",
-          "tradesperson",
-          "young_family",
-          "young_family",
-          "tradesperson",
-          "young_family",
-          "retiree",
-          "retiree",
-          "enthusiast",
-          "retiree",
-          "young_family",
-          "commuter",
-          "tradesperson",
-          "commuter",
-          "commuter",
-          "young_family",
-          "retiree",
-          "young_family",
-          "young_family",
-          "young_family",
-          "young_family",
-          "commuter",
-          "commuter",
-          "tradesperson",
-          "young_family",
-          "enthusiast",
-          "commuter",
-          "young_family",
-          "enthusiast",
-          "retiree",
-          "young_family",
-          "enthusiast",
-          "young_family",
-          "retiree",
-          "young_family",
-          "commuter",
-          "young_family",
-          "retiree",
-          "commuter",
-          "young_family",
-          "enthusiast",
-          "young_family"
-        ]
+        "activeInputs": [],
+        "observedHistory": []
       },
       "historyLog": {
         "schemaVersion": 1,
@@ -2786,14 +2719,6 @@
             "text": "Sold a unit (financed) — $712 gross."
           }
         ]
-      },
-      "installedBase": {
-        "schemaVersion": 1,
-        "owners": []
-      },
-      "partsInventory": {
-        "schemaVersion": 1,
-        "lots": []
       }
     }
   },

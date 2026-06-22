@@ -86,6 +86,12 @@ export function composeConquestMix(
     for (const pt of POWERTRAINS) skew += ptDist[pt] * config.powertrainSkew[pt][cat];
     w *= skew;
 
+    // Conquest special (#307): a category-targeted marketing push multiplies the
+    // promoted category's weight, skewing the incoming mix toward it.
+    if (input.conquestBias && cat === input.conquestBias.category) {
+      w *= 1 + input.conquestBias.strength;
+    }
+
     // RNG variance: a per-category multiplicative jitter, seeded off
     // masterSeed + day + category so it is order-independent + replay-safe.
     const rng = createRng(

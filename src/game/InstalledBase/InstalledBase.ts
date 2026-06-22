@@ -80,11 +80,16 @@ export function createInstalledBase(deps: {
   /** Live [0,1] service pricing-posture read for the gouging gate (#306);
    *  defaults to neutral 0.5 (fair). */
   getPricingPosture?: () => number;
+  /** Live [0,1] service-marketing retention lift (#307) added to the return
+   *  roll's convenience term — raises return rate, slows the non-return
+   *  defection path. Defaults to 0 (no campaign). */
+  getRetentionLift?: () => number;
 }): InstalledBase {
   const { bus, config } = deps;
   const masterSeed = deps.masterSeed ?? 0;
   const readReputation = deps.reputation ?? (() => 1);
   const readPosture = deps.getPricingPosture ?? (() => 0.5);
+  const readRetentionLift = deps.getRetentionLift ?? (() => 0);
 
   const owners = new Map<string, OwnerRecord>();
 
@@ -237,7 +242,9 @@ export function createInstalledBase(deps: {
         const p = returnProbability({
           loyalty: owner.loyalty,
           reputation,
-          convenience: config.returnRoll.convenience,
+          // #307 a retention campaign raises convenience (clamped in
+          // returnProbability), lifting return rate + slowing defection.
+          convenience: config.returnRoll.convenience + readRetentionLift(),
           priceSensitivity: config.returnRoll.priceSensitivity,
         });
         const rng = createRng(

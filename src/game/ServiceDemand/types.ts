@@ -61,9 +61,21 @@ export interface ServiceDemandInput {
   readonly reputation: number;
   /** Service-marketing influence input in [0,1]. Scales conquest volume. */
   readonly serviceMarketing: number;
+  /** Category-targeted conquest special (#307): multiplies the promoted job
+   *  category's weight in the conquest mix by `1 + strength`. Null/absent ⇒ no
+   *  skew. */
+  readonly conquestBias?: ConquestBias | null;
   /** The day's season (read from Weather) — selects the seasonal lean. */
   readonly season: Season;
   readonly masterSeed: number;
+}
+
+/** The conquest mix-skew a category-targeted service-marketing special injects
+ *  (#307). Declared locally so ServiceDemand stays free of a ServiceMarketing
+ *  import — the composition root supplies it. */
+export interface ConquestBias {
+  readonly category: JobCategory;
+  readonly strength: number;
 }
 
 /**

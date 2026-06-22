@@ -2,7 +2,12 @@ import type { EventBus } from '../EventBus';
 import type { Season } from '../GameClock';
 import { composeServiceIntake } from './composeIntake';
 import { loadServiceDemandConfig, type ServiceDemandConfig } from './serviceDemandConfig';
-import type { BaseOwnerSample, ServiceDemand, ServiceIntakeEntry } from './types';
+import type {
+  BaseOwnerSample,
+  ConquestBias,
+  ServiceDemand,
+  ServiceIntakeEntry,
+} from './types';
 
 const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
 
@@ -15,6 +20,9 @@ export interface ServiceDemandDeps {
   /** Service-marketing influence input in [0,1]; defaults to 0 (floor-only
    *  conquest until a marketing lever wires in). */
   serviceMarketing?: () => number;
+  /** Category-targeted conquest special (#307) skewing the mix; defaults to no
+   *  bias. */
+  conquestBias?: () => ConquestBias | null;
   /** The day's season, read from Weather. */
   season: (day: number) => Season;
   /** A live sample of the installed base (fleet age + powertrain aggregation). */
@@ -38,6 +46,7 @@ export function createServiceDemand(deps: ServiceDemandDeps): ServiceDemand {
   const config = deps.config ?? loadServiceDemandConfig();
   const readReputation = deps.reputation ?? (() => 1);
   const readServiceMarketing = deps.serviceMarketing ?? (() => 0);
+  const readConquestBias = deps.conquestBias ?? (() => null);
 
   let latest: readonly ServiceIntakeEntry[] = [];
 
@@ -49,6 +58,7 @@ export function createServiceDemand(deps: ServiceDemandDeps): ServiceDemand {
         owners: deps.baseOwners(),
         reputation: clamp01(readReputation()),
         serviceMarketing: clamp01(readServiceMarketing()),
+        conquestBias: readConquestBias(),
         season: deps.season(day),
         masterSeed: deps.masterSeed,
       },

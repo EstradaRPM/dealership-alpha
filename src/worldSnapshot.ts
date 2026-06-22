@@ -42,6 +42,7 @@ import type {
 } from './game/CareerProgression';
 import type { FollowUpPoolSnapshot } from './game/FollowUpPool';
 import type { ServiceQueueSnapshot } from './game/ServiceQueue';
+import type { ServiceMarketingSnapshot } from './game/ServiceMarketing';
 import type { DepartmentQueueSnapshot } from './game/DepartmentQueue';
 import type { KPIDashboardSnapshot } from './game/KPIDashboard';
 import {
@@ -62,7 +63,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 10;
+export const WORLD_SNAPSHOT_VERSION = 11;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -96,6 +97,8 @@ export type WorldSnapshot = {
     // Queued/pending work + accumulated metrics (#193).
     readonly followUpPool: FollowUpPoolSnapshot;
     readonly serviceQueue: ServiceQueueSnapshot;
+    // Service-marketing arm selections: retention campaign + conquest category (#307).
+    readonly serviceMarketing: ServiceMarketingSnapshot;
     readonly departmentQueue: DepartmentQueueSnapshot;
     readonly kpiDashboard: KPIDashboardSnapshot;
     // Month-to-date tier-gate accruals + rolling samples (#232).
@@ -221,6 +224,18 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         partsInventory: { schemaVersion: 1, lots: [] },
       },
     }),
+    10: (snap) => ({
+      version: 11,
+      modules: {
+        ...snap.modules,
+        // Behavior-neutral: pre-#307 saves materialize no active marketing arm.
+        serviceMarketing: {
+          schemaVersion: 1,
+          retentionCampaignId: 'none',
+          conquestCategory: 'none',
+        },
+      },
+    }),
   };
 
 /**
@@ -276,6 +291,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       careerEndingsMonitor: world.careerEndingsMonitor.getSerializableState(),
       followUpPool: world.followUpPool.snapshot(),
       serviceQueue: world.serviceQueue.snapshot(),
+      serviceMarketing: world.serviceMarketing.snapshot(),
       departmentQueue: world.departmentQueue.snapshot(),
       kpiDashboard: world.kpiDashboard.snapshot(),
       tierGate: world.tierGate.snapshot(),
@@ -313,6 +329,7 @@ export function restoreWorld(
   world.careerEndingsMonitor.restoreState(snap.modules.careerEndingsMonitor);
   world.followUpPool.restore(snap.modules.followUpPool);
   world.serviceQueue.restore(snap.modules.serviceQueue);
+  world.serviceMarketing.restore(snap.modules.serviceMarketing);
   world.departmentQueue.restore(snap.modules.departmentQueue);
   world.kpiDashboard.restore(snap.modules.kpiDashboard);
   world.tierGate.restore(snap.modules.tierGate);

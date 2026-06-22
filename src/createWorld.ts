@@ -122,6 +122,10 @@ import {
   type Reputation,
 } from './game/Reputation';
 import { createServiceDemand, type ServiceDemand } from './game/ServiceDemand';
+import {
+  createServiceMarketing,
+  type ServiceMarketing,
+} from './game/ServiceMarketing';
 import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
 import {
   createServiceFloorDrain,
@@ -166,6 +170,8 @@ export interface World {
   installedBase: InstalledBase;
   partsInventory: PartsInventory;
   serviceDemand: ServiceDemand;
+  // #307 the two service-marketing arms (retention + category-targeted conquest).
+  serviceMarketing: ServiceMarketing;
   // #305 live service capacity read-model for the Service page + floor card.
   serviceReadModel: ServiceReadModel;
   // #305 service pricing-posture dial [0,1] (competitive↔premium).
@@ -808,6 +814,19 @@ export function createWorld(deps: {
   // Exposed on the World seam so a Settings/Service-page lever can drive it.
   let servicePricingPosture = 0.5;
 
+  // ServiceMarketing (#307, parent #297): the two service-marketing arms,
+  // distinct from sales advertising. RETENTION feeds InstalledBase's return roll
+  // (below); CONQUEST feeds ServiceDemand's volume + mix skew. Each active arm
+  // debits its daily cost from Economy on clock:day_started. Declared before
+  // InstalledBase + ServiceDemand so their influence reads bind live. Player-
+  // facing controls land on the Service page in a later slice; the lever state
+  // persists via the world snapshot. Adds no RNG — effects flow through the
+  // already-seeded return/conquest math, so a fixed seed replays identically.
+  const serviceMarketing = createServiceMarketing({ economy });
+  bus.subscribe('clock:day_started', ({ day }) => {
+    serviceMarketing.advanceDay(day);
+  });
+
   const installedBase = createInstalledBase({
     bus,
     config: loadInstalledBaseConfig(),
@@ -816,6 +835,8 @@ export function createWorld(deps: {
     // #306 a premium posture turns served jobs into "gouging" — owners shop
     // around (loyalty/CSI drop, Reputation dings).
     getPricingPosture: () => servicePricingPosture,
+    // #307 retention-arm lift raises the return roll's convenience term.
+    getRetentionLift: () => serviceMarketing.retentionLift(),
   });
 
   // PartsInventory (#299/#301, parent #297): the supply-side half of the Service
@@ -846,8 +867,9 @@ export function createWorld(deps: {
   // ServiceDemand (#302, parent #297): the pure mix composer. On each
   // installedBase:returns_ready it folds the returning owners in as the primary
   // stream, adds a conquest floor of fresh walk-ins (scaled by reputation ×
-  // service marketing — no service-marketing lever yet, so it defaults to 0 =
-  // floor only), composes their job/parts category mix (usual split + seasonal
+  // service marketing — the #307 conquest arm drives both the volume scaler and
+  // the category-targeted mix skew), composes their job/parts category mix
+  // (usual split + seasonal
   // lean from Weather + base-age drift + powertrain skew aggregated off the live
   // installed base + RNG variance), and publishes serviceDemand:intake_ready.
   // Built AFTER InstalledBase + Weather (its upstream providers, seam recipe).
@@ -857,6 +879,9 @@ export function createWorld(deps: {
     bus,
     masterSeed,
     reputation: () => Math.max(0, Math.min(1, reputation.reviewScore / 100)),
+    // #307 conquest-arm reads: volume scaler + category-targeted mix skew.
+    serviceMarketing: () => serviceMarketing.conquestVolumeInfluence(),
+    conquestBias: () => serviceMarketing.conquestBias(),
     season: (day) => weather.weatherForDay(day).season,
     baseOwners: () => installedBase.getOwners(),
   });
@@ -1312,6 +1337,7 @@ export function createWorld(deps: {
     installedBase,
     partsInventory,
     serviceDemand,
+    serviceMarketing,
     // #305 live service capacity read-model (waiting / in-progress / avg-wait /
     // utilization) for the Service page + floor card.
     serviceReadModel,
