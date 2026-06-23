@@ -20,6 +20,7 @@ import { KPIDashboard } from '../../ui/KPIDashboard';
 import { HistoryScreen } from '../../ui/HistoryScreen';
 import { EndCard } from '../../ui/EndCard';
 import { DepartmentScreen } from '../../ui/DepartmentScreen';
+import { ServicePage } from '../../ui/ServicePage';
 import { GameScreen } from './GameScreen';
 import { AuctionScreen } from './AuctionScreen';
 import { PricingScreenContainer } from './PricingScreenContainer';
@@ -29,6 +30,7 @@ import {
   TRADE_POLICY,
   PRICING_STRATEGIES,
   HOURS_OF_OP,
+  buildServicePageModel,
 } from '../config';
 import type { WorldState } from '../useWorldState';
 import type { SaveSlots } from '../useSaveSlots';
@@ -240,6 +242,20 @@ export function RouteContent({
             world.departmentQueue.resolveItem(id);
             bump();
           }}
+          onClose={() => nav.back()}
+        />
+      </>
+    );
+  }
+  if (screen === 'service' && world) {
+    // Service department read-model page (#308): demand heat + stock coverage +
+    // base health, assembled from the live read-models. Read-only; controls land
+    // in #309. Navigation is never tier-gated — the page is always reachable.
+    return (
+      <>
+        <StatusBar style="light" />
+        <ServicePage
+          model={buildServicePageModel(world)}
           onClose={() => nav.back()}
         />
       </>

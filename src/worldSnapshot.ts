@@ -43,6 +43,7 @@ import type {
 import type { FollowUpPoolSnapshot } from './game/FollowUpPool';
 import type { ServiceQueueSnapshot } from './game/ServiceQueue';
 import type { ServiceMarketingSnapshot } from './game/ServiceMarketing';
+import type { ServiceInsightsSnapshot } from './game/ServiceInsights';
 import type { DepartmentQueueSnapshot } from './game/DepartmentQueue';
 import type { KPIDashboardSnapshot } from './game/KPIDashboard';
 import {
@@ -63,7 +64,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 11;
+export const WORLD_SNAPSHOT_VERSION = 12;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -99,6 +100,8 @@ export type WorldSnapshot = {
     readonly serviceQueue: ServiceQueueSnapshot;
     // Service-marketing arm selections: retention campaign + conquest category (#307).
     readonly serviceMarketing: ServiceMarketingSnapshot;
+    // ServiceInsights trailing window: per-category demand + per-day base health (#308).
+    readonly serviceInsights: ServiceInsightsSnapshot;
     readonly departmentQueue: DepartmentQueueSnapshot;
     readonly kpiDashboard: KPIDashboardSnapshot;
     // Month-to-date tier-gate accruals + rolling samples (#232).
@@ -236,6 +239,20 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         },
       },
     }),
+    11: (snap) => ({
+      version: 12,
+      modules: {
+        ...snap.modules,
+        // Behavior-neutral: pre-#308 saves materialize an empty read-model
+        // (the trailing window re-fills from the live streams as days play).
+        serviceInsights: {
+          schemaVersion: 1,
+          demandWindow: [],
+          dailyReturns: [],
+          dailyDefections: [],
+        },
+      },
+    }),
   };
 
 /**
@@ -292,6 +309,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       followUpPool: world.followUpPool.snapshot(),
       serviceQueue: world.serviceQueue.snapshot(),
       serviceMarketing: world.serviceMarketing.snapshot(),
+      serviceInsights: world.serviceInsights.snapshot(),
       departmentQueue: world.departmentQueue.snapshot(),
       kpiDashboard: world.kpiDashboard.snapshot(),
       tierGate: world.tierGate.snapshot(),
@@ -330,6 +348,7 @@ export function restoreWorld(
   world.followUpPool.restore(snap.modules.followUpPool);
   world.serviceQueue.restore(snap.modules.serviceQueue);
   world.serviceMarketing.restore(snap.modules.serviceMarketing);
+  world.serviceInsights.restore(snap.modules.serviceInsights);
   world.departmentQueue.restore(snap.modules.departmentQueue);
   world.kpiDashboard.restore(snap.modules.kpiDashboard);
   world.tierGate.restore(snap.modules.tierGate);

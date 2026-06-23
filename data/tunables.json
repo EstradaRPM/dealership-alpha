@@ -417,6 +417,14 @@
       "minLoyalty": 0.6
     }
   },
+  "serviceInsights": {
+    "_doc": "ServiceInsights read-model (#308, parent #297) — the trailing-window accumulator that backs the Service page demand-heat + base-health readouts. `demandWindowSize` is how many recent intake tickets the per-category heat is computed over; `heatThresholds` band a category's share×4 (1.0 = even split): at/above `hot` reads HOT, at/below `cold` reads COLD, else WARM. `demandTrendEpsilon` is the newer-vs-older-half share delta below which a category's demand trend reads steady. `baseHealthWindowDays` is the trailing day count the return/defection rates + trends average over; `baseTrendEpsilon` is the per-day count delta below which those trends read steady. All numbers are S14 (#286) calibration placeholders.",
+    "demandWindowSize": 40,
+    "heatThresholds": { "hot": 1.15, "cold": 0.85 },
+    "demandTrendEpsilon": 0.05,
+    "baseHealthWindowDays": 14,
+    "baseTrendEpsilon": 0.15
+  },
   "partsInventory": {
     "_doc": "PartsInventory par-level procurement (#301, parent #297). `categories` carries each Service part category's `baseUnitCost` (the standard-tier unit price) plus its default `reorderPoint`/`target` par levels. `supplierTiers` trade unit cost against lead time and reliability: `costMultiplier` scales baseUnitCost, `leadTimeDays` is the scheduled arrival delay, `reliability` ∈ [0,1] is the per-order on-time probability (a failed seeded roll adds `delayPenaltyDays`). `defaultTier` is the tier a category procures at until the player picks another. All numbers are S14 (#286) calibration placeholders.",
     "defaultTier": "standard",

@@ -20,6 +20,8 @@ export interface OperationsTabProps {
   leverProps?: OwnershipLeversProps;
   /** Fallback when there are no levers yet. */
   onOpenAuction?: () => void;
+  /** Open the Service department read-model page (#308). Absent ⇒ entry hidden. */
+  onOpenService?: () => void;
 }
 
 /**
@@ -33,6 +35,7 @@ export function OperationsTab({
   onDeptPress,
   leverProps,
   onOpenAuction,
+  onOpenService,
 }: OperationsTabProps) {
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
@@ -61,6 +64,16 @@ export function OperationsTab({
         <View style={regionBody}>
           <BottomNav badges={badges} onPress={onDeptPress} />
         </View>
+        {onOpenService && (
+          <Pressable
+            style={[secondaryBtn, { marginTop: t.spacing.md }]}
+            accessibilityRole="button"
+            accessibilityLabel="Open Service overview"
+            onPress={onOpenService}
+          >
+            <Text style={secondaryBtnText}>Service Overview →</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={region} testID="ops-region-prep">

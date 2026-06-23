@@ -39,6 +39,11 @@ export type RouteParamMap = {
   // A non-sales department resolve-list, pushed over the game (#76). Sales is
   // not here — the Sales tab routes to the hand-play workspace, not a screen.
   department: { dept: DeptKey };
+  // The Service department read-model page (#308): demand heat + stock coverage
+  // + base health. Pushed over the game from the Operations tab; closed with
+  // back(). Distinct from the `department` resolve-list — this is the
+  // department's dashboard, not its work queue.
+  service: undefined;
   // Terminal end-of-career screen (#84 / design record #127). Reached ONLY via
   // a Navigator reset on career:game_over — a new unreachable starting point
   // (canGoBack false). Non-terminal interrupt cards are NOT routes; they are a

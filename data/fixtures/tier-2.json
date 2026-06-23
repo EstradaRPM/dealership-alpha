@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 11,
+    "version": 12,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -2719,6 +2719,12 @@
             "text": "Sold a unit (financed) — $712 gross."
           }
         ]
+      },
+      "serviceInsights": {
+        "schemaVersion": 1,
+        "demandWindow": [],
+        "dailyReturns": [],
+        "dailyDefections": []
       }
     }
   },

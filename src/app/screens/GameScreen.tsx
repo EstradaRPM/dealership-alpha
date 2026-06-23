@@ -353,6 +353,7 @@ export function GameScreen({
         onDeptPress={handleDeptPress}
         leverProps={leverProps}
         onOpenAuction={() => nav.navigate('auction')}
+        onOpenService={() => nav.navigate('service')}
       />
     ),
     people: null,

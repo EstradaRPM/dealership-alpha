@@ -123,6 +123,10 @@ import {
 } from './game/Reputation';
 import { createServiceDemand, type ServiceDemand } from './game/ServiceDemand';
 import {
+  createServiceInsights,
+  type ServiceInsights,
+} from './game/ServiceInsights';
+import {
   createServiceMarketing,
   type ServiceMarketing,
 } from './game/ServiceMarketing';
@@ -170,6 +174,8 @@ export interface World {
   installedBase: InstalledBase;
   partsInventory: PartsInventory;
   serviceDemand: ServiceDemand;
+  // #308 trailing-window read-model: per-category demand heat + base health.
+  serviceInsights: ServiceInsights;
   // #307 the two service-marketing arms (retention + category-targeted conquest).
   serviceMarketing: ServiceMarketing;
   // #305 live service capacity read-model for the Service page + floor card.
@@ -886,6 +892,14 @@ export function createWorld(deps: {
     baseOwners: () => installedBase.getOwners(),
   });
 
+  // ServiceInsights (#308, parent #297): the trailing-window read-model behind
+  // the Service page. Listens to the enriched intake (per-category demand heat)
+  // plus the installed-base return/defection stream (base health), and reads the
+  // live registry for the size/loyalty/CSI/at-risk aggregates. Built AFTER
+  // ServiceDemand + InstalledBase (its upstream signal sources). Emits nothing;
+  // persisted via the world snapshot so trends stay continuous across a reload.
+  const serviceInsights = createServiceInsights({ bus, installedBase });
+
   // ServiceQueue (#80, rewired #303): the Tier-2 gate on the Service intake.
   // Starts silent (default initialTier=1 < minTierRequired 2), follows
   // career:tier_up off the bus, and once at Tier 2 subscribes to ServiceDemand's
@@ -1337,6 +1351,7 @@ export function createWorld(deps: {
     installedBase,
     partsInventory,
     serviceDemand,
+    serviceInsights,
     serviceMarketing,
     // #305 live service capacity read-model (waiting / in-progress / avg-wait /
     // utilization) for the Service page + floor card.

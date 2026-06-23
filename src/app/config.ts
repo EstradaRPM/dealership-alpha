@@ -25,6 +25,11 @@ import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
 import type { PersonnelRoleOption } from '../ui/PersonnelScreen';
 import type { CashDeltaSplit } from '../ui/HomeTab';
+import type {
+  ServicePageModel,
+  ServiceDemandHeatRow,
+  ServiceCoverageRow,
+} from '../ui/ServicePage';
 import {
   classifyHeatBand,
   classifyHeatBandFine,
@@ -255,6 +260,50 @@ export function buildCoverageGap(
     label: SEGMENT_LABELS[category] ?? category,
     wantedCount,
     stockCount: stockedByCategory[category] ?? 0,
+  };
+}
+
+// Plain-language names for the four Service job/parts categories (#308). Used by
+// the Service page demand-heat + coverage rows.
+export const JOB_CATEGORY_LABELS: Record<string, string> = {
+  oil_filters: 'Oil & Filters',
+  tires_brakes: 'Tires & Brakes',
+  drivetrain: 'Drivetrain',
+  electronics: 'Electronics',
+};
+
+// Assemble the Service page model (#308) from the live read-models: the
+// ServiceInsights trailing-window demand heat + base health, and the
+// PartsInventory coverage-gap (recent demand vs parts on hand). Pure projection
+// — no game-logic mutation. The recent per-category demand counts ServiceInsights
+// tracks are the same `demand` the coverage read-model bands stock against, so a
+// single source feeds both the heat and the coverage rows.
+export function buildServicePageModel(world: World): ServicePageModel {
+  const heat = world.serviceInsights.getDemandHeat();
+  const demandHeat: ServiceDemandHeatRow[] = heat.map((h) => ({
+    category: h.category,
+    label: JOB_CATEGORY_LABELS[h.category] ?? h.category,
+    band: h.band,
+    trend: h.trend,
+  }));
+  const demandCounts: Record<string, number> = {};
+  for (const h of heat) demandCounts[h.category] = h.count;
+  const gap = world.partsInventory.getCoverageGap(demandCounts);
+  const coverage: ServiceCoverageRow[] = heat.map((h) => {
+    const g = gap[h.category];
+    return {
+      category: h.category,
+      label: JOB_CATEGORY_LABELS[h.category] ?? h.category,
+      demand: g.demand,
+      onHand: g.onHand,
+      onOrder: g.onOrder,
+      gap: g.gap,
+    };
+  });
+  return {
+    demandHeat,
+    coverage,
+    baseHealth: { ...world.serviceInsights.getBaseHealth() },
   };
 }
 
