@@ -64,7 +64,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 12;
+export const WORLD_SNAPSHOT_VERSION = 13;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -110,6 +110,9 @@ export type WorldSnapshot = {
     readonly demandShaper: DemandShaperSnapshot;
     // Durable player-facing history log (#208).
     readonly historyLog: HistoryLogSnapshot;
+    // Service pricing-posture dial [0,1] — a World-level scalar (not a module),
+    // backing get/setServicePricingPosture (#305 seam, persisted by #309).
+    readonly servicePricingPosture: number;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -253,6 +256,15 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         },
       },
     }),
+    12: (snap) => ({
+      version: 13,
+      modules: {
+        ...snap.modules,
+        // Behavior-neutral: pre-#309 saves materialize the neutral 0.5 posture
+        // (the createWorld default), so an old save loads exactly as before.
+        servicePricingPosture: 0.5,
+      },
+    }),
   };
 
 /**
@@ -316,6 +328,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       telemetry: world.telemetry.snapshot(),
       demandShaper: world.demandShaper.snapshot(),
       historyLog: world.historyLog.snapshot(),
+      servicePricingPosture: world.getServicePricingPosture(),
     },
   };
 }
@@ -355,4 +368,5 @@ export function restoreWorld(
   world.telemetry.restore(snap.modules.telemetry);
   world.demandShaper.restore(snap.modules.demandShaper);
   world.historyLog.restore(snap.modules.historyLog);
+  world.setServicePricingPosture(snap.modules.servicePricingPosture);
 }

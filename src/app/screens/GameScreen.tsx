@@ -135,6 +135,18 @@ export function GameScreen({
           flooredValue,
           avgDaysInInventory,
         },
+        // Live Service card (#309): the ServiceDispatch capacity read-model,
+        // written each tick by the per-day drain — same day clock as the floor.
+        service: (() => {
+          const load = world.serviceReadModel.read();
+          return {
+            intake: load.inProgress + load.waiting,
+            inProgress: load.inProgress,
+            waiting: load.waiting,
+            avgWaitTicks: load.avgWaitTicks,
+            utilization: load.utilization,
+          };
+        })(),
       }
     : undefined;
   // Last-day recap reopen chip (#253). Driven by the persisted/captured

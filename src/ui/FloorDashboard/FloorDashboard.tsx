@@ -45,6 +45,27 @@ export interface FloorDashboardModel {
   events: readonly FloorEvent[];
   /** Inventory stats panel read-model (derived from Inventory.getLotVehicles). */
   inventory: InventoryStats;
+  /** Live Service card (#309) — from the ServiceDispatch read-model, driven off
+   *  the same day clock as the sales floor. Absent ⇒ no Service card. */
+  service?: ServiceCardModel;
+}
+
+/**
+ * Live Service-department snapshot for the floor card (#309). A pure projection
+ * of the ServiceDispatch capacity read-model — the same `ServiceLoad` the
+ * per-tick drain writes — so the card stays a read-only HUD panel.
+ */
+export interface ServiceCardModel {
+  /** Jobs in the shop right now (in-progress + waiting). */
+  intake: number;
+  /** Currently being worked. */
+  inProgress: number;
+  /** Backed up waiting for a slot. */
+  waiting: number;
+  /** Mean wait of the still-waiting jobs, in FloorSim ticks. */
+  avgWaitTicks: number;
+  /** Capacity saturation [0,1]. */
+  utilization: number;
 }
 
 /**
@@ -209,6 +230,7 @@ export function FloorDashboard({
     staff,
     events,
     inventory,
+    service,
   } = model;
   // Newest first; the log is impressionistic, not an audit trail.
   const recentEvents = [...events].slice(-40).reverse();
@@ -325,6 +347,25 @@ export function FloorDashboard({
             value={String(Math.round(inventory.avgDaysInInventory))}
           />
         </View>
+
+        {/* Live Service card (#309) */}
+        {service ? (
+          <View testID="floor-service-card">
+            <Text style={styles.sectionLabel}>SERVICE</Text>
+            <View style={styles.grid}>
+              <Stat label="IN SHOP" value={String(service.intake)} />
+              <Stat label="WAITING" value={String(service.waiting)} />
+              <Stat
+                label="AVG WAIT"
+                value={`${Math.round(service.avgWaitTicks)}t`}
+              />
+              <Stat
+                label="UTIL"
+                value={`${Math.round(service.utilization * 100)}%`}
+              />
+            </View>
+          </View>
+        ) : null}
 
         {/* Scrolling event log */}
         <Text style={styles.sectionLabel}>EVENT LOG</Text>

@@ -1,6 +1,10 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
-import { ServicePage, type ServicePageModel } from '../src/ui/ServicePage';
+import { fireEvent, render } from '@testing-library/react-native';
+import {
+  ServicePage,
+  type ServicePageModel,
+  type ServiceControls,
+} from '../src/ui/ServicePage';
 
 const MODEL: ServicePageModel = {
   demandHeat: [
@@ -68,5 +72,109 @@ describe('ServicePage smoke', () => {
     expect(getByText('Owners in base')).toBeTruthy();
     expect(getByText('74%')).toBeTruthy(); // avg loyalty
     expect(getByText('At-risk owners')).toBeTruthy();
+  });
+
+  it('omits controls when none are bound (read-only page)', () => {
+    const { queryByTestId } = render(
+      <ServicePage model={MODEL} onClose={() => {}} />,
+    );
+    expect(queryByTestId('service-parts-controls')).toBeNull();
+    expect(queryByTestId('service-pricing-controls')).toBeNull();
+    expect(queryByTestId('service-marketing-controls')).toBeNull();
+  });
+});
+
+function makeControls(overrides: Partial<ServiceControls> = {}): ServiceControls {
+  return {
+    model: {
+      par: [
+        {
+          category: 'oil_filters',
+          label: 'Oil & Filters',
+          reorderPoint: 3,
+          target: 8,
+          tier: 'standard',
+          onHand: 5,
+        },
+        {
+          category: 'tires_brakes',
+          label: 'Tires & Brakes',
+          reorderPoint: 2,
+          target: 6,
+          tier: 'economy',
+          onHand: 1,
+        },
+      ],
+      tierOptions: [
+        { id: 'economy', label: 'Economy' },
+        { id: 'standard', label: 'Standard' },
+        { id: 'oem_direct', label: 'OEM Direct' },
+        { id: 'rush', label: 'Rush' },
+      ],
+      pricingPosture: 0.5,
+      retentionOptions: [
+        { id: 'none', label: 'None' },
+        { id: 'reminders', label: 'Service reminders', blurb: 'Nudge owners.' },
+      ],
+      retentionId: 'none',
+      conquestOptions: [
+        { id: 'none', label: 'None' },
+        { id: 'tires_brakes', label: 'Tires & Brakes' },
+      ],
+      conquestCategory: 'none',
+    },
+    onSetReorderPoint: jest.fn(),
+    onSetTarget: jest.fn(),
+    onSetSupplierTier: jest.fn(),
+    onSetPricingPosture: jest.fn(),
+    onSetRetention: jest.fn(),
+    onSetConquest: jest.fn(),
+    ...overrides,
+  };
+}
+
+describe('ServicePage controls (#309)', () => {
+  it('renders the par / pricing / marketing control surfaces without crashing', () => {
+    const { getByTestId } = render(
+      <ServicePage model={MODEL} controls={makeControls()} onClose={() => {}} />,
+    );
+    expect(getByTestId('service-parts-controls')).toBeTruthy();
+    expect(getByTestId('service-pricing-controls')).toBeTruthy();
+    expect(getByTestId('service-marketing-controls')).toBeTruthy();
+    expect(getByTestId('service-par-oil_filters')).toBeTruthy();
+  });
+
+  it('dispatches par-level + supplier-tier changes per category', () => {
+    const controls = makeControls();
+    const { getByLabelText } = render(
+      <ServicePage model={MODEL} controls={controls} onClose={() => {}} />,
+    );
+    fireEvent.press(getByLabelText('Increase Oil & Filters reorder point'));
+    expect(controls.onSetReorderPoint).toHaveBeenCalledWith('oil_filters', 4);
+    fireEvent.press(getByLabelText('Decrease Oil & Filters target stock'));
+    expect(controls.onSetTarget).toHaveBeenCalledWith('oil_filters', 7);
+  });
+
+  it('dispatches a pricing-posture change toward premium', () => {
+    const controls = makeControls();
+    const { getByLabelText } = render(
+      <ServicePage model={MODEL} controls={controls} onClose={() => {}} />,
+    );
+    fireEvent.press(getByLabelText('More premium pricing'));
+    const arg = (controls.onSetPricingPosture as jest.Mock).mock.calls[0][0];
+    expect(arg).toBeGreaterThan(0.5);
+  });
+
+  it('dispatches retention + conquest marketing selections', () => {
+    const controls = makeControls();
+    const { getByLabelText } = render(
+      <ServicePage model={MODEL} controls={controls} onClose={() => {}} />,
+    );
+    fireEvent.press(getByLabelText('Service reminders'));
+    expect(controls.onSetRetention).toHaveBeenCalledWith('reminders');
+    // Conquest target chip shares the "Tires & Brakes" label; press the one in
+    // the marketing surface.
+    fireEvent.press(getByLabelText('Tires & Brakes'));
+    expect(controls.onSetConquest).toHaveBeenCalledWith('tires_brakes');
   });
 });

@@ -19,7 +19,8 @@ A library/factory module — **no EventBus participation**. The composition root
 constructs it (`createServiceMarketing({ economy })`), drives `advanceDay` on
 `clock:day_started`, and binds the influence reads into InstalledBase
 (`getRetentionLift`) and ServiceDemand (`serviceMarketing` + `conquestBias`).
-Player-facing controls land on the Service page in a later slice.
+Player-facing controls live on the Service page (#309) — the retention + conquest
+chip rows dispatch `setRetentionCampaign` / `setConquestSpecial`.
 
 ## Public API (`index.ts`)
 - `createServiceMarketing({ economy, config? })` → `ServiceMarketing`. `economy`

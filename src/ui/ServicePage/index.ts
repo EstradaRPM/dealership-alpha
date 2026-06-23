@@ -7,4 +7,10 @@ export type {
   ServiceBaseHealthModel,
   ServiceHeatBand,
   ServiceTrend,
+  ServiceControls,
+  ServiceControlsModel,
+  ServiceParControl,
+  ServiceTierOption,
+  ServiceMarketingOption,
+  ServiceSupplierTierId,
 } from './ServicePage';

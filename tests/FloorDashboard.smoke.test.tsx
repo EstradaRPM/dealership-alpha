@@ -102,6 +102,31 @@ describe('FloorDashboard smoke tests', () => {
     expect(onOpenGameMenu).toHaveBeenCalledTimes(1);
   });
 
+  it('renders the live Service card when bound (#309)', () => {
+    const { getByTestId, getByText } = render(
+      <FloorDashboard
+        model={{
+          ...MODEL,
+          service: {
+            intake: 5,
+            inProgress: 3,
+            waiting: 2,
+            avgWaitTicks: 4.2,
+            utilization: 0.75,
+          },
+        }}
+      />,
+    );
+    expect(getByTestId('floor-service-card')).toBeTruthy();
+    expect(getByText('SERVICE')).toBeTruthy();
+    expect(getByText('75%')).toBeTruthy(); // utilization
+  });
+
+  it('omits the Service card when unbound', () => {
+    const { queryByTestId } = render(<FloorDashboard model={MODEL} />);
+    expect(queryByTestId('floor-service-card')).toBeNull();
+  });
+
   it('renders morale chips and regulatory pressure when bound', () => {
     const { getByLabelText, getByText } = render(
       <FloorDashboard

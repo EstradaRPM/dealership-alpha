@@ -74,6 +74,68 @@ export interface ServicePageModel {
   baseHealth: ServiceBaseHealthModel;
 }
 
+// ── Controls (#309) ────────────────────────────────────────────────────────
+// The player's Service POLICY levers. Set once and applied automatically — par
+// levels + supplier tier drive PartsInventory's daily reorder sweep, the posture
+// dial scales every ticket's revenue, and the two marketing arms steer the
+// Service demand/return math. No per-morning clicking. The page stays a pure
+// view: it renders the current values + option lists the composition root reads
+// off the live World and dispatches the setters back (no game-logic reach-in).
+
+/** Supplier-tier id (PartsInventory `SupplierTier`) — kept a bare string here so
+ *  the UI never imports a game type. */
+export type ServiceSupplierTierId = string;
+
+/** One parts category's procurement policy row. */
+export interface ServiceParControl {
+  category: string;
+  label: string;
+  /** On-hand reorder trigger. */
+  reorderPoint: number;
+  /** Par level the reorder sweep fills back up to. */
+  target: number;
+  tier: ServiceSupplierTierId;
+  /** Units on hand right now — context for tuning the par levels. */
+  onHand: number;
+}
+
+/** A selectable supplier tier, cheapest/slowest → priciest/fastest. */
+export interface ServiceTierOption {
+  id: ServiceSupplierTierId;
+  label: string;
+}
+
+/** A selectable marketing-arm option (retention campaign or conquest target). */
+export interface ServiceMarketingOption {
+  id: string;
+  label: string;
+  blurb?: string;
+}
+
+export interface ServiceControlsModel {
+  par: readonly ServiceParControl[];
+  tierOptions: readonly ServiceTierOption[];
+  /** Pricing posture in [0,1]: 0 = fully competitive, 1 = fully premium. */
+  pricingPosture: number;
+  retentionOptions: readonly ServiceMarketingOption[];
+  /** Active retention campaign id (`'none'` clears). */
+  retentionId: string;
+  conquestOptions: readonly ServiceMarketingOption[];
+  /** Active conquest special's job category (`'none'` clears). */
+  conquestCategory: string;
+}
+
+/** The controls model plus the dispatch callbacks. Absent ⇒ read-only page. */
+export interface ServiceControls {
+  model: ServiceControlsModel;
+  onSetReorderPoint: (category: string, value: number) => void;
+  onSetTarget: (category: string, value: number) => void;
+  onSetSupplierTier: (category: string, tier: ServiceSupplierTierId) => void;
+  onSetPricingPosture: (value: number) => void;
+  onSetRetention: (id: string) => void;
+  onSetConquest: (category: string) => void;
+}
+
 // Plain-language DEMAND-axis labels. The internal band is hot/warm/cold; the
 // player-facing word names the axis (demand), never the temperature (#308 AC +
 // the locked "no vague temperature labels" rule).
@@ -219,12 +281,184 @@ function HealthStat({
   );
 }
 
+// Posture step per ± tap. The dial is continuous [0,1]; visual treatment (a real
+// slider) is the later /map-mockup pass — this slice steps it functionally.
+const POSTURE_STEP = 0.1;
+
+/** Plain-language posture word — names the axis (competitive↔premium), never a
+ *  temperature. Endpoints read right to a layperson. */
+function postureWord(v: number): string {
+  if (v <= 0.34) return 'Competitive';
+  if (v >= 0.66) return 'Premium';
+  return 'Balanced';
+}
+
+function Stepper({
+  label,
+  value,
+  onChange,
+  min = 0,
+  accessibilityName,
+}: {
+  label: string;
+  value: number;
+  onChange: (next: number) => void;
+  min?: number;
+  accessibilityName: string;
+}) {
+  const t = useTheme();
+  const s = makeStyles(t);
+  return (
+    <View style={s.stepperRow}>
+      <Text style={s.stepperLabel}>{label}</Text>
+      <View style={s.stepperControls}>
+        <TouchableOpacity
+          style={s.stepBtn}
+          onPress={() => onChange(Math.max(min, value - 1))}
+          accessibilityRole="button"
+          accessibilityLabel={`Decrease ${accessibilityName}`}
+        >
+          <Text style={s.stepBtnText}>−</Text>
+        </TouchableOpacity>
+        <Text style={s.stepValue} accessibilityLabel={`${accessibilityName} ${value}`}>
+          {value}
+        </Text>
+        <TouchableOpacity
+          style={s.stepBtn}
+          onPress={() => onChange(value + 1)}
+          accessibilityRole="button"
+          accessibilityLabel={`Increase ${accessibilityName}`}
+        >
+          <Text style={s.stepBtnText}>+</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function ChipRow({
+  options,
+  selectedId,
+  onSelect,
+}: {
+  options: readonly ServiceMarketingOption[] | readonly ServiceTierOption[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  const t = useTheme();
+  const s = makeStyles(t);
+  return (
+    <View style={s.chipRow}>
+      {options.map((o) => {
+        const sel = o.id === selectedId;
+        return (
+          <TouchableOpacity
+            key={o.id}
+            style={[s.chip, sel && s.chipSel]}
+            onPress={() => onSelect(o.id)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: sel }}
+            accessibilityLabel={o.label}
+          >
+            <Text style={[s.chipText, sel && s.chipTextSel]}>{o.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+function ParControlRow({
+  row,
+  tierOptions,
+  onSetReorderPoint,
+  onSetTarget,
+  onSetSupplierTier,
+}: {
+  row: ServiceParControl;
+  tierOptions: readonly ServiceTierOption[];
+  onSetReorderPoint: (category: string, value: number) => void;
+  onSetTarget: (category: string, value: number) => void;
+  onSetSupplierTier: (category: string, tier: ServiceSupplierTierId) => void;
+}) {
+  const t = useTheme();
+  const s = makeStyles(t);
+  return (
+    <View style={s.parRow} testID={`service-par-${row.category}`}>
+      <Text style={s.parTitle}>
+        {row.label} <Text style={s.parOnHand}>· {row.onHand} on hand</Text>
+      </Text>
+      <Stepper
+        label="Reorder at"
+        value={row.reorderPoint}
+        onChange={(v) => onSetReorderPoint(row.category, v)}
+        accessibilityName={`${row.label} reorder point`}
+      />
+      <Stepper
+        label="Stock up to"
+        value={row.target}
+        onChange={(v) => onSetTarget(row.category, v)}
+        accessibilityName={`${row.label} target stock`}
+      />
+      <ChipRow
+        options={tierOptions}
+        selectedId={row.tier}
+        onSelect={(tier) => onSetSupplierTier(row.category, tier)}
+      />
+    </View>
+  );
+}
+
+function PostureControl({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+}) {
+  const t = useTheme();
+  const s = makeStyles(t);
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  const pct = Math.round(value * 100);
+  return (
+    <View style={s.postureRow} testID="service-pricing-posture">
+      <TouchableOpacity
+        style={s.stepBtn}
+        onPress={() => onChange(clamp(value - POSTURE_STEP))}
+        accessibilityRole="button"
+        accessibilityLabel="More competitive pricing"
+      >
+        <Text style={s.stepBtnText}>−</Text>
+      </TouchableOpacity>
+      <View style={s.postureReadout}>
+        <Text
+          style={s.postureWord}
+          accessibilityLabel={`Pricing posture ${postureWord(value)} ${pct} percent toward premium`}
+        >
+          {postureWord(value)}
+        </Text>
+        <Text style={s.postureScale}>Competitive ◄ {pct}% ► Premium</Text>
+      </View>
+      <TouchableOpacity
+        style={s.stepBtn}
+        onPress={() => onChange(clamp(value + POSTURE_STEP))}
+        accessibilityRole="button"
+        accessibilityLabel="More premium pricing"
+      >
+        <Text style={s.stepBtnText}>+</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export interface ServicePageProps {
   model: ServicePageModel;
+  /** Policy controls (#309). Absent ⇒ the page is read-only. */
+  controls?: ServiceControls;
   onClose: () => void;
 }
 
-export function ServicePage({ model, onClose }: ServicePageProps) {
+export function ServicePage({ model, controls, onClose }: ServicePageProps) {
   const t = useTheme();
   const pct = (x: number) => `${Math.round(x * 100)}%`;
   const num = (x: number) => (Number.isInteger(x) ? `${x}` : x.toFixed(1));
@@ -310,6 +544,67 @@ export function ServicePage({ model, onClose }: ServicePageProps) {
             />
           </Surface>
         </View>
+
+        {controls && (
+          <>
+            <View style={region}>
+              <Surface testID="service-parts-controls">
+                <SectionHeader title="Parts Stocking" />
+                <Text style={hint}>
+                  Set it once — stock reorders to par automatically each morning.
+                </Text>
+                {controls.model.par.map((row) => (
+                  <ParControlRow
+                    key={row.category}
+                    row={row}
+                    tierOptions={controls.model.tierOptions}
+                    onSetReorderPoint={controls.onSetReorderPoint}
+                    onSetTarget={controls.onSetTarget}
+                    onSetSupplierTier={controls.onSetSupplierTier}
+                  />
+                ))}
+              </Surface>
+            </View>
+
+            <View style={region}>
+              <Surface testID="service-pricing-controls">
+                <SectionHeader title="Pricing Posture" />
+                <Text style={hint}>
+                  Where you sit on labor rate + parts markup — applied to every
+                  ticket.
+                </Text>
+                <PostureControl
+                  value={controls.model.pricingPosture}
+                  onChange={controls.onSetPricingPosture}
+                />
+              </Surface>
+            </View>
+
+            <View style={region}>
+              <Surface testID="service-marketing-controls">
+                <SectionHeader title="Service Marketing" />
+                <Text style={hint}>
+                  Retention keeps your base coming back; conquest drums up new
+                  work in a category.
+                </Text>
+                <Text style={[hint, { marginTop: t.spacing.sm }]}>Retention</Text>
+                <ChipRow
+                  options={controls.model.retentionOptions}
+                  selectedId={controls.model.retentionId}
+                  onSelect={controls.onSetRetention}
+                />
+                <Text style={[hint, { marginTop: t.spacing.sm }]}>
+                  Category conquest
+                </Text>
+                <ChipRow
+                  options={controls.model.conquestOptions}
+                  selectedId={controls.model.conquestCategory}
+                  onSelect={controls.onSetConquest}
+                />
+              </Surface>
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -331,5 +626,69 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     backText: { ...t.typography.button, color: t.colors.accent },
     title: { ...t.typography.title, color: t.colors.textPrimary, flex: 1 },
     body: { padding: t.spacing.lg },
+    // ── Controls (#309) ──
+    parRow: {
+      paddingVertical: t.spacing.sm,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.colors.borderMuted,
+    },
+    parTitle: { ...t.typography.label, color: t.colors.textPrimary },
+    parOnHand: { ...t.typography.caption, color: t.colors.textMuted },
+    stepperRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: t.spacing.xxs,
+    },
+    stepperLabel: { ...t.typography.body, color: t.colors.textSecondary },
+    stepperControls: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
+    stepBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.base,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stepBtnText: { ...t.typography.title, color: t.colors.accent },
+    stepValue: {
+      ...t.typography.label,
+      color: t.colors.textPrimary,
+      minWidth: 28,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+    },
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: t.spacing.xs,
+      marginTop: t.spacing.xs,
+    },
+    chip: {
+      paddingVertical: t.spacing.xs,
+      paddingHorizontal: t.spacing.sm,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      backgroundColor: t.colors.base,
+    },
+    chipSel: { borderColor: t.colors.accent, backgroundColor: t.colors.primaryDim },
+    chipText: { ...t.typography.caption, color: t.colors.textSecondary },
+    chipTextSel: { color: t.colors.accent },
+    postureRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: t.spacing.md,
+      marginTop: t.spacing.xs,
+    },
+    postureReadout: { flex: 1, alignItems: 'center' },
+    postureWord: { ...t.typography.label, color: t.colors.textPrimary },
+    postureScale: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      marginTop: t.spacing.xxs,
+    },
   });
 }

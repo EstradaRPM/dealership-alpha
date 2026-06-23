@@ -25,10 +25,13 @@ import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
 import type { PersonnelRoleOption } from '../ui/PersonnelScreen';
 import type { CashDeltaSplit } from '../ui/HomeTab';
+import { PART_CATEGORIES, SUPPLIER_TIERS } from '../game/PartsInventory';
+import { JOB_CATEGORIES } from '../game/ServiceMarketing';
 import type {
   ServicePageModel,
   ServiceDemandHeatRow,
   ServiceCoverageRow,
+  ServiceControlsModel,
 } from '../ui/ServicePage';
 import {
   classifyHeatBand,
@@ -304,6 +307,58 @@ export function buildServicePageModel(world: World): ServicePageModel {
     demandHeat,
     coverage,
     baseHealth: { ...world.serviceInsights.getBaseHealth() },
+  };
+}
+
+// Plain-language supplier-tier names for the Service parts-stocking control
+// (#309), cheapest/slowest → priciest/fastest. No magic strings in the view.
+export const SUPPLIER_TIER_LABELS: Record<string, string> = {
+  economy: 'Economy',
+  standard: 'Standard',
+  oem_direct: 'OEM Direct',
+  rush: 'Rush',
+};
+
+// Assemble the Service POLICY controls model (#309) from the live World: the
+// per-category PartsInventory procurement policy (par levels + supplier tier +
+// on-hand), the stored pricing-posture dial, and the two ServiceMarketing arms.
+// Pure read — the dispatch callbacks (RouteContent) mutate the World and persist.
+// 'none' leads each marketing list since selecting it clears that arm.
+export function buildServiceControlsModel(world: World): ServiceControlsModel {
+  return {
+    par: PART_CATEGORIES.map((cat) => {
+      const policy = world.partsInventory.getPolicy(cat);
+      return {
+        category: cat,
+        label: JOB_CATEGORY_LABELS[cat] ?? cat,
+        reorderPoint: policy.reorderPoint,
+        target: policy.target,
+        tier: policy.tier,
+        onHand: world.partsInventory.getStock(cat),
+      };
+    }),
+    tierOptions: SUPPLIER_TIERS.map((id) => ({
+      id,
+      label: SUPPLIER_TIER_LABELS[id] ?? id,
+    })),
+    pricingPosture: world.getServicePricingPosture(),
+    retentionOptions: [
+      { id: 'none', label: 'None' },
+      ...world.serviceMarketing.retentionCampaigns.map((c) => ({
+        id: c.id,
+        label: c.label,
+        blurb: c.blurb,
+      })),
+    ],
+    retentionId: world.serviceMarketing.getRetentionCampaign(),
+    conquestOptions: [
+      { id: 'none', label: 'None' },
+      ...JOB_CATEGORIES.map((cat) => ({
+        id: cat,
+        label: JOB_CATEGORY_LABELS[cat] ?? cat,
+      })),
+    ],
+    conquestCategory: world.serviceMarketing.getConquestSpecial(),
   };
 }
 

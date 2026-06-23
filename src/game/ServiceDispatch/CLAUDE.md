@@ -32,9 +32,10 @@ parts markup, modeled together), NOT the retired flat upsell multiplier:
 premiumPriceMultiplier, posture))`. `getPricingPosture?: () => number` ([0,1],
 read per-resolve so a live dial change applies next ticket; omitted ⇒ neutral
 0.5). The composition root backs it with a stored player setting exposed on the
-World seam (`get/setServicePricingPosture`); persistence + the dial UI are a
-later slice (the posture also feeds InstalledBase's return-roll price-sensitivity
-term then). Advisor skill now governs **throughput**, not per-ticket price.
+World seam (`get/setServicePricingPosture`), now persisted via the world snapshot
+(`servicePricingPosture` key, envelope v12→v13) and driven by the Service-page
+posture dial (#309). Advisor skill now governs **throughput**, not per-ticket
+price.
 
 ## Capacity model (#305, drain only)
 Concurrent work is bounded by `slots = min(bays, advisors on duty)`:

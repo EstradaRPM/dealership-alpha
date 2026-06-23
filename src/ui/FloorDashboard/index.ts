@@ -6,4 +6,5 @@ export type {
   InventoryStats,
   FloorControls,
   RegulatoryPressureModel,
+  ServiceCardModel,
 } from './FloorDashboard';

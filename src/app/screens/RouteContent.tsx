@@ -9,6 +9,8 @@ import type {
 } from '../../game/SaveStore';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import type { DeptKey } from '../../game/DepartmentQueue';
+import type { PartCategory, SupplierTier } from '../../game/PartsInventory';
+import type { ConquestSelection } from '../../game/ServiceMarketing';
 import type { FloorRenderLoop } from '../../ui/FloorRenderLoop';
 import { makeSeed } from '../../createWorld';
 import { CharacterCreation } from '../../ui/CharacterCreation';
@@ -31,6 +33,7 @@ import {
   PRICING_STRATEGIES,
   HOURS_OF_OP,
   buildServicePageModel,
+  buildServiceControlsModel,
 } from '../config';
 import type { WorldState } from '../useWorldState';
 import type { SaveSlots } from '../useSaveSlots';
@@ -248,14 +251,54 @@ export function RouteContent({
     );
   }
   if (screen === 'service' && world) {
-    // Service department read-model page (#308): demand heat + stock coverage +
-    // base health, assembled from the live read-models. Read-only; controls land
-    // in #309. Navigation is never tier-gated — the page is always reachable.
+    // Service department page (#308 readouts + #309 controls): demand heat +
+    // stock coverage + base health, plus the policy levers (par/supplier/posture/
+    // marketing). Each control dispatches into the already-built game logic, then
+    // re-snapshots + re-renders so the page reflects the new policy. Policy-style
+    // — set once, applied automatically. Navigation is never tier-gated.
+    const w = world;
+    const apply = () => {
+      persistCurrentSave();
+      bump();
+    };
     return (
       <>
         <StatusBar style="light" />
         <ServicePage
-          model={buildServicePageModel(world)}
+          model={buildServicePageModel(w)}
+          controls={{
+            model: buildServiceControlsModel(w),
+            onSetReorderPoint: (category, value) => {
+              w.partsInventory.setPolicy(category as PartCategory, {
+                reorderPoint: value,
+              });
+              apply();
+            },
+            onSetTarget: (category, value) => {
+              w.partsInventory.setPolicy(category as PartCategory, {
+                target: value,
+              });
+              apply();
+            },
+            onSetSupplierTier: (category, tier) => {
+              w.partsInventory.setPolicy(category as PartCategory, {
+                tier: tier as SupplierTier,
+              });
+              apply();
+            },
+            onSetPricingPosture: (value) => {
+              w.setServicePricingPosture(value);
+              apply();
+            },
+            onSetRetention: (id) => {
+              w.serviceMarketing.setRetentionCampaign(id);
+              apply();
+            },
+            onSetConquest: (category) => {
+              w.serviceMarketing.setConquestSpecial(category as ConquestSelection);
+              apply();
+            },
+          }}
           onClose={() => nav.back()}
         />
       </>
