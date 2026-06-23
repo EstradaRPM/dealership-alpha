@@ -463,6 +463,16 @@
       "pricing": { "maxDriftFraction": 0.08, "skillReference": 90 },
       "t_o_closing": { "maxDriftFraction": 0.25, "skillReference": 90 },
       "condition_reading": { "maxDriftFraction": 0.1, "skillReference": 90 }
+    },
+    "serviceManager": {
+      "_doc": "Service-manager automation gates (#310, parent #297). The Service-side mirror of the channel-desk gates: a later-tier service manager whose top `shop_throughput` skill clears a function's threshold takes over that standing Service decision. A LADDER (par lowest → capacity highest) so automation engages one function at a time as the SM grows; below a gate (or no SM) the player keeps manual control. Function tuning lives in data/service-manager.json. Placeholders pending the S14 calibration pass (#286).",
+      "actThresholds": {
+        "par": 50,
+        "pricing": 55,
+        "marketing": 60,
+        "rush": 65,
+        "capacity": 75
+      }
     }
   },
   "tradePolicy": {

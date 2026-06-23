@@ -102,6 +102,7 @@ import {
   createPartsInventory,
   loadPartsInventoryConfig,
   type PartsInventory,
+  type PartCategory,
 } from './game/PartsInventory';
 import {
   createTierManager,
@@ -136,6 +137,13 @@ import {
   createServiceReadModel,
   loadServiceDispatchConfig,
   type ServiceReadModel,
+  // #310 service-manager automation (parent #297).
+  isServiceFunctionAutomated,
+  autoServicePar,
+  autoServicePosture,
+  autoServiceMarketing,
+  shouldRush,
+  loadServiceManagerConfig,
 } from './game/ServiceDispatch';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createHistoryLog, type HistoryLog } from './game/HistoryLog';
@@ -900,6 +908,78 @@ export function createWorld(deps: {
   // persisted via the world snapshot so trends stay continuous across a reload.
   const serviceInsights = createServiceInsights({ bus, installedBase });
 
+  // ServiceManager automation (#310, parent #297): the Service-side mirror of the
+  // channel-desk manager pattern. Skill-gated gates live HERE at the composition
+  // boundary so the Service modules stay decoupled from StaffOrg — exactly as the
+  // UCM auto-pricing / sourcing gates do. As the on-staff service manager's
+  // `shop_throughput` clears each function's tunable threshold (a ladder, so
+  // automation engages one function at a time as the SM grows), the SM takes over
+  // the standing Service decisions the player otherwise ran by hand. Below a gate
+  // (or with no SM on staff) the player keeps manual control — no behavior change.
+  const serviceManagerGates = managerGates.serviceManager.actThresholds;
+  const serviceManagerConfig = loadServiceManagerConfig();
+  // Top on-staff SM `shop_throughput` (null = no service manager). Read live each
+  // call; the effective skill is constant within an open day (channel-desk M7).
+  const topServiceManagerSkill = (): number | null => {
+    const skills = staffOrg.currentRoster
+      .filter((s) => s.role_id === 'service-manager')
+      .map((s) => s.effectiveSkills['shop_throughput'] ?? 0);
+    return skills.length === 0 ? null : Math.max(...skills);
+  };
+  const serviceFnAutomated = (fn: keyof typeof serviceManagerGates): boolean =>
+    isServiceFunctionAutomated(topServiceManagerSkill(), serviceManagerGates[fn]);
+
+  // Standing setpoints applied each morning. par/posture/marketing are constant
+  // within the day (the SM skill + the readouts are replay-deterministic) ⇒ a
+  // fixed seed replays byte-identically (#122). PartsInventory subscribes its own
+  // reorder sweep to clock:day_started earlier, so a re-tuned par takes effect on
+  // the NEXT morning's sweep — an intentional one-day lag, not a same-day race.
+  bus.subscribe('clock:day_started', () => {
+    if (serviceFnAutomated('par')) {
+      const setpoints = autoServicePar(
+        serviceInsights
+          .getDemandHeat()
+          .map((h) => ({ category: h.category, demand: h.count })),
+        { config: serviceManagerConfig },
+      );
+      for (const sp of setpoints) {
+        partsInventory.setPolicy(sp.category as PartCategory, {
+          reorderPoint: sp.reorderPoint,
+          target: sp.target,
+        });
+      }
+    }
+    if (serviceFnAutomated('pricing')) {
+      servicePricingPosture = autoServicePosture(
+        Math.max(0, Math.min(1, reputation.reviewScore / 100)),
+        { config: serviceManagerConfig },
+      );
+    }
+    if (serviceFnAutomated('marketing')) {
+      const health = serviceInsights.getBaseHealth();
+      const coverage = serviceInsights.getDemandHeat().map((h) => ({
+        category: h.category,
+        demand: h.count,
+        onHand: partsInventory.getStock(h.category as PartCategory),
+      }));
+      // The SM enables the first available retention campaign when churn
+      // pressure is high (the catalog is hand-ordered cheapest/lightest first;
+      // the S14 pass can switch this to a base-health-scaled pick).
+      const retentionCampaignId =
+        serviceMarketing.retentionCampaigns[0]?.id ?? 'none';
+      const decision = autoServiceMarketing(
+        { health, coverage, retentionCampaignId },
+        { config: serviceManagerConfig },
+      );
+      serviceMarketing.setRetentionCampaign(decision.retentionId);
+      serviceMarketing.setConquestSpecial(
+        decision.conquestCategory as Parameters<
+          typeof serviceMarketing.setConquestSpecial
+        >[0],
+      );
+    }
+  });
+
   // ServiceQueue (#80, rewired #303): the Tier-2 gate on the Service intake.
   // Starts silent (default initialTier=1 < minTierRequired 2), follows
   // career:tier_up off the bus, and once at Tier 2 subscribes to ServiceDemand's
@@ -1265,8 +1345,27 @@ export function createWorld(deps: {
         // tier is unlocked at rushUnlockTier) or is a flat miss (lost revenue +
         // CSI hit). rushUnlockTier is the operation-maturity gate (PRD #297).
         partsInventory,
-        isRushUnlocked: () =>
-          tierManager.currentTier >= serviceDispatchConfig.rushUnlockTier,
+        // #310: once the rush function is automated, the service manager makes
+        // the rush-vs-walk call instead of the blunt tier gate — it enables rush
+        // regardless of tier (the SM IS the operational maturity the tier gate
+        // stood in for). Once the capacity function is also automated the call
+        // becomes capacity-aware: it rushes only while the shop has slack (live
+        // utilization below the ceiling), else walks rather than overcommit a
+        // slammed bay/advisor floor. Read per-miss; the SM skill is constant
+        // within the day and the read-model is replay-deterministic ⇒ #122-safe.
+        // Below the rush gate (or no SM) the original tier gate stands unchanged.
+        isRushUnlocked: () => {
+          if (serviceFnAutomated('rush')) {
+            return shouldRush(
+              {
+                utilization: serviceReadModel.read().utilization,
+                capacityAware: serviceFnAutomated('capacity'),
+              },
+              { config: serviceManagerConfig },
+            );
+          }
+          return tierManager.currentTier >= serviceDispatchConfig.rushUnlockTier;
+        },
         // #305 capacity + posture + read-model. facilityTier snapshots the
         // current tier (this seam is rebuilt per-day, so a tier-up applies the
         // next day); bays scale off it. getPricingPosture reads the live dial.

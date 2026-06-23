@@ -92,5 +92,39 @@ jobs miss — cadence-invariance holds across the parts gate.
     reports).
   - All magnitudes are placeholders pending calibration (#286).
 
+## Service-manager automation (#310, parent #297)
+The Service-side mirror of the channel-desk manager model (UCM/NCM/GM). Pure +
+deterministic engine in `serviceManager.ts`; the gate THRESHOLDS live in
+`tunables.json#managerGates.serviceManager.actThresholds`, the function TUNING in
+`data/service-manager.json` (`loadServiceManagerConfig`) — same split as
+`data/sourcing.json`. As the on-staff service manager's `shop_throughput` clears
+each function's threshold (a LADDER — par 50 < pricing 55 < marketing 60 < rush
+65 < capacity 75, so automation engages one function at a time as the SM grows)
+the SM takes over the standing decision the player otherwise ran by hand. Below a
+gate (or no SM) the player keeps manual control — no behavior change.
+- `isServiceFunctionAutomated(shopThroughputSkill, threshold)` → boolean — the
+  act gate, mirroring `isAutoPricingUnlocked` (`null` skill = no SM = closed).
+- `autoServicePar(rows, deps?)` → `ServiceParSetpoint[]` — demand-driven
+  PartsInventory par (cover-days × trailing intake demand, floored, monotonic,
+  reorderPoint ≤ target).
+- `autoServicePosture(reputation01, deps?)` → posture `[0,1]` — reputation-driven
+  competitive↔premium, monotonic non-decreasing, clamped to `[min,max]Posture`.
+- `autoServiceMarketing({health, coverage, retentionCampaignId}, deps?)` →
+  `ServiceMarketingDecision` — runs retention on high churn pressure, aims
+  conquest at the most over-stocked category to clear dead capital.
+- `shouldRush({utilization, capacityAware}, deps?)` → boolean — the rush-vs-walk
+  call. Rush-function-only ⇒ always rush (keep the customer, the SM is the
+  operational maturity the tier gate stood in for); capacity-function-also ⇒
+  rush only while the shop has slack (utilization below the ceiling), else walk.
+
+The composition root owns the orchestration (createWorld, after ServiceInsights):
+it resolves the top SM `shop_throughput` from the live roster, applies the
+par/posture/marketing setpoints on `clock:day_started` (constant within the day +
+replay-deterministic readouts ⇒ #122-safe; the PartsInventory reorder sweep
+subscribes earlier so a re-tuned par lands on the next morning's sweep — a
+one-day lag), and folds `shouldRush` into the `isRushUnlocked` parts-gate seam.
+`warranty_handling` (the SM's other granted skill) is reserved for a future
+advise-side surface, NOT gated here.
+
 ## Notes
 - Mirrors `StaffDispatch` in shape but operates on Service items rather than Sales. Look at that module first when extending — keep the two parallel.

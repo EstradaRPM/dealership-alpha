@@ -390,6 +390,29 @@ export const TunablesSchema = z.object({
       // `condition_reading` skill.
       condition_reading: SkillDriftConfigSchema,
     }),
+    // #310 (parent #297): the Service-side mirror of the channel-desk gates — a
+    // later-tier service manager whose top `shop_throughput` clears each
+    // function's threshold takes over that standing Service decision. A LADDER
+    // (par lowest → capacity highest) so automation engages one function at a
+    // time as the SM grows; below a gate (or no SM) the player keeps manual
+    // control. Function tuning lives in `data/service-manager.json`; only the
+    // gate thresholds (0–100 skill scale) live here. Placeholders pending #286.
+    serviceManager: z.object({
+      actThresholds: z.object({
+        // Demand-driven par tuning (PartsInventory reorderPoint/target).
+        par: z.number().min(0).max(100),
+        // Reputation-driven competitive↔premium pricing posture.
+        pricing: z.number().min(0).max(100),
+        // Base-health / over-stock-driven marketing-arm selection.
+        marketing: z.number().min(0).max(100),
+        // SM makes the rush-vs-walk call on a parts miss (enables rush-order
+        // regardless of tier — the SM IS the operational maturity).
+        rush: z.number().min(0).max(100),
+        // The rush call becomes capacity-aware (balances against live shop
+        // utilization — don't overcommit a slammed bay/advisor floor).
+        capacity: z.number().min(0).max(100),
+      }),
+    }),
   }),
   // Per-slot trade-acquisition policy (#172). `multiplier` scales the staff's
   // internal trade-in acceptance target in DealEngine.evaluateTrade. The

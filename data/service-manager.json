@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Service-manager automation tuning (#310, parent #297). The decision-function knobs the on-staff service manager uses once its `shop_throughput` clears each function's gate in tunables.json#managerGates.serviceManager.actThresholds. Mirrors data/sourcing.json (channel-desk M6) — gate thresholds live in tunables, the function tuning lives here. All magnitudes are placeholders pending the S14 calibration pass (#286).",
+  "par": {
+    "_doc": "Demand-driven par tuning. The SM sets each parts category's target/reorderPoint off its trailing intake demand (the ServiceInsights window count). target = max(minTarget, ceil(demand x targetCoverDays)); reorderPoint = max(minReorderPoint, ceil(demand x reorderCoverDays)), capped at target.",
+    "targetCoverDays": 1.5,
+    "reorderCoverDays": 0.6,
+    "minTarget": 2,
+    "minReorderPoint": 1
+  },
+  "posture": {
+    "_doc": "Reputation-driven pricing posture. A strong-reputation shop sustains a premium labor/markup posture without driving owners away; a weak one stays competitive to protect retention. posture = lerp(minPosture, maxPosture, clamp01((reputation - floor)/(ceil - floor))).",
+    "reputationFloor": 0.4,
+    "reputationCeil": 0.85,
+    "minPosture": 0.35,
+    "maxPosture": 0.8
+  },
+  "marketing": {
+    "_doc": "Base-health / over-stock-driven marketing. The SM runs the retention arm when forward churn pressure is high (at-risk share over trigger, or churn rising), and aims the conquest arm at the most over-stocked parts category to manufacture demand that clears dead capital (onHand/demand over trigger).",
+    "atRiskShareTrigger": 0.25,
+    "overstockRatioTrigger": 2.0
+  },
+  "capacity": {
+    "_doc": "Capacity-aware rush balancing. Once the capacity function is automated the SM makes the rush-vs-walk call capacity-aware — it only rush-orders a parts miss while the shop has slack (live utilization below the ceiling), otherwise it walks the job rather than overcommit a slammed bay/advisor floor.",
+    "utilizationRushCeiling": 0.85
+  }
+}
