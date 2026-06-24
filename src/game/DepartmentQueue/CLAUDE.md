@@ -7,8 +7,15 @@ In-memory work queue per department (Sales, Service, BDC, etc.). Items wait here
 - Types: `DepartmentQueue`, `DeptKey`, `ItemType`, `QueueItem`.
 
 ## Events
-- **Consumes:** `customer:arrived` (push Sales item), `followup:bdc_tasks_ready` (push BDC items), `service:intake_ready` (push Service items).
+- **Consumes:** `customer:arrived` (push Sales item), `followup:bdc_tasks_ready` (push BDC items), `service:intake_ready` (push Service items), `bodyshop:intake_ready` (push Body-Shop items, #314).
 - **Does not emit** EventBus events — dequeuing is driven by callers (player action or `StaffDispatch` / `ServiceDispatch`).
+
+## Lanes (`DeptKey`)
+`sales` | `service` | `bdc` | `office` | `lot` | `bodyshop`. The `bodyshop` lane
+(#314) is the Tier-3 mirror of `service`: it carries the channel `source`
+(insurance/retail) and the collision parts category on each item so the Body-Shop
+drain prices + parts-gates a restored/pre-drain item correctly. Adding a lane is
+NOT adding a nav tab — the nav is a fixed 5 tabs (the Body Shop is a sub-surface).
 
 ## Data
 None. Pure in-memory; persisted only via `SaveStore` snapshot.

@@ -4,7 +4,7 @@ import { BottomNav } from '../src/ui/BottomNav';
 import type { DeptKey } from '../src/game/DepartmentQueue';
 
 const ZERO: Record<DeptKey, number> = {
-  sales: 0, service: 0, bdc: 0, office: 0, lot: 0,
+  sales: 0, service: 0, bdc: 0, office: 0, lot: 0, bodyshop: 0,
 };
 
 describe('BottomNav smoke tests', () => {

@@ -117,10 +117,15 @@ import type { ServiceDemand } from './game/ServiceDemand';
 import type { ServiceInsights } from './game/ServiceInsights';
 import type { ServiceMarketing } from './game/ServiceMarketing';
 import type { ServiceQueue } from './game/ServiceQueue';
-import type { ServiceReadModel } from './game/ServiceDispatch';
+import type { ServiceReadModel, DeptReadModel } from './game/ServiceDispatch';
+import type { CollisionStream } from './game/CollisionStream';
+import type { BodyShopQueue } from './game/BodyShopQueue';
 // #311 the Service department package (the labeled bundle that plugs into the
 // shared department line); replaces the inline Service wiring previously here.
 import { createServiceDepartment } from './serviceDepartment';
+// #314 the Body Shop department package (the Tier-3 mirror — CollisionStream →
+// BodyShopQueue → the shared dispatch engine, channel-posture pricing).
+import { createBodyShopDepartment } from './bodyShopDepartment';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createHistoryLog, type HistoryLog } from './game/HistoryLog';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
@@ -167,6 +172,16 @@ export interface World {
   // #305 service pricing-posture dial [0,1] (competitive↔premium).
   getServicePricingPosture(): number;
   setServicePricingPosture(value: number): void;
+  // #313 Body-Shop demand spine (weather-spiked collision shock).
+  collisionStream: CollisionStream;
+  // #312 Body-Shop Tier-3 intake gate.
+  bodyShopQueue: BodyShopQueue;
+  // #314 live Body-Shop capacity read-model for the Body-Shop page + floor card.
+  bodyShopReadModel: DeptReadModel;
+  // #314 Body-Shop insurance↔retail channel posture [0,1] (0 = insurance-DRP,
+  // 1 = retail). Feeds the demand mix and the per-ticket channel pricing.
+  getBodyShopChannelPosture(): number;
+  setBodyShopChannelPosture(value: number): void;
   reputation: Reputation;
   regulatoryMeter: RegulatoryMeter;
   serviceQueue: ServiceQueue;
@@ -818,6 +833,25 @@ export function createWorld(deps: {
     serviceQueue,
     serviceReadModel,
   } = serviceDept;
+
+  // Body Shop department package (#314, parent #297): the Tier-3 mirror of the
+  // Service package. CollisionStream (demand spine) → BodyShopQueue (Tier-3 gate)
+  // → the Body-Shop floor drain on the SHARED dispatch engine, with insurance/
+  // retail channel-posture pricing. Shares the same PartsInventory parts room
+  // (activating its four collision categories). Dark below Tier 3. See
+  // docs/planning/shared-department-structure.md.
+  const bodyShopDept = createBodyShopDepartment({
+    bus,
+    masterSeed,
+    economy,
+    staffOrg,
+    tierManager,
+    departmentQueue,
+    reputation,
+    weather,
+    partsInventory,
+  });
+  const { collisionStream, bodyShopQueue, bodyShopReadModel } = bodyShopDept;
   // EndCardManager (#84): all terminal failure paths + success endings
   // converge here and re-emit a single career:game_over carrying the
   // assembled EndCardData. Wired in the live world (not just tests) so the
@@ -1170,6 +1204,10 @@ export function createWorld(deps: {
       // read-model all live in the bundle now). Reads tierManager live, so a
       // mid-game tier-up applies the next day, exactly as before.
       serviceDept.createFloorDrain(),
+      // #314: the per-day Body-Shop floor drain (the Tier-3 mirror, built on the
+      // same shared dispatch engine). Dark below Tier 3 — bays are 0, so the drain
+      // resolves nothing until the showroom tier even though it's always wired.
+      bodyShopDept.createFloorDrain(),
     ],
     customerSource,
     // #207: the hours-of-op lever's scaled day length. Read per-day so a
@@ -1256,6 +1294,14 @@ export function createWorld(deps: {
     // later slice. Owned by the Service package (#311).
     getServicePricingPosture: serviceDept.getServicePricingPosture,
     setServicePricingPosture: serviceDept.setServicePricingPosture,
+    // #312/#313/#314 Body Shop department (the Tier-3 mirror). collisionStream +
+    // bodyShopQueue are exposed for persistence + the later Body-Shop page; the
+    // read-model + channel posture back the page/floor card + channel control.
+    collisionStream,
+    bodyShopQueue,
+    bodyShopReadModel,
+    getBodyShopChannelPosture: bodyShopDept.getBodyShopChannelPosture,
+    setBodyShopChannelPosture: bodyShopDept.setBodyShopChannelPosture,
     reputation,
     regulatoryMeter,
     serviceQueue,

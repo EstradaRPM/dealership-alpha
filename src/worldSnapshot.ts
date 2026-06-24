@@ -42,6 +42,7 @@ import type {
 } from './game/CareerProgression';
 import type { FollowUpPoolSnapshot } from './game/FollowUpPool';
 import type { ServiceQueueSnapshot } from './game/ServiceQueue';
+import type { BodyShopQueueSnapshot } from './game/BodyShopQueue';
 import type { ServiceMarketingSnapshot } from './game/ServiceMarketing';
 import type { ServiceInsightsSnapshot } from './game/ServiceInsights';
 import type { DepartmentQueueSnapshot } from './game/DepartmentQueue';
@@ -64,7 +65,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 13;
+export const WORLD_SNAPSHOT_VERSION = 14;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -113,6 +114,12 @@ export type WorldSnapshot = {
     // Service pricing-posture dial [0,1] — a World-level scalar (not a module),
     // backing get/setServicePricingPosture (#305 seam, persisted by #309).
     readonly servicePricingPosture: number;
+    // Body-Shop Tier-3 gate (#312): only the tier gate is carried state — the
+    // day's collision intake regenerates deterministically from masterSeed+day.
+    readonly bodyShopQueue: BodyShopQueueSnapshot;
+    // Body-Shop insurance↔retail channel posture [0,1] — a World-level scalar,
+    // backing get/setBodyShopChannelPosture (#314 seam).
+    readonly bodyShopChannelPosture: number;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -265,6 +272,25 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         servicePricingPosture: 0.5,
       },
     }),
+    13: (snap) => ({
+      version: 14,
+      modules: {
+        ...snap.modules,
+        // Behavior-neutral: pre-#314 saves materialize the Body-Shop gate at the
+        // save's ACTUAL tier (read from the tierManager blob, not a hardcoded 1)
+        // so a migrated Tier-3+ save activates the Body Shop immediately rather
+        // than waiting for the next career:tier_up; plus the neutral 0.5 channel
+        // posture (the createWorld default). An old save otherwise loads exactly
+        // as before (the Body Shop is dark below Tier 3 regardless).
+        bodyShopQueue: {
+          schemaVersion: 1,
+          currentTier:
+            (snap.modules.tierManager as { currentTier?: number } | undefined)
+              ?.currentTier ?? 1,
+        },
+        bodyShopChannelPosture: 0.5,
+      },
+    }),
   };
 
 /**
@@ -329,6 +355,8 @@ export function snapshotWorld(world: World): WorldSnapshot {
       demandShaper: world.demandShaper.snapshot(),
       historyLog: world.historyLog.snapshot(),
       servicePricingPosture: world.getServicePricingPosture(),
+      bodyShopQueue: world.bodyShopQueue.snapshot(),
+      bodyShopChannelPosture: world.getBodyShopChannelPosture(),
     },
   };
 }
@@ -369,4 +397,6 @@ export function restoreWorld(
   world.demandShaper.restore(snap.modules.demandShaper);
   world.historyLog.restore(snap.modules.historyLog);
   world.setServicePricingPosture(snap.modules.servicePricingPosture);
+  world.bodyShopQueue.restore(snap.modules.bodyShopQueue);
+  world.setBodyShopChannelPosture(snap.modules.bodyShopChannelPosture);
 }

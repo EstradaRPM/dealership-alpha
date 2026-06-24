@@ -792,6 +792,76 @@ export interface EventMap {
     csiHit: number;
     waitTicks: number;
   };
+
+  // ── Body Shop dispatch (#314, parent #297) ─────────────────────────────────
+  // The Body-Shop drain resolves bodyshop:intake_ready through the SAME shared
+  // department-dispatch engine as Service (advisor pick, parts gate, min(bays,
+  // advisors) capacity, read-model). Per the locked event-name decision (#312)
+  // these MIRROR the service:* dispatch set as a parallel bodyshop:* family bound
+  // to that same engine (NOT a collapsed dept:* family), keeping service:* payloads
+  // byte-stable. The id field is `bodyShopItemId`; the jobCategory union is the
+  // four Body-Shop collision categories. Revenue is governed by the insurance/
+  // retail channel posture (insurance rate-capped, retail player-priced), so a
+  // ticket carries no posture itself — the closed `revenue` already reflects it.
+
+  // A Body-Shop ticket was auto-resolved by a body-shop advisor.
+  'bodyshop:ticket_closed': {
+    bodyShopItemId: string;
+    day: number;
+    revenue: number;
+    advisorId: string;
+  };
+
+  // A completed Body-Shop job consumed one matching-category part from
+  // PartsInventory. Fires immediately before bodyshop:ticket_closed for that
+  // ticket.
+  'bodyshop:parts_consumed': {
+    bodyShopItemId: string;
+    day: number;
+    jobCategory: 'windows_glass' | 'doors_panels' | 'interior_trim' | 'paint';
+    advisorId: string;
+  };
+
+  // No matching part on hand and rush ordering not yet unlocked: the job is turned
+  // away. TERMINAL — no bodyshop:ticket_closed fires for a missed job.
+  'bodyshop:job_missed': {
+    bodyShopItemId: string;
+    day: number;
+    customerId: string;
+    vehicleId: string;
+    jobCategory: 'windows_glass' | 'doors_panels' | 'interior_trim' | 'paint';
+    lostRevenue: number;
+    csiHit: number;
+    advisorId: string;
+  };
+
+  // No matching part on hand but rush ordering is unlocked: an emergency rush
+  // order lets the job complete instead of missing. Fires immediately before
+  // bodyshop:ticket_closed for that ticket.
+  'bodyshop:job_rushed': {
+    bodyShopItemId: string;
+    day: number;
+    customerId: string;
+    vehicleId: string;
+    jobCategory: 'windows_glass' | 'doors_panels' | 'interior_trim' | 'paint';
+    revenue: number;
+    advisorId: string;
+  };
+
+  // A Body-Shop job that backed up past the dispatch maxWaitTicks because
+  // concurrent capacity (slots = min(bays, advisors on duty)) couldn't reach it
+  // leaves UNSERVED. Distinct from bodyshop:job_missed (a parts stockout):
+  // capacity starvation. TERMINAL — no bodyshop:ticket_closed fires. Drain only.
+  'bodyshop:job_unserved': {
+    bodyShopItemId: string;
+    day: number;
+    customerId: string;
+    vehicleId: string;
+    jobCategory: 'windows_glass' | 'doors_panels' | 'interior_trim' | 'paint';
+    lostRevenue: number;
+    csiHit: number;
+    waitTicks: number;
+  };
 }
 
 export type EventName = keyof EventMap;

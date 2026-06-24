@@ -39,9 +39,11 @@ collision categories.
 Do nothing below `minTierRequired` (3) — the Body Shop is dark until the showroom
 tier. Tier is followed off the bus (`career:tier_up`) and seeded by `initialTier`.
 
-## Status (#312 skeleton)
-This slice stands up the gate, roles, parts categories, and events. Intake is
-fed by CollisionStream (#313) and resolved by the Body-Shop drain (#314); the
-queue is not yet wired into `createWorld`/`snapshotWorld` — that lands with the
-demand + drain slices, when the queue has a live feed to gate. `snapshot()/
-restore()` carry only the tier gate (`currentTier`), ready for that wiring.
+## Status (wired in #314)
+Stood up in #312; **wired into `createWorld`/`snapshotWorld` in #314** as part of
+the Body Shop package (`src/bodyShopDepartment.ts`): CollisionStream (#313) feeds
+it, it gates by Tier 3 and re-publishes `bodyshop:intake_ready`, and DepartmentQueue
++ the shared Body-Shop drain consume the lane. `snapshot()/restore()` carry the
+tier gate (`currentTier`), persisted under the `bodyShopQueue` envelope key
+(worldSnapshot v14). On a pre-v14 → v14 migration the gate is seeded from the
+save's actual tier so a migrated Tier-3+ save activates immediately.

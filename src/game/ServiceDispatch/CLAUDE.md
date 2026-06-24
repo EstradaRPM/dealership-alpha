@@ -2,6 +2,30 @@
 
 Auto-resolves service queue items using on-duty service advisors. Service-side analog of `StaffDispatch`.
 
+## Now the shared department-dispatch engine (#314)
+As of #314 this module hosts the **department-agnostic** auto-resolution +
+capacity + read-model engine that BOTH Service and Body Shop run (the shared
+assembly line — `docs/planning/shared-department-structure.md`). The engine owns
+the advisor pick, the skill-scaled auto-resolve roll, the #304 parts gate, the
+`min(bays, advisors)` capacity model, eviction, and the live read-model. Each
+department supplies a **`DeptDispatchProfile`** for everything that differs:
+advisor role, queue lane, RNG namespace, per-ticket pricing (Service's
+competitive↔premium dial vs Body Shop's insurance rate-capped / retail
+player-priced split), revenue label, the intake feed, and the event family it
+emits. Per the locked event-name decision (#312) the two emit PARALLEL families
+(`service:*` / `bodyshop:*`) bound to this one engine — NOT a collapsed `dept:*`.
+
+- Generic exports: `createDeptFloorDrain`, `createDeptDispatch`,
+  `createDeptReadModel`; types `DeptDispatchProfile`, `DeptDispatchDeps`,
+  `DeptDispatchEmit`, `DeptIntakeItem`, `DeptCapacityConfig`,
+  `DeptLoad`/`DeptReadModel`/`DeptReadModelWriter`.
+- Service is the **reference profile**, built inside the `createService*`
+  wrappers below from `ServiceDispatchDeps` so the Service surface + every Service
+  test + a fixed-seed replay stay byte-identical. Body Shop supplies its profile
+  in `src/bodyShopDepartment.ts`.
+- (Naming is legacy: the engine lives in the `ServiceDispatch` module because the
+  locked doc designates it the shared resolver; a future slice may relocate it.)
+
 ## Public API (`index.ts`)
 - `createServiceDispatch()` → `ServiceDispatch`. Legacy once-per-intake path:
   subscribes to `service:intake_ready` and resolves immediately. No capacity

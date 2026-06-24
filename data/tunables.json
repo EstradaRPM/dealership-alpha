@@ -306,6 +306,21 @@
     "rushUnlockTier": 3,
     "missCsiHit": 4
   },
+  "bodyShopDispatch": {
+    "_doc": "Body-Shop dispatch tunables (#314, parent #297). The Tier-3 mirror of serviceDispatch, fed into the SAME shared department-dispatch engine (advisor pick, parts gate, min(bays,advisors) capacity, read-model). Differs from Service in PRICING: there is no competitive↔premium dial — revenue is governed by the insurance/retail CHANNEL posture. Insurance (DRP) jobs are rate-capped (insuranceRateMultiplier ~1.0 — the insurer sets the rate; CollisionStream already capped the baseRevenue below book), retail (customer-pay) jobs are player-priced (lerp(retailFloorMultiplier, retailCeilMultiplier, posture)). bays start at Tier 3 (the Body Shop is dark below the showroom tier); collision jobs are slower + tolerate longer waits than Service tickets. All magnitudes placeholders pending the S14 calibration pass (#286).",
+    "minAutoResolveRate": 0.40,
+    "maxAutoResolveRate": 0.90,
+    "minPerSlotThroughput": 0.10,
+    "maxPerSlotThroughput": 0.45,
+    "baysByTier": { "1": 0, "2": 0, "3": 3, "4": 5, "5": 7 },
+    "maxWaitTicks": 90,
+    "unservedCsiHit": 3,
+    "rushUnlockTier": 4,
+    "missCsiHit": 4,
+    "insuranceRateMultiplier": 1.0,
+    "retailFloorMultiplier": 1.0,
+    "retailCeilMultiplier": 1.40
+  },
   "fniAutoAttach": {
     "baseAttachRates": {
       "vsc": 0.55,

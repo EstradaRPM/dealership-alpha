@@ -20,7 +20,7 @@ describe('DepartmentQueue — initial state', () => {
 
   it('getBadges returns zero for all depts', () => {
     const { queue } = makeSetup();
-    expect(queue.getBadges()).toEqual({ sales: 0, service: 0, bdc: 0, office: 0, lot: 0 });
+    expect(queue.getBadges()).toEqual({ sales: 0, service: 0, bdc: 0, office: 0, lot: 0, bodyshop: 0 });
   });
 });
 
@@ -114,13 +114,13 @@ describe('DepartmentQueue — getBadges', () => {
   it('reflects office badge count after day advance', () => {
     const { clock, queue } = makeSetup(1);
     clock.advanceDay();
-    expect(queue.getBadges()).toEqual({ sales: 0, service: 0, bdc: 0, office: 1, lot: 0 });
+    expect(queue.getBadges()).toEqual({ sales: 0, service: 0, bdc: 0, office: 1, lot: 0, bodyshop: 0 });
   });
 
   it('decrements office badge after resolution', () => {
     const { clock, queue } = makeSetup(1);
     clock.advanceDay();
     queue.resolveTop('office');
-    expect(queue.getBadges()).toEqual({ sales: 0, service: 0, bdc: 0, office: 0, lot: 0 });
+    expect(queue.getBadges()).toEqual({ sales: 0, service: 0, bdc: 0, office: 0, lot: 0, bodyshop: 0 });
   });
 });

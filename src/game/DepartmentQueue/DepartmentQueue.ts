@@ -13,7 +13,7 @@ export interface DepartmentQueue {
   restore(snap: DepartmentQueueSnapshot): void;
 }
 
-const DEPT_KEYS: DeptKey[] = ['sales', 'service', 'bdc', 'office', 'lot'];
+const DEPT_KEYS: DeptKey[] = ['sales', 'service', 'bdc', 'office', 'lot', 'bodyshop'];
 
 let _nextId = 1;
 function makeId(): string {
@@ -24,7 +24,7 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
   const { bus } = deps;
 
   const queues: Record<DeptKey, QueueItem[]> = {
-    sales: [], service: [], bdc: [], office: [], lot: [],
+    sales: [], service: [], bdc: [], office: [], lot: [], bodyshop: [],
   };
 
   bus.subscribe('clock:day_started', ({ day }) => {
@@ -95,6 +95,27 @@ export function createDepartmentQueue(deps: { bus: EventBus }): DepartmentQueue 
         baseRevenue: item.baseRevenue,
         jobCategory: item.jobCategory,
         vehicleId: item.vehicleId,
+      });
+    }
+  });
+
+  // Body Shop lane (#314): the Tier-3 mirror of the Service lane. BodyShopQueue
+  // re-publishes CollisionStream's gated intake as bodyshop:intake_ready; each
+  // item carries the channel `source` (insurance/retail) the drain prices through
+  // and the collision parts category the gate consumes.
+  bus.subscribe('bodyshop:intake_ready', ({ day, items }) => {
+    for (const item of items) {
+      queues.bodyshop.push({
+        id: item.bodyShopItemId,
+        type: 'routine',
+        dept: 'bodyshop',
+        label: item.label,
+        createdDay: day,
+        customerId: item.customerId,
+        baseRevenue: item.baseRevenue,
+        jobCategory: item.jobCategory,
+        vehicleId: item.vehicleId,
+        source: item.source,
       });
     }
   });

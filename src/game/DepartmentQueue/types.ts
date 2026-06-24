@@ -1,4 +1,4 @@
-export type DeptKey = 'sales' | 'service' | 'bdc' | 'office' | 'lot';
+export type DeptKey = 'sales' | 'service' | 'bdc' | 'office' | 'lot' | 'bodyshop';
 export type ItemType = 'routine' | 'workspace' | 'callback' | 'missed_opportunity';
 
 export interface QueueItem {
@@ -20,8 +20,19 @@ export interface QueueItem {
     | 'oil_filters'
     | 'tires_brakes'
     | 'drivetrain'
-    | 'electronics';
+    | 'electronics'
+    // Body-Shop collision categories (#314) — the same per-item carry as Service,
+    // so a restored/pre-drain Body-Shop item resolves against the right
+    // PartsInventory category.
+    | 'windows_glass'
+    | 'doors_panels'
+    | 'interior_trim'
+    | 'paint';
   readonly vehicleId?: string;
+  /** Body-Shop items only (#314): the demand channel (insurance DRP vs retail
+   *  customer-pay), carried so a restored (post-load) item prices through the
+   *  right channel-posture path on the drain. */
+  readonly source?: 'insurance' | 'retail';
 }
 
 /**

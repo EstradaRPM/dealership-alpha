@@ -93,9 +93,10 @@ union + powertrain union are declared locally (type-compatible with the
 `bodyshop:demand_ready` event), since CollisionStream — unlike ServiceDemand —
 does not consume an InstalledBase stream.
 
-## Status (#313)
-This slice builds the demand spine as a standalone, isolation-tested module. It is
-**not yet wired into `createWorld`/`snapshotWorld`** — like `BodyShopQueue` (#312),
-that wiring lands with the Body-Shop drain slice (#314), when the Body-Shop package
-exists to compose CollisionStream → BodyShopQueue → the drain and bind the live
-weather/reputation/posture/base reads.
+## Status (wired in #314)
+Built as a standalone isolation-tested module in #313; **wired into `createWorld`
+in #314** by the Body Shop package (`src/bodyShopDepartment.ts`), which composes
+CollisionStream → BodyShopQueue → the shared drain and binds the live weather /
+reputation / posture reads (the channel posture is the single Body-Shop lever,
+feeding both this demand mix and the drain's retail pricing). Holds no persisted
+state, so it has no `worldSnapshot` key — it regenerates from `masterSeed + day`.

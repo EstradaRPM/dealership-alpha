@@ -2,6 +2,12 @@ export {
   createServiceDispatch,
   createServiceFloorDrain,
   createServiceReadModel,
+  // The shared department-dispatch engine (#311/#314) — Body Shop composes these
+  // with its own DeptDispatchProfile (Service is the reference profile, wired by
+  // the Service builders above).
+  createDeptDispatch,
+  createDeptFloorDrain,
+  createDeptReadModel,
 } from './ServiceDispatch';
 export type {
   ServiceDispatch,
@@ -9,6 +15,15 @@ export type {
   ServiceLoad,
   ServiceReadModel,
   ServiceReadModelWriter,
+  // Generic engine surface.
+  DeptDispatchDeps,
+  DeptDispatchProfile,
+  DeptDispatchEmit,
+  DeptIntakeItem,
+  DeptCapacityConfig,
+  DeptLoad,
+  DeptReadModel,
+  DeptReadModelWriter,
 } from './ServiceDispatch';
 export { loadServiceDispatchConfig } from './serviceDispatchData';
 export type { ServiceDispatchConfig } from './serviceDispatchData';

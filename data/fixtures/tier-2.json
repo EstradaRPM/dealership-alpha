@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 13,
+    "version": 14,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -2726,7 +2726,12 @@
         "dailyReturns": [],
         "dailyDefections": []
       },
-      "servicePricingPosture": 0.5
+      "servicePricingPosture": 0.5,
+      "bodyShopQueue": {
+        "schemaVersion": 1,
+        "currentTier": 2
+      },
+      "bodyShopChannelPosture": 0.5
     }
   },
   "character": {

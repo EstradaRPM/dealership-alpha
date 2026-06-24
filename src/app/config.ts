@@ -60,6 +60,7 @@ export const DEPT_TITLES: Record<DeptKey, string> = {
   bdc: 'BDC',
   office: 'Office',
   lot: 'Lot',
+  bodyshop: 'Body Shop',
 };
 
 // Representative open-hours window for the FLOOR-OPEN HUD clock (#121).
