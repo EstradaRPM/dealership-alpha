@@ -1,5 +1,30 @@
 # Balance harness recipe (#247)
 
+> **DON'T INVESTIGATE THE HARNESS BANKRUPTING BEFORE T2. IT IS EXPECTED PRE-#249
+> AND PRE-EXISTING.** Confirmed 2026-06-24 by instrumenting the fixture seed
+> (competent): the bot **misses the tier-gate verdict every month (m1–m4)** AND
+> cash bleeds **negative by ~day 125** → `career:bankruptcy_terminal` →
+> game-over at **tier 1** (`reason=bankruptcy`, `final cash≈-1813`). Two
+> compounding failures, both from un-tuned numbers: the gate thresholds are
+> un-tuned, and the bot policies carry more overhead (competent = 2 salespeople
+> + a UCM; optimal adds a GM) than the un-tuned early-game gross supports — **the
+> bots are un-tuned strategies too**. Tuned in the **#249 staff-teeth +
+> threshold pass**. Human T1 play being trivially easy is *not* a contradiction:
+> a lean human stays cash-positive; the over-hiring bot bankrupts.
+>
+> **TRAP: the pacing report's "bankruptcy rate" is misleading.** It counts only
+> `endedReason==='bankrupt'`, which the runner sets *only* for the hard
+> mid-floor insolvency *throw*. A **modeled** bankruptcy
+> (`career:bankruptcy_terminal` → `career:game_over`) is filed as **`gameover`**,
+> so "bankruptcy rate: 0%" can coexist with most seeds bankrupting. Don't read
+> "0%" as "solvent."
+>
+> **"optimal" is anti-optimal** — most overhead, and its one differentiator,
+> margin pricing, is a no-op (`askingPrice` inert in the deal path; see caveats).
+> Only re-open this if it stops being a clean-tree pre-existing fact (a recent
+> change moved the day-125 ending earlier, or sales stop closing —
+> `closes`/`deal:closed`).
+
 A headless, policy-bot simulation harness for stress-testing tier pacing and
 calibrating tunables we **cannot reach by playing** — only Tier 1 is
 human-playtestable, but the gates for T2+ need to be tuned by feel we don't
@@ -150,11 +175,17 @@ npm run gen:fixtures -- --policy optimal   # capture from a stronger policy (see
   fixture restores an outdated module shape. `tests/tierFixtures.test.ts`
   asserts `tier-2.json` is at `WORLD_SNAPSHOT_VERSION`, so a forgotten
   regeneration fails CI. Regeneration is the one command above.
-- **Only reachable tiers are committed.** Under the current *un-tuned* tier-gate
-  thresholds the climb to **T3 game-overs before it gets there** — true for both
-  competent *and* optimal — so there is no `tier-3.json` yet. Once the #249
-  staff-teeth + threshold-tuning pass makes T3 reachable, `npm run gen:fixtures`
-  writes it and you add one line to `TIER_FIXTURES`; no other change.
+- **Only reachable tiers are committed, and regeneration is currently broken.**
+  Under the current *un-tuned* thresholds the fixture seed **bankrupts at
+  day ~125, still at tier 1** (modeled `career:bankruptcy_terminal`, verdict
+  missed every month) — so `npm run gen:fixtures` reaches **neither T2 nor T3**,
+  warns, and writes nothing (committed fixtures left intact). The existing
+  `tier-2.json` is a historical artifact kept alive **by migration, not
+  regeneration**: when the worldSnapshot envelope bumps and
+  `tests/tierFixtures.test.ts` goes red, migrate the committed fixture — do
+  **not** expect `gen:fixtures` to reproduce it until the #249 staff-teeth +
+  threshold-tuning pass makes the climb survivable. After #249, `gen:fixtures`
+  writes T2/T3 and you add a line to `TIER_FIXTURES`.
 - **Determinism:** a fixed seed (`deriveSeeds(1,1)[0]`) + the policy ⇒
   byte-stable fixtures. The generator never mutates `data/` except the fixture
   files it writes.

@@ -51,6 +51,11 @@ export interface RunResult {
   readonly finalTier: number;
   readonly finalCash: number;
   readonly endedReason: EndedReason;
+  /** For `gameover` runs, the EndCard terminal reason that settled it
+   *  (`bankruptcy` | `indictment` | `ag_complaint` | success endings); null
+   *  otherwise. Lets the report separate a MODELED bankruptcy from other
+   *  game-overs — `endedReason` alone tags only the hard insolvency throw. */
+  readonly gameOverReason: string | null;
   /** In-game day the run stopped (maxDays for `completed`). */
   readonly endedDay: number;
 }
@@ -74,11 +79,29 @@ export interface TierDwellStat {
   readonly withinTolerance: boolean | null;
 }
 
+/** How a cohort's runs ended. The two bankruptcy buckets are kept SEPARATE on
+ *  purpose: a single combined "bankruptcy rate" previously HID modeled
+ *  bankruptcies, because the runner tags only the hard mid-floor insolvency
+ *  THROW as `bankrupt` and routes a modeled bankruptcy (cash<0 →
+ *  `career:bankruptcy_terminal` → game-over) through the `gameover` bucket. */
+export interface EndReasonBreakdown {
+  /** Survived to maxDays still solvent. */
+  readonly completed: number;
+  /** Hard mid-floor insolvency throw (`endedReason === 'bankrupt'`). */
+  readonly insolventThrow: number;
+  /** Modeled bankruptcy: `career:bankruptcy_terminal` → `career:game_over`. */
+  readonly modeledBankruptcy: number;
+  /** Any other modeled game-over (indictment, ag_complaint, success endings). */
+  readonly otherGameOver: number;
+}
+
 /** One policy's full pacing summary over a seed cohort. */
 export interface PolicyPacing {
   readonly policyId: string;
   readonly seedCount: number;
-  readonly bankruptcyRate: number;
+  /** Full end-state breakdown. Replaces the old single `bankruptcyRate`, which
+   *  read 0% even when most seeds bankrupted (see EndReasonBreakdown). */
+  readonly endReasons: EndReasonBreakdown;
   readonly tiers: readonly TierDwellStat[];
   /** Median final tier reached across the cohort. */
   readonly medianFinalTier: number;

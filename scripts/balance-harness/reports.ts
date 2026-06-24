@@ -10,7 +10,13 @@
  */
 import pacingTargets from '../../data/tier-pacing-targets.json';
 import { loadTunables } from '../../src/game/data';
-import type { PolicyPacing, RunResult, RunSample, TierDwellStat } from './types';
+import type {
+  EndReasonBreakdown,
+  PolicyPacing,
+  RunResult,
+  RunSample,
+  TierDwellStat,
+} from './types';
 
 const DAYS_PER_MONTH = loadTunables().clock.daysPerMonth;
 const TOLERANCE_BAND = pacingTargets.toleranceBand;
@@ -38,10 +44,25 @@ function median(values: number[]): number {
 
 // ── Mode A: pacing ───────────────────────────────────────────────────────────
 
+/** Combined bankruptcy rate — BOTH the hard insolvency throw and the modeled
+ *  `career:bankruptcy_terminal`. The honest "how often does it go broke" number. */
+export function bankruptRate(p: PolicyPacing): number {
+  if (p.seedCount === 0) return 0;
+  return (p.endReasons.insolventThrow + p.endReasons.modeledBankruptcy) / p.seedCount;
+}
+
 export function summarizePacing(policyId: string, results: readonly RunResult[]): PolicyPacing {
   const seedCount = results.length;
-  const bankruptcyRate =
-    seedCount === 0 ? 0 : results.filter((r) => r.endedReason === 'bankrupt').length / seedCount;
+  const endReasons: EndReasonBreakdown = {
+    completed: results.filter((r) => r.endedReason === 'completed').length,
+    insolventThrow: results.filter((r) => r.endedReason === 'bankrupt').length,
+    modeledBankruptcy: results.filter(
+      (r) => r.endedReason === 'gameover' && r.gameOverReason === 'bankruptcy',
+    ).length,
+    otherGameOver: results.filter(
+      (r) => r.endedReason === 'gameover' && r.gameOverReason !== 'bankruptcy',
+    ).length,
+  };
 
   const tiers: TierDwellStat[] = TIERS.map((tier) => {
     const reached = results.filter((r) => r.tierReachedDay[tier] !== undefined);
@@ -75,7 +96,7 @@ export function summarizePacing(policyId: string, results: readonly RunResult[])
   return {
     policyId,
     seedCount,
-    bankruptcyRate,
+    endReasons,
     tiers,
     medianFinalTier: seedCount === 0 ? 0 : median(results.map((r) => r.finalTier)),
   };
@@ -93,8 +114,12 @@ export function formatPacing(pacings: readonly PolicyPacing[]): string {
   lines.push('');
   for (const p of pacings) {
     lines.push(`## policy: ${p.policyId}  (seeds=${p.seedCount})`);
+    const e = p.endReasons;
     lines.push(
-      `   bankruptcy rate: ${(p.bankruptcyRate * 100).toFixed(0)}%   median final tier: ${fmt(p.medianFinalTier, 1)}`,
+      `   bankrupt: ${(bankruptRate(p) * 100).toFixed(0)}%` +
+        ` (modeled=${e.modeledBankruptcy}, throw=${e.insolventThrow})` +
+        `   completed=${e.completed}  other-gameover=${e.otherGameOver}` +
+        `   median final tier: ${fmt(p.medianFinalTier, 1)}`,
     );
     lines.push(
       '   tier  reached  advanced   p10d  medianMo  p90d   targetMo   status',
@@ -137,7 +162,7 @@ export function formatSweep(file: string, path: string, rows: readonly SweepRow[
       fmt(row.pacing.tiers.find((x) => x.tier === tier)?.medianMonths ?? null, 1).padStart(8);
     lines.push(
       `   ${String(row.value).padStart(8)}` +
-        `  ${(row.pacing.bankruptcyRate * 100).toFixed(0).padStart(8)}%` +
+        `  ${(bankruptRate(row.pacing) * 100).toFixed(0).padStart(8)}%` +
         `  ${fmt(row.pacing.medianFinalTier, 1).padStart(12)}` +
         `  ${t(1)}  ${t(2)}  ${t(3)}`,
     );

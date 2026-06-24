@@ -71,6 +71,7 @@ export function runOne(policy: Policy, seed: number, opts: RunOptions): RunResul
   let closes = 0;
   let strongMatches = 0;
   let gameOver = false;
+  let gameOverReason: string | null = null;
 
   bus.subscribe('career:tier_up', (p) => {
     if (tierReachedDay[p.toTier] === undefined) tierReachedDay[p.toTier] = p.day;
@@ -93,8 +94,9 @@ export function runOne(policy: Policy, seed: number, opts: RunOptions): RunResul
       bindingRatio: binding.ratio,
     });
   });
-  bus.subscribe('career:game_over', () => {
+  bus.subscribe('career:game_over', (p) => {
     gameOver = true;
+    gameOverReason = p.data.reason;
   });
 
   let endedReason: EndedReason = 'completed';
@@ -143,6 +145,7 @@ export function runOne(policy: Policy, seed: number, opts: RunOptions): RunResul
     finalTier: world.tierManager.currentTier,
     finalCash: Math.round(world.economy.cash),
     endedReason,
+    gameOverReason,
     endedDay,
   };
 }
