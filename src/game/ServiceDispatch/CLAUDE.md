@@ -117,14 +117,18 @@ gate (or no SM) the player keeps manual control — no behavior change.
   operational maturity the tier gate stood in for); capacity-function-also ⇒
   rush only while the shop has slack (utilization below the ceiling), else walk.
 
-The composition root owns the orchestration (createWorld, after ServiceInsights):
-it resolves the top SM `shop_throughput` from the live roster, applies the
-par/posture/marketing setpoints on `clock:day_started` (constant within the day +
-replay-deterministic readouts ⇒ #122-safe; the PartsInventory reorder sweep
+The orchestration lives in the **Service department package**
+(`src/serviceDepartment.ts`, #311), not inline in `createWorld`: it resolves the
+top SM `shop_throughput` from the live roster, applies the par/posture/marketing
+setpoints on `clock:day_started` through the shared
+`DepartmentLine.createDepartmentManagerAutomation` ladder (constant within the day
++ replay-deterministic readouts ⇒ #122-safe; the PartsInventory reorder sweep
 subscribes earlier so a re-tuned par lands on the next morning's sweep — a
-one-day lag), and folds `shouldRush` into the `isRushUnlocked` parts-gate seam.
-`warranty_handling` (the SM's other granted skill) is reserved for a future
-advise-side surface, NOT gated here.
+one-day lag), and folds `shouldRush` into the `isRushUnlocked` parts-gate seam of
+the drain the package builds. The skill-gated ladder *pattern* is now shared
+(`DepartmentLine`); the *specific functions* automated stay Service-owned in the
+package. `warranty_handling` (the SM's other granted skill) is reserved for a
+future advise-side surface, NOT gated here.
 
 ## Notes
 - Mirrors `StaffDispatch` in shape but operates on Service items rather than Sales. Look at that module first when extending — keep the two parallel.

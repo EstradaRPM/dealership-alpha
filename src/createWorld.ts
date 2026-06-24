@@ -93,17 +93,8 @@ import {
 } from './game/DealEngine';
 import type { PricedVehicleInput } from './game/SalesProcess';
 import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
-import {
-  createInstalledBase,
-  loadInstalledBaseConfig,
-  type InstalledBase,
-} from './game/InstalledBase';
-import {
-  createPartsInventory,
-  loadPartsInventoryConfig,
-  type PartsInventory,
-  type PartCategory,
-} from './game/PartsInventory';
+import type { InstalledBase } from './game/InstalledBase';
+import type { PartsInventory } from './game/PartsInventory';
 import {
   createTierManager,
   createBankruptcyMonitor,
@@ -122,29 +113,14 @@ import {
   type RegulatoryMeter,
   type Reputation,
 } from './game/Reputation';
-import { createServiceDemand, type ServiceDemand } from './game/ServiceDemand';
-import {
-  createServiceInsights,
-  type ServiceInsights,
-} from './game/ServiceInsights';
-import {
-  createServiceMarketing,
-  type ServiceMarketing,
-} from './game/ServiceMarketing';
-import { createServiceQueue, type ServiceQueue } from './game/ServiceQueue';
-import {
-  createServiceFloorDrain,
-  createServiceReadModel,
-  loadServiceDispatchConfig,
-  type ServiceReadModel,
-  // #310 service-manager automation (parent #297).
-  isServiceFunctionAutomated,
-  autoServicePar,
-  autoServicePosture,
-  autoServiceMarketing,
-  shouldRush,
-  loadServiceManagerConfig,
-} from './game/ServiceDispatch';
+import type { ServiceDemand } from './game/ServiceDemand';
+import type { ServiceInsights } from './game/ServiceInsights';
+import type { ServiceMarketing } from './game/ServiceMarketing';
+import type { ServiceQueue } from './game/ServiceQueue';
+import type { ServiceReadModel } from './game/ServiceDispatch';
+// #311 the Service department package (the labeled bundle that plugs into the
+// shared department line); replaces the inline Service wiring previously here.
+import { createServiceDepartment } from './serviceDepartment';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createHistoryLog, type HistoryLog } from './game/HistoryLog';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
@@ -812,181 +788,36 @@ export function createWorld(deps: {
     tunables: loadCustomerTunables().followUp,
   });
 
-  // InstalledBase (#298/#300, parent #297): the per-owner Service-annuity
-  // registry. Accrues one owner record per sale by joining
-  // `inventory:vehicle_sold` (the vehicle snapshot) with `deal:closed`
-  // (customerId↔vehicleId) and `customer:resolved` (the satisfaction-at-sale
-  // `retentionSeed` loyalty seed). #300 adds the return cadence: each morning it
-  // rolls the due owners' returns and publishes `installedBase:returns_ready`
-  // for the future ServiceDemand. Reputation is read live (normalized to [0,1])
-  // via an injected getter so the module stays Reputation-free.
-  // #305/#306 service pricing posture — the single competitive↔premium dial
-  // [0,1] (0 = competitive labor + markup, 1 = premium). A stored player
-  // setting, neutral by default; the dial UI + persistence are a later slice.
-  // Declared before InstalledBase so the feedback loop's gouging gate (#306) can
-  // read it live; ServiceDispatch reads the same value for its revenue dial.
-  // Exposed on the World seam so a Settings/Service-page lever can drive it.
-  let servicePricingPosture = 0.5;
-
-  // ServiceMarketing (#307, parent #297): the two service-marketing arms,
-  // distinct from sales advertising. RETENTION feeds InstalledBase's return roll
-  // (below); CONQUEST feeds ServiceDemand's volume + mix skew. Each active arm
-  // debits its daily cost from Economy on clock:day_started. Declared before
-  // InstalledBase + ServiceDemand so their influence reads bind live. Player-
-  // facing controls land on the Service page in a later slice; the lever state
-  // persists via the world snapshot. Adds no RNG — effects flow through the
-  // already-seeded return/conquest math, so a fixed seed replays identically.
-  const serviceMarketing = createServiceMarketing({ economy });
-  bus.subscribe('clock:day_started', ({ day }) => {
-    serviceMarketing.advanceDay(day);
-  });
-
-  const installedBase = createInstalledBase({
+  // Service department package (#311, parent #297): the labeled "Service package"
+  // (the five Service modules + InstalledBase + PartsInventory + the
+  // manager-automation ladder) that plugs into the shared department line. This
+  // is the behavior-neutral extraction of what was inline Service wiring here —
+  // same module construction, same closures, same clock:day_started subscription
+  // order, so a fixed seed replays byte-identically (#122). The demand spine
+  // (ServiceDemand) is the single difference Body Shop (#312–#317) swaps; its
+  // satellites (pricing posture, marketing arms, installed-base feedback) live in
+  // the package and never cross the seam. See
+  // docs/planning/shared-department-structure.md.
+  const serviceDept = createServiceDepartment({
     bus,
-    config: loadInstalledBaseConfig(),
     masterSeed,
-    reputation: () => Math.max(0, Math.min(1, reputation.reviewScore / 100)),
-    // #306 a premium posture turns served jobs into "gouging" — owners shop
-    // around (loyalty/CSI drop, Reputation dings).
-    getPricingPosture: () => servicePricingPosture,
-    // #307 retention-arm lift raises the return roll's convenience term.
-    getRetentionLift: () => serviceMarketing.retentionLift(),
-  });
-
-  // PartsInventory (#299/#301, parent #297): the supply-side half of the Service
-  // profit center. Mirrors the vehicle Inventory discipline — stock-in debits
-  // cash now, a unit is recouped only when a matching job consumes it; over-
-  // stock is dead capital. #301 adds par-level procurement: each morning the
-  // module receives due orders and runs its reorder sweep, driven off
-  // clock:day_started. The ServiceDispatch parts-gate that calls `consume` on a
-  // closed ticket (and fires `rushOrder` on a miss) is a later slice.
-  const partsInventory = createPartsInventory({
     economy,
-    config: loadPartsInventoryConfig(),
-    masterSeed,
+    staffOrg,
+    tierManager,
+    departmentQueue,
+    reputation,
+    weather,
+    managerGates,
   });
-  bus.subscribe('clock:day_started', ({ day }) => {
-    partsInventory.advanceDay(day);
-  });
-  // #304 the rush emergency-order unlock tier (operation-maturity gate, PRD
-  // #297) the Service parts-gate reads. Loaded once; the drain below closes over
-  // it for its per-day isRushUnlocked predicate.
-  const serviceDispatchConfig = loadServiceDispatchConfig();
-
-  // #305 live service capacity read-model (waiting / in-progress / avg-wait /
-  // utilization) for the Service page + floor card. Long-lived; each per-day
-  // service drain writes the live snapshot into this same instance.
-  const serviceReadModel = createServiceReadModel();
-
-  // ServiceDemand (#302, parent #297): the pure mix composer. On each
-  // installedBase:returns_ready it folds the returning owners in as the primary
-  // stream, adds a conquest floor of fresh walk-ins (scaled by reputation ×
-  // service marketing — the #307 conquest arm drives both the volume scaler and
-  // the category-targeted mix skew), composes their job/parts category mix
-  // (usual split + seasonal
-  // lean from Weather + base-age drift + powertrain skew aggregated off the live
-  // installed base + RNG variance), and publishes serviceDemand:intake_ready.
-  // Built AFTER InstalledBase + Weather (its upstream providers, seam recipe).
-  // ServiceQueue (below) is the consumer: it gates this stream by tier and
-  // re-publishes it as service:intake_ready (#303).
-  const serviceDemand: ServiceDemand = createServiceDemand({
-    bus,
-    masterSeed,
-    reputation: () => Math.max(0, Math.min(1, reputation.reviewScore / 100)),
-    // #307 conquest-arm reads: volume scaler + category-targeted mix skew.
-    serviceMarketing: () => serviceMarketing.conquestVolumeInfluence(),
-    conquestBias: () => serviceMarketing.conquestBias(),
-    season: (day) => weather.weatherForDay(day).season,
-    baseOwners: () => installedBase.getOwners(),
-  });
-
-  // ServiceInsights (#308, parent #297): the trailing-window read-model behind
-  // the Service page. Listens to the enriched intake (per-category demand heat)
-  // plus the installed-base return/defection stream (base health), and reads the
-  // live registry for the size/loyalty/CSI/at-risk aggregates. Built AFTER
-  // ServiceDemand + InstalledBase (its upstream signal sources). Emits nothing;
-  // persisted via the world snapshot so trends stay continuous across a reload.
-  const serviceInsights = createServiceInsights({ bus, installedBase });
-
-  // ServiceManager automation (#310, parent #297): the Service-side mirror of the
-  // channel-desk manager pattern. Skill-gated gates live HERE at the composition
-  // boundary so the Service modules stay decoupled from StaffOrg — exactly as the
-  // UCM auto-pricing / sourcing gates do. As the on-staff service manager's
-  // `shop_throughput` clears each function's tunable threshold (a ladder, so
-  // automation engages one function at a time as the SM grows), the SM takes over
-  // the standing Service decisions the player otherwise ran by hand. Below a gate
-  // (or with no SM on staff) the player keeps manual control — no behavior change.
-  const serviceManagerGates = managerGates.serviceManager.actThresholds;
-  const serviceManagerConfig = loadServiceManagerConfig();
-  // Top on-staff SM `shop_throughput` (null = no service manager). Read live each
-  // call; the effective skill is constant within an open day (channel-desk M7).
-  const topServiceManagerSkill = (): number | null => {
-    const skills = staffOrg.currentRoster
-      .filter((s) => s.role_id === 'service-manager')
-      .map((s) => s.effectiveSkills['shop_throughput'] ?? 0);
-    return skills.length === 0 ? null : Math.max(...skills);
-  };
-  const serviceFnAutomated = (fn: keyof typeof serviceManagerGates): boolean =>
-    isServiceFunctionAutomated(topServiceManagerSkill(), serviceManagerGates[fn]);
-
-  // Standing setpoints applied each morning. par/posture/marketing are constant
-  // within the day (the SM skill + the readouts are replay-deterministic) ⇒ a
-  // fixed seed replays byte-identically (#122). PartsInventory subscribes its own
-  // reorder sweep to clock:day_started earlier, so a re-tuned par takes effect on
-  // the NEXT morning's sweep — an intentional one-day lag, not a same-day race.
-  bus.subscribe('clock:day_started', () => {
-    if (serviceFnAutomated('par')) {
-      const setpoints = autoServicePar(
-        serviceInsights
-          .getDemandHeat()
-          .map((h) => ({ category: h.category, demand: h.count })),
-        { config: serviceManagerConfig },
-      );
-      for (const sp of setpoints) {
-        partsInventory.setPolicy(sp.category as PartCategory, {
-          reorderPoint: sp.reorderPoint,
-          target: sp.target,
-        });
-      }
-    }
-    if (serviceFnAutomated('pricing')) {
-      servicePricingPosture = autoServicePosture(
-        Math.max(0, Math.min(1, reputation.reviewScore / 100)),
-        { config: serviceManagerConfig },
-      );
-    }
-    if (serviceFnAutomated('marketing')) {
-      const health = serviceInsights.getBaseHealth();
-      const coverage = serviceInsights.getDemandHeat().map((h) => ({
-        category: h.category,
-        demand: h.count,
-        onHand: partsInventory.getStock(h.category as PartCategory),
-      }));
-      // The SM enables the first available retention campaign when churn
-      // pressure is high (the catalog is hand-ordered cheapest/lightest first;
-      // the S14 pass can switch this to a base-health-scaled pick).
-      const retentionCampaignId =
-        serviceMarketing.retentionCampaigns[0]?.id ?? 'none';
-      const decision = autoServiceMarketing(
-        { health, coverage, retentionCampaignId },
-        { config: serviceManagerConfig },
-      );
-      serviceMarketing.setRetentionCampaign(decision.retentionId);
-      serviceMarketing.setConquestSpecial(
-        decision.conquestCategory as Parameters<
-          typeof serviceMarketing.setConquestSpecial
-        >[0],
-      );
-    }
-  });
-
-  // ServiceQueue (#80, rewired #303): the Tier-2 gate on the Service intake.
-  // Starts silent (default initialTier=1 < minTierRequired 2), follows
-  // career:tier_up off the bus, and once at Tier 2 subscribes to ServiceDemand's
-  // enriched serviceDemand:intake_ready and re-publishes it as a daily
-  // service:intake_ready that DepartmentQueue pushes into the Service lane —
-  // surfaced/resolved by the generic DepartmentScreen with no extra wiring.
-  const serviceQueue = createServiceQueue({ bus });
+  const {
+    installedBase,
+    partsInventory,
+    serviceDemand,
+    serviceInsights,
+    serviceMarketing,
+    serviceQueue,
+    serviceReadModel,
+  } = serviceDept;
   // EndCardManager (#84): all terminal failure paths + success endings
   // converge here and re-emit a single career:game_over carrying the
   // assembled EndCardData. Wired in the live world (not just tests) so the
@@ -1334,46 +1165,11 @@ export function createWorld(deps: {
           };
         },
       }),
-      createServiceFloorDrain({
-        bus,
-        staffOrg,
-        queue: departmentQueue,
-        economy,
-        masterSeed,
-        // #304 parts gate: a completed service job consumes one matching-category
-        // PartsInventory unit; an under-stock miss rush-orders (once the rush
-        // tier is unlocked at rushUnlockTier) or is a flat miss (lost revenue +
-        // CSI hit). rushUnlockTier is the operation-maturity gate (PRD #297).
-        partsInventory,
-        // #310: once the rush function is automated, the service manager makes
-        // the rush-vs-walk call instead of the blunt tier gate — it enables rush
-        // regardless of tier (the SM IS the operational maturity the tier gate
-        // stood in for). Once the capacity function is also automated the call
-        // becomes capacity-aware: it rushes only while the shop has slack (live
-        // utilization below the ceiling), else walks rather than overcommit a
-        // slammed bay/advisor floor. Read per-miss; the SM skill is constant
-        // within the day and the read-model is replay-deterministic ⇒ #122-safe.
-        // Below the rush gate (or no SM) the original tier gate stands unchanged.
-        isRushUnlocked: () => {
-          if (serviceFnAutomated('rush')) {
-            return shouldRush(
-              {
-                utilization: serviceReadModel.read().utilization,
-                capacityAware: serviceFnAutomated('capacity'),
-              },
-              { config: serviceManagerConfig },
-            );
-          }
-          return tierManager.currentTier >= serviceDispatchConfig.rushUnlockTier;
-        },
-        // #305 capacity + posture + read-model. facilityTier snapshots the
-        // current tier (this seam is rebuilt per-day, so a tier-up applies the
-        // next day); bays scale off it. getPricingPosture reads the live dial.
-        // The drain writes the capacity read-model every tick.
-        facilityTier: tierManager.currentTier,
-        getPricingPosture: () => servicePricingPosture,
-        readModel: serviceReadModel,
-      }),
+      // #311: the per-day Service floor drain is built by the Service package
+      // (the parts gate + #310 rush/capacity automation + #305 capacity/posture/
+      // read-model all live in the bundle now). Reads tierManager live, so a
+      // mid-game tier-up applies the next day, exactly as before.
+      serviceDept.createFloorDrain(),
     ],
     customerSource,
     // #207: the hours-of-op lever's scaled day length. Read per-day so a
@@ -1457,11 +1253,9 @@ export function createWorld(deps: {
     serviceReadModel,
     // #305 service pricing posture dial [0,1] (competitive↔premium). Getter +
     // setter so a Settings/Service-page lever can drive it; persistence is a
-    // later slice.
-    getServicePricingPosture: () => servicePricingPosture,
-    setServicePricingPosture: (v: number) => {
-      servicePricingPosture = v < 0 ? 0 : v > 1 ? 1 : v;
-    },
+    // later slice. Owned by the Service package (#311).
+    getServicePricingPosture: serviceDept.getServicePricingPosture,
+    setServicePricingPosture: serviceDept.setServicePricingPosture,
     reputation,
     regulatoryMeter,
     serviceQueue,
