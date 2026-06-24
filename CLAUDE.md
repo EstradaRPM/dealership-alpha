@@ -47,7 +47,7 @@ Game logic lives under `src/game/<Module>/`. Each module directory contains a `C
 
 Original 12 (issue #1): `GameClock`, `CustomerPool`, `DepartmentQueue`, `StaffOrg`, `Inventory`, `DealEngine`, `Economy`, `Reputation`, `CompetitorMarket`, `CareerProgression`, `SaveStore`, `EventBus`.
 
-Added during implementation: `CapacityManager`, `FollowUpPool`, `NPC`, `ServiceQueue`, `ServiceDispatch`, `StaffDispatch`, `StaffMorale`, `DepartmentLine` (the shared department assembly-line backbone — Service and Body Shop plug their recipe packages into it; #311, see `docs/planning/shared-department-structure.md`). Plus `data/` (JSON loader + tunables schema; not an EventBus participant).
+Added during implementation: `CapacityManager`, `FollowUpPool`, `NPC`, `ServiceQueue`, `ServiceDispatch`, `StaffDispatch`, `StaffMorale`, `DepartmentLine` (the shared department assembly-line backbone — Service and Body Shop plug their recipe packages into it; #311, see `docs/planning/shared-department-structure.md`), `BodyShopQueue` (the Tier-3 mirror of `ServiceQueue` — the Body Shop's gate on the shared line; #312). Plus `data/` (JSON loader + tunables schema; not an EventBus participant).
 
 The Service department is composed as a labeled package in `src/serviceDepartment.ts` (`createServiceDepartment`) — the bundle of the five Service modules + `InstalledBase` + `PartsInventory` that plugs into `DepartmentLine` through the narrow seam (enriched intake + pricing read). Body Shop (#312–#317) supplies its own package against the same contract.
 

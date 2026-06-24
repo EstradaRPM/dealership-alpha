@@ -426,13 +426,17 @@
     "baseTrendEpsilon": 0.15
   },
   "partsInventory": {
-    "_doc": "PartsInventory par-level procurement (#301, parent #297). `categories` carries each Service part category's `baseUnitCost` (the standard-tier unit price) plus its default `reorderPoint`/`target` par levels. `supplierTiers` trade unit cost against lead time and reliability: `costMultiplier` scales baseUnitCost, `leadTimeDays` is the scheduled arrival delay, `reliability` ∈ [0,1] is the per-order on-time probability (a failed seeded roll adds `delayPenaltyDays`). `defaultTier` is the tier a category procures at until the player picks another. All numbers are S14 (#286) calibration placeholders.",
+    "_doc": "PartsInventory par-level procurement (#301/#312, parent #297). `categories` carries each part category's `baseUnitCost` (the standard-tier unit price) plus its default `reorderPoint`/`target` par levels. The four Body-Shop categories (windows_glass / doors_panels / interior_trim / paint, #312) ship at 0 par — they are keyed so stock/consume/coverage work, but stay INACTIVE (no auto-order) until the Body-Shop package activates them with non-zero par at Tier 3, so a single shared parts room never auto-stocks collision parts before the body shop opens. `supplierTiers` trade unit cost against lead time and reliability: `costMultiplier` scales baseUnitCost, `leadTimeDays` is the scheduled arrival delay, `reliability` ∈ [0,1] is the per-order on-time probability (a failed seeded roll adds `delayPenaltyDays`). `defaultTier` is the tier a category procures at until the player picks another. All numbers are S14 (#286) calibration placeholders.",
     "defaultTier": "standard",
     "categories": {
       "oil_filters": { "baseUnitCost": 20, "reorderPoint": 6, "target": 18 },
       "tires_brakes": { "baseUnitCost": 250, "reorderPoint": 4, "target": 10 },
       "drivetrain": { "baseUnitCost": 900, "reorderPoint": 1, "target": 3 },
-      "electronics": { "baseUnitCost": 600, "reorderPoint": 1, "target": 3 }
+      "electronics": { "baseUnitCost": 600, "reorderPoint": 1, "target": 3 },
+      "windows_glass": { "baseUnitCost": 300, "reorderPoint": 0, "target": 0 },
+      "doors_panels": { "baseUnitCost": 700, "reorderPoint": 0, "target": 0 },
+      "interior_trim": { "baseUnitCost": 200, "reorderPoint": 0, "target": 0 },
+      "paint": { "baseUnitCost": 150, "reorderPoint": 0, "target": 0 }
     },
     "supplierTiers": {
       "economy": { "costMultiplier": 0.85, "leadTimeDays": 7, "reliability": 0.8, "delayPenaltyDays": 4 },

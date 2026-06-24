@@ -183,6 +183,51 @@
     }
   },
 
+  "entry_body_shop_advisor": {
+    "role_id": "body-shop-advisor",
+    "trait_pool": ["transparency", "charisma", "ego"],
+    "trait_count": { "min": 1, "max": 2 },
+    "skills": {
+      "communication": { "mu": 35, "sigma": 10 },
+      "diagnostic_clarity": { "mu": 30, "sigma": 8 },
+      "write_up_accuracy": { "mu": 34, "sigma": 9 },
+      "upsell": { "mu": 24, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 86, "sigma": 6 }
+    }
+  },
+
+  "veteran_body_shop_advisor": {
+    "role_id": "body-shop-advisor",
+    "trait_pool": ["transparency", "charisma", "closer", "ego"],
+    "trait_count": { "min": 2, "max": 3 },
+    "skills": {
+      "communication": { "mu": 64, "sigma": 9 },
+      "diagnostic_clarity": { "mu": 62, "sigma": 9 },
+      "write_up_accuracy": { "mu": 60, "sigma": 9 },
+      "upsell": { "mu": 56, "sigma": 10 }
+    },
+    "resources": {
+      "stamina": { "mu": 76, "sigma": 8 }
+    }
+  },
+
+  "poached_body_shop_manager": {
+    "role_id": "body-shop-manager",
+    "trait_pool": ["transparency", "charisma", "ego", "aggressiveness", "closer"],
+    "trait_count": { "min": 3, "max": 4 },
+    "skills": {
+      "communication": { "mu": 70, "sigma": 8 },
+      "diagnostic_clarity": { "mu": 70, "sigma": 8 },
+      "shop_throughput": { "mu": 75, "sigma": 7 },
+      "warranty_handling": { "mu": 70, "sigma": 8 }
+    },
+    "resources": {
+      "stamina": { "mu": 72, "sigma": 8 }
+    }
+  },
+
   "entry_used_car_manager": {
     "role_id": "used-car-manager",
     "trait_pool": ["transparency", "aggressiveness", "ego", "charisma"],

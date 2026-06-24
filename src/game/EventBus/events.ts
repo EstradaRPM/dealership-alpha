@@ -651,6 +651,62 @@ export interface EventMap {
     }>;
   };
 
+  // ── Body Shop (#312–#317, parent #297) ─────────────────────────────────────
+  // The Body Shop runs the SAME shared department assembly line as Service
+  // (docs/planning/shared-department-structure.md, LOCKED) but feeds it from its
+  // own recipe package. Per that doc's event-name decision (§ "Event-name
+  // generalization"), we MIRROR the service:* set with a parallel bodyshop:* set
+  // bound to the same resolver rather than collapsing both into a dept:* family —
+  // this keeps the service:* payloads byte-stable (Service tests + persistence
+  // envelopes don't churn). The category union widens to the four Body-Shop
+  // collision categories. The dispatch/resolution bodyshop:* events
+  // (ticket_closed / parts_consumed / job_missed …) join the catalog with the
+  // Body-Shop drain slice (#314); #312 lands only the demand → queue pair.
+
+  // CollisionStream (#313, the Body-Shop demand spine) — the day's enriched,
+  // NPC-bound collision intake. Mirrors serviceDemand:intake_ready: each ticket
+  // carries customer + vehicle identity, the due collision job/parts category,
+  // and the base ticket revenue. `source` is the Body-Shop demand channel —
+  // `insurance` (DRP claim work) vs `retail` (customer-pay) — the axis the
+  // Body-Shop pricing satellite (insurance-DRP ↔ retail posture) reads. #312
+  // ships the event shape with a placeholder feed; CollisionStream populates it.
+  'bodyshop:demand_ready': {
+    day: number;
+    intake: ReadonlyArray<{
+      ticketId: string;
+      source: 'insurance' | 'retail';
+      customerId: string;
+      vehicleId: string;
+      category: string;
+      powertrain: 'ice' | 'hybrid' | 'ev';
+      jobCategory: 'windows_glass' | 'doors_panels' | 'interior_trim' | 'paint';
+      baseRevenue: number;
+    }>;
+  };
+
+  // BodyShopQueue (#312, parent #297) — the day's enriched, NPC-bound Body-Shop
+  // intake. The Tier-3 mirror of service:intake_ready: BodyShopQueue subscribes to
+  // bodyshop:demand_ready, applies the Tier-3 gate, and re-publishes the stream
+  // (each item gaining a display `label` derived from the collision job category)
+  // for the Body-Shop lane + drain. ORDERING: fires within the clock:day_started
+  // dispatch, downstream of bodyshop:demand_ready (CollisionStream → BodyShopQueue),
+  // so the Body-Shop lane is populated before the day's drain. Silent below
+  // Tier 3 (the Body Shop is dark until the showroom tier).
+  'bodyshop:intake_ready': {
+    day: number;
+    items: ReadonlyArray<{
+      bodyShopItemId: string;
+      source: 'insurance' | 'retail';
+      customerId: string;
+      vehicleId: string;
+      category: string;
+      powertrain: 'ice' | 'hybrid' | 'ev';
+      jobCategory: 'windows_glass' | 'doors_panels' | 'interior_trim' | 'paint';
+      baseRevenue: number;
+      label: string;
+    }>;
+  };
+
   // EndCard — all terminal paths converge here; UI subscribes to show the end-card screen
   'career:game_over': { day: number; data: EndCardData };
 

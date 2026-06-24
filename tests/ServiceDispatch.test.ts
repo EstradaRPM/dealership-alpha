@@ -359,6 +359,10 @@ function makeStubParts(initial: Partial<Record<PartCategory, number>> = {}) {
     tires_brakes: 0,
     drivetrain: 0,
     electronics: 0,
+    windows_glass: 0,
+    doors_panels: 0,
+    interior_trim: 0,
+    paint: 0,
     ...initial,
   };
   const rushed: PartCategory[] = [];

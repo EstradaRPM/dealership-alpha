@@ -44,6 +44,22 @@
     "promotion_gates": { "effectiveness": 0.75, "trustworthiness": 0.7 },
     "hireTier": 5
   },
+  "body-shop-advisor": {
+    "tier": "customer-facing",
+    "department": "body",
+    "grants_skills": ["communication", "diagnostic_clarity", "write_up_accuracy", "upsell"],
+    "promotes_to": ["body-shop-manager"],
+    "promotion_gates": { "effectiveness": 0.6, "trustworthiness": 0.7 },
+    "hireTier": 3
+  },
+  "body-shop-manager": {
+    "tier": "manager",
+    "department": "body",
+    "grants_skills": ["shop_throughput", "warranty_handling"],
+    "promotes_to": ["gm"],
+    "promotion_gates": { "effectiveness": 0.75, "trustworthiness": 0.7 },
+    "hireTier": 5
+  },
   "used-car-manager": {
     "tier": "manager",
     "department": "sales",

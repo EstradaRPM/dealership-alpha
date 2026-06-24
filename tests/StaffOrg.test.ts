@@ -317,6 +317,58 @@ describe('StaffOrg — config', () => {
   });
 });
 
+// ── Body Shop hire-tier gating (#312) ───────────────────────────────────────
+
+describe('StaffOrg — Body Shop hire-tier gating', () => {
+  function makeSetupWithTier(tier: number) {
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const staffOrg = createStaffOrg({
+      bus,
+      economy,
+      masterSeed: MASTER_SEED,
+      taxonomy,
+      archetypes,
+      config: CHEAP_CONFIG,
+      getTier: () => tier,
+    });
+    return { clock, staffOrg };
+  }
+
+  it('getCandidates for body-shop-advisor throws below Tier 3', () => {
+    const { clock, staffOrg } = makeSetupWithTier(2);
+    clock.advanceDay();
+    expect(() => staffOrg.getCandidates('body-shop-advisor')).toThrow(/tier 3/i);
+  });
+
+  it('getCandidates for body-shop-advisor succeeds at Tier 3', () => {
+    const { clock, staffOrg } = makeSetupWithTier(3);
+    clock.advanceDay();
+    const candidates = staffOrg.getCandidates('body-shop-advisor');
+    expect(candidates.length).toBeGreaterThan(0);
+    for (const c of candidates) {
+      expect(c.staff.role_id).toBe('body-shop-advisor');
+    }
+  });
+
+  it('getCandidates for body-shop-manager throws below its hire tier', () => {
+    const { clock, staffOrg } = makeSetupWithTier(3);
+    clock.advanceDay();
+    expect(() => staffOrg.getCandidates('body-shop-manager')).toThrow(StaffOrgError);
+  });
+
+  it('getCandidates for body-shop-manager succeeds at Tier 5', () => {
+    const { clock, staffOrg } = makeSetupWithTier(5);
+    clock.advanceDay();
+    const candidates = staffOrg.getCandidates('body-shop-manager');
+    expect(candidates.length).toBeGreaterThan(0);
+    for (const c of candidates) {
+      expect(c.staff.role_id).toBe('body-shop-manager');
+    }
+  });
+});
+
 // ── F&I Manager hire-tier gating ────────────────────────────────────────────
 
 describe('StaffOrg — F&I Manager hire-tier gating', () => {

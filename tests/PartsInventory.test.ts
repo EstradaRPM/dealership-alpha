@@ -33,12 +33,16 @@ function build(): { parts: PartsInventory; economy: ReturnType<typeof createEcon
 }
 
 describe('PartsInventory (#299)', () => {
-  it('models the four Service parts categories as lots', () => {
+  it('keys the four Service plus four Body-Shop parts categories', () => {
     expect(PART_CATEGORIES).toEqual([
       'oil_filters',
       'tires_brakes',
       'drivetrain',
       'electronics',
+      'windows_glass',
+      'doors_panels',
+      'interior_trim',
+      'paint',
     ]);
   });
 
@@ -178,6 +182,10 @@ describe('PartsInventory (#299)', () => {
         tires_brakes: 3,
         drivetrain: 0,
         electronics: 0,
+        windows_glass: 0,
+        doors_panels: 0,
+        interior_trim: 0,
+        paint: 0,
       });
     });
 
@@ -200,6 +208,11 @@ describe('PartsInventory (#299)', () => {
         tires_brakes: { baseUnitCost: 200, reorderPoint: 1, target: 4 },
         drivetrain: { baseUnitCost: 1000, reorderPoint: 0, target: 2 },
         electronics: { baseUnitCost: 500, reorderPoint: 0, target: 2 },
+        // Body-Shop four — keyed but inactive (0 par ⇒ no auto-order), #312.
+        windows_glass: { baseUnitCost: 300, reorderPoint: 0, target: 0 },
+        doors_panels: { baseUnitCost: 700, reorderPoint: 0, target: 0 },
+        interior_trim: { baseUnitCost: 200, reorderPoint: 0, target: 0 },
+        paint: { baseUnitCost: 150, reorderPoint: 0, target: 0 },
       },
       supplierTiers: {
         economy: { costMultiplier: 0.8, leadTimeDays: 8, reliability: 1, delayPenaltyDays: 5 },
@@ -487,6 +500,50 @@ describe('PartsInventory (#299)', () => {
       expect(parts.getPendingOrders()).toHaveLength(0);
       // Policies fall back to the data defaults rather than throwing.
       expect(parts.getPolicy('oil_filters').tier).toBeDefined();
+    });
+  });
+
+  // ── Body-Shop categories (#312) ──────────────────────────────────────────────
+
+  describe('Body-Shop parts categories (#312)', () => {
+    it('stocks, consumes, and reports coverage for a Body-Shop category', () => {
+      const { parts } = build();
+      parts.addStock('windows_glass', 3, 300);
+      expect(parts.getStock('windows_glass')).toBe(3);
+
+      expect(parts.consume('windows_glass')).toBe(true);
+      expect(parts.getStock('windows_glass')).toBe(2);
+      expect(parts.getCoverage().windows_glass).toBe(2);
+    });
+
+    it('reports a miss (false) for an empty Body-Shop category', () => {
+      const { parts } = build();
+      expect(parts.consume('paint')).toBe(false);
+    });
+
+    it('keys every Body-Shop category in the coverage read-model', () => {
+      const { parts } = build();
+      const coverage = parts.getCoverage();
+      expect(coverage.windows_glass).toBe(0);
+      expect(coverage.doors_panels).toBe(0);
+      expect(coverage.interior_trim).toBe(0);
+      expect(coverage.paint).toBe(0);
+    });
+
+    it('ships the Body-Shop four inactive (0 par ⇒ no auto-order)', () => {
+      const economy = createEconomySpy();
+      const parts = createPartsInventory({ economy });
+      // A reorder sweep with no body-shop stock must place no body-shop order —
+      // the categories are keyed but dormant until the body-shop package sets par.
+      parts.advanceDay(1);
+      const bodyShopOrders = parts
+        .getPendingOrders()
+        .filter((o) =>
+          ['windows_glass', 'doors_panels', 'interior_trim', 'paint'].includes(
+            o.category,
+          ),
+        );
+      expect(bodyShopOrders).toHaveLength(0);
     });
   });
 });

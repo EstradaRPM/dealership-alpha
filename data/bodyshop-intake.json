@@ -1,0 +1,10 @@
+{
+  "_doc": "BodyShopQueue tier gate + collision job-category display labels (#312, parent #297). The Tier-3 mirror of service-intake.json: the day's Body-Shop intake flows from CollisionStream (bodyshop:demand_ready, #313). BodyShopQueue only gates by tier and re-publishes that enriched, NPC-bound stream as bodyshop:intake_ready, deriving the queue/economy display label from the due collision job category here. minTierRequired is 3 — the Body Shop is dark until the showroom tier.",
+  "minTierRequired": 3,
+  "jobLabels": {
+    "windows_glass": "Glass replacement",
+    "doors_panels": "Panel & dent repair",
+    "interior_trim": "Interior trim repair",
+    "paint": "Paint & refinish"
+  }
+}

@@ -12,23 +12,45 @@ import type { Economy } from '../Economy';
 import type { PartsInventoryConfig } from './partsInventoryConfig';
 
 /**
- * The four Service parts categories. Mirror one-for-one the InstalledBase
- * `JobCategory` ladder — one completed job of a given category depletes one unit
- * of the matching part — but the union is declared independently here so the two
- * modules stay decoupled (no cross-module type import).
+ * The eight parts categories — the Service four plus the Body-Shop four (#312,
+ * parent #297). PartsInventory keys all eight so the same stock/consume/coverage/
+ * procurement machinery serves both profit centers (the shared department line,
+ * `docs/planning/shared-department-structure.md`); each department only *activates*
+ * its own four by carrying non-zero par on them (a department's par defaults to
+ * 0, so an inactive category never auto-orders). The Service four mirror the
+ * InstalledBase `JobCategory` ladder; the Body-Shop four mirror the collision
+ * job ladder (windows/glass, doors/panels, interior trim, paint materials). The
+ * union is declared independently here so the consuming modules stay decoupled
+ * (no cross-module type import).
  */
 export type PartCategory =
+  // Service four.
   | 'oil_filters'
   | 'tires_brakes'
   | 'drivetrain'
-  | 'electronics';
+  | 'electronics'
+  // Body-Shop four (#312).
+  | 'windows_glass'
+  | 'doors_panels'
+  | 'interior_trim'
+  | 'paint';
 
-/** All part categories, in the same early→late order as the job-category drift. */
+/**
+ * All part categories — the Service four (early→late job-category drift) followed
+ * by the Body-Shop four. Appending the Body-Shop categories keeps the existing
+ * seeded reorder draws order-stable: an inactive (0-par) category never places an
+ * order, so it consumes no `orderSeq` and the Service categories draw identically
+ * (#122 replay-safe).
+ */
 export const PART_CATEGORIES: readonly PartCategory[] = [
   'oil_filters',
   'tires_brakes',
   'drivetrain',
   'electronics',
+  'windows_glass',
+  'doors_panels',
+  'interior_trim',
+  'paint',
 ] as const;
 
 /**

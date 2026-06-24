@@ -4,7 +4,8 @@ import type { StaffOrg } from '../StaffOrg';
 import type { DepartmentQueue } from '../DepartmentQueue';
 import type { QueueItem } from '../DepartmentQueue';
 import type { DeptDrain } from '../FloorSim';
-import type { PartCategory, PartsInventory } from '../PartsInventory';
+import type { PartsInventory } from '../PartsInventory';
+import type { JobCategory } from '../InstalledBase';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import { loadServiceDispatchConfig, type ServiceDispatchConfig } from './serviceDispatchData';
 
@@ -64,8 +65,11 @@ interface ServiceIntakeItem {
   label: string;
   baseRevenue: number;
   /** #304 the due job/parts category — selects the PartsInventory unit the
-   *  parts gate consumes (and rush-orders / reports on a miss). */
-  jobCategory: PartCategory;
+   *  parts gate consumes (and rush-orders / reports on a miss). The Service-side
+   *  union (`JobCategory`, the same type ServiceDemand/`service:intake_ready`
+   *  use); it is a subset of the wider 8-category `PartCategory`, so passing it
+   *  to `PartsInventory.consume`/`rushOrder` type-checks. */
+  jobCategory: JobCategory;
   /** #304 customer + vehicle identity, carried so a miss/rush names them. */
   customerId: string;
   vehicleId: string;
