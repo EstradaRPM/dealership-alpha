@@ -1,0 +1,71 @@
+{
+  "_doc": "CollisionStream tunables (#313, parent #297) — the Body Shop's demand spine. A stochastic collision draw (two seeded Poisson streams: a steady insurance-DRP referral stream and a lumpy reputation-driven retail/conquest stream), spiked by weather/season, split into rate-capped insurance vs fatter-margin retail jobs over the four collision job categories. All magnitudes are placeholders tuned in the S14 balance pass (#286).",
+  "schemaVersion": 1,
+  "jobRevenue": {
+    "windows_glass": 450,
+    "doors_panels": 1400,
+    "interior_trim": 700,
+    "paint": 2200
+  },
+  "volume": {
+    "conquestBase": 0.8,
+    "referralBase": 1.6,
+    "repGain": 2.5,
+    "retailLeanBonus": 1.0,
+    "baseTie": 0.01,
+    "baseTieCap": 1.0,
+    "maxLambda": 40
+  },
+  "weatherSpike": {
+    "byCondition": {
+      "clear": 1.0,
+      "cloudy": 1.1,
+      "rain": 1.8,
+      "snow": 3.2,
+      "storm": 4.5
+    },
+    "bySeason": {
+      "spring": 1.0,
+      "summer": 0.9,
+      "fall": 1.1,
+      "winter": 1.4
+    },
+    "insuranceDamping": 0.35
+  },
+  "channel": {
+    "insuranceRateCap": 0.82,
+    "retailMarginMultiplier": 1.15
+  },
+  "mix": {
+    "jobSplit": {
+      "windows_glass": 0.3,
+      "doors_panels": 0.35,
+      "interior_trim": 0.1,
+      "paint": 0.25
+    },
+    "seasonalLean": {
+      "spring": { "paint": 0.05 },
+      "summer": { "paint": 0.08 },
+      "fall": {},
+      "winter": { "windows_glass": 0.1, "doors_panels": 0.08 }
+    },
+    "conditionLean": {
+      "clear": {},
+      "cloudy": {},
+      "rain": { "doors_panels": 0.06 },
+      "snow": { "windows_glass": 0.12, "doors_panels": 0.1 },
+      "storm": { "paint": 0.1, "windows_glass": 0.08 }
+    },
+    "rngVariance": 0.15,
+    "vehicleCategories": {
+      "sedan": 0.4,
+      "suv": 0.4,
+      "truck": 0.2
+    },
+    "powertrainMix": {
+      "ice": 0.8,
+      "hybrid": 0.15,
+      "ev": 0.05
+    }
+  }
+}
