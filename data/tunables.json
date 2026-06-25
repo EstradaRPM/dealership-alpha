@@ -440,6 +440,15 @@
     "baseHealthWindowDays": 14,
     "baseTrendEpsilon": 0.15
   },
+  "bodyShopInsights": {
+    "_doc": "BodyShopInsights read-model (#315, parent #297) — the Tier-3 mirror of serviceInsights backing the Body Shop page demand-heat + conquest-health readouts. `demandWindowSize`/`heatThresholds`/`demandTrendEpsilon` band per-collision-category demand exactly like serviceInsights (share×4: at/above `hot` HOT, at/below `cold` COLD, else WARM; the newer-vs-older-half share delta below which a category trend reads steady). The conquest readout (Body Shop is conquest-dominant, no installed base): `conquestWindowDays` is the trailing day count the collision-flow volume rate + trend average over; `volumeTrendEpsilon` is the per-day intake-count delta below which the volume trend reads steady; `channelTrendEpsilon` is the newer-vs-older-half retail-share delta below which the channel-mix trend reads steady. All numbers are S14 (#286) calibration placeholders.",
+    "demandWindowSize": 40,
+    "heatThresholds": { "hot": 1.15, "cold": 0.85 },
+    "demandTrendEpsilon": 0.05,
+    "conquestWindowDays": 14,
+    "volumeTrendEpsilon": 0.3,
+    "channelTrendEpsilon": 0.05
+  },
   "partsInventory": {
     "_doc": "PartsInventory par-level procurement (#301/#312, parent #297). `categories` carries each part category's `baseUnitCost` (the standard-tier unit price) plus its default `reorderPoint`/`target` par levels. The four Body-Shop categories (windows_glass / doors_panels / interior_trim / paint, #312) ship at 0 par — they are keyed so stock/consume/coverage work, but stay INACTIVE (no auto-order) until the Body-Shop package activates them with non-zero par at Tier 3, so a single shared parts room never auto-stocks collision parts before the body shop opens. `supplierTiers` trade unit cost against lead time and reliability: `costMultiplier` scales baseUnitCost, `leadTimeDays` is the scheduled arrival delay, `reliability` ∈ [0,1] is the per-order on-time probability (a failed seeded roll adds `delayPenaltyDays`). `defaultTier` is the tier a category procures at until the player picks another. All numbers are S14 (#286) calibration placeholders.",
     "defaultTier": "standard",

@@ -44,6 +44,11 @@ export type RouteParamMap = {
   // back(). Distinct from the `department` resolve-list — this is the
   // department's dashboard, not its work queue.
   service: undefined;
+  // The Body Shop department read-model page (#315): demand heat + stock
+  // coverage + conquest health. Pushed over the game from the Operations tab
+  // (the entry appears only at/after Tier 3); closed with back(). The Tier-3
+  // mirror of the `service` page — navigation itself is never tier-gated.
+  bodyShop: undefined;
   // Terminal end-of-career screen (#84 / design record #127). Reached ONLY via
   // a Navigator reset on career:game_over — a new unreachable starting point
   // (canGoBack false). Non-terminal interrupt cards are NOT routes; they are a

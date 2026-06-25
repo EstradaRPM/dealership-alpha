@@ -115,6 +115,7 @@ import {
 } from './game/Reputation';
 import type { ServiceDemand } from './game/ServiceDemand';
 import type { ServiceInsights } from './game/ServiceInsights';
+import type { BodyShopInsights } from './game/BodyShopInsights';
 import type { ServiceMarketing } from './game/ServiceMarketing';
 import type { ServiceQueue } from './game/ServiceQueue';
 import type { ServiceReadModel, DeptReadModel } from './game/ServiceDispatch';
@@ -178,6 +179,9 @@ export interface World {
   bodyShopQueue: BodyShopQueue;
   // #314 live Body-Shop capacity read-model for the Body-Shop page + floor card.
   bodyShopReadModel: DeptReadModel;
+  // #315 trailing-window read-model: per-collision-category demand heat +
+  // conquest-flow/channel-mix health (conquest-dominant, no installed base).
+  bodyShopInsights: BodyShopInsights;
   // #314 Body-Shop insurance↔retail channel posture [0,1] (0 = insurance-DRP,
   // 1 = retail). Feeds the demand mix and the per-ticket channel pricing.
   getBodyShopChannelPosture(): number;
@@ -851,7 +855,12 @@ export function createWorld(deps: {
     weather,
     partsInventory,
   });
-  const { collisionStream, bodyShopQueue, bodyShopReadModel } = bodyShopDept;
+  const {
+    collisionStream,
+    bodyShopQueue,
+    bodyShopReadModel,
+    bodyShopInsights,
+  } = bodyShopDept;
   // EndCardManager (#84): all terminal failure paths + success endings
   // converge here and re-emit a single career:game_over carrying the
   // assembled EndCardData. Wired in the live world (not just tests) so the
@@ -1300,6 +1309,7 @@ export function createWorld(deps: {
     collisionStream,
     bodyShopQueue,
     bodyShopReadModel,
+    bodyShopInsights,
     getBodyShopChannelPosture: bodyShopDept.getBodyShopChannelPosture,
     setBodyShopChannelPosture: bodyShopDept.setBodyShopChannelPosture,
     reputation,

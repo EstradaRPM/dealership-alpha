@@ -45,6 +45,10 @@ import {
   type BodyShopQueue,
 } from './game/BodyShopQueue';
 import {
+  createBodyShopInsights,
+  type BodyShopInsights,
+} from './game/BodyShopInsights';
+import {
   createDeptFloorDrain,
   createDeptReadModel,
   type DeptDispatchProfile,
@@ -80,6 +84,9 @@ export interface BodyShopDepartment {
   collisionStream: CollisionStream;
   bodyShopQueue: BodyShopQueue;
   bodyShopReadModel: DeptReadModel;
+  /** Trailing-window read-model backing the Body Shop page (#315): per-collision-
+   *  category demand heat + conquest-flow/channel-mix health. */
+  bodyShopInsights: BodyShopInsights;
   getBodyShopChannelPosture(): number;
   setBodyShopChannelPosture(value: number): void;
   /** Build the per-day Body-Shop floor drain (the locked #99 `drain` seam).
@@ -151,6 +158,12 @@ export function createBodyShopDepartment(
   // utilization) for the Body-Shop page + floor card. Long-lived; each per-day
   // drain writes the live snapshot into this same instance.
   const bodyShopReadModel: DeptReadModelWriter = createDeptReadModel();
+
+  // BodyShopInsights (#315): the trailing-window read-model backing the Body Shop
+  // page. Subscribes to bodyshop:intake_ready (the Tier-3-gated stream), so it is
+  // naturally dark below Tier 3. The conquest-dominant analog of ServiceInsights
+  // — no installed-base annuity; reuses the shared heat/trend helpers.
+  const bodyShopInsights = createBodyShopInsights({ bus });
 
   // The Body-Shop dispatch profile — everything department-specific the shared
   // engine needs. Pricing is the channel posture: insurance rate-capped, retail
@@ -284,6 +297,7 @@ export function createBodyShopDepartment(
     collisionStream,
     bodyShopQueue,
     bodyShopReadModel,
+    bodyShopInsights,
     getBodyShopChannelPosture: () => channelPosture,
     setBodyShopChannelPosture: (v: number) => {
       channelPosture = clamp01(v);

@@ -22,6 +22,10 @@ export interface OperationsTabProps {
   onOpenAuction?: () => void;
   /** Open the Service department read-model page (#308). Absent ⇒ entry hidden. */
   onOpenService?: () => void;
+  /** Open the Body Shop department read-model page (#315). Absent ⇒ entry hidden
+   *  (the composition root passes it only at/after Tier 3 — the Body Shop is
+   *  dark before the showroom tier; navigation itself is never tier-gated). */
+  onOpenBodyShop?: () => void;
 }
 
 /**
@@ -36,6 +40,7 @@ export function OperationsTab({
   leverProps,
   onOpenAuction,
   onOpenService,
+  onOpenBodyShop,
 }: OperationsTabProps) {
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
@@ -72,6 +77,16 @@ export function OperationsTab({
             onPress={onOpenService}
           >
             <Text style={secondaryBtnText}>Service Overview →</Text>
+          </Pressable>
+        )}
+        {onOpenBodyShop && (
+          <Pressable
+            style={[secondaryBtn, { marginTop: t.spacing.md }]}
+            accessibilityRole="button"
+            accessibilityLabel="Open Body Shop overview"
+            onPress={onOpenBodyShop}
+          >
+            <Text style={secondaryBtnText}>Body Shop Overview →</Text>
           </Pressable>
         )}
       </View>

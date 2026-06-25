@@ -48,6 +48,10 @@ export interface FloorDashboardModel {
   /** Live Service card (#309) — from the ServiceDispatch read-model, driven off
    *  the same day clock as the sales floor. Absent ⇒ no Service card. */
   service?: ServiceCardModel;
+  /** Live Body-Shop card (#315) — the same DeptReadModel projection shape as the
+   *  Service card, off world.bodyShopReadModel. Absent ⇒ no Body-Shop card (it
+   *  is shown only at/after Tier 3, when the Body Shop is live). */
+  bodyShop?: ServiceCardModel;
 }
 
 /**
@@ -231,6 +235,7 @@ export function FloorDashboard({
     events,
     inventory,
     service,
+    bodyShop,
   } = model;
   // Newest first; the log is impressionistic, not an audit trail.
   const recentEvents = [...events].slice(-40).reverse();
@@ -362,6 +367,25 @@ export function FloorDashboard({
               <Stat
                 label="UTIL"
                 value={`${Math.round(service.utilization * 100)}%`}
+              />
+            </View>
+          </View>
+        ) : null}
+
+        {/* Live Body-Shop card (#315) */}
+        {bodyShop ? (
+          <View testID="floor-body-shop-card">
+            <Text style={styles.sectionLabel}>BODY SHOP</Text>
+            <View style={styles.grid}>
+              <Stat label="IN SHOP" value={String(bodyShop.intake)} />
+              <Stat label="WAITING" value={String(bodyShop.waiting)} />
+              <Stat
+                label="AVG WAIT"
+                value={`${Math.round(bodyShop.avgWaitTicks)}t`}
+              />
+              <Stat
+                label="UTIL"
+                value={`${Math.round(bodyShop.utilization * 100)}%`}
               />
             </View>
           </View>

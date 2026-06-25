@@ -127,6 +127,31 @@ describe('FloorDashboard smoke tests', () => {
     expect(queryByTestId('floor-service-card')).toBeNull();
   });
 
+  it('renders the live Body-Shop card when bound (#315)', () => {
+    const { getByTestId, getByText } = render(
+      <FloorDashboard
+        model={{
+          ...MODEL,
+          bodyShop: {
+            intake: 4,
+            inProgress: 2,
+            waiting: 2,
+            avgWaitTicks: 6.1,
+            utilization: 0.5,
+          },
+        }}
+      />,
+    );
+    expect(getByTestId('floor-body-shop-card')).toBeTruthy();
+    expect(getByText('BODY SHOP')).toBeTruthy();
+    expect(getByText('50%')).toBeTruthy(); // utilization
+  });
+
+  it('omits the Body-Shop card when unbound (dark below Tier 3)', () => {
+    const { queryByTestId } = render(<FloorDashboard model={MODEL} />);
+    expect(queryByTestId('floor-body-shop-card')).toBeNull();
+  });
+
   it('renders morale chips and regulatory pressure when bound', () => {
     const { getByLabelText, getByText } = render(
       <FloorDashboard

@@ -23,6 +23,7 @@ import { HistoryScreen } from '../../ui/HistoryScreen';
 import { EndCard } from '../../ui/EndCard';
 import { DepartmentScreen } from '../../ui/DepartmentScreen';
 import { ServicePage } from '../../ui/ServicePage';
+import { BodyShopPage } from '../../ui/BodyShopPage';
 import { GameScreen } from './GameScreen';
 import { AuctionScreen } from './AuctionScreen';
 import { PricingScreenContainer } from './PricingScreenContainer';
@@ -34,6 +35,7 @@ import {
   HOURS_OF_OP,
   buildServicePageModel,
   buildServiceControlsModel,
+  buildBodyShopPageModel,
 } from '../config';
 import type { WorldState } from '../useWorldState';
 import type { SaveSlots } from '../useSaveSlots';
@@ -299,6 +301,21 @@ export function RouteContent({
               apply();
             },
           }}
+          onClose={() => nav.back()}
+        />
+      </>
+    );
+  }
+  if (screen === 'bodyShop' && world) {
+    // Body Shop department page (#315): demand heat + stock coverage + conquest
+    // health. Read-only — the insurance/retail channel control is the sibling
+    // slice (#318). Navigation is never tier-gated (the page renders its dark/
+    // empty states below Tier 3 because the read-model is silent).
+    return (
+      <>
+        <StatusBar style="light" />
+        <BodyShopPage
+          model={buildBodyShopPageModel(world)}
           onClose={() => nav.back()}
         />
       </>

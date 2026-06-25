@@ -45,6 +45,7 @@ import type { ServiceQueueSnapshot } from './game/ServiceQueue';
 import type { BodyShopQueueSnapshot } from './game/BodyShopQueue';
 import type { ServiceMarketingSnapshot } from './game/ServiceMarketing';
 import type { ServiceInsightsSnapshot } from './game/ServiceInsights';
+import type { BodyShopInsightsSnapshot } from './game/BodyShopInsights';
 import type { DepartmentQueueSnapshot } from './game/DepartmentQueue';
 import type { KPIDashboardSnapshot } from './game/KPIDashboard';
 import {
@@ -65,7 +66,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 14;
+export const WORLD_SNAPSHOT_VERSION = 15;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -120,6 +121,9 @@ export type WorldSnapshot = {
     // Body-Shop insurance↔retail channel posture [0,1] — a World-level scalar,
     // backing get/setBodyShopChannelPosture (#314 seam).
     readonly bodyShopChannelPosture: number;
+    // BodyShopInsights trailing window: per-collision-category demand + per-day
+    // conquest intake flow (#315).
+    readonly bodyShopInsights: BodyShopInsightsSnapshot;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -291,6 +295,20 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         bodyShopChannelPosture: 0.5,
       },
     }),
+    14: (snap) => ({
+      version: 15,
+      modules: {
+        ...snap.modules,
+        // Behavior-neutral: pre-#315 saves materialize an empty Body-Shop
+        // read-model (the trailing window re-fills from the live stream as Tier-3
+        // days play). Dark below Tier 3 regardless.
+        bodyShopInsights: {
+          schemaVersion: 1,
+          intakeWindow: [],
+          dailyIntake: [],
+        },
+      },
+    }),
   };
 
 /**
@@ -357,6 +375,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       servicePricingPosture: world.getServicePricingPosture(),
       bodyShopQueue: world.bodyShopQueue.snapshot(),
       bodyShopChannelPosture: world.getBodyShopChannelPosture(),
+      bodyShopInsights: world.bodyShopInsights.snapshot(),
     },
   };
 }
@@ -399,4 +418,5 @@ export function restoreWorld(
   world.setServicePricingPosture(snap.modules.servicePricingPosture);
   world.bodyShopQueue.restore(snap.modules.bodyShopQueue);
   world.setBodyShopChannelPosture(snap.modules.bodyShopChannelPosture);
+  world.bodyShopInsights.restore(snap.modules.bodyShopInsights);
 }

@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 14,
+    "version": 15,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -328,6 +328,26 @@
           "electronics": {
             "reorderPoint": 1,
             "target": 3,
+            "tier": "standard"
+          },
+          "windows_glass": {
+            "reorderPoint": 0,
+            "target": 0,
+            "tier": "standard"
+          },
+          "doors_panels": {
+            "reorderPoint": 0,
+            "target": 0,
+            "tier": "standard"
+          },
+          "interior_trim": {
+            "reorderPoint": 0,
+            "target": 0,
+            "tier": "standard"
+          },
+          "paint": {
+            "reorderPoint": 0,
+            "target": 0,
             "tier": "standard"
           }
         },
@@ -1625,6 +1645,12 @@
         "retentionCampaignId": "none",
         "conquestCategory": "none"
       },
+      "serviceInsights": {
+        "schemaVersion": 1,
+        "demandWindow": [],
+        "dailyReturns": [],
+        "dailyDefections": []
+      },
       "departmentQueue": {
         "schemaVersion": 1,
         "queues": {
@@ -1892,7 +1918,8 @@
               "createdDay": 31
             }
           ],
-          "lot": []
+          "lot": [],
+          "bodyshop": []
         }
       },
       "kpiDashboard": {
@@ -2720,18 +2747,17 @@
           }
         ]
       },
-      "serviceInsights": {
-        "schemaVersion": 1,
-        "demandWindow": [],
-        "dailyReturns": [],
-        "dailyDefections": []
-      },
       "servicePricingPosture": 0.5,
       "bodyShopQueue": {
         "schemaVersion": 1,
         "currentTier": 2
       },
-      "bodyShopChannelPosture": 0.5
+      "bodyShopChannelPosture": 0.5,
+      "bodyShopInsights": {
+        "schemaVersion": 1,
+        "intakeWindow": [],
+        "dailyIntake": []
+      }
     }
   },
   "character": {

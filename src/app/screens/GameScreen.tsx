@@ -39,6 +39,7 @@ import {
   TRADE_POLICY,
   PRICING_STRATEGY_OPTIONS,
   DAYS_PER_MONTH,
+  BODY_SHOP_MIN_TIER,
   SEGMENT_LABELS,
   humanizeRole,
   staffTaxonomy,
@@ -147,6 +148,22 @@ export function GameScreen({
             utilization: load.utilization,
           };
         })(),
+        // Live Body-Shop card (#315): the same DeptReadModel projection as the
+        // Service card, off world.bodyShopReadModel. Shown only at/after Tier 3
+        // (the Body Shop is dark before then — an all-zero card would be noise).
+        bodyShop:
+          world.tierManager.currentTier >= BODY_SHOP_MIN_TIER
+            ? (() => {
+                const load = world.bodyShopReadModel.read();
+                return {
+                  intake: load.inProgress + load.waiting,
+                  inProgress: load.inProgress,
+                  waiting: load.waiting,
+                  avgWaitTicks: load.avgWaitTicks,
+                  utilization: load.utilization,
+                };
+              })()
+            : undefined,
       }
     : undefined;
   // Last-day recap reopen chip (#253). Driven by the persisted/captured
@@ -366,6 +383,11 @@ export function GameScreen({
         leverProps={leverProps}
         onOpenAuction={() => nav.navigate('auction')}
         onOpenService={() => nav.navigate('service')}
+        onOpenBodyShop={
+          world.tierManager.currentTier >= BODY_SHOP_MIN_TIER
+            ? () => nav.navigate('bodyShop')
+            : undefined
+        }
       />
     ),
     people: null,

@@ -33,6 +33,12 @@ import type {
   ServiceCoverageRow,
   ServiceControlsModel,
 } from '../ui/ServicePage';
+import type {
+  BodyShopPageModel,
+  BodyShopDemandHeatRow,
+  BodyShopCoverageRow,
+} from '../ui/BodyShopPage';
+import { loadBodyShopQueueConfig } from '../game/BodyShopQueue';
 import {
   classifyHeatBand,
   classifyHeatBandFine,
@@ -308,6 +314,63 @@ export function buildServicePageModel(world: World): ServicePageModel {
     demandHeat,
     coverage,
     baseHealth: { ...world.serviceInsights.getBaseHealth() },
+  };
+}
+
+// Plain-language names for the four Body-Shop collision job/parts categories
+// (#315). Used by the Body Shop page demand-heat + coverage rows.
+export const BODY_SHOP_JOB_CATEGORY_LABELS: Record<string, string> = {
+  windows_glass: 'Windows & Glass',
+  doors_panels: 'Doors & Panels',
+  interior_trim: 'Interior Trim',
+  paint: 'Paint & Body',
+};
+
+// The tier the Body Shop unlocks at — single source of truth, read from the same
+// config BodyShopQueue gates on (data/bodyshop-intake.json#minTierRequired). Used
+// to show the Body Shop Operations-tab entry + floor card only once it's live
+// (navigation itself is never tier-gated).
+export const BODY_SHOP_MIN_TIER = loadBodyShopQueueConfig().minTierRequired;
+
+// Assemble the Body Shop page model (#315) from the live read-models: the
+// BodyShopInsights trailing-window demand heat + conquest health, and the
+// PartsInventory coverage-gap over the four collision categories. Pure
+// projection — no game-logic mutation. The Body Shop is conquest-dominant (no
+// installed base), so the third readout is conquest health, not base health.
+export function buildBodyShopPageModel(world: World): BodyShopPageModel {
+  const heat = world.bodyShopInsights.getDemandHeat();
+  const demandHeat: BodyShopDemandHeatRow[] = heat.map((h) => ({
+    category: h.category,
+    label: BODY_SHOP_JOB_CATEGORY_LABELS[h.category] ?? h.category,
+    band: h.band,
+    trend: h.trend,
+  }));
+  const demandCounts: Record<string, number> = {};
+  for (const h of heat) demandCounts[h.category] = h.count;
+  const gap = world.partsInventory.getCoverageGap(demandCounts);
+  const coverage: BodyShopCoverageRow[] = heat.map((h) => {
+    const g = gap[h.category];
+    return {
+      category: h.category,
+      label: BODY_SHOP_JOB_CATEGORY_LABELS[h.category] ?? h.category,
+      demand: g.demand,
+      onHand: g.onHand,
+      onOrder: g.onOrder,
+      gap: g.gap,
+    };
+  });
+  const ch = world.bodyShopInsights.getConquestHealth();
+  return {
+    demandHeat,
+    coverage,
+    conquest: {
+      windowTickets: ch.windowTickets,
+      intakePerDay: ch.intakePerDay,
+      intakeTrend: ch.volumeTrend,
+      retailShare: ch.retailShare,
+      insuranceShare: ch.insuranceShare,
+      retailTrend: ch.retailTrend,
+    },
   };
 }
 
