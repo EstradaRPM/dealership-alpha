@@ -18,6 +18,13 @@ import {
   type IconName,
   type IconProps,
 } from '../kit';
+import {
+  ParControlRow,
+  PostureDial,
+  type DeptParControl,
+  type DeptTierOption,
+  type DeptSupplierTierId,
+} from '../DeptControls';
 
 /**
  * The dedicated Body Shop page (#315, parent #297) — the Tier-3 mirror of the
@@ -26,10 +33,13 @@ import {
  * parts **stock coverage**, and **conquest health** (the conquest-dominant
  * analog of Service's installed-base health — the Body Shop wins every job
  * fresh, so there is no loyalty/CSI/churn annuity, only collision-flow volume +
- * the insurance/retail channel mix). Pure view: it renders a `BodyShopPageModel`
- * assembled by the composition root and dispatches only `onClose`. The
- * insurance/retail channel control is the sibling slice (#318). Visual treatment
- * is intentionally plain — the neo-skeuomorphic rebrand is a later `/map-mockup`
+ * the insurance/retail channel mix). Still a pure view (the DepartmentScreen
+ * idiom): it renders a `BodyShopPageModel` (+ an optional `BodyShopControls`,
+ * #318) assembled by the composition root and dispatches only `onClose` and the
+ * control setters. The #318 controls add the player's POLICY levers — par /
+ * supplier per collision category (reusing the shared `DeptControls` primitives)
+ * plus the Body-Shop-specific insurance↔retail channel dial. Visual treatment is
+ * intentionally plain — the neo-skeuomorphic rebrand is a later `/map-mockup`
  * pass; this slice delivers the functional, smoke-tested surface.
  */
 
@@ -76,6 +86,37 @@ export interface BodyShopPageModel {
   demandHeat: readonly BodyShopDemandHeatRow[];
   coverage: readonly BodyShopCoverageRow[];
   conquest: BodyShopConquestHealthModel;
+}
+
+// ── Controls (#318) ────────────────────────────────────────────────────────
+// The player's Body-Shop POLICY levers. Set once and applied automatically — par
+// levels + supplier tier drive PartsInventory's daily reorder sweep over the four
+// collision categories (the shared `DeptControls` primitives, reused verbatim);
+// the channel dial is the Body-Shop's single pricing/marketing lever (#314): it
+// steers BOTH the CollisionStream demand mix and the per-ticket pricing read
+// (retail jobs are player-priced, insurance is rate-capped). No per-morning
+// clicking. The page stays a pure view: it renders the current values + option
+// lists the composition root reads off the live World and dispatches the setters
+// back (no game-logic reach-in).
+
+/** Supplier-tier id — re-exported from the shared control primitives. */
+export type BodyShopSupplierTierId = DeptSupplierTierId;
+
+export interface BodyShopControlsModel {
+  par: readonly DeptParControl[];
+  tierOptions: readonly DeptTierOption[];
+  /** Insurance↔retail channel posture in [0,1]: 0 = full insurance-DRP lean,
+   *  1 = full retail. The Body-Shop's single pricing/marketing lever. */
+  channelPosture: number;
+}
+
+/** The controls model plus the dispatch callbacks. Absent ⇒ read-only page. */
+export interface BodyShopControls {
+  model: BodyShopControlsModel;
+  onSetReorderPoint: (category: string, value: number) => void;
+  onSetTarget: (category: string, value: number) => void;
+  onSetSupplierTier: (category: string, tier: BodyShopSupplierTierId) => void;
+  onSetChannelPosture: (value: number) => void;
 }
 
 // Plain-language DEMAND-axis labels — the internal band is hot/warm/cold; the
@@ -229,12 +270,49 @@ function HealthStat({
   );
 }
 
+/** Plain-language channel word — names the axis (insurance↔retail), never a
+ *  temperature. Endpoints read right to a layperson. */
+function channelWord(v: number): string {
+  if (v <= 0.34) return 'Insurance-led';
+  if (v >= 0.66) return 'Retail-led';
+  return 'Balanced';
+}
+
+/** The Body-Shop insurance↔retail channel dial — the shared `PostureDial` with
+ *  the Body-Shop's endpoint labels + accessibility phrasing. Names the axis
+ *  (Insurance ↔ Retail), never a temperature word (locked rule). */
+function ChannelControl({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+}) {
+  return (
+    <PostureDial
+      value={value}
+      onChange={onChange}
+      word={channelWord}
+      leftLabel="Insurance"
+      rightLabel="Retail"
+      readoutA11y={(word, pct) =>
+        `Channel mix ${word} ${pct} percent toward retail`
+      }
+      decreaseA11y="More insurance-DRP work"
+      increaseA11y="More retail work"
+      testID="body-shop-channel-posture"
+    />
+  );
+}
+
 export interface BodyShopPageProps {
   model: BodyShopPageModel;
+  /** Policy controls (#318). Absent ⇒ the page is read-only. */
+  controls?: BodyShopControls;
   onClose: () => void;
 }
 
-export function BodyShopPage({ model, onClose }: BodyShopPageProps) {
+export function BodyShopPage({ model, controls, onClose }: BodyShopPageProps) {
   const t = useTheme();
   const pct = (x: number) => `${Math.round(x * 100)}%`;
   const num = (x: number) => (Number.isInteger(x) ? `${x}` : x.toFixed(1));
@@ -322,6 +400,46 @@ export function BodyShopPage({ model, onClose }: BodyShopPageProps) {
             />
           </Surface>
         </View>
+
+        {controls && (
+          <>
+            <View style={region}>
+              <Surface testID="body-shop-parts-controls">
+                <SectionHeader title="Parts Stocking" />
+                <Text style={hint}>
+                  Set it once — collision parts reorder to par automatically each
+                  morning.
+                </Text>
+                {controls.model.par.map((row) => (
+                  <ParControlRow
+                    key={row.category}
+                    row={row}
+                    tierOptions={controls.model.tierOptions}
+                    testIDPrefix="body-shop-par-"
+                    onSetReorderPoint={controls.onSetReorderPoint}
+                    onSetTarget={controls.onSetTarget}
+                    onSetSupplierTier={controls.onSetSupplierTier}
+                  />
+                ))}
+              </Surface>
+            </View>
+
+            <View style={region}>
+              <Surface testID="body-shop-channel-controls">
+                <SectionHeader title="Channel Mix" />
+                <Text style={hint}>
+                  Lean toward insurance (DRP, rate-capped, steady) or retail
+                  (customer-pay, fatter, lumpier) — steers both the work that
+                  comes in and what you can charge.
+                </Text>
+                <ChannelControl
+                  value={controls.model.channelPosture}
+                  onChange={controls.onSetChannelPosture}
+                />
+              </Surface>
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );

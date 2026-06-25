@@ -36,6 +36,7 @@ import {
   buildServicePageModel,
   buildServiceControlsModel,
   buildBodyShopPageModel,
+  buildBodyShopControlsModel,
 } from '../config';
 import type { WorldState } from '../useWorldState';
 import type { SaveSlots } from '../useSaveSlots';
@@ -307,15 +308,48 @@ export function RouteContent({
     );
   }
   if (screen === 'bodyShop' && world) {
-    // Body Shop department page (#315): demand heat + stock coverage + conquest
-    // health. Read-only — the insurance/retail channel control is the sibling
-    // slice (#318). Navigation is never tier-gated (the page renders its dark/
+    // Body Shop department page (#315 readouts + #318 controls): demand heat +
+    // stock coverage + conquest health, plus the policy levers (par/supplier per
+    // collision category + the insurance↔retail channel dial). Each control
+    // dispatches into the already-built game logic, then re-snapshots + re-renders
+    // so the page reflects the new policy. Policy-style — set once, applied
+    // automatically. Navigation is never tier-gated (the page renders its dark/
     // empty states below Tier 3 because the read-model is silent).
+    const w = world;
+    const apply = () => {
+      persistCurrentSave();
+      bump();
+    };
     return (
       <>
         <StatusBar style="light" />
         <BodyShopPage
-          model={buildBodyShopPageModel(world)}
+          model={buildBodyShopPageModel(w)}
+          controls={{
+            model: buildBodyShopControlsModel(w),
+            onSetReorderPoint: (category, value) => {
+              w.partsInventory.setPolicy(category as PartCategory, {
+                reorderPoint: value,
+              });
+              apply();
+            },
+            onSetTarget: (category, value) => {
+              w.partsInventory.setPolicy(category as PartCategory, {
+                target: value,
+              });
+              apply();
+            },
+            onSetSupplierTier: (category, tier) => {
+              w.partsInventory.setPolicy(category as PartCategory, {
+                tier: tier as SupplierTier,
+              });
+              apply();
+            },
+            onSetChannelPosture: (value) => {
+              w.setBodyShopChannelPosture(value);
+              apply();
+            },
+          }}
           onClose={() => nav.back()}
         />
       </>

@@ -25,7 +25,11 @@ import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
 import type { PersonnelRoleOption } from '../ui/PersonnelScreen';
 import type { CashDeltaSplit } from '../ui/HomeTab';
-import { PART_CATEGORIES, SUPPLIER_TIERS } from '../game/PartsInventory';
+import {
+  PART_CATEGORIES,
+  SUPPLIER_TIERS,
+  type PartCategory,
+} from '../game/PartsInventory';
 import { JOB_CATEGORIES } from '../game/ServiceMarketing';
 import type {
   ServicePageModel,
@@ -37,6 +41,7 @@ import type {
   BodyShopPageModel,
   BodyShopDemandHeatRow,
   BodyShopCoverageRow,
+  BodyShopControlsModel,
 } from '../ui/BodyShopPage';
 import { loadBodyShopQueueConfig } from '../game/BodyShopQueue';
 import {
@@ -423,6 +428,44 @@ export function buildServiceControlsModel(world: World): ServiceControlsModel {
       })),
     ],
     conquestCategory: world.serviceMarketing.getConquestSpecial(),
+  };
+}
+
+// The four Body-Shop collision parts categories the controls drive par/supplier
+// on (the active subset of PartsInventory's eight). Declared explicitly rather
+// than sliced off PART_CATEGORIES so the Body-Shop set stays self-documenting and
+// decoupled from the array's ordering.
+export const BODY_SHOP_PART_CATEGORIES: readonly PartCategory[] = [
+  'windows_glass',
+  'doors_panels',
+  'interior_trim',
+  'paint',
+];
+
+// Assemble the Body Shop POLICY controls model (#318) from the live World: the
+// per-collision-category PartsInventory procurement policy (par + supplier tier +
+// on-hand) and the stored insurance↔retail channel posture. Pure read — the
+// dispatch callbacks (RouteContent) mutate the World and persist. Mirrors
+// buildServiceControlsModel; the Body Shop's single pricing/marketing lever is
+// the channel dial (no separate retention/conquest arms).
+export function buildBodyShopControlsModel(world: World): BodyShopControlsModel {
+  return {
+    par: BODY_SHOP_PART_CATEGORIES.map((cat) => {
+      const policy = world.partsInventory.getPolicy(cat);
+      return {
+        category: cat,
+        label: BODY_SHOP_JOB_CATEGORY_LABELS[cat] ?? cat,
+        reorderPoint: policy.reorderPoint,
+        target: policy.target,
+        tier: policy.tier,
+        onHand: world.partsInventory.getStock(cat),
+      };
+    }),
+    tierOptions: SUPPLIER_TIERS.map((id) => ({
+      id,
+      label: SUPPLIER_TIER_LABELS[id] ?? id,
+    })),
+    channelPosture: world.getBodyShopChannelPosture(),
   };
 }
 

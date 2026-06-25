@@ -48,6 +48,10 @@ optional `ServiceControls`) assembled by the composition root and dispatches onl
   envelope v12→v13).
 - **Visual treatment is deliberately plain** — the neo-skeuomorphic rebrand
   (a real posture slider etc.) is the later `/map-mockup` pass.
+- **The control widgets are shared** (`src/ui/DeptControls`, #318): the steppers,
+  tier chips, par row, and the posture dial were extracted so the Body Shop page
+  reuses the exact same primitives. `PostureControl` here is a thin wrapper that
+  passes Service's competitive↔premium endpoint labels to the shared `PostureDial`.
 
 ## Notes
 - **Labels name the axis, never the temperature.** A category's internal band is

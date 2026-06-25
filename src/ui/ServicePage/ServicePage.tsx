@@ -18,6 +18,7 @@ import {
   type IconName,
   type IconProps,
 } from '../kit';
+import { ChipRow, ParControlRow, PostureDial } from '../DeptControls';
 
 /**
  * The dedicated Service page (#308, parent #297) — a read-only surface inside
@@ -281,10 +282,6 @@ function HealthStat({
   );
 }
 
-// Posture step per ± tap. The dial is continuous [0,1]; visual treatment (a real
-// slider) is the later /map-mockup pass — this slice steps it functionally.
-const POSTURE_STEP = 0.1;
-
 /** Plain-language posture word — names the axis (competitive↔premium), never a
  *  temperature. Endpoints read right to a layperson. */
 function postureWord(v: number): string {
@@ -293,122 +290,8 @@ function postureWord(v: number): string {
   return 'Balanced';
 }
 
-function Stepper({
-  label,
-  value,
-  onChange,
-  min = 0,
-  accessibilityName,
-}: {
-  label: string;
-  value: number;
-  onChange: (next: number) => void;
-  min?: number;
-  accessibilityName: string;
-}) {
-  const t = useTheme();
-  const s = makeStyles(t);
-  return (
-    <View style={s.stepperRow}>
-      <Text style={s.stepperLabel}>{label}</Text>
-      <View style={s.stepperControls}>
-        <TouchableOpacity
-          style={s.stepBtn}
-          onPress={() => onChange(Math.max(min, value - 1))}
-          accessibilityRole="button"
-          accessibilityLabel={`Decrease ${accessibilityName}`}
-        >
-          <Text style={s.stepBtnText}>−</Text>
-        </TouchableOpacity>
-        <Text style={s.stepValue} accessibilityLabel={`${accessibilityName} ${value}`}>
-          {value}
-        </Text>
-        <TouchableOpacity
-          style={s.stepBtn}
-          onPress={() => onChange(value + 1)}
-          accessibilityRole="button"
-          accessibilityLabel={`Increase ${accessibilityName}`}
-        >
-          <Text style={s.stepBtnText}>+</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-function ChipRow({
-  options,
-  selectedId,
-  onSelect,
-}: {
-  options: readonly ServiceMarketingOption[] | readonly ServiceTierOption[];
-  selectedId: string;
-  onSelect: (id: string) => void;
-}) {
-  const t = useTheme();
-  const s = makeStyles(t);
-  return (
-    <View style={s.chipRow}>
-      {options.map((o) => {
-        const sel = o.id === selectedId;
-        return (
-          <TouchableOpacity
-            key={o.id}
-            style={[s.chip, sel && s.chipSel]}
-            onPress={() => onSelect(o.id)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: sel }}
-            accessibilityLabel={o.label}
-          >
-            <Text style={[s.chipText, sel && s.chipTextSel]}>{o.label}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-function ParControlRow({
-  row,
-  tierOptions,
-  onSetReorderPoint,
-  onSetTarget,
-  onSetSupplierTier,
-}: {
-  row: ServiceParControl;
-  tierOptions: readonly ServiceTierOption[];
-  onSetReorderPoint: (category: string, value: number) => void;
-  onSetTarget: (category: string, value: number) => void;
-  onSetSupplierTier: (category: string, tier: ServiceSupplierTierId) => void;
-}) {
-  const t = useTheme();
-  const s = makeStyles(t);
-  return (
-    <View style={s.parRow} testID={`service-par-${row.category}`}>
-      <Text style={s.parTitle}>
-        {row.label} <Text style={s.parOnHand}>· {row.onHand} on hand</Text>
-      </Text>
-      <Stepper
-        label="Reorder at"
-        value={row.reorderPoint}
-        onChange={(v) => onSetReorderPoint(row.category, v)}
-        accessibilityName={`${row.label} reorder point`}
-      />
-      <Stepper
-        label="Stock up to"
-        value={row.target}
-        onChange={(v) => onSetTarget(row.category, v)}
-        accessibilityName={`${row.label} target stock`}
-      />
-      <ChipRow
-        options={tierOptions}
-        selectedId={row.tier}
-        onSelect={(tier) => onSetSupplierTier(row.category, tier)}
-      />
-    </View>
-  );
-}
-
+/** The Service competitive↔premium dial — the shared `PostureDial` with Service's
+ *  endpoint labels + accessibility phrasing. */
 function PostureControl({
   value,
   onChange,
@@ -416,38 +299,20 @@ function PostureControl({
   value: number;
   onChange: (next: number) => void;
 }) {
-  const t = useTheme();
-  const s = makeStyles(t);
-  const clamp = (v: number) => Math.max(0, Math.min(1, v));
-  const pct = Math.round(value * 100);
   return (
-    <View style={s.postureRow} testID="service-pricing-posture">
-      <TouchableOpacity
-        style={s.stepBtn}
-        onPress={() => onChange(clamp(value - POSTURE_STEP))}
-        accessibilityRole="button"
-        accessibilityLabel="More competitive pricing"
-      >
-        <Text style={s.stepBtnText}>−</Text>
-      </TouchableOpacity>
-      <View style={s.postureReadout}>
-        <Text
-          style={s.postureWord}
-          accessibilityLabel={`Pricing posture ${postureWord(value)} ${pct} percent toward premium`}
-        >
-          {postureWord(value)}
-        </Text>
-        <Text style={s.postureScale}>Competitive ◄ {pct}% ► Premium</Text>
-      </View>
-      <TouchableOpacity
-        style={s.stepBtn}
-        onPress={() => onChange(clamp(value + POSTURE_STEP))}
-        accessibilityRole="button"
-        accessibilityLabel="More premium pricing"
-      >
-        <Text style={s.stepBtnText}>+</Text>
-      </TouchableOpacity>
-    </View>
+    <PostureDial
+      value={value}
+      onChange={onChange}
+      word={postureWord}
+      leftLabel="Competitive"
+      rightLabel="Premium"
+      readoutA11y={(word, pct) =>
+        `Pricing posture ${word} ${pct} percent toward premium`
+      }
+      decreaseA11y="More competitive pricing"
+      increaseA11y="More premium pricing"
+      testID="service-pricing-posture"
+    />
   );
 }
 
@@ -558,6 +423,7 @@ export function ServicePage({ model, controls, onClose }: ServicePageProps) {
                     key={row.category}
                     row={row}
                     tierOptions={controls.model.tierOptions}
+                    testIDPrefix="service-par-"
                     onSetReorderPoint={controls.onSetReorderPoint}
                     onSetTarget={controls.onSetTarget}
                     onSetSupplierTier={controls.onSetSupplierTier}
@@ -626,69 +492,5 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     backText: { ...t.typography.button, color: t.colors.accent },
     title: { ...t.typography.title, color: t.colors.textPrimary, flex: 1 },
     body: { padding: t.spacing.lg },
-    // ── Controls (#309) ──
-    parRow: {
-      paddingVertical: t.spacing.sm,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.colors.borderMuted,
-    },
-    parTitle: { ...t.typography.label, color: t.colors.textPrimary },
-    parOnHand: { ...t.typography.caption, color: t.colors.textMuted },
-    stepperRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: t.spacing.xxs,
-    },
-    stepperLabel: { ...t.typography.body, color: t.colors.textSecondary },
-    stepperControls: { flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm },
-    stepBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 6,
-      borderWidth: 1,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.base,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    stepBtnText: { ...t.typography.title, color: t.colors.accent },
-    stepValue: {
-      ...t.typography.label,
-      color: t.colors.textPrimary,
-      minWidth: 28,
-      textAlign: 'center',
-      fontVariant: ['tabular-nums'],
-    },
-    chipRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: t.spacing.xs,
-      marginTop: t.spacing.xs,
-    },
-    chip: {
-      paddingVertical: t.spacing.xs,
-      paddingHorizontal: t.spacing.sm,
-      borderRadius: 6,
-      borderWidth: 1,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.base,
-    },
-    chipSel: { borderColor: t.colors.accent, backgroundColor: t.colors.primaryDim },
-    chipText: { ...t.typography.caption, color: t.colors.textSecondary },
-    chipTextSel: { color: t.colors.accent },
-    postureRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: t.spacing.md,
-      marginTop: t.spacing.xs,
-    },
-    postureReadout: { flex: 1, alignItems: 'center' },
-    postureWord: { ...t.typography.label, color: t.colors.textPrimary },
-    postureScale: {
-      ...t.typography.caption,
-      color: t.colors.textMuted,
-      marginTop: t.spacing.xxs,
-    },
   });
 }

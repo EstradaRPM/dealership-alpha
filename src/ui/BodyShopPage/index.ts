@@ -7,4 +7,7 @@ export type {
   BodyShopConquestHealthModel,
   BodyShopHeatBand,
   BodyShopTrend,
+  BodyShopControls,
+  BodyShopControlsModel,
+  BodyShopSupplierTierId,
 } from './BodyShopPage';

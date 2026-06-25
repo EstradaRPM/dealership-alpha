@@ -3,6 +3,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import {
   BodyShopPage,
   type BodyShopPageModel,
+  type BodyShopControls,
 } from '../src/ui/BodyShopPage';
 
 const MODEL: BodyShopPageModel = {
@@ -101,5 +102,98 @@ describe('BodyShopPage smoke', () => {
     );
     fireEvent.press(getByLabelText('Back'));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits controls when none are bound (read-only page)', () => {
+    const { queryByTestId } = render(
+      <BodyShopPage model={MODEL} onClose={() => {}} />,
+    );
+    expect(queryByTestId('body-shop-parts-controls')).toBeNull();
+    expect(queryByTestId('body-shop-channel-controls')).toBeNull();
+  });
+});
+
+function makeControls(
+  overrides: Partial<BodyShopControls> = {},
+): BodyShopControls {
+  return {
+    model: {
+      par: [
+        {
+          category: 'windows_glass',
+          label: 'Windows & Glass',
+          reorderPoint: 2,
+          target: 6,
+          tier: 'standard',
+          onHand: 3,
+        },
+        {
+          category: 'paint',
+          label: 'Paint & Body',
+          reorderPoint: 1,
+          target: 4,
+          tier: 'economy',
+          onHand: 0,
+        },
+      ],
+      tierOptions: [
+        { id: 'economy', label: 'Economy' },
+        { id: 'standard', label: 'Standard' },
+        { id: 'oem_direct', label: 'OEM Direct' },
+        { id: 'rush', label: 'Rush' },
+      ],
+      channelPosture: 0.5,
+    },
+    onSetReorderPoint: jest.fn(),
+    onSetTarget: jest.fn(),
+    onSetSupplierTier: jest.fn(),
+    onSetChannelPosture: jest.fn(),
+    ...overrides,
+  };
+}
+
+describe('BodyShopPage controls (#318)', () => {
+  it('renders the parts + channel control surfaces without crashing', () => {
+    const { getByTestId } = render(
+      <BodyShopPage model={MODEL} controls={makeControls()} onClose={() => {}} />,
+    );
+    expect(getByTestId('body-shop-parts-controls')).toBeTruthy();
+    expect(getByTestId('body-shop-channel-controls')).toBeTruthy();
+    expect(getByTestId('body-shop-par-windows_glass')).toBeTruthy();
+    expect(getByTestId('body-shop-channel-posture')).toBeTruthy();
+  });
+
+  it('dispatches par-level + supplier-tier changes per collision category', () => {
+    const controls = makeControls();
+    const { getByLabelText } = render(
+      <BodyShopPage model={MODEL} controls={controls} onClose={() => {}} />,
+    );
+    fireEvent.press(getByLabelText('Increase Windows & Glass reorder point'));
+    expect(controls.onSetReorderPoint).toHaveBeenCalledWith('windows_glass', 3);
+    fireEvent.press(getByLabelText('Decrease Windows & Glass target stock'));
+    expect(controls.onSetTarget).toHaveBeenCalledWith('windows_glass', 5);
+  });
+
+  it('dispatches a channel-mix change toward retail', () => {
+    const controls = makeControls();
+    const { getByLabelText } = render(
+      <BodyShopPage model={MODEL} controls={controls} onClose={() => {}} />,
+    );
+    fireEvent.press(getByLabelText('More retail work'));
+    const arg = (controls.onSetChannelPosture as jest.Mock).mock.calls[0][0];
+    expect(arg).toBeGreaterThan(0.5);
+  });
+
+  it('names the channel axis (Insurance ↔ Retail), never a bare temperature word', () => {
+    const { getByText, getByLabelText, queryByText } = render(
+      <BodyShopPage model={MODEL} controls={makeControls()} onClose={() => {}} />,
+    );
+    // The dial names its endpoints; the value word is plain-language.
+    expect(getByText('Insurance ◄ 50% ► Retail')).toBeTruthy();
+    expect(getByLabelText('Channel mix Balanced 50 percent toward retail')).toBeTruthy();
+    // Never a bare temperature word on the channel control.
+    expect(queryByText('Hot')).toBeNull();
+    expect(queryByText('Warm')).toBeNull();
+    expect(queryByText('Cold')).toBeNull();
   });
 });
