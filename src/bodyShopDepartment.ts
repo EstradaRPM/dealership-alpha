@@ -23,9 +23,12 @@
  * categories (windows/glass, doors/panels, interior trim, paint) of the same
  * instance Service uses.
  *
- * Manager automation, the Body-Shop page, the floor card, and the channel-control
- * surface are later slices (#315–#317); this slice is the operations LOGIC
- * wire-up only.
+ * Manager automation (#316) is wired here at the composition boundary, mirroring
+ * the service-manager ladder (#310) through the shared `DepartmentLine` gate-and-
+ * apply pattern: as the on-staff body-shop manager's `shop_throughput` clears each
+ * function's gate, the manager takes over par tuning, the channel posture (the
+ * unified pricing+marketing lever), and the capacity-aware rush-vs-walk call. The
+ * pure decision engine lives in `src/bodyShopManager.ts`.
  */
 import type { EventBus } from './game/EventBus';
 import type { Economy } from './game/Economy';
@@ -36,6 +39,8 @@ import type { Weather } from './game/Weather';
 import type { TierManager } from './game/CareerProgression';
 import type { DeptDrain } from './game/FloorSim';
 import type { PartsInventory, PartCategory } from './game/PartsInventory';
+import { loadTunables } from './game/data';
+import { createDepartmentManagerAutomation } from './game/DepartmentLine';
 import {
   createCollisionStream,
   type CollisionStream,
@@ -60,6 +65,15 @@ import {
   loadBodyShopDispatchConfig,
   type BodyShopDispatchConfig,
 } from './bodyShopDispatchConfig';
+import {
+  isBodyShopFunctionAutomated,
+  autoBodyShopPar,
+  autoBodyShopChannelPosture,
+  shouldRushBodyShop,
+} from './bodyShopManager';
+import { loadBodyShopManagerConfig } from './bodyShopManagerConfig';
+
+type ManagerGates = ReturnType<typeof loadTunables>['managerGates'];
 
 export interface BodyShopDepartmentDeps {
   bus: EventBus;
@@ -73,6 +87,9 @@ export interface BodyShopDepartmentDeps {
   /** The shared parts room (the same instance Service uses) — the Body Shop
    *  activates its four collision categories of it. */
   partsInventory: PartsInventory;
+  /** `loadTunables().managerGates` — the shared manager act-threshold table
+   *  (#316 reads `managerGates.bodyShopManager.actThresholds`). */
+  managerGates: ManagerGates;
   /** Dispatch tunables override — production omits it (loads from data); tests
    *  inject a deterministic config (e.g. always-resolve). Mirrors how the shared
    *  engine accepts an explicit config. */
@@ -116,6 +133,7 @@ export function createBodyShopDepartment(
     reputation,
     weather,
     partsInventory,
+    managerGates,
   } = deps;
 
   const reputation01 = () => clamp01(reputation.reviewScore / 100);
@@ -164,6 +182,78 @@ export function createBodyShopDepartment(
   // naturally dark below Tier 3. The conquest-dominant analog of ServiceInsights
   // — no installed-base annuity; reuses the shared heat/trend helpers.
   const bodyShopInsights = createBodyShopInsights({ bus });
+
+  // Body-shop-manager automation (#316, parent #297): the Tier-3 mirror of the
+  // service-manager ladder (#310), expressed through the shared `DepartmentLine`
+  // gate-and-apply pattern. The gates live HERE at the composition boundary so the
+  // Body-Shop modules stay decoupled from StaffOrg — exactly as the service-manager
+  // gates do. As the on-staff manager's `shop_throughput` clears each function's
+  // threshold (a ladder), the manager takes over the decision the player otherwise
+  // ran by hand. Below a gate (or no manager) the player keeps manual control — no
+  // behavior change.
+  //
+  // The Body Shop has ONE pricing/marketing lever — the insurance↔retail `channel`
+  // posture (the locked satellite table's "channel choice — no separate mailer
+  // arms") — so the `channel` rung IS the unified pricing+marketing automation;
+  // there is no separate marketing rung to mirror Service's retention/conquest
+  // arms.
+  const bodyShopManagerGates = managerGates.bodyShopManager.actThresholds;
+  const bodyShopManagerConfig = loadBodyShopManagerConfig();
+  // Top on-staff body-shop-manager `shop_throughput` (null = none on staff). Read
+  // live; the effective skill is constant within an open day (channel-desk M7).
+  const topBodyShopManagerSkill = (): number | null => {
+    const skills = staffOrg.currentRoster
+      .filter((s) => s.role_id === 'body-shop-manager')
+      .map((s) => s.effectiveSkills['shop_throughput'] ?? 0);
+    return skills.length === 0 ? null : Math.max(...skills);
+  };
+  const bodyShopFnAutomated = (
+    fn: keyof typeof bodyShopManagerGates,
+  ): boolean =>
+    isBodyShopFunctionAutomated(
+      topBodyShopManagerSkill(),
+      bodyShopManagerGates[fn],
+    );
+
+  // Standing setpoints applied each morning through the shared DepartmentLine
+  // ladder. par/channel are constant within the day (the manager skill + readouts
+  // are replay-deterministic) ⇒ a fixed seed replays byte-identically (#122/#317).
+  // PartsInventory subscribes its own reorder sweep to clock:day_started inside the
+  // Service package (built BEFORE this one in createWorld), so a re-tuned par takes
+  // effect on the NEXT morning's sweep — the same one-day lag Service has, not a
+  // same-day race.
+  createDepartmentManagerAutomation({
+    bus,
+    topManagerSkill: topBodyShopManagerSkill,
+    isAutomated: isBodyShopFunctionAutomated,
+    functions: [
+      {
+        threshold: bodyShopManagerGates.par,
+        apply: () => {
+          const setpoints = autoBodyShopPar(
+            bodyShopInsights
+              .getDemandHeat()
+              .map((h) => ({ category: h.category, demand: h.count })),
+            { config: bodyShopManagerConfig },
+          );
+          for (const sp of setpoints) {
+            partsInventory.setPolicy(sp.category as PartCategory, {
+              reorderPoint: sp.reorderPoint,
+              target: sp.target,
+            });
+          }
+        },
+      },
+      {
+        threshold: bodyShopManagerGates.channel,
+        apply: () => {
+          channelPosture = autoBodyShopChannelPosture(reputation01(), {
+            config: bodyShopManagerConfig,
+          });
+        },
+      },
+    ],
+  });
 
   // The Body-Shop dispatch profile — everything department-specific the shared
   // engine needs. Pricing is the channel posture: insurance rate-capped, retail
@@ -314,11 +404,27 @@ export function createBodyShopDepartment(
         // parts room. A completed collision job consumes one matching-category
         // unit; an under-stock miss rush-orders (once unlocked) or is a flat miss.
         partsInventory,
-        // Rush unlocks at the body-shop rush tier (the operation-maturity gate,
-        // mirroring Service). No manager automation in this slice. Read per-miss so
-        // a mid-game tier-up flips it live.
-        isRushUnlocked: () =>
-          tierManager.currentTier >= bodyShopDispatchConfig.rushUnlockTier,
+        // #316: once the rush function is automated, the body-shop manager makes
+        // the rush-vs-walk call instead of the blunt tier gate — it enables rush
+        // regardless of tier (the manager IS the operational maturity the tier gate
+        // stood in for). Once the capacity function is also automated the call
+        // becomes capacity-aware: rush only while the shop has slack (live
+        // utilization below the ceiling), else walk rather than overcommit a
+        // slammed floor. Read per-miss; the manager skill is constant within the
+        // day and the read-model is replay-deterministic ⇒ #122/#317-safe. Below
+        // the rush gate (or no manager) the original tier gate stands unchanged.
+        isRushUnlocked: () => {
+          if (bodyShopFnAutomated('rush')) {
+            return shouldRushBodyShop(
+              {
+                utilization: bodyShopReadModel.read().utilization,
+                capacityAware: bodyShopFnAutomated('capacity'),
+              },
+              { config: bodyShopManagerConfig },
+            );
+          }
+          return tierManager.currentTier >= bodyShopDispatchConfig.rushUnlockTier;
+        },
         // Bays scale off the current tier (snapshotted per-day, so a tier-up
         // applies the next day). The drain writes the read-model every tick.
         facilityTier: tierManager.currentTier,

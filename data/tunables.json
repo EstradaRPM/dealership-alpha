@@ -501,6 +501,15 @@
         "rush": 65,
         "capacity": 75
       }
+    },
+    "bodyShopManager": {
+      "_doc": "Body-shop-manager automation gates (#316, parent #297). The Tier-3 mirror of the serviceManager gates: a later-tier body-shop manager whose top `shop_throughput` skill clears a function's threshold takes over that standing Body-Shop decision. A LADDER (par lowest → capacity highest) so automation engages one function at a time as the manager grows; below a gate (or no manager) the player keeps manual control. NOTE: the Body Shop's marketing IS the insurance↔retail `channel` posture (the locked satellite table calls it 'channel choice — no separate mailer arms'), so the single `channel` rung is the unified pricing+marketing decision — there is no separate marketing gate. Function tuning lives in data/body-shop-manager.json. Placeholders pending the S14 calibration pass (#286).",
+      "actThresholds": {
+        "par": 50,
+        "channel": 58,
+        "rush": 65,
+        "capacity": 75
+      }
     }
   },
   "tradePolicy": {

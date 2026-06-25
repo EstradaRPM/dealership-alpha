@@ -2,6 +2,7 @@ import { createEventBus } from '../src/game/EventBus';
 import { createEconomy } from '../src/game/Economy';
 import { createDepartmentQueue } from '../src/game/DepartmentQueue';
 import { createBodyShopDepartment } from '../src/bodyShopDepartment';
+import { loadTunables } from '../src/game/data';
 import type { BodyShopDispatchConfig } from '../src/bodyShopDispatchConfig';
 import type { StaffOrg } from '../src/game/StaffOrg';
 import type { StaffWithComposites, Staff } from '../src/game/NPC';
@@ -154,6 +155,7 @@ function makeDept(
     reputation: stubReputation,
     weather: stubWeather,
     partsInventory: (opts.parts ?? stockedParts()) as unknown as PartsInventory,
+    managerGates: loadTunables().managerGates,
     config: opts.config ?? bsConfig(),
   });
   return { bus, economy, queue, dept };

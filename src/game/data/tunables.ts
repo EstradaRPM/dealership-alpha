@@ -413,6 +413,27 @@ export const TunablesSchema = z.object({
         capacity: z.number().min(0).max(100),
       }),
     }),
+    // Body-shop-manager automation gates (#316, parent #297). The Tier-3 mirror of
+    // serviceManager. A LADDER (par lowest → capacity highest). The Body Shop's
+    // marketing IS the insurance↔retail `channel` posture ("channel choice — no
+    // separate mailer arms"), so the single `channel` rung is the unified
+    // pricing+marketing gate — there is no separate marketing gate. Function tuning
+    // lives in `data/body-shop-manager.json`; only the gate thresholds (0–100 skill
+    // scale) live here. Placeholders pending #286.
+    bodyShopManager: z.object({
+      actThresholds: z.object({
+        // Demand-driven par tuning over the collision categories.
+        par: z.number().min(0).max(100),
+        // Reputation-driven insurance↔retail channel posture (pricing+marketing).
+        channel: z.number().min(0).max(100),
+        // Manager makes the rush-vs-walk call on a parts miss (enables rush-order
+        // regardless of tier — the manager IS the operational maturity).
+        rush: z.number().min(0).max(100),
+        // The rush call becomes capacity-aware (balances against live shop
+        // utilization — don't overcommit a slammed bay/advisor floor).
+        capacity: z.number().min(0).max(100),
+      }),
+    }),
   }),
   // Per-slot trade-acquisition policy (#172). `multiplier` scales the staff's
   // internal trade-in acceptance target in DealEngine.evaluateTrade. The

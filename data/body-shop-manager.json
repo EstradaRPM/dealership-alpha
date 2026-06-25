@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Body-shop-manager automation tuning (#316, parent #297). The decision-function knobs the on-staff body-shop manager uses once its `shop_throughput` clears each function's gate in tunables.json#managerGates.bodyShopManager.actThresholds. The Tier-3 mirror of data/service-manager.json. The Body Shop has ONE pricing/marketing lever — the insurance↔retail `channel` posture (the locked satellite table's 'channel choice') — so this file has a `channel` block where Service has separate `posture` + `marketing` blocks; there are no separate mailer arms to tune. All magnitudes are placeholders pending the S14 calibration pass (#286).",
+  "par": {
+    "_doc": "Demand-driven par tuning over the four collision categories. The manager sets each category's target/reorderPoint off its trailing intake demand (the BodyShopInsights demand-heat window count). target = max(minTarget, ceil(demand x targetCoverDays)); reorderPoint = max(minReorderPoint, ceil(demand x reorderCoverDays)), capped at target. Identical shape to the serviceManager par engine.",
+    "targetCoverDays": 1.5,
+    "reorderCoverDays": 0.6,
+    "minTarget": 2,
+    "minReorderPoint": 1
+  },
+  "channel": {
+    "_doc": "Reputation-driven insurance↔retail channel posture [0,1] (0 = full insurance-DRP lean, 1 = full retail customer-pay). This single lever is the Body Shop's unified pricing AND marketing decision: leaning retail both raises the player-priced markup and skews CollisionStream's demand mix toward fatter customer-pay jobs. A strong reputation lets the manager lean into retail (win + price up customer-pay work without losing it); a weak one stays on rate-capped insurance volume to keep the bays fed. posture = lerp(minPosture, maxPosture, clamp01((reputation - floor)/(ceil - floor))).",
+    "reputationFloor": 0.4,
+    "reputationCeil": 0.85,
+    "minPosture": 0.3,
+    "maxPosture": 0.75
+  },
+  "capacity": {
+    "_doc": "Capacity-aware rush balancing. Once the capacity function is automated the manager makes the rush-vs-walk call capacity-aware — it only rush-orders a parts miss while the shop has slack (live utilization below the ceiling), otherwise it walks the job rather than overcommit a slammed bay/advisor floor.",
+    "utilizationRushCeiling": 0.85
+  }
+}

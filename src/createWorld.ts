@@ -854,6 +854,7 @@ export function createWorld(deps: {
     reputation,
     weather,
     partsInventory,
+    managerGates,
   });
   const {
     collisionStream,
