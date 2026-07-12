@@ -94,7 +94,13 @@ function composeApp(opts: { staffOrg?: StaffOrg } = {}) {
         creditTiers: loadCreditTiers(),
         getCustomerSession: (id) => {
           const s = customerPool.getSession(id);
-          return s ? { bundle: s.bundle, visitArchetypeId: s.visitArchetypeId } : undefined;
+          return s
+            ? {
+                bundle: s.bundle,
+                visitArchetypeId: s.visitArchetypeId,
+                archetypeLabel: s.archetypeLabel,
+              }
+            : undefined;
         },
       }),
     ],

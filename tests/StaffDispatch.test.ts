@@ -174,10 +174,16 @@ function withTrade(visit: SalesVisit, allowanceAsk: number): SalesVisit {
   return { ...visit, hasTrade: true, allowanceAsk };
 }
 
-function makeSession(personId: string, visit: SalesVisit, opts: Partial<Person> = {}): StaffDispatchCustomerSession {
+function makeSession(
+  personId: string,
+  visit: SalesVisit,
+  opts: Partial<Person> = {},
+  archetypeLabel = 'Young Family',
+): StaffDispatchCustomerSession {
   return {
     bundle: { person: makePerson(personId, opts), visit },
     visitArchetypeId: 'family_vehicle_search',
+    archetypeLabel,
   };
 }
 
@@ -265,6 +271,8 @@ interface Wired {
     grossImpact: number;
     customerId: string;
     matchQuality?: number;
+    vehicleCategory?: 'sedan' | 'truck' | 'suv';
+    archetypeLabel?: string;
   }>;
   closedDeals: ClosedDealPayload[];
   trades: TradeResolvedPayload[];
@@ -481,6 +489,31 @@ describe('StaffDispatch — real close path (#147)', () => {
     admit(bus, 'cust:1');
     expect(events[0].outcome).toBe('no_sale');
     expect(events[0].matchQuality).toBeUndefined();
+  });
+
+  it('a closed deal carries the matched vehicle category + customer archetype label (#320)', () => {
+    const { bus, sessions, events } = setup([makeStaff(0.9)], BASE_CONFIG, {
+      lot: [makeLotVehicle('veh:1', { category: 'truck' })],
+    });
+    sessions.set(
+      'cust:1',
+      makeSession('cust:1', makeFinanceVisit('cust:1'), {}, 'Tradesperson'),
+    );
+    admit(bus, 'cust:1');
+    expect(events[0].outcome).toBe('closed');
+    expect(events[0].vehicleCategory).toBe('truck');
+    expect(events[0].archetypeLabel).toBe('Tradesperson');
+  });
+
+  it('a no_sale carries no vehicle category or archetype label (#320)', () => {
+    const { bus, sessions, events } = setup([makeStaff(0.9)], BASE_CONFIG, {
+      lot: [],
+    });
+    sessions.set('cust:1', makeSession('cust:1', makeFinanceVisit('cust:1')));
+    admit(bus, 'cust:1');
+    expect(events[0].outcome).toBe('no_sale');
+    expect(events[0].vehicleCategory).toBeUndefined();
+    expect(events[0].archetypeLabel).toBeUndefined();
   });
 
   it('season demand lean (#231 S2): wantVectorBias runs on the resolution want-vector', () => {

@@ -115,6 +115,7 @@ function makeSession(personId: string): StaffDispatchCustomerSession {
   return {
     bundle: { person: makePerson(personId), visit: makeFinanceVisit(personId) },
     visitArchetypeId: 'family_vehicle_search',
+    archetypeLabel: 'Young Family',
   };
 }
 

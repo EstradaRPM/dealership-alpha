@@ -11,9 +11,10 @@ import type { DayFunnel } from '../../game/CapacityManager';
  *
  * Self-similar by design (design record §2): this same shape — one scoreline
  * + a reactions list, each reaction starring an entity with a fate — is what
- * later plug-ins (individual sale wins/losses in #320/#321, F&I as plug-in
- * #2, higher-tier zooms) feed into. S1 ships exactly one reaction: the
- * aggregate match summary.
+ * plug-ins feed into. S1 (#319) shipped exactly one reaction, the aggregate
+ * match summary. S2 (#320) adds individual starred win reactions, ranked by
+ * drama off the day's closes; sale losses (#321) and F&I (plug-in #2) are
+ * later plug-ins onto the same `reactions[]` shape.
  */
 
 /** Tally of today's closed deals scored for inventory-buyer fit (#199). */
@@ -37,9 +38,55 @@ export interface RevealModel {
   reactions: RevealReaction[];
 }
 
+/**
+ * One closed sale's win narrative (#320): the "who" (customer archetype
+ * label), "what" (vehicle category), "how well" (want-axis match quality),
+ * and "outcome" (gross) — an entity with a fate, never a bare metric.
+ * Sourced straight off `staff:auto_resolved`'s `outcome: 'closed'` fields.
+ */
+export interface ClosedSale {
+  customerId: string;
+  archetypeLabel: string;
+  vehicleCategory: 'sedan' | 'truck' | 'suv';
+  matchQuality: number;
+  gross: number;
+}
+
 function money(n: number): string {
   const sign = n < 0 ? '-' : '';
   return `${sign}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
+}
+
+const CATEGORY_PHRASE: Record<ClosedSale['vehicleCategory'], string> = {
+  sedan: 'a sedan',
+  truck: 'a truck',
+  suv: 'an SUV',
+};
+
+/** The plain-language win narrative shared by the Reveal reaction and the live floor toast (#320). */
+export function winReactionText(sale: ClosedSale): string {
+  return `${sale.archetypeLabel} wanted ${CATEGORY_PHRASE[sale.vehicleCategory]} — you had one. SOLD ${money(sale.gross)} front.`;
+}
+
+/**
+ * Ranks the day's closes by drama — match strength first, gross as the
+ * tiebreak — and takes the top `limit`. Pure, deterministic (stable sort).
+ */
+export function rankTopCloses(
+  closes: readonly ClosedSale[],
+  limit: number,
+): readonly ClosedSale[] {
+  return [...closes]
+    .sort((a, b) => b.matchQuality - a.matchQuality || b.gross - a.gross)
+    .slice(0, limit);
+}
+
+function winReaction(sale: ClosedSale): RevealReaction {
+  return {
+    id: `win-${sale.customerId}`,
+    tone: 'positive',
+    text: winReactionText(sale),
+  };
 }
 
 /** Busy/slow framing off the funnel — no temperature words. */
@@ -86,10 +133,12 @@ export function buildReveal(
   funnel: DayFunnel,
   gross: number,
   matchTally: MatchTally,
+  closes: readonly ClosedSale[] = [],
 ): RevealModel {
   const scoreline = `${activityLabel(funnel)} — ${matchClause(matchTally)}.`;
+  const topCloses = rankTopCloses(closes, loadTunables().reveal.starBudget);
   return {
     scoreline,
-    reactions: [matchReaction(matchTally, gross)],
+    reactions: [matchReaction(matchTally, gross), ...topCloses.map(winReaction)],
   };
 }

@@ -1095,7 +1095,11 @@ export function createWorld(deps: {
         getCustomerSession: (id) => {
           const s = customerPool.getSession(id);
           return s
-            ? { bundle: s.bundle, visitArchetypeId: s.visitArchetypeId }
+            ? {
+                bundle: s.bundle,
+                visitArchetypeId: s.visitArchetypeId,
+                archetypeLabel: s.archetypeLabel,
+              }
             : undefined;
         },
         salesProcessDeps: {

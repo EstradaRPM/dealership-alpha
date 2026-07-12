@@ -5,7 +5,7 @@ import type { World } from '../createWorld';
 import type { LotVehicle } from '../game/Inventory';
 import type { FloorEvent } from '../ui/FloorDashboard';
 import type { DayRecapModel } from '../ui/DayRecap';
-import { buildReveal } from '../ui/Reveal';
+import { buildReveal, winReactionText, type ClosedSale } from '../ui/Reveal';
 import type { CashDeltaSplit } from '../ui/HomeTab';
 import type { ShellTabKey } from '../ui/AppShell';
 import type { SaveState } from '../game/SaveStore';
@@ -92,6 +92,10 @@ export function useDayLoop({
   // day-close handler reads the final tally synchronously when it assembles the
   // recap. Reset each "Next Day" alongside grossToday/floorEvents.
   const matchTallyRef = useRef({ strong: 0, matched: 0 });
+  // Per-close win records (#320): the individual sales the Reveal ranks by
+  // drama into starred win reactions, alongside the aggregate tally above.
+  // Reset each day the same way matchTallyRef is.
+  const closesRef = useRef<ClosedSale[]>([]);
   // Cash "vs yesterday" delta for the Home dashboard (#230, split #255). The
   // refs hold the prior day's closing cash and the lifetime stock-acquisition
   // spend at that close; the day-complete handler diffs both against the live
@@ -132,6 +136,7 @@ export function useDayLoop({
     grossTodayRef.current = 0;
     setFloorEvents([]);
     matchTallyRef.current = { strong: 0, matched: 0 };
+    closesRef.current = [];
     // Leaving MANAGERIAL → the day-close recap modal is done; the chip keeps
     // the prior recap reachable until the next day closes over it (#253).
     setRecapModalOpen(false);
@@ -146,6 +151,7 @@ export function useDayLoop({
     setGrossToday(0);
     grossTodayRef.current = 0;
     matchTallyRef.current = { strong: 0, matched: 0 };
+    closesRef.current = [];
     setLastRecap(null);
     setRecapModalOpen(false);
     setMonthClose(null);
@@ -195,7 +201,7 @@ export function useDayLoop({
           leakCause: funnel.leakCause,
           strongMatches: matchTallyRef.current.strong,
           matchedSales: matchTallyRef.current.matched,
-          reveal: buildReveal(funnel, grossTodayRef.current, matchTallyRef.current),
+          reveal: buildReveal(funnel, grossTodayRef.current, matchTallyRef.current, closesRef.current),
         };
         setLastRecap(recapModel);
         setRecapModalOpen(true);
@@ -243,13 +249,23 @@ export function useDayLoop({
     };
     // Match-payoff beat (#199): every closed deal carries the want-axis fit of
     // the stocked unit. Tally all closes; a strong match also drops a live
-    // floor toast ("you had what they wanted") into the event log.
+    // floor toast with the per-customer win detail (#320) into the event log,
+    // and every close is recorded for the day-close Reveal to rank into
+    // starred win reactions.
     const onAutoResolved = ({
       outcome,
       matchQuality,
+      customerId,
+      vehicleCategory,
+      archetypeLabel,
+      grossImpact,
     }: {
       outcome: 'closed' | 'no_sale';
       matchQuality?: number;
+      customerId: string;
+      vehicleCategory?: 'sedan' | 'truck' | 'suv';
+      archetypeLabel?: string;
+      grossImpact: number;
     }) => {
       if (outcome !== 'closed') return;
       const strong = (matchQuality ?? 0) >= STRONG_MATCH_THRESHOLD;
@@ -257,15 +273,25 @@ export function useDayLoop({
         strong: matchTallyRef.current.strong + (strong ? 1 : 0),
         matched: matchTallyRef.current.matched + 1,
       };
-      if (strong) {
-        setFloorEvents((log) => [
-          ...log,
-          {
-            kind: 'match',
-            key: `m${eventSeq.current++}`,
-            text: 'Easy sale — you had what they wanted.',
-          },
-        ]);
+      if (vehicleCategory && archetypeLabel) {
+        const sale: ClosedSale = {
+          customerId,
+          archetypeLabel,
+          vehicleCategory,
+          matchQuality: matchQuality ?? 0,
+          gross: grossImpact,
+        };
+        closesRef.current = [...closesRef.current, sale];
+        if (strong) {
+          setFloorEvents((log) => [
+            ...log,
+            {
+              kind: 'match',
+              key: `m${eventSeq.current++}`,
+              text: winReactionText(sale),
+            },
+          ]);
+        }
       }
     };
     // Month-close hook (#123): clock:month_ended fans out during the Next Day

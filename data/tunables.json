@@ -207,7 +207,8 @@
     "strongMatchThreshold": 0.8
   },
   "reveal": {
-    "busyWalkedInThreshold": 6
+    "busyWalkedInThreshold": 6,
+    "starBudget": 3
   },
   "economy": {
     "startingCash": 50000,

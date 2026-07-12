@@ -34,6 +34,8 @@ import {
 export interface StaffDispatchCustomerSession {
   readonly bundle: { readonly person: Person; readonly visit: Visit };
   readonly visitArchetypeId: string;
+  /** Customer archetype label (#320), e.g. `'Young Family'` — the same label CustomerPool stamps on `customer:arrived`. */
+  readonly archetypeLabel: string;
 }
 
 export interface StaffDispatchDeps {
@@ -544,6 +546,8 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         outcome: 'closed',
         grossImpact: result.frontGross + result.backGross,
         matchQuality: match.matchQuality,
+        vehicleCategory: vehicle.category,
+        archetypeLabel: session.archetypeLabel,
       });
       return 'resolved';
     };

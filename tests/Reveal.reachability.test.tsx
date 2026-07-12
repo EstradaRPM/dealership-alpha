@@ -5,6 +5,7 @@ import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { DayRecap, type DayRecapModel } from '../src/ui/DayRecap';
 import { buildReveal } from '../src/ui/Reveal';
+import type { ClosedSale } from '../src/ui/Reveal';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // Anti-orphan (#319): the Reveal renderer must be reachable through the real
@@ -91,9 +92,75 @@ describe('#319 The Reveal — reachable through the live day-close pipeline', ()
     expect(getByText(/Busy day — you had what the crowd wanted: 6 of 6 stuck\./)).toBeTruthy();
   });
 
-  it('App composition wires the funnel/gross/match tally into buildReveal at day close', () => {
+  it('App composition wires the funnel/gross/match tally/closes into buildReveal at day close', () => {
     const src = readAppCompositionSource();
-    expect(src).toMatch(/buildReveal\(funnel, grossTodayRef\.current, matchTallyRef\.current\)/);
+    expect(src).toMatch(
+      /buildReveal\(funnel, grossTodayRef\.current, matchTallyRef\.current, closesRef\.current\)/,
+    );
     expect(src).toMatch(/reveal: buildReveal\(/);
+  });
+});
+
+// Anti-orphan (#320): a standout individual close must reach the Reveal as a
+// starred win reaction through the real game-logic → event → recap pipeline,
+// not just via buildReveal called directly with hand-built fixtures.
+describe('#320 starred win reactions — reachable through the live close flow', () => {
+  it('a real closed deal produces a win-* reaction in the Reveal', () => {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed: 7, characterProfile: PROFILE });
+    if (!world.staffOrg.currentRoster.some((s) => s.role_id === 'salesperson')) {
+      const candidate = world.staffOrg.getCandidates('salesperson')[0];
+      if (candidate) world.staffOrg.hire(candidate.candidateId);
+    }
+    const listings = [...world.inventory.getAuctionListings()].sort(
+      (a, b) => a.askingPrice - b.askingPrice,
+    );
+    for (const listing of listings) {
+      if (world.economy.cash - listing.askingPrice < CASH_BUFFER) break;
+      world.inventory.buyFromAuction(listing.id);
+    }
+    let gross = 0;
+    let strong = 0;
+    let matched = 0;
+    let closes: ClosedSale[] = [];
+    bus.subscribe('deal:closed', ({ frontGross, backGross }) => {
+      gross += frontGross + backGross;
+    });
+    bus.subscribe(
+      'staff:auto_resolved',
+      ({ outcome, matchQuality, customerId, vehicleCategory, archetypeLabel, grossImpact }) => {
+        if (outcome !== 'closed') return;
+        matched += 1;
+        if ((matchQuality ?? 0) >= 0.8) strong += 1;
+        if (vehicleCategory && archetypeLabel) {
+          closes.push({
+            customerId,
+            archetypeLabel,
+            vehicleCategory,
+            matchQuality: matchQuality ?? 0,
+            gross: grossImpact,
+          });
+        }
+      },
+    );
+
+    let sawWinReaction = false;
+    for (let i = 0; i < DAYS; i++) {
+      world.dayLoop.nextDay().runDay();
+      const funnel = world.capacityManager.getDayFunnel();
+      const reveal = buildReveal(funnel, gross, { strong, matched }, closes);
+      if (reveal.reactions.some((r) => r.id.startsWith('win-'))) sawWinReaction = true;
+      gross = 0;
+      strong = 0;
+      matched = 0;
+      closes = [];
+    }
+    expect(sawWinReaction).toBe(true);
+  });
+
+  it('App composition wires the win narrative into the live floor toast, not the generic string', () => {
+    const src = readAppCompositionSource();
+    expect(src).toMatch(/text: winReactionText\(sale\)/);
+    expect(src).toMatch(/closesRef\.current = \[\.\.\.closesRef\.current, sale\]/);
   });
 });

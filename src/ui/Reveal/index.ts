@@ -1,3 +1,9 @@
 export { Reveal } from './Reveal';
-export { buildReveal } from './buildReveal';
-export type { RevealModel, RevealReaction, RevealReactionTone, MatchTally } from './buildReveal';
+export { buildReveal, rankTopCloses, winReactionText } from './buildReveal';
+export type {
+  RevealModel,
+  RevealReaction,
+  RevealReactionTone,
+  MatchTally,
+  ClosedSale,
+} from './buildReveal';

@@ -264,6 +264,10 @@ export const TunablesSchema = z.object({
   // walked-in count — the only threshold the plain-language framing needs.
   reveal: z.object({
     busyWalkedInThreshold: z.number().nonnegative(),
+    // #320: how many individual starred win reactions the Reveal surfaces per
+    // day, ranked by drama (match strength, then gross as a tiebreak). Kept
+    // small by design — a handful of standout wins, not a per-close ticker.
+    starBudget: z.number().int().positive(),
   }),
   economy: z.object({
     startingCash: z.number().nonnegative(),

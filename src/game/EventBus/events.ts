@@ -463,6 +463,18 @@ export interface EventMap {
      */
     matchQuality?: number;
     /**
+     * The matched vehicle's category (#320, the engagement-spine starred-win
+     * reaction) — the "what they got" half of the win narrative, paired with
+     * `matchQuality` ("how well it fit"). Present only on `outcome: 'closed'`.
+     */
+    vehicleCategory?: 'sedan' | 'truck' | 'suv';
+    /**
+     * The buying customer's archetype label (#320), e.g. `'Young Family'` —
+     * the same label `customer:arrived` carries. Present only on
+     * `outcome: 'closed'`; names the "who" half of the starred win reaction.
+     */
+    archetypeLabel?: string;
+    /**
      * Named reason for a `no_sale` outcome (#147 tracer): `'no_session'`,
      * `'not_sales'`, `'no_fit'`, `'no_close'`, the trade walks
      * (`'trade_negative_equity'` — underwater trade (#169);

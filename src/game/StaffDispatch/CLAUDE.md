@@ -182,7 +182,11 @@ with #147.
 - **Emits:** `staff:auto_resolved` (outcome `closed` or `no_sale`, with
   `grossImpact`, on `closed` an optional `matchQuality` — the want-axis fit of
   the `pickVehicleForMatch`-selected unit ∈ [0,1], the #199 match-payoff signal
-  the floor toast + DayRecap tally threshold — and on `no_sale` an optional
+  the floor toast + DayRecap tally threshold — plus, also `closed`-only,
+  `vehicleCategory` (the matched unit's category) and `archetypeLabel` (the
+  buying customer's archetype label, from `getCustomerSession`) — the #320
+  starred-win narrative the engagement-spine Reveal ranks by drama and the
+  live floor toast renders per-customer — and on `no_sale` an optional
   `reason`). On a successful close
   the resolver delegates to `DealEngine.closeDeal`, so the canonical
   `deal:closed` (with the five deal-structuring fields) and
