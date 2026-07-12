@@ -65,6 +65,15 @@ Quadrant close + price formation (#90):
   - **Low-trust forced close:** `outcome=buy AND unconditional AND trust < trustFloor` → `badReview=true + highFiResistance=true` (signals downstream).
   - `closingComposite` = `skill.skillFor('NEGOTIATE')` — the NEGOTIATE gate skill drives price hold.
 
+Wanted-category classifier (#321, engagement-spine walk-off reactions) —
+`wantedVehicleCategory(customerSpaced, deps?) → 'sedan' | 'truck' | 'suv'`.
+Pure/deterministic: nearest `data/vehicle-spaced.json` `categoryBase` vector to
+the customer's want-vector by squared Euclidean distance (ties → declaration
+order `sedan, truck, suv`). Independent of any matched vehicle — usable on a
+`no_sale` where nothing was ever picked (unlike `vehicleCategory`, which names
+what a *closed* deal's matched unit was). `deps.vehicleSpacedConfig` overrides
+the loader for tests, same pattern as `vehicleSpaced`.
+
 Customer→vehicle match-payoff (#199) — `pickVehicleForMatch(customer, lot, deps?) → { vehicleId, matchQuality } | null`. Same argmax pipeline as `pickVehicleFor`; additionally returns the winner's want-axis `fit` ∈ [0,1] as `matchQuality` — the loop's match-payoff signal ("you had what they wanted"), distinct from the composite `score` (which folds price + reputation). `pickVehicleFor` is now a thin id-only wrapper over it. StaffDispatch carries `matchQuality` onto `staff:auto_resolved` (closed); the floor toast + DayRecap tally threshold it (`data/tunables.json` `matchPayoff.strongMatchThreshold`).
 
 Customer→vehicle matcher (#145) — `pickVehicleFor(customer, lot, deps?) → vehicleId | null`. Filters the lot by `isEligible` then `nonnegotiablesSatisfied`, argmax-scores survivors as `wantAxisFit·WANT_WEIGHT − pricePenalty·priceSensitivity + reputationBonus(make)`. Reputation hook is a stub (`() => 0`); real surface is a follow-on. Headroom: cash = `wealth × cashSpendFraction`, finance = `annualIncome`. Pure, deterministic — ties break by ascending `vehicleId` (no RNG). `MatchableVehicle` is `SpacedVehicleInput & PricedVehicleInput & { id }` (Inventory's `LotVehicle` satisfies it structurally); `MatchCustomer` accepts an optional pre-classified `axisProfile` to skip the seeded `classifyAxes` call.

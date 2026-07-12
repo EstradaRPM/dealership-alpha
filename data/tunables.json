@@ -208,7 +208,8 @@
   },
   "reveal": {
     "busyWalkedInThreshold": 6,
-    "starBudget": 3
+    "starBudget": 3,
+    "lossStarBudget": 2
   },
   "economy": {
     "startingCash": 50000,

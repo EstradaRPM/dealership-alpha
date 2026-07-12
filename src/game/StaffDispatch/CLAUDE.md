@@ -100,9 +100,19 @@ deal structure.
 `staff:auto_resolved` now carries an optional `reason` field on `no_sale`
 outcomes (`no_session | not_sales | no_fit | no_close | trade_negative_equity |
 trade_manager_declined | trade_player_declined | discount_player_declined |
-discount_below_cost | <WalkCause>`). A pending `player_review` trade or discount
-emits no `staff:auto_resolved` until the player declines or accepts a decision
-through the held-review closure. The sole `declined` path is an unstaffed floor.
+discount_below_cost | discount_haggle_exhausted | <WalkCause>`). A pending
+`player_review` trade or discount emits no `staff:auto_resolved` until the
+player declines or accepts a decision through the held-review closure. The
+sole `declined` path is an unstaffed floor.
+
+Every `no_sale` past the initial session lookup also carries `archetypeLabel`
+(the customer's archetype label) and `wantedCategory` (#321 — the nearest
+SPACED category to the customer's want-vector, `wantedVehicleCategory`,
+computed once as `walkOffContext` and threaded through every `emitNoSale` call
+after `customerSpaced` is derived) — the "who"/"what they wanted" halves of
+the engagement-spine walk-off narrative. Only `no_session` (no session at all)
+carries neither; `not_sales` (a non-sales visit routed here) carries
+`archetypeLabel` but no `wantedCategory` (no sales preferences to classify).
 
 ### Required deps for the close
 `inventory` (lot snapshot), `dealEngine` (closeDeal + classifyCredit +
@@ -187,7 +197,9 @@ with #147.
   buying customer's archetype label, from `getCustomerSession`) — the #320
   starred-win narrative the engagement-spine Reveal ranks by drama and the
   live floor toast renders per-customer — and on `no_sale` an optional
-  `reason`). On a successful close
+  `reason` plus (once a session exists) `archetypeLabel` and `wantedCategory`
+  — the #321 starred-walk-off counterpart the same Reveal ranks into loss
+  reactions). On a successful close
   the resolver delegates to `DealEngine.closeDeal`, so the canonical
   `deal:closed` (with the five deal-structuring fields) and
   `inventory:vehicle_sold` fire too. On a routine/manager-approved trade (#169)

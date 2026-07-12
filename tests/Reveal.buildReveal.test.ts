@@ -1,10 +1,17 @@
-import { buildReveal, rankTopCloses, winReactionText } from '../src/ui/Reveal';
-import type { ClosedSale } from '../src/ui/Reveal';
+import {
+  buildReveal,
+  rankTopCloses,
+  winReactionText,
+  rankTopWalkOffs,
+  walkOffReactionText,
+} from '../src/ui/Reveal';
+import type { ClosedSale, WalkOff } from '../src/ui/Reveal';
 import type { DayFunnel } from '../src/game/CapacityManager';
 import { loadTunables } from '../src/game/data';
 
 const BUSY_THRESHOLD = loadTunables().reveal.busyWalkedInThreshold;
 const STAR_BUDGET = loadTunables().reveal.starBudget;
+const LOSS_STAR_BUDGET = loadTunables().reveal.lossStarBudget;
 
 function sale(overrides: Partial<ClosedSale> = {}): ClosedSale {
   return {
@@ -13,6 +20,16 @@ function sale(overrides: Partial<ClosedSale> = {}): ClosedSale {
     vehicleCategory: 'suv',
     matchQuality: 0.9,
     gross: 2_400,
+    ...overrides,
+  };
+}
+
+function walkOff(overrides: Partial<WalkOff> = {}): WalkOff {
+  return {
+    customerId: 'cust:2',
+    archetypeLabel: 'Commuter',
+    wantedCategory: 'sedan',
+    reason: 'no_fit',
     ...overrides,
   };
 }
@@ -157,6 +174,127 @@ describe('#320 buildReveal — individual starred win reactions', () => {
 
   it('no closes ⇒ no win reactions, only the match summary', () => {
     const model = buildReveal(funnel(), 9_000, { strong: 3, matched: 5 });
+    expect(model.reactions.map((r) => r.id)).toEqual(['match-summary']);
+  });
+});
+
+describe('#321 walkOffReactionText — reason-code → plain-language copy (no magic strings)', () => {
+  it('names the customer + what they wanted for a no_fit walk-off', () => {
+    const text = walkOffReactionText(
+      walkOff({ archetypeLabel: 'Commuter', wantedCategory: 'truck', reason: 'no_fit' }),
+    );
+    expect(text).toBe("Commuter wanted a truck — your lot didn't have one. Walked.");
+  });
+
+  it('falls back to generic phrasing when the wanted category is unavailable', () => {
+    const text = walkOffReactionText(
+      walkOff({ archetypeLabel: 'Commuter', wantedCategory: undefined, reason: 'no_fit' }),
+    );
+    expect(text).toBe('Commuter wanted something you didn\'t have. Walked.');
+  });
+
+  it('falls back to a generic "A customer" when no archetype label carried', () => {
+    const text = walkOffReactionText(
+      walkOff({ archetypeLabel: undefined, wantedCategory: undefined, reason: 'no_close' }),
+    );
+    expect(text).toMatch(/^A customer /);
+  });
+
+  it('phrases every documented reason code without throwing or falling back', () => {
+    const reasons = [
+      'no_fit',
+      'no_close',
+      'trade_negative_equity',
+      'trade_manager_declined',
+      'trade_player_declined',
+      'discount_player_declined',
+      'discount_below_cost',
+      'discount_haggle_exhausted',
+      'patience_drain',
+      'trust_collapse',
+      'demo_nonnegotiable_miss',
+      'no_session',
+      'not_sales',
+    ];
+    for (const reason of reasons) {
+      const text = walkOffReactionText(walkOff({ reason }));
+      expect(text).toMatch(/Walked\.$/);
+      expect(text).not.toBe('Commuter walked.'); // the FALLBACK_WALK_OFF_COPY generic
+    }
+  });
+
+  it('an unknown reason code falls back to the generic line rather than throwing', () => {
+    const text = walkOffReactionText(walkOff({ reason: 'some_future_reason' }));
+    expect(text).toBe('Commuter walked.');
+  });
+
+  it('never uses temperature words', () => {
+    const text = walkOffReactionText(walkOff({ reason: 'no_fit' }));
+    expect(text.toLowerCase()).not.toMatch(/\b(warm|hot|cool|cold)\b/);
+  });
+});
+
+describe('#321 rankTopWalkOffs — only the painful/instructive losses star', () => {
+  it('drops the boring-middle reasons (a routine no_close never stars)', () => {
+    const ranked = rankTopWalkOffs([walkOff({ reason: 'no_close' })], 5);
+    expect(ranked).toHaveLength(0);
+  });
+
+  it('keeps painful reasons like no_fit and trade_negative_equity', () => {
+    const painful = [
+      walkOff({ customerId: 'a', reason: 'no_fit' }),
+      walkOff({ customerId: 'b', reason: 'trade_negative_equity' }),
+    ];
+    const ranked = rankTopWalkOffs(painful, 5);
+    expect(ranked.map((w) => w.customerId)).toEqual(['a', 'b']);
+  });
+
+  it('caps to the limit — the star budget stays small', () => {
+    const painful = Array.from({ length: 10 }, (_, i) =>
+      walkOff({ customerId: `c${i}`, reason: 'no_fit' }),
+    );
+    expect(rankTopWalkOffs(painful, 3)).toHaveLength(3);
+  });
+
+  it('does not mutate the input array', () => {
+    const walkOffs = [walkOff({ customerId: 'a' }), walkOff({ customerId: 'b', reason: 'no_close' })];
+    const copy = [...walkOffs];
+    rankTopWalkOffs(walkOffs, 2);
+    expect(walkOffs).toEqual(copy);
+  });
+});
+
+describe('#321 buildReveal — individual starred walk-off (loss) reactions', () => {
+  it('appends ranked walk-off reactions after the win reactions', () => {
+    const closes = [sale({ customerId: 'a' })];
+    const walkOffs = [walkOff({ customerId: 'x', reason: 'no_fit' })];
+    const model = buildReveal(funnel(), 2_400, { strong: 1, matched: 1 }, closes, walkOffs);
+    expect(model.reactions.map((r) => r.id)).toEqual([
+      'match-summary',
+      'win-a',
+      'walk-x',
+    ]);
+    expect(model.reactions[2].tone).toBe('negative');
+    expect(model.reactions[2].text).toBe(walkOffReactionText(walkOffs[0]));
+  });
+
+  it('caps starred walk-offs to the tunable loss star budget', () => {
+    const walkOffs = Array.from({ length: LOSS_STAR_BUDGET + 5 }, (_, i) =>
+      walkOff({ customerId: `w${i}`, reason: 'no_fit' }),
+    );
+    const model = buildReveal(funnel(), 0, { strong: 0, matched: 0 }, [], walkOffs);
+    expect(model.reactions.length).toBeLessThanOrEqual(1 + LOSS_STAR_BUDGET);
+  });
+
+  it('no walk-offs ⇒ no loss reactions', () => {
+    const model = buildReveal(funnel(), 9_000, { strong: 3, matched: 5 });
+    expect(model.reactions.map((r) => r.id)).toEqual(['match-summary']);
+  });
+
+  it('a routine no_close walk-off never stars, even when present', () => {
+    const model = buildReveal(funnel(), 9_000, { strong: 3, matched: 5 }, [], [
+      walkOff({ reason: 'no_close' }),
+    ]);
     expect(model.reactions.map((r) => r.id)).toEqual(['match-summary']);
   });
 });

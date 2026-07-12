@@ -5,7 +5,7 @@ import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { DayRecap, type DayRecapModel } from '../src/ui/DayRecap';
 import { buildReveal } from '../src/ui/Reveal';
-import type { ClosedSale } from '../src/ui/Reveal';
+import type { ClosedSale, WalkOff } from '../src/ui/Reveal';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // Anti-orphan (#319): the Reveal renderer must be reachable through the real
@@ -92,10 +92,10 @@ describe('#319 The Reveal — reachable through the live day-close pipeline', ()
     expect(getByText(/Busy day — you had what the crowd wanted: 6 of 6 stuck\./)).toBeTruthy();
   });
 
-  it('App composition wires the funnel/gross/match tally/closes into buildReveal at day close', () => {
+  it('App composition wires the funnel/gross/match tally/closes/walk-offs into buildReveal at day close', () => {
     const src = readAppCompositionSource();
     expect(src).toMatch(
-      /buildReveal\(funnel, grossTodayRef\.current, matchTallyRef\.current, closesRef\.current\)/,
+      /buildReveal\(\s*funnel,\s*grossTodayRef\.current,\s*matchTallyRef\.current,\s*closesRef\.current,\s*walkOffsRef\.current,?\s*\)/,
     );
     expect(src).toMatch(/reveal: buildReveal\(/);
   });
@@ -162,5 +162,63 @@ describe('#320 starred win reactions — reachable through the live close flow',
     const src = readAppCompositionSource();
     expect(src).toMatch(/text: winReactionText\(sale\)/);
     expect(src).toMatch(/closesRef\.current = \[\.\.\.closesRef\.current, sale\]/);
+  });
+});
+
+// Anti-orphan (#321): a walked customer must reach the Reveal as a starred
+// walk-off reaction through the real game-logic → event → recap pipeline, not
+// just via buildReveal called directly with hand-built fixtures.
+describe('#321 starred walk-off reactions — reachable through the live no_sale flow', () => {
+  it('a real no_sale outcome produces a walk-* reaction in the Reveal', () => {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed: 7, characterProfile: PROFILE });
+    if (!world.staffOrg.currentRoster.some((s) => s.role_id === 'salesperson')) {
+      const candidate = world.staffOrg.getCandidates('salesperson')[0];
+      if (candidate) world.staffOrg.hire(candidate.candidateId);
+    }
+    // Deliberately do NOT stock the lot beyond whatever createWorld seeds —
+    // a thin/mismatched lot maximizes no_fit walk-offs for this real pipeline.
+    let gross = 0;
+    let strong = 0;
+    let matched = 0;
+    let walkOffs: WalkOff[] = [];
+    bus.subscribe('deal:closed', ({ frontGross, backGross }) => {
+      gross += frontGross + backGross;
+    });
+    bus.subscribe(
+      'staff:auto_resolved',
+      ({ outcome, matchQuality, customerId, archetypeLabel, wantedCategory, reason }) => {
+        if (outcome === 'closed') {
+          matched += 1;
+          if ((matchQuality ?? 0) >= 0.8) strong += 1;
+          return;
+        }
+        if (archetypeLabel && reason) {
+          walkOffs.push({ customerId, archetypeLabel, wantedCategory, reason });
+        }
+      },
+    );
+
+    let sawWalkReaction = false;
+    for (let i = 0; i < DAYS; i++) {
+      world.dayLoop.nextDay().runDay();
+      const funnel = world.capacityManager.getDayFunnel();
+      const reveal = buildReveal(funnel, gross, { strong, matched }, [], walkOffs);
+      if (reveal.reactions.some((r) => r.id.startsWith('walk-'))) sawWalkReaction = true;
+      gross = 0;
+      strong = 0;
+      matched = 0;
+      walkOffs = [];
+    }
+    expect(sawWalkReaction).toBe(true);
+  });
+
+  it('App composition wires the loss narrative into the live floor toast and the walk-off tally', () => {
+    const src = readAppCompositionSource();
+    expect(src).toMatch(/text: walkOffReactionText\(walkOff\)/);
+    expect(src).toMatch(
+      /walkOffsRef\.current = \[\.\.\.walkOffsRef\.current, walkOff\]/,
+    );
+    expect(src).toMatch(/kind: 'walk'/);
   });
 });

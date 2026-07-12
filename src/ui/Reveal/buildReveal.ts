@@ -13,8 +13,9 @@ import type { DayFunnel } from '../../game/CapacityManager';
  * + a reactions list, each reaction starring an entity with a fate — is what
  * plug-ins feed into. S1 (#319) shipped exactly one reaction, the aggregate
  * match summary. S2 (#320) adds individual starred win reactions, ranked by
- * drama off the day's closes; sale losses (#321) and F&I (plug-in #2) are
- * later plug-ins onto the same `reactions[]` shape.
+ * drama off the day's closes. S3 (#321) adds the negative half — starred
+ * walk-off reactions off the day's `no_sale` outcomes. F&I (plug-in #2) is a
+ * later plug-in onto the same `reactions[]` shape.
  */
 
 /** Tally of today's closed deals scored for inventory-buyer fit (#199). */
@@ -52,6 +53,20 @@ export interface ClosedSale {
   gross: number;
 }
 
+/**
+ * One walk-off's loss narrative (#321): the "who" (customer archetype label,
+ * when a session existed), "what" (their wanted vehicle category, when
+ * derivable), and "why" (the named `no_sale` reason off `staff:auto_resolved`
+ * — see `events.ts` for the full code list). An entity with a fate, never a
+ * bare metric.
+ */
+export interface WalkOff {
+  customerId: string;
+  archetypeLabel?: string;
+  wantedCategory?: ClosedSale['vehicleCategory'];
+  reason: string;
+}
+
 function money(n: number): string {
   const sign = n < 0 ? '-' : '';
   return `${sign}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
@@ -66,6 +81,91 @@ const CATEGORY_PHRASE: Record<ClosedSale['vehicleCategory'], string> = {
 /** The plain-language win narrative shared by the Reveal reaction and the live floor toast (#320). */
 export function winReactionText(sale: ClosedSale): string {
   return `${sale.archetypeLabel} wanted ${CATEGORY_PHRASE[sale.vehicleCategory]} — you had one. SOLD ${money(sale.gross)} front.`;
+}
+
+/**
+ * Reason-code → plain-language walk-off copy (#321). The single source both
+ * the live floor toast and the Reveal reaction draw from — no per-reason
+ * strings elsewhere. `starworthy` marks the painful/instructive losses worth a
+ * star; the rest stay folded into the day's aggregate (the boring middle
+ * stays a number, per the design record).
+ */
+const WALK_OFF_COPY: Record<
+  string,
+  { starworthy: boolean; text: (who: string, what: string | undefined) => string }
+> = {
+  no_fit: {
+    starworthy: true,
+    text: (who, what) =>
+      what
+        ? `${who} wanted ${what} — your lot didn't have one. Walked.`
+        : `${who} wanted something you didn't have. Walked.`,
+  },
+  trade_negative_equity: {
+    starworthy: true,
+    text: (who) => `${who}'s trade was underwater — the numbers never worked. Walked.`,
+  },
+  trade_manager_declined: {
+    starworthy: true,
+    text: (who) => `${who}'s trade came in too rich for the desk. Walked.`,
+  },
+  discount_below_cost: {
+    starworthy: true,
+    text: (who) => `${who} wanted a price that would've lost you money. Walked.`,
+  },
+  demo_nonnegotiable_miss: {
+    starworthy: true,
+    text: (who) => `${who} needed something the vehicle didn't have. Walked.`,
+  },
+  no_close: {
+    starworthy: false,
+    text: (who) => `${who} couldn't agree on a price. Walked.`,
+  },
+  trade_player_declined: {
+    starworthy: false,
+    text: (who) => `${who}'s trade offer wasn't enough. Walked.`,
+  },
+  discount_player_declined: {
+    starworthy: false,
+    text: (who) => `${who} wanted a deeper discount than you'd give. Walked.`,
+  },
+  discount_haggle_exhausted: {
+    starworthy: false,
+    text: (who) => `${who} and the salesperson never met in the middle. Walked.`,
+  },
+  patience_drain: {
+    starworthy: false,
+    text: (who) => `${who} ran out of patience. Walked.`,
+  },
+  trust_collapse: {
+    starworthy: false,
+    text: (who) => `${who} stopped trusting the pitch. Walked.`,
+  },
+  no_session: {
+    starworthy: false,
+    text: (who) => `${who} left before anyone reached them. Walked.`,
+  },
+  not_sales: {
+    starworthy: false,
+    text: (who) => `${who} wasn't here to buy. Walked.`,
+  },
+};
+
+const FALLBACK_WALK_OFF_COPY = {
+  starworthy: false,
+  text: (who: string) => `${who} walked.`,
+};
+
+/** The plain-language loss narrative shared by the Reveal reaction and the live floor toast (#321). */
+export function walkOffReactionText(walkOff: WalkOff): string {
+  const copy = WALK_OFF_COPY[walkOff.reason] ?? FALLBACK_WALK_OFF_COPY;
+  const who = walkOff.archetypeLabel ?? 'A customer';
+  const what = walkOff.wantedCategory ? CATEGORY_PHRASE[walkOff.wantedCategory] : undefined;
+  return copy.text(who, what);
+}
+
+function isStarworthyWalkOff(reason: string): boolean {
+  return (WALK_OFF_COPY[reason] ?? FALLBACK_WALK_OFF_COPY).starworthy;
 }
 
 /**
@@ -86,6 +186,28 @@ function winReaction(sale: ClosedSale): RevealReaction {
     id: `win-${sale.customerId}`,
     tone: 'positive',
     text: winReactionText(sale),
+  };
+}
+
+/**
+ * Selects the day's painful/instructive walk-offs — the boring middle (a
+ * routine `no_close`/`patience_drain`/etc.) never makes the cut — and takes
+ * the top `limit` in emission order. Pure; no numeric "drama" axis exists for
+ * a loss the way match-quality does for a win, so order is simply stable
+ * arrival order among the starworthy reasons.
+ */
+export function rankTopWalkOffs(
+  walkOffs: readonly WalkOff[],
+  limit: number,
+): readonly WalkOff[] {
+  return walkOffs.filter((w) => isStarworthyWalkOff(w.reason)).slice(0, limit);
+}
+
+function walkOffReaction(walkOff: WalkOff): RevealReaction {
+  return {
+    id: `walk-${walkOff.customerId}`,
+    tone: 'negative',
+    text: walkOffReactionText(walkOff),
   };
 }
 
@@ -134,11 +256,18 @@ export function buildReveal(
   gross: number,
   matchTally: MatchTally,
   closes: readonly ClosedSale[] = [],
+  walkOffs: readonly WalkOff[] = [],
 ): RevealModel {
+  const tunables = loadTunables().reveal;
   const scoreline = `${activityLabel(funnel)} — ${matchClause(matchTally)}.`;
-  const topCloses = rankTopCloses(closes, loadTunables().reveal.starBudget);
+  const topCloses = rankTopCloses(closes, tunables.starBudget);
+  const topWalkOffs = rankTopWalkOffs(walkOffs, tunables.lossStarBudget);
   return {
     scoreline,
-    reactions: [matchReaction(matchTally, gross), ...topCloses.map(winReaction)],
+    reactions: [
+      matchReaction(matchTally, gross),
+      ...topCloses.map(winReaction),
+      ...topWalkOffs.map(walkOffReaction),
+    ],
   };
 }

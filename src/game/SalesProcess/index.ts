@@ -114,3 +114,6 @@ export type {
   ReputationBonusFn,
   VehicleMatch,
 } from './pickVehicle';
+
+export { wantedVehicleCategory } from './wantedCategory';
+export type { VehicleCategory, WantedCategoryDeps } from './wantedCategory';

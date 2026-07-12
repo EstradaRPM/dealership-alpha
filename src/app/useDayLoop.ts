@@ -5,7 +5,14 @@ import type { World } from '../createWorld';
 import type { LotVehicle } from '../game/Inventory';
 import type { FloorEvent } from '../ui/FloorDashboard';
 import type { DayRecapModel } from '../ui/DayRecap';
-import { buildReveal, winReactionText, type ClosedSale } from '../ui/Reveal';
+import {
+  buildReveal,
+  winReactionText,
+  walkOffReactionText,
+  rankTopWalkOffs,
+  type ClosedSale,
+  type WalkOff,
+} from '../ui/Reveal';
 import type { CashDeltaSplit } from '../ui/HomeTab';
 import type { ShellTabKey } from '../ui/AppShell';
 import type { SaveState } from '../game/SaveStore';
@@ -96,6 +103,10 @@ export function useDayLoop({
   // drama into starred win reactions, alongside the aggregate tally above.
   // Reset each day the same way matchTallyRef is.
   const closesRef = useRef<ClosedSale[]>([]);
+  // Per-walk-off loss records (#321): every `no_sale` outcome with a customer
+  // session, the Reveal's negative-half counterpart to closesRef. Reset each
+  // day the same way.
+  const walkOffsRef = useRef<WalkOff[]>([]);
   // Cash "vs yesterday" delta for the Home dashboard (#230, split #255). The
   // refs hold the prior day's closing cash and the lifetime stock-acquisition
   // spend at that close; the day-complete handler diffs both against the live
@@ -137,6 +148,7 @@ export function useDayLoop({
     setFloorEvents([]);
     matchTallyRef.current = { strong: 0, matched: 0 };
     closesRef.current = [];
+    walkOffsRef.current = [];
     // Leaving MANAGERIAL → the day-close recap modal is done; the chip keeps
     // the prior recap reachable until the next day closes over it (#253).
     setRecapModalOpen(false);
@@ -152,6 +164,7 @@ export function useDayLoop({
     grossTodayRef.current = 0;
     matchTallyRef.current = { strong: 0, matched: 0 };
     closesRef.current = [];
+    walkOffsRef.current = [];
     setLastRecap(null);
     setRecapModalOpen(false);
     setMonthClose(null);
@@ -201,7 +214,13 @@ export function useDayLoop({
           leakCause: funnel.leakCause,
           strongMatches: matchTallyRef.current.strong,
           matchedSales: matchTallyRef.current.matched,
-          reveal: buildReveal(funnel, grossTodayRef.current, matchTallyRef.current, closesRef.current),
+          reveal: buildReveal(
+            funnel,
+            grossTodayRef.current,
+            matchTallyRef.current,
+            closesRef.current,
+            walkOffsRef.current,
+          ),
         };
         setLastRecap(recapModel);
         setRecapModalOpen(true);
@@ -251,13 +270,19 @@ export function useDayLoop({
     // the stocked unit. Tally all closes; a strong match also drops a live
     // floor toast with the per-customer win detail (#320) into the event log,
     // and every close is recorded for the day-close Reveal to rank into
-    // starred win reactions.
+    // starred win reactions. Walk-off half (#321): every `no_sale` with a
+    // customer session is recorded for the Reveal to rank into starred loss
+    // reactions, and a painful/instructive one also drops a live floor toast —
+    // the boring middle (routine no-closes, patience drain, ...) stays silent
+    // on the floor and only shows up as a number at day-close.
     const onAutoResolved = ({
       outcome,
       matchQuality,
       customerId,
       vehicleCategory,
       archetypeLabel,
+      wantedCategory,
+      reason,
       grossImpact,
     }: {
       outcome: 'closed' | 'no_sale';
@@ -265,9 +290,27 @@ export function useDayLoop({
       customerId: string;
       vehicleCategory?: 'sedan' | 'truck' | 'suv';
       archetypeLabel?: string;
+      wantedCategory?: 'sedan' | 'truck' | 'suv';
+      reason?: string;
       grossImpact: number;
     }) => {
-      if (outcome !== 'closed') return;
+      if (outcome !== 'closed') {
+        if (archetypeLabel && reason) {
+          const walkOff: WalkOff = { customerId, archetypeLabel, wantedCategory, reason };
+          walkOffsRef.current = [...walkOffsRef.current, walkOff];
+          if (rankTopWalkOffs([walkOff], 1).length > 0) {
+            setFloorEvents((log) => [
+              ...log,
+              {
+                kind: 'walk',
+                key: `w${eventSeq.current++}`,
+                text: walkOffReactionText(walkOff),
+              },
+            ]);
+          }
+        }
+        return;
+      }
       const strong = (matchQuality ?? 0) >= STRONG_MATCH_THRESHOLD;
       matchTallyRef.current = {
         strong: matchTallyRef.current.strong + (strong ? 1 : 0),

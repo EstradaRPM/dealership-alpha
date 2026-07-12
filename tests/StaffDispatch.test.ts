@@ -273,6 +273,7 @@ interface Wired {
     matchQuality?: number;
     vehicleCategory?: 'sedan' | 'truck' | 'suv';
     archetypeLabel?: string;
+    wantedCategory?: 'sedan' | 'truck' | 'suv';
   }>;
   closedDeals: ClosedDealPayload[];
   trades: TradeResolvedPayload[];
@@ -505,7 +506,7 @@ describe('StaffDispatch — real close path (#147)', () => {
     expect(events[0].archetypeLabel).toBe('Tradesperson');
   });
 
-  it('a no_sale carries no vehicle category or archetype label (#320)', () => {
+  it('a no_sale carries no matched vehicle category (#320) — nothing was ever picked', () => {
     const { bus, sessions, events } = setup([makeStaff(0.9)], BASE_CONFIG, {
       lot: [],
     });
@@ -513,7 +514,30 @@ describe('StaffDispatch — real close path (#147)', () => {
     admit(bus, 'cust:1');
     expect(events[0].outcome).toBe('no_sale');
     expect(events[0].vehicleCategory).toBeUndefined();
+  });
+
+  it('a no_sale with an established session carries the archetype label + wanted category (#321)', () => {
+    const { bus, sessions, events } = setup([makeStaff(0.9)], BASE_CONFIG, {
+      lot: [],
+    });
+    sessions.set(
+      'cust:1',
+      makeSession('cust:1', makeFinanceVisit('cust:1'), {}, 'Tradesperson'),
+    );
+    admit(bus, 'cust:1');
+    expect(events[0].outcome).toBe('no_sale');
+    expect(events[0].reason).toBe('no_fit');
+    expect(events[0].archetypeLabel).toBe('Tradesperson');
+    expect(['sedan', 'truck', 'suv']).toContain(events[0].wantedCategory);
+  });
+
+  it('a no_sale with no established session (no_session) carries neither label nor category (#321)', () => {
+    const { bus, events } = setup([makeStaff(0.9)]);
+    admit(bus, 'cust:1');
+    expect(events[0].outcome).toBe('no_sale');
+    expect(events[0].reason).toBe('no_session');
     expect(events[0].archetypeLabel).toBeUndefined();
+    expect(events[0].wantedCategory).toBeUndefined();
   });
 
   it('season demand lean (#231 S2): wantVectorBias runs on the resolution want-vector', () => {

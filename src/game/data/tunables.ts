@@ -268,6 +268,11 @@ export const TunablesSchema = z.object({
     // day, ranked by drama (match strength, then gross as a tiebreak). Kept
     // small by design — a handful of standout wins, not a per-close ticker.
     starBudget: z.number().int().positive(),
+    // #321: how many individual starred walk-off (loss) reactions the Reveal
+    // surfaces per day — only the painful/instructive `no_sale` reasons; the
+    // boring middle stays folded into the aggregate. Kept smaller than
+    // `starBudget` by design (losses are the harsher beat).
+    lossStarBudget: z.number().int().positive(),
   }),
   economy: z.object({
     startingCash: z.number().nonnegative(),

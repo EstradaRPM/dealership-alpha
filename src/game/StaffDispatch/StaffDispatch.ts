@@ -23,11 +23,13 @@ import {
   pickVehicleForMatch,
   resolveSalesProcess,
   vehicleSpaced,
+  wantedVehicleCategory,
   type MatchCustomer,
   type ResolveDeps,
   type CloseDeps,
   type PickVehicleDeps,
   type SpacedVector,
+  type VehicleCategory,
 } from '../SalesProcess';
 
 /** Narrow shape this module needs from a CustomerPool session lookup. */
@@ -361,6 +363,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
     staffId: string,
     day: number,
     reason: string,
+    context?: { archetypeLabel?: string; wantedCategory?: VehicleCategory },
   ): void {
     bus.publish('staff:auto_resolved', {
       customerId,
@@ -369,6 +372,8 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       outcome: 'no_sale',
       grossImpact: 0,
       reason,
+      archetypeLabel: context?.archetypeLabel,
+      wantedCategory: context?.wantedCategory,
     });
   }
 
@@ -398,7 +403,9 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
     const { bundle, visitArchetypeId } = session;
     const { person, visit } = bundle;
     if (visit.kind !== 'sales') {
-      emitNoSale(customerId, salesperson.id, day, 'not_sales');
+      emitNoSale(customerId, salesperson.id, day, 'not_sales', {
+        archetypeLabel: session.archetypeLabel,
+      });
       return 'resolved';
     }
 
@@ -422,6 +429,13 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       ? deps.wantVectorBias(rawSpaced, day)
       : rawSpaced;
     const priceSensitivity = clampUnit(1 - person.wealth / 120000);
+    // Walk-off narrative (#321): the "what they wanted" half, independent of
+    // any matched vehicle — computed once so every no_sale emission below can
+    // carry it alongside the "who" (session.archetypeLabel).
+    const walkOffContext = {
+      archetypeLabel: session.archetypeLabel,
+      wantedCategory: wantedVehicleCategory(customerSpaced, deps.salesProcessDeps),
+    };
     const matchCustomer: MatchCustomer = {
       masterSeed,
       customerId,
@@ -456,7 +470,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       .filter((v) => v.frontlineDay <= day);
     const match = pickVehicleForMatch(matchCustomer, lot, pickDeps);
     if (!match) {
-      emitNoSale(customerId, salesperson.id, day, 'no_fit');
+      emitNoSale(customerId, salesperson.id, day, 'no_fit', walkOffContext);
       return 'resolved';
     }
     const vehicle = lot.find(v => v.id === match.vehicleId);
@@ -464,7 +478,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       // pickVehicleFor only returns ids from the lot snapshot, so this is
       // unreachable; the guard satisfies the type and is defensive vs. future
       // refactors.
-      emitNoSale(customerId, salesperson.id, day, 'no_fit');
+      emitNoSale(customerId, salesperson.id, day, 'no_fit', walkOffContext);
       return 'resolved';
     }
 
@@ -484,7 +498,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       deps.salesProcessDeps,
     );
     if (resolution.outcome === 'walk') {
-      emitNoSale(customerId, salesperson.id, day, resolution.cause);
+      emitNoSale(customerId, salesperson.id, day, resolution.cause, walkOffContext);
       return 'resolved';
     }
 
@@ -619,6 +633,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                     salesperson.id,
                     day,
                     'trade_negative_equity',
+                    walkOffContext,
                   );
                   return { status: 'abandoned' };
                 }
@@ -636,7 +651,13 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
               };
 
               if (decision.kind === 'decline') {
-                emitNoSale(customerId, salesperson.id, day, 'trade_player_declined');
+                emitNoSale(
+                  customerId,
+                  salesperson.id,
+                  day,
+                  'trade_player_declined',
+                  walkOffContext,
+                );
                 return { status: 'abandoned' };
               }
               if (decision.kind === 'accept_ask') {
@@ -687,6 +708,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             tradeRes.reason === 'negative_equity'
               ? 'trade_negative_equity'
               : 'trade_manager_declined',
+            walkOffContext,
           );
           return 'resolved';
         }
@@ -822,7 +844,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             deriveSeed(masterSeed, 'discount_escalation_roll', { customerId, day }),
           )() < ev.escalationRate;
         if (!escalates) {
-          emitNoSale(customerId, salesperson.id, day, 'no_close');
+          emitNoSale(customerId, salesperson.id, day, 'no_close', walkOffContext);
           return 'resolved';
         }
 
@@ -841,7 +863,13 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
               agreedPrice: number,
             ): PlayerDiscountDecisionResult => {
               if (agreedPrice < review.minimumAcceptablePrice) {
-                emitNoSale(customerId, salesperson.id, day, 'discount_below_cost');
+                emitNoSale(
+                  customerId,
+                  salesperson.id,
+                  day,
+                  'discount_below_cost',
+                  walkOffContext,
+                );
                 return { status: 'abandoned' };
               }
               resolveTradeThenClose(agreedPrice);
@@ -889,7 +917,13 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
               priorMisses += 1;
               attemptsRemaining -= 1;
               if (attemptsRemaining <= 0) {
-                emitNoSale(customerId, salesperson.id, day, 'discount_haggle_exhausted');
+                emitNoSale(
+                  customerId,
+                  salesperson.id,
+                  day,
+                  'discount_haggle_exhausted',
+                  walkOffContext,
+                );
                 return { status: 'abandoned' };
               }
               return {
@@ -902,7 +936,13 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             };
 
             if (decision.kind === 'decline') {
-              emitNoSale(customerId, salesperson.id, day, 'discount_player_declined');
+              emitNoSale(
+                customerId,
+                salesperson.id,
+                day,
+                'discount_player_declined',
+                walkOffContext,
+              );
               return { status: 'abandoned' };
             }
             if (decision.kind === 'accept_ask') {
@@ -919,7 +959,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         return 'escalated';
       }
 
-      emitNoSale(customerId, salesperson.id, day, 'no_close');
+      emitNoSale(customerId, salesperson.id, day, 'no_close', walkOffContext);
       return 'resolved';
     }
 

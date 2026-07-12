@@ -469,11 +469,24 @@ export interface EventMap {
      */
     vehicleCategory?: 'sedan' | 'truck' | 'suv';
     /**
-     * The buying customer's archetype label (#320), e.g. `'Young Family'` —
-     * the same label `customer:arrived` carries. Present only on
-     * `outcome: 'closed'`; names the "who" half of the starred win reaction.
+     * The customer's archetype label, e.g. `'Young Family'` — the same label
+     * `customer:arrived` carries. Present on `outcome: 'closed'` (#320, the
+     * "who" half of the starred win reaction) and on `outcome: 'no_sale'`
+     * once a customer session was established (#321, the "who" half of the
+     * starred walk-off reaction) — omitted only for the pre-session
+     * `'no_session'`/`'not_sales'` reasons.
      */
     archetypeLabel?: string;
+    /**
+     * The customer's *wanted* vehicle category (#321) — nearest-category
+     * classification off their want-vector (`wantedVehicleCategory`),
+     * independent of any matched vehicle. Present only on `outcome: 'no_sale'`
+     * once a customer session was established (same coverage as
+     * `archetypeLabel` above); names the "what they wanted" half of the
+     * starred walk-off reaction, used when the closed-deal `vehicleCategory`
+     * (what they actually got) doesn't apply.
+     */
+    wantedCategory?: 'sedan' | 'truck' | 'suv';
     /**
      * Named reason for a `no_sale` outcome (#147 tracer): `'no_session'`,
      * `'not_sales'`, `'no_fit'`, `'no_close'`, the trade walks
@@ -481,8 +494,9 @@ export interface EventMap {
      * `'trade_manager_declined'` — escalation manager refused (#170);
      * `'trade_player_declined'` — player refused a held trade (#201)), the
      * discount-review walks (`'discount_player_declined'` — player refused a
-     * held discount; `'discount_below_cost'` — accepted price below cost), or a
-     * SalesProcess `WalkCause` (`'patience_drain' | 'trust_collapse' |
+     * held discount; `'discount_below_cost'` — accepted price below cost;
+     * `'discount_haggle_exhausted'` — counters ran out), or a SalesProcess
+     * `WalkCause` (`'patience_drain' | 'trust_collapse' |
      * 'demo_nonnegotiable_miss'`). Omitted on `outcome: 'closed'`. An *unusual*
      * trade or discount escalated to the player emits its escalation event
      * instead (#170/#222).
