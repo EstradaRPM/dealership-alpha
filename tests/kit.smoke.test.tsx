@@ -18,6 +18,7 @@ import {
 } from '../src/ui/kit';
 import { ThemeProvider, defaultTheme, type Theme } from '../src/ui/theme';
 import { DayRecap, type DayRecapModel } from '../src/ui/DayRecap';
+import { buildReveal } from '../src/ui/Reveal';
 
 // Every kit component is presentation-only and must render against the theme,
 // both inside a provider and standalone (context default = defaultTheme).
@@ -94,6 +95,15 @@ describe('#225 base-component kit — smoke', () => {
 // The re-skinnability requirement: swapping the theme object at the root must
 // re-skin the proven surface with zero component edits.
 describe('#225 theme is injectable — swap re-skins with no component edits', () => {
+  const FUNNEL = {
+    potentialTraffic: 18,
+    walkedIn: 12,
+    staffEngaged: 8,
+    sold: 3,
+    gated: 0,
+    leakCause: 'closing' as const,
+  };
+
   const MODEL: DayRecapModel = {
     day: 4,
     potentialTraffic: 18,
@@ -104,12 +114,13 @@ describe('#225 theme is injectable — swap re-skins with no component edits', (
     leakCause: 'closing',
     strongMatches: 2,
     matchedSales: 3,
+    reveal: buildReveal(FUNNEL, 7_650, { strong: 2, matched: 3 }),
   };
 
   const MAGENTA = '#ff00ff';
   const altTheme: Theme = {
     ...defaultTheme,
-    colors: { ...defaultTheme.colors, reward: MAGENTA },
+    colors: { ...defaultTheme.colors, positive: MAGENTA },
   };
 
   function tallyColor(theme: Theme): unknown {
@@ -118,12 +129,12 @@ describe('#225 theme is injectable — swap re-skins with no component edits', (
         <DayRecap model={MODEL} />
       </ThemeProvider>,
     );
-    const node = getByText(/sales were strong matches/);
+    const node = getByText(/stuck — you had what the crowd wanted/);
     return StyleSheet.flatten(node.props.style).color;
   }
 
-  it('the same DayRecap renders the default reward color under the default theme', () => {
-    expect(tallyColor(defaultTheme)).toBe(defaultTheme.colors.reward);
+  it('the same DayRecap renders the default positive color under the default theme', () => {
+    expect(tallyColor(defaultTheme)).toBe(defaultTheme.colors.positive);
   });
 
   it('swapping the theme object alone re-skins that exact node', () => {

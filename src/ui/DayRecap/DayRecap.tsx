@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import type { FunnelLeakCause } from '../../game/CapacityManager';
 import { useTheme } from '../theme';
 import { Surface, SectionHeader, StatCard, IconBadge } from '../kit';
+import { Reveal, type RevealModel } from '../Reveal';
 
 /**
  * Pure read-model for the MANAGERIAL just-ended-day recap (#119). The
@@ -29,22 +30,13 @@ export interface DayRecapModel {
   strongMatches: number;
   /** Total closed deals scored for inventory-buyer match (== units sold). */
   matchedSales: number;
+  /** The Reveal scoreline + starred reactions for this day (#319). */
+  reveal: RevealModel;
 }
 
 function money(n: number): string {
   const sign = n < 0 ? '-' : '';
   return `${sign}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
-}
-
-/**
- * Inventory-buyer match-payoff line (#199): the share of today's closes where
- * the lot had what the buyer wanted. Null when nothing sold (nothing to tally).
- */
-function matchTally(m: DayRecapModel): string | null {
-  if (m.matchedSales <= 0) return null;
-  return `${m.strongMatches} of ${m.matchedSales} ${
-    m.matchedSales === 1 ? 'sale was a strong match' : 'sales were strong matches'
-  } — you had what they wanted.`;
 }
 
 function leakCallout(m: DayRecapModel): string {
@@ -105,18 +97,22 @@ function FunnelRow({ label, value, emphasis }: FunnelRowProps) {
 }
 
 /**
- * The just-ended-day recap card: 4-level funnel + units/gross + one
- * plain-language biggest-leak callout. Read-only; smoke tests only. First
- * surface migrated onto the #225 token set + base-component kit.
+ * The just-ended-day recap card: the Reveal scoreline (#319) framing the day
+ * as a plain-language verdict, then the funnel/units/gross breakdown as
+ * supporting detail plus the biggest-leak callout. Read-only; smoke tests
+ * only. First surface migrated onto the #225 token set + base-component kit.
  */
 export function DayRecap({ model }: { model: DayRecapModel }) {
   const t = useTheme();
-  const tally = matchTally(model);
   return (
     <Surface style={{ width: '100%', marginBottom: t.spacing.xxxl }}>
       <View style={[styles.headerRow, { marginBottom: t.spacing.lg, gap: t.spacing.md }]}>
         <IconBadge name="calendar" tone="primary" shape="rounded" />
         <SectionHeader title={`Day ${model.day} Recap`} />
+      </View>
+
+      <View style={{ marginBottom: t.spacing.lg }}>
+        <Reveal model={model.reveal} />
       </View>
 
       <View style={{ marginBottom: t.spacing.lg }}>
@@ -144,17 +140,6 @@ export function DayRecap({ model }: { model: DayRecapModel }) {
       <Text style={[t.typography.body, styles.callout, { color: t.colors.textSecondary }]}>
         {leakCallout(model)}
       </Text>
-
-      {tally != null && (
-        <Text
-          style={[
-            t.typography.body,
-            { color: t.colors.reward, fontWeight: '600', marginTop: t.spacing.sm },
-          ]}
-        >
-          {tally}
-        </Text>
-      )}
     </Surface>
   );
 }

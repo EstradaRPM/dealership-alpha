@@ -7,6 +7,7 @@ import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { loadTunables } from '../src/game/data';
 import { DayRecap, type DayRecapModel } from '../src/ui/DayRecap';
+import { buildReveal } from '../src/ui/Reveal';
 import { FloorDashboard, type FloorDashboardModel } from '../src/ui/FloorDashboard';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
@@ -93,6 +94,14 @@ describe('#199 match-payoff beat — reachable through the live pipeline', () =>
     const strong = closes.filter((c) => (c.matchQuality ?? 0) >= STRONG).length;
     // The App reducer's invariant: strong ⊆ matched.
     expect(strong).toBeLessThanOrEqual(matched);
+    const funnel = {
+      potentialTraffic: 20,
+      walkedIn: 14,
+      staffEngaged: matched,
+      sold: matched,
+      gated: 0,
+      leakCause: 'none' as const,
+    };
     const recap: DayRecapModel = {
       day: 1,
       potentialTraffic: 20,
@@ -103,11 +112,20 @@ describe('#199 match-payoff beat — reachable through the live pipeline', () =>
       leakCause: 'none',
       strongMatches: strong,
       matchedSales: matched,
+      reveal: buildReveal(funnel, 9_000, { strong, matched }),
     };
     expect(() => render(<DayRecap model={recap} />)).not.toThrow();
   });
 
-  it('renders the recap strong-match tally', () => {
+  it('renders the Reveal match-summary reaction', () => {
+    const funnel = {
+      potentialTraffic: 20,
+      walkedIn: 14,
+      staffEngaged: 5,
+      sold: 5,
+      gated: 0,
+      leakCause: 'none' as const,
+    };
     const recap: DayRecapModel = {
       day: 1,
       potentialTraffic: 20,
@@ -118,9 +136,10 @@ describe('#199 match-payoff beat — reachable through the live pipeline', () =>
       leakCause: 'none',
       strongMatches: 3,
       matchedSales: 5,
+      reveal: buildReveal(funnel, 9_000, { strong: 3, matched: 5 }),
     };
     const { getByText } = render(<DayRecap model={recap} />);
-    expect(getByText(/3 of 5 sales were strong matches/)).toBeTruthy();
+    expect(getByText(/3 of 5 stuck — you had what the crowd wanted/)).toBeTruthy();
   });
 
   it('renders the live floor toast on a strong match', () => {

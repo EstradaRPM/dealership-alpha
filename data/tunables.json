@@ -206,6 +206,9 @@
   "matchPayoff": {
     "strongMatchThreshold": 0.8
   },
+  "reveal": {
+    "busyWalkedInThreshold": 6
+  },
   "economy": {
     "startingCash": 50000,
     "dailyOverheadBase": 350,

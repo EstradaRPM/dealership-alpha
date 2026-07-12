@@ -259,6 +259,12 @@ export const TunablesSchema = z.object({
   matchPayoff: z.object({
     strongMatchThreshold: z.number().min(0).max(1),
   }),
+  // The Reveal engagement spine (#319, design docs/planning/engagement-spine.md).
+  // T1's daily Reveal scoreline reads "busy" vs "slow" off the funnel's
+  // walked-in count — the only threshold the plain-language framing needs.
+  reveal: z.object({
+    busyWalkedInThreshold: z.number().nonnegative(),
+  }),
   economy: z.object({
     startingCash: z.number().nonnegative(),
     dailyOverheadBase: z.number().nonnegative(),

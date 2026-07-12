@@ -5,6 +5,7 @@ import type { World } from '../createWorld';
 import type { LotVehicle } from '../game/Inventory';
 import type { FloorEvent } from '../ui/FloorDashboard';
 import type { DayRecapModel } from '../ui/DayRecap';
+import { buildReveal } from '../ui/Reveal';
 import type { CashDeltaSplit } from '../ui/HomeTab';
 import type { ShellTabKey } from '../ui/AppShell';
 import type { SaveState } from '../game/SaveStore';
@@ -194,6 +195,7 @@ export function useDayLoop({
           leakCause: funnel.leakCause,
           strongMatches: matchTallyRef.current.strong,
           matchedSales: matchTallyRef.current.matched,
+          reveal: buildReveal(funnel, grossTodayRef.current, matchTallyRef.current),
         };
         setLastRecap(recapModel);
         setRecapModalOpen(true);

@@ -1,6 +1,16 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { DayRecapModal, type DayRecapModel } from '../src/ui/DayRecap';
+import { buildReveal } from '../src/ui/Reveal';
+
+const FUNNEL = {
+  potentialTraffic: 22,
+  walkedIn: 14,
+  staffEngaged: 9,
+  sold: 4,
+  gated: 0,
+  leakCause: 'engagement' as const,
+};
 
 const MODEL: DayRecapModel = {
   day: 7,
@@ -12,6 +22,7 @@ const MODEL: DayRecapModel = {
   leakCause: 'engagement',
   strongMatches: 3,
   matchedSales: 4,
+  reveal: buildReveal(FUNNEL, 11_200, { strong: 3, matched: 4 }),
 };
 
 describe('DayRecapModal smoke tests (#253)', () => {
