@@ -153,6 +153,10 @@ export function useDayLoop({
     // the prior recap reachable until the next day closes over it (#253).
     setRecapModalOpen(false);
     w.dayLoop.nextDay();
+    // #322 capture the committed post-prep bet for the day now opening (lot
+    // stocking lean vs. the demand-heat read), so the day-close Reveal can
+    // resolve it. Post-nextDay: the clock now sits on the day being played.
+    w.captureDayStartPrepBet();
     bump();
   };
 
@@ -220,6 +224,7 @@ export function useDayLoop({
             matchTallyRef.current,
             closesRef.current,
             walkOffsRef.current,
+            w.getPrepBet(),
           ),
         };
         setLastRecap(recapModel);

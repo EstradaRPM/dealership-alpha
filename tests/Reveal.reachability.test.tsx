@@ -95,7 +95,7 @@ describe('#319 The Reveal — reachable through the live day-close pipeline', ()
   it('App composition wires the funnel/gross/match tally/closes/walk-offs into buildReveal at day close', () => {
     const src = readAppCompositionSource();
     expect(src).toMatch(
-      /buildReveal\(\s*funnel,\s*grossTodayRef\.current,\s*matchTallyRef\.current,\s*closesRef\.current,\s*walkOffsRef\.current,?\s*\)/,
+      /buildReveal\(\s*funnel,\s*grossTodayRef\.current,\s*matchTallyRef\.current,\s*closesRef\.current,\s*walkOffsRef\.current,\s*w\.getPrepBet\(\),?\s*\)/,
     );
     expect(src).toMatch(/reveal: buildReveal\(/);
   });
@@ -220,5 +220,85 @@ describe('#321 starred walk-off reactions — reachable through the live no_sale
       /walkOffsRef\.current = \[\.\.\.walkOffsRef\.current, walkOff\]/,
     );
     expect(src).toMatch(/kind: 'walk'/);
+  });
+});
+
+// Anti-orphan (#322): the captured morning bet must reach the Reveal as a
+// bet→verdict scoreline through the real day-open → day-close pipeline — the
+// bet is captured at the day-open verb (nextDay → captureDayStartPrepBet) and
+// resolved by buildReveal, not hand-fed a fixture bet.
+describe('#322 morning prep bet → verdict scoreline — reachable through the live day flow', () => {
+  const PLAIN_MATCH =
+    /(filled your lot and your floor\. Good match\.|the crowd wanted .+\. Poor match\.|Right lot, wrong result — .+, none stuck\.)/;
+
+  it('a real day resolves the captured morning bet into a plain-match scoreline', () => {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed: 7, characterProfile: PROFILE });
+    if (!world.staffOrg.currentRoster.some((s) => s.role_id === 'salesperson')) {
+      const candidate = world.staffOrg.getCandidates('salesperson')[0];
+      if (candidate) world.staffOrg.hire(candidate.candidateId);
+    }
+    const listings = [...world.inventory.getAuctionListings()].sort(
+      (a, b) => a.askingPrice - b.askingPrice,
+    );
+    for (const listing of listings) {
+      if (world.economy.cash - listing.askingPrice < CASH_BUFFER) break;
+      world.inventory.buyFromAuction(listing.id);
+    }
+    let gross = 0;
+    let strong = 0;
+    let matched = 0;
+    let closes: ClosedSale[] = [];
+    let walkOffs: WalkOff[] = [];
+    bus.subscribe('deal:closed', ({ frontGross, backGross }) => {
+      gross += frontGross + backGross;
+    });
+    bus.subscribe(
+      'staff:auto_resolved',
+      ({ outcome, matchQuality, customerId, vehicleCategory, archetypeLabel, wantedCategory, reason, grossImpact }) => {
+        if (outcome === 'closed') {
+          matched += 1;
+          if ((matchQuality ?? 0) >= 0.8) strong += 1;
+          if (vehicleCategory && archetypeLabel) {
+            closes.push({
+              customerId,
+              archetypeLabel,
+              vehicleCategory,
+              matchQuality: matchQuality ?? 0,
+              gross: grossImpact,
+            });
+          }
+          return;
+        }
+        if (archetypeLabel && reason) {
+          walkOffs.push({ customerId, archetypeLabel, wantedCategory, reason });
+        }
+      },
+    );
+
+    let sawBetVerdict = false;
+    for (let i = 0; i < DAYS; i++) {
+      // Mirror the live day-open verb: nextDay() then captureDayStartPrepBet().
+      const floor = world.dayLoop.nextDay();
+      world.captureDayStartPrepBet();
+      floor.runDay();
+      const funnel = world.capacityManager.getDayFunnel();
+      const prepBet = world.getPrepBet();
+      expect(prepBet?.day).toBe(world.clock.currentDay);
+      const reveal = buildReveal(funnel, gross, { strong, matched }, closes, walkOffs, prepBet);
+      if (PLAIN_MATCH.test(reveal.scoreline)) sawBetVerdict = true;
+      gross = 0;
+      strong = 0;
+      matched = 0;
+      closes = [];
+      walkOffs = [];
+    }
+    expect(sawBetVerdict).toBe(true);
+  });
+
+  it('App composition captures the bet at the day-open verb and feeds it to the Reveal', () => {
+    const src = readAppCompositionSource();
+    expect(src).toMatch(/w\.dayLoop\.nextDay\(\);[\s\S]*?w\.captureDayStartPrepBet\(\);/);
+    expect(src).toMatch(/walkOffsRef\.current,\s*w\.getPrepBet\(\),/);
   });
 });

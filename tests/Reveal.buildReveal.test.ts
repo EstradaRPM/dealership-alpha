@@ -1,5 +1,6 @@
 import {
   buildReveal,
+  betVerdictScoreline,
   rankTopCloses,
   winReactionText,
   rankTopWalkOffs,
@@ -7,6 +8,7 @@ import {
 } from '../src/ui/Reveal';
 import type { ClosedSale, WalkOff } from '../src/ui/Reveal';
 import type { DayFunnel } from '../src/game/CapacityManager';
+import type { PrepBet } from '../src/game/PrepBet';
 import { loadTunables } from '../src/game/data';
 
 const BUSY_THRESHOLD = loadTunables().reveal.busyWalkedInThreshold;
@@ -296,5 +298,121 @@ describe('#321 buildReveal — individual starred walk-off (loss) reactions', ()
       walkOff({ reason: 'no_close' }),
     ]);
     expect(model.reactions.map((r) => r.id)).toEqual(['match-summary']);
+  });
+});
+
+function prepBet(overrides: Partial<PrepBet> = {}): PrepBet {
+  return {
+    day: 3,
+    stockedCategory: 'truck',
+    stockedShare: 0.7,
+    readCategory: 'truck',
+    ...overrides,
+  };
+}
+
+describe('#322 betVerdictScoreline — the morning bet resolves in plain-match voice', () => {
+  it('scores a right call when the stocked lot matches what the crowd wanted', () => {
+    const text = betVerdictScoreline(
+      prepBet({ stockedCategory: 'truck' }),
+      { strong: 2, matched: 3 },
+      'truck',
+    );
+    expect(text).toBe('Trucks filled your lot and your floor. Good match.');
+  });
+
+  it('scores a poor match when the crowd wanted a different category', () => {
+    const text = betVerdictScoreline(
+      prepBet({ stockedCategory: 'truck' }),
+      { strong: 0, matched: 1 },
+      'sedan',
+    );
+    expect(text).toBe('Your lot was trucks; the crowd wanted sedans. Poor match.');
+  });
+
+  it('scores the mixed case — right lot, but nothing stuck', () => {
+    const text = betVerdictScoreline(
+      prepBet({ stockedCategory: 'suv' }),
+      { strong: 0, matched: 0 },
+      'suv',
+    );
+    expect(text).toBe('Right lot, wrong result — SUVs wanted, none stuck.');
+  });
+
+  it('falls back to the morning read as the crowd stand-in on a dead day', () => {
+    const text = betVerdictScoreline(
+      prepBet({ stockedCategory: 'truck', readCategory: 'sedan' }),
+      { strong: 0, matched: 0 },
+      null, // the day expressed no want
+    );
+    expect(text).toBe('Your lot was trucks; the crowd wanted sedans. Poor match.');
+  });
+
+  it('returns null (⇒ S1 fallback) when there is no stocking lean', () => {
+    expect(
+      betVerdictScoreline(prepBet({ stockedCategory: null }), { strong: 0, matched: 0 }, 'truck'),
+    ).toBeNull();
+  });
+
+  it('returns null when there is nothing to resolve against (no want, no read)', () => {
+    expect(
+      betVerdictScoreline(prepBet({ readCategory: null }), { strong: 0, matched: 0 }, null),
+    ).toBeNull();
+  });
+
+  it('never uses temperature words', () => {
+    for (const crowd of ['truck', 'sedan', 'suv', null] as const) {
+      const text =
+        betVerdictScoreline(prepBet(), { strong: 1, matched: 2 }, crowd) ?? '';
+      expect(text.toLowerCase()).not.toMatch(/\b(warm|hot|cool|cold)\b/);
+    }
+  });
+});
+
+describe('#322 buildReveal — the scoreline leads with the resolved bet', () => {
+  it('replaces the S1 scoreline with the bet→verdict when a bet is present', () => {
+    const closes = [sale({ customerId: 'a', vehicleCategory: 'truck' })];
+    const model = buildReveal(
+      funnel({ walkedIn: BUSY_THRESHOLD }),
+      2_400,
+      { strong: 1, matched: 1 },
+      closes,
+      [],
+      prepBet({ stockedCategory: 'truck' }),
+    );
+    expect(model.scoreline).toBe('Trucks filled your lot and your floor. Good match.');
+    // The reactions feed is unchanged — the match summary still leads it.
+    expect(model.reactions[0].id).toBe('match-summary');
+    expect(model.reactions.some((r) => r.id === 'win-a')).toBe(true);
+  });
+
+  it('resolves a mismatch off the crowd\'s actual wants (closes + walk-offs)', () => {
+    const walkOffs = [
+      walkOff({ customerId: 'x', wantedCategory: 'sedan', reason: 'no_fit' }),
+      walkOff({ customerId: 'y', wantedCategory: 'sedan', reason: 'no_fit' }),
+    ];
+    const model = buildReveal(
+      funnel(),
+      0,
+      { strong: 0, matched: 0 },
+      [],
+      walkOffs,
+      prepBet({ stockedCategory: 'truck' }),
+    );
+    expect(model.scoreline).toBe('Your lot was trucks; the crowd wanted sedans. Poor match.');
+  });
+
+  it('falls back to the S1 scoreline when no bet was captured (pre-S4 / empty lot)', () => {
+    const model = buildReveal(
+      funnel({ walkedIn: BUSY_THRESHOLD }),
+      14_200,
+      { strong: 6, matched: 8 },
+      [],
+      [],
+      null,
+    );
+    expect(model.scoreline).toBe(
+      'Busy day — you had what the crowd wanted: 6 of 8 stuck.',
+    );
   });
 });

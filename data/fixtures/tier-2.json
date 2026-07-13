@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 15,
+    "version": 16,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -2757,7 +2757,8 @@
         "schemaVersion": 1,
         "intakeWindow": [],
         "dailyIntake": []
-      }
+      },
+      "prepBet": null
     }
   },
   "character": {

@@ -1,5 +1,6 @@
 import { loadTunables } from '../../game/data';
 import type { DayFunnel } from '../../game/CapacityManager';
+import type { PrepBet, PrepCategory } from '../../game/PrepBet';
 
 /**
  * Pure read-model builder for **The Reveal** (#319, design record
@@ -16,6 +17,12 @@ import type { DayFunnel } from '../../game/CapacityManager';
  * drama off the day's closes. S3 (#321) adds the negative half — starred
  * walk-off reactions off the day's `no_sale` outcomes. F&I (plug-in #2) is a
  * later plug-in onto the same `reactions[]` shape.
+ *
+ * S4 (#322) closes the loop: the morning prep is captured as a bet (`PrepBet` —
+ * the lot's stocking lean vs. the demand-heat read) and the scoreline resolves
+ * it in plain-match voice — the lot you stocked vs. what the crowd actually
+ * wanted today. When no bet was captured (empty lot / pre-S4 save) the scoreline
+ * falls back to the S1 busy/slow + match phrasing.
  */
 
 /** Tally of today's closed deals scored for inventory-buyer fit (#199). */
@@ -251,15 +258,91 @@ function matchReaction(tally: MatchTally, gross: number): RevealReaction {
   };
 }
 
+// Category noun phrasing for the plain-match verdict (#322). Capitalized for a
+// sentence-leading subject ("Trucks filled your lot…"), lowercased mid-sentence
+// ("the crowd wanted trucks") — SUVs stays upper in both.
+const CATEGORY_PLURAL_LEAD: Record<PrepCategory, string> = {
+  sedan: 'Sedans',
+  truck: 'Trucks',
+  suv: 'SUVs',
+};
+const CATEGORY_PLURAL_MID: Record<PrepCategory, string> = {
+  sedan: 'sedans',
+  truck: 'trucks',
+  suv: 'SUVs',
+};
+
+/**
+ * What the crowd actually wanted today — argmax of the categories the day's
+ * closes bought and the day's wanted-category walk-offs asked for. `null` when
+ * the day produced no expressed want (a dead day) or a dead tie; the bet then
+ * falls back to the morning read as the crowd's stand-in.
+ */
+function dominantCrowdWant(
+  closes: readonly ClosedSale[],
+  walkOffs: readonly WalkOff[],
+): PrepCategory | null {
+  const tally: Record<PrepCategory, number> = { sedan: 0, truck: 0, suv: 0 };
+  for (const sale of closes) tally[sale.vehicleCategory] += 1;
+  for (const walkOff of walkOffs) {
+    if (walkOff.wantedCategory) tally[walkOff.wantedCategory] += 1;
+  }
+  let best: PrepCategory | null = null;
+  let bestCount = 0;
+  let tied = false;
+  for (const category of ['sedan', 'truck', 'suv'] as const) {
+    const count = tally[category];
+    if (count > bestCount) {
+      best = category;
+      bestCount = count;
+      tied = false;
+    } else if (count === bestCount && count > 0) {
+      tied = true;
+    }
+  }
+  return bestCount > 0 && !tied ? best : null;
+}
+
+/**
+ * The plain-match bet→verdict scoreline (#322): the lot you stocked vs. what the
+ * crowd wanted today. Returns `null` when there's no bet to resolve (no stocking
+ * lean, or nothing to resolve against) so the caller falls back to the S1
+ * scoreline.
+ */
+export function betVerdictScoreline(
+  prepBet: PrepBet,
+  matchTally: MatchTally,
+  crowdWantActual: PrepCategory | null,
+): string | null {
+  const stocked = prepBet.stockedCategory;
+  if (!stocked) return null;
+  // Reality speaks when the day expressed a want; on a dead day the morning
+  // read stands in for the crowd.
+  const crowd = crowdWantActual ?? prepBet.readCategory;
+  if (!crowd) return null;
+  if (stocked === crowd) {
+    return matchTally.matched > 0
+      ? `${CATEGORY_PLURAL_LEAD[stocked]} filled your lot and your floor. Good match.`
+      : `Right lot, wrong result — ${CATEGORY_PLURAL_MID[stocked]} wanted, none stuck.`;
+  }
+  return `Your lot was ${CATEGORY_PLURAL_MID[stocked]}; the crowd wanted ${CATEGORY_PLURAL_MID[crowd]}. Poor match.`;
+}
+
 export function buildReveal(
   funnel: DayFunnel,
   gross: number,
   matchTally: MatchTally,
   closes: readonly ClosedSale[] = [],
   walkOffs: readonly WalkOff[] = [],
+  prepBet: PrepBet | null = null,
 ): RevealModel {
   const tunables = loadTunables().reveal;
-  const scoreline = `${activityLabel(funnel)} — ${matchClause(matchTally)}.`;
+  // S4 (#322): lead with the resolved morning bet when one was captured; else
+  // fall back to the S1 busy/slow + match scoreline (empty lot / pre-S4 save).
+  const verdict = prepBet
+    ? betVerdictScoreline(prepBet, matchTally, dominantCrowdWant(closes, walkOffs))
+    : null;
+  const scoreline = verdict ?? `${activityLabel(funnel)} — ${matchClause(matchTally)}.`;
   const topCloses = rankTopCloses(closes, tunables.starBudget);
   const topWalkOffs = rankTopWalkOffs(walkOffs, tunables.lossStarBudget);
   return {

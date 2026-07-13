@@ -62,11 +62,12 @@ import {
   createDefaultDemandShaperSnapshot,
   type DemandShaperSnapshot,
 } from './game/DemandShaper';
+import type { PrepBet } from './game/PrepBet';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 15;
+export const WORLD_SNAPSHOT_VERSION = 16;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -124,6 +125,10 @@ export type WorldSnapshot = {
     // BodyShopInsights trailing window: per-collision-category demand + per-day
     // conquest intake flow (#315).
     readonly bodyShopInsights: BodyShopInsightsSnapshot;
+    // #322 Morning-prep bet (engagement spine tracer S4): the day's captured
+    // stocking-vs-demand wager, or null when none was captured. Persisted so a
+    // mid-day reload resolves the day-close Reveal against the same morning bet.
+    readonly prepBet: PrepBet | null;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -309,6 +314,16 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         },
       },
     }),
+    15: (snap) => ({
+      version: 16,
+      modules: {
+        ...snap.modules,
+        // Behavior-neutral: pre-#322 saves have no captured morning bet, so the
+        // day-close Reveal falls back to the S1 busy/slow + match scoreline until
+        // the next day-open captures one.
+        prepBet: null,
+      },
+    }),
   };
 
 /**
@@ -376,6 +391,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       bodyShopQueue: world.bodyShopQueue.snapshot(),
       bodyShopChannelPosture: world.getBodyShopChannelPosture(),
       bodyShopInsights: world.bodyShopInsights.snapshot(),
+      prepBet: world.getPrepBet(),
     },
   };
 }
@@ -419,4 +435,5 @@ export function restoreWorld(
   world.bodyShopQueue.restore(snap.modules.bodyShopQueue);
   world.setBodyShopChannelPosture(snap.modules.bodyShopChannelPosture);
   world.bodyShopInsights.restore(snap.modules.bodyShopInsights);
+  world.setPrepBet(snap.modules.prepBet);
 }

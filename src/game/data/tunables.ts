@@ -273,6 +273,19 @@ export const TunablesSchema = z.object({
     // boring middle stays folded into the aggregate. Kept smaller than
     // `starBudget` by design (losses are the harsher beat).
     lossStarBudget: z.number().int().positive(),
+    // #322: the morning-prep bet's demand-heat read fold. `weatherWeight` is how
+    // strongly the Weather attribute lean can move the sedan/truck/suv read vs.
+    // the DemandShaper baseline heat; `categoryAttributeProfiles` is the
+    // per-category representative attribute vector over the Weather axes
+    // (winterCapability / openAir / fuelEfficiency), each in [0,1]. First-pass
+    // calibration — tuned last (#286).
+    prepBet: z.object({
+      weatherWeight: z.number().nonnegative(),
+      categoryAttributeProfiles: z.record(
+        z.string().min(1),
+        z.record(z.string().min(1), z.number()),
+      ),
+    }),
   }),
   economy: z.object({
     startingCash: z.number().nonnegative(),

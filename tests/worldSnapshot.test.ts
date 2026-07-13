@@ -927,6 +927,36 @@ describe('world-snapshot versioning + migrations (#196)', () => {
       new RegExp(`No world-snapshot migration registered from v${gap}`),
     );
   });
+
+  it('round-trips the captured morning prep bet through the world seam (#322)', () => {
+    const { world } = build(7);
+    world.dayLoop.nextDay();
+    world.captureDayStartPrepBet();
+    const bet = world.getPrepBet();
+    expect(bet?.day).toBe(world.clock.currentDay);
+
+    // Survives a JSON round-trip and rehydrates identically onto a fresh World.
+    const persisted = JSON.parse(
+      JSON.stringify(snapshotWorld(world)),
+    ) as PersistedWorldSnapshot;
+    expect(persisted.modules.prepBet).toEqual(bet);
+    const { world: target } = build(7);
+    restoreWorld(persisted, target);
+    expect(target.getPrepBet()).toEqual(bet);
+  });
+
+  it('migrates pre-#322 snapshots to a null prep bet (S1 scoreline fallback)', () => {
+    const { world } = build(4242);
+    const current = snapshotWorld(world);
+    const { prepBet, ...legacyModules } = current.modules;
+    const persisted: PersistedWorldSnapshot = {
+      version: 15,
+      modules: legacyModules,
+    };
+    const migrated = migrateWorldSnapshot(persisted);
+    expect(migrated.version).toBe(WORLD_SNAPSHOT_VERSION);
+    expect(migrated.modules.prepBet).toBeNull();
+  });
 });
 
 describe('snapshotWorld / restoreWorld seam (#188)', () => {

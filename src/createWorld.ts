@@ -145,6 +145,11 @@ import {
   type DemandShaper,
   type SegmentMix,
 } from './game/DemandShaper';
+import {
+  computePrepBet,
+  createPrepBetHolder,
+  type PrepBet,
+} from './game/PrepBet';
 
 export type StaffTaxonomy = ReturnType<typeof loadStaffTaxonomy>;
 
@@ -208,6 +213,16 @@ export interface World {
     getAdvertisingCampaignId(): string;
     setAdvertisingCampaign(id: string): void;
   };
+  // #322 Morning-prep bet (engagement spine tracer S4): the day's stocking
+  // posture (lot's heaviest category) vs. the demand-heat read (DemandShaper
+  // heat + Weather attribute lean), captured at the day-open verb and resolved
+  // by the day-close Reveal. A World-level holder, persisted (#122-safe).
+  getPrepBet(): PrepBet | null;
+  setPrepBet(bet: PrepBet | null): void;
+  // Capture the committed post-prep bet for the day now opening. Called by the
+  // composition root right after `dayLoop.nextDay()`; a no-op contract on resume
+  // (the frozen morning bet is restored from the snapshot instead).
+  captureDayStartPrepBet(): void;
   resolvePlayerTradeDecision(
     customerId: string,
     decision: PlayerTradeDecision,
@@ -1282,6 +1297,13 @@ export function createWorld(deps: {
     floorSeams,
   });
 
+  // #322 Morning-prep bet (engagement spine tracer S4): a World-level holder for
+  // the day's captured wager. Set by `captureDayStartPrepBet()` at the day-open
+  // verb (post-prep, every day incl. cold-start Day 1) and read by the day-close
+  // Reveal; persisted so a mid-day reload scores the same frozen morning bet.
+  const prepBetHolder = createPrepBetHolder();
+  const prepBetConfig = loadTunables().reveal.prepBet;
+
   return {
     masterSeed,
     clock,
@@ -1335,6 +1357,19 @@ export function createWorld(deps: {
     competitorMarket,
     demandShaper,
     demandControls,
+    getPrepBet: prepBetHolder.get,
+    setPrepBet: prepBetHolder.set,
+    captureDayStartPrepBet() {
+      prepBetHolder.set(
+        computePrepBet({
+          day: clock.currentDay,
+          lot: inventory.getLotVehicles(),
+          demandMix: demandShaper.getMix(),
+          weatherAttrLean: weather.attributeLeanForDay(clock.currentDay),
+          config: prepBetConfig,
+        }),
+      );
+    },
     resolvePlayerTradeDecision(customerId, decision) {
       const held = heldTradeReviews.get(customerId);
       if (!held) return null;

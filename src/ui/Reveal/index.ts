@@ -1,6 +1,7 @@
 export { Reveal } from './Reveal';
 export {
   buildReveal,
+  betVerdictScoreline,
   rankTopCloses,
   winReactionText,
   rankTopWalkOffs,

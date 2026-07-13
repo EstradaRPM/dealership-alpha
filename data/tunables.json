@@ -209,7 +209,15 @@
   "reveal": {
     "busyWalkedInThreshold": 6,
     "starBudget": 3,
-    "lossStarBudget": 2
+    "lossStarBudget": 2,
+    "prepBet": {
+      "weatherWeight": 2,
+      "categoryAttributeProfiles": {
+        "sedan": { "winterCapability": 0.3, "openAir": 0.2, "fuelEfficiency": 0.8 },
+        "truck": { "winterCapability": 0.85, "openAir": 0.3, "fuelEfficiency": 0.2 },
+        "suv": { "winterCapability": 0.7, "openAir": 0.4, "fuelEfficiency": 0.45 }
+      }
+    }
   },
   "economy": {
     "startingCash": 50000,
