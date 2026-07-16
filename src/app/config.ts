@@ -148,13 +148,12 @@ export function buildHiringRoleOptions(tier: number): PersonnelRoleOption[] {
   return Object.entries(staffTaxonomy.roles)
     .filter(([roleId, role]) => {
       if (!HIRABLE_ROLE_IDS.has(roleId)) return false;
-      if (
-        roleId !== DEFAULT_HIRING_ROLE_ID &&
-        role.tier !== 'manager' &&
-        role.tier !== 'gm'
-      ) {
-        return false;
-      }
+      // Worker-tier roles (lot-porter, technician) are entry-level — reached via
+      // promotion (#324), never hired cold. Everyone customer-facing and up is
+      // hireable once their per-role hireTier gate opens: salesperson (T1), the
+      // service- and body-shop-advisors (T2/T3, the capacity unblock — #323),
+      // and the managers/GM. Gating stays fully data-driven off staff-roles.json.
+      if (role.tier === 'worker') return false;
       return (role.hireTier ?? 1) <= tier;
     })
     .map(([id]) => ({ id, label: humanizeRole(id) }))
