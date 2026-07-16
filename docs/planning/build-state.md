@@ -20,7 +20,7 @@ resolved just-in-time at the phase boundary, never earlier).
 
 | # | Work (doc section) | Decision first? | Status |
 |---|---|---|---|
-| 1 | A1 advisor hiring + promotion wiring, + A3 hygiene (close #269, #266, #297) | — | active |
+| 1 | A1 advisor hiring + promotion wiring (#323, #324), + A3 hygiene (close #269, #266, #297) | — | active |
 | 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | pending |
 | 3 | B1 Reveal ranking + records | — | pending |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | pending |
@@ -47,3 +47,7 @@ resolved just-in-time at the phase boundary, never earlier).
 
 - 2026-07-16 — file created; /next skill installed. Phase 1 active. A1 has no dedicated
   open issue yet (it was residue of #297, which A3 closes) — first /next will SLICE phase 1.
+- 2026-07-16 — SLICED phase 1 (A1) via /to-issues into #323 (advisor hiring tracer — the
+  unblock; bays defaults confirmed sane so hiring one advisor flips capacity positive) and
+  #324 (promotion path, blocked-by #323). Next /next BUILDs #323. A3 hygiene (close #269/#266/
+  #297, refresh #209 + spec-condensed) trails A1 landing — bookkeeping, not sliced.
