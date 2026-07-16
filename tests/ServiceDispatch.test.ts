@@ -46,6 +46,8 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
     hire: () => {},
     fire: () => {},
     assessCondition: () => null,
+    getPromotionOptions: () => [],
+    promote: () => {},
     snapshot: () => ({ schemaVersion: 1 as const, currentDay: 1, roster: [] }),
     restore: () => {},
   };

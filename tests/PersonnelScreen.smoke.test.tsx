@@ -35,6 +35,7 @@ describe('PersonnelScreen smoke tests', () => {
   it('renders role selection, hires from the selected role, and fires roster staff', () => {
     const onSelectRole = jest.fn();
     const onHire = jest.fn();
+    const onPromote = jest.fn();
     const onFire = jest.fn();
     const { getByText, getByLabelText } = render(
       <PersonnelScreen
@@ -46,6 +47,7 @@ describe('PersonnelScreen smoke tests', () => {
         selectedRoleId="f&i-manager"
         candidates={[FNI_CANDIDATE]}
         roster={[makeStaff('staff:salesperson:1:0', 'salesperson')]}
+        promotionsByStaffId={{}}
         skillCaps={{
           communication: 100,
           finance_structuring: 100,
@@ -54,6 +56,7 @@ describe('PersonnelScreen smoke tests', () => {
         cash={10_000}
         onSelectRole={onSelectRole}
         onHire={onHire}
+        onPromote={onPromote}
         onFire={onFire}
         onClose={() => {}}
       />,

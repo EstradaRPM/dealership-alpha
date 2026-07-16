@@ -446,6 +446,10 @@ export interface EventMap {
   // StaffOrg — roster changes
   'staff:hired': { staffId: string; roleId: string; day: number; hiringCost: number };
   'staff:fired': { staffId: string; roleId: string; day: number };
+  // Promotion moves an existing loyal staffer up a legal role edge (in place —
+  // the staff id is preserved so morale/dispatch bindings survive). Cheaper,
+  // loyalty-flavored alternative to hiring a cold candidate.
+  'staff:promoted': { staffId: string; fromRoleId: string; toRoleId: string; day: number };
 
   // StaffDispatch — salesperson auto-resolved a sales queue item
   'staff:auto_resolved': {

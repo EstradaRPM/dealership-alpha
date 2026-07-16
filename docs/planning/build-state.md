@@ -51,6 +51,17 @@ resolved just-in-time at the phase boundary, never earlier).
   unblock; bays defaults confirmed sane so hiring one advisor flips capacity positive) and
   #324 (promotion path, blocked-by #323). Next /next BUILDs #323. A3 hygiene (close #269/#266/
   #297, refresh #209 + spec-condensed) trails A1 landing — bookkeeping, not sliced.
+- 2026-07-16 — BUILT + closed #324 (promotion path). StaffOrg now exposes
+  `getPromotionOptions(staffId)` + `promote(staffId, toRoleId)` — the first callers of
+  `NPC.promoteStaff`. Gate-aware: legal role edge (`promotes_to`) × target `hireTier`
+  unlock × source role's `promotion_gates` (composites or grown `effectiveSkills`).
+  In-place roster replace preserves the staff id (morale/dispatch survive); emits new
+  `staff:promoted` event. PersonnelScreen roster card shows an "↑ <role>" affordance per
+  legal target (only when options non-empty). Engine tests + a container reachability
+  test (lot-porter→salesperson through the UI). typecheck + full suite green.
+  A1 COMPLETE (#323 + #324). Next /next runs A3 hygiene: close #269/#266/#297, then
+  refresh #209 + spec-condensed — bookkeeping trailing A1. After that, advance pointer
+  to phase 2 (A4 silent-system surfacing).
 - 2026-07-16 — BUILT + closed #323 (21e9743). buildHiringRoleOptions now data-driven:
   excludes only worker-tier roles, so service-advisor (T2) + body-shop-advisor (T3) are
   hireable → Service/Body Shop capacity min(bays,advisors) flips positive. Functional

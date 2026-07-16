@@ -7,7 +7,11 @@ import {
   StyleSheet,
   Modal,
 } from 'react-native';
-import type { CandidateListing, StaffWithComposites } from '../../game/StaffOrg';
+import type {
+  CandidateListing,
+  StaffWithComposites,
+  PromotionOption,
+} from '../../game/StaffOrg';
 import { colors } from '../theme';
 
 export interface PersonnelRoleOption {
@@ -141,27 +145,50 @@ function CandidateRow({ listing, onPress }: CandidateRowProps) {
 
 interface StaffRowProps {
   staff: StaffWithComposites;
+  promotions: readonly PromotionOption[];
+  onPromote: (toRoleId: string) => void;
   onFire: () => void;
 }
 
-function StaffRow({ staff, onFire }: StaffRowProps) {
+function StaffRow({ staff, promotions, onPromote, onFire }: StaffRowProps) {
+  const roleLabel = staff.role_id.replace(/-/g, ' ');
   return (
     <View style={styles.staffRow}>
-      <View style={styles.rowMain}>
-        <Text style={styles.rowTitle}>{staff.role_id.replace(/-/g, ' ')}</Text>
-        <Text style={styles.rowSub}>
-          {Math.round(staff.effectiveness * 100)}% eff /{' '}
-          {Math.round(staff.trustworthiness * 100)}% trust
-        </Text>
+      <View style={styles.staffRowTop}>
+        <View style={styles.rowMain}>
+          <Text style={styles.rowTitle}>{roleLabel}</Text>
+          <Text style={styles.rowSub}>
+            {Math.round(staff.effectiveness * 100)}% eff /{' '}
+            {Math.round(staff.trustworthiness * 100)}% trust
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.fireBtn}
+          accessibilityRole="button"
+          accessibilityLabel={`Fire ${roleLabel}`}
+          onPress={onFire}
+        >
+          <Text style={styles.fireBtnText}>Fire</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={styles.fireBtn}
-        accessibilityRole="button"
-        accessibilityLabel={`Fire ${staff.role_id.replace(/-/g, ' ')}`}
-        onPress={onFire}
-      >
-        <Text style={styles.fireBtnText}>Fire</Text>
-      </TouchableOpacity>
+      {promotions.length > 0 && (
+        <View style={styles.promoteRow}>
+          {promotions.map((p) => {
+            const targetLabel = p.toRoleId.replace(/-/g, ' ');
+            return (
+              <TouchableOpacity
+                key={p.toRoleId}
+                style={styles.promoteBtn}
+                accessibilityRole="button"
+                accessibilityLabel={`Promote ${roleLabel} to ${targetLabel}`}
+                onPress={() => onPromote(p.toRoleId)}
+              >
+                <Text style={styles.promoteBtnText}>↑ {targetLabel}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
@@ -171,10 +198,13 @@ export interface PersonnelScreenProps {
   selectedRoleId: string;
   candidates: readonly CandidateListing[];
   roster: readonly StaffWithComposites[];
+  /** staffId → legal promotion targets for that roster member (#324). */
+  promotionsByStaffId: Record<string, readonly PromotionOption[]>;
   skillCaps: Record<string, number>;
   cash: number;
   onSelectRole: (roleId: string) => void;
   onHire: (candidateId: string) => void;
+  onPromote: (staffId: string, toRoleId: string) => void;
   onFire: (staffId: string) => void;
   onClose: () => void;
 }
@@ -184,10 +214,12 @@ export function PersonnelScreen({
   selectedRoleId,
   candidates,
   roster,
+  promotionsByStaffId,
   skillCaps,
   cash,
   onSelectRole,
   onHire,
+  onPromote,
   onFire,
   onClose,
 }: PersonnelScreenProps) {
@@ -219,6 +251,8 @@ export function PersonnelScreen({
               <StaffRow
                 key={staff.id}
                 staff={staff}
+                promotions={promotionsByStaffId[staff.id] ?? []}
+                onPromote={(toRoleId) => onPromote(staff.id, toRoleId)}
                 onFire={() => onFire(staff.id)}
               />
             ))}
@@ -366,15 +400,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   staffRow: {
-    flexDirection: 'row',
     backgroundColor: colors.surface,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.surfaceRaised,
     padding: 14,
     marginBottom: 10,
+  },
+  staffRowTop: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  promoteRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  promoteBtn: {
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.positive,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  promoteBtnText: {
+    color: colors.positive,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'capitalize',
   },
   rowMain: {
     flex: 1,

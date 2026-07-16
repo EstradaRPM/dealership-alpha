@@ -5,6 +5,7 @@ import type { StaffArchetypeCatalog } from '../NPC/schemas/staff-archetype';
 import {
   createStaff,
   rehydrateStaff,
+  promoteStaff,
   type StaffWithComposites,
 } from '../NPC/factories/StaffFactory';
 import type { Staff } from '../NPC/schemas/staff';
@@ -67,6 +68,17 @@ export interface StaffOrgSnapshot {
   readonly roster: readonly Staff[];
 }
 
+/**
+ * A legal, currently-available promotion target for a roster member (#324).
+ * `getPromotionOptions` returns one per outgoing role edge that (a) is a legal
+ * edge in the data, (b) is unlocked at the current dealership tier, and (c) the
+ * staffer's own `promotion_gates` are satisfied for. UI renders an affordance
+ * per option; an empty list means "no promote button".
+ */
+export interface PromotionOption {
+  readonly toRoleId: string;
+}
+
 export interface StaffOrg {
   readonly currentRoster: readonly StaffWithComposites[];
   /** #190 SaveStore seam: capture/rehydrate the hired roster. */
@@ -75,6 +87,21 @@ export interface StaffOrg {
   getCandidates(roleId: string): readonly CandidateListing[];
   hire(candidateId: string): void;
   fire(staffId: string): void;
+  /**
+   * The legal, tier-unlocked, gate-satisfied promotion targets for a roster
+   * member (#324). Empty when the staffer meets no gate, has no outgoing edge,
+   * or every target is tier-locked. Throws `StaffOrgError` if `staffId` isn't
+   * on the roster.
+   */
+  getPromotionOptions(staffId: string): readonly PromotionOption[];
+  /**
+   * Promote a roster member up a legal role edge (#324). Moves the *existing*
+   * staffer (id preserved, so morale/dispatch bindings survive) to `toRoleId`
+   * via `NPC.promoteStaff`. Throws `StaffOrgError` if the staffer isn't on the
+   * roster, the edge is illegal, the target is tier-locked, or the staffer's
+   * promotion gates aren't met — the same predicate `getPromotionOptions` uses.
+   */
+  promote(staffId: string, toRoleId: string): void;
   /**
    * Pre-purchase condition read for an auction listing (#163). Returns the
    * UCM's skill-gated `[estimatedReconLow, estimatedReconHigh] + confidence`
@@ -146,6 +173,36 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
     const role = taxonomy.roles[roleId];
     if (!role) throw new StaffOrgError(`Unknown role "${roleId}"`);
     return config.hiringCostByTier[role.tier] ?? 1000;
+  }
+
+  /**
+   * True when `staff` clears every threshold in its *current* role's
+   * `promotion_gates` (#324). Gate keys are either the two composites
+   * (`effectiveness`/`trustworthiness`, 0–1) or a raw skill axis read from the
+   * grown `effectiveSkills` (0–100) — the same value every capability gate reads.
+   */
+  function meetsPromotionGates(staff: StaffWithComposites): boolean {
+    const role = taxonomy.roles[staff.role_id];
+    if (!role) return false;
+    for (const [key, threshold] of Object.entries(role.promotion_gates)) {
+      const value =
+        key === 'effectiveness'
+          ? staff.effectiveness
+          : key === 'trustworthiness'
+            ? staff.trustworthiness
+            : (staff.effectiveSkills[key] ?? 0);
+      if (value < threshold) return false;
+    }
+    return true;
+  }
+
+  /** True when `toRoleId`'s `hireTier` (if any) is met by the current tier. */
+  function isTargetTierUnlocked(toRoleId: string): boolean {
+    const target = taxonomy.roles[toRoleId];
+    if (!target) return false;
+    if (target.hireTier === undefined) return true;
+    const tier = getTier ? getTier() : 1;
+    return tier >= target.hireTier;
   }
 
   function buildCandidatesForRole(roleId: string): void {
@@ -284,6 +341,58 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       bus.publish('staff:fired', {
         staffId: fired.id,
         roleId: fired.role_id,
+        day: currentDay,
+      });
+    },
+
+    getPromotionOptions(staffId: string): readonly PromotionOption[] {
+      const staff = roster.find((s) => s.id === staffId);
+      if (!staff) {
+        throw new StaffOrgError(`Staff member "${staffId}" not on roster`);
+      }
+      const role = taxonomy.roles[staff.role_id];
+      if (!role || !meetsPromotionGates(staff)) return [];
+      return role.promotes_to
+        .filter((toRoleId) => isTargetTierUnlocked(toRoleId))
+        .map((toRoleId) => ({ toRoleId }));
+    },
+
+    promote(staffId: string, toRoleId: string): void {
+      const idx = roster.findIndex((s) => s.id === staffId);
+      if (idx === -1) {
+        throw new StaffOrgError(`Staff member "${staffId}" not on roster`);
+      }
+      const staff = roster[idx];
+      const role = taxonomy.roles[staff.role_id];
+      if (!role) {
+        throw new StaffOrgError(`Staff has unknown role "${staff.role_id}"`);
+      }
+      if (!role.promotes_to.includes(toRoleId)) {
+        throw new StaffOrgError(
+          `Role "${staff.role_id}" cannot promote to "${toRoleId}" (illegal edge)`,
+        );
+      }
+      if (!isTargetTierUnlocked(toRoleId)) {
+        const target = taxonomy.roles[toRoleId];
+        throw new StaffOrgError(
+          `Promotion to "${toRoleId}" requires dealership tier ${target?.hireTier} (current: ${getTier ? getTier() : 1})`,
+        );
+      }
+      if (!meetsPromotionGates(staff)) {
+        throw new StaffOrgError(
+          `Staff "${staffId}" does not meet the promotion gates for "${staff.role_id}"`,
+        );
+      }
+
+      const fromRoleId = staff.role_id;
+      // In-place replacement keeps the staff id, so StaffMorale / StaffDispatch
+      // bindings (keyed by id) survive the promotion.
+      roster[idx] = promoteStaff(staff, toRoleId, taxonomy, masterSeed);
+
+      bus.publish('staff:promoted', {
+        staffId,
+        fromRoleId,
+        toRoleId,
         day: currentDay,
       });
     },

@@ -4,6 +4,7 @@ export type {
   StaffOrgDeps,
   StaffOrgSnapshot,
   ConditionAssessInput,
+  PromotionOption,
 } from './StaffOrg';
 export type { CandidateListing, StaffWithComposites } from './types';
 export { loadStaffOrgConfig } from './staffOrgData';
