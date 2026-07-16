@@ -37,6 +37,7 @@ yarn-error.*
 # (the project-level allowlist) so the team gets the same defaults.
 .claude/*
 !.claude/settings.json
+!.claude/skills/
 
 # Local-only issue snapshot (regenerate via scripts/dump-issues.sh)
 ISSUES.md
