@@ -8,7 +8,7 @@ Premium, one-time-purchase, single-player mobile dealership-business simulation 
 
 ## Tier ladder & build frontier
 
-The game spans the full tier ladder: **gravel yard → paved lot → small showroom → franchise → multi-store group**. Implementation builds tier by tier; the current frontier is **Tiers 1–3**. Higher tiers are **not-yet-built, not cut**. Single active career save + legacy wall of completed careers.
+The game spans the full tier ladder: **gravel yard → paved lot → small showroom → franchise → multi-store group**. Implementation builds tier by tier; the current frontier is **Tiers 1–3**. Higher tiers are **not-yet-built, not cut**. **Multiple independent career saves** (2–3 slots) reached through a New/Continue/Load/Delete start menu, plus a legacy wall of completed careers.
 
 ## Tier-aware failure paths
 
@@ -45,7 +45,7 @@ Original 12 from issue #1:
 | `SaveStore` | SQLite persistence, weekly rolling snapshots |
 | `EventBus` | Typed pub/sub (the only cross-module channel) |
 
-Added during implementation (see each module's `CLAUDE.md`): `CapacityManager`, `FollowUpPool`, `NPC`, `ServiceQueue`, `ServiceDispatch`, `StaffDispatch`, `StaffMorale`, plus `data/` loader.
+Added during implementation (see each module's `CLAUDE.md`): `CapacityManager`, `FollowUpPool`, `NPC`, `StaffDispatch`, `StaffMorale`, plus `data/` loader. The **shared department backbone** `DepartmentLine` (#311) and its two plugged-in profit centers: **Service** (`ServiceQueue`, `ServiceDispatch`, `ServiceDemand`, `ServiceInsights`, `ServiceMarketing`, `InstalledBase`, `PartsInventory`; composed in `src/serviceDepartment.ts`) and **Body Shop** — the Tier-3 mirror — (`BodyShopQueue` #312, `CollisionStream`, `BodyShopInsights`; composed in `src/bodyShopDepartment.ts`, sharing the dispatch engine + `PartsInventory`). Demand/economy layer: `DemandShaper`, `Weather`, `MarketEconomy`, `TierGate`. Save-slot layer: `SaveStore` exposes `createMultiSlotSaveStore` (2–3 slots) alongside the single-slot store + rolling snapshots.
 
 Read the per-module `src/game/<Name>/CLAUDE.md` for public API, events, and data files. The canonical event catalog is `src/game/EventBus/events.ts`.
 
@@ -98,8 +98,8 @@ Capacity ceiling = function of facility tier + staff count. Demand emergent. Whe
 
 ## Persistence & rollback
 
-- Single career save.
-- Weekly rolling snapshots **4-6 weeks deep**, managed by `SaveStore`.
+- **Multiple career saves** — 2–3 independent slots via `createMultiSlotSaveStore`, addressed through a New/Continue/Load/Delete start menu (#186/#194/#195). Each slot carries its own blob, metadata (day/tier), and mid-day checkpoint cell.
+- Weekly rolling snapshots **4-6 weeks deep**, managed by `SaveStore` (per-slot).
 - Save layer is the **only** module that touches `expo-sqlite`. No game-logic module reads/writes storage directly.
 - Bump `CURRENT_SAVE_VERSION` and append a `Migration` whenever `SaveState` shape changes.
 
@@ -121,7 +121,7 @@ Capacity ceiling = function of facility tier + staff count. Demand emergent. Whe
 
 Genuinely outside the design — not build-order deferrals: player-character RPG skill layer · cloud save · Lottie/sprite animation pipeline · multiplayer / social · period-piece content.
 
-Everything that is part of the design but not yet built — Bodyshop, higher-tier gameplay, richer competitor/OEM simulation, service-to-sales conversion, equity mining — is **not-yet-built, not out of scope**. It gets built when its tier comes up.
+Everything that is part of the design but not yet built — higher-tier (T4+) gameplay, richer competitor/OEM simulation, service-to-sales conversion, equity mining — is **not-yet-built, not out of scope**. It gets built when its tier comes up. (Body Shop is now **built** — the Tier-3 collision profit center shipped via #311–#318.)
 
 ## When to re-read issue #1
 
