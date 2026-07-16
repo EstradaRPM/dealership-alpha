@@ -51,3 +51,9 @@ resolved just-in-time at the phase boundary, never earlier).
   unblock; bays defaults confirmed sane so hiring one advisor flips capacity positive) and
   #324 (promotion path, blocked-by #323). Next /next BUILDs #323. A3 hygiene (close #269/#266/
   #297, refresh #209 + spec-condensed) trails A1 landing — bookkeeping, not sliced.
+- 2026-07-16 — BUILT + closed #323 (21e9743). buildHiringRoleOptions now data-driven:
+  excludes only worker-tier roles, so service-advisor (T2) + body-shop-advisor (T3) are
+  hireable → Service/Body Shop capacity min(bays,advisors) flips positive. Functional
+  reachability test drives the hire through the PersonnelScreen container. typecheck + 2080
+  tests green. Next /next BUILDs #324 (promotion path — deps met now #323 is in). A3 hygiene
+  (close #269/#266/#297, refresh #209 + spec-condensed) still trails, after #324.
