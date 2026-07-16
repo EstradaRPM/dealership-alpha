@@ -6,7 +6,7 @@ comes from that doc and the filed issues.
 
 ## Current phase
 
-**Phase 1 — A1 advisor hiring + promotion wiring (+ A3 issue hygiene)**
+**Phase 2 — A4 silent-system surfacing (#267, #187, #179, manager status card, recovery states, indictment producers)**
 
 ## Blockers
 
@@ -20,8 +20,8 @@ resolved just-in-time at the phase boundary, never earlier).
 
 | # | Work (doc section) | Decision first? | Status |
 |---|---|---|---|
-| 1 | A1 advisor hiring + promotion wiring (#323, #324), + A3 hygiene (close #269, #266, #297) | — | active |
-| 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | pending |
+| 1 | A1 advisor hiring + promotion wiring (#323, #324), + A3 hygiene (close #269, #266, #297) | — | done |
+| 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | active |
 | 3 | B1 Reveal ranking + records | — | pending |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | pending |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | pending |
@@ -51,6 +51,15 @@ resolved just-in-time at the phase boundary, never earlier).
   unblock; bays defaults confirmed sane so hiring one advisor flips capacity positive) and
   #324 (promotion path, blocked-by #323). Next /next BUILDs #323. A3 hygiene (close #269/#266/
   #297, refresh #209 + spec-condensed) trails A1 landing — bookkeeping, not sliced.
+- 2026-07-16 — A3 HYGIENE done; PHASE 1 CLOSED, pointer advanced to phase 2 (A4). Closed
+  #297 (Service+Body Shop PRD fully delivered incl. A1 residue), #269 (Body Shop v2-anchor
+  superseded by the shipped #311–#318 build), #266 (fire is surfaced — PersonnelScreen
+  onFire → staffOrg.fire, smoke-tested). Refreshed docs/spec-condensed.md (#209, commit
+  ba79cb6): multi-slot save + start menu in scope, Body Shop off the not-yet-built list,
+  module map updated. Next /next: phase 2 has open filed issues (#267/#187/#179) but also
+  net-new surfacing work (manager status card, recovery states, indictment producers) with
+  no issues yet → first phase-2 /next likely SLICEs A4, else BUILDs the lowest open of
+  #179/#187/#267.
 - 2026-07-16 — BUILT + closed #324 (promotion path). StaffOrg now exposes
   `getPromotionOptions(staffId)` + `promote(staffId, toRoleId)` — the first callers of
   `NPC.promoteStaff`. Gate-aware: legal role edge (`promotes_to`) × target `hireTier`
