@@ -45,6 +45,28 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-17 — BUILT + closed #325 (manager status card — surface delegated
+  capabilities). New People tab (was `null`) hosts `ManagerStatusCard`
+  (kit-styled, MarketStatePanel mold): three UCM channel-desk gates rendered
+  advise-vs-act (Delegated / Advising / Manual badge + plain-language copy that
+  NAMES the delegation + a skill-vs-gate Meter), and the two fixed-ops managers
+  (Service, Body Shop) present/absent with their automated ladder rungs.
+  Composition-root `buildManagerStatus(world)` in `src/app/config.ts` REUSES the
+  live act-gate predicates (`isAutoPricingUnlocked` / `isTradeApprovalUnlocked`
+  (condition_reading gates trade-approve + sourcing on one threshold) /
+  `isDiscountDeskingUnlocked` / `isServiceFunctionAutomated` /
+  `isBodyShopFunctionAutomated`) read off each manager's GROWN `effectiveSkills`
+  vs `tunables.managerGates`, so the card never disagrees with what the desk
+  actually does. Reactive: `useWorldState` now bumps on `staff:hired/fired/
+  promoted` + `clock:day_started` (the M7 overnight skill step) — no polling.
+  Override invariant (§5) stated in the card footer. Pure UI types in
+  `src/ui/PeopleTab/managerStatus.ts`; no new events. Tests: live-world
+  reachability (gate-crossing flips `delegated`) + app-composition wiring guard +
+  component smoke. typecheck + full suite (2101, +6) green. /verify: BLOCKED for
+  the live-GUI drive (native expo-sqlite + no react-native-web + on-device-only
+  HITL path) — persisted `.claude/skills/verify/SKILL.md`; reachability+smoke+
+  wiring-guard cited as the reachable ceiling. A4 open set now #326/#327. Next
+  /next BUILDs the lowest deps-met open (#326 recovery-state surfacing).
 - 2026-07-17 — BUILT + closed #267 (surface CompetitorMarket drift as a
   player-facing notification). HistoryLog now subscribes to
   `competitor:price_changed` and appends a discrete `market`-kind entry — "Rival

@@ -17,6 +17,7 @@ import {
 } from '../../ui/AppShell';
 import { HomeTab, buildHomeDashboard, buildGateStrip } from '../../ui/HomeTab';
 import { OperationsTab } from '../../ui/OperationsTab';
+import { PeopleTab } from '../../ui/PeopleTab';
 import { StrategicTab } from '../../ui/StrategicTab';
 import {
   FloorDashboard,
@@ -47,6 +48,7 @@ import {
   buildCoverageGap,
   buildHeatConsole,
   resolvePricingIntel,
+  buildManagerStatus,
 } from '../config';
 
 export interface GameScreenProps {
@@ -390,7 +392,7 @@ export function GameScreen({
         }
       />
     ),
-    people: null,
+    people: <PeopleTab managerStatus={buildManagerStatus(world)} />,
     finance: null,
     growth: null,
   };

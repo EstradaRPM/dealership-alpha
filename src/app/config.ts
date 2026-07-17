@@ -7,7 +7,7 @@
 // editing the 1.8k-line App.tsx.
 import { type ImageSourcePropType } from 'react-native';
 import { loadTunables } from '../game/data';
-import { loadTradePolicyConfig } from '../game/DealEngine';
+import { loadTradePolicyConfig, isTradeApprovalUnlocked } from '../game/DealEngine';
 import { loadInventoryConfig } from '../game/Inventory';
 import { loadStaffArchetypes, loadStaffTaxonomy } from '../game/NPC';
 import {
@@ -15,10 +15,14 @@ import {
   loadSourcingConfig,
   personalityBiasFor,
   resolveIntelPrecision,
+  isAutoPricingUnlocked,
   type IntelPrecision,
   type PricingStaffRead,
   type SourcingLean,
 } from '../game/MarketEconomy';
+import { isDiscountDeskingUnlocked } from '../game/StaffDispatch';
+import { isServiceFunctionAutomated } from '../game/ServiceDispatch';
+import { isBodyShopFunctionAutomated } from '../bodyShopManager';
 import { loadRegulatoryTunables } from '../game/Reputation';
 import { loadTierConfig } from '../game/CareerProgression';
 import type { World } from '../createWorld';
@@ -61,6 +65,11 @@ import type {
   ValueBandEdges,
   ValuationVehicleInput,
 } from '../ui/KPIDashboard';
+import type {
+  ManagerStatusModel,
+  UcmCapabilityFact,
+  DeptManagerFact,
+} from '../ui/PeopleTab';
 import type {
   DemandCoverageGap,
   DemandReadoutEntry,
@@ -308,6 +317,83 @@ export function buildMarketState(world: World): MarketStateModel {
     valuation: buildInventoryValuation(vehicles),
     stale: buildStaleInventory(vehicles, AGED_THRESHOLD_DAYS),
   };
+}
+
+// Manager status read-model (#325, workstream A4): the delegated-authority
+// surface for the People tab. The four desk gates + two fixed-ops managers act
+// invisibly today; per macro-loop-spine §2 delegation must read as *permission*,
+// so this distills which capabilities the player has handed off. Reuses the SAME
+// act-gate predicates the engine gates on (isAutoPricingUnlocked etc.) against
+// each manager's GROWN effectiveSkills (constant within a day, steps overnight —
+// channel-desk M7), so the card never disagrees with what the desk actually does.
+// The condition_reading axis gates BOTH trade auto-approve and sourcing auto-fill
+// on one threshold, so a single predicate speaks for both.
+export function buildManagerStatus(world: World): ManagerStatusModel {
+  const gates = loadTunables().managerGates;
+  const roster = world.staffOrg.currentRoster;
+
+  // Top on-staff effective skill for a role on a given axis (null = none on
+  // staff), mirroring the live gate reads in createWorld / the department
+  // packages (top UCM pricing, top SM shop_throughput, …).
+  const topSkill = (roleId: string, axis: string): number | null => {
+    const held = roster.filter((s) => s.role_id === roleId);
+    return held.length === 0
+      ? null
+      : Math.max(...held.map((s) => s.effectiveSkills[axis] ?? 0));
+  };
+
+  const pricingSkill = topSkill('used-car-manager', 'pricing');
+  const conditionSkill = topSkill('used-car-manager', 'condition_reading');
+  const closingSkill = topSkill('used-car-manager', 't_o_closing');
+  const ucm: UcmCapabilityFact[] = [
+    {
+      axis: 'pricing',
+      delegated: isAutoPricingUnlocked(pricingSkill, gates.actThresholds.pricing),
+      skill: pricingSkill,
+      threshold: gates.actThresholds.pricing,
+    },
+    {
+      axis: 'condition_reading',
+      // One axis + threshold gates both trade auto-approve (#291) and sourcing
+      // auto-fill (#293) — either predicate is authoritative for the pair.
+      delegated: isTradeApprovalUnlocked(
+        conditionSkill,
+        gates.actThresholds.condition_reading,
+      ),
+      skill: conditionSkill,
+      threshold: gates.actThresholds.condition_reading,
+    },
+    {
+      axis: 't_o_closing',
+      delegated: isDiscountDeskingUnlocked(closingSkill, gates.actThresholds.t_o_closing),
+      skill: closingSkill,
+      threshold: gates.actThresholds.t_o_closing,
+    },
+  ];
+
+  const svcSkill = topSkill('service-manager', 'shop_throughput');
+  const bodySkill = topSkill('body-shop-manager', 'shop_throughput');
+  const svcGates = gates.serviceManager.actThresholds;
+  const bodyGates = gates.bodyShopManager.actThresholds;
+  const departments: DeptManagerFact[] = [
+    {
+      dept: 'service',
+      present: svcSkill !== null,
+      functions: (['par', 'pricing', 'marketing', 'rush', 'capacity'] as const).map(
+        (fn) => ({ fn, automated: isServiceFunctionAutomated(svcSkill, svcGates[fn]) }),
+      ),
+    },
+    {
+      dept: 'body',
+      present: bodySkill !== null,
+      functions: (['par', 'channel', 'rush', 'capacity'] as const).map((fn) => ({
+        fn,
+        automated: isBodyShopFunctionAutomated(bodySkill, bodyGates[fn]),
+      })),
+    },
+  ];
+
+  return { ucmPresent: pricingSkill !== null, ucm, departments };
 }
 
 export function buildCoverageGap(

@@ -72,15 +72,29 @@ export function useWorldState(bus: EventBus): WorldState {
       const w = worldRef.current;
       if (w) setCash(w.economy.cash);
     };
+    // Manager-status card (#325) reactivity: the delegated-authority read-model
+    // is rebuilt from `world` each render, so a force-update re-derives it. Roster
+    // changes (hire/fire/promote) can add/remove a manager; the day boundary is
+    // when grown effectiveSkills step (channel-desk M7) and thus when a gate can
+    // cross without any roster change — recompute-on-day-boundary, no polling.
+    const onManagerStateChange = () => setTick((n) => n + 1);
     bus.subscribe('inventory:vehicle_purchased', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_acquired_via_trade', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_sold', onVehicleSold);
     bus.subscribe('economy:revenue_posted', onRevenue);
+    bus.subscribe('staff:hired', onManagerStateChange);
+    bus.subscribe('staff:fired', onManagerStateChange);
+    bus.subscribe('staff:promoted', onManagerStateChange);
+    bus.subscribe('clock:day_started', onManagerStateChange);
     return () => {
       bus.unsubscribe('inventory:vehicle_purchased', onVehiclePurchased);
       bus.unsubscribe('inventory:vehicle_acquired_via_trade', onVehiclePurchased);
       bus.unsubscribe('inventory:vehicle_sold', onVehicleSold);
       bus.unsubscribe('economy:revenue_posted', onRevenue);
+      bus.unsubscribe('staff:hired', onManagerStateChange);
+      bus.unsubscribe('staff:fired', onManagerStateChange);
+      bus.unsubscribe('staff:promoted', onManagerStateChange);
+      bus.unsubscribe('clock:day_started', onManagerStateChange);
     };
   }, []);
 
