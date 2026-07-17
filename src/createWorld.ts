@@ -692,11 +692,11 @@ export function createWorld(deps: {
   // canonical deal:closed (with the five deal-structuring fields) fires
   // instead of synthesizing a SalesProcess emit against a stub vehicle.
   const creditTiers = loadCreditTiers();
-  // #183: CompetitorMarket — the static rival roster with weekly drift.
-  // Built earlier but never instantiated in the world (a dark module): its
-  // `market:competitive_pressure` (CustomerPool poaching) and #158
-  // `competitor:price_changed` (one of emergent-C's four demand fuels) never
-  // fired in a running game. Wired here so both go live.
+  // #183: CompetitorMarket — the static rival roster with weekly drift, the
+  // ambient market force. Built earlier but never instantiated in the world (a
+  // dark module): its `market:competitive_pressure` (the daily rival-roster
+  // heartbeat) and #158 `competitor:price_changed` (one of emergent-C's four
+  // demand fuels) never fired in a running game. Wired here so both go live.
   //
   // Determinism: CompetitorMarket is reconstructed from `masterSeed` at
   // construction, and its drift is persisted via snapshot/restore (#191, part
@@ -755,15 +755,6 @@ export function createWorld(deps: {
     dealEngine,
     inventory,
     creditTiers,
-    // #183: poaching wiring. `runPoachChecks` early-returns without BOTH of
-    // these, so customer poaching was doubly dark. `brands` lets the poach
-    // engine score the rival roster carried on `market:competitive_pressure`;
-    // `getPlayerStrength` is the live reputation review score normalized to
-    // [0,1] — the same signal that already scales demand — against which a
-    // competitor's relative strength is measured. (Tier could layer in later.)
-    brands,
-    getPlayerStrength: () =>
-      Math.min(1, Math.max(0, reputation.reviewScore / 100)),
   });
   const staffTaxonomy = loadStaffTaxonomy();
   const staffOrg = createStaffOrg({

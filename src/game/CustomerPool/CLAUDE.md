@@ -1,14 +1,14 @@
 # CustomerPool
 
-Per-day customer roster + SalesProcess-driven resolution. Rolls today's customers, advances them through Sales stages, runs `SalesProcess.resolveSalesProcess` + `closeAndPrice` at resolution time, and handles poach attempts by competitors.
+Per-day customer roster + SalesProcess-driven resolution. Rolls today's customers, advances them through Sales stages, and runs `SalesProcess.resolveSalesProcess` + `closeAndPrice` at resolution time.
+
+Competitors are the ambient market force (price drift + demand heat), not a per-customer snatch: a customer you don't win **walks** (SalesProcess outcome), and rival pull is expressed through demand/reputation, so there is no separate poach path. (Customer-poaching was cut — redundant with walk + competitive pressure + future BDC follow-up; see `docs/planning/poaching-cut.md`.)
 
 ## Public API (`index.ts`)
-- `createCustomerPool(deps)` → `CustomerPool`. Optional `deps.skill?: SalespersonSkill` (defaults to `GREEN_SALESPERSON`; StaffOrg wiring is a follow-on). Optional `deps.legacyDailyArrivals?: boolean` (default `true`) — the old `clock:day_started` once-per-day arrival generator; the #114 composition root passes `false` so FloorSim's customer-source seam is the sole arrival source (`currentDay` + poach still run). Optional `deps.dealEngine` + `deps.inventory` + `deps.creditTiers` (all three together) — when supplied, `dispatch(CLOSE)` real-close path routes through `DealEngine.closeDeal` (#146) so the canonical `deal:closed` with the five deal-structuring fields fires; absent any of the three, falls back to legacy SalesProcess-direct emit (test harnesses without inventory wiring).
+- `createCustomerPool(deps)` → `CustomerPool`. Optional `deps.skill?: SalespersonSkill` (defaults to `GREEN_SALESPERSON`; StaffOrg wiring is a follow-on). Optional `deps.legacyDailyArrivals?: boolean` (default `true`) — the old `clock:day_started` once-per-day arrival generator; the #114 composition root passes `false` so FloorSim's customer-source seam is the sole arrival source (`currentDay` still tracked). Optional `deps.dealEngine` + `deps.inventory` + `deps.creditTiers` (all three together) — when supplied, `dispatch(CLOSE)` real-close path routes through `DealEngine.closeDeal` (#146) so the canonical `deal:closed` with the five deal-structuring fields fires; absent any of the three, falls back to legacy SalesProcess-direct emit (test harnesses without inventory wiring).
 - Session type: `CustomerSession`.
 - `transition(...)`, `IllegalTransitionError` — FSM validates dispatch legality (intermediate stages).
-- `checkPoach(...)` — competitor poach decision. `PoachParams`, `PoachResult`, `PoachOutcome`.
-- `loadPoachConfig` — reads `data/poach-config.json`.
-- Types: `CustomerStage`, `CustomerAction`, `PoachConfig`.
+- Types: `CustomerStage`, `CustomerAction`.
 
 ## Resolution semantics (#91, extended #146)
 - **`dispatch(CLOSE)`** — SalesProcess-driven outcome determination (`resolveSalesProcess` + `closeAndPrice`):
@@ -20,11 +20,10 @@ Per-day customer roster + SalesProcess-driven resolution. Rolls today's customer
 - Intermediate actions (GREET, QUALIFY, DEMO, NEGOTIATE) still use FSM.
 
 ## Events
-- **Emits:** `customer:arrived`, `customer:state_changed`, `customer:gate_evaluated` (observability only, #92 — one per gate in gate order on a SalesProcess-driven resolution), `customer:resolved` (extended — see EventBus events.ts), `customer:poached`. Per-customer ordering: `arrived → state_changed (0..n) → gate_evaluated (0..n) → (resolved | poached)`.
-- **Consumes:** `clock:day_started` (roll today's customers — legacy path only, gated by `legacyDailyArrivals`), `market:competitive_pressure` (poach checks), `deal:closed` (DealEngine-driven close), `bdc:callback_succeeded` (return to sales).
+- **Emits:** `customer:arrived`, `customer:state_changed`, `customer:gate_evaluated` (observability only, #92 — one per gate in gate order on a SalesProcess-driven resolution), `customer:resolved` (extended — see EventBus events.ts). Per-customer ordering: `arrived → state_changed (0..n) → gate_evaluated (0..n) → resolved`.
+- **Consumes:** `clock:day_started` (roll today's customers — legacy path only, gated by `legacyDailyArrivals`), `deal:closed` (DealEngine-driven close), `bdc:callback_succeeded` (return to sales).
 
 ## Data
-- `data/poach-config.json` — poach probabilities + thresholds.
 - Customer archetypes/visit archetypes come from `NPC` module (see its CLAUDE.md).
 
 ## Collaborators

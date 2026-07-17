@@ -2,14 +2,10 @@ import { createCustomer } from '../NPC';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import type { CreateCustomerDeps, CustomerBundle } from '../NPC';
 import type { EventBus } from '../EventBus';
-import type { BrandCatalog } from '../CompetitorMarket/schemas/brand';
-import type { Competitor } from '../CompetitorMarket/Competitor';
 import type { DealEngine, CreditTierCatalog } from '../DealEngine';
 import type { Inventory } from '../Inventory';
 import { transition, IllegalTransitionError } from './CustomerStateMachine';
 import type { CustomerStage, CustomerAction } from './types';
-import { checkPoach } from './PoachEngine';
-import { loadPoachConfig, type PoachConfig } from './poachData';
 import {
   resolveSalesProcess,
   closeAndPrice,
@@ -79,9 +75,6 @@ export const SALES_ARCHETYPES: ReadonlyArray<{
 export function createCustomerPool(deps: {
   bus: EventBus;
   npcDeps: CreateCustomerDeps;
-  brands?: BrandCatalog;
-  getPlayerStrength?: () => number;
-  poachConfig?: PoachConfig;
   /** Injected salesperson skill (defaults to GREEN_SALESPERSON). StaffOrg wiring is a follow-on. */
   skill?: SalespersonSkill;
   /**
@@ -89,7 +82,7 @@ export function createCustomerPool(deps: {
    * live-day path). Default `true` preserves prior behavior + tests. The
    * #114 composition root passes `false`: FloorSim owns arrivals via the
    * injected customer-source seam, so this auto-generation must not also
-   * fire. `currentDay` tracking + poach checks still run regardless.
+   * fire. `currentDay` tracking still runs regardless.
    */
   legacyDailyArrivals?: boolean;
   /**
@@ -108,13 +101,6 @@ export function createCustomerPool(deps: {
   const sessions = new Map<string, MutableSession>();
   let adminSpawnSlot = 9000;
   let currentDay = 0;
-
-  let latestCompetitors: ReadonlyArray<Competitor> = [];
-  let resolvedPoachConfig: PoachConfig | undefined;
-
-  bus.subscribe('market:competitive_pressure', ({ competitors }) => {
-    latestCompetitors = competitors;
-  });
 
   /** Compute the SalesProcess-driven scalar outputs for a customer resolution. */
   function resolveViaProcess(session: MutableSession): {
@@ -303,56 +289,6 @@ export function createCustomerPool(deps: {
     }
   }
 
-  function runPoachChecks(day: number): void {
-    if (!deps.brands || !deps.getPlayerStrength) return;
-
-    resolvedPoachConfig ??= deps.poachConfig ?? loadPoachConfig();
-    const config = resolvedPoachConfig;
-    const playerStrength = deps.getPlayerStrength();
-
-    const toPoach: Array<{ session: MutableSession; competitor: Competitor }> = [];
-
-    for (const session of sessions.values()) {
-      if (session.stage === 'CLOSED' || session.stage === 'WALK') continue;
-
-      const visit = session.bundle.visit;
-      if (visit.kind !== 'sales') continue;
-
-      const rng = createRng(
-        deriveSeed(npcDeps.masterSeed, 'customer_pool.poach', {
-          day,
-          customerId: session.customerId,
-        }),
-      );
-
-      const result = checkPoach({
-        traitIds: session.bundle.person.trait_ids,
-        visit,
-        competitors: latestCompetitors,
-        brands: deps.brands,
-        playerStrength,
-        shopAroundBaseRate: config.shopAroundBaseRate,
-        shopAroundHighRate: config.shopAroundHighRate,
-        shopAroundTraitId: config.shopAroundTraitId,
-        rng,
-      });
-
-      if (result.poached) {
-        toPoach.push({ session, competitor: result.competitor });
-      }
-    }
-
-    for (const { session, competitor } of toPoach) {
-      sessions.delete(session.customerId);
-      bus.publish('customer:poached', {
-        customerId: session.customerId,
-        day,
-        competitorId: competitor.id,
-        competitorName: competitor.name,
-      });
-    }
-  }
-
   const legacyDailyArrivals = deps.legacyDailyArrivals ?? true;
 
   bus.subscribe('clock:day_started', ({ day }) => {
@@ -360,7 +296,7 @@ export function createCustomerPool(deps: {
 
     // Old live-day path: FloorSim owns arrivals via the customer-source seam
     // in the #114 composition, so the legacy auto-generator is opted out
-    // there. currentDay tracking + poach checks always run.
+    // there. currentDay tracking always runs.
     if (legacyDailyArrivals) {
       const rng = createRng(
         deriveSeed(npcDeps.masterSeed, 'customer_pool.archetype_pick', { day }),
@@ -384,8 +320,6 @@ export function createCustomerPool(deps: {
 
       bus.publish('customer:arrived', { day, customerId, label: pick.label });
     }
-
-    runPoachChecks(day);
   });
 
   bus.subscribe('deal:closed', ({ customerId, agreedPrice, frontGross }) => {

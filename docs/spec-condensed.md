@@ -40,7 +40,7 @@ Original 12 from issue #1:
 | `DealEngine` | Sales workspace logic: pricing, F&I, loan structuring, gross |
 | `Economy` | Money flows, payroll, rent, marketing, capex, P&L |
 | `Reputation` | Satisfaction, reviews, regulatory pressure → demand |
-| `CompetitorMarket` | 4-6 named competitors per metro, static-with-drift, poach |
+| `CompetitorMarket` | 4-6 named competitors per metro, static-with-drift; ambient market force (price drift + demand heat), not a per-customer snatch (poaching cut — see docs/planning/poaching-cut.md) |
 | `CareerProgression` | Tier tracking, failure detection, end-cards, backstory Day-1 mods |
 | `SaveStore` | SQLite persistence, weekly rolling snapshots |
 | `EventBus` | Typed pub/sub (the only cross-module channel) |

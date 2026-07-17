@@ -97,8 +97,10 @@ export interface EventMap {
     totalArrivals: number;
   };
 
-  // CompetitorMarket → CustomerPool (ADR-0001 §10). Published each
-  // clock:day_started; consumed when rolling today's customers.
+  // CompetitorMarket ambient heartbeat (ADR-0001 §10). Published each
+  // clock:day_started with the live rival roster — the market force the player
+  // operates within. Read by KPI/market-visibility surfaces; no game-logic
+  // consumer mutates state off it.
   'market:competitive_pressure': {
     day: number;
     competitors: ReadonlyArray<Competitor>;
@@ -125,7 +127,6 @@ export interface EventMap {
   //   customer:arrived → customer:state_changed (0-n times) →
   //   customer:gate_evaluated (one per gate, in gate order, only on a
   //   SalesProcess-driven resolution) → customer:resolved
-  //   OR customer:poached (removes from pool before any state changes)
   'customer:arrived': { day: number; customerId: string; label: string };
   'customer:state_changed': { customerId: string; from: string; to: string };
   // Observability only (issue #92): one per gate during SalesProcess-driven
@@ -162,12 +163,6 @@ export interface EventMap {
     agreedPrice: number;
     /** Front-end gross margin. 0 for non-closes. */
     frontGross: number;
-  };
-  'customer:poached': {
-    customerId: string;
-    day: number;
-    competitorId: string;
-    competitorName: string;
   };
 
   // MarketEconomy → world (slice #159). Stochastic shock scheduler activates a

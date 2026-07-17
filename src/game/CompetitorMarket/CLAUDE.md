@@ -1,6 +1,6 @@
 # CompetitorMarket
 
-Static competitor roster. Each competitor has a personality, price point, and weekly stat drift. Publishes daily competitive pressure that `CustomerPool` consumes for poach decisions.
+Static competitor roster — the ambient market force. Each competitor has a personality, price point, and weekly stat drift. Publishes a daily competitive-pressure heartbeat (the live rival roster) for KPI/market-visibility surfaces, and `competitor:price_changed` moves that MarketEconomy consumes as a demand fuel. (There is no customer-poaching consumer — that mechanic was cut; see `docs/planning/poaching-cut.md`.)
 
 ## Public API (`index.ts`)
 - `createCompetitorMarket()` → `CompetitorMarket`. Exposes `getCompetitors`, `getCompetitor`, `snapshot/restore` (#191), `dispose`.
@@ -10,7 +10,7 @@ Static competitor roster. Each competitor has a personality, price point, and we
 - Types: `Competitor`, `CompetitorCatalog`, `BrandEntry`, `BrandCatalog`, `SpacedLean`, `DriftSigma`, `PersonalityDriftCatalog`.
 
 ## Events
-- **Emits:** `market:competitive_pressure` every `clock:day_started` (carries the read-only competitor list); `competitor:price_changed` (slice #158) during weekly drift when `|new − old| ≥ competitorMarket.pricingChangeThreshold` *and* the optional `brands` dep was passed in (omit `brands` to suppress the event in tests that don't care).
+- **Emits:** `market:competitive_pressure` every `clock:day_started` (carries the read-only competitor list — an ambient heartbeat, currently no game-logic consumer mutates state off it); `competitor:price_changed` (slice #158) during weekly drift when `|new − old| ≥ competitorMarket.pricingChangeThreshold` *and* the optional `brands` dep was passed in (omit `brands` to suppress the event in tests that don't care).
 - **Consumes:** `clock:day_started` (publish pressure), `clock:day_ended` (run drift + maybe emit price-changed).
 
 ## Data

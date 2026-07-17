@@ -60,6 +60,32 @@ resolved just-in-time at the phase boundary, never earlier).
   net-new surfacing work (manager status card, recovery states, indictment producers) with
   no issues yet → first phase-2 /next likely SLICEs A4, else BUILDs the lowest open of
   #179/#187/#267.
+- 2026-07-16 — SLICED phase 2 (A4) via /to-issues: filed the three unfiled A4 items
+  (the three filed ones #267/#187/#179 already existed). #325 (manager status card —
+  surface delegated UCM per-skill gates + two fixed-ops managers; macro-spine §2 "delegation
+  = permission"; design locked in manager-roles-channel-desk.md §3), #326 (recovery-state
+  surfacing — the four contraction/consent-decree events are UI-dark today; render as
+  narrative beat + persistent recovery banner, distinct from terminal end-card), #327
+  (IndictmentMonitor producers — wire regulatory:audit_failure from RegulatoryMeter +
+  deal:fraud_flag from DealEngine; both subscribed but unfired follow-ons per #271). All
+  three AFK, independent (start in any order). A4 now fully issue-covered: open set =
+  #179, #187, #267, #325, #326, #327. Next /next BUILDs the lowest deps-met open. #179 is
+  blocked-by #157/#159/#173 (verify closed); #187 (poaching scale fix, no deps) is the
+  likely lowest deps-met.
+- 2026-07-16 — DECIDE + BUILT: resolved #187 by **cutting customer-poaching**
+  entirely (not deferred — removed). User challenged whether the concept was even
+  worth keeping; traced it forward and confirmed it's redundant with walk outcomes +
+  reputation→volume + CompetitorMarket's ambient pressure, and subsumed by BDC (T5)
+  win-back. Deleted PoachEngine/poachData/poach-config.json/CustomerPool.Poach.test;
+  stripped the poach deps + market:competitive_pressure consume + runPoachChecks from
+  CustomerPool; removed poach wiring from createWorld; dropped customer:poached from
+  events.ts + Telemetry; trimmed the poach test from Composition.competitor.test
+  (CompetitorMarket wiring/determinism tests kept). CompetitorMarket stays as the
+  ambient market force (market:competitive_pressure = daily rival heartbeat;
+  competitor:price_changed still feeds MarketEconomy). Decision recorded in
+  docs/planning/poaching-cut.md; #187 closed. typecheck green. A4 open set now
+  #179/#267/#325/#326/#327. Next /next BUILDs the lowest deps-met open (#267 or #179;
+  #179 blocked-by #157/#159/#173 — verify closed).
 - 2026-07-16 — BUILT + closed #324 (promotion path). StaffOrg now exposes
   `getPromotionOptions(staffId)` + `promote(staffId, toRoleId)` — the first callers of
   `NPC.promoteStaff`. Gate-aware: legal role edge (`promotes_to`) × target `hireTier`

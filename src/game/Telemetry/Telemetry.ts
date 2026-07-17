@@ -114,7 +114,6 @@ const TRACKED_EVENTS: ReadonlyArray<EventName> = [
   'clock:day_ended',
   'customer:arrived',
   'customer:resolved',
-  'customer:poached',
   'capacity:customer_admitted',
   'capacity:missed_opportunity',
   'deal:closed',

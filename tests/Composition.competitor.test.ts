@@ -1,12 +1,12 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
-import { SALES_ARCHETYPES } from '../src/game/CustomerPool';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // #183: CompetitorMarket was a finished module that `createWorld` never
-// instantiated, leaving customer poaching and the #158 competitor demand-fuel
-// inert in a running game. These tests drive the REAL createWorld (not a
-// hand-composed harness) to prove the wiring is live and deterministic.
+// instantiated, leaving the ambient rival-roster heartbeat and the #158
+// competitor demand-fuel inert in a running game. These tests drive the REAL
+// createWorld (not a hand-composed harness) to prove the wiring is live and
+// deterministic.
 
 const PROFILE: CharacterProfile = {
   name: 'Ray Estrada',
@@ -110,44 +110,5 @@ describe('#183 — CompetitorMarket wired into createWorld', () => {
     }
 
     expect(fingerprint(a.world)).not.toBe(fingerprint(b.world));
-  });
-
-  it('poaching is reachable in the wired World once reputation slips (brands + live getPlayerStrength)', () => {
-    // Before #183, createWorld omitted brands + getPlayerStrength, so
-    // runPoachChecks early-returned and customer:poached never fired.
-    //
-    // NOTE (calibration, see #183 discussion): poaching is reputation-gated.
-    // `getPlayerStrength` is the live review score / 100, and competitor
-    // attractiveness scores top out ~0.53, so at the default starting review
-    // (60 → 0.60) a fresh dealer out-scores every rival and poaching is
-    // dormant. It activates only once reputation falls into the competitor
-    // band. We drive the LIVE reputation down here — which also proves
-    // getPlayerStrength tracks reputation live — then assert the path fires.
-    const { bus, world } = build(42);
-
-    const poached: string[] = [];
-    bus.subscribe('customer:poached', (p) => poached.push(p.customerId));
-
-    // Collapse satisfaction, then run overnight drift to pull the review score
-    // (and thus playerStrength) down into / below the competitor score band.
-    bus.publish('reputation:satisfaction_hit', { day: 0, amount: -100, reason: 'test' });
-    for (let n = 0; n < 40; n++) {
-      bus.publish('clock:overnight_reputation_drift', { day: n });
-    }
-    expect(world.reputation.reviewScore).toBeLessThan(53);
-
-    // A pool of unresolved sales ups (4 of each archetype) gives poach checks
-    // standing eligible sessions every day.
-    for (let n = 0; n < 4; n++) {
-      for (const a of SALES_ARCHETYPES) {
-        world.customerPool.spawnCustomer(a.personId, a.visitId, a.label);
-      }
-    }
-
-    for (let day = 1; day <= 30; day++) {
-      bus.publish('clock:day_started', { day });
-    }
-
-    expect(poached.length).toBeGreaterThan(0);
   });
 });
