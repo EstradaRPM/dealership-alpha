@@ -350,6 +350,15 @@ export const TunablesSchema = z.object({
       floor: z.number().positive(),
       ceiling: z.number().positive(),
     }),
+    // Display bands for the KPI dashboard's per-segment used-value pressure
+    // readout (#179). `segmentHeat` is a signed fractional bookValue modifier
+    // (personality + drift + shock). `|heat| < mild` reads AT BASELINE;
+    // `mild ≤ |heat| < strong` reads mildly above/below; `|heat| ≥ strong`
+    // reads strongly above/below. Presentation only — no engine consumer.
+    valueHeatBands: z.object({
+      mild: z.number().positive(),
+      strong: z.number().positive(),
+    }),
   }),
   // CompetitorMarket (slice #158). Weekly drift emits
   // `competitor:price_changed` when |new − old| ≥ this threshold. Below the

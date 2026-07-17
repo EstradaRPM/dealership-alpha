@@ -72,6 +72,27 @@ resolved just-in-time at the phase boundary, never earlier).
   #179, #187, #267, #325, #326, #327. Next /next BUILDs the lowest deps-met open. #179 is
   blocked-by #157/#159/#173 (verify closed); #187 (poaching scale fix, no deps) is the
   likely lowest deps-met.
+- 2026-07-17 — BUILT + closed #179 (KPI dashboard — market-state visibility). New
+  `MarketStatePanel` (kit-styled, DemandReadout mold) renders inside the KPI dashboard
+  below the deal KPIs: per-segment **used-value pressure** map (personality+drift+shock
+  factors, tap-to-expand breakdown), **active market shocks** (days-remaining derived
+  from `expectedEndDay − currentDay + 1`), **inventory valuation** (book/market/unrealized
+  gross/weekly carry), **stale inventory** (aged count/share/capital vs the 45-day
+  threshold). Pure builders in `src/ui/KPIDashboard/marketState.ts`; composition-root
+  `buildMarketState(world)` in `src/app/config.ts` assembles from `marketEconomy`
+  (personality/compHistory.segmentDrift/shocks.activeInstances/valuationFor) +
+  `inventory.getLotVehicles()`, keyed on `demandShaper.segments`. Display band edges are a
+  new `marketEconomy.valueHeatBands` tunable (no magic numbers). Respected the
+  no-vague-labels rule: axis named ("used values vs baseline"), plain signed-% labels
+  (Above/At baseline/Below), never "hot/cold" as a word. Wired into RouteContent's KPI
+  route; kept the prop optional so the month-close recap stays deal-KPI-focused. Tests:
+  pure-builder unit test + a **composition-seam reachability test** (buildMarketState
+  against a live world: heat cells, valuationFor on a really-bought LotVehicle, a
+  scheduler-driven shock folding into the segment cell) + smoke tests (panel renders,
+  tap-expand, optional-prop omission). typecheck + full suite (2090) green. A4 open set
+  now #267/#325/#326/#327. NOTE for #267: customer-poaching was cut (poaching-cut.md), so
+  #267 reduces to surfacing `competitor:price_changed` / `market:competitive_pressure`
+  only. Next /next BUILDs the lowest deps-met open (#267).
 - 2026-07-16 — DECIDE + BUILT: resolved #187 by **cutting customer-poaching**
   entirely (not deferred — removed). User challenged whether the concept was even
   worth keeping; traced it forward and confirmed it's redundant with walk outcomes +

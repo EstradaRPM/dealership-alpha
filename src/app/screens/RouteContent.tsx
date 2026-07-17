@@ -37,6 +37,7 @@ import {
   buildServiceControlsModel,
   buildBodyShopPageModel,
   buildBodyShopControlsModel,
+  buildMarketState,
 } from '../config';
 import type { WorldState } from '../useWorldState';
 import type { SaveSlots } from '../useSaveSlots';
@@ -194,6 +195,7 @@ export function RouteContent({
         <StatusBar style="light" />
         <KPIDashboard
           snapshot={world.kpiDashboard.getSnapshot()}
+          marketState={buildMarketState(world)}
           onClose={() => nav.back()}
         />
       </>

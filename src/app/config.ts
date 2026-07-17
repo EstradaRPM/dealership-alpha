@@ -13,6 +13,7 @@ import { loadStaffArchetypes, loadStaffTaxonomy } from '../game/NPC';
 import {
   loadPricingStrategiesConfig,
   loadSourcingConfig,
+  personalityBiasFor,
   resolveIntelPrecision,
   type IntelPrecision,
   type PricingStaffRead,
@@ -49,6 +50,17 @@ import {
   classifyHeatBandFine,
   heatIndexFor,
 } from '../ui/DemandReadout';
+import {
+  buildSegmentHeatCells,
+  buildActiveShocks,
+  buildInventoryValuation,
+  buildStaleInventory,
+} from '../ui/KPIDashboard';
+import type {
+  MarketStateModel,
+  ValueBandEdges,
+  ValuationVehicleInput,
+} from '../ui/KPIDashboard';
 import type {
   DemandCoverageGap,
   DemandReadoutEntry,
@@ -194,6 +206,11 @@ export function buildTargetingLevers(world: World): DemandTargetingLever[] {
 export const HEAT_BAND_THRESHOLDS: HeatBandThresholds =
   loadTunables().demandShaper.heatBands;
 
+// Used-value pressure band edges for the KPI market-state panel (#179) —
+// single-sourced from tunables, presentation-only.
+export const VALUE_HEAT_BANDS: ValueBandEdges =
+  loadTunables().marketEconomy.valueHeatBands;
+
 // Pricing-intel precision (#284, S12): distill the roster to the narrow read
 // MarketEconomy needs (the top UCM's pricing skill, or null when none is on
 // staff) and resolve the coarse↔sharp profile. One profile feeds the heat
@@ -245,6 +262,52 @@ export function buildHeatConsole(
       band,
       ...(heatIndex != null ? { heatIndex } : {}),
     }));
+}
+
+// Market-state read-model for the KPI dashboard (#179, parent #150): the
+// aggregate view of the engine the player operates within. Assembles the pure
+// UI builders from `world` — MarketEconomy (per-segment value pressure factors,
+// active shocks, per-vehicle valuation) + Inventory (lot + carrying + aging).
+// Keyed on `demandShaper.segments` (the canonical vehicle-type category list,
+// #278), the same keys MarketEconomy's segmentHeat uses.
+export function buildMarketState(world: World): MarketStateModel {
+  const me = world.marketEconomy;
+  const day = world.clock.currentDay;
+  const segments = world.demandShaper.segments;
+  const active = me.shocks.activeInstances();
+  const labelFor = (segment: string): string => SEGMENT_LABELS[segment] ?? segment;
+
+  const segmentHeat = buildSegmentHeatCells({
+    segments,
+    labelFor,
+    personalityFor: (segment) => personalityBiasFor(me.personality, segment),
+    driftFor: (segment) => me.compHistory.segmentDrift(segment, day),
+    // The shock term for a segment is the sum of active instances' magnitudes —
+    // exactly what the segmentHeat composer's activeShockMod accumulates.
+    shockFor: (segment) =>
+      active.reduce((sum, inst) => sum + (inst.segmentMagnitudes[segment] ?? 0), 0),
+    edges: VALUE_HEAT_BANDS,
+  });
+
+  const vehicles: ValuationVehicleInput[] = world.inventory
+    .getLotVehicles()
+    .map((v) => {
+      const { bookValue, marketPrice } = me.valuationFor(v);
+      return {
+        cost: v.purchasePrice + v.reconCost,
+        book: bookValue,
+        market: marketPrice,
+        dailyCarryingCost: v.dailyCarryingCost,
+        aged: v.aged,
+      };
+    });
+
+  return {
+    segmentHeat,
+    activeShocks: buildActiveShocks(active, day, labelFor),
+    valuation: buildInventoryValuation(vehicles),
+    stale: buildStaleInventory(vehicles, AGED_THRESHOLD_DAYS),
+  };
 }
 
 export function buildCoverageGap(

@@ -382,6 +382,11 @@
       "stdevUnreliable": 0.18,
       "floor": 0.70,
       "ceiling": 1.20
+    },
+    "valueHeatBands": {
+      "_doc": "Display bands for the KPI dashboard used-value pressure readout (#179). segmentHeat is a signed fractional bookValue modifier; |heat| < mild reads AT BASELINE, mild..strong reads mildly above/below, >= strong reads strongly above/below. Presentation-only; calibration-neutral placeholders.",
+      "mild": 0.03,
+      "strong": 0.10
     }
   },
   "competitorMarket": {

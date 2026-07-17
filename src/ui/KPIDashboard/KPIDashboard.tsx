@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import type { KPISnapshot } from '../../game/KPIDashboard';
 import { colors } from '../theme';
+import { MarketStatePanel } from './MarketStatePanel';
+import type { MarketStateModel } from './marketState';
 
 function fmt$(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
@@ -22,7 +24,13 @@ function KPIRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function UnlockedState({ snapshot }: { snapshot: KPISnapshot }) {
+function UnlockedState({
+  snapshot,
+  marketState,
+}: {
+  snapshot: KPISnapshot;
+  marketState?: MarketStateModel;
+}) {
   const hasDeals = snapshot.unitsRetailed > 0;
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollInner}>
@@ -68,16 +76,23 @@ function UnlockedState({ snapshot }: { snapshot: KPISnapshot }) {
           value={fmt$(snapshot.dailyCarryingCost)}
         />
       </View>
+
+      {marketState ? <MarketStatePanel model={marketState} /> : null}
     </ScrollView>
   );
 }
 
 export interface KPIDashboardProps {
   snapshot: KPISnapshot;
+  /** Optional market-state read-model (#179). When present, the market-state
+   *  panel (segment value pressure, active shocks, valuation, stale inventory)
+   *  renders below the deal KPIs. Omitted contexts (e.g. the month-close recap)
+   *  show only the deal KPIs. */
+  marketState?: MarketStateModel;
   onClose?: () => void;
 }
 
-export function KPIDashboard({ snapshot, onClose }: KPIDashboardProps) {
+export function KPIDashboard({ snapshot, marketState, onClose }: KPIDashboardProps) {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -93,7 +108,7 @@ export function KPIDashboard({ snapshot, onClose }: KPIDashboardProps) {
           </TouchableOpacity>
         ) : null}
       </View>
-      <UnlockedState snapshot={snapshot} />
+      <UnlockedState snapshot={snapshot} marketState={marketState} />
     </View>
   );
 }
