@@ -106,6 +106,23 @@ export function createHistoryLog(deps: { bus: EventBus }): HistoryLog {
     append(p.day, 'market', `Market settled — ${p.shockId} passed.`);
   });
 
+  // Competitor price moves (#267 / slice #158). `competitor:price_changed`
+  // fires only when a rival's pricing crosses `pricingChangeThreshold`, so each
+  // event is a discrete, notable shift in the competitive weather — exactly the
+  // grain HistoryLog records. The `pricing` stat reads as "how high prices are",
+  // so `newPricing > oldPricing` means the rival got *more* expensive (pressure
+  // eased); lower means they undercut (pressure rose).
+  //
+  // The sibling `market:competitive_pressure` heartbeat is deliberately NOT
+  // logged here: it republishes the full live roster every single day, so a log
+  // entry per fire would flood the capped history and bury everything else. That
+  // continuous ambient state belongs to the KPI/market-visibility panel, not the
+  // discrete retrospective log.
+  bus.subscribe('competitor:price_changed', (p: EventMap['competitor:price_changed']) => {
+    const direction = p.newPricing > p.oldPricing ? 'raised' : 'cut';
+    append(p.day, 'market', `Rival ${p.brand} ${direction} prices.`);
+  });
+
   bus.subscribe('career:tier_up', (p: EventMap['career:tier_up']) => {
     append(p.day, 'tier', `Promoted to Tier ${p.toTier}.`);
   });

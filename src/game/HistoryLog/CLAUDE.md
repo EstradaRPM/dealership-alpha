@@ -27,7 +27,12 @@ day-stamped entry:
 | `deal:closed` | `sale` | "Sold a unit (cash/financed) — $N gross." |
 | `market:shock_started` | `market` | "Market shift: …" |
 | `market:shock_resolved` | `market` | "Market settled — … passed." |
+| `competitor:price_changed` | `market` | "Rival … raised/cut prices." |
 | `career:tier_up` | `tier` | "Promoted to Tier N." |
+
+The daily `market:competitive_pressure` heartbeat is intentionally **not** logged
+— it republishes the whole roster every day and would flood the capped log; that
+continuous ambient state is a KPI/market-visibility surface, not a discrete entry.
 
 `clock:day_started` keeps a `currentDay` cursor for the one payload
 (`deal:closed`) that doesn't carry its own day.

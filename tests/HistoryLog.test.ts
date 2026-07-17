@@ -71,6 +71,49 @@ describe('HistoryLog (#208)', () => {
     expect(kinds).toContain('market');
   });
 
+  it('captures competitor price moves (#267), directionally', () => {
+    const bus = createEventBus();
+    const log = createHistoryLog({ bus });
+
+    // `pricing` reads as "how high prices are": up = rival got more expensive.
+    bus.publish('competitor:price_changed', {
+      day: 5,
+      competitorId: 'comp-1',
+      brand: 'Velore',
+      oldPricing: 0.4,
+      newPricing: 0.7,
+      segmentAffinity: {},
+    } as never);
+    bus.publish('competitor:price_changed', {
+      day: 6,
+      competitorId: 'comp-2',
+      brand: 'Corvane',
+      oldPricing: 0.6,
+      newPricing: 0.3,
+      segmentAffinity: {},
+    } as never);
+
+    const entries = log.getEntries();
+    expect(entries).toHaveLength(2);
+    expect(entries[0].kind).toBe('market');
+    expect(entries[0].text).toBe('Rival Corvane cut prices.');
+    expect(entries[1].text).toBe('Rival Velore raised prices.');
+  });
+
+  it('does not log the daily market:competitive_pressure heartbeat (#267)', () => {
+    const bus = createEventBus();
+    const log = createHistoryLog({ bus });
+
+    for (let day = 1; day <= 10; day++) {
+      bus.publish('market:competitive_pressure', {
+        day,
+        competitors: [],
+      } as never);
+    }
+
+    expect(log.getEntryCount()).toBe(0);
+  });
+
   it('round-trips through snapshot/restore', () => {
     const bus = createEventBus();
     const log = createHistoryLog({ bus });

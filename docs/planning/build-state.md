@@ -45,6 +45,20 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-17 — BUILT + closed #267 (surface CompetitorMarket drift as a
+  player-facing notification). HistoryLog now subscribes to
+  `competitor:price_changed` and appends a discrete `market`-kind entry — "Rival
+  <brand> raised/cut prices." — directional on the `pricing` stat semantics
+  (up = rival more expensive / pressure eased; down = undercut / pressure rose).
+  Deliberately did NOT log the daily `market:competitive_pressure` heartbeat: it
+  republishes the full roster every day and would flood the 200-cap log; that
+  continuous ambient state is the KPI/market-visibility surface (#179), not a
+  discrete retrospective entry — documented in HistoryLog.ts + its CLAUDE.md.
+  No new event types (pure surfacing). Reaches the built world via the shared
+  bus (createWorld.ts:886); HistoryScreen already renders market-kind entries.
+  Tests: directional-entry unit test + heartbeat-not-logged test. typecheck +
+  full suite (2095) green. A4 open set now #325/#326/#327. Next /next BUILDs the
+  lowest deps-met open (#325 manager status card).
 - 2026-07-16 — file created; /next skill installed. Phase 1 active. A1 has no dedicated
   open issue yet (it was residue of #297, which A3 closes) — first /next will SLICE phase 1.
 - 2026-07-16 — SLICED phase 1 (A1) via /to-issues into #323 (advisor hiring tracer — the
