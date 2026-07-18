@@ -45,6 +45,39 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-17 — BUILT + closed #326 (recovery-state surfacing — contraction/
+  consent-decree read as setback, not game-over). The four survivable recovery
+  events (`career:bankruptcy_contraction`, `career:indictment_contraction`,
+  `regulatory:ag_complaint_contraction`, `regulatory:ag_complaint_consent_decree`)
+  were UI-dark; now each fires a full-bleed `RecoveryBeatCard` (a "Setback" beat
+  naming cause/cost/path, reward-amber accent + "Keep going" action — visibly
+  distinct from the terminal `EndCard`), drained FIFO from a new `recoveryQueue`
+  in `useDayLoop` (non-terminal channel, mirrors `chapterQueue`; cleared on
+  `career:game_over` so terminal always preempts). Plus a persistent
+  `RecoveryBanner` pinned in the `AppShell` (new optional `banner` prop, above
+  the primary-action footer, visible across all tabs) that DERIVES from persisted
+  monitor state: `buildRecoveryBanners(world)` reads `bankruptcyMonitor.
+  outstandingDebt` (debt overhang, amortizes weekly to 0) + `regulatoryMeter.
+  isSuspended/suspensionDaysRemaining` (license-suspension window). Banner
+  self-clears when the state resolves and survives save/load (both monitors
+  persist through the world seam). DESIGN CALL: indictment-contraction and
+  consent-decree are one-shot in the engine (stake/cash penalty, no lingering
+  window), so they surface as a beat only — surfacing what the engine persists,
+  NOT inventing a decree countdown (would smuggle a game-logic mechanic; the two
+  monitors that DO persist a window drive the banner). Pure UI model +
+  cause/cost/path copy + banner builder in `src/ui/NarrativeBeat/recoveryBeat.ts`
+  (view owns wording, Hermes-safe `$` grouping — no Intl). Reactivity:
+  `useWorldState` bumps on `regulatory:suspension_lifted` + `career:
+  debt_payment_made` (clear path); onset re-renders via the queue setState.
+  Tests: pure-builder unit (all 4 beats + banner active/clear/both-order) +
+  live-world reachability (drives a real Tier-2 bankruptcy contraction →
+  contraction event fires, tier drops to 1, monitor debt persists, banner raised;
+  + save/load round-trip; + composition-source wiring guard for all four events
+  + banner={ + RecoveryBeatCard) + component smoke. typecheck + full suite (2122,
+  +21) green. /verify: BLOCKED for the live-GUI drive (native expo-sqlite + no
+  react-native-web + on-device-only) — reachability+smoke+wiring-guard cited as
+  the reachable ceiling. A4 open set now #327 only. Next /next BUILDs #327
+  (IndictmentMonitor producers — the last A4 issue).
 - 2026-07-17 — BUILT + closed #325 (manager status card — surface delegated
   capabilities). New People tab (was `null`) hosts `ManagerStatusCard`
   (kit-styled, MarketStatePanel mold): three UCM channel-desk gates rendered

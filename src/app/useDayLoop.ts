@@ -14,6 +14,7 @@ import {
   type WalkOff,
 } from '../ui/Reveal';
 import type { CashDeltaSplit } from '../ui/HomeTab';
+import { buildRecoveryBeat, type RecoveryBeat } from '../ui/NarrativeBeat';
 import type { ShellTabKey } from '../ui/AppShell';
 import type { SaveState } from '../game/SaveStore';
 import { snapshotWorld, type WorldSnapshot } from '../worldSnapshot';
@@ -61,6 +62,10 @@ export interface DayLoop {
   setShellTab: (t: ShellTabKey) => void;
   chapterQueue: readonly TierUpEvent[];
   setChapterQueue: React.Dispatch<React.SetStateAction<readonly TierUpEvent[]>>;
+  /** Non-terminal recovery beats (#326): survivable contractions / consent
+   *  decrees, drained one at a time like the chapter queue. */
+  recoveryQueue: readonly RecoveryBeat[];
+  setRecoveryQueue: React.Dispatch<React.SetStateAction<readonly RecoveryBeat[]>>;
   endCard: EndCardData | null;
   setEndCard: (d: EndCardData | null) => void;
   handleNextDay: () => void;
@@ -132,6 +137,12 @@ export function useDayLoop({
   // FLOOR_OPEN and drain as sequential full-bleed acknowledge-cards at the
   // MANAGERIAL boundary, FIFO by emission order.
   const [chapterQueue, setChapterQueue] = useState<readonly TierUpEvent[]>([]);
+  // Non-terminal recovery beats (#326). The four survivable hits — bankruptcy /
+  // indictment / AG contractions and the Tier 3+ consent decree — enqueue here
+  // when they fire and drain as sequential full-bleed acknowledge-cards, the
+  // same channel shape as chapterQueue but framed as "climbing back," never the
+  // terminal end-card path.
+  const [recoveryQueue, setRecoveryQueue] = useState<readonly RecoveryBeat[]>([]);
   // Terminal end-of-career data (#127 decision 2). Set on career:game_over.
   const [endCard, setEndCard] = useState<EndCardData | null>(null);
 
@@ -173,6 +184,7 @@ export function useDayLoop({
     setRecapModalOpen(false);
     setMonthClose(null);
     setChapterQueue([]);
+    setRecoveryQueue([]);
     setEndCard(null);
   };
 
@@ -360,14 +372,68 @@ export function useDayLoop({
     // reset (a new unreachable starting point).
     const onGameOver = ({ data }: { day: number; data: EndCardData }) => {
       setChapterQueue([]);
+      setRecoveryQueue([]);
       setEndCard(data);
       nav.reset('end-card');
     };
+
+    // Survivable-hit interrupts (#326). Each of the four recovery events builds
+    // a beat and enqueues it; they drain (endCard == null) as full-bleed
+    // acknowledge-cards, distinct from the terminal onGameOver path above.
+    const enqueueRecovery = (beat: RecoveryBeat) =>
+      setRecoveryQueue((q) => [...q, beat]);
+    const onBankruptcyContraction = (p: {
+      fromTier: number;
+      debtPrincipal: number;
+    }) =>
+      enqueueRecovery(
+        buildRecoveryBeat({
+          kind: 'bankruptcy_contraction',
+          fromTier: p.fromTier,
+          debtPrincipal: p.debtPrincipal,
+        }),
+      );
+    const onIndictmentContraction = (p: {
+      fromTier: number;
+      stakePenalty: number;
+    }) =>
+      enqueueRecovery(
+        buildRecoveryBeat({
+          kind: 'indictment_contraction',
+          fromTier: p.fromTier,
+          stakePenalty: p.stakePenalty,
+        }),
+      );
+    const onAgContraction = (p: { fromTier: number; suspensionDays: number }) =>
+      enqueueRecovery(
+        buildRecoveryBeat({
+          kind: 'ag_complaint_contraction',
+          fromTier: p.fromTier,
+          suspensionDays: p.suspensionDays,
+        }),
+      );
+    const onConsentDecree = (p: {
+      tier: number;
+      cashCost: number;
+      reputationHit: number;
+    }) =>
+      enqueueRecovery(
+        buildRecoveryBeat({
+          kind: 'ag_complaint_consent_decree',
+          tier: p.tier,
+          cashCost: p.cashCost,
+          reputationHit: p.reputationHit,
+        }),
+      );
 
     bus.subscribe('floor:day_complete', onDayComplete);
     bus.subscribe('clock:month_ended', onMonthEnded);
     bus.subscribe('career:tier_up', onTierUp);
     bus.subscribe('career:game_over', onGameOver);
+    bus.subscribe('career:bankruptcy_contraction', onBankruptcyContraction);
+    bus.subscribe('career:indictment_contraction', onIndictmentContraction);
+    bus.subscribe('regulatory:ag_complaint_contraction', onAgContraction);
+    bus.subscribe('regulatory:ag_complaint_consent_decree', onConsentDecree);
     bus.subscribe('deal:closed', onDealClosed);
     bus.subscribe('staff:auto_resolved', onAutoResolved);
     return () => {
@@ -375,6 +441,10 @@ export function useDayLoop({
       bus.unsubscribe('clock:month_ended', onMonthEnded);
       bus.unsubscribe('career:tier_up', onTierUp);
       bus.unsubscribe('career:game_over', onGameOver);
+      bus.unsubscribe('career:bankruptcy_contraction', onBankruptcyContraction);
+      bus.unsubscribe('career:indictment_contraction', onIndictmentContraction);
+      bus.unsubscribe('regulatory:ag_complaint_contraction', onAgContraction);
+      bus.unsubscribe('regulatory:ag_complaint_consent_decree', onConsentDecree);
       bus.unsubscribe('deal:closed', onDealClosed);
       bus.unsubscribe('staff:auto_resolved', onAutoResolved);
     };
@@ -399,6 +469,8 @@ export function useDayLoop({
     setShellTab,
     chapterQueue,
     setChapterQueue,
+    recoveryQueue,
+    setRecoveryQueue,
     endCard,
     setEndCard,
     handleNextDay,

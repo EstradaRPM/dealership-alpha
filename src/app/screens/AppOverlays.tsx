@@ -7,7 +7,7 @@ import { TradeEscalationModal } from '../../ui/TradeEscalationModal';
 import { DiscountEscalationModal } from '../../ui/DiscountEscalationModal';
 import { DayRecapModal } from '../../ui/DayRecap';
 import { MonthCloseInterstitial } from '../../ui/MonthCloseInterstitial';
-import { ChapterCard } from '../../ui/NarrativeBeat';
+import { ChapterCard, RecoveryBeatCard } from '../../ui/NarrativeBeat';
 import { AdminConsole } from '../../ui/AdminConsole';
 import type { Modals } from '../useModals';
 import type { DayLoop } from '../useDayLoop';
@@ -58,6 +58,8 @@ export function AppOverlays({
     setMonthClose,
     chapterQueue,
     setChapterQueue,
+    recoveryQueue,
+    setRecoveryQueue,
     endCard,
   } = dayLoop;
 
@@ -120,6 +122,18 @@ export function AppOverlays({
             }}
           />
         )}
+      {endCard == null && world != null && recoveryQueue.length > 0 && (
+        // Recovery beat (#326): a survivable-hit acknowledge-card, drained FIFO
+        // one at a time. Non-terminal — it stacks above the chapter card and
+        // never touches the end-card path. onConfirm just pops the head; the
+        // persistent recovery banner (derived from monitor state) carries the
+        // ongoing "climbing back" reminder after the beat is dismissed.
+        <RecoveryBeatCard
+          visible
+          beat={recoveryQueue[0]}
+          onConfirm={() => setRecoveryQueue((q) => q.slice(1))}
+        />
+      )}
       {__DEV__ && world && (
         <AdminConsole
           bus={bus}

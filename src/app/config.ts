@@ -70,6 +70,10 @@ import type {
   UcmCapabilityFact,
   DeptManagerFact,
 } from '../ui/PeopleTab';
+import {
+  buildRecoveryBanners as composeRecoveryBanners,
+} from '../ui/NarrativeBeat';
+import type { RecoveryBannerModel } from '../ui/NarrativeBeat';
 import type {
   DemandCoverageGap,
   DemandReadoutEntry,
@@ -394,6 +398,23 @@ export function buildManagerStatus(world: World): ManagerStatusModel {
   ];
 
   return { ucmPresent: pricingSkill !== null, ucm, departments };
+}
+
+// Recovery-banner read-model (#326, workstream A4): the persistent "climbing
+// back" strip. Assembles the persisted monitor snapshot the pure UI builder
+// consumes — the two recovery states that leave a lingering, self-clearing
+// window: a bankruptcy contraction's debt overhang (BankruptcyMonitor, amortizes
+// weekly to 0) and an AG contraction's license-suspension window (RegulatoryMeter,
+// ticks down each overnight). Both persist through the world save seam, so the
+// banner is correct after a save/load and disappears on its own when the state
+// resolves. The indictment contraction and consent decree are one-shot in the
+// engine (no lingering window) and surface as a beat only.
+export function buildRecoveryBanners(world: World): readonly RecoveryBannerModel[] {
+  return composeRecoveryBanners({
+    outstandingDebt: world.bankruptcyMonitor.outstandingDebt,
+    isSuspended: world.regulatoryMeter.isSuspended,
+    suspensionDaysRemaining: world.regulatoryMeter.suspensionDaysRemaining,
+  });
 }
 
 export function buildCoverageGap(

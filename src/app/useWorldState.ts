@@ -78,6 +78,13 @@ export function useWorldState(bus: EventBus): WorldState {
     // when grown effectiveSkills step (channel-desk M7) and thus when a gate can
     // cross without any roster change — recompute-on-day-boundary, no polling.
     const onManagerStateChange = () => setTick((n) => n + 1);
+    // Recovery-banner (#326) resolution reactivity: the banner is re-derived
+    // from the live monitor state each render, so a force-update refreshes it
+    // when a recovery state CLEARS — the license suspension lifting or a weekly
+    // debt payment paying the overhang down (possibly to 0). The onset events
+    // already re-render via the recovery-beat queue; the day boundary is covered
+    // by clock:day_started above.
+    const onRecoveryStateChange = () => setTick((n) => n + 1);
     bus.subscribe('inventory:vehicle_purchased', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_acquired_via_trade', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_sold', onVehicleSold);
@@ -86,6 +93,8 @@ export function useWorldState(bus: EventBus): WorldState {
     bus.subscribe('staff:fired', onManagerStateChange);
     bus.subscribe('staff:promoted', onManagerStateChange);
     bus.subscribe('clock:day_started', onManagerStateChange);
+    bus.subscribe('regulatory:suspension_lifted', onRecoveryStateChange);
+    bus.subscribe('career:debt_payment_made', onRecoveryStateChange);
     return () => {
       bus.unsubscribe('inventory:vehicle_purchased', onVehiclePurchased);
       bus.unsubscribe('inventory:vehicle_acquired_via_trade', onVehiclePurchased);
@@ -95,6 +104,8 @@ export function useWorldState(bus: EventBus): WorldState {
       bus.unsubscribe('staff:fired', onManagerStateChange);
       bus.unsubscribe('staff:promoted', onManagerStateChange);
       bus.unsubscribe('clock:day_started', onManagerStateChange);
+      bus.unsubscribe('regulatory:suspension_lifted', onRecoveryStateChange);
+      bus.unsubscribe('career:debt_payment_made', onRecoveryStateChange);
     };
   }, []);
 

@@ -90,6 +90,12 @@ export interface AppShellProps {
    * the capacity problem this shell absorbs (#215).
    */
   primaryAction?: { label: string; onPress: () => void };
+  /**
+   * Optional persistent status strip pinned above the primary-action footer,
+   * visible across every tab (the recovery banner, #326). Absent ⇒ nothing
+   * renders and the footer sits where it always did.
+   */
+  banner?: React.ReactNode;
 }
 
 /** Collapsed identity-bar body height, below the status-bar inset. */
@@ -126,6 +132,7 @@ export function AppShell({
   activeTabKey,
   onTabChange,
   primaryAction,
+  banner,
 }: AppShellProps) {
   const t = useTheme();
   const { width } = useWindowDimensions();
@@ -557,6 +564,8 @@ export function AppShell({
           ) : null}
         </View>
       </View>
+
+      {banner}
 
       {primaryAction && (
         <View style={footer} testID="app-shell-action-footer">

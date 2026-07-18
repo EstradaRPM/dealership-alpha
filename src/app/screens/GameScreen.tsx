@@ -18,6 +18,7 @@ import {
 import { HomeTab, buildHomeDashboard, buildGateStrip } from '../../ui/HomeTab';
 import { OperationsTab } from '../../ui/OperationsTab';
 import { PeopleTab } from '../../ui/PeopleTab';
+import { RecoveryBanner } from '../../ui/NarrativeBeat';
 import { StrategicTab } from '../../ui/StrategicTab';
 import {
   FloorDashboard,
@@ -49,6 +50,7 @@ import {
   buildHeatConsole,
   resolvePricingIntel,
   buildManagerStatus,
+  buildRecoveryBanners,
 } from '../config';
 
 export interface GameScreenProps {
@@ -434,6 +436,10 @@ export function GameScreen({
         label: loopState.hasRecap ? 'Next Day →' : 'Open Floor →',
         onPress: handleNextDay,
       }}
+      // Persistent recovery banner (#326): derived from the live monitor state,
+      // so it stays pinned across tabs while a debt overhang / license suspension
+      // is active and clears itself once resolved. Renders nothing when clear.
+      banner={<RecoveryBanner banners={buildRecoveryBanners(world)} />}
     />
   );
 }
