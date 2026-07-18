@@ -26,6 +26,7 @@
   "regulatory": {
     "pressureMax": 100,
     "pressureThreshold": 80,
+    "auditThreshold": 60,
     "dailyDecay": 1.5,
     "walkPressure": 0.5,
     "missedOppPressure": 1.0,

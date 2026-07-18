@@ -264,3 +264,139 @@ describe('DealEngine.closeDeal — lemon-law exposure (#271)', () => {
     expect(incidents).toHaveLength(0);
   });
 });
+
+// ── closeDeal — payment-packing fraud producer (#327) ─────────────────────────
+
+describe('DealEngine.closeDeal — payment-packing fraud (#327)', () => {
+  const FRAUD_CONFIG = { schemaVersion: 1, packFraction: 0.35 };
+
+  // A plain, non-lemon lot vehicle (clean recon) so only the fraud path is under
+  // test. Prices are read from the real F&I catalog, so use real product ids.
+  function makeVehicle(): LotVehicle {
+    return {
+      id: 'v1',
+      templateId: 't1',
+      brand: 'brand-x',
+      year: 2020,
+      make: 'Make',
+      model: 'Model',
+      trim: '',
+      mileage: 50_000,
+      condition: 'average',
+      conditionReport: '',
+      purchasePrice: 5_000,
+      reconCost: 0,
+      category: 'sedan',
+      arrivalDay: 1,
+      frontlineDay: 1,
+      daysInInventory: 0,
+      carryingCostToDate: 0,
+      dailyCarryingCost: 0,
+      aged: false,
+      suggestedRetail: 6_000,
+      askingPrice: 6_000,
+      reconStatus: 'complete',
+      reconEstimate: 0,
+      reconRealizedCost: 0,
+      reconDaysRemaining: 0,
+      reconDaysTotal: 0,
+      reconBucket: 'within',
+    };
+  }
+
+  function setup() {
+    const bus = createEventBus();
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const vehicle = makeVehicle();
+    const inventory = {
+      getLotVehicle: () => vehicle,
+      sellVehicle: jest.fn(() => vehicle),
+    };
+    const dealEngine = createDealEngine({
+      bus,
+      inventory,
+      economy,
+      getCurrentDay: () => 7,
+      fraudConfig: FRAUD_CONFIG,
+    });
+    const flags: Array<{ day: number; customerId: string; vehicleId: string }> = [];
+    bus.subscribe('deal:fraud_flag', (e) => flags.push(e));
+    return { dealEngine, flags };
+  }
+
+  // vsc 1495 + gap 695 + tireWheel 795 = 2985 of F&I burden.
+  const HEAVY_FNI = [
+    { productId: 'vsc', price: 1495 },
+    { productId: 'gap', price: 695 },
+    { productId: 'tireWheel', price: 795 },
+  ];
+
+  it('flags a financed deal packed with F&I beyond the price fraction', () => {
+    const { dealEngine, flags } = setup();
+
+    // 2985 burden on a 6000 car = 49.75% > 35%.
+    dealEngine.closeDeal({
+      customerId: 'cust-1',
+      vehicleId: 'v1',
+      agreedPrice: 6_000,
+      fniProducts: HEAVY_FNI,
+      paymentMethod: 'finance',
+      downPayment: 500,
+      loanAmount: 5_500,
+      term: 60,
+      apr: 0.09,
+    });
+
+    expect(flags).toEqual([{ day: 7, customerId: 'cust-1', vehicleId: 'v1' }]);
+  });
+
+  it('does NOT flag when the same F&I is a small fraction of a pricier car', () => {
+    const { dealEngine, flags } = setup();
+
+    // 2985 burden on a 20000 car = 14.9% < 35%.
+    dealEngine.closeDeal({
+      customerId: 'cust-2',
+      vehicleId: 'v1',
+      agreedPrice: 20_000,
+      fniProducts: HEAVY_FNI,
+      paymentMethod: 'finance',
+      downPayment: 2_000,
+      loanAmount: 18_000,
+      term: 60,
+      apr: 0.09,
+    });
+
+    expect(flags).toHaveLength(0);
+  });
+
+  it('does NOT flag a cash deal — a cash sale cannot pack a payment', () => {
+    const { dealEngine, flags } = setup();
+
+    dealEngine.closeDeal({
+      customerId: 'cust-3',
+      vehicleId: 'v1',
+      agreedPrice: 6_000,
+      fniProducts: HEAVY_FNI,
+      paymentMethod: 'cash',
+    });
+
+    expect(flags).toHaveLength(0);
+  });
+
+  it('does NOT flag a financed deal with no F&I attached', () => {
+    const { dealEngine, flags } = setup();
+
+    dealEngine.closeDeal({
+      customerId: 'cust-4',
+      vehicleId: 'v1',
+      agreedPrice: 6_000,
+      paymentMethod: 'finance',
+      downPayment: 500,
+      loanAmount: 5_500,
+      term: 60,
+      apr: 0.09,
+    });
+
+    expect(flags).toHaveLength(0);
+  });
+});

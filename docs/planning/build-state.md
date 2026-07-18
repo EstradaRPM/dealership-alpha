@@ -6,7 +6,9 @@ comes from that doc and the filed issues.
 
 ## Current phase
 
-**Phase 2 — A4 silent-system surfacing (#267, #187, #179, manager status card, recovery states, indictment producers)**
+**Phase 3 — B1 Reveal ranking + records**
+
+(Phase 2 A4 closed 2026-07-17 — all six items landed: #267, #187, #179, #325, #326, #327.)
 
 ## Blockers
 
@@ -21,8 +23,8 @@ resolved just-in-time at the phase boundary, never earlier).
 | # | Work (doc section) | Decision first? | Status |
 |---|---|---|---|
 | 1 | A1 advisor hiring + promotion wiring (#323, #324), + A3 hygiene (close #269, #266, #297) | — | done |
-| 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | active |
-| 3 | B1 Reveal ranking + records | — | pending |
+| 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | done |
+| 3 | B1 Reveal ranking + records | — | active |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | pending |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | pending |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** | pending |
@@ -45,6 +47,34 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-17 — BUILT + closed #327 (IndictmentMonitor producers — the last A4
+  issue). Wired the two subscribed-but-never-fired severe-event producers so all
+  three indictment pressure inputs now fire in live play. **`deal:fraud_flag`**
+  (DealEngine): payment packing — a *financed* deal whose F&I retail burden
+  `Σ attached.price` exceeds `packFraction × agreedPrice` (data/deal-fraud.json,
+  `packFraction 0.35`, via new `loadDealFraudConfig`) is a structuring/disclosure
+  violation; emit sits alongside the lemon-law block in `closeDeal`, gated
+  financed-only (a cash sale can't pack a payment). **`regulatory:audit_failure`**
+  (RegulatoryMeter): sustained pressure sitting in the audit band
+  `[auditThreshold, pressureThreshold)` (`auditThreshold 60` in
+  failure-tunables.json `regulatory`) fails a compliance audit at the overnight
+  tick — the escalating warning *below* the AG complaint. **Latched** (new
+  `auditFailed`, persisted optional in RegulatoryMeterState, defaulted on
+  restore — no envelope bump): one crossing = one failure, resets when pressure
+  falls below the band; pressure that jumps straight to/over `pressureThreshold`
+  skips the audit so the two signals stay distinct. IndictmentMonitor unchanged
+  (already consumed both). Tests: DealEngine fraud producer (fires on packed
+  finance; not on pricier car / cash / no-F&I) + RegulatoryMeter audit producer
+  (fires once entering band; not below threshold; not on straight jump to AG;
+  re-fires after dropping out; latch round-trips through save) + a new
+  **end-to-end integration test** wiring the real RegulatoryMeter + DealEngine +
+  IndictmentMonitor on one bus with real configs: fraud (+25) + audit (+20) +
+  lemon (+15) cross the real threshold (50) → Tier-1 terminal indictment fires.
+  typecheck + full suite (2132, +10) green. Docs updated (CareerProgression /
+  DealEngine / Reputation CLAUDE.md). PHASE 2 (A4) CLOSED — all six items landed
+  (#267/#187/#179/#325/#326/#327); pointer advanced to phase 3 (B1 Reveal
+  ranking + records). Next /next: phase 3 has no filed issues yet → likely
+  SLICEs B1 from path-to-finished-product.md §B1.
 - 2026-07-17 — BUILT + closed #326 (recovery-state surfacing — contraction/
   consent-decree read as setback, not game-over). The four survivable recovery
   events (`career:bankruptcy_contraction`, `career:indictment_contraction`,

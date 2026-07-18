@@ -1,6 +1,7 @@
 import { loadCreditTiers, classifyCredit } from './creditTier';
 import { computeMonthlyPayment } from './loanMath';
 import { loadFniProducts, getFniProductById, loadFniAutoAttachConfig } from './fniProducts';
+import { loadDealFraudConfig, type DealFraudConfig } from './dealFraudConfig';
 import type {
   CreditTier,
   CreditTierCatalog,
@@ -29,6 +30,7 @@ export interface DealEngineDeps {
   catalog?: CreditTierCatalog;
   fniCatalog?: FniProductCatalog;
   fniAutoAttachConfig?: FniAutoAttachConfig;
+  fraudConfig?: DealFraudConfig;
   bus?: EventBus;
   inventory?: Pick<Inventory, 'getLotVehicle' | 'sellVehicle'>;
   economy?: Pick<Economy, 'postRevenue'>;
@@ -45,6 +47,7 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
   const catalog = deps.catalog ?? loadCreditTiers();
   const fniCatalog = deps.fniCatalog ?? loadFniProducts();
   const autoAttachConfig = deps.fniAutoAttachConfig ?? loadFniAutoAttachConfig();
+  const fraudConfig = deps.fraudConfig ?? loadDealFraudConfig();
   const { bus, inventory, economy, getCurrentDay } = deps;
 
   return {
@@ -125,12 +128,34 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       }
 
       let backGross = 0;
+      let fniBurden = 0;
       for (const attached of fniProducts) {
         const product = getFniProductById(fniCatalog, attached.productId);
         if (product) {
           backGross += attached.price - product.cost;
+          fniBurden += attached.price;
           economy.postRevenue(attached.price, `F&I: ${attached.productId}`);
         }
+      }
+
+      // Payment-packing fraud exposure (#327, IndictmentMonitor severe-event
+      // producer). Stuffing a *financed* deal with F&I back-end product beyond a
+      // compliance fraction of the vehicle price is payment packing — inflating
+      // the monthly payment with undisclosed markup, a real structuring/
+      // disclosure violation. The parallel to the lemon-law producer above: an
+      // aggressive-F&I choice (heavy attach on cheap metal) is the diegetic
+      // trigger that accumulates indictment pressure. Cash deals can't pack a
+      // payment, so the gate is financed-only.
+      const isPacked =
+        paymentMethod === 'finance' &&
+        agreedPrice > 0 &&
+        fniBurden > agreedPrice * fraudConfig.packFraction;
+      if (isPacked) {
+        bus.publish('deal:fraud_flag', {
+          day: getCurrentDay?.() ?? 0,
+          customerId,
+          vehicleId,
+        });
       }
 
       const frontGross = agreedPrice - vehicle.purchasePrice - vehicle.reconCost;

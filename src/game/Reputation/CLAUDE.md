@@ -14,7 +14,7 @@ Dealership reputation score + marketing → demand feedback loop. Drifts overnig
   under the `reputation` key.
 
 ## Events
-- **Emits:** none directly (state read by `CustomerPool` / `CapacityManager` for arrival rates).
+- **Emits:** Reputation itself emits none directly (state read by `CustomerPool` / `CapacityManager` for arrival rates). `RegulatoryMeter` (same module barrel) emits the AG-complaint family + `regulatory:suspension_lifted`, and (#327) `regulatory:audit_failure` when pressure sits in the audit band `[auditThreshold, pressureThreshold)` at an overnight tick — a latched IndictmentMonitor producer (one crossing = one failure; the escalating warning below the AG complaint). `auditThreshold` lives in `data/failure-tunables.json` `regulatory` section.
 - **Consumes:** `clock:overnight_reputation_drift` (mean-reversion drift), `reputation:satisfaction_hit` (negative outcomes), `deal:closed` (positive bump), `customer:resolved` with outcome=walk (small hit).
 
 ## Data

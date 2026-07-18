@@ -9,6 +9,7 @@ import type { TierManager } from '../src/game/CareerProgression';
 const TUNABLES: RegulatoryTunables = {
   pressureMax: 100,
   pressureThreshold: 10,
+  auditThreshold: 5,
   dailyDecay: 1,
   walkPressure: 1,
   missedOppPressure: 2,
@@ -246,6 +247,85 @@ describe('RegulatoryMeter — Tier 3+ consent decree', () => {
   });
 });
 
+describe('RegulatoryMeter — audit-failure producer (#327)', () => {
+  it('fires audit_failure once when pressure enters the audit band overnight', () => {
+    const bus = createEventBus();
+    const audits: Array<{ day: number }> = [];
+    bus.subscribe('regulatory:audit_failure', (e) => audits.push(e));
+    createRegulatoryMeter({
+      bus,
+      economy: makeEconomy(100),
+      tierManager: makeTierManager(3),
+      config: TUNABLES,
+    });
+
+    walk(bus, 6); // pressure 6, in band [5,10)
+    tick(bus, 1);
+    expect(audits).toEqual([{ day: 1 }]);
+
+    // Still in band next night (6 → 5 after decay) → latched, no re-fire.
+    tick(bus, 2);
+    expect(audits).toHaveLength(1);
+  });
+
+  it('does NOT fire while pressure stays below the audit threshold', () => {
+    const bus = createEventBus();
+    const audits: Array<{ day: number }> = [];
+    bus.subscribe('regulatory:audit_failure', (e) => audits.push(e));
+    createRegulatoryMeter({
+      bus,
+      economy: makeEconomy(100),
+      tierManager: makeTierManager(3),
+      config: TUNABLES,
+    });
+
+    walk(bus, 4); // pressure 4, below auditThreshold 5
+    tick(bus, 1);
+    expect(audits).toHaveLength(0);
+  });
+
+  it('does NOT fire when pressure jumps straight to the AG-complaint threshold', () => {
+    const bus = createEventBus();
+    const audits: Array<{ day: number }> = [];
+    const complaint = jest.fn();
+    bus.subscribe('regulatory:audit_failure', (e) => audits.push(e));
+    bus.subscribe('regulatory:ag_complaint_consent_decree', complaint);
+    createRegulatoryMeter({
+      bus,
+      economy: makeEconomy(200000),
+      tierManager: makeTierManager(3),
+      config: TUNABLES,
+    });
+
+    walk(bus, 10); // pressure 10 = pressureThreshold, skips the band
+    tick(bus, 1);
+    expect(audits).toHaveLength(0);
+    expect(complaint).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-fires after pressure drops below the band and climbs back', () => {
+    const bus = createEventBus();
+    const audits: Array<{ day: number }> = [];
+    bus.subscribe('regulatory:audit_failure', (e) => audits.push(e));
+    createRegulatoryMeter({
+      bus,
+      economy: makeEconomy(100),
+      tierManager: makeTierManager(3),
+      config: TUNABLES,
+    });
+
+    walk(bus, 6); // 6, band
+    tick(bus, 1); // fire #1 → decay 5
+    tick(bus, 2); // 5 still in band, latched → decay 4
+    tick(bus, 3); // 4 below band → reset latch → decay 3
+    expect(audits).toHaveLength(1);
+
+    walk(bus, 4); // 3 → 7, band again
+    tick(bus, 4); // fire #2
+    expect(audits).toHaveLength(2);
+  });
+});
+
 describe('RegulatoryMeter — state serialization', () => {
   it('round-trips pressure, isTerminal, suspensionDaysRemaining', () => {
     const bus = createEventBus();
@@ -270,5 +350,32 @@ describe('RegulatoryMeter — state serialization', () => {
     expect(meter2.pressure).toBe(3);
     expect(meter2.isTerminal).toBe(false);
     expect(meter2.suspensionDaysRemaining).toBe(0);
+  });
+
+  it('round-trips the audit-failure latch so a restored run does not re-fire', () => {
+    const bus = createEventBus();
+    bus.subscribe('regulatory:audit_failure', () => {});
+    const meter = createRegulatoryMeter({
+      bus,
+      economy: makeEconomy(100),
+      tierManager: makeTierManager(3),
+      config: TUNABLES,
+    });
+    walk(bus, 6);
+    tick(bus, 1); // latch set (one fire); pressure decays to 5, still in band
+    expect(meter.getSerializableState().auditFailed).toBe(true);
+
+    const bus2 = createEventBus();
+    const audits2: Array<{ day: number }> = [];
+    bus2.subscribe('regulatory:audit_failure', (e) => audits2.push(e));
+    const meter2 = createRegulatoryMeter({
+      bus: bus2,
+      economy: makeEconomy(100),
+      tierManager: makeTierManager(3),
+      config: TUNABLES,
+    });
+    meter2.restoreState(meter.getSerializableState());
+    tick(bus2, 2); // still-in-band + latched → no re-fire
+    expect(audits2).toHaveLength(0);
   });
 });

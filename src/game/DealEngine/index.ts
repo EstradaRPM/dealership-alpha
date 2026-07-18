@@ -4,6 +4,8 @@ export type { CreditTier, CreditTierCatalog, TierDef, LoanParams, LoanResult, Cl
 export { classifyCredit, loadCreditTiers } from './creditTier';
 export { computeMonthlyPayment, computeMaxFinancedAmount } from './loanMath';
 export { loadFniProducts, loadFniAutoAttachConfig } from './fniProducts';
+export { loadDealFraudConfig } from './dealFraudConfig';
+export type { DealFraudConfig } from './dealFraudConfig';
 export {
   generateTradeAsk,
   loadTradeAllowanceNoiseConfig,

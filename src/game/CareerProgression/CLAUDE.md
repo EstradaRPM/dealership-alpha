@@ -42,11 +42,14 @@ Player tier (currently 1 → 3) + backstory-driven Day 1 modifiers + branding re
 - `IndictmentMonitor.getSerializableState()/restoreState()` — the severe-event
   pressure + terminal flag is the world seam's `indictmentMonitor` key (#271,
   envelope v7). Wired into `createWorld` alongside the other failure monitors.
-  Of its three pressure inputs only `regulatory:lemon_law_incident` has a live
-  producer (DealEngine emits it when an un-reconditioned hidden lemon —
-  `reconStatus !== 'complete'` with a `major`/`catastrophic` recon bucket — is
-  retailed); `regulatory:audit_failure` and `deal:fraud_flag` remain unwired
-  follow-ons (#271).
+  All three pressure inputs now have live producers (#327):
+  `regulatory:lemon_law_incident` (DealEngine, when an un-reconditioned hidden
+  lemon — `reconStatus !== 'complete'` with a `major`/`catastrophic` recon
+  bucket — is retailed), `regulatory:audit_failure` (RegulatoryMeter, when
+  regulatory pressure sits in the audit band `[auditThreshold,
+  pressureThreshold)` at an overnight tick — the escalating warning below the AG
+  complaint), and `deal:fraud_flag` (DealEngine, payment-packing — a financed
+  deal whose F&I retail burden exceeds `packFraction` of the price).
 - `CareerEndingsMonitor.getSerializableState()/restoreState()` — the pending PE
   offer + last-offer day + ended flag is the world seam's `careerEndingsMonitor`
   key (#272, envelope v8). Wired into `createWorld` alongside the failure

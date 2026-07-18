@@ -7,6 +7,12 @@ export interface RegulatoryMeterState {
   pressure: number;
   isTerminal: boolean;
   suspensionDaysRemaining: number;
+  /**
+   * Audit-failure latch (#327). True while pressure sits in the audit band, so
+   * one crossing fires one `regulatory:audit_failure`. Optional for backward
+   * compatibility with pre-#327 saves (defaults to false on restore).
+   */
+  auditFailed?: boolean;
 }
 
 export interface RegulatoryMeterDeps {
@@ -43,6 +49,8 @@ export function createRegulatoryMeter(deps: RegulatoryMeterDeps): RegulatoryMete
   let pressure = 0;
   let isTerminal = false;
   let suspensionDaysRemaining = 0;
+  // Latched so one crossing into the audit band = one audit failure (#327).
+  let auditFailed = false;
 
   function clampPressure(v: number): number {
     return Math.max(0, Math.min(config.pressureMax, v));
@@ -76,6 +84,24 @@ export function createRegulatoryMeter(deps: RegulatoryMeterDeps): RegulatoryMete
       if (suspensionDaysRemaining === 0) {
         bus.publish('regulatory:suspension_lifted', { day });
       }
+    }
+
+    // Compliance-audit-failure check (#327, IndictmentMonitor producer).
+    // Sustained pressure sitting in the audit band `[auditThreshold,
+    // pressureThreshold)` fails a regulator audit — the escalating warning
+    // *below* the AG-complaint outcome. Latched so one crossing fires once;
+    // resets when pressure falls back below the band floor. Pressure that jumps
+    // straight to/over `pressureThreshold` skips the audit (the AG complaint
+    // below is the bigger event), keeping the two signals distinct.
+    const inAuditBand =
+      pressure >= config.auditThreshold && pressure < config.pressureThreshold;
+    if (inAuditBand) {
+      if (!auditFailed) {
+        auditFailed = true;
+        bus.publish('regulatory:audit_failure', { day });
+      }
+    } else if (pressure < config.auditThreshold) {
+      auditFailed = false;
     }
 
     if (pressure < config.pressureThreshold) {
@@ -132,13 +158,14 @@ export function createRegulatoryMeter(deps: RegulatoryMeterDeps): RegulatoryMete
     get suspensionDaysRemaining() { return suspensionDaysRemaining; },
 
     getSerializableState() {
-      return { pressure, isTerminal, suspensionDaysRemaining };
+      return { pressure, isTerminal, suspensionDaysRemaining, auditFailed };
     },
 
     restoreState(state) {
       pressure = state.pressure;
       isTerminal = state.isTerminal;
       suspensionDaysRemaining = state.suspensionDaysRemaining;
+      auditFailed = state.auditFailed ?? false;
     },
   };
 }
