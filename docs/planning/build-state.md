@@ -47,6 +47,25 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-18 — SLICED phase 3 (B1 Reveal ranking + records) via /to-issues into 3
+  AFK tracer slices. **#328** (unified drama-ranking — replace the two-track
+  `rankTopCloses`/`rankTopWalkOffs` in `src/ui/Reveal/buildReveal.ts` with ONE drama
+  score across wins+losses, top-N per bite; axes today = match strength / gross
+  surprise / walk-off pain; scorer left extensible for `recordBroken` + coupling
+  axes; new drama-weight tunables; no deps). **#329** (Records store + detection —
+  new `src/game/Records/` module tracking 6 high-water marks: best day gross, best
+  month gross, PVR record, best streak, **best single deal (front)**, **most units
+  in a day**; emits new `records:broken`; rides worldSnapshot w/ version bump +
+  migration; engine+persist+tests only, no UI; no deps). **#330** (crowned record
+  reactions on the Reveal feed + wire `recordBroken` into #328's drama axis; deps
+  #328+#329). DECIDE within the slice — user asked what else/what's overkill:
+  ADDED best-single-deal + most-units-in-a-day (distinct felt axes, cheap); SKIPPED
+  best-week (redundant between day/month, earns its crown when B4 lands the week
+  bite), best-quarter/year (T7 altitude → B5), reputation/CSI marks (ambient, not a
+  bet-reveal). #328 and #329 independent (either order); #330 last. Reveal tracer
+  (#319–#322) confirmed all closed/shipped; renderer=`src/ui/Reveal/`,
+  bet-capture=`src/game/PrepBet/`, no records concept exists yet. Next /next BUILDs
+  the lowest deps-met open of the phase (#328 or #329).
 - 2026-07-17 — BUILT + closed #327 (IndictmentMonitor producers — the last A4
   issue). Wired the two subscribed-but-never-fired severe-event producers so all
   three indictment pressure inputs now fire in live play. **`deal:fraud_flag`**
