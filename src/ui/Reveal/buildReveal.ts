@@ -13,10 +13,15 @@ import type { PrepBet, PrepCategory } from '../../game/PrepBet';
  * Self-similar by design (design record §2): this same shape — one scoreline
  * + a reactions list, each reaction starring an entity with a fate — is what
  * plug-ins feed into. S1 (#319) shipped exactly one reaction, the aggregate
- * match summary. S2 (#320) adds individual starred win reactions, ranked by
- * drama off the day's closes. S3 (#321) adds the negative half — starred
- * walk-off reactions off the day's `no_sale` outcomes. F&I (plug-in #2) is a
- * later plug-in onto the same `reactions[]` shape.
+ * match summary. S2 (#320) added individual starred win reactions and S3
+ * (#321) the negative half (starred walk-offs). B1 S1 (#328) unifies those two
+ * tracks: wins and starworthy losses are scored on ONE drama axis
+ * (`scoreDrama`) and ranked in a single pool (`rankDrama`), so the top few
+ * reactions are the day's most dramatic beats whatever their tone — a wanted-
+ * in-stock walk can outrank a mild win and vice-versa. The scorer is a weighted
+ * sum of per-axis terms so a new axis (`recordBroken`, #330; coupling-fired
+ * later) drops in as one more weight + one term. F&I (plug-in #2) is a later
+ * plug-in onto the same `reactions[]` shape.
  *
  * S4 (#322) closes the loop: the morning prep is captured as a bet (`PrepBet` —
  * the lot's stocking lean vs. the demand-heat read) and the scoreline resolves
@@ -171,21 +176,89 @@ export function walkOffReactionText(walkOff: WalkOff): string {
   return copy.text(who, what);
 }
 
-function isStarworthyWalkOff(reason: string): boolean {
+/**
+ * Whether a walk-off's reason is painful/instructive enough to star at all
+ * (the boring middle — a routine `no_close`/`patience_drain` — stays folded
+ * into the day's aggregate). This boolean is the eligibility gate for the
+ * drama pool; the `painByReason` tunable only tunes the *relative* pain among
+ * reasons that pass it. Also the starworthiness check the live floor toast
+ * draws on (#321).
+ */
+export function isStarworthyWalkOff(reason: string): boolean {
   return (WALK_OFF_COPY[reason] ?? FALLBACK_WALK_OFF_COPY).starworthy;
 }
 
 /**
- * Ranks the day's closes by drama — match strength first, gross as the
- * tiebreak — and takes the top `limit`. Pure, deterministic (stable sort).
+ * One candidate on the unified drama feed (#328) — a win or a starworthy loss.
+ * Both are scored on ONE drama axis and ranked in a single pool, so a dramatic
+ * loss can outrank a mild win and vice-versa.
  */
-export function rankTopCloses(
+export type DramaCandidate =
+  | { kind: 'win'; sale: ClosedSale }
+  | { kind: 'loss'; walkOff: WalkOff };
+
+/** Per-day context the drama scorer measures a candidate against. */
+interface DramaContext {
+  /** Running-norm gross across the day's closes — the baseline gross surprise is measured from. */
+  meanGross: number;
+}
+
+function clamp01(n: number): number {
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
+/**
+ * Assigns a candidate its numeric drama score (#328) — a weighted sum of the
+ * per-axis terms available today:
+ *   - **match strength** (wins): a strong-fit close is dramatic, a poor-fit one mild;
+ *   - **gross surprise** (wins): a fat front well above the day's norm is dramatic,
+ *     a thin one isn't (only the upside registers);
+ *   - **walk-off pain** (losses): the per-reason pain weight (a wanted-in-stock
+ *     walk hurts more than a rich-trade decline).
+ * All weights + scales come from `tunables.reveal.drama`. A new axis (e.g.
+ * `recordBroken`, #330; coupling-fired later) drops in as one more `weights`
+ * entry + one term here — no restructuring of the ranker.
+ */
+export function scoreDrama(candidate: DramaCandidate, ctx: DramaContext): number {
+  const drama = loadTunables().reveal.drama;
+  if (candidate.kind === 'win') {
+    const { sale } = candidate;
+    const grossSurprise = clamp01((sale.gross - ctx.meanGross) / drama.grossSurpriseScale);
+    return (
+      drama.weights.matchStrength * clamp01(sale.matchQuality) +
+      drama.weights.grossSurprise * grossSurprise
+    );
+  }
+  const pain = drama.painByReason[candidate.walkOff.reason] ?? drama.basePain;
+  return drama.weights.walkOffPain * pain;
+}
+
+/**
+ * Ranks the day's wins and starworthy losses in ONE pool by drama score and
+ * takes the top `limit`. Non-starworthy walk-offs are filtered out before
+ * scoring so they never crowd out real drama. Pure + deterministic: ties break
+ * by arrival order (index), and the input arrays are never mutated.
+ */
+export function rankDrama(
   closes: readonly ClosedSale[],
+  walkOffs: readonly WalkOff[],
   limit: number,
-): readonly ClosedSale[] {
-  return [...closes]
-    .sort((a, b) => b.matchQuality - a.matchQuality || b.gross - a.gross)
-    .slice(0, limit);
+): readonly DramaCandidate[] {
+  const meanGross = closes.length
+    ? closes.reduce((sum, c) => sum + c.gross, 0) / closes.length
+    : 0;
+  const ctx: DramaContext = { meanGross };
+  const candidates: DramaCandidate[] = [
+    ...closes.map((sale): DramaCandidate => ({ kind: 'win', sale })),
+    ...walkOffs
+      .filter((w) => isStarworthyWalkOff(w.reason))
+      .map((walkOff): DramaCandidate => ({ kind: 'loss', walkOff })),
+  ];
+  return candidates
+    .map((candidate, index) => ({ candidate, index, drama: scoreDrama(candidate, ctx) }))
+    .sort((a, b) => b.drama - a.drama || a.index - b.index)
+    .slice(0, limit)
+    .map((entry) => entry.candidate);
 }
 
 function winReaction(sale: ClosedSale): RevealReaction {
@@ -196,26 +269,19 @@ function winReaction(sale: ClosedSale): RevealReaction {
   };
 }
 
-/**
- * Selects the day's painful/instructive walk-offs — the boring middle (a
- * routine `no_close`/`patience_drain`/etc.) never makes the cut — and takes
- * the top `limit` in emission order. Pure; no numeric "drama" axis exists for
- * a loss the way match-quality does for a win, so order is simply stable
- * arrival order among the starworthy reasons.
- */
-export function rankTopWalkOffs(
-  walkOffs: readonly WalkOff[],
-  limit: number,
-): readonly WalkOff[] {
-  return walkOffs.filter((w) => isStarworthyWalkOff(w.reason)).slice(0, limit);
-}
-
 function walkOffReaction(walkOff: WalkOff): RevealReaction {
   return {
     id: `walk-${walkOff.customerId}`,
     tone: 'negative',
     text: walkOffReactionText(walkOff),
   };
+}
+
+/** The reaction for one drama candidate — win or loss, dispatched by kind. */
+function dramaReaction(candidate: DramaCandidate): RevealReaction {
+  return candidate.kind === 'win'
+    ? winReaction(candidate.sale)
+    : walkOffReaction(candidate.walkOff);
 }
 
 /** Busy/slow framing off the funnel — no temperature words. */
@@ -343,14 +409,11 @@ export function buildReveal(
     ? betVerdictScoreline(prepBet, matchTally, dominantCrowdWant(closes, walkOffs))
     : null;
   const scoreline = verdict ?? `${activityLabel(funnel)} — ${matchClause(matchTally)}.`;
-  const topCloses = rankTopCloses(closes, tunables.starBudget);
-  const topWalkOffs = rankTopWalkOffs(walkOffs, tunables.lossStarBudget);
+  // #328: wins and losses ranked in one drama pool, top N surfaced — no longer
+  // two separate win/loss tracks.
+  const topDrama = rankDrama(closes, walkOffs, tunables.drama.starBudget);
   return {
     scoreline,
-    reactions: [
-      matchReaction(matchTally, gross),
-      ...topCloses.map(winReaction),
-      ...topWalkOffs.map(walkOffReaction),
-    ],
+    reactions: [matchReaction(matchTally, gross), ...topDrama.map(dramaReaction)],
   };
 }

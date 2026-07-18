@@ -9,7 +9,7 @@ import {
   buildReveal,
   winReactionText,
   walkOffReactionText,
-  rankTopWalkOffs,
+  isStarworthyWalkOff,
   type ClosedSale,
   type WalkOff,
 } from '../ui/Reveal';
@@ -315,7 +315,7 @@ export function useDayLoop({
         if (archetypeLabel && reason) {
           const walkOff: WalkOff = { customerId, archetypeLabel, wantedCategory, reason };
           walkOffsRef.current = [...walkOffsRef.current, walkOff];
-          if (rankTopWalkOffs([walkOff], 1).length > 0) {
+          if (isStarworthyWalkOff(reason)) {
             setFloorEvents((log) => [
               ...log,
               {

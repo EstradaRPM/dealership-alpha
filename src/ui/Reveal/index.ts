@@ -2,9 +2,10 @@ export { Reveal } from './Reveal';
 export {
   buildReveal,
   betVerdictScoreline,
-  rankTopCloses,
+  scoreDrama,
+  rankDrama,
+  isStarworthyWalkOff,
   winReactionText,
-  rankTopWalkOffs,
   walkOffReactionText,
 } from './buildReveal';
 export type {
@@ -14,4 +15,5 @@ export type {
   MatchTally,
   ClosedSale,
   WalkOff,
+  DramaCandidate,
 } from './buildReveal';

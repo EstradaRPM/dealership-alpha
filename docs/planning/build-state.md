@@ -47,6 +47,40 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-18 — BUILT + closed **#328** (B1 S1 — unified drama-ranking for the
+  Reveal feed). Replaced the two-track `rankTopCloses`/`rankTopWalkOffs`
+  selection in `src/ui/Reveal/buildReveal.ts` with ONE drama axis across wins +
+  starworthy losses. New `scoreDrama(candidate, ctx)` = weighted sum of per-axis
+  terms — **match strength** (`weights.matchStrength × clamp01(matchQuality)`),
+  **gross surprise** (`weights.grossSurprise × clamp01((gross − dayMeanGross) /
+  grossSurpriseScale)`; only the upside registers, a thin front scores 0), and
+  **walk-off pain** (`weights.walkOffPain × painByReason[reason] ?? basePain`).
+  `rankDrama(closes, walkOffs, limit)` pools wins + starworthy losses (non-
+  starworthy filtered out BEFORE scoring via the preserved `isStarworthyWalkOff`
+  gate — now exported + reused by the floor toast in `useDayLoop`, replacing the
+  `rankTopWalkOffs([w],1).length` idiom), scores, sorts drama-desc with a stable
+  arrival-order tiebreak, slices to the **single unified `drama.starBudget`**
+  (=5, replacing #320's `starBudget` 3 + #321's `lossStarBudget` 2). A dramatic
+  loss can outrank a mild win and vice-versa. New `DramaCandidate` union
+  (`{kind:'win',sale}` | `{kind:'loss',walkOff}`); scorer left **extensible** —
+  `recordBroken` (#330) + coupling axes drop in as one more `weights` entry + one
+  term, no ranker rewrite. New `tunables.reveal.drama` block (starBudget /
+  grossSurpriseScale / basePain / weights{matchStrength,grossSurprise,
+  walkOffPain} / painByReason) + Zod schema; old `reveal.starBudget` +
+  `reveal.lossStarBudget` removed. All magnitudes first-pass → #286. Pure UI
+  change; renderer + event stream + `RevealReaction`/`RevealModel` shapes
+  untouched. Tests rewritten in `tests/Reveal.buildReveal.test.ts`: scoreDrama
+  axis behavior (strong>weak fit, fat>thin gross, thin front adds nothing,
+  painful>milder reason, weights-from-tunables), rankDrama pooling (fat win >
+  thin win, wanted-in-stock walk > mild win, strong win > milder loss, non-
+  starworthy dropped, budget cap, stable ties, no mutation), isStarworthyWalkOff
+  gate, and buildReveal interleave (loss can outrank win on the feed, budget
+  cap). typecheck + full suite (2140, +8) green. **Design note surfaced (defer to
+  #286):** a lone close has zero gross-surprise (mean==its gross), so a single
+  win maxes at `matchStrength·matchQuality` (≤1.0) and a full-pain `no_fit` walk
+  (1.2) outranks it — losses currently the harsher beat, consistent with the
+  spine; tuned in the calibration pass. Next /next BUILDs the phase's lowest
+  deps-met open — **#329** (Records store + detection; independent of #328).
 - 2026-07-18 — SLICED phase 3 (B1 Reveal ranking + records) via /to-issues into 3
   AFK tracer slices. **#328** (unified drama-ranking — replace the two-track
   `rankTopCloses`/`rankTopWalkOffs` in `src/ui/Reveal/buildReveal.ts` with ONE drama

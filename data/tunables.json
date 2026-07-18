@@ -208,8 +208,23 @@
   },
   "reveal": {
     "busyWalkedInThreshold": 6,
-    "starBudget": 3,
-    "lossStarBudget": 2,
+    "drama": {
+      "starBudget": 5,
+      "grossSurpriseScale": 1500,
+      "basePain": 0.5,
+      "weights": {
+        "matchStrength": 1.0,
+        "grossSurprise": 1.0,
+        "walkOffPain": 1.2
+      },
+      "painByReason": {
+        "no_fit": 1.0,
+        "trade_negative_equity": 0.9,
+        "discount_below_cost": 0.8,
+        "demo_nonnegotiable_miss": 0.75,
+        "trade_manager_declined": 0.7
+      }
+    },
     "prepBet": {
       "weatherWeight": 2,
       "categoryAttributeProfiles": {

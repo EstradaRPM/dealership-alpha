@@ -264,15 +264,37 @@ export const TunablesSchema = z.object({
   // walked-in count — the only threshold the plain-language framing needs.
   reveal: z.object({
     busyWalkedInThreshold: z.number().nonnegative(),
-    // #320: how many individual starred win reactions the Reveal surfaces per
-    // day, ranked by drama (match strength, then gross as a tiebreak). Kept
-    // small by design — a handful of standout wins, not a per-close ticker.
-    starBudget: z.number().int().positive(),
-    // #321: how many individual starred walk-off (loss) reactions the Reveal
-    // surfaces per day — only the painful/instructive `no_sale` reasons; the
-    // boring middle stays folded into the aggregate. Kept smaller than
-    // `starBudget` by design (losses are the harsher beat).
-    lossStarBudget: z.number().int().positive(),
+    // #328: the unified drama ranking. Wins and losses are scored on ONE drama
+    // axis and the top `starBudget` are surfaced — a dramatic loss can outrank a
+    // mild win and vice-versa. The scorer is a weighted sum of per-axis terms so
+    // a new axis (e.g. `recordBroken`, #330) drops in by extending `weights` +
+    // one term, never a rewrite. All magnitudes are first-pass — tuned last
+    // (#286).
+    drama: z.object({
+      // Single unified star budget (replaces #320's `starBudget` + #321's
+      // `lossStarBudget`): the total individual reactions the feed surfaces per
+      // day, wins and losses pooled. Kept small — standout beats, not a ticker.
+      starBudget: z.number().int().positive(),
+      // Dollar scale a win's gross is measured against the day's running-norm
+      // gross by. A front this far above the day's mean scores a full gross-
+      // surprise term; a thin front scores ~0 (only the upside is dramatic).
+      grossSurpriseScale: z.number().positive(),
+      // Pain a starworthy walk-off scores when its reason has no explicit
+      // `painByReason` entry — it still stars, at this baseline weight.
+      basePain: z.number().nonnegative(),
+      // Per-axis drama weights. Each axis contributes a normalized [0,1] term
+      // scaled by its weight; the score is their sum.
+      weights: z.object({
+        matchStrength: z.number().nonnegative(),
+        grossSurprise: z.number().nonnegative(),
+        walkOffPain: z.number().nonnegative(),
+      }),
+      // Relative pain among starworthy walk-off reasons (a wanted-category-in-
+      // stock walk hurts more than a rich-trade decline). Non-starworthy reasons
+      // never reach the pool — starworthiness gates eligibility (see
+      // `WALK_OFF_COPY`), this table only tunes the drama among those that do.
+      painByReason: z.record(z.string().min(1), z.number().nonnegative()),
+    }),
     // #322: the morning-prep bet's demand-heat read fold. `weatherWeight` is how
     // strongly the Weather attribute lean can move the sedan/truck/suv read vs.
     // the DemandShaper baseline heat; `categoryAttributeProfiles` is the

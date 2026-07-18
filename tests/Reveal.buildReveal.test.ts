@@ -1,9 +1,10 @@
 import {
   buildReveal,
   betVerdictScoreline,
-  rankTopCloses,
+  scoreDrama,
+  rankDrama,
+  isStarworthyWalkOff,
   winReactionText,
-  rankTopWalkOffs,
   walkOffReactionText,
 } from '../src/ui/Reveal';
 import type { ClosedSale, WalkOff } from '../src/ui/Reveal';
@@ -12,8 +13,7 @@ import type { PrepBet } from '../src/game/PrepBet';
 import { loadTunables } from '../src/game/data';
 
 const BUSY_THRESHOLD = loadTunables().reveal.busyWalkedInThreshold;
-const STAR_BUDGET = loadTunables().reveal.starBudget;
-const LOSS_STAR_BUDGET = loadTunables().reveal.lossStarBudget;
+const STAR_BUDGET = loadTunables().reveal.drama.starBudget;
 
 function sale(overrides: Partial<ClosedSale> = {}): ClosedSale {
   return {
@@ -119,33 +119,119 @@ describe('#320 winReactionText — the shared win narrative', () => {
   });
 });
 
-describe('#320 rankTopCloses — drama ranking (match strength, then gross)', () => {
-  it('ranks by match quality descending', () => {
-    const weak = sale({ customerId: 'weak', matchQuality: 0.3, gross: 5_000 });
-    const strong = sale({ customerId: 'strong', matchQuality: 0.95, gross: 1_000 });
-    const ranked = rankTopCloses([weak, strong], 2);
-    expect(ranked.map((c) => c.customerId)).toEqual(['strong', 'weak']);
+describe('#328 scoreDrama — one drama axis across wins and losses', () => {
+  const ctx = { meanGross: 2_000 };
+
+  it('scores a strong-fit close above a poor-fit one', () => {
+    const strong = scoreDrama({ kind: 'win', sale: sale({ matchQuality: 0.95, gross: 2_000 }) }, ctx);
+    const weak = scoreDrama({ kind: 'win', sale: sale({ matchQuality: 0.3, gross: 2_000 }) }, ctx);
+    expect(strong).toBeGreaterThan(weak);
   });
 
-  it('breaks a match-quality tie by gross descending', () => {
-    const low = sale({ customerId: 'low', matchQuality: 0.8, gross: 1_000 });
-    const high = sale({ customerId: 'high', matchQuality: 0.8, gross: 5_000 });
-    const ranked = rankTopCloses([low, high], 2);
-    expect(ranked.map((c) => c.customerId)).toEqual(['high', 'low']);
+  it('scores a fat front (well above the day norm) above a thin one', () => {
+    const fat = scoreDrama({ kind: 'win', sale: sale({ matchQuality: 0.8, gross: 6_000 }) }, ctx);
+    const thin = scoreDrama({ kind: 'win', sale: sale({ matchQuality: 0.8, gross: 500 }) }, ctx);
+    expect(fat).toBeGreaterThan(thin);
   });
 
-  it('caps to the limit — the star budget stays small', () => {
-    const closes = Array.from({ length: 10 }, (_, i) =>
-      sale({ customerId: `c${i}`, matchQuality: i / 10 }),
-    );
-    expect(rankTopCloses(closes, 3)).toHaveLength(3);
+  it('a thin front (at or below the norm) adds no gross surprise — only the upside registers', () => {
+    const atNorm = scoreDrama({ kind: 'win', sale: sale({ matchQuality: 0.8, gross: 2_000 }) }, ctx);
+    const belowNorm = scoreDrama({ kind: 'win', sale: sale({ matchQuality: 0.8, gross: 100 }) }, ctx);
+    expect(belowNorm).toBe(atNorm);
   });
 
-  it('does not mutate the input array', () => {
-    const closes = [sale({ customerId: 'a', matchQuality: 0.1 }), sale({ customerId: 'b', matchQuality: 0.9 })];
-    const copy = [...closes];
-    rankTopCloses(closes, 2);
-    expect(closes).toEqual(copy);
+  it('scores a more painful walk-off reason above a milder starworthy one', () => {
+    const drama = loadTunables().reveal.drama;
+    // no_fit is tuned more painful than trade_manager_declined.
+    expect(drama.painByReason.no_fit).toBeGreaterThan(drama.painByReason.trade_manager_declined);
+    const noFit = scoreDrama({ kind: 'loss', walkOff: walkOff({ reason: 'no_fit' }) }, ctx);
+    const richTrade = scoreDrama({ kind: 'loss', walkOff: walkOff({ reason: 'trade_manager_declined' }) }, ctx);
+    expect(noFit).toBeGreaterThan(richTrade);
+  });
+
+  it('reads its weights from tunables — zeroing a weight zeroes that term', () => {
+    const drama = loadTunables().reveal.drama;
+    expect(drama.weights.matchStrength).toBeGreaterThan(0);
+    expect(drama.weights.grossSurprise).toBeGreaterThan(0);
+    expect(drama.weights.walkOffPain).toBeGreaterThan(0);
+    // A win at zero gross-surprise scores exactly matchStrength·matchQuality.
+    const s = scoreDrama({ kind: 'win', sale: sale({ matchQuality: 0.5, gross: 2_000 }) }, ctx);
+    expect(s).toBeCloseTo(drama.weights.matchStrength * 0.5);
+  });
+});
+
+describe('#328 rankDrama — wins and losses ranked in one pool', () => {
+  it('a fat-gross win outranks a thin win', () => {
+    const fat = sale({ customerId: 'fat', matchQuality: 0.8, gross: 6_000 });
+    const thin = sale({ customerId: 'thin', matchQuality: 0.8, gross: 500 });
+    const ranked = rankDrama([thin, fat], [], 5);
+    expect(ranked.map((c) => (c.kind === 'win' ? c.sale.customerId : c.walkOff.customerId))).toEqual([
+      'fat',
+      'thin',
+    ]);
+  });
+
+  it('a wanted-in-stock walk-off outranks a mild win', () => {
+    const mild = sale({ customerId: 'mild', matchQuality: 0.2, gross: 2_400 });
+    const painful = walkOff({ customerId: 'gone', reason: 'no_fit' });
+    const ranked = rankDrama([mild], [painful], 5);
+    const first = ranked[0];
+    expect(first.kind).toBe('loss');
+    expect(first.kind === 'loss' && first.walkOff.customerId).toBe('gone');
+  });
+
+  it('a strong win outranks a milder loss — drama runs both ways', () => {
+    const strong = sale({ customerId: 'strong', matchQuality: 0.98, gross: 8_000 });
+    const milder = walkOff({ customerId: 'gone', reason: 'trade_manager_declined' });
+    const ranked = rankDrama([strong], [milder], 5);
+    expect(ranked[0].kind).toBe('win');
+  });
+
+  it('drops non-starworthy walk-offs before scoring — they never crowd out drama', () => {
+    const routine = walkOff({ customerId: 'meh', reason: 'no_close' });
+    const ranked = rankDrama([], [routine], 5);
+    expect(ranked).toHaveLength(0);
+  });
+
+  it('respects the unified budget cap', () => {
+    const closes = Array.from({ length: 8 }, (_, i) => sale({ customerId: `c${i}`, matchQuality: i / 10 }));
+    const walkOffs = Array.from({ length: 8 }, (_, i) => walkOff({ customerId: `w${i}`, reason: 'no_fit' }));
+    expect(rankDrama(closes, walkOffs, 3)).toHaveLength(3);
+  });
+
+  it('breaks drama ties by arrival order (stable)', () => {
+    // Three identical-drama wins keep their input order.
+    const a = sale({ customerId: 'a', matchQuality: 0.5, gross: 2_000 });
+    const b = sale({ customerId: 'b', matchQuality: 0.5, gross: 2_000 });
+    const c = sale({ customerId: 'c', matchQuality: 0.5, gross: 2_000 });
+    const ranked = rankDrama([a, b, c], [], 5);
+    expect(ranked.map((r) => (r.kind === 'win' ? r.sale.customerId : ''))).toEqual(['a', 'b', 'c']);
+  });
+
+  it('does not mutate the input arrays', () => {
+    const closes = [sale({ customerId: 'a' })];
+    const walkOffs = [walkOff({ customerId: 'x', reason: 'no_fit' })];
+    const closesCopy = [...closes];
+    const walkOffsCopy = [...walkOffs];
+    rankDrama(closes, walkOffs, 5);
+    expect(closes).toEqual(closesCopy);
+    expect(walkOffs).toEqual(walkOffsCopy);
+  });
+});
+
+describe('#328 isStarworthyWalkOff — the loss eligibility gate (shared with the floor toast)', () => {
+  it('marks the painful/instructive reasons starworthy', () => {
+    expect(isStarworthyWalkOff('no_fit')).toBe(true);
+    expect(isStarworthyWalkOff('trade_negative_equity')).toBe(true);
+  });
+
+  it('leaves the boring middle unstarred', () => {
+    expect(isStarworthyWalkOff('no_close')).toBe(false);
+    expect(isStarworthyWalkOff('patience_drain')).toBe(false);
+  });
+
+  it('an unknown reason is not starworthy', () => {
+    expect(isStarworthyWalkOff('some_future_reason')).toBe(false);
   });
 });
 
@@ -236,56 +322,46 @@ describe('#321 walkOffReactionText — reason-code → plain-language copy (no m
   });
 });
 
-describe('#321 rankTopWalkOffs — only the painful/instructive losses star', () => {
-  it('drops the boring-middle reasons (a routine no_close never stars)', () => {
-    const ranked = rankTopWalkOffs([walkOff({ reason: 'no_close' })], 5);
-    expect(ranked).toHaveLength(0);
-  });
-
-  it('keeps painful reasons like no_fit and trade_negative_equity', () => {
-    const painful = [
-      walkOff({ customerId: 'a', reason: 'no_fit' }),
-      walkOff({ customerId: 'b', reason: 'trade_negative_equity' }),
-    ];
-    const ranked = rankTopWalkOffs(painful, 5);
-    expect(ranked.map((w) => w.customerId)).toEqual(['a', 'b']);
-  });
-
-  it('caps to the limit — the star budget stays small', () => {
-    const painful = Array.from({ length: 10 }, (_, i) =>
-      walkOff({ customerId: `c${i}`, reason: 'no_fit' }),
-    );
-    expect(rankTopWalkOffs(painful, 3)).toHaveLength(3);
-  });
-
-  it('does not mutate the input array', () => {
-    const walkOffs = [walkOff({ customerId: 'a' }), walkOff({ customerId: 'b', reason: 'no_close' })];
-    const copy = [...walkOffs];
-    rankTopWalkOffs(walkOffs, 2);
-    expect(walkOffs).toEqual(copy);
-  });
-});
-
-describe('#321 buildReveal — individual starred walk-off (loss) reactions', () => {
-  it('appends ranked walk-off reactions after the win reactions', () => {
-    const closes = [sale({ customerId: 'a' })];
+describe('#328 buildReveal — wins and losses interleave on the unified feed', () => {
+  it('a painful loss can outrank a mild win in the reaction order', () => {
+    const closes = [sale({ customerId: 'a', matchQuality: 0.2, gross: 2_400 })];
     const walkOffs = [walkOff({ customerId: 'x', reason: 'no_fit' })];
-    const model = buildReveal(funnel(), 2_400, { strong: 1, matched: 1 }, closes, walkOffs);
+    const model = buildReveal(funnel(), 2_400, { strong: 0, matched: 1 }, closes, walkOffs);
+    // The match summary always leads; then the drama order — the painful loss
+    // beats the mild win.
+    expect(model.reactions.map((r) => r.id)).toEqual([
+      'match-summary',
+      'walk-x',
+      'win-a',
+    ]);
+    const loss = model.reactions[1];
+    expect(loss.tone).toBe('negative');
+    expect(loss.text).toBe(walkOffReactionText(walkOffs[0]));
+  });
+
+  it('a strong win leads a milder loss on the feed — drama runs both ways', () => {
+    const closes = [sale({ customerId: 'a', matchQuality: 0.98, gross: 8_000 })];
+    // trade_manager_declined is a milder starworthy loss than no_fit; a strong
+    // win outranks it.
+    const walkOffs = [walkOff({ customerId: 'x', reason: 'trade_manager_declined' })];
+    const model = buildReveal(funnel(), 8_000, { strong: 1, matched: 1 }, closes, walkOffs);
     expect(model.reactions.map((r) => r.id)).toEqual([
       'match-summary',
       'win-a',
       'walk-x',
     ]);
-    expect(model.reactions[2].tone).toBe('negative');
-    expect(model.reactions[2].text).toBe(walkOffReactionText(walkOffs[0]));
   });
 
-  it('caps starred walk-offs to the tunable loss star budget', () => {
-    const walkOffs = Array.from({ length: LOSS_STAR_BUDGET + 5 }, (_, i) =>
+  it('caps the pooled reactions to the single unified star budget', () => {
+    const closes = Array.from({ length: STAR_BUDGET + 3 }, (_, i) =>
+      sale({ customerId: `c${i}`, matchQuality: 1 - i / 100 }),
+    );
+    const walkOffs = Array.from({ length: STAR_BUDGET + 3 }, (_, i) =>
       walkOff({ customerId: `w${i}`, reason: 'no_fit' }),
     );
-    const model = buildReveal(funnel(), 0, { strong: 0, matched: 0 }, [], walkOffs);
-    expect(model.reactions.length).toBeLessThanOrEqual(1 + LOSS_STAR_BUDGET);
+    const model = buildReveal(funnel(), 10_000, { strong: 5, matched: closes.length }, closes, walkOffs);
+    // One match summary + at most starBudget pooled reactions.
+    expect(model.reactions.length).toBeLessThanOrEqual(1 + STAR_BUDGET);
   });
 
   it('no walk-offs ⇒ no loss reactions', () => {
