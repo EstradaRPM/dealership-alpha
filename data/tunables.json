@@ -234,6 +234,9 @@
       }
     }
   },
+  "records": {
+    "pvrMinUnits": 3
+  },
   "economy": {
     "startingCash": 50000,
     "dailyOverheadBase": 350,

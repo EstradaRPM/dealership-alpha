@@ -47,6 +47,47 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-19 — BUILT + closed **#329** (B1 S2 — Records store + detection).
+  New `src/game/Records/` module: the career's six durable high-water marks +
+  the `records:broken` announcement #330 crowns. A **scoreboard, not a rule** —
+  nothing in the sim branches on a mark. Marks: `bestDayGross`,
+  `mostUnitsInDay`, `bestPvr`, `bestStreak` (settle on `floor:day_complete`),
+  `bestSingleDeal` (on `deal:closed`, **front gross only** — the desk's win on
+  the car, not the F&I box behind it), `bestMonthGross` (on
+  `clock:month_ended`, carries a running 1-based `monthIndex`). **Gross =
+  `frontGross + backGross`, units = one per `deal:closed`** — TierGate's exact
+  formula, so a crowned "best month" agrees with the number the gate graded.
+  `clock:day_started` cursor stamps deals (`deal:closed` carries no day — same
+  problem HistoryLog solves the same way). DECISIONS made in-slice: **a selling
+  day = ≥1 unit** (streak tracks floor momentum; profitability is the separate
+  `bestDayGross` axis, so neither mark shadows the other — selling at a loss
+  keeps the run alive); **`pvrMinUnits: 3`** (new `records` tunable block —
+  a one-unit day's PVR is just that deal's gross, already `bestSingleDeal`, so
+  PVR crowns only at volume held at gross; without it two records fire together
+  on every fat single-deal day); **a first-ever mark still fires, with
+  `previousValue: null`** (engine reports the truth, #330 decides whether a
+  first-ever mark earns a crown — that's the seam rather than pre-deciding the
+  presentation); strictly-greater breaks, ties don't, non-positive never crowns.
+  **Ordering is load-bearing for #330:** the Reveal feed is assembled inside a
+  `floor:day_complete` handler, and Records is wired in `createWorld` so it
+  subscribes FIRST — every mark for the just-closed day has fired before the
+  feed is built; guarded by a bus-level test, not just a comment. Persisted:
+  envelope v16→17 + migration materializing `createDefaultRecordsSnapshot()`;
+  the blob carries the in-progress **day AND month** accumulators so a mid-day
+  or mid-month reload keeps the haul. tier-2 dev fixture **migrated in place**
+  (19 lines, via the real `migrateWorldSnapshot`) — not regenerated, per the
+  known harness-bankrupts-pre-T2 constraint + the #322 precedent. Tests: 21 in
+  `tests/Records.test.ts` (per-mark beat-not-tie, day/month reset, streak
+  break/continue, loss-day keeps streak, PVR volume gate, ordering guard,
+  save/load round-trip incl. mid-day + mid-month, migration default) + 2
+  world-seam tests. typecheck + full suite (2163, +23) green. **LOOSE END
+  (carry into #330):** Records is now the game-side source of truth for day
+  gross/units — it exposes `getDayTotals()` — but `useDayLoop` still computes
+  the day total in an unpersisted, non-replay-safe React ref (`grossTodayRef`,
+  `useDayLoop.ts:283`). This slice was engine-only so the rewire wasn't done;
+  it belongs in #330 or its own slice. Next /next BUILDs **#330** (crowned
+  record reactions on the Reveal feed + wire `recordBroken` into #328's drama
+  axis) — deps #328 + #329 both now closed.
 - 2026-07-18 — BUILT + closed **#328** (B1 S1 — unified drama-ranking for the
   Reveal feed). Replaced the two-track `rankTopCloses`/`rankTopWalkOffs`
   selection in `src/ui/Reveal/buildReveal.ts` with ONE drama axis across wins +

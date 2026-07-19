@@ -56,6 +56,35 @@ export interface EventMap {
     }[];
   };
 
+  // Records (#329): a durable high-water mark was beaten. Published by the
+  // Records module the moment a mark falls — `bestSingleDeal` within
+  // `deal:closed`, the day marks within `floor:day_complete` (so they are all
+  // in before the day-close Reveal is assembled), `bestMonthGross` within
+  // `clock:month_ended`.
+  //
+  // `previousValue` is null the FIRST time a mark is ever set — there was
+  // nothing to beat. The engine still reports it (it genuinely is the best
+  // day so far); the presentation decides whether a first-ever mark earns a
+  // crown on the feed (#330).
+  'records:broken': {
+    day: number;
+    kind:
+      | 'bestDayGross'
+      | 'bestMonthGross'
+      | 'bestPvr'
+      | 'bestStreak'
+      | 'bestSingleDeal'
+      | 'mostUnitsInDay';
+    value: number;
+    /** The mark this beat, or null if this is the first mark of its kind. */
+    previousValue: number | null;
+    /** Deal that set the mark — `bestSingleDeal` only. */
+    vehicleId?: string;
+    customerId?: string;
+    /** Running 1-based month index — `bestMonthGross` only. */
+    month?: number;
+  };
+
   // FloorSim intra-day logical-tick loop. Public contract LOCKED at the #99
   // HITL gate (see issue #99 sign-off for the authoritative surface). Runs
   // strictly between clock:day_started and the player-gated composition-root

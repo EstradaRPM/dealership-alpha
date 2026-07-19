@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 16,
+    "version": 17,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -2758,7 +2758,24 @@
         "intakeWindow": [],
         "dailyIntake": []
       },
-      "prepBet": null
+      "prepBet": null,
+      "records": {
+        "schemaVersion": 1,
+        "marks": {
+          "bestDayGross": null,
+          "bestMonthGross": null,
+          "bestPvr": null,
+          "bestStreak": null,
+          "bestSingleDeal": null,
+          "mostUnitsInDay": null
+        },
+        "currentDay": 1,
+        "dayGross": 0,
+        "dayUnits": 0,
+        "monthGross": 0,
+        "monthIndex": 1,
+        "currentStreak": 0
+      }
     }
   },
   "character": {

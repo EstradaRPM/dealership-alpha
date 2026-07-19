@@ -309,6 +309,14 @@ export const TunablesSchema = z.object({
       ),
     }),
   }),
+  // Records high-water marks (#329). See src/game/Records/CLAUDE.md.
+  records: z.object({
+    // Minimum units in a day before that day's PVR can crown. A one-unit day's
+    // PVR is just that deal's gross — already covered by the best-single-deal
+    // mark — so PVR earns its own crown only once it means what it means in
+    // the business: volume held at gross.
+    pvrMinUnits: z.number().int().positive(),
+  }),
   economy: z.object({
     startingCash: z.number().nonnegative(),
     dailyOverheadBase: z.number().nonnegative(),

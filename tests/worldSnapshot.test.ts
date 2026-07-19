@@ -19,6 +19,7 @@ import {
   type WorldSnapshotMigration,
 } from '../src/worldSnapshot';
 import type { CharacterProfile } from '../src/game/CareerProgression';
+import { createDefaultRecordsSnapshot } from '../src/game/Records';
 
 // #188 — the save/load tracer: the world-serialization seam proven end to end
 // with the two smallest stateful values (GameClock.day + Economy.cash). Locks
@@ -956,6 +957,56 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     const migrated = migrateWorldSnapshot(persisted);
     expect(migrated.version).toBe(WORLD_SNAPSHOT_VERSION);
     expect(migrated.modules.prepBet).toBeNull();
+  });
+
+  it('round-trips career high-water marks through the world seam (#329)', () => {
+    const { bus, world } = build(7);
+    // Drive a real record through the live world's bus, not the module direct.
+    bus.publish('clock:day_started', { day: world.clock.currentDay });
+    bus.publish('deal:closed', {
+      customerId: 'c1',
+      vehicleId: 'v1',
+      agreedPrice: 22_000,
+      frontGross: 2_400,
+      backGross: 900,
+      daysInInventory: 12,
+      paymentMethod: 'cash',
+      downPayment: 22_000,
+      loanAmount: 0,
+      term: 0,
+      apr: 0,
+    });
+    bus.publish('floor:day_complete', {
+      day: world.clock.currentDay,
+      ticks: 1,
+      totalArrivals: 1,
+    });
+    const marks = world.records.getMarks();
+    expect(marks.bestSingleDeal?.value).toBe(2_400);
+    expect(marks.bestDayGross?.value).toBe(3_300);
+
+    const persisted = JSON.parse(
+      JSON.stringify(snapshotWorld(world)),
+    ) as PersistedWorldSnapshot;
+    const { world: target } = build(7);
+    restoreWorld(persisted, target);
+    expect(target.records.getMarks()).toEqual(marks);
+    expect(target.records.currentStreak).toBe(1);
+  });
+
+  it('migrates pre-#329 snapshots to an empty scoreboard', () => {
+    const { world } = build(4242);
+    const current = snapshotWorld(world);
+    const { records, ...legacyModules } = current.modules;
+    const persisted: PersistedWorldSnapshot = {
+      version: 16,
+      modules: legacyModules,
+    };
+    const migrated = migrateWorldSnapshot(persisted);
+    expect(migrated.version).toBe(WORLD_SNAPSHOT_VERSION);
+    expect(migrated.modules.records).toEqual(createDefaultRecordsSnapshot());
+    // Behavior-neutral: nothing in the sim branches on a mark.
+    expect(migrated.modules.records.marks.bestDayGross).toBeNull();
   });
 });
 

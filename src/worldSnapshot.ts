@@ -63,11 +63,15 @@ import {
   type DemandShaperSnapshot,
 } from './game/DemandShaper';
 import type { PrepBet } from './game/PrepBet';
+import {
+  createDefaultRecordsSnapshot,
+  type RecordsSnapshot,
+} from './game/Records';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 16;
+export const WORLD_SNAPSHOT_VERSION = 17;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -129,6 +133,9 @@ export type WorldSnapshot = {
     // stocking-vs-demand wager, or null when none was captured. Persisted so a
     // mid-day reload resolves the day-close Reveal against the same morning bet.
     readonly prepBet: PrepBet | null;
+    // #329 Career high-water marks + the in-progress day/month accumulators
+    // that feed them.
+    readonly records: RecordsSnapshot;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -324,6 +331,16 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         prepBet: null,
       },
     }),
+    16: (snap) => ({
+      version: 17,
+      modules: {
+        ...snap.modules,
+        // Behavior-neutral: pre-#329 saves have no marks, so a loaded career
+        // simply crowns its first record on the next qualifying day. Nothing
+        // in the sim branches on a mark, so no prior behavior changes.
+        records: createDefaultRecordsSnapshot(),
+      },
+    }),
   };
 
 /**
@@ -392,6 +409,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       bodyShopChannelPosture: world.getBodyShopChannelPosture(),
       bodyShopInsights: world.bodyShopInsights.snapshot(),
       prepBet: world.getPrepBet(),
+      records: world.records.snapshot(),
     },
   };
 }
@@ -436,4 +454,5 @@ export function restoreWorld(
   world.setBodyShopChannelPosture(snap.modules.bodyShopChannelPosture);
   world.bodyShopInsights.restore(snap.modules.bodyShopInsights);
   world.setPrepBet(snap.modules.prepBet);
+  world.records.restore(snap.modules.records);
 }

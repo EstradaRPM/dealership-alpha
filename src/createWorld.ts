@@ -129,6 +129,7 @@ import { createServiceDepartment } from './serviceDepartment';
 import { createBodyShopDepartment } from './bodyShopDepartment';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createHistoryLog, type HistoryLog } from './game/HistoryLog';
+import { createRecords, type Records } from './game/Records';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
 import { createTierGate, loadTierGateConfig, type TierGate } from './game/TierGate';
 import {
@@ -201,6 +202,7 @@ export interface World {
   endCardManager: EndCardManager;
   telemetry: Telemetry;
   historyLog: HistoryLog;
+  records: Records;
   kpiDashboard: KPIDashboard;
   tierGate: TierGate;
   dayLoop: DayLoopController;
@@ -884,6 +886,13 @@ export function createWorld(deps: {
   // in-game History screen reflects the running game; persisted via the
   // world snapshot.
   const historyLog = createHistoryLog({ bus });
+  // Records (#329): the career's high-water marks — best day/month gross, best
+  // PVR, longest selling streak, fattest single deal, most units in a day — and
+  // the `records:broken` announcement the Reveal feed crowns (#330). Wired here
+  // (not in the app) so its `floor:day_complete` subscription runs BEFORE the
+  // app's day-close handler, guaranteeing every mark for the just-closed day
+  // has fired by the time the Reveal is assembled.
+  const records = createRecords({ bus });
   // Month-close hook (#123): the KPIDashboard supplies the month-to-date
   // snapshot the interstitial composes.
   const kpiDashboard = createKPIDashboard({ bus });
@@ -1340,6 +1349,7 @@ export function createWorld(deps: {
     endCardManager,
     telemetry,
     historyLog,
+    records,
     kpiDashboard,
     tierGate,
     dayLoop,
