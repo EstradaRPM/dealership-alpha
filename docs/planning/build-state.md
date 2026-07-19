@@ -47,6 +47,41 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-19 — BUILT + closed **#330** (B1 S3 — crowned record reactions on the
+  Reveal feed). The B1 loop is closed: a broken high-water mark surfaces as a
+  **crowned reaction on the SAME feed** as the day's wins and walk-offs (records
+  are never a separate screen), ranked by the extensible axis #328 left open.
+  `useDayLoop` accumulates `records:broken` into a per-bite `recordsRef` (reset
+  each day alongside `closesRef`/`walkOffsRef`) and passes it to `buildReveal`;
+  Records is wired in `createWorld` so it settles the day *inside*
+  `floor:day_complete` ahead of the app handler — every crown is in the ref when
+  the feed is assembled. `buildReveal` gains a third `DramaCandidate` kind
+  (`record`) with per-mark plain-language copy naming the mark, its new value and
+  the number it displaced ("Best per-car average yet — $2,100 a car, beating
+  $1,850" — never "PVR"; Hermes-safe `$` grouping, no temperature words).
+  `scoreDrama` gains the **`recordBroken`** axis: a flat weight (2.0, above the
+  win/loss axes, so a crown reliably takes a star slot) + a **`recordMargin`**
+  term (0.5 × relative improvement), so smashing a mark outranks squeaking past
+  one. New **`reveal.drama.crownBudget`** (=2) caps crowns per bite — a great day
+  can beat four marks at once and without the cap the feed goes all-crown and the
+  day's actual drama gets pushed off; the highest-margin crowns win the slots.
+  **DECIDED in-slice** (the call #329 deliberately handed to the presentation):
+  **a first-ever mark does NOT crown** — a crown means you beat yourself, a
+  career's first day sets four or five marks at once, and it spares the feed the
+  "longest selling streak: 1 day" crown. The mark stands in the scoreboard from
+  the moment it's set; only the celebration waits for a beat. `isCrownworthyRecord`
+  is the gate, mirroring `isStarworthyWalkOff`. **Ordering note:**
+  `bestMonthGross` settles on `clock:month_ended` during the Next Day transition,
+  so it lands in the *following* day's ref and crowns on that day's Reveal — the
+  month's result is news you get the morning after it closes (documented at the
+  ref). Tests: 19 unit + a live-world reachability test (a real broken mark lands
+  a `crown-*` reaction; a first-ever mark does not) + composition wiring guards.
+  typecheck + full suite (2184, +21) green. **FILED #331** for the #329 loose end
+  (day gross still accumulated in the unpersisted `grossTodayRef` instead of read
+  from `Records.getDayTotals()` — the two can disagree on screen after a mid-day
+  reload). B1's three sliced issues (#328/#329/#330) are all closed; #331 is the
+  trailing hygiene, the same shape as A3 trailing A1. Next /next BUILDs **#331**,
+  then advances the pointer to phase 4 (B3 news/adverse-events engine).
 - 2026-07-19 — BUILT + closed **#329** (B1 S2 — Records store + detection).
   New `src/game/Records/` module: the career's six durable high-water marks +
   the `records:broken` announcement #330 crowns. A **scoreboard, not a rule** —
