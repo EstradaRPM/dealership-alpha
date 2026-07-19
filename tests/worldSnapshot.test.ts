@@ -994,6 +994,42 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     expect(target.records.currentStreak).toBe(1);
   });
 
+  // #331: the running day gross the HUD shows is read off Records, so a mid-day
+  // reload must show the same figure it showed before the save — the old
+  // in-hook tally reset to $0 while the engine's did not.
+  it('a mid-day reload keeps the running day gross the HUD reads (#331)', () => {
+    const { bus, world } = build(11);
+    bus.publish('clock:day_started', { day: world.clock.currentDay });
+    for (const [front, back] of [
+      [1_500, 600],
+      [900, 300],
+    ] as const) {
+      bus.publish('deal:closed', {
+        customerId: 'c1',
+        vehicleId: 'v1',
+        agreedPrice: 20_000,
+        frontGross: front,
+        backGross: back,
+        daysInInventory: 8,
+        paymentMethod: 'cash',
+        downPayment: 20_000,
+        loanAmount: 0,
+        term: 0,
+        apr: 0,
+      });
+    }
+    // Saved mid-day: the floor never closed.
+    expect(world.records.getDayTotals()).toEqual({ gross: 3_300, units: 2 });
+
+    const persisted = JSON.parse(
+      JSON.stringify(snapshotWorld(world)),
+    ) as PersistedWorldSnapshot;
+    const { world: target } = build(11);
+    restoreWorld(persisted, target);
+
+    expect(target.records.getDayTotals()).toEqual({ gross: 3_300, units: 2 });
+  });
+
   it('migrates pre-#329 snapshots to an empty scoreboard', () => {
     const { world } = build(4242);
     const current = snapshotWorld(world);

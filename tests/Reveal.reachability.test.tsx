@@ -95,9 +95,12 @@ describe('#319 The Reveal — reachable through the live day-close pipeline', ()
   it('App composition wires the funnel/gross/match tally/closes/walk-offs into buildReveal at day close', () => {
     const src = readAppCompositionSource();
     expect(src).toMatch(
-      /buildReveal\(\s*funnel,\s*grossTodayRef\.current,\s*matchTallyRef\.current,\s*closesRef\.current,\s*walkOffsRef\.current,\s*w\.getPrepBet\(\),\s*recordsRef\.current,?\s*\)/,
+      /buildReveal\(\s*funnel,\s*dayGross,\s*matchTallyRef\.current,\s*closesRef\.current,\s*walkOffsRef\.current,\s*w\.getPrepBet\(\),\s*recordsRef\.current,?\s*\)/,
     );
     expect(src).toMatch(/reveal: buildReveal\(/);
+    // #331: the day gross is the engine's, never a tally kept in the hook.
+    expect(src).toMatch(/const dayGross = w\.records\.getDayTotals\(\)\.gross;/);
+    expect(src).not.toMatch(/grossTodayRef/);
   });
 });
 

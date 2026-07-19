@@ -129,6 +129,22 @@ describe('Records — high-water marks (#329)', () => {
 
       expect(records.getMark('bestDayGross')).toEqual({ value: 3_000, day: 1 });
       expect(broken.filter((b) => b.kind === 'bestDayGross')).toHaveLength(1);
+    });
+
+    // #331: the day accumulator belongs to the day the clock sits on, and the
+    // clock does not move at day-complete — so the closed day's final figure is
+    // still readable through the day-close window (that is what the recap and
+    // the Reveal read), and clears when the next day opens.
+    it('holds the closed day total until the next day opens, then clears', () => {
+      const { bus, records } = setup();
+      bus.publish('clock:day_started', { day: 1 });
+      closeDeal(bus, 1_200, 800);
+      expect(records.getDayTotals()).toEqual({ gross: 2_000, units: 1 });
+
+      bus.publish('floor:day_complete', { day: 1, ticks: 10, totalArrivals: 5 });
+      expect(records.getDayTotals()).toEqual({ gross: 2_000, units: 1 });
+
+      bus.publish('clock:day_started', { day: 2 });
       expect(records.getDayTotals()).toEqual({ gross: 0, units: 0 });
     });
 

@@ -99,8 +99,11 @@ export interface Records {
   /** Live run of consecutive selling days (the mark is `bestStreak`). */
   readonly currentStreak: number;
   /**
-   * The in-progress day's haul. Records is the game-side source of truth for
-   * these — day gross previously existed only as a UI ref.
+   * The haul of the day the clock is sitting on: `{ gross, units }`. Live while
+   * the floor is open, and it holds the closed day's final figure through the
+   * day-close window (it clears on `clock:day_started`, not at day-complete), so
+   * the recap and the Reveal read the day total from here. Records is the
+   * game-side source of truth for it — persisted and replay-safe.
    */
   getDayTotals(): { gross: number; units: number };
   snapshot(): RecordsSnapshot;
@@ -161,6 +164,16 @@ export function createRecords(deps: RecordsDeps): Records {
 
   bus.subscribe('clock:day_started', (p: EventMap['clock:day_started']) => {
     currentDay = p.day;
+    // The day accumulators belong to the day the clock is sitting on, and the
+    // clock does not move off a day at `floor:day_complete` — it moves here, on
+    // the Next Day transition. Resetting here (rather than at day-close) is what
+    // lets the day-close consumers — the recap and the Reveal (#331) — read the
+    // just-closed day's haul straight off `getDayTotals()` instead of keeping a
+    // parallel unpersisted tally. A reload in either window restores the totals
+    // the player last saw: mid-day, the running haul; after close, the closed
+    // day's final figure.
+    dayGross = 0;
+    dayUnits = 0;
   });
 
   bus.subscribe('deal:closed', (p: EventMap['deal:closed']) => {
@@ -189,11 +202,9 @@ export function createRecords(deps: RecordsDeps): Records {
     // shadowing the other.
     currentStreak = dayUnits >= 1 ? currentStreak + 1 : 0;
     tryBreak('bestStreak', currentStreak, day);
-    // Reset here rather than at the next day-open: the floor is closed from
-    // this point, so nothing else lands in the day, and a mid-day reload
-    // restores an accumulator that matches what the player has seen.
-    dayGross = 0;
-    dayUnits = 0;
+    // The day accumulators are deliberately NOT cleared here — they hold the
+    // closed day's final figure until the clock moves (`clock:day_started`), so
+    // the day-close recap + Reveal read it from `getDayTotals()`.
   });
 
   bus.subscribe('clock:month_ended', (p: EventMap['clock:month_ended']) => {

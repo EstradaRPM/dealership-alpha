@@ -20,9 +20,14 @@ Records is a **scoreboard, not a rule** — nothing in the sim branches on a mar
 - `getMark(kind)` / `getMarks()` — standing marks (`null` = never set).
 - `currentStreak` — live run of consecutive selling days (the *best* run is the
   `bestStreak` mark).
-- `getDayTotals()` — the in-progress day's `{ gross, units }`. Records is the
-  **game-side source of truth** for these; before it, day gross existed only as
-  an unpersisted React ref in `useDayLoop`.
+- `getDayTotals()` — the `{ gross, units }` of the day the clock is sitting on.
+  Records is the **game-side source of truth** for these, and since #331 the
+  only one: the FLOOR-OPEN HUD's running gross, the day-close recap's `gross`,
+  and the Reveal's gross argument all read it (before #331 the app kept a
+  parallel unpersisted tally in `useDayLoop`, which reset to $0 on a mid-day
+  reload while this one did not). The accumulators clear on
+  `clock:day_started` — **not** at day-complete — so the closed day's final
+  figure is still standing when the day-close consumers read it.
 - `snapshot()/restore()` — persistence (see below).
 
 ## The six marks
@@ -66,7 +71,8 @@ best-quarter/year (T7 group altitude, lands with B5), reputation/CSI marks
 - **Consumes:** `deal:closed` (per-deal front gross + day/month accumulation),
   `floor:day_complete` (day settle), `clock:month_ended` (month settle),
   `clock:day_started` (day cursor — `deal:closed` carries no day of its own,
-  same problem HistoryLog solves the same way).
+  same problem HistoryLog solves the same way — **and** the day-accumulator
+  reset, per `getDayTotals()` above).
 
 ### Ordering
 The day settles on `floor:day_complete`. Records is wired in `createWorld`, so

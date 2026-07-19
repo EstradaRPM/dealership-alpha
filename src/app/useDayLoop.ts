@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import type { EventBus } from '../game/EventBus';
 import type { Navigator } from '../ui/Navigator';
 import type { World } from '../createWorld';
@@ -45,9 +45,8 @@ export interface DayLoopDeps {
 }
 
 export interface DayLoop {
+  /** The current day's gross, read live off `Records` (#331). */
   grossToday: number;
-  setGrossToday: React.Dispatch<React.SetStateAction<number>>;
-  grossTodayRef: React.MutableRefObject<number>;
   matchTallyRef: React.MutableRefObject<{ strong: number; matched: number }>;
   cashDelta: CashDeltaSplit | null;
   setCashDelta: (d: CashDeltaSplit | null) => void;
@@ -92,13 +91,18 @@ export function useDayLoop({
   buildCurrentSaveState,
 }: DayLoopDeps): DayLoop {
   const { bus, saveStore, slotStore, snapshotStoreForActiveSlot } = services;
-  // Running today's gross (front + back) summed from closed deals — the
-  // composed-state source for the FLOOR-OPEN HUD / stat grid (#116).
-  const [grossToday, setGrossToday] = useState(0);
-  // Mirror of `grossToday` updated synchronously in the close handler, so the
-  // day-close recap captures the final figure without waiting on a re-render
-  // (the state copy still feeds the live HUD / gate strip). Reset each day.
-  const grossTodayRef = useRef(0);
+  // Today's gross (front + back) for the FLOOR-OPEN HUD / stat grid (#116).
+  // This hook keeps NO tally of its own (#331): the number is owned by
+  // `Records`, which accumulates it with the same front+back formula the tier
+  // gate grades, persists it, and is replay-safe. A close only bumps the render
+  // trigger below; the value is re-read from the engine on the render that
+  // follows. Reading at render rather than inside the `deal:closed` handler is
+  // also what makes it order-proof: this hook subscribes at mount, before a
+  // World (and therefore Records) exists, so an in-handler read could miss the
+  // very deal that triggered it. Same reason a mid-day reload is correct for
+  // free — the restored world carries the day's haul, no re-seeding needed.
+  const [, bumpDealTick] = useReducer((n: number) => n + 1, 0);
+  const grossToday = worldRef.current?.records.getDayTotals().gross ?? 0;
   // Per-day inventory-buyer match tally (#199): closed deals scored for
   // stock-vs-buyer fit, and how many cleared the strong-match threshold. Held
   // in a ref (not display state — the live beat is the floor toast) so the
@@ -166,8 +170,6 @@ export function useDayLoop({
     // to MANAGERIAL (its own subscription) and re-renders.
     const w = worldRef.current;
     if (!w) return;
-    setGrossToday(0);
-    grossTodayRef.current = 0;
     setFloorEvents([]);
     matchTallyRef.current = { strong: 0, matched: 0 };
     closesRef.current = [];
@@ -188,8 +190,6 @@ export function useDayLoop({
     setCashDelta(null);
     prevDayCashRef.current = null;
     prevDayAcquisitionSpendRef.current = null;
-    setGrossToday(0);
-    grossTodayRef.current = 0;
     matchTallyRef.current = { strong: 0, matched: 0 };
     closesRef.current = [];
     walkOffsRef.current = [];
@@ -234,19 +234,25 @@ export function useDayLoop({
         // source for both the modal and the chip (the live funnel zeroes out
         // on the next day and isn't restored on load).
         const funnel = w.capacityManager.getDayFunnel();
+        // The just-closed day's haul, straight off the engine. Records clears
+        // its day accumulators on `clock:day_started` (the Next Day
+        // transition), not at day-complete, so the closed day's final figure is
+        // still standing here — and it survives a reload, which the old
+        // in-hook tally did not (#331).
+        const dayGross = w.records.getDayTotals().gross;
         const recapModel: DayRecapModel = {
           day: w.clock.currentDay,
           potentialTraffic: funnel.potentialTraffic,
           walkedIn: funnel.walkedIn,
           staffEngaged: funnel.staffEngaged,
           sold: funnel.sold,
-          gross: grossTodayRef.current,
+          gross: dayGross,
           leakCause: funnel.leakCause,
           strongMatches: matchTallyRef.current.strong,
           matchedSales: matchTallyRef.current.matched,
           reveal: buildReveal(
             funnel,
-            grossTodayRef.current,
+            dayGross,
             matchTallyRef.current,
             closesRef.current,
             walkOffsRef.current,
@@ -288,15 +294,10 @@ export function useDayLoop({
       // #109: caller clears it on day-complete).
       void slotStore.clearCheckpoint();
     };
-    const onDealClosed = ({
-      frontGross,
-      backGross,
-    }: {
-      frontGross: number;
-      backGross: number;
-    }) => {
-      grossTodayRef.current += frontGross + backGross;
-      setGrossToday((g) => g + frontGross + backGross);
+    // A close moves the day's gross inside Records; re-render so the HUD picks
+    // the new figure up (the value itself is read at render — see grossToday).
+    const onDealClosed = () => {
+      bumpDealTick();
     };
     // Match-payoff beat (#199): every closed deal carries the want-axis fit of
     // the stocked unit. Tally all closes; a strong match also drops a live
@@ -476,8 +477,6 @@ export function useDayLoop({
 
   return {
     grossToday,
-    setGrossToday,
-    grossTodayRef,
     matchTallyRef,
     cashDelta,
     setCashDelta,

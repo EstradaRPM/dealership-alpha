@@ -6,9 +6,9 @@ comes from that doc and the filed issues.
 
 ## Current phase
 
-**Phase 3 — B1 Reveal ranking + records**
+**Phase 4 — B3 news/adverse-events engine (#176–#179)**
 
-(Phase 2 A4 closed 2026-07-17 — all six items landed: #267, #187, #179, #325, #326, #327.)
+(Phase 3 B1 closed 2026-07-19 — #328, #329, #330 + the #331 trailing hygiene.)
 
 ## Blockers
 
@@ -24,8 +24,8 @@ resolved just-in-time at the phase boundary, never earlier).
 |---|---|---|---|
 | 1 | A1 advisor hiring + promotion wiring (#323, #324), + A3 hygiene (close #269, #266, #297) | — | done |
 | 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | done |
-| 3 | B1 Reveal ranking + records | — | active |
-| 4 | B3 news/adverse-events engine (#176–#179) | — | pending |
+| 3 | B1 Reveal ranking + records | — | done |
+| 4 | B3 news/adverse-events engine (#176–#179) | — | active |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | pending |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
@@ -47,6 +47,40 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-19 — BUILT + closed **#331** (day gross/units read from Records, not
+  the unpersisted `useDayLoop` ref) — the #329/#330 trailing hygiene. The app
+  layer now keeps **no day tally of its own**: `grossTodayRef` is deleted and
+  `grossToday` is *derived at render* — `worldRef.current?.records.getDayTotals()
+  .gross ?? 0` — with a `useReducer` tick bumped off `deal:closed` as the render
+  trigger (`setGrossToday` dropped from the `DayLoop` interface too). The
+  day-close handler reads the same accessor for the recap's `gross` and the
+  `buildReveal` argument. **Two decisions inside the slice:**
+  (1) **Records now clears its day accumulators on `clock:day_started`, not at
+  `floor:day_complete`.** The accumulator belongs to the day the clock sits on,
+  and the clock doesn't move at day-complete — it moves on Next Day. Without
+  this, the day-close consumers would read 0 (Records subscribes first and used
+  to reset immediately). Bonus: a reload in the MANAGERIAL window restores the
+  closed day's figure instead of a zero.
+  (2) **The HUD value is read at render, not inside the `deal:closed` handler.**
+  `useDayLoop` subscribes at mount, *before* a World (and therefore Records)
+  exists, and the bus dispatches in subscription order — an in-handler read
+  would miss the very deal that triggered it. Reading at render is order-proof,
+  and it makes the mid-day-reload criterion free (no re-seeding on the load
+  path). **Ordering hazard noted for later:** the same mount-before-world order
+  means `useDayLoop`'s `floor:day_complete` handler can run *ahead* of Records'
+  in a session where the world is created after mount, which would empty
+  `recordsRef` for #330's crowns; the gross read is immune (deals are all in by
+  then) but the crown ordering guarantee is currently only proven at the bus
+  level, not through the mounted app — worth a guard when B4 touches the day
+  loop. Tests: new `tests/dayGross.reachability.test.ts` (live-world day totals
+  across close → day-complete → next-day-open + composition guards that no
+  `grossTodayRef`/`setGrossToday` survives), a mid-day save/reload world-seam
+  test in `worldSnapshot.test.ts`, a Records reset-timing test, and the updated
+  `buildReveal` composition regex. typecheck + full suite (2188, +4) green.
+  **PHASE 3 (B1) CLOSED** — #328/#329/#330/#331 all landed; pointer advanced to
+  phase 4 (B3 news/adverse-events engine, #176–#179). Next /next: phase 4's
+  issues are already filed (#176–#178; #179 closed in A4) → BUILDs the lowest
+  deps-met open.
 - 2026-07-19 — BUILT + closed **#330** (B1 S3 — crowned record reactions on the
   Reveal feed). The B1 loop is closed: a broken high-water mark surfaces as a
   **crowned reaction on the SAME feed** as the day's wins and walk-offs (records
