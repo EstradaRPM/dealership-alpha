@@ -275,6 +275,11 @@ export const TunablesSchema = z.object({
       // `lossStarBudget`): the total individual reactions the feed surfaces per
       // day, wins and losses pooled. Kept small — standout beats, not a ticker.
       starBudget: z.number().int().positive(),
+      // #330: how many crowned records (broken high-water marks) may take star
+      // slots in one bite. A great day can beat four marks at once; without a
+      // cap the feed becomes all-crown and the day's actual drama gets pushed
+      // off. The highest-margin crowns win the slots.
+      crownBudget: z.number().int().positive(),
       // Dollar scale a win's gross is measured against the day's running-norm
       // gross by. A front this far above the day's mean scores a full gross-
       // surprise term; a thin front scores ~0 (only the upside is dramatic).
@@ -288,6 +293,13 @@ export const TunablesSchema = z.object({
         matchStrength: z.number().nonnegative(),
         grossSurprise: z.number().nonnegative(),
         walkOffPain: z.number().nonnegative(),
+        // #330: flat term any crowned record scores — set above the ordinary
+        // win/loss axes so breaking a personal best reliably takes a star slot.
+        recordBroken: z.number().nonnegative(),
+        // #330: how much *smashing* a mark outranks squeaking past it, on the
+        // relative improvement over the old mark. Separates crowns from each
+        // other when several break on one day.
+        recordMargin: z.number().nonnegative(),
       }),
       // Relative pain among starworthy walk-off reasons (a wanted-category-in-
       // stock walk hurts more than a rich-trade decline). Non-starworthy reasons

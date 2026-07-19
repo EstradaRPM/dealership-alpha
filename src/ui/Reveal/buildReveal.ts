@@ -1,6 +1,7 @@
 import { loadTunables } from '../../game/data';
 import type { DayFunnel } from '../../game/CapacityManager';
 import type { PrepBet, PrepCategory } from '../../game/PrepBet';
+import type { RecordKind } from '../../game/Records';
 
 /**
  * Pure read-model builder for **The Reveal** (#319, design record
@@ -19,9 +20,12 @@ import type { PrepBet, PrepCategory } from '../../game/PrepBet';
  * (`scoreDrama`) and ranked in a single pool (`rankDrama`), so the top few
  * reactions are the day's most dramatic beats whatever their tone — a wanted-
  * in-stock walk can outrank a mild win and vice-versa. The scorer is a weighted
- * sum of per-axis terms so a new axis (`recordBroken`, #330; coupling-fired
- * later) drops in as one more weight + one term. F&I (plug-in #2) is a later
- * plug-in onto the same `reactions[]` shape.
+ * sum of per-axis terms so a new axis drops in as one more weight + one term.
+ * B1 S3 (#330) takes that slot: a broken high-water mark (`records:broken`, off
+ * the Records module) joins the same pool as a **crowned** reaction, weighted
+ * above the ordinary win/loss axes so beating a personal best reliably takes a
+ * star slot. Records are crowned reactions on this one feed — never a separate
+ * screen. F&I (plug-in #2) is a later plug-in onto the same `reactions[]` shape.
  *
  * S4 (#322) closes the loop: the morning prep is captured as a bet (`PrepBet` —
  * the lot's stocking lean vs. the demand-heat read) and the scoreline resolves
@@ -78,6 +82,24 @@ export interface WalkOff {
   wantedCategory?: ClosedSale['vehicleCategory'];
   reason: string;
 }
+
+/**
+ * One high-water mark the day just beat (#330) — the UI-side shape of the
+ * `records:broken` payload the Records module emits (#329). An entity with a
+ * fate, same as a win or a walk-off: the mark, what it now stands at, and what
+ * it displaced.
+ */
+export interface BrokenRecord {
+  kind: RecordKind;
+  value: number;
+  /** The mark this beat, or null when it's the first mark of its kind. */
+  previousValue: number | null;
+  /** Running 1-based month index — `bestMonthGross` only. */
+  month?: number;
+}
+
+/** A record that beat a standing mark — the only kind that earns a crown. */
+export type CrownedRecord = BrokenRecord & { previousValue: number };
 
 function money(n: number): string {
   const sign = n < 0 ? '-' : '';
@@ -189,13 +211,59 @@ export function isStarworthyWalkOff(reason: string): boolean {
 }
 
 /**
- * One candidate on the unified drama feed (#328) — a win or a starworthy loss.
- * Both are scored on ONE drama axis and ranked in a single pool, so a dramatic
- * loss can outrank a mild win and vice-versa.
+ * Whether a broken mark earns a crown on the feed (#330). **A crown means you
+ * beat yourself** — so a first-ever mark (`previousValue === null`) does not
+ * crown. Records deliberately left this call to the presentation (#329): the
+ * engine reports the truth that this IS your best day, but the first day of a
+ * career sets four or five marks at once and crowning all of them would make
+ * the crown mean "you played", not "you improved". It also spares the feed the
+ * "longest selling streak: 1 day" crown. The mark still stands in the Records
+ * scoreboard from the moment it's set — only the celebration waits for a beat.
+ */
+export function isCrownworthyRecord(record: BrokenRecord): record is CrownedRecord {
+  return record.previousValue !== null;
+}
+
+/** Count phrasing for the two marks that aren't measured in dollars. */
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/**
+ * Per-mark crown copy (#330) — names the mark, its new value, and the number it
+ * displaced, in plain language a layperson reads right (no jargon: "per-car
+ * average", not "PVR"). Hermes-safe `$` grouping via `money`.
+ */
+const RECORD_COPY: Record<RecordKind, (record: CrownedRecord) => string> = {
+  bestDayGross: (r) =>
+    `Best day yet — ${money(r.value)} gross, beating ${money(r.previousValue)}.`,
+  bestMonthGross: (r) =>
+    `Best month yet — ${money(r.value)} gross, beating ${money(r.previousValue)}.`,
+  bestPvr: (r) =>
+    `Best per-car average yet — ${money(r.value)} a car, beating ${money(r.previousValue)}.`,
+  bestStreak: (r) =>
+    `Longest selling streak — ${plural(r.value, 'day', 'days')} running, beating ${r.previousValue}.`,
+  bestSingleDeal: (r) =>
+    `Fattest deal ever — ${money(r.value)} front, beating ${money(r.previousValue)}.`,
+  mostUnitsInDay: (r) =>
+    `${plural(r.value, 'car', 'cars')} out the door — most in a day, beating ${r.previousValue}.`,
+};
+
+/** The plain-language crown narrative for one broken mark (#330). */
+export function crownReactionText(record: CrownedRecord): string {
+  return `👑 ${RECORD_COPY[record.kind](record)}`;
+}
+
+/**
+ * One candidate on the unified drama feed — a win, a starworthy loss (#328), or
+ * a crowned record (#330). All three are scored on ONE drama axis and ranked in
+ * a single pool, so a dramatic loss can outrank a mild win and a crown outranks
+ * both.
  */
 export type DramaCandidate =
   | { kind: 'win'; sale: ClosedSale }
-  | { kind: 'loss'; walkOff: WalkOff };
+  | { kind: 'loss'; walkOff: WalkOff }
+  | { kind: 'record'; record: CrownedRecord };
 
 /** Per-day context the drama scorer measures a candidate against. */
 interface DramaContext {
@@ -214,10 +282,14 @@ function clamp01(n: number): number {
  *   - **gross surprise** (wins): a fat front well above the day's norm is dramatic,
  *     a thin one isn't (only the upside registers);
  *   - **walk-off pain** (losses): the per-reason pain weight (a wanted-in-stock
- *     walk hurts more than a rich-trade decline).
- * All weights + scales come from `tunables.reveal.drama`. A new axis (e.g.
- * `recordBroken`, #330; coupling-fired later) drops in as one more `weights`
- * entry + one term here — no restructuring of the ranker.
+ *     walk hurts more than a rich-trade decline);
+ *   - **record broken** (crowns, #330): a flat term every crown scores, plus a
+ *     margin term for how far past the old mark it went — so smashing a record
+ *     outranks squeaking past one. Weighted above the win/loss axes: beating a
+ *     personal best is the day's headline.
+ * All weights + scales come from `tunables.reveal.drama`. A new axis (e.g. the
+ * coupling-fired beats) drops in as one more `weights` entry + one term here —
+ * no restructuring of the ranker.
  */
 export function scoreDrama(candidate: DramaCandidate, ctx: DramaContext): number {
   const drama = loadTunables().reveal.drama;
@@ -229,36 +301,70 @@ export function scoreDrama(candidate: DramaCandidate, ctx: DramaContext): number
       drama.weights.grossSurprise * grossSurprise
     );
   }
+  if (candidate.kind === 'record') {
+    const { value, previousValue } = candidate.record;
+    // Relative improvement over the displaced mark. A non-positive old mark
+    // can't be improved *on* proportionally, so it reads as a full-margin beat.
+    const margin =
+      previousValue > 0 ? clamp01((value - previousValue) / previousValue) : 1;
+    return drama.weights.recordBroken + drama.weights.recordMargin * margin;
+  }
   const pain = drama.painByReason[candidate.walkOff.reason] ?? drama.basePain;
   return drama.weights.walkOffPain * pain;
 }
 
+/** Score, sort drama-desc with a stable arrival-order tiebreak, take the top N. */
+function topByDrama(
+  candidates: readonly DramaCandidate[],
+  ctx: DramaContext,
+  limit: number,
+): readonly DramaCandidate[] {
+  return candidates
+    .map((candidate, index) => ({ candidate, index, drama: scoreDrama(candidate, ctx) }))
+    .sort((a, b) => b.drama - a.drama || a.index - b.index)
+    .slice(0, limit)
+    .map((entry) => entry.candidate);
+}
+
 /**
- * Ranks the day's wins and starworthy losses in ONE pool by drama score and
- * takes the top `limit`. Non-starworthy walk-offs are filtered out before
- * scoring so they never crowd out real drama. Pure + deterministic: ties break
- * by arrival order (index), and the input arrays are never mutated.
+ * Ranks the day's wins, starworthy losses and crowned records in ONE pool by
+ * drama score and takes the top `limit`. Two eligibility gates run before
+ * scoring, so ineligible entries never crowd out real drama: non-starworthy
+ * walk-offs are dropped entirely, and records are filtered to the crownworthy
+ * ones then capped at `drama.crownBudget` (a great day can beat four marks at
+ * once; without the cap the feed goes all-crown and the day's actual drama gets
+ * pushed off). Pure + deterministic: ties break by arrival order, and the input
+ * arrays are never mutated.
  */
 export function rankDrama(
   closes: readonly ClosedSale[],
   walkOffs: readonly WalkOff[],
+  records: readonly BrokenRecord[],
   limit: number,
 ): readonly DramaCandidate[] {
   const meanGross = closes.length
     ? closes.reduce((sum, c) => sum + c.gross, 0) / closes.length
     : 0;
   const ctx: DramaContext = { meanGross };
-  const candidates: DramaCandidate[] = [
-    ...closes.map((sale): DramaCandidate => ({ kind: 'win', sale })),
-    ...walkOffs
-      .filter((w) => isStarworthyWalkOff(w.reason))
-      .map((walkOff): DramaCandidate => ({ kind: 'loss', walkOff })),
-  ];
-  return candidates
-    .map((candidate, index) => ({ candidate, index, drama: scoreDrama(candidate, ctx) }))
-    .sort((a, b) => b.drama - a.drama || a.index - b.index)
-    .slice(0, limit)
-    .map((entry) => entry.candidate);
+  const crowns = topByDrama(
+    records
+      .filter(isCrownworthyRecord)
+      .map((record): DramaCandidate => ({ kind: 'record', record })),
+    ctx,
+    loadTunables().reveal.drama.crownBudget,
+  );
+  return topByDrama(
+    [
+      // Crowns lead the arrival order: the day's headline wins an exact tie.
+      ...crowns,
+      ...closes.map((sale): DramaCandidate => ({ kind: 'win', sale })),
+      ...walkOffs
+        .filter((w) => isStarworthyWalkOff(w.reason))
+        .map((walkOff): DramaCandidate => ({ kind: 'loss', walkOff })),
+    ],
+    ctx,
+    limit,
+  );
 }
 
 function winReaction(sale: ClosedSale): RevealReaction {
@@ -277,11 +383,24 @@ function walkOffReaction(walkOff: WalkOff): RevealReaction {
   };
 }
 
-/** The reaction for one drama candidate — win or loss, dispatched by kind. */
+function crownReaction(record: CrownedRecord): RevealReaction {
+  return {
+    id: `crown-${record.kind}`,
+    tone: 'positive',
+    text: crownReactionText(record),
+  };
+}
+
+/** The reaction for one drama candidate — win, loss or crown, by kind. */
 function dramaReaction(candidate: DramaCandidate): RevealReaction {
-  return candidate.kind === 'win'
-    ? winReaction(candidate.sale)
-    : walkOffReaction(candidate.walkOff);
+  switch (candidate.kind) {
+    case 'win':
+      return winReaction(candidate.sale);
+    case 'loss':
+      return walkOffReaction(candidate.walkOff);
+    case 'record':
+      return crownReaction(candidate.record);
+  }
 }
 
 /** Busy/slow framing off the funnel — no temperature words. */
@@ -401,6 +520,7 @@ export function buildReveal(
   closes: readonly ClosedSale[] = [],
   walkOffs: readonly WalkOff[] = [],
   prepBet: PrepBet | null = null,
+  records: readonly BrokenRecord[] = [],
 ): RevealModel {
   const tunables = loadTunables().reveal;
   // S4 (#322): lead with the resolved morning bet when one was captured; else
@@ -409,9 +529,9 @@ export function buildReveal(
     ? betVerdictScoreline(prepBet, matchTally, dominantCrowdWant(closes, walkOffs))
     : null;
   const scoreline = verdict ?? `${activityLabel(funnel)} — ${matchClause(matchTally)}.`;
-  // #328: wins and losses ranked in one drama pool, top N surfaced — no longer
-  // two separate win/loss tracks.
-  const topDrama = rankDrama(closes, walkOffs, tunables.drama.starBudget);
+  // #328/#330: wins, losses and crowned records ranked in one drama pool, top N
+  // surfaced — no separate win/loss tracks and no separate records screen.
+  const topDrama = rankDrama(closes, walkOffs, records, tunables.drama.starBudget);
   return {
     scoreline,
     reactions: [matchReaction(matchTally, gross), ...topDrama.map(dramaReaction)],

@@ -4,10 +4,12 @@ import {
   scoreDrama,
   rankDrama,
   isStarworthyWalkOff,
+  isCrownworthyRecord,
   winReactionText,
   walkOffReactionText,
+  crownReactionText,
 } from '../src/ui/Reveal';
-import type { ClosedSale, WalkOff } from '../src/ui/Reveal';
+import type { ClosedSale, WalkOff, BrokenRecord, CrownedRecord } from '../src/ui/Reveal';
 import type { DayFunnel } from '../src/game/CapacityManager';
 import type { PrepBet } from '../src/game/PrepBet';
 import { loadTunables } from '../src/game/data';
@@ -32,6 +34,15 @@ function walkOff(overrides: Partial<WalkOff> = {}): WalkOff {
     archetypeLabel: 'Commuter',
     wantedCategory: 'sedan',
     reason: 'no_fit',
+    ...overrides,
+  };
+}
+
+function record(overrides: Partial<BrokenRecord> = {}): BrokenRecord {
+  return {
+    kind: 'bestDayGross',
+    value: 4_200,
+    previousValue: 3_800,
     ...overrides,
   };
 }
@@ -164,8 +175,8 @@ describe('#328 rankDrama — wins and losses ranked in one pool', () => {
   it('a fat-gross win outranks a thin win', () => {
     const fat = sale({ customerId: 'fat', matchQuality: 0.8, gross: 6_000 });
     const thin = sale({ customerId: 'thin', matchQuality: 0.8, gross: 500 });
-    const ranked = rankDrama([thin, fat], [], 5);
-    expect(ranked.map((c) => (c.kind === 'win' ? c.sale.customerId : c.walkOff.customerId))).toEqual([
+    const ranked = rankDrama([thin, fat], [], [], 5);
+    expect(ranked.map((c) => (c.kind === 'win' ? c.sale.customerId : ''))).toEqual([
       'fat',
       'thin',
     ]);
@@ -174,7 +185,7 @@ describe('#328 rankDrama — wins and losses ranked in one pool', () => {
   it('a wanted-in-stock walk-off outranks a mild win', () => {
     const mild = sale({ customerId: 'mild', matchQuality: 0.2, gross: 2_400 });
     const painful = walkOff({ customerId: 'gone', reason: 'no_fit' });
-    const ranked = rankDrama([mild], [painful], 5);
+    const ranked = rankDrama([mild], [painful], [], 5);
     const first = ranked[0];
     expect(first.kind).toBe('loss');
     expect(first.kind === 'loss' && first.walkOff.customerId).toBe('gone');
@@ -183,20 +194,20 @@ describe('#328 rankDrama — wins and losses ranked in one pool', () => {
   it('a strong win outranks a milder loss — drama runs both ways', () => {
     const strong = sale({ customerId: 'strong', matchQuality: 0.98, gross: 8_000 });
     const milder = walkOff({ customerId: 'gone', reason: 'trade_manager_declined' });
-    const ranked = rankDrama([strong], [milder], 5);
+    const ranked = rankDrama([strong], [milder], [], 5);
     expect(ranked[0].kind).toBe('win');
   });
 
   it('drops non-starworthy walk-offs before scoring — they never crowd out drama', () => {
     const routine = walkOff({ customerId: 'meh', reason: 'no_close' });
-    const ranked = rankDrama([], [routine], 5);
+    const ranked = rankDrama([], [routine], [], 5);
     expect(ranked).toHaveLength(0);
   });
 
   it('respects the unified budget cap', () => {
     const closes = Array.from({ length: 8 }, (_, i) => sale({ customerId: `c${i}`, matchQuality: i / 10 }));
     const walkOffs = Array.from({ length: 8 }, (_, i) => walkOff({ customerId: `w${i}`, reason: 'no_fit' }));
-    expect(rankDrama(closes, walkOffs, 3)).toHaveLength(3);
+    expect(rankDrama(closes, walkOffs, [], 3)).toHaveLength(3);
   });
 
   it('breaks drama ties by arrival order (stable)', () => {
@@ -204,7 +215,7 @@ describe('#328 rankDrama — wins and losses ranked in one pool', () => {
     const a = sale({ customerId: 'a', matchQuality: 0.5, gross: 2_000 });
     const b = sale({ customerId: 'b', matchQuality: 0.5, gross: 2_000 });
     const c = sale({ customerId: 'c', matchQuality: 0.5, gross: 2_000 });
-    const ranked = rankDrama([a, b, c], [], 5);
+    const ranked = rankDrama([a, b, c], [], [], 5);
     expect(ranked.map((r) => (r.kind === 'win' ? r.sale.customerId : ''))).toEqual(['a', 'b', 'c']);
   });
 
@@ -213,7 +224,7 @@ describe('#328 rankDrama — wins and losses ranked in one pool', () => {
     const walkOffs = [walkOff({ customerId: 'x', reason: 'no_fit' })];
     const closesCopy = [...closes];
     const walkOffsCopy = [...walkOffs];
-    rankDrama(closes, walkOffs, 5);
+    rankDrama(closes, walkOffs, [], 5);
     expect(closes).toEqual(closesCopy);
     expect(walkOffs).toEqual(walkOffsCopy);
   });
@@ -490,5 +501,199 @@ describe('#322 buildReveal — the scoreline leads with the resolved bet', () =>
     expect(model.scoreline).toBe(
       'Busy day — you had what the crowd wanted: 6 of 8 stuck.',
     );
+  });
+});
+
+describe('#330 isCrownworthyRecord — a crown means you beat yourself', () => {
+  it('crowns a mark that displaced a standing one', () => {
+    expect(isCrownworthyRecord(record({ previousValue: 3_800 }))).toBe(true);
+  });
+
+  it('does not crown a first-ever mark — the career start would crown everything at once', () => {
+    expect(isCrownworthyRecord(record({ previousValue: null }))).toBe(false);
+  });
+});
+
+describe('#330 crownReactionText — per-mark plain-language crown copy', () => {
+  const kinds: CrownedRecord[] = [
+    { kind: 'bestDayGross', value: 4_200, previousValue: 3_800 },
+    { kind: 'bestMonthGross', value: 52_000, previousValue: 47_500, month: 3 },
+    { kind: 'bestPvr', value: 2_100, previousValue: 1_850 },
+    { kind: 'bestStreak', value: 6, previousValue: 5 },
+    { kind: 'bestSingleDeal', value: 3_100, previousValue: 2_700 },
+    { kind: 'mostUnitsInDay', value: 9, previousValue: 8 },
+  ];
+
+  it('names the mark, its new value and the number it displaced, with a crown', () => {
+    expect(crownReactionText(kinds[0])).toBe('👑 Best day yet — $4,200 gross, beating $3,800.');
+    expect(crownReactionText(kinds[4])).toBe('👑 Fattest deal ever — $3,100 front, beating $2,700.');
+    expect(crownReactionText(kinds[5])).toBe('👑 9 cars out the door — most in a day, beating 8.');
+  });
+
+  it('has copy for every mark kind — crowned, and always speaking the new value', () => {
+    for (const r of kinds) {
+      const text = crownReactionText(r);
+      expect(text.startsWith('👑 ')).toBe(true);
+      expect(text).toContain(r.value.toLocaleString('en-US'));
+    }
+  });
+
+  it('phrases the two count marks in plain units, not dollars', () => {
+    expect(crownReactionText(kinds[3])).toBe('👑 Longest selling streak — 6 days running, beating 5.');
+    expect(crownReactionText({ kind: 'bestStreak', value: 1, previousValue: 0 })).toContain('1 day running');
+    expect(crownReactionText({ kind: 'mostUnitsInDay', value: 1, previousValue: 0 })).toContain('1 car out the door');
+  });
+
+  it('speaks the per-car average in plain language, never the trade term', () => {
+    expect(crownReactionText(kinds[2])).toBe(
+      '👑 Best per-car average yet — $2,100 a car, beating $1,850.',
+    );
+  });
+});
+
+describe('#330 scoreDrama — the record-broken axis', () => {
+  const ctx = { meanGross: 2_000 };
+  const drama = loadTunables().reveal.drama;
+
+  it('scores a crown above the best ordinary win or loss', () => {
+    const crown = scoreDrama({ kind: 'record', record: { kind: 'bestDayGross', value: 4_200, previousValue: 3_800 } }, ctx);
+    const bestWin = scoreDrama({ kind: 'win', sale: sale({ matchQuality: 1, gross: 99_000 }) }, ctx);
+    const worstLoss = scoreDrama({ kind: 'loss', walkOff: walkOff({ reason: 'no_fit' }) }, ctx);
+    expect(crown).toBeGreaterThan(bestWin);
+    expect(crown).toBeGreaterThan(worstLoss);
+  });
+
+  it('scores a smashed mark above a squeaked-past one', () => {
+    const smashed = scoreDrama(
+      { kind: 'record', record: { kind: 'bestDayGross', value: 8_000, previousValue: 4_000 } },
+      ctx,
+    );
+    const squeaker = scoreDrama(
+      { kind: 'record', record: { kind: 'bestDayGross', value: 4_100, previousValue: 4_000 } },
+      ctx,
+    );
+    expect(smashed).toBeGreaterThan(squeaker);
+  });
+
+  it('reads both record weights from tunables — a flat term plus a margin term', () => {
+    expect(drama.weights.recordBroken).toBeGreaterThan(0);
+    expect(drama.weights.recordMargin).toBeGreaterThan(0);
+    // Doubling the mark is a full-margin (clamped) beat.
+    const doubled = scoreDrama(
+      { kind: 'record', record: { kind: 'bestDayGross', value: 8_000, previousValue: 4_000 } },
+      ctx,
+    );
+    expect(doubled).toBeCloseTo(drama.weights.recordBroken + drama.weights.recordMargin);
+  });
+});
+
+describe('#330 rankDrama — crowns take star slots in the unified pool', () => {
+  const CROWN_BUDGET = loadTunables().reveal.drama.crownBudget;
+
+  it('ranks a crown above the day wins and losses', () => {
+    const closes = [sale({ customerId: 'strong', matchQuality: 1, gross: 9_000 })];
+    const walkOffs = [walkOff({ customerId: 'gone', reason: 'no_fit' })];
+    const ranked = rankDrama(closes, walkOffs, [record()], STAR_BUDGET);
+    expect(ranked[0].kind).toBe('record');
+  });
+
+  it('drops first-ever marks before scoring — they never take a star slot', () => {
+    const ranked = rankDrama([], [], [record({ previousValue: null })], STAR_BUDGET);
+    expect(ranked).toHaveLength(0);
+  });
+
+  it('caps crowns at the crown budget so a record day is not all crown', () => {
+    const records = [
+      record({ kind: 'bestDayGross', value: 9_000, previousValue: 3_000 }),
+      record({ kind: 'mostUnitsInDay', value: 9, previousValue: 3 }),
+      record({ kind: 'bestSingleDeal', value: 6_000, previousValue: 2_000 }),
+      record({ kind: 'bestPvr', value: 3_000, previousValue: 1_000 }),
+    ];
+    const ranked = rankDrama([], [], records, STAR_BUDGET);
+    expect(ranked).toHaveLength(CROWN_BUDGET);
+    expect(ranked.every((c) => c.kind === 'record')).toBe(true);
+  });
+
+  it('leaves the remaining star slots to the day drama', () => {
+    const records = [
+      record({ kind: 'bestDayGross', value: 9_000, previousValue: 3_000 }),
+      record({ kind: 'mostUnitsInDay', value: 9, previousValue: 3 }),
+      record({ kind: 'bestSingleDeal', value: 6_000, previousValue: 2_000 }),
+    ];
+    const closes = Array.from({ length: 6 }, (_, i) =>
+      sale({ customerId: `c${i}`, matchQuality: 0.9, gross: 3_000 }),
+    );
+    const ranked = rankDrama(closes, [], records, STAR_BUDGET);
+    expect(ranked.filter((c) => c.kind === 'record')).toHaveLength(CROWN_BUDGET);
+    expect(ranked.filter((c) => c.kind === 'win')).toHaveLength(STAR_BUDGET - CROWN_BUDGET);
+  });
+
+  it('gives the budgeted slots to the biggest beats', () => {
+    const records = [
+      record({ kind: 'bestDayGross', value: 3_100, previousValue: 3_000 }),
+      record({ kind: 'mostUnitsInDay', value: 9, previousValue: 3 }),
+      record({ kind: 'bestSingleDeal', value: 6_000, previousValue: 2_000 }),
+    ];
+    const kinds = rankDrama([], [], records, STAR_BUDGET).map((c) =>
+      c.kind === 'record' ? c.record.kind : '',
+    );
+    expect(kinds).not.toContain('bestDayGross');
+  });
+
+  it('does not mutate the records array', () => {
+    const records = [record()];
+    const copy = [...records];
+    rankDrama([], [], records, STAR_BUDGET);
+    expect(records).toEqual(copy);
+  });
+});
+
+describe('#330 buildReveal — crowned reactions on the same feed', () => {
+  it('a day that breaks a record shows the crown alongside the day drama', () => {
+    const closes = [sale({ customerId: 'won', gross: 4_200 })];
+    const model = buildReveal(
+      funnel(),
+      4_200,
+      { strong: 1, matched: 1 },
+      closes,
+      [],
+      null,
+      [record()],
+    );
+    const crown = model.reactions.find((r) => r.id === 'crown-bestDayGross');
+    expect(crown).toBeTruthy();
+    expect(crown?.tone).toBe('positive');
+    expect(crown?.text).toBe('👑 Best day yet — $4,200 gross, beating $3,800.');
+    // Still the same one feed — the match summary leads, the win still shows.
+    expect(model.reactions[0].id).toBe('match-summary');
+    expect(model.reactions.some((r) => r.id === 'win-won')).toBe(true);
+  });
+
+  it('the crown outranks the day drama for its star slot', () => {
+    const closes = Array.from({ length: 8 }, (_, i) =>
+      sale({ customerId: `c${i}`, matchQuality: 1, gross: 9_000 }),
+    );
+    const model = buildReveal(funnel(), 72_000, { strong: 8, matched: 8 }, closes, [], null, [
+      record(),
+    ]);
+    // reactions[0] is the match summary; the crown leads the ranked feed.
+    expect(model.reactions[1].id).toBe('crown-bestDayGross');
+    expect(model.reactions).toHaveLength(1 + STAR_BUDGET);
+  });
+
+  it('a day that breaks none shows the normal feed unchanged', () => {
+    const closes = [sale({ customerId: 'won' })];
+    const walkOffs = [walkOff({ customerId: 'gone', reason: 'no_fit' })];
+    const withNone = buildReveal(funnel(), 2_400, { strong: 1, matched: 1 }, closes, walkOffs, null, []);
+    const withoutArg = buildReveal(funnel(), 2_400, { strong: 1, matched: 1 }, closes, walkOffs);
+    expect(withNone).toEqual(withoutArg);
+    expect(withNone.reactions.some((r) => r.id.startsWith('crown-'))).toBe(false);
+  });
+
+  it('a first-ever mark does not crown the feed', () => {
+    const model = buildReveal(funnel(), 4_200, { strong: 0, matched: 0 }, [], [], null, [
+      record({ previousValue: null }),
+    ]);
+    expect(model.reactions.some((r) => r.id.startsWith('crown-'))).toBe(false);
   });
 });

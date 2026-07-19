@@ -5,8 +5,10 @@ export {
   scoreDrama,
   rankDrama,
   isStarworthyWalkOff,
+  isCrownworthyRecord,
   winReactionText,
   walkOffReactionText,
+  crownReactionText,
 } from './buildReveal';
 export type {
   RevealModel,
@@ -15,5 +17,7 @@ export type {
   MatchTally,
   ClosedSale,
   WalkOff,
+  BrokenRecord,
+  CrownedRecord,
   DramaCandidate,
 } from './buildReveal';

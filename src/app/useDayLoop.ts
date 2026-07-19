@@ -12,6 +12,7 @@ import {
   isStarworthyWalkOff,
   type ClosedSale,
   type WalkOff,
+  type BrokenRecord,
 } from '../ui/Reveal';
 import type { CashDeltaSplit } from '../ui/HomeTab';
 import { buildRecoveryBeat, type RecoveryBeat } from '../ui/NarrativeBeat';
@@ -112,6 +113,17 @@ export function useDayLoop({
   // session, the Reveal's negative-half counterpart to closesRef. Reset each
   // day the same way.
   const walkOffsRef = useRef<WalkOff[]>([]);
+  // High-water marks broken during this bite (#330): the crowned third track of
+  // the Reveal's drama pool. Records settles the day's marks inside
+  // `floor:day_complete` and is wired in `createWorld`, so it subscribes ahead
+  // of this hook's day-close handler — every crown for the just-closed day is
+  // already in this ref when the Reveal is assembled (guarded in
+  // `tests/Records.test.ts` at the bus level). The one mark that settles later,
+  // `bestMonthGross` (on `clock:month_ended`, during the Next Day transition),
+  // lands in the *following* day's ref and crowns on that day's Reveal — the
+  // month's result is news you get the morning after it closes. Reset each day
+  // the same way closesRef/walkOffsRef are.
+  const recordsRef = useRef<BrokenRecord[]>([]);
   // Cash "vs yesterday" delta for the Home dashboard (#230, split #255). The
   // refs hold the prior day's closing cash and the lifetime stock-acquisition
   // spend at that close; the day-complete handler diffs both against the live
@@ -160,6 +172,7 @@ export function useDayLoop({
     matchTallyRef.current = { strong: 0, matched: 0 };
     closesRef.current = [];
     walkOffsRef.current = [];
+    recordsRef.current = [];
     // Leaving MANAGERIAL → the day-close recap modal is done; the chip keeps
     // the prior recap reachable until the next day closes over it (#253).
     setRecapModalOpen(false);
@@ -180,6 +193,7 @@ export function useDayLoop({
     matchTallyRef.current = { strong: 0, matched: 0 };
     closesRef.current = [];
     walkOffsRef.current = [];
+    recordsRef.current = [];
     setLastRecap(null);
     setRecapModalOpen(false);
     setMonthClose(null);
@@ -237,6 +251,7 @@ export function useDayLoop({
             closesRef.current,
             walkOffsRef.current,
             w.getPrepBet(),
+            recordsRef.current,
           ),
         };
         setLastRecap(recapModel);
@@ -354,6 +369,13 @@ export function useDayLoop({
         }
       }
     };
+    // Crowned-record accumulation (#330): every mark Records breaks during this
+    // bite is held for the day-close Reveal, which ranks the crownworthy ones
+    // into the same drama pool as the day's wins and walk-offs. No filtering
+    // here — the feed owns which breaks earn a crown.
+    const onRecordBroken = (record: BrokenRecord) => {
+      recordsRef.current = [...recordsRef.current, record];
+    };
     // Month-close hook (#123): clock:month_ended fans out during the Next Day
     // transition (advanceDay) when the ending day completes a month. Latching
     // the interstitial here interrupts at MANAGERIAL — the render loop holds
@@ -436,6 +458,7 @@ export function useDayLoop({
     bus.subscribe('regulatory:ag_complaint_consent_decree', onConsentDecree);
     bus.subscribe('deal:closed', onDealClosed);
     bus.subscribe('staff:auto_resolved', onAutoResolved);
+    bus.subscribe('records:broken', onRecordBroken);
     return () => {
       bus.unsubscribe('floor:day_complete', onDayComplete);
       bus.unsubscribe('clock:month_ended', onMonthEnded);
@@ -447,6 +470,7 @@ export function useDayLoop({
       bus.unsubscribe('regulatory:ag_complaint_consent_decree', onConsentDecree);
       bus.unsubscribe('deal:closed', onDealClosed);
       bus.unsubscribe('staff:auto_resolved', onAutoResolved);
+      bus.unsubscribe('records:broken', onRecordBroken);
     };
   }, []);
 

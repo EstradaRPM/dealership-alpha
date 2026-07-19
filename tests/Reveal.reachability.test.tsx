@@ -4,8 +4,8 @@ import { render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { DayRecap, type DayRecapModel } from '../src/ui/DayRecap';
-import { buildReveal } from '../src/ui/Reveal';
-import type { ClosedSale, WalkOff } from '../src/ui/Reveal';
+import { buildReveal, isCrownworthyRecord } from '../src/ui/Reveal';
+import type { ClosedSale, WalkOff, BrokenRecord } from '../src/ui/Reveal';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // Anti-orphan (#319): the Reveal renderer must be reachable through the real
@@ -95,7 +95,7 @@ describe('#319 The Reveal — reachable through the live day-close pipeline', ()
   it('App composition wires the funnel/gross/match tally/closes/walk-offs into buildReveal at day close', () => {
     const src = readAppCompositionSource();
     expect(src).toMatch(
-      /buildReveal\(\s*funnel,\s*grossTodayRef\.current,\s*matchTallyRef\.current,\s*closesRef\.current,\s*walkOffsRef\.current,\s*w\.getPrepBet\(\),?\s*\)/,
+      /buildReveal\(\s*funnel,\s*grossTodayRef\.current,\s*matchTallyRef\.current,\s*closesRef\.current,\s*walkOffsRef\.current,\s*w\.getPrepBet\(\),\s*recordsRef\.current,?\s*\)/,
     );
     expect(src).toMatch(/reveal: buildReveal\(/);
   });
@@ -300,5 +300,72 @@ describe('#322 morning prep bet → verdict scoreline — reachable through the 
     const src = readAppCompositionSource();
     expect(src).toMatch(/w\.dayLoop\.nextDay\(\);[\s\S]*?w\.captureDayStartPrepBet\(\);/);
     expect(src).toMatch(/walkOffsRef\.current,\s*w\.getPrepBet\(\),/);
+  });
+});
+
+// Anti-orphan (#330): a broken high-water mark must reach the Reveal as a
+// crowned reaction through the real Records → event → recap pipeline, not just
+// via buildReveal called with hand-built fixtures.
+describe('#330 crowned record reactions — reachable through the live records flow', () => {
+  const RECORD_DAYS = 12;
+
+  it('a real broken mark produces a crown-* reaction on the day-close Reveal', () => {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed: 7, characterProfile: PROFILE });
+    if (!world.staffOrg.currentRoster.some((s) => s.role_id === 'salesperson')) {
+      const candidate = world.staffOrg.getCandidates('salesperson')[0];
+      if (candidate) world.staffOrg.hire(candidate.candidateId);
+    }
+    const listings = [...world.inventory.getAuctionListings()].sort(
+      (a, b) => a.askingPrice - b.askingPrice,
+    );
+    for (const listing of listings) {
+      if (world.economy.cash - listing.askingPrice < CASH_BUFFER) break;
+      world.inventory.buyFromAuction(listing.id);
+    }
+    let gross = 0;
+    let matched = 0;
+    let records: BrokenRecord[] = [];
+    bus.subscribe('deal:closed', ({ frontGross, backGross }) => {
+      gross += frontGross + backGross;
+    });
+    bus.subscribe('staff:auto_resolved', ({ outcome }) => {
+      if (outcome === 'closed') matched += 1;
+    });
+    // Exactly the useDayLoop accumulation: every break of the bite, unfiltered.
+    bus.subscribe('records:broken', (r) => {
+      records.push(r);
+    });
+
+    let sawCrown = false;
+    let sawFirstEverMark = false;
+    for (let i = 0; i < RECORD_DAYS; i++) {
+      world.dayLoop.nextDay().runDay();
+      const funnel = world.capacityManager.getDayFunnel();
+      // Records settles the day inside floor:day_complete and is wired ahead of
+      // the app's day-close handler, so every mark is already accumulated here.
+      const reveal = buildReveal(funnel, gross, { strong: 0, matched }, [], [], null, records);
+      if (records.some((r) => r.previousValue === null)) sawFirstEverMark = true;
+      if (records.some(isCrownworthyRecord)) {
+        expect(reveal.reactions.some((x) => x.id.startsWith('crown-'))).toBe(true);
+        sawCrown = true;
+      } else {
+        expect(reveal.reactions.some((x) => x.id.startsWith('crown-'))).toBe(false);
+      }
+      gross = 0;
+      matched = 0;
+      records = [];
+    }
+    // The live career both sets first-ever marks and later beats them; only the
+    // beats crown.
+    expect(sawFirstEverMark).toBe(true);
+    expect(sawCrown).toBe(true);
+  });
+
+  it('App composition accumulates records:broken per bite and feeds it to the Reveal', () => {
+    const src = readAppCompositionSource();
+    expect(src).toMatch(/bus\.subscribe\('records:broken', onRecordBroken\)/);
+    expect(src).toMatch(/recordsRef\.current = \[\]/);
+    expect(src).toMatch(/w\.getPrepBet\(\),\s*recordsRef\.current,/);
   });
 });

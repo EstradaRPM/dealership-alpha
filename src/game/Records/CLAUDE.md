@@ -3,7 +3,8 @@
 The game's durable **high-water marks** (#329, B1 slice 2 of the Reveal spine).
 Six personal bests that survive the whole career, plus a `records:broken`
 announcement the moment one is beaten. Slice 3 (#330) crowns those on the
-Reveal feed and folds `recordBroken` into the drama ranking.
+Reveal feed and folds `recordBroken` into the drama ranking — see
+`src/ui/Reveal/buildReveal.ts` (`isCrownworthyRecord` / `crownReactionText`).
 
 Records is a **scoreboard, not a rule** — nothing in the sim branches on a mark.
 
@@ -48,7 +49,10 @@ Definitions held deliberately:
   value never crowns — an empty day is not an achievement.
 - **A first-ever mark still fires**, with `previousValue: null`. The engine
   reports the truth (this IS your best day); the *presentation* decides whether
-  a first-ever mark earns a crown on the feed (#330).
+  a first-ever mark earns a crown on the feed. **#330 decided: it does not** —
+  a crown means you beat yourself, and a career's first day sets four or five
+  marks at once. The mark stands in the scoreboard from the moment it's set;
+  only the celebration waits for a beat.
 
 Deliberately not tracked (decided at slice time, #329): best-week (redundant
 between day and month — it earns its crown when B4 lands the week bite),
