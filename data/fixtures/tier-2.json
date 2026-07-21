@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 17,
+    "version": 18,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -446,7 +446,7 @@
         ]
       },
       "marketEconomy": {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "compHistory": {
           "schemaVersion": 1,
           "windows": {
@@ -1395,6 +1395,18 @@
               }
             }
           ]
+        },
+        "heat": {
+          "schemaVersion": 1,
+          "lastReported": {}
+        },
+        "news": {
+          "schemaVersion": 1,
+          "headlines": [],
+          "currentDay": 0,
+          "slotsUsedToday": 0,
+          "pendingComps": {},
+          "startedShocks": {}
         }
       },
       "competitorMarket": {

@@ -23,7 +23,17 @@ import {
  */
 export type SegmentHeatFn = (v: AnchorVehicleInput) => number;
 
-export type ShockModFn = (segment: string, v: AnchorVehicleInput) => number;
+/**
+ * The same composition read by segment alone (slice #176). All three terms are
+ * per-*segment* — no term has ever consulted the vehicle beyond its category —
+ * so surfaces that reason about the market rather than about a specific unit
+ * (the heat monitor, KPI readouts) can ask directly instead of fabricating a
+ * placeholder vehicle.
+ */
+export type SegmentHeatBySegmentFn = (segment: string) => number;
+
+/** `v` is optional: every implementation keys off `segment` alone. */
+export type ShockModFn = (segment: string, v?: AnchorVehicleInput) => number;
 
 export interface SegmentHeatDeps {
   readonly personality: MarketPersonalityVector;
@@ -32,10 +42,17 @@ export interface SegmentHeatDeps {
   readonly activeShockMod?: ShockModFn;
 }
 
-export function createSegmentHeat(deps: SegmentHeatDeps): SegmentHeatFn {
+export function createSegmentHeatBySegment(
+  deps: SegmentHeatDeps,
+): SegmentHeatBySegmentFn {
   const shockMod = deps.activeShockMod ?? (() => 0);
-  return (v) =>
-    personalityBiasFor(deps.personality, v.category) +
-    deps.compHistory.segmentDrift(v.category, deps.getCurrentDay()) +
-    shockMod(v.category, v);
+  return (segment) =>
+    personalityBiasFor(deps.personality, segment) +
+    deps.compHistory.segmentDrift(segment, deps.getCurrentDay()) +
+    shockMod(segment);
+}
+
+export function createSegmentHeat(deps: SegmentHeatDeps): SegmentHeatFn {
+  const bySegment = createSegmentHeatBySegment(deps);
+  return (v) => bySegment(v.category);
 }

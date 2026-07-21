@@ -37,9 +37,31 @@ export interface ShocksSnapshot {
   readonly active: readonly ActiveShockInstance[];
 }
 
+/**
+ * What the dice say about a *future* day (slice #176). The arrival/pick/param
+ * rolls are pure functions of `(masterSeed, day)`, so a leading indicator can
+ * read tomorrow's roll today without touching scheduler state.
+ *
+ * Deliberately NOT gated on live state: `step` also checks `maxConcurrent` and
+ * the duplicate-instance guard, so a previewed shock may never actually land.
+ * That is the honest shape for a rumor — the analyst desk sees the setup, not
+ * the outcome, and #176's leading tier is allowed to be wrong.
+ */
+export interface ShockPreview {
+  readonly shockId: string;
+  readonly label: string;
+  readonly segmentMagnitudes: Readonly<Record<string, number>>;
+}
+
 export interface ShockScheduler {
   /** Run one day of scheduling: resolve expired shocks, then maybe activate one. */
   step(day: number): void;
+  /**
+   * Pure lookahead: the shock whose arrival roll fires on `day`, or null. No
+   * state is read or written — safe to call for any future day, any number of
+   * times. Consumed by the news engine's leading/rumor tier (#176).
+   */
+  previewArrival(day: number): ShockPreview | null;
   activeShockMod: ShockModFn;
   activeInstances(): readonly ActiveShockInstance[];
   snapshot(): ShocksSnapshot;
@@ -108,21 +130,20 @@ export function createShockScheduler(deps: ShockSchedulerDeps): ShockScheduler {
     });
   }
 
-  function step(day: number): void {
-    // Resolve expired first so the day's available slot count is current.
-    for (const inst of [...active.values()]) {
-      if (day > inst.expectedEndDay) {
-        active.delete(inst.instanceId);
-        emitResolved(inst, day);
-      }
-    }
-
-    if (active.size >= maxConcurrent) return;
-
+  /**
+   * The day's dice, with no live-state gating. Shared by `step` (which then
+   * applies the concurrency + duplicate gates) and `previewArrival` (which does
+   * not), so the two can never drift out of sync on the seed stream.
+   */
+  function rollArrival(day: number): {
+    def: ShockDefinition;
+    durationDays: number;
+    segmentMagnitudes: Record<string, number>;
+  } | null {
     const arrivalRoll = rollOnce(
       deriveSeed(deps.masterSeed, 'market_economy.shock.arrival', { day }),
     );
-    if (arrivalRoll >= arrivalProbPerDay) return;
+    if (arrivalRoll >= arrivalProbPerDay) return null;
 
     const pickRng = createRng(
       deriveSeed(deps.masterSeed, 'market_economy.shock.pick', { day }),
@@ -141,6 +162,23 @@ export function createShockScheduler(deps: ShockSchedulerDeps): ShockScheduler {
         paramRng() * (def.durationMaxDays - def.durationMinDays + 1),
       );
     const segmentMagnitudes = rollMagnitudes(def, paramRng);
+    return { def, durationDays, segmentMagnitudes };
+  }
+
+  function step(day: number): void {
+    // Resolve expired first so the day's available slot count is current.
+    for (const inst of [...active.values()]) {
+      if (day > inst.expectedEndDay) {
+        active.delete(inst.instanceId);
+        emitResolved(inst, day);
+      }
+    }
+
+    if (active.size >= maxConcurrent) return;
+
+    const rolled = rollArrival(day);
+    if (!rolled) return;
+    const { def, durationDays, segmentMagnitudes } = rolled;
     const instanceId = `${def.id}@${day}`;
     // Already running? Skip to avoid duplicate-key collisions (same shock id
     // re-rolled before its prior instance expired).
@@ -167,8 +205,19 @@ export function createShockScheduler(deps: ShockSchedulerDeps): ShockScheduler {
     return sum;
   };
 
+  function previewArrival(day: number): ShockPreview | null {
+    const rolled = rollArrival(day);
+    if (!rolled) return null;
+    return {
+      shockId: rolled.def.id,
+      label: rolled.def.label,
+      segmentMagnitudes: { ...rolled.segmentMagnitudes },
+    };
+  }
+
   return {
     step,
+    previewArrival,
     activeShockMod,
     activeInstances: () => [...active.values()],
     snapshot: () => ({

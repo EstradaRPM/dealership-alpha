@@ -8,6 +8,10 @@
  */
 import type { Competitor } from '../CompetitorMarket/Competitor';
 import type { EndCardData } from '../EndCard/types';
+import type {
+  NewsReliability,
+  NewsTrigger,
+} from '../MarketEconomy/schemas';
 
 export interface EventMap {
   'bus:ready': { at: number };
@@ -213,6 +217,43 @@ export interface EventMap {
     day: number;
     shockId: string;
     instanceId: string;
+  };
+
+  // MarketEconomy → world (slice #176). The segment-heat monitor evaluates the
+  // composite (personality + comp drift + active shocks) once per
+  // clock:day_started and publishes ONLY when a segment has moved at least
+  // `marketEconomy.heatMonitor.deltaThreshold` since it was last reported —
+  // deliberately not a daily heartbeat (the #267 lesson: continuous ambient
+  // state belongs on the KPI surface, discrete changes belong on the wire).
+  // `delta` is measured against the last *reported* heat, not yesterday's, so
+  // slow persistent drift eventually reports once rather than never.
+  'market:segment_heat_updated': {
+    day: number;
+    segment: string;
+    heat: number;
+    previousHeat: number;
+    delta: number;
+  };
+
+  // MarketNews → world (slice #176). One published industry-wire headline.
+  // `reliability` is the load-bearing axis the player learns to price in:
+  // `direct` already happened, `leading` is a forward call from the analyst
+  // desk that fires ahead of a shock and is allowed to be wrong, `lagging`
+  // only confirms a trend already visible in the player's own numbers.
+  // `trigger`/`segment`/`direction` are the structural tag — what the headline
+  // is about, for consumers that shouldn't parse prose. Published inside the
+  // MarketEconomy day tick (after shocks + heat) and on the observed events
+  // themselves; capped per day by `marketEconomy.news.maxHeadlinesPerDay`.
+  'news:headline_published': {
+    day: number;
+    headlineId: string;
+    source: string;
+    sourceLabel: string;
+    reliability: NewsReliability;
+    text: string;
+    trigger: NewsTrigger;
+    segment: string | null;
+    direction: 'up' | 'down';
   };
 
   // Inventory — vehicle purchased from auction, moved to lot.

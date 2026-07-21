@@ -11,6 +11,7 @@ import { loadTradePolicyConfig, isTradeApprovalUnlocked } from '../game/DealEngi
 import { loadInventoryConfig } from '../game/Inventory';
 import { loadStaffArchetypes, loadStaffTaxonomy } from '../game/NPC';
 import {
+  loadNewsTemplatesConfig,
   loadPricingStrategiesConfig,
   loadSourcingConfig,
   personalityBiasFor,
@@ -29,7 +30,11 @@ import type { World } from '../createWorld';
 import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
 import type { PersonnelRoleOption } from '../ui/PersonnelScreen';
-import type { CashDeltaSplit } from '../ui/HomeTab';
+import {
+  buildIndustryWire as buildIndustryWireModel,
+  type CashDeltaSplit,
+  type IndustryWireModel,
+} from '../ui/HomeTab';
 import {
   PART_CATEGORIES,
   SUPPLIER_TIERS,
@@ -321,6 +326,31 @@ export function buildMarketState(world: World): MarketStateModel {
     valuation: buildInventoryValuation(vehicles),
     stale: buildStaleInventory(vehicles, AGED_THRESHOLD_DAYS),
   };
+}
+
+// The wire's trust-badge copy (#176) — the labels and their plain-language
+// explanations live in the news catalog next to the headline templates, so all
+// player-facing wording for the wire retunes in one data file.
+const NEWS_COPY = loadNewsTemplatesConfig();
+
+// Industry-wire read-model for the Home screen (#176, parent #150). MarketNews
+// keeps the ring buffer newest-first; the composition root only supplies the
+// current day (for the "Today / Yesterday / Day N" stamp) and the trust-badge
+// copy. Empty until the first headline publishes — the panel says so honestly
+// rather than rendering a placeholder.
+export function buildIndustryWire(world: World): IndustryWireModel {
+  return buildIndustryWireModel({
+    headlines: world.marketEconomy.news.getHeadlines().map((h) => ({
+      id: h.id,
+      day: h.day,
+      text: h.text,
+      sourceLabel: h.sourceLabel,
+      reliability: h.reliability,
+    })),
+    currentDay: world.clock.currentDay,
+    reliabilityLabels: NEWS_COPY.reliabilityLabels,
+    reliabilityNotes: NEWS_COPY.reliabilityNotes,
+  });
 }
 
 // Manager status read-model (#325, workstream A4): the delegated-authority

@@ -31,7 +31,11 @@ import type { InstalledBaseSnapshot } from './game/InstalledBase';
 import type { PartsInventorySnapshot } from './game/PartsInventory';
 import type { StaffOrgSnapshot } from './game/StaffOrg';
 import type { StaffMoraleSnapshot } from './game/StaffMorale';
-import type { MarketEconomySnapshot } from './game/MarketEconomy';
+import {
+  createDefaultHeatMonitorSnapshot,
+  createDefaultNewsSnapshot,
+  type MarketEconomySnapshot,
+} from './game/MarketEconomy';
 import type { CompetitorMarketSnapshot } from './game/CompetitorMarket';
 import type { RegulatoryMeterState, ReputationSnapshot } from './game/Reputation';
 import type {
@@ -71,7 +75,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 17;
+export const WORLD_SNAPSHOT_VERSION = 18;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -339,6 +343,24 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         // simply crowns its first record on the next qualifying day. Nothing
         // in the sim branches on a mark, so no prior behavior changes.
         records: createDefaultRecordsSnapshot(),
+      },
+    }),
+    17: (snap) => ({
+      version: 18,
+      modules: {
+        ...snap.modules,
+        // #176 added the segment-heat monitor + the industry wire inside the
+        // MarketEconomy blob, taking its own schemaVersion 1 → 2. Behavior-
+        // neutral: an empty heat baseline is captured (silently) on the next
+        // day tick, and the wire simply starts empty — a loaded career picks up
+        // headlines from its next day rather than back-filling ones the player
+        // never lived through.
+        marketEconomy: {
+          ...(snap.modules.marketEconomy as Record<string, unknown>),
+          schemaVersion: 2,
+          heat: createDefaultHeatMonitorSnapshot(),
+          news: createDefaultNewsSnapshot(),
+        },
       },
     }),
   };

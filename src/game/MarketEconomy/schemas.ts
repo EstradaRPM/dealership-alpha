@@ -152,6 +152,64 @@ export type MarketShocksConfig = z.infer<typeof MarketShocksConfigSchema>;
 export type ShockDefinition = z.infer<typeof ShockDefinitionSchema>;
 export type ShockSegmentEffect = z.infer<typeof ShockSegmentEffectSchema>;
 
+/**
+ * Industry-wire news catalog (slice #176). `trigger` is the structural tag —
+ * what happened in the engine — and every template for a trigger shares the
+ * trigger's source + reliability tier, so the catalog can grow new voices
+ * (#177) without the engine learning about them.
+ */
+export const NEWS_TRIGGERS = [
+  'auction_up',
+  'auction_down',
+  'shock_started',
+  'shock_resolved',
+  'rival_price_up',
+  'rival_price_down',
+  'heat_up',
+  'heat_down',
+  'rumor_up',
+  'rumor_down',
+] as const;
+
+export const NEWS_RELIABILITIES = ['direct', 'leading', 'lagging'] as const;
+
+const NewsTriggerSchema = z.enum(NEWS_TRIGGERS);
+const NewsReliabilitySchema = z.enum(NEWS_RELIABILITIES);
+
+const NewsTemplateSchema = z
+  .object({
+    id: z.string().min(1),
+    trigger: NewsTriggerSchema,
+    source: z.string().min(1),
+    reliability: NewsReliabilitySchema,
+    text: z.string().min(1),
+  })
+  .strict();
+
+export const NewsTemplatesConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    /** Attributed voice per source id — "who is talking". */
+    sourceLabels: z.record(z.string().min(1), z.string().min(1)),
+    /** Player-facing trust badge per reliability tier. */
+    reliabilityLabels: z.record(NewsReliabilitySchema, z.string().min(1)),
+    /** One-line plain-language explanation of what each tier is worth. */
+    reliabilityNotes: z.record(NewsReliabilitySchema, z.string().min(1)),
+    /** Plural segment wording used to fill the `{segment}` slot. */
+    segmentLabels: z.record(z.string().min(1), z.string().min(1)),
+    templates: z.array(NewsTemplateSchema).nonempty(),
+  })
+  .strict()
+  .refine(
+    (c) => NEWS_TRIGGERS.every((t) => c.templates.some((tpl) => tpl.trigger === t)),
+    { message: 'every news trigger needs at least one template' },
+  );
+export type NewsTemplatesConfig = z.infer<typeof NewsTemplatesConfigSchema>;
+export type NewsTemplate = z.infer<typeof NewsTemplateSchema>;
+export type NewsTrigger = (typeof NEWS_TRIGGERS)[number];
+export type NewsReliability = (typeof NEWS_RELIABILITIES)[number];
+
 const AuctionSourceSchema = z
   .object({
     id: z.string().min(1),
@@ -435,6 +493,12 @@ export function loadMarketShocksConfig(): MarketShocksConfig {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw: unknown = require('../../../data/market-shocks.json');
   return parseData(raw, MarketShocksConfigSchema, 'data/market-shocks.json');
+}
+
+export function loadNewsTemplatesConfig(): NewsTemplatesConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/news-templates.json');
+  return parseData(raw, NewsTemplatesConfigSchema, 'data/news-templates.json');
 }
 
 export function loadAuctionSourcesConfig(): AuctionSourcesConfig {

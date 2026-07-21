@@ -51,6 +51,7 @@ import {
   resolvePricingIntel,
   buildManagerStatus,
   buildRecoveryBanners,
+  buildIndustryWire,
 } from '../config';
 
 export interface GameScreenProps {
@@ -378,6 +379,7 @@ export function GameScreen({
         onOpenOperations={() => setShellTab('operations')}
         recapChip={recapChip}
         demandReadout={demandReadout}
+        industryWire={buildIndustryWire(world)}
       />
     ),
     operations: (

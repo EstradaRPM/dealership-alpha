@@ -85,6 +85,11 @@ export function useWorldState(bus: EventBus): WorldState {
     // already re-render via the recovery-beat queue; the day boundary is covered
     // by clock:day_started above.
     const onRecoveryStateChange = () => setTick((n) => n + 1);
+    // Industry-wire (#176) reactivity: the wire's read model is re-derived from
+    // `world.marketEconomy.news` each render, and headlines publish mid-day too
+    // (a rival repricing, a shock landing), not just on the day tick — so the
+    // panel refreshes on the publish itself rather than waiting for tomorrow.
+    const onHeadlinePublished = () => setTick((n) => n + 1);
     bus.subscribe('inventory:vehicle_purchased', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_acquired_via_trade', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_sold', onVehicleSold);
@@ -95,6 +100,7 @@ export function useWorldState(bus: EventBus): WorldState {
     bus.subscribe('clock:day_started', onManagerStateChange);
     bus.subscribe('regulatory:suspension_lifted', onRecoveryStateChange);
     bus.subscribe('career:debt_payment_made', onRecoveryStateChange);
+    bus.subscribe('news:headline_published', onHeadlinePublished);
     return () => {
       bus.unsubscribe('inventory:vehicle_purchased', onVehiclePurchased);
       bus.unsubscribe('inventory:vehicle_acquired_via_trade', onVehiclePurchased);
@@ -106,6 +112,7 @@ export function useWorldState(bus: EventBus): WorldState {
       bus.unsubscribe('clock:day_started', onManagerStateChange);
       bus.unsubscribe('regulatory:suspension_lifted', onRecoveryStateChange);
       bus.unsubscribe('career:debt_payment_made', onRecoveryStateChange);
+      bus.unsubscribe('news:headline_published', onHeadlinePublished);
     };
   }, []);
 

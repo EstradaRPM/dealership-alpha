@@ -47,6 +47,71 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-21 — BUILT + closed **#176** (B3 S1 — news engine + reliability tiers
+  + the Home-screen Industry Wire). The market engine now *talks*. New
+  `MarketNews` sub-system inside MarketEconomy (`src/game/MarketEconomy/news.ts`)
+  publishing `news:headline_published` across the three reliability tiers that
+  ARE the mechanic: **direct** (block report on the player's own comps, a shock
+  landing/lifting, a rival visibly repricing), **leading** (the analyst desk's
+  forward call — see below), **lagging** (confirming a heat move the player's
+  own numbers already showed). `data/news-templates.json` ships 40 templates
+  across 10 structural triggers + 3 sources (`auction_report` / `analyst_desk` /
+  `lot_talk`), and owns ALL player-facing wire copy including the trust badges
+  (**Confirmed / Rumor / Recap**) and their plain-language notes — so wording
+  retunes in one data file and #177's three new voices are a data addition.
+  **The leading tier is real, not decorative:** `shocks.previewArrival(day)` is
+  a new PURE lookahead over the arrival/pick/param rolls (they're functions of
+  `(masterSeed, day)`), so the desk genuinely reads tomorrow's dice. It is
+  deliberately NOT gated on `maxConcurrent`/the dup guard — a previewed shock
+  may never land, which is the honest shape for a rumor. `rumorHitProb` (0.5)
+  decides whether a real setup gets called at all; `falseAlarmProbPerDay` (0.06)
+  fires calls on days when nothing is coming. `step` and `previewArrival` share
+  one `rollArrival` helper so they can't drift on the seed stream.
+  **Three decisions inside the slice:** (1) **`market:segment_heat_updated` is a
+  change event, not a heartbeat** — new `heatMonitor.ts` sub-system reports a
+  segment only when it moves ≥ `heatMonitor.deltaThreshold` **since last
+  reported** (not since yesterday), so sub-threshold daily wobble stays silent
+  but slow persistent drift eventually reports once. Directly applies the #267
+  lesson. First tick captures a silent baseline. (2) **Inventory comps reach the
+  wire via `news.recordComp`, not a bus subscription** — the facade already
+  computes each transaction's delta-vs-anchor for the comp window, and
+  re-deriving it in the news engine would duplicate the anchor math and drag the
+  anchor config in. The block report aggregates a day's comps and publishes on
+  the NEXT day's tick (an auction recap is next-morning news). (3) **ONE
+  `clock:day_started` subscription with an explicit internal order** —
+  `shocks.step → heatMonitor.step → news.step` — instead of three independent
+  subscriptions, so the sequence is a property of the module rather than of bus
+  registration order. Also refactored `createSegmentHeatBySegment` out of
+  `createSegmentHeat` (every heat term was always per-segment; the monitor now
+  asks directly instead of fabricating a placeholder vehicle) and made
+  `ShockModFn`'s vehicle arg optional. Volume control: `maxHeadlinesPerDay` (3)
+  is a hard gate spent in arrival order, `maxHeadlines` (12) is the ring buffer.
+  Persistence: `MarketEconomySnapshot` v1→**2** (adds `heat` + `news`; the news
+  blob carries the ring buffer, the day budget, un-reported comps AND live shock
+  tags so a shock spanning a save/load still resolves under its own name), world
+  envelope **17→18** + migration; tier-2 dev fixture **migrated in place** (14
+  lines, via the real `migrateWorldSnapshot`) per the known harness-bankrupts-
+  pre-T2 constraint + the #322/#329 precedent. UI: `IndustryWire` panel in a new
+  Home "Industry Wire" region below Market (the readout is what you can verify
+  about your own lot; the wire is everyone else's word), each line badged with
+  its trust tier + source + Today/Yesterday/Day-N stamp, legend tap-to-expand.
+  Composition-root `buildIndustryWire(world)` in `src/app/config.ts`;
+  `useWorldState` bumps on `news:headline_published` (headlines publish mid-day,
+  not only on the day tick). Two new kit icons (`chevron-up`/`chevron-down`).
+  Tests: 31 in `tests/MarketEconomy.news.test.ts` (catalog coverage, all three
+  tiers, false-alarm rate respected at 0 and 1, lead-window bound, per-day cap +
+  lazy day reset, ring buffer, determinism same-seed / divergence cross-seed,
+  persistence incl. cross-save shock resolve, heat-monitor thresholds) + 9 in
+  `tests/IndustryWire.reachability.test.tsx` (live world × 90 real day ticks
+  producing real headlines with no unfilled slots, seed replay + divergence,
+  read model through `buildIndustryWire`, save/load through the real world seam,
+  anti-orphan guard on GameScreen + useWorldState source, panel behavior +
+  empty state). typecheck + full suite green. **All magnitudes are first-pass →
+  #286.** /verify: BLOCKED for the live-GUI drive (native expo-sqlite + no
+  react-native-web + on-device-only HITL path) — reachability + smoke +
+  wiring-guard cited as the reachable ceiling. Phase 4 open set now #177, #178.
+  Next /next BUILDs **#177** (news sources expansion + weekly market report;
+  dep #176 now closed).
 - 2026-07-19 — BUILT + closed **#331** (day gross/units read from Records, not
   the unpersisted `useDayLoop` ref) — the #329/#330 trailing hygiene. The app
   layer now keeps **no day tally of its own**: `grossTodayRef` is deleted and

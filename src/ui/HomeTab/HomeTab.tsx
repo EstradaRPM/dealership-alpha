@@ -22,6 +22,8 @@ import {
 import type { DayLoopState } from '../../game/DayLoopController';
 import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { GateStrip } from './GateStrip';
+import { IndustryWire } from './IndustryWire';
+import type { IndustryWireModel } from './industryWireModel';
 import type { HomeDashboardModel, HomeStat, MiniCalDay } from './homeModel';
 
 /** Leading glyph + accent per quick-stat tile (#240), keyed by the read-model's
@@ -45,6 +47,8 @@ export interface HomeTabProps {
   recapChip?: { day: number; onOpen: () => void };
   /** Observed persona-mix readout (#198). Absent ⇒ hint shown. */
   demandReadout?: DemandReadoutModel;
+  /** Industry-wire headlines (#176). Absent ⇒ hint shown (test renders). */
+  industryWire?: IndustryWireModel;
 }
 
 /**
@@ -60,6 +64,7 @@ export function HomeTab({
   onOpenOperations,
   recapChip,
   demandReadout,
+  industryWire,
 }: HomeTabProps) {
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
@@ -114,6 +119,21 @@ export function HomeTab({
             <DemandReadout model={demandReadout} />
           ) : (
             <Text style={hint}>Open the lot to build the demand readout.</Text>
+          )}
+        </View>
+      </View>
+
+      {/* Industry Wire (#176) — what the rest of the business is saying, sorted
+          newest first and stamped with how much each line is worth. It sits
+          BELOW the demand readout deliberately: the readout is what the player
+          can verify about their own lot, the wire is everyone else's word. */}
+      <View style={region} testID="home-region-wire">
+        <SectionHeader title="Industry Wire" />
+        <View style={regionBody}>
+          {industryWire ? (
+            <IndustryWire model={industryWire} />
+          ) : (
+            <Text style={hint}>The wire starts up when your first day opens.</Text>
           )}
         </View>
       </View>

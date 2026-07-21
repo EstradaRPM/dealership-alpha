@@ -21,12 +21,25 @@ import {
   rollPersonalityVector,
   type MarketPersonalityVector,
 } from './personality';
-import { createSegmentHeat } from './segmentHeat';
+import { createSegmentHeat, createSegmentHeatBySegment } from './segmentHeat';
 import {
   createShockScheduler,
   type ShockScheduler,
   type ShocksSnapshot,
 } from './shocks';
+import {
+  createDefaultHeatMonitorSnapshot,
+  createSegmentHeatMonitor,
+  type HeatMonitorSnapshot,
+  type SegmentHeatMonitor,
+} from './heatMonitor';
+import {
+  createDefaultNewsSnapshot,
+  createMarketNews,
+  type Headline,
+  type MarketNews,
+  type NewsSnapshot,
+} from './news';
 import {
   loadAuctionSourcesConfig,
   loadDaysToSellCurvesConfig,
@@ -62,9 +75,13 @@ import { loadTunables, type Tunables } from '../data';
  * world seam wires with a single `modules` key.
  */
 export interface MarketEconomySnapshot {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly compHistory: CompHistorySnapshot;
   readonly shocks: ShocksSnapshot;
+  /** Per-segment last-reported heat, so a reload doesn't re-announce old moves (#176). */
+  readonly heat: HeatMonitorSnapshot;
+  /** The industry wire's ring buffer + un-reported comps + live shock tags (#176). */
+  readonly news: NewsSnapshot;
 }
 
 export interface MarketEconomy extends LiveProviders {
@@ -83,8 +100,14 @@ export interface MarketEconomy extends LiveProviders {
    */
   readonly shocks: Pick<
     ShockScheduler,
-    'activeInstances' | 'snapshot' | 'restore'
+    'activeInstances' | 'previewArrival' | 'snapshot' | 'restore'
   >;
+  /**
+   * Industry wire (slice #176). `getHeadlines()` is newest-first and is what
+   * the Home-screen panel renders; `snapshot`/`restore` are the persistence
+   * surface. Empty on the pure-engine path (no bus ⇒ no wire).
+   */
+  readonly news: Pick<MarketNews, 'getHeadlines' | 'snapshot' | 'restore'>;
   /**
    * Player-visible valuation for a vehicle described only by its anchor
    * fields (no purchasePrice/reconCost). Used by surfaces that quote a
@@ -190,12 +213,44 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
         })
       : null;
 
-  const segmentHeatFn = createSegmentHeat({
+  const heatDeps = {
     personality,
     compHistory,
     getCurrentDay,
     activeShockMod: shockScheduler?.activeShockMod,
-  });
+  };
+  const segmentHeatFn = createSegmentHeat(heatDeps);
+  const segmentHeatBySegment = createSegmentHeatBySegment(heatDeps);
+
+  // The canonical vehicle-type axis (#278) — the same keys DemandShaper and the
+  // heat composer read, so the wire never talks about a segment the rest of the
+  // game doesn't have.
+  const newsSegments = (deps.tunables ?? loadTunables()).demandShaper.segments;
+
+  // Heat monitor + news wire ride the same bus-and-seed precondition as the
+  // shock scheduler: the pure-engine path (calibration test, fixtures) has no
+  // day cadence to hang them off and no seed to make them deterministic.
+  const heatMonitor: SegmentHeatMonitor | null = deps.bus
+    ? createSegmentHeatMonitor({
+        bus: deps.bus,
+        segments: newsSegments,
+        heatFor: segmentHeatBySegment,
+        tunables: deps.tunables,
+      })
+    : null;
+
+  const news: MarketNews | null =
+    deps.bus && deps.masterSeed !== undefined
+      ? createMarketNews({
+          masterSeed: deps.masterSeed,
+          bus: deps.bus,
+          segments: newsSegments,
+          previewShock: shockScheduler
+            ? (day) => shockScheduler.previewArrival(day)
+            : undefined,
+          tunables: deps.tunables,
+        })
+      : null;
 
   const providers = createProviders({
     ...deps,
@@ -236,11 +291,12 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
     }): void => {
       const anchor = computeAnchor(e, anchorDeps);
       if (anchor <= 0) return;
-      compHistory.recordWholesale({
-        segment: e.category,
-        delta: e.cost / anchor - 1,
-        day: e.day,
-      });
+      const delta = e.cost / anchor - 1;
+      compHistory.recordWholesale({ segment: e.category, delta, day: e.day });
+      // The wire's block report reuses the delta computed here rather than
+      // subscribing to inventory itself — re-deriving it would duplicate the
+      // anchor math and drag the anchor config into the news engine (#176).
+      news?.recordComp({ segment: e.category, delta });
     };
 
     const onSold = (e: {
@@ -257,11 +313,9 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
       const anchor = computeAnchor(e, anchorDeps);
       const reference = anchor * markupFor(e);
       if (reference <= 0) return;
-      compHistory.recordRetail({
-        segment: e.category,
-        delta: e.salePrice / reference - 1,
-        day: e.day,
-      });
+      const delta = e.salePrice / reference - 1;
+      compHistory.recordRetail({ segment: e.category, delta, day: e.day });
+      news?.recordComp({ segment: e.category, delta });
     };
 
     bus.subscribe('inventory:vehicle_purchased', onPurchased);
@@ -300,9 +354,18 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
       bus.unsubscribe('competitor:price_changed', onCompetitorPriceChanged),
     );
 
-    if (shockScheduler) {
+    if (shockScheduler || heatMonitor || news) {
+      // ONE day tick with an explicit internal order, rather than three
+      // independent subscriptions: shocks must land (and emit) before the heat
+      // monitor reads the composite they modulate, and both must have spoken
+      // before the wire's day step spends the remaining headline budget on the
+      // block report + the analyst desk's forward call. Ordering this here
+      // makes the sequence a property of the module, not of bus registration
+      // order.
       const onDayStarted = (e: { day: number }): void => {
-        shockScheduler.step(e.day);
+        shockScheduler?.step(e.day);
+        heatMonitor?.step(e.day);
+        news?.step(e.day);
       };
       bus.subscribe('clock:day_started', onDayStarted);
       unsubscribers.push(() => bus.unsubscribe('clock:day_started', onDayStarted));
@@ -350,13 +413,17 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
       return sourceLabels[sourceId] ?? sourceId;
     },
     snapshot: (): MarketEconomySnapshot => ({
-      schemaVersion: 1,
+      schemaVersion: 2,
       compHistory: compHistory.snapshot(),
       shocks: shockScheduler?.snapshot() ?? { schemaVersion: 1, active: [] },
+      heat: heatMonitor?.snapshot() ?? createDefaultHeatMonitorSnapshot(),
+      news: news?.snapshot() ?? createDefaultNewsSnapshot(),
     }),
     restore: (snap: MarketEconomySnapshot) => {
       compHistory.restore(snap.compHistory);
       shockScheduler?.restore(snap.shocks);
+      heatMonitor?.restore(snap.heat);
+      news?.restore(snap.news);
     },
     compHistory: {
       segmentDrift: (segment, day) => compHistory.segmentDrift(segment, day),
@@ -366,13 +433,20 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
     },
     shocks: {
       activeInstances: () => shockScheduler?.activeInstances() ?? [],
+      previewArrival: (day: number) => shockScheduler?.previewArrival(day) ?? null,
       snapshot: (): ShocksSnapshot =>
         shockScheduler?.snapshot() ?? { schemaVersion: 1, active: [] },
       restore: (snap: ShocksSnapshot) => shockScheduler?.restore(snap),
     },
+    news: {
+      getHeadlines: (): readonly Headline[] => news?.getHeadlines() ?? [],
+      snapshot: (): NewsSnapshot => news?.snapshot() ?? createDefaultNewsSnapshot(),
+      restore: (snap: NewsSnapshot) => news?.restore(snap),
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
+      news?.dispose();
       for (const u of unsubscribers) u();
       unsubscribers.length = 0;
     },

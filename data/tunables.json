@@ -408,6 +408,18 @@
       "_doc": "Display bands for the KPI dashboard used-value pressure readout (#179). segmentHeat is a signed fractional bookValue modifier; |heat| < mild reads AT BASELINE, mild..strong reads mildly above/below, >= strong reads strongly above/below. Presentation-only; calibration-neutral placeholders.",
       "mild": 0.03,
       "strong": 0.10
+    },
+    "heatMonitor": {
+      "deltaThreshold": 0.02
+    },
+    "news": {
+      "maxHeadlines": 12,
+      "maxHeadlinesPerDay": 3,
+      "rumorLeadDays": 4,
+      "rumorHitProb": 0.5,
+      "falseAlarmProbPerDay": 0.06,
+      "blockReportMinComps": 2,
+      "blockReportDeltaThreshold": 0.03
     }
   },
   "competitorMarket": {

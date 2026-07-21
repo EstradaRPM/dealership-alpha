@@ -21,8 +21,32 @@ export type {
   CompWindowConfig,
 } from './compHistory';
 
-export { createSegmentHeat } from './segmentHeat';
-export type { SegmentHeatDeps, SegmentHeatFn, ShockModFn } from './segmentHeat';
+export { createSegmentHeat, createSegmentHeatBySegment } from './segmentHeat';
+export type {
+  SegmentHeatDeps,
+  SegmentHeatFn,
+  SegmentHeatBySegmentFn,
+  ShockModFn,
+} from './segmentHeat';
+
+export {
+  createSegmentHeatMonitor,
+  createDefaultHeatMonitorSnapshot,
+} from './heatMonitor';
+export type {
+  HeatMonitorSnapshot,
+  SegmentHeatMonitor,
+  SegmentHeatMonitorDeps,
+} from './heatMonitor';
+
+export { createMarketNews, createDefaultNewsSnapshot } from './news';
+export type {
+  Headline,
+  MarketNews,
+  MarketNewsDeps,
+  NewsDirection,
+  NewsSnapshot,
+} from './news';
 
 export { predictDaysToSell } from './daysToSell';
 export type {
@@ -82,6 +106,7 @@ export type {
 export { createShockScheduler } from './shocks';
 export type {
   ActiveShockInstance,
+  ShockPreview,
   ShockScheduler,
   ShockSchedulerDeps,
   ShocksSnapshot,
@@ -130,6 +155,10 @@ export {
   MarketPersonalityDistributionSchema,
   MileageDistributionConfigSchema,
   MarketShocksConfigSchema,
+  NewsTemplatesConfigSchema,
+  NEWS_TRIGGERS,
+  NEWS_RELIABILITIES,
+  loadNewsTemplatesConfig,
   AuctionSourcesConfigSchema,
   loadAuctionSourcesConfig,
   loadMarketAnchorConfig,
@@ -162,6 +191,10 @@ export type {
   MarketShocksConfig,
   ShockDefinition,
   ShockSegmentEffect,
+  NewsTemplatesConfig,
+  NewsTemplate,
+  NewsTrigger,
+  NewsReliability,
   AuctionSourcesConfig,
   AuctionSourceDefinition,
   ReconVarianceConfig,

@@ -1,0 +1,306 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Industry-wire headline catalog (slice #176, parent #150). Each template is keyed by a structural TRIGGER (what happened in the engine) and carries its own SOURCE (who is talking) and RELIABILITY tier (how much the player should trust it). Reliability is the load-bearing axis: 'direct' already happened and is verifiable on the lot or at the block; 'leading' is a forward call from the analyst desk that fires AHEAD of a shock and may be a false alarm; 'lagging' only confirms a trend the player could already see in their own numbers. Slot placeholders are filled at fire time from live state: {segment} (plural segment label), {pct} (absolute magnitude as a whole percent), {label} (shock catalog label), {brand} (rival brand), {days} (rumor lead time in days). Copy lives here, not in code, so wording retunes without a build. Slice #177 adds trade-press / OEM-bulletin / competitor-watch sources on top of these three.",
+  "sourceLabels": {
+    "auction_report": "Auction block report",
+    "analyst_desk": "Analyst desk",
+    "lot_talk": "Around town"
+  },
+  "reliabilityLabels": {
+    "direct": "Confirmed",
+    "leading": "Rumor",
+    "lagging": "Recap"
+  },
+  "reliabilityNotes": {
+    "direct": "It already happened — you can verify it.",
+    "leading": "A call about what's next. It may not pan out.",
+    "lagging": "Catching up to a trend your own numbers already showed."
+  },
+  "segmentLabels": {
+    "sedan": "sedans",
+    "truck": "trucks",
+    "suv": "SUVs"
+  },
+  "templates": [
+    {
+      "id": "auction_up_1",
+      "trigger": "auction_up",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "Block report: {segment} crossed {pct} over book this week."
+    },
+    {
+      "id": "auction_up_2",
+      "trigger": "auction_up",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "Auction recap: buyers paid up for {segment}, averaging {pct} above book."
+    },
+    {
+      "id": "auction_up_3",
+      "trigger": "auction_up",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "Sale results: {segment} money firmed, closing {pct} north of book."
+    },
+    {
+      "id": "auction_up_4",
+      "trigger": "auction_up",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "Lane summary: a {pct} premium on {segment} at the block."
+    },
+    {
+      "id": "auction_down_1",
+      "trigger": "auction_down",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "Block report: {segment} closed {pct} under book this week."
+    },
+    {
+      "id": "auction_down_2",
+      "trigger": "auction_down",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "Auction recap: {segment} went cheap, averaging {pct} below book."
+    },
+    {
+      "id": "auction_down_3",
+      "trigger": "auction_down",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "Sale results: bidding thinned on {segment}, {pct} back of book."
+    },
+    {
+      "id": "auction_down_4",
+      "trigger": "auction_down",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "Lane summary: {segment} took a {pct} haircut at the block."
+    },
+    {
+      "id": "shock_started_1",
+      "trigger": "shock_started",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "{label}. Dealers are already repricing."
+    },
+    {
+      "id": "shock_started_2",
+      "trigger": "shock_started",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "Confirmed: {label}. Expect {segment} to move."
+    },
+    {
+      "id": "shock_started_3",
+      "trigger": "shock_started",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "{label} hit the wires this morning."
+    },
+    {
+      "id": "shock_started_4",
+      "trigger": "shock_started",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "The block is calling it: {label}."
+    },
+    {
+      "id": "shock_resolved_1",
+      "trigger": "shock_resolved",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "{label} has run its course. Values are settling back."
+    },
+    {
+      "id": "shock_resolved_2",
+      "trigger": "shock_resolved",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "Dealers say {label} is behind us."
+    },
+    {
+      "id": "shock_resolved_3",
+      "trigger": "shock_resolved",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "{label} closed out. The {segment} distortion is unwinding."
+    },
+    {
+      "id": "shock_resolved_4",
+      "trigger": "shock_resolved",
+      "source": "auction_report",
+      "reliability": "direct",
+      "text": "The wires are quiet again. {label} is over."
+    },
+    {
+      "id": "rival_price_up_1",
+      "trigger": "rival_price_up",
+      "source": "lot_talk",
+      "reliability": "direct",
+      "text": "{brand} raised asking prices across their lot."
+    },
+    {
+      "id": "rival_price_up_2",
+      "trigger": "rival_price_up",
+      "source": "lot_talk",
+      "reliability": "direct",
+      "text": "Drove past {brand}. Their window stickers went up."
+    },
+    {
+      "id": "rival_price_up_3",
+      "trigger": "rival_price_up",
+      "source": "lot_talk",
+      "reliability": "direct",
+      "text": "{brand} is asking more than they were last week."
+    },
+    {
+      "id": "rival_price_up_4",
+      "trigger": "rival_price_up",
+      "source": "lot_talk",
+      "reliability": "direct",
+      "text": "Word around town: {brand} pushed their prices up."
+    },
+    {
+      "id": "rival_price_down_1",
+      "trigger": "rival_price_down",
+      "source": "lot_talk",
+      "reliability": "direct",
+      "text": "{brand} cut asking prices across their lot."
+    },
+    {
+      "id": "rival_price_down_2",
+      "trigger": "rival_price_down",
+      "source": "lot_talk",
+      "reliability": "direct",
+      "text": "Drove past {brand}. Their window stickers came down."
+    },
+    {
+      "id": "rival_price_down_3",
+      "trigger": "rival_price_down",
+      "source": "lot_talk",
+      "reliability": "direct",
+      "text": "{brand} is undercutting the street this week."
+    },
+    {
+      "id": "rival_price_down_4",
+      "trigger": "rival_price_down",
+      "source": "lot_talk",
+      "reliability": "direct",
+      "text": "Word around town: {brand} dropped their prices."
+    },
+    {
+      "id": "heat_up_1",
+      "trigger": "heat_up",
+      "source": "lot_talk",
+      "reliability": "lagging",
+      "text": "You've probably noticed: {segment} have been bringing more money."
+    },
+    {
+      "id": "heat_up_2",
+      "trigger": "heat_up",
+      "source": "lot_talk",
+      "reliability": "lagging",
+      "text": "Everyone's saying the same thing — {segment} are up about {pct}."
+    },
+    {
+      "id": "heat_up_3",
+      "trigger": "heat_up",
+      "source": "lot_talk",
+      "reliability": "lagging",
+      "text": "Old news by now: {segment} money has been climbing."
+    },
+    {
+      "id": "heat_up_4",
+      "trigger": "heat_up",
+      "source": "lot_talk",
+      "reliability": "lagging",
+      "text": "Confirming what your lot already knew: {segment} are running {pct} strong."
+    },
+    {
+      "id": "heat_down_1",
+      "trigger": "heat_down",
+      "source": "lot_talk",
+      "reliability": "lagging",
+      "text": "You've probably noticed: {segment} aren't bringing what they did."
+    },
+    {
+      "id": "heat_down_2",
+      "trigger": "heat_down",
+      "source": "lot_talk",
+      "reliability": "lagging",
+      "text": "Everyone's saying the same thing — {segment} are off about {pct}."
+    },
+    {
+      "id": "heat_down_3",
+      "trigger": "heat_down",
+      "source": "lot_talk",
+      "reliability": "lagging",
+      "text": "Old news by now: {segment} money has been sliding."
+    },
+    {
+      "id": "heat_down_4",
+      "trigger": "heat_down",
+      "source": "lot_talk",
+      "reliability": "lagging",
+      "text": "Confirming what your lot already knew: {segment} are running {pct} soft."
+    },
+    {
+      "id": "rumor_up_1",
+      "trigger": "rumor_up",
+      "source": "analyst_desk",
+      "reliability": "leading",
+      "text": "Talk is {segment} values push higher inside {days} days."
+    },
+    {
+      "id": "rumor_up_2",
+      "trigger": "rumor_up",
+      "source": "analyst_desk",
+      "reliability": "leading",
+      "text": "One desk is calling for a run on {segment}. Nobody has confirmed it."
+    },
+    {
+      "id": "rumor_up_3",
+      "trigger": "rumor_up",
+      "source": "analyst_desk",
+      "reliability": "leading",
+      "text": "Unconfirmed: buyers are said to be lining up on {segment}."
+    },
+    {
+      "id": "rumor_up_4",
+      "trigger": "rumor_up",
+      "source": "analyst_desk",
+      "reliability": "leading",
+      "text": "A contact says {segment} money firms up within {days} days. Take it for what it's worth."
+    },
+    {
+      "id": "rumor_down_1",
+      "trigger": "rumor_down",
+      "source": "analyst_desk",
+      "reliability": "leading",
+      "text": "Talk is {segment} values slide inside {days} days."
+    },
+    {
+      "id": "rumor_down_2",
+      "trigger": "rumor_down",
+      "source": "analyst_desk",
+      "reliability": "leading",
+      "text": "One desk is calling for {segment} to soften. Nobody has confirmed it."
+    },
+    {
+      "id": "rumor_down_3",
+      "trigger": "rumor_down",
+      "source": "analyst_desk",
+      "reliability": "leading",
+      "text": "Unconfirmed: word is {segment} are about to get cheap."
+    },
+    {
+      "id": "rumor_down_4",
+      "trigger": "rumor_down",
+      "source": "analyst_desk",
+      "reliability": "leading",
+      "text": "A contact says {segment} money comes off within {days} days. Take it for what it's worth."
+    }
+  ]
+}

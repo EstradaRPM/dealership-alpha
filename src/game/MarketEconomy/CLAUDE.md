@@ -193,7 +193,47 @@ fallback path per slice #155 AC.
 - **Emits** (slice #159): `market:shock_started` on activation,
   `market:shock_resolved` on expiration. Both carry `instanceId =
   ${shockId}@${startDay}` so multiple activations of the same catalog shock
-  are disambiguable. `#176` will land `market:news_published`.
+  are disambiguable.
+- **Emits** (slice #176): `market:segment_heat_updated` when a segment's
+  composite heat has moved at least `marketEconomy.heatMonitor.deltaThreshold`
+  **since it was last reported** — deliberately not a daily heartbeat (the #267
+  lesson). `news:headline_published` for each industry-wire headline.
+- **Day tick ordering (#176):** the module has ONE `clock:day_started`
+  subscription that runs, in order, `shockScheduler.step` → `heatMonitor.step`
+  → `news.step`. Shocks must land (and emit) before the monitor reads the
+  composite they modulate, and both must have spoken before the wire's day step
+  spends the remaining headline budget. The order is a property of the module,
+  not of bus registration order.
+
+## Sub-systems (#176)
+
+- **`shocks.previewArrival(day)`** — pure lookahead over the arrival/pick/param
+  rolls for any future day. No state read or written; deliberately *not* gated
+  on `maxConcurrent` or the duplicate guard, so a previewed shock may never
+  land. That is the honest shape for a rumor. `step` and `previewArrival` share
+  one `rollArrival` helper so they cannot drift on the seed stream.
+- **`heatMonitor`** (`heatMonitor.ts`) — watches `segmentHeat` per segment once
+  a day and reports only threshold-clearing moves. Baseline is captured
+  silently on the first tick (a fresh save's personality bias is the world the
+  player starts in, not a change in it). Deltas are measured against the last
+  *reported* heat, so slow persistent drift eventually reports once instead of
+  never. Persisted as `MarketEconomySnapshot.heat`.
+- **`news`** (`news.ts`) — the industry wire. Three reliability tiers:
+  `direct` (already happened: block report, shock landing/lifting, a rival
+  repricing), `leading` (the analyst desk's forward call, fired ahead of a shock
+  via `previewArrival` and fallible by design — `rumorHitProb` decides whether a
+  real setup gets called, `falseAlarmProbPerDay` fires calls when nothing is
+  coming), and `lagging` (confirming a heat move the player's own numbers
+  already showed). Every roll derives from `(masterSeed, day, slot)`.
+  `maxHeadlinesPerDay` is a hard gate spent in arrival order. Inventory comps
+  reach the wire through `news.recordComp`, called by the facade's existing
+  comp handlers — re-deriving the delta-vs-anchor here would duplicate the
+  anchor math. The block report aggregates a day's comps and publishes on the
+  *next* day's tick (an auction recap is next-morning news). Persisted as
+  `MarketEconomySnapshot.news` (ring buffer + day budget + un-reported comps +
+  live shock tags). Exposed read-only as `marketEconomy.news.getHeadlines()`,
+  newest first — what the Home-screen Industry Wire panel renders.
+- `MarketEconomySnapshot.schemaVersion` is **2** as of #176 (world envelope 18).
 
 ## Data files
 
@@ -210,6 +250,13 @@ fallback path per slice #155 AC.
   per-save personality vector samples from (#156).
 - `data/mileage-distribution.json` — year-conditioned mileage distribution
   consumed by the auction generator (#156).
+- `data/news-templates.json` — industry-wire headline catalog (#176). Templates
+  keyed by structural trigger, each carrying its own source ("who is talking")
+  and reliability tier; slots `{segment}` `{pct}` `{label}` `{brand}` `{days}`
+  are filled at fire time. Also holds ALL player-facing wire copy — source
+  labels, the trust badges (Confirmed / Rumor / Recap) and their plain-language
+  explanations — so wording retunes in one data file. Slice #177 adds the
+  trade-press / OEM-bulletin / competitor-watch voices here.
 - `data/market-shocks.json` — stochastic shock catalog (#159). Each shock
   carries per-segment signed magnitude bands + a duration band + a rarity
   weight used by the scheduler's weighted pick.

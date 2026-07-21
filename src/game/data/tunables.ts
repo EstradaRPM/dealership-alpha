@@ -401,6 +401,40 @@ export const TunablesSchema = z.object({
       mild: z.number().positive(),
       strong: z.number().positive(),
     }),
+    // Segment-heat change monitor (slice #176). Emits
+    // `market:segment_heat_updated` only when a segment's composite heat has
+    // moved at least `deltaThreshold` since it was LAST REPORTED (not since
+    // yesterday) — small daily wobble stays silent, slow persistent drift
+    // eventually accumulates past the bar and reports once.
+    heatMonitor: z.object({
+      deltaThreshold: z.number().positive(),
+    }),
+    // Industry-wire news engine (slice #176). Reliability tiers, not volume,
+    // are the mechanic: `direct` headlines report what already happened,
+    // `leading` ones are the analyst desk's forward call fired ahead of a shock
+    // (fallible by design — see rumorHitProb / falseAlarmProbPerDay), and
+    // `lagging` ones only confirm a trend the player's own numbers already
+    // showed. The player calibrates trust by living with the desk's precision.
+    news: z.object({
+      // Ring-buffer depth: how many headlines the wire keeps on screen.
+      maxHeadlines: z.number().int().positive(),
+      // Hard per-day publish cap, spent in arrival order (observed events
+      // first, then the day-step block report + rumor). Keeps a busy day from
+      // burying the wire.
+      maxHeadlinesPerDay: z.number().int().positive(),
+      // How far ahead the desk looks for an upcoming shock, in days.
+      rumorLeadDays: z.number().int().positive(),
+      // Probability the desk actually calls a shock it can see coming. < 1 so
+      // real setups sometimes pass unremarked.
+      rumorHitProb: z.number().min(0).max(1),
+      // Probability of a forward call on a day when nothing is coming. This is
+      // the false-alarm rate the player prices into every rumor.
+      falseAlarmProbPerDay: z.number().min(0).max(1),
+      // Block report gating: minimum comps in a segment before the auction
+      // report speaks, and the minimum |mean delta vs book| worth reporting.
+      blockReportMinComps: z.number().int().positive(),
+      blockReportDeltaThreshold: z.number().positive(),
+    }),
   }),
   // CompetitorMarket (slice #158). Weekly drift emits
   // `competitor:price_changed` when |new − old| ≥ this threshold. Below the

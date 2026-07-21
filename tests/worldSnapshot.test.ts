@@ -1066,9 +1066,13 @@ describe('snapshotWorld / restoreWorld seam (#188)', () => {
     expect(Array.isArray(snap.modules.staffOrg.roster)).toBe(true);
     expect(snap.modules.staffMorale.schemaVersion).toBe(1);
     expect(Array.isArray(snap.modules.staffMorale.morale)).toBe(true);
-    expect(snap.modules.marketEconomy.schemaVersion).toBe(1);
+    // Bumped to 2 by #176 (the heat monitor + industry wire joined the blob).
+    expect(snap.modules.marketEconomy.schemaVersion).toBe(2);
     expect(snap.modules.marketEconomy.compHistory.schemaVersion).toBe(1);
     expect(snap.modules.marketEconomy.shocks.schemaVersion).toBe(1);
+    expect(snap.modules.marketEconomy.heat.schemaVersion).toBe(1);
+    expect(snap.modules.marketEconomy.news.schemaVersion).toBe(1);
+    expect(Array.isArray(snap.modules.marketEconomy.news.headlines)).toBe(true);
     expect(snap.modules.competitorMarket.schemaVersion).toBe(1);
     expect(Array.isArray(snap.modules.competitorMarket.competitors)).toBe(true);
     expect(typeof snap.modules.competitorMarket.rngState).toBe('number');

@@ -28,6 +28,8 @@ export const ICON_MAP = {
   'car-sport': 'directions-car',
   cash: 'payments',
   'chevron-forward': 'chevron-right',
+  'chevron-down': 'expand-more',
+  'chevron-up': 'expand-less',
   construct: 'build',
   home: 'home',
   menu: 'menu',
