@@ -67,6 +67,30 @@
       "segmentEffects": [
         { "segment": "sedan", "magnitudeMin": -0.08, "magnitudeMax": -0.03 }
       ]
+    },
+    {
+      "id": "oem_incentive_push",
+      "label": "Factory incentive push",
+      "rarityWeight": 0.8,
+      "durationMinDays": 14,
+      "durationMaxDays": 30,
+      "segmentEffects": [
+        { "segment": "sedan", "magnitudeMin": -0.07, "magnitudeMax": -0.02 },
+        { "segment": "suv",   "magnitudeMin": -0.06, "magnitudeMax": -0.02 },
+        { "segment": "truck", "magnitudeMin": -0.05, "magnitudeMax": -0.02 }
+      ]
+    },
+    {
+      "id": "model_year_changeover",
+      "label": "Model-year changeover",
+      "rarityWeight": 0.7,
+      "durationMinDays": 21,
+      "durationMaxDays": 40,
+      "segmentEffects": [
+        { "segment": "sedan", "magnitudeMin": -0.05, "magnitudeMax": -0.01 },
+        { "segment": "suv",   "magnitudeMin": -0.05, "magnitudeMax": -0.01 },
+        { "segment": "truck", "magnitudeMin": -0.04, "magnitudeMax": -0.01 }
+      ]
     }
   ]
 }

@@ -186,12 +186,61 @@ const NewsTemplateSchema = z
   })
   .strict();
 
+/**
+ * Weekly market report copy (slice #177). The trade pub's longer-form column —
+ * a *card*, not a wire headline: it never spends the daily headline budget and
+ * never appears in the ticker. `summaries` are keyed by the week's shape, and
+ * `forwardCalls` by the basis of the call (a read of the shock scheduler's
+ * future roll vs. a plain momentum extrapolation) crossed with its direction.
+ */
+export const WEEKLY_SUMMARY_SHAPES = ['up', 'down', 'mixed', 'quiet'] as const;
+export const WEEKLY_CALL_KINDS = [
+  'shock_up',
+  'shock_down',
+  'drift_up',
+  'drift_down',
+] as const;
+
+const NonEmptyLines = z.array(z.string().min(1)).nonempty();
+
+const WeeklyReportCopySchema = z
+  .object({
+    _doc: z.string().optional(),
+    /** The source id the report is attributed to (must exist in sourceLabels). */
+    source: z.string().min(1),
+    title: z.string().min(1),
+    subtitle: z.string().min(1),
+    summaries: z.object({
+      up: NonEmptyLines,
+      down: NonEmptyLines,
+      mixed: NonEmptyLines,
+      quiet: NonEmptyLines,
+    }),
+    forwardCalls: z.object({
+      shock_up: NonEmptyLines,
+      shock_down: NonEmptyLines,
+      drift_up: NonEmptyLines,
+      drift_down: NonEmptyLines,
+    }),
+    noCallsText: z.string().min(1),
+    callsHeading: z.string().min(1),
+    movesHeading: z.string().min(1),
+    wireTallyText: z.string().min(1),
+  })
+  .strict();
+
 export const NewsTemplatesConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
     _doc: z.string().optional(),
     /** Attributed voice per source id — "who is talking". */
     sourceLabels: z.record(z.string().min(1), z.string().min(1)),
+    _shockSourcesDoc: z.string().optional(),
+    /**
+     * shockId → the source that announces it (#177). Unmapped shocks draw from
+     * the whole pool for the trigger, so a new shock is never voiceless.
+     */
+    shockSources: z.record(z.string().min(1), z.string().min(1)),
     /** Player-facing trust badge per reliability tier. */
     reliabilityLabels: z.record(NewsReliabilitySchema, z.string().min(1)),
     /** One-line plain-language explanation of what each tier is worth. */
@@ -199,14 +248,24 @@ export const NewsTemplatesConfigSchema = z
     /** Plural segment wording used to fill the `{segment}` slot. */
     segmentLabels: z.record(z.string().min(1), z.string().min(1)),
     templates: z.array(NewsTemplateSchema).nonempty(),
+    weeklyReport: WeeklyReportCopySchema,
   })
   .strict()
   .refine(
     (c) => NEWS_TRIGGERS.every((t) => c.templates.some((tpl) => tpl.trigger === t)),
     { message: 'every news trigger needs at least one template' },
-  );
+  )
+  .refine((c) => c.templates.every((tpl) => c.sourceLabels[tpl.source] != null), {
+    message: 'every template source needs a label in sourceLabels',
+  })
+  .refine((c) => c.sourceLabels[c.weeklyReport.source] != null, {
+    message: 'the weekly report source needs a label in sourceLabels',
+  });
 export type NewsTemplatesConfig = z.infer<typeof NewsTemplatesConfigSchema>;
 export type NewsTemplate = z.infer<typeof NewsTemplateSchema>;
+export type WeeklyReportCopy = z.infer<typeof WeeklyReportCopySchema>;
+export type WeeklySummaryShape = (typeof WEEKLY_SUMMARY_SHAPES)[number];
+export type WeeklyCallKind = (typeof WEEKLY_CALL_KINDS)[number];
 export type NewsTrigger = (typeof NEWS_TRIGGERS)[number];
 export type NewsReliability = (typeof NEWS_RELIABILITIES)[number];
 

@@ -32,8 +32,10 @@ import type { LotVehicle } from '../game/Inventory';
 import type { PersonnelRoleOption } from '../ui/PersonnelScreen';
 import {
   buildIndustryWire as buildIndustryWireModel,
+  buildWeeklyReportCard,
   type CashDeltaSplit,
   type IndustryWireModel,
+  type WeeklyReportCardModel,
 } from '../ui/HomeTab';
 import {
   PART_CATEGORIES,
@@ -350,6 +352,40 @@ export function buildIndustryWire(world: World): IndustryWireModel {
     currentDay: world.clock.currentDay,
     reliabilityLabels: NEWS_COPY.reliabilityLabels,
     reliabilityNotes: NEWS_COPY.reliabilityNotes,
+  });
+}
+
+// Weekly market report read-model (#177, parent #150). The column is persisted
+// as the article it was when it published, so the composition root only hands
+// the view the live chrome copy (title/headings/tally sentence) and the trust
+// badges. Null until the first column publishes — the Home region says so
+// honestly rather than rendering an empty card.
+export function buildWeeklyReport(world: World): WeeklyReportCardModel | null {
+  const report = world.marketEconomy.weeklyReport.getActive();
+  return buildWeeklyReportCard({
+    report: report
+      ? {
+          day: report.day,
+          weekIndex: report.weekIndex,
+          fromDay: report.fromDay,
+          toDay: report.toDay,
+          sourceLabel: report.sourceLabel,
+          summary: report.summary,
+          moves: report.moves.map((m) => ({
+            segment: m.segment,
+            label: m.label,
+            delta: m.delta,
+            mentions: m.mentions,
+          })),
+          forwardCalls: report.forwardCalls.map((c) => ({
+            kind: c.kind,
+            text: c.text,
+          })),
+          wireTally: report.wireTally,
+        }
+      : null,
+    copy: NEWS_COPY.weeklyReport,
+    reliabilityLabels: NEWS_COPY.reliabilityLabels,
   });
 }
 

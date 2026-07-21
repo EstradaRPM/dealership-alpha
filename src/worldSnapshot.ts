@@ -34,6 +34,7 @@ import type { StaffMoraleSnapshot } from './game/StaffMorale';
 import {
   createDefaultHeatMonitorSnapshot,
   createDefaultNewsSnapshot,
+  createDefaultWeeklyReportSnapshot,
   type MarketEconomySnapshot,
 } from './game/MarketEconomy';
 import type { CompetitorMarketSnapshot } from './game/CompetitorMarket';
@@ -75,7 +76,7 @@ import {
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 18;
+export const WORLD_SNAPSHOT_VERSION = 19;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -360,6 +361,22 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
           schemaVersion: 2,
           heat: createDefaultHeatMonitorSnapshot(),
           news: createDefaultNewsSnapshot(),
+        },
+      },
+    }),
+    18: (snap) => ({
+      version: 19,
+      modules: {
+        ...snap.modules,
+        // #177 added the weekly market report inside the MarketEconomy blob,
+        // taking its own schemaVersion 2 → 3. Behavior-neutral: a loaded career
+        // has no standing column and opens a fresh week on its next day tick,
+        // so its first report covers the week it actually plays rather than
+        // back-filling one from days the player never saw reported.
+        marketEconomy: {
+          ...(snap.modules.marketEconomy as Record<string, unknown>),
+          schemaVersion: 3,
+          weekly: createDefaultWeeklyReportSnapshot(),
         },
       },
     }),

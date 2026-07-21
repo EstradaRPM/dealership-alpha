@@ -41,6 +41,13 @@ import {
   type NewsSnapshot,
 } from './news';
 import {
+  createDefaultWeeklyReportSnapshot,
+  createWeeklyReport,
+  type WeeklyMarketReport,
+  type WeeklyReport,
+  type WeeklyReportSnapshot,
+} from './weeklyReport';
+import {
   loadAuctionSourcesConfig,
   loadDaysToSellCurvesConfig,
   loadDemandElasticityConfig,
@@ -75,13 +82,15 @@ import { loadTunables, type Tunables } from '../data';
  * world seam wires with a single `modules` key.
  */
 export interface MarketEconomySnapshot {
-  readonly schemaVersion: 2;
+  readonly schemaVersion: 3;
   readonly compHistory: CompHistorySnapshot;
   readonly shocks: ShocksSnapshot;
   /** Per-segment last-reported heat, so a reload doesn't re-announce old moves (#176). */
   readonly heat: HeatMonitorSnapshot;
   /** The industry wire's ring buffer + un-reported comps + live shock tags (#176). */
   readonly news: NewsSnapshot;
+  /** The standing weekly column + the in-progress week's accumulators (#177). */
+  readonly weekly: WeeklyReportSnapshot;
 }
 
 export interface MarketEconomy extends LiveProviders {
@@ -108,6 +117,12 @@ export interface MarketEconomy extends LiveProviders {
    * surface. Empty on the pure-engine path (no bus ⇒ no wire).
    */
   readonly news: Pick<MarketNews, 'getHeadlines' | 'snapshot' | 'restore'>;
+  /**
+   * Weekly market report (slice #177). `getActive()` is the standing column the
+   * Home-screen card renders — null until the first one publishes. Null-active
+   * on the pure-engine path (no bus ⇒ no column).
+   */
+  readonly weeklyReport: Pick<WeeklyReport, 'getActive' | 'snapshot' | 'restore'>;
   /**
    * Player-visible valuation for a vehicle described only by its anchor
    * fields (no purchasePrice/reconCost). Used by surfaces that quote a
@@ -252,6 +267,21 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
         })
       : null;
 
+  // The column rides the same bus-and-seed precondition as the wire it sums up.
+  const weeklyReport: WeeklyReport | null =
+    deps.bus && deps.masterSeed !== undefined
+      ? createWeeklyReport({
+          masterSeed: deps.masterSeed,
+          bus: deps.bus,
+          segments: newsSegments,
+          heatFor: segmentHeatBySegment,
+          previewShock: shockScheduler
+            ? (day) => shockScheduler.previewArrival(day)
+            : undefined,
+          tunables: deps.tunables,
+        })
+      : null;
+
   const providers = createProviders({
     ...deps,
     personality,
@@ -354,7 +384,7 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
       bus.unsubscribe('competitor:price_changed', onCompetitorPriceChanged),
     );
 
-    if (shockScheduler || heatMonitor || news) {
+    if (shockScheduler || heatMonitor || news || weeklyReport) {
       // ONE day tick with an explicit internal order, rather than three
       // independent subscriptions: shocks must land (and emit) before the heat
       // monitor reads the composite they modulate, and both must have spoken
@@ -366,6 +396,8 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
         shockScheduler?.step(e.day);
         heatMonitor?.step(e.day);
         news?.step(e.day);
+        // Last: the column sums up a week of wire, so the wire speaks first.
+        weeklyReport?.step(e.day);
       };
       bus.subscribe('clock:day_started', onDayStarted);
       unsubscribers.push(() => bus.unsubscribe('clock:day_started', onDayStarted));
@@ -413,17 +445,19 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
       return sourceLabels[sourceId] ?? sourceId;
     },
     snapshot: (): MarketEconomySnapshot => ({
-      schemaVersion: 2,
+      schemaVersion: 3,
       compHistory: compHistory.snapshot(),
       shocks: shockScheduler?.snapshot() ?? { schemaVersion: 1, active: [] },
       heat: heatMonitor?.snapshot() ?? createDefaultHeatMonitorSnapshot(),
       news: news?.snapshot() ?? createDefaultNewsSnapshot(),
+      weekly: weeklyReport?.snapshot() ?? createDefaultWeeklyReportSnapshot(),
     }),
     restore: (snap: MarketEconomySnapshot) => {
       compHistory.restore(snap.compHistory);
       shockScheduler?.restore(snap.shocks);
       heatMonitor?.restore(snap.heat);
       news?.restore(snap.news);
+      weeklyReport?.restore(snap.weekly);
     },
     compHistory: {
       segmentDrift: (segment, day) => compHistory.segmentDrift(segment, day),
@@ -443,10 +477,17 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
       snapshot: (): NewsSnapshot => news?.snapshot() ?? createDefaultNewsSnapshot(),
       restore: (snap: NewsSnapshot) => news?.restore(snap),
     },
+    weeklyReport: {
+      getActive: (): WeeklyMarketReport | null => weeklyReport?.getActive() ?? null,
+      snapshot: (): WeeklyReportSnapshot =>
+        weeklyReport?.snapshot() ?? createDefaultWeeklyReportSnapshot(),
+      restore: (snap: WeeklyReportSnapshot) => weeklyReport?.restore(snap),
+    },
     dispose() {
       if (disposed) return;
       disposed = true;
       news?.dispose();
+      weeklyReport?.dispose();
       for (const u of unsubscribers) u();
       unsubscribers.length = 0;
     },

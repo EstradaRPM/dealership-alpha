@@ -2,10 +2,12 @@ import { createEventBus, type EventBus } from '../src/game/EventBus';
 import {
   createMarketNews,
   createSegmentHeatMonitor,
+  loadMarketShocksConfig,
   loadNewsTemplatesConfig,
   NEWS_TRIGGERS,
   type MarketNews,
   type NewsReliability,
+  type NewsTemplatesConfig,
   type ShockPreview,
 } from '../src/game/MarketEconomy';
 import { loadTunables, type Tunables } from '../src/game/data';
@@ -51,6 +53,8 @@ function harness(opts: {
   masterSeed?: number;
   previewShock?: (day: number) => ShockPreview | null;
   tunables?: Tunables;
+  catalog?: NewsTemplatesConfig;
+  competitorSpread?: number;
 } = {}): {
   bus: EventBus;
   news: MarketNews;
@@ -65,6 +69,8 @@ function harness(opts: {
     segments: SEGMENTS,
     previewShock: opts.previewShock,
     tunables: opts.tunables,
+    catalog: opts.catalog,
+    competitorSpread: opts.competitorSpread,
   });
   return { bus, news, published };
 }
@@ -109,6 +115,145 @@ describe('news template catalog (#176)', () => {
         expect(KNOWN.has(key)).toBe(true);
       }
     }
+  });
+});
+
+describe('news sources expansion (#177)', () => {
+  const catalog = loadNewsTemplatesConfig();
+
+  it('ships the three new voices, each labeled', () => {
+    for (const source of ['trade_press', 'oem_bulletin', 'competitor_watch']) {
+      expect(catalog.templates.some((t) => t.source === source)).toBe(true);
+      expect(catalog.sourceLabels[source]).toBeTruthy();
+    }
+  });
+
+  it('adds at least 30 templates across the three new sources', () => {
+    const added = catalog.templates.filter((t) =>
+      ['trade_press', 'oem_bulletin', 'competitor_watch'].includes(t.source),
+    );
+    expect(added.length).toBeGreaterThanOrEqual(30);
+  });
+
+  it('keeps the trade press mostly forward-looking, and the other two factual', () => {
+    const bySource = (source: string) =>
+      catalog.templates.filter((t) => t.source === source);
+    const trade = bySource('trade_press');
+    // Its bread and butter is calls + recaps; it only reports as fact the
+    // macro stories it actually voices (a shock landing / lifting).
+    expect(trade.some((t) => t.reliability === 'leading')).toBe(true);
+    expect(trade.some((t) => t.reliability === 'lagging')).toBe(true);
+    expect(bySource('oem_bulletin').every((t) => t.reliability === 'direct')).toBe(true);
+    expect(bySource('competitor_watch').every((t) => t.reliability === 'direct')).toBe(
+      true,
+    );
+  });
+
+  it('maps every shock in the shock catalog to a voice that can speak for it', () => {
+    const shocks = loadMarketShocksConfig();
+    for (const shock of shocks.shocks) {
+      const source = catalog.shockSources[shock.id];
+      expect(source).toBeTruthy();
+      for (const trigger of ['shock_started', 'shock_resolved']) {
+        expect(
+          catalog.templates.some((t) => t.trigger === trigger && t.source === source),
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('announces a recall in the factory voice, and a fuel story in the trade voice', () => {
+    const { bus, published } = harness();
+    bus.publish('market:shock_started', {
+      day: 5,
+      shockId: 'truck_oem_recall',
+      instanceId: 'truck_oem_recall@5',
+      label: 'OEM truck recall',
+      segmentMagnitudes: { truck: -0.09 },
+      expectedEndDay: 25,
+    });
+    bus.publish('market:shock_started', {
+      day: 5,
+      shockId: 'fuel_spike',
+      instanceId: 'fuel_spike@5',
+      label: 'Fuel price spike',
+      segmentMagnitudes: { truck: -0.1 },
+      expectedEndDay: 30,
+    });
+    expect(published[0].source).toBe('oem_bulletin');
+    expect(published[1].source).toBe('trade_press');
+  });
+
+  it('closes a shock out in the same voice that announced it', () => {
+    const { bus, published } = harness();
+    bus.publish('market:shock_started', {
+      day: 5,
+      shockId: 'suv_oem_recall',
+      instanceId: 'suv_oem_recall@5',
+      label: 'OEM SUV recall',
+      segmentMagnitudes: { suv: -0.08 },
+      expectedEndDay: 25,
+    });
+    bus.publish('market:shock_resolved', {
+      day: 26,
+      shockId: 'suv_oem_recall',
+      instanceId: 'suv_oem_recall@5',
+    });
+    const resolved = published.find((h) => h.trigger === 'shock_resolved');
+    expect(resolved?.source).toBe('oem_bulletin');
+  });
+
+  it('falls back to the full pool rather than dropping a headline with no voice copy', () => {
+    const { bus, published } = harness({
+      catalog: {
+        ...catalog,
+        shockSources: { ...catalog.shockSources, fuel_spike: 'nobody_writes_this' },
+      },
+    });
+    bus.publish('market:shock_started', {
+      day: 5,
+      shockId: 'fuel_spike',
+      instanceId: 'fuel_spike@5',
+      label: 'Fuel price spike',
+      segmentMagnitudes: { truck: -0.1 },
+      expectedEndDay: 30,
+    });
+    expect(published).toHaveLength(1);
+    expect(published[0].source).not.toBe('nobody_writes_this');
+    expect(published[0].text).toContain('Fuel price spike');
+  });
+
+  it('quotes the rival move as an asking-price percent on the shared spread mapping', () => {
+    // A 0.1 lean move on a +/-0.18 band around market = 3.6% of asking → "4%".
+    const { bus, published } = harness({ competitorSpread: 0.18 });
+    bus.publish('competitor:price_changed', {
+      day: 3,
+      competitorId: 'c1',
+      brand: 'Northgate Motors',
+      oldPricing: 0.5,
+      newPricing: 0.6,
+      segmentAffinity: { suv: 0.9, sedan: 0.2 },
+    });
+    const h = published[0];
+    expect(h.segment).toBe('suv');
+    expect(h.text).not.toContain('{');
+    if (h.source === 'competitor_watch') {
+      expect(h.text).toContain('4%');
+      expect(h.text).toContain('SUVs');
+    }
+  });
+
+  it('names the segment the rival leans hardest into', () => {
+    const { bus, published } = harness();
+    bus.publish('competitor:price_changed', {
+      day: 3,
+      competitorId: 'c1',
+      brand: 'Valley Auto',
+      oldPricing: 0.6,
+      newPricing: 0.45,
+      segmentAffinity: { suv: 0.1, truck: 0.8 },
+    });
+    expect(published[0].segment).toBe('truck');
   });
 });
 

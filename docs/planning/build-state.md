@@ -47,6 +47,71 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-21 — BUILT + closed **#177** (B3 S2 — news sources expansion + the
+  weekly market report). The wire got three more voices and, next to it, a
+  second *shape* of news: a column. **Voices** were mostly data, which was the
+  point of #176's catalog design — 36 new templates across `trade_press`
+  ("Dealer Trade Weekly", a fictional pub: mostly forward calls + lagging
+  texture, plus the two macro shocks it voices), `oem_bulletin` ("Factory
+  bulletin", direct only), and `competitor_watch` ("Competitor watch", the
+  tracked-with-numbers sibling of vague lot talk). The one structural hook is
+  `PublishInput.source`: a shock declares its announcing voice through the
+  catalog's new **`shockSources`** map (a recall is the factory's news, a fuel
+  story is the trade's), and a filter matching nothing **falls back to the full
+  pool** so a copy gap can never swallow a headline about something that really
+  happened. **DECISION — the OEM voice needed something real to talk about:**
+  recalls existed as shocks but "model-year changes / incentive shifts" did not,
+  so rather than narrate events the engine doesn't have, two real shocks were
+  added to `data/market-shocks.json` (`oem_incentive_push`,
+  `model_year_changeover`) with genuine negative used-value effects. Competitor
+  headlines now quote a percentage derived from the **same lean→price mapping
+  the pricing screen's comparables use** (`Δlean × 2 × competitorSpread`), and
+  name the segment the rival leans hardest into (from `segmentAffinity`) — the
+  shelf you actually compete with. **The weekly column** is a new
+  `weeklyReport.ts` sub-system: publishes on `publishDayOfWeek` (0 = Monday)
+  inside the module's ONE day tick, ordered **last** (`shocks → heat → news →
+  weeklyReport`) because it sums up a week of wire. It is a *card, not a
+  headline* — never spends the daily budget, never enters the ring buffer,
+  stands until replaced. Aggregates three things already true in the engine:
+  the week's per-segment heat move against a baseline **the column itself
+  captured when the week opened** (so the number is the week, not the career),
+  a tally of the week's wire by trust tier + per-segment mention counts
+  (accumulated off `news:headline_published`), and up to `maxForwardCalls`
+  forward calls. **Calls are deterministic from state and deliberately
+  fallible:** a `shock` call reads `shocks.previewArrival` across
+  `lookaheadDays` and fires only `callHitProb` of the time; a `drift` call is
+  momentum extrapolation off the week's own move, and is **skipped when the
+  shock call already named that segment** so the column never says one thing
+  twice with two justifications. A career opening off-cadence gets a short
+  first column covering the days actually played — never a fabricated seven.
+  Copy (summaries keyed by week shape up/down/mixed/quiet, call lines keyed by
+  basis × direction, headings, tally sentence) lives in the `weeklyReport` block
+  of `data/news-templates.json`. **Persistence split decision:** the article
+  (summary + call prose + moves + tally) is frozen into the save, but static
+  chrome (title/subtitle/headings/tally sentence) is filled at *render* from the
+  live catalog — a copy retune reaches the standing card instead of being frozen
+  into old saves. `MarketEconomySnapshot` v2→**3**, world envelope **18→19** +
+  migration; tier-2 dev fixture migrated in place via the real
+  `migrateWorldSnapshot`. UI: new Home region "Market Report" between Market and
+  Industry Wire, rendering `WeeklyMarketReportCard` — two halves with the wire's
+  own two badges (recap = **Recap**, calls = **Rumor**), so the column teaches no
+  second trust vocabulary and the calls can't be mistaken for the recap; a move
+  that rounds to nothing reads "0%", not the wire's floored fake 1%.
+  New event `market:weekly_report_published`; `useWorldState` subscribes
+  explicitly (the day-tick bump would cover it incidentally — stated beats
+  inherited). Tests: 27 in `tests/MarketEconomy.weeklyReport.test.ts` (cadence,
+  re-baselining, week shapes, tally + clearing, all four call behaviors incl.
+  the no-double-call rule, determinism same-seed/cross-seed, mid-week save/load)
+  + 11 in `tests/WeeklyMarketReport.reachability.test.tsx` (live world × 30/60
+  real day ticks, read model, save/load through the world seam, anti-orphan
+  guards, card behavior) + 9 new `#177` cases in the news suite (voice coverage,
+  shock→voice mapping over the WHOLE shock catalog, fallback, rival pct +
+  segment). typecheck + full suite (2276) green. **All magnitudes are
+  first-pass → #286.** /verify: BLOCKED for the live-GUI drive (native
+  expo-sqlite + no react-native-web + on-device-only HITL path) — reachability +
+  smoke + wiring-guard cited as the reachable ceiling. Phase 4 open set now
+  **#178** only. Next /next BUILDs **#178** (news progression gating —
+  CareerProgression hook).
 - 2026-07-21 — BUILT + closed **#176** (B3 S1 — news engine + reliability tiers
   + the Home-screen Industry Wire). The market engine now *talks*. New
   `MarketNews` sub-system inside MarketEconomy (`src/game/MarketEconomy/news.ts`)

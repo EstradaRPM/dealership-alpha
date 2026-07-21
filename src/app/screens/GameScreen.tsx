@@ -52,6 +52,7 @@ import {
   buildManagerStatus,
   buildRecoveryBanners,
   buildIndustryWire,
+  buildWeeklyReport,
 } from '../config';
 
 export interface GameScreenProps {
@@ -380,6 +381,7 @@ export function GameScreen({
         recapChip={recapChip}
         demandReadout={demandReadout}
         industryWire={buildIndustryWire(world)}
+        weeklyReport={buildWeeklyReport(world)}
       />
     ),
     operations: (

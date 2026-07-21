@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 18,
+    "version": 19,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -446,7 +446,7 @@
         ]
       },
       "marketEconomy": {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "compHistory": {
           "schemaVersion": 1,
           "windows": {
@@ -1407,6 +1407,20 @@
           "slotsUsedToday": 0,
           "pendingComps": {},
           "startedShocks": {}
+        },
+        "weekly": {
+          "schemaVersion": 1,
+          "active": null,
+          "weekIndex": 0,
+          "weekStartDay": null,
+          "baseline": null,
+          "mentions": {},
+          "tally": {
+            "total": 0,
+            "direct": 0,
+            "leading": 0,
+            "lagging": 0
+          }
         }
       },
       "competitorMarket": {

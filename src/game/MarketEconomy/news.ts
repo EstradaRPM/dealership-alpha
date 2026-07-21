@@ -3,6 +3,7 @@ import { createRng, deriveSeed } from '../NPC/Rng';
 import { loadTunables, type Tunables } from '../data';
 import {
   loadNewsTemplatesConfig,
+  loadPricingStrategiesConfig,
   type NewsReliability,
   type NewsTemplate,
   type NewsTemplatesConfig,
@@ -29,6 +30,14 @@ import type { ShockPreview } from './shocks';
  *   player's own numbers (a segment's heat having moved past the reporting
  *   threshold). Never actionable; it makes the world feel populated.
  *
+ * **Voices (#177).** Which *source* speaks is a catalog concern, not an engine
+ * one: templates carry their own source, so adding the trade press, the factory
+ * bulletin and the competitor watch was mostly data. The one structural hook is
+ * `PublishInput.source` — a shock declares its announcing voice through the
+ * catalog's `shockSources` map (a recall is the factory's news, a fuel story is
+ * the trade's), and a filter that matches nothing falls back to the full pool so
+ * a copy gap can never swallow a headline about something that really happened.
+ *
  * **Determinism.** Every roll derives from `(masterSeed, day, slot)` via the
  * shared `deriveSeed`/`createRng` pair, where `slot` is the headline's index
  * within its day. Identical state replays identical headlines.
@@ -48,6 +57,15 @@ import type { ShockPreview } from './shocks';
 export type { NewsReliability, NewsTrigger } from './schemas';
 
 export type NewsDirection = 'up' | 'down';
+
+/**
+ * The `{pct}` slot: a whole percent, unsigned (the wording carries direction),
+ * floored at 1 so a real move never reads "0%". Shared with the weekly report
+ * so the column and the ticker round the same way.
+ */
+export function wholePercent(fraction: number): string {
+  return `${Math.max(1, Math.round(Math.abs(fraction) * 100))}%`;
+}
 
 export interface Headline {
   /** Stable within a save: `${day}#${slot}`. */
@@ -121,6 +139,14 @@ export interface MarketNewsDeps {
   readonly previewShock?: (day: number) => ShockPreview | null;
   readonly catalog?: NewsTemplatesConfig;
   readonly tunables?: Tunables;
+  /**
+   * Maps a competitor's `[0,1]` pricing lean onto a ± band around market — the
+   * SAME mapping the pricing screen's comparables panel uses (#175), so the
+   * percentage the competitor-watch voice quotes is the percentage the player
+   * would see on that rival's window stickers. Defaults to the pricing-strategy
+   * config's `competitorSpread`.
+   */
+  readonly competitorSpread?: number;
 }
 
 /** The segment carrying the largest |magnitude| in a shock's effect map. */
@@ -138,6 +164,19 @@ function dominantSegment(
   return best;
 }
 
+/** The segment a rival leans hardest into, from the event's affinity map. */
+function dominantAffinity(
+  affinity: Readonly<Record<string, number>> | undefined,
+): string | null {
+  if (!affinity) return null;
+  let best: { segment: string; weight: number } | null = null;
+  for (const [segment, weight] of Object.entries(affinity)) {
+    if (weight <= 0) continue;
+    if (!best || weight > best.weight) best = { segment, weight };
+  }
+  return best?.segment ?? null;
+}
+
 export function createMarketNews(deps: MarketNewsDeps): MarketNews {
   const catalog = deps.catalog ?? loadNewsTemplatesConfig();
   const tunables = deps.tunables ?? loadTunables();
@@ -151,6 +190,9 @@ export function createMarketNews(deps: MarketNewsDeps): MarketNews {
     blockReportDeltaThreshold,
   } = tunables.marketEconomy.news;
 
+  const competitorSpread =
+    deps.competitorSpread ?? loadPricingStrategiesConfig().competitorSpread;
+
   const byTrigger = new Map<NewsTrigger, NewsTemplate[]>();
   for (const tpl of catalog.templates) {
     const list = byTrigger.get(tpl.trigger);
@@ -163,10 +205,7 @@ export function createMarketNews(deps: MarketNewsDeps): MarketNews {
   let currentDay = 0;
   let slotsUsedToday = 0;
 
-  /** Percent slot: whole percent, floored at 1 so a real move never reads "0%". */
-  function pct(fraction: number): string {
-    return `${Math.max(1, Math.round(Math.abs(fraction) * 100))}%`;
-  }
+  const pct = wholePercent;
 
   function segmentLabel(segment: string | null): string {
     if (segment === null) return 'the market';
@@ -192,13 +231,24 @@ export function createMarketNews(deps: MarketNewsDeps): MarketNews {
     readonly segment: string | null;
     readonly direction: NewsDirection;
     readonly slots?: Readonly<Record<string, string>>;
+    /**
+     * Restrict the template pool to one voice (#177) — a recall is announced by
+     * the factory, not by the block. A filter that matches nothing falls back
+     * to the full pool: a copy gap must never swallow a headline about
+     * something that actually happened.
+     */
+    readonly source?: string | null;
   }
 
   function publish(input: PublishInput): Headline | null {
     enterDay(input.day);
     if (slotsUsedToday >= maxHeadlinesPerDay) return null;
-    const candidates = byTrigger.get(input.trigger);
-    if (!candidates || candidates.length === 0) return null;
+    const pool = byTrigger.get(input.trigger);
+    if (!pool || pool.length === 0) return null;
+    const filtered = input.source
+      ? pool.filter((tpl) => tpl.source === input.source)
+      : null;
+    const candidates = filtered && filtered.length > 0 ? filtered : pool;
 
     const slot = slotsUsedToday;
     const rng = createRng(
@@ -260,8 +310,19 @@ export function createMarketNews(deps: MarketNewsDeps): MarketNews {
   const startedTags = new Map<string, { label: string; segment: string | null }>();
   const FALLBACK_SHOCK_LABEL = 'The market disruption';
 
+  /**
+   * Which voice announces a given shock (#177). A recall or an incentive
+   * program is the factory's news; a fuel or credit story is the trade press's.
+   * The mapping is catalog data, not shock physics, so it lives next to the
+   * copy it selects.
+   */
+  function shockVoice(shockId: string): string | null {
+    return catalog.shockSources[shockId] ?? null;
+  }
+
   const onShockStarted = (e: {
     day: number;
+    shockId: string;
     instanceId: string;
     label: string;
     segmentMagnitudes: Readonly<Record<string, number>>;
@@ -276,11 +337,16 @@ export function createMarketNews(deps: MarketNewsDeps): MarketNews {
       trigger: 'shock_started',
       segment: dominant?.segment ?? null,
       direction: (dominant?.magnitude ?? 0) >= 0 ? 'up' : 'down',
+      source: shockVoice(e.shockId),
       slots: { label: e.label },
     });
   };
 
-  const onShockResolved = (e: { day: number; instanceId: string }): void => {
+  const onShockResolved = (e: {
+    day: number;
+    shockId: string;
+    instanceId: string;
+  }): void => {
     const tag = startedTags.get(e.instanceId);
     startedTags.delete(e.instanceId);
     publish({
@@ -289,6 +355,8 @@ export function createMarketNews(deps: MarketNewsDeps): MarketNews {
       segment: tag?.segment ?? null,
       // A shock lifting is relief regardless of which way it pushed values.
       direction: 'up',
+      // The same voice that announced it closes it out.
+      source: shockVoice(e.shockId),
       slots: { label: tag?.label ?? FALLBACK_SHOCK_LABEL },
     });
   };
@@ -298,14 +366,22 @@ export function createMarketNews(deps: MarketNewsDeps): MarketNews {
     brand: string;
     oldPricing: number;
     newPricing: number;
+    segmentAffinity?: Readonly<Record<string, number>>;
   }): void => {
     const up = e.newPricing > e.oldPricing;
     publish({
       day: e.day,
       trigger: up ? 'rival_price_up' : 'rival_price_down',
-      segment: null,
+      // The rival's move is lot-wide, but naming the segment they lean hardest
+      // into is what makes it actionable — that's the shelf you compete with.
+      segment: dominantAffinity(e.segmentAffinity),
       direction: up ? 'up' : 'down',
-      slots: { brand: e.brand },
+      slots: {
+        brand: e.brand,
+        // A pricing lean is a position on a ±spread band around market, so a
+        // lean move of Δ is an asking-price move of Δ × 2 × spread.
+        pct: pct((e.newPricing - e.oldPricing) * 2 * competitorSpread),
+      },
     });
   };
 

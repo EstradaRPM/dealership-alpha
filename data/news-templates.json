@@ -1,10 +1,24 @@
 {
   "schemaVersion": 1,
-  "_doc": "Industry-wire headline catalog (slice #176, parent #150). Each template is keyed by a structural TRIGGER (what happened in the engine) and carries its own SOURCE (who is talking) and RELIABILITY tier (how much the player should trust it). Reliability is the load-bearing axis: 'direct' already happened and is verifiable on the lot or at the block; 'leading' is a forward call from the analyst desk that fires AHEAD of a shock and may be a false alarm; 'lagging' only confirms a trend the player could already see in their own numbers. Slot placeholders are filled at fire time from live state: {segment} (plural segment label), {pct} (absolute magnitude as a whole percent), {label} (shock catalog label), {brand} (rival brand), {days} (rumor lead time in days). Copy lives here, not in code, so wording retunes without a build. Slice #177 adds trade-press / OEM-bulletin / competitor-watch sources on top of these three.",
+  "_doc": "Industry-wire headline catalog (slice #176, expanded #177, parent #150). Each template is keyed by a structural TRIGGER (what happened in the engine) and carries its own SOURCE (who is talking) and RELIABILITY tier (how much the player should trust it). Reliability is the load-bearing axis: 'direct' already happened and is verifiable on the lot or at the block; 'leading' is a forward call fired AHEAD of a shock that may be a false alarm; 'lagging' only confirms a trend the player could already see in their own numbers. Slot placeholders are filled at fire time from live state: {segment} (plural segment label), {pct} (absolute magnitude as a whole percent), {label} (shock catalog label), {brand} (rival brand), {days} (lead time in days). Copy lives here, not in code, so wording retunes without a build. #177 added three voices — trade press (a fictional pub, mostly forward calls plus lagging texture), factory bulletins (direct, and only for the shocks the factory actually causes) and competitor watch (direct, the tracked-with-numbers sibling of vague lot talk) — plus `shockSources` and the weekly market report.",
   "sourceLabels": {
     "auction_report": "Auction block report",
     "analyst_desk": "Analyst desk",
-    "lot_talk": "Around town"
+    "lot_talk": "Around town",
+    "trade_press": "Dealer Trade Weekly",
+    "oem_bulletin": "Factory bulletin",
+    "competitor_watch": "Competitor watch"
+  },
+  "_shockSourcesDoc": "Which voice announces a given market shock, by shock id from data/market-shocks.json (#177). A recall or an incentive program comes from the factory; a fuel or credit story is trade-press macro; anything unmapped falls back to the whole pool for the trigger, so a new shock never goes unannounced. Selection is filtered to the mapped source; if that source has no template for the trigger the engine falls back to the full pool rather than dropping the headline.",
+  "shockSources": {
+    "truck_oem_recall": "oem_bulletin",
+    "suv_oem_recall": "oem_bulletin",
+    "oem_incentive_push": "oem_bulletin",
+    "model_year_changeover": "oem_bulletin",
+    "fuel_spike": "trade_press",
+    "credit_pullback": "trade_press",
+    "auction_supply_crunch": "auction_report",
+    "sedan_oversupply": "auction_report"
   },
   "reliabilityLabels": {
     "direct": "Confirmed",
@@ -301,6 +315,311 @@
       "source": "analyst_desk",
       "reliability": "leading",
       "text": "A contact says {segment} money comes off within {days} days. Take it for what it's worth."
+    },
+
+    {
+      "id": "tp_rumor_up_1",
+      "trigger": "rumor_up",
+      "source": "trade_press",
+      "reliability": "leading",
+      "text": "Our desk hears {segment} money firms up inside {days} days."
+    },
+    {
+      "id": "tp_rumor_up_2",
+      "trigger": "rumor_up",
+      "source": "trade_press",
+      "reliability": "leading",
+      "text": "Trade chatter: {segment} are set to run. No confirmation yet."
+    },
+    {
+      "id": "tp_rumor_up_3",
+      "trigger": "rumor_up",
+      "source": "trade_press",
+      "reliability": "leading",
+      "text": "We're told buyers are chasing {segment}. Treat it as chatter until it prints."
+    },
+    {
+      "id": "tp_rumor_up_4",
+      "trigger": "rumor_up",
+      "source": "trade_press",
+      "reliability": "leading",
+      "text": "Sources say {segment} values push up within {days} days."
+    },
+    {
+      "id": "tp_rumor_down_1",
+      "trigger": "rumor_down",
+      "source": "trade_press",
+      "reliability": "leading",
+      "text": "Our desk hears {segment} money comes off inside {days} days."
+    },
+    {
+      "id": "tp_rumor_down_2",
+      "trigger": "rumor_down",
+      "source": "trade_press",
+      "reliability": "leading",
+      "text": "Trade chatter: {segment} are set to soften. No confirmation yet."
+    },
+    {
+      "id": "tp_rumor_down_3",
+      "trigger": "rumor_down",
+      "source": "trade_press",
+      "reliability": "leading",
+      "text": "We're told buyers are backing off {segment}. Treat it as chatter until it prints."
+    },
+    {
+      "id": "tp_rumor_down_4",
+      "trigger": "rumor_down",
+      "source": "trade_press",
+      "reliability": "leading",
+      "text": "Sources say {segment} values slide within {days} days."
+    },
+    {
+      "id": "tp_heat_up_1",
+      "trigger": "heat_up",
+      "source": "trade_press",
+      "reliability": "lagging",
+      "text": "This week in the lanes: {segment} ran about {pct} up. Nothing you haven't seen."
+    },
+    {
+      "id": "tp_heat_up_2",
+      "trigger": "heat_up",
+      "source": "trade_press",
+      "reliability": "lagging",
+      "text": "Recap: {segment} money climbed {pct}. Your own numbers said so first."
+    },
+    {
+      "id": "tp_heat_up_3",
+      "trigger": "heat_up",
+      "source": "trade_press",
+      "reliability": "lagging",
+      "text": "Trailing the trend — {segment} finished the stretch {pct} higher."
+    },
+    {
+      "id": "tp_heat_up_4",
+      "trigger": "heat_up",
+      "source": "trade_press",
+      "reliability": "lagging",
+      "text": "For the record: {segment} have been bringing {pct} more."
+    },
+    {
+      "id": "tp_heat_down_1",
+      "trigger": "heat_down",
+      "source": "trade_press",
+      "reliability": "lagging",
+      "text": "This week in the lanes: {segment} ran about {pct} off. Nothing you haven't seen."
+    },
+    {
+      "id": "tp_heat_down_2",
+      "trigger": "heat_down",
+      "source": "trade_press",
+      "reliability": "lagging",
+      "text": "Recap: {segment} money slipped {pct}. Your own numbers said so first."
+    },
+    {
+      "id": "tp_heat_down_3",
+      "trigger": "heat_down",
+      "source": "trade_press",
+      "reliability": "lagging",
+      "text": "Trailing the trend — {segment} finished the stretch {pct} lower."
+    },
+    {
+      "id": "tp_heat_down_4",
+      "trigger": "heat_down",
+      "source": "trade_press",
+      "reliability": "lagging",
+      "text": "For the record: {segment} have been bringing {pct} less."
+    },
+    {
+      "id": "tp_shock_started_1",
+      "trigger": "shock_started",
+      "source": "trade_press",
+      "reliability": "direct",
+      "text": "Our lead story: {label}. Expect {segment} to feel it first."
+    },
+    {
+      "id": "tp_shock_started_2",
+      "trigger": "shock_started",
+      "source": "trade_press",
+      "reliability": "direct",
+      "text": "{label} is the trade's front page this week."
+    },
+    {
+      "id": "tp_shock_resolved_1",
+      "trigger": "shock_resolved",
+      "source": "trade_press",
+      "reliability": "direct",
+      "text": "The trade has moved on from {label}. {segment} money is normalizing."
+    },
+    {
+      "id": "tp_shock_resolved_2",
+      "trigger": "shock_resolved",
+      "source": "trade_press",
+      "reliability": "direct",
+      "text": "{label} is off the front page. Values are finding their level."
+    },
+
+    {
+      "id": "oem_shock_started_1",
+      "trigger": "shock_started",
+      "source": "oem_bulletin",
+      "reliability": "direct",
+      "text": "{label} is in effect as of this morning. Dealers have been notified."
+    },
+    {
+      "id": "oem_shock_started_2",
+      "trigger": "shock_started",
+      "source": "oem_bulletin",
+      "reliability": "direct",
+      "text": "Bulletin: {label}. Franchise stores are already adjusting {segment} money."
+    },
+    {
+      "id": "oem_shock_started_3",
+      "trigger": "shock_started",
+      "source": "oem_bulletin",
+      "reliability": "direct",
+      "text": "The factory has issued {label}. It will show up in {segment} values."
+    },
+    {
+      "id": "oem_shock_started_4",
+      "trigger": "shock_started",
+      "source": "oem_bulletin",
+      "reliability": "direct",
+      "text": "{label} — details went out to the dealer body overnight."
+    },
+    {
+      "id": "oem_shock_resolved_1",
+      "trigger": "shock_resolved",
+      "source": "oem_bulletin",
+      "reliability": "direct",
+      "text": "{label} has been closed out. No further action for dealers."
+    },
+    {
+      "id": "oem_shock_resolved_2",
+      "trigger": "shock_resolved",
+      "source": "oem_bulletin",
+      "reliability": "direct",
+      "text": "The factory says {label} is finished. {segment} supply is normalizing."
+    },
+    {
+      "id": "oem_shock_resolved_3",
+      "trigger": "shock_resolved",
+      "source": "oem_bulletin",
+      "reliability": "direct",
+      "text": "Bulletin: {label} ended. Stores report {segment} money settling back."
+    },
+    {
+      "id": "oem_shock_resolved_4",
+      "trigger": "shock_resolved",
+      "source": "oem_bulletin",
+      "reliability": "direct",
+      "text": "{label} is complete. The program window is closed."
+    },
+
+    {
+      "id": "cw_rival_price_up_1",
+      "trigger": "rival_price_up",
+      "source": "competitor_watch",
+      "reliability": "direct",
+      "text": "{brand} moved asking prices up about {pct} across their lot — {segment} included."
+    },
+    {
+      "id": "cw_rival_price_up_2",
+      "trigger": "rival_price_up",
+      "source": "competitor_watch",
+      "reliability": "direct",
+      "text": "Tracking {brand}: window stickers up roughly {pct}. They lean {segment}."
+    },
+    {
+      "id": "cw_rival_price_up_3",
+      "trigger": "rival_price_up",
+      "source": "competitor_watch",
+      "reliability": "direct",
+      "text": "{brand} repriced up about {pct}. Their {segment} are the ones to watch."
+    },
+    {
+      "id": "cw_rival_price_up_4",
+      "trigger": "rival_price_up",
+      "source": "competitor_watch",
+      "reliability": "direct",
+      "text": "{brand} is asking about {pct} more than they were last week."
+    },
+    {
+      "id": "cw_rival_price_down_1",
+      "trigger": "rival_price_down",
+      "source": "competitor_watch",
+      "reliability": "direct",
+      "text": "{brand} cut asking prices about {pct} across their lot — {segment} included."
+    },
+    {
+      "id": "cw_rival_price_down_2",
+      "trigger": "rival_price_down",
+      "source": "competitor_watch",
+      "reliability": "direct",
+      "text": "Tracking {brand}: window stickers down roughly {pct}. They lean {segment}."
+    },
+    {
+      "id": "cw_rival_price_down_3",
+      "trigger": "rival_price_down",
+      "source": "competitor_watch",
+      "reliability": "direct",
+      "text": "{brand} repriced down about {pct}. Their {segment} will move first."
+    },
+    {
+      "id": "cw_rival_price_down_4",
+      "trigger": "rival_price_down",
+      "source": "competitor_watch",
+      "reliability": "direct",
+      "text": "{brand} is asking about {pct} less than they were last week."
     }
-  ]
+  ],
+  "weeklyReport": {
+    "_doc": "Weekly market report copy (#177). The report is the trade pub's longer-form column, published on the configured weekday and standing on the Home screen until the next one replaces it. It is NOT a wire headline — it never spends the daily headline budget and never appears in the ticker. `summaries` are picked by the week's SHAPE: 'up'/'down' when the movers agree, 'mixed' when they pulled against each other, 'quiet' when nothing cleared the reporting bar. `forwardCalls` are the desk's own bets for the coming week and are deliberately fallible — a 'shock' call reads the scheduler's future arrival roll (and is only made some of the time), a 'drift' call just extrapolates the week's momentum. Slots: {segment}, {counterSegment} (plural labels), {pct} (whole percent), {days} (lead time).",
+    "source": "trade_press",
+    "title": "Weekly Market Report",
+    "subtitle": "Days {fromDay}–{toDay}",
+    "summaries": {
+      "up": [
+        "Money moved up this week, led by {segment} at {pct}.",
+        "A firming week. {segment} carried it, closing {pct} higher.",
+        "Values ran up across the board. {segment} led at {pct}."
+      ],
+      "down": [
+        "Money came off this week, led down by {segment} at {pct}.",
+        "A softening week. {segment} took the worst of it, {pct} lower.",
+        "Values slid across the board. {segment} led the drop at {pct}."
+      ],
+      "mixed": [
+        "A split week: {segment} moved {pct} while {counterSegment} went the other way.",
+        "No single story this week — {segment} at {pct}, {counterSegment} against it.",
+        "The lanes disagreed. {segment} ran {pct}; {counterSegment} did the opposite."
+      ],
+      "quiet": [
+        "A quiet week. Nothing moved far enough to be worth repricing over.",
+        "Flat week in the lanes. Values held where they were.",
+        "Little to report. The market sat still."
+      ]
+    },
+    "forwardCalls": {
+      "shock_up": [
+        "Watch {segment}: we hear something is coming inside {days} days that puts money in them.",
+        "Our call for next week — {segment} firm up. Within {days} days, if it holds."
+      ],
+      "shock_down": [
+        "Watch {segment}: we hear something is coming inside {days} days that takes money out of them.",
+        "Our call for next week — {segment} come off. Within {days} days, if it holds."
+      ],
+      "drift_up": [
+        "{segment} have run {pct} up and we expect them to keep going.",
+        "Momentum call: {segment}, up {pct} and still climbing."
+      ],
+      "drift_down": [
+        "{segment} have run {pct} off and we expect them to keep sliding.",
+        "Momentum call: {segment}, down {pct} and still falling."
+      ]
+    },
+    "noCallsText": "No calls this week. Nothing in front of us is worth a bet.",
+    "callsHeading": "What we expect next week",
+    "movesHeading": "The week in the lanes",
+    "wireTallyText": "{total} reports on the wire this week — {direct} confirmed, {leading} rumor, {lagging} recap."
+  }
 }

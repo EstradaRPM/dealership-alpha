@@ -24,6 +24,8 @@ import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { GateStrip } from './GateStrip';
 import { IndustryWire } from './IndustryWire';
 import type { IndustryWireModel } from './industryWireModel';
+import { WeeklyMarketReportCard } from './WeeklyMarketReportCard';
+import type { WeeklyReportCardModel } from './weeklyReportModel';
 import type { HomeDashboardModel, HomeStat, MiniCalDay } from './homeModel';
 
 /** Leading glyph + accent per quick-stat tile (#240), keyed by the read-model's
@@ -49,6 +51,8 @@ export interface HomeTabProps {
   demandReadout?: DemandReadoutModel;
   /** Industry-wire headlines (#176). Absent ⇒ hint shown (test renders). */
   industryWire?: IndustryWireModel;
+  /** The standing weekly column (#177). Absent ⇒ none has published yet. */
+  weeklyReport?: WeeklyReportCardModel | null;
 }
 
 /**
@@ -65,6 +69,7 @@ export function HomeTab({
   recapChip,
   demandReadout,
   industryWire,
+  weeklyReport,
 }: HomeTabProps) {
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
@@ -119,6 +124,23 @@ export function HomeTab({
             <DemandReadout model={demandReadout} />
           ) : (
             <Text style={hint}>Open the lot to build the demand readout.</Text>
+          )}
+        </View>
+      </View>
+
+      {/* Weekly Market Report (#177) — the column, above the ticker. It sits
+          between the player's own readout and the wire for the same reason the
+          wire sits below the readout: it is a longer, slower read of the same
+          week, and it stands until the next one replaces it. */}
+      <View style={region} testID="home-region-weekly-report">
+        <SectionHeader title="Market Report" />
+        <View style={regionBody}>
+          {weeklyReport ? (
+            <WeeklyMarketReportCard model={weeklyReport} />
+          ) : (
+            <Text style={hint}>
+              The first weekly report comes out after your first full week.
+            </Text>
           )}
         </View>
       </View>

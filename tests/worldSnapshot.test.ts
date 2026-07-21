@@ -1044,6 +1044,27 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     // Behavior-neutral: nothing in the sim branches on a mark.
     expect(migrated.modules.records.marks.bestDayGross).toBeNull();
   });
+
+  it('migrates pre-#177 snapshots to no standing weekly column', () => {
+    const { world } = build(4242);
+    const current = snapshotWorld(world);
+    const { weekly, ...legacyMarketEconomy } =
+      current.modules.marketEconomy as unknown as Record<string, unknown>;
+    const persisted: PersistedWorldSnapshot = {
+      version: 18,
+      modules: {
+        ...current.modules,
+        marketEconomy: { ...legacyMarketEconomy, schemaVersion: 2 },
+      },
+    };
+    const migrated = migrateWorldSnapshot(persisted);
+    expect(migrated.version).toBe(WORLD_SNAPSHOT_VERSION);
+    expect(migrated.modules.marketEconomy.schemaVersion).toBe(3);
+    // A loaded career opens a fresh week on its next tick rather than
+    // back-filling a column from days the player never saw reported.
+    expect(migrated.modules.marketEconomy.weekly.active).toBeNull();
+    expect(migrated.modules.marketEconomy.weekly.weekStartDay).toBeNull();
+  });
 });
 
 describe('snapshotWorld / restoreWorld seam (#188)', () => {
@@ -1066,13 +1087,16 @@ describe('snapshotWorld / restoreWorld seam (#188)', () => {
     expect(Array.isArray(snap.modules.staffOrg.roster)).toBe(true);
     expect(snap.modules.staffMorale.schemaVersion).toBe(1);
     expect(Array.isArray(snap.modules.staffMorale.morale)).toBe(true);
-    // Bumped to 2 by #176 (the heat monitor + industry wire joined the blob).
-    expect(snap.modules.marketEconomy.schemaVersion).toBe(2);
+    // Bumped to 2 by #176 (the heat monitor + industry wire joined the blob),
+    // to 3 by #177 (the weekly market report).
+    expect(snap.modules.marketEconomy.schemaVersion).toBe(3);
     expect(snap.modules.marketEconomy.compHistory.schemaVersion).toBe(1);
     expect(snap.modules.marketEconomy.shocks.schemaVersion).toBe(1);
     expect(snap.modules.marketEconomy.heat.schemaVersion).toBe(1);
     expect(snap.modules.marketEconomy.news.schemaVersion).toBe(1);
     expect(Array.isArray(snap.modules.marketEconomy.news.headlines)).toBe(true);
+    expect(snap.modules.marketEconomy.weekly.schemaVersion).toBe(1);
+    expect(snap.modules.marketEconomy.weekly.active).toBeNull();
     expect(snap.modules.competitorMarket.schemaVersion).toBe(1);
     expect(Array.isArray(snap.modules.competitorMarket.competitors)).toBe(true);
     expect(typeof snap.modules.competitorMarket.rngState).toBe('number');

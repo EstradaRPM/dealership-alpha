@@ -12,6 +12,18 @@ export type {
   WireLegendEntry,
   WireReliability,
 } from './industryWireModel';
+export { WeeklyMarketReportCard } from './WeeklyMarketReportCard';
+export type { WeeklyMarketReportCardProps } from './WeeklyMarketReportCard';
+export { buildWeeklyReportCard, signedPercent } from './weeklyReportModel';
+export type {
+  WeeklyReportCardModel,
+  WeeklyReportInputs,
+  WeeklyReportInput,
+  WeeklyReportCopyInput,
+  WeeklyMoveRow,
+  WeeklyCallRow,
+  WeeklyBadge,
+} from './weeklyReportModel';
 export { buildHomeDashboard, csiLabel } from './homeModel';
 export { buildGateStrip } from './gateStripModel';
 export type {

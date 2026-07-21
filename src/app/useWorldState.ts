@@ -90,6 +90,12 @@ export function useWorldState(bus: EventBus): WorldState {
     // (a rival repricing, a shock landing), not just on the day tick — so the
     // panel refreshes on the publish itself rather than waiting for tomorrow.
     const onHeadlinePublished = () => setTick((n) => n + 1);
+    // Weekly market report (#177): the column replaces the standing card on its
+    // publish day. It fires inside the same day tick as `clock:day_started`
+    // (after the wire), so the day-boundary bump above would incidentally cover
+    // it — subscribing explicitly keeps the card's reactivity a stated fact
+    // rather than a side effect of another surface's subscription.
+    const onWeeklyReportPublished = () => setTick((n) => n + 1);
     bus.subscribe('inventory:vehicle_purchased', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_acquired_via_trade', onVehiclePurchased);
     bus.subscribe('inventory:vehicle_sold', onVehicleSold);
@@ -101,6 +107,7 @@ export function useWorldState(bus: EventBus): WorldState {
     bus.subscribe('regulatory:suspension_lifted', onRecoveryStateChange);
     bus.subscribe('career:debt_payment_made', onRecoveryStateChange);
     bus.subscribe('news:headline_published', onHeadlinePublished);
+    bus.subscribe('market:weekly_report_published', onWeeklyReportPublished);
     return () => {
       bus.unsubscribe('inventory:vehicle_purchased', onVehiclePurchased);
       bus.unsubscribe('inventory:vehicle_acquired_via_trade', onVehiclePurchased);
@@ -113,6 +120,7 @@ export function useWorldState(bus: EventBus): WorldState {
       bus.unsubscribe('regulatory:suspension_lifted', onRecoveryStateChange);
       bus.unsubscribe('career:debt_payment_made', onRecoveryStateChange);
       bus.unsubscribe('news:headline_published', onHeadlinePublished);
+      bus.unsubscribe('market:weekly_report_published', onWeeklyReportPublished);
     };
   }, []);
 

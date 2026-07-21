@@ -39,7 +39,7 @@ export type {
   SegmentHeatMonitorDeps,
 } from './heatMonitor';
 
-export { createMarketNews, createDefaultNewsSnapshot } from './news';
+export { createMarketNews, createDefaultNewsSnapshot, wholePercent } from './news';
 export type {
   Headline,
   MarketNews,
@@ -47,6 +47,17 @@ export type {
   NewsDirection,
   NewsSnapshot,
 } from './news';
+
+export { createWeeklyReport, createDefaultWeeklyReportSnapshot } from './weeklyReport';
+export type {
+  WeeklyForwardCall,
+  WeeklyMarketReport,
+  WeeklyReport,
+  WeeklyReportDeps,
+  WeeklyReportSnapshot,
+  WeeklySegmentMove,
+  WeeklyWireTally,
+} from './weeklyReport';
 
 export { predictDaysToSell } from './daysToSell';
 export type {
@@ -158,6 +169,8 @@ export {
   NewsTemplatesConfigSchema,
   NEWS_TRIGGERS,
   NEWS_RELIABILITIES,
+  WEEKLY_SUMMARY_SHAPES,
+  WEEKLY_CALL_KINDS,
   loadNewsTemplatesConfig,
   AuctionSourcesConfigSchema,
   loadAuctionSourcesConfig,
@@ -195,6 +208,9 @@ export type {
   NewsTemplate,
   NewsTrigger,
   NewsReliability,
+  WeeklyReportCopy,
+  WeeklySummaryShape,
+  WeeklyCallKind,
   AuctionSourcesConfig,
   AuctionSourceDefinition,
   ReconVarianceConfig,

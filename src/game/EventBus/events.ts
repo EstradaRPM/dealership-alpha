@@ -11,6 +11,7 @@ import type { EndCardData } from '../EndCard/types';
 import type {
   NewsReliability,
   NewsTrigger,
+  WeeklySummaryShape,
 } from '../MarketEconomy/schemas';
 
 export interface EventMap {
@@ -254,6 +255,25 @@ export interface EventMap {
     trigger: NewsTrigger;
     segment: string | null;
     direction: 'up' | 'down';
+  };
+
+  // MarketEconomy → world (slice #177). The weekly market report — the trade
+  // pub's longer-form column, published on `marketEconomy.weeklyReport.
+  // publishDayOfWeek` inside the same day tick as the wire (after it), and
+  // standing as the Home-screen card until the next one replaces it. It is NOT
+  // a headline: it never spends the daily wire budget and never enters the
+  // ticker's ring buffer. The payload is the summary line only — consumers that
+  // need the moves/calls read `marketEconomy.weeklyReport.getActive()`, which
+  // is the persisted article. `shape` is the week's structural read (all movers
+  // agreeing up/down, pulling against each other, or nothing clearing the bar).
+  'market:weekly_report_published': {
+    day: number;
+    weekIndex: number;
+    fromDay: number;
+    toDay: number;
+    shape: WeeklySummaryShape;
+    summary: string;
+    forwardCallCount: number;
   };
 
   // Inventory — vehicle purchased from auction, moved to lot.

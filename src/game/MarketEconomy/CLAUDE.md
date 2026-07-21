@@ -194,15 +194,21 @@ fallback path per slice #155 AC.
   `market:shock_resolved` on expiration. Both carry `instanceId =
   ${shockId}@${startDay}` so multiple activations of the same catalog shock
   are disambiguable.
+- **Emits** (slice #177): `market:weekly_report_published` when the weekly
+  column publishes (once per week, on `marketEconomy.weeklyReport.
+  publishDayOfWeek`, inside the same day tick as the wire and after it). The
+  payload is the summary line only — consumers needing the moves/calls read
+  `marketEconomy.weeklyReport.getActive()`.
 - **Emits** (slice #176): `market:segment_heat_updated` when a segment's
   composite heat has moved at least `marketEconomy.heatMonitor.deltaThreshold`
   **since it was last reported** — deliberately not a daily heartbeat (the #267
   lesson). `news:headline_published` for each industry-wire headline.
 - **Day tick ordering (#176):** the module has ONE `clock:day_started`
   subscription that runs, in order, `shockScheduler.step` → `heatMonitor.step`
-  → `news.step`. Shocks must land (and emit) before the monitor reads the
-  composite they modulate, and both must have spoken before the wire's day step
-  spends the remaining headline budget. The order is a property of the module,
+  → `news.step` → `weeklyReport.step`. Shocks must land (and emit) before the
+  monitor reads the composite they modulate, both must have spoken before the
+  wire's day step spends the remaining headline budget, and the wire must have
+  spoken before the column sums it up. The order is a property of the module,
   not of bus registration order.
 
 ## Sub-systems (#176)
@@ -233,7 +239,24 @@ fallback path per slice #155 AC.
   `MarketEconomySnapshot.news` (ring buffer + day budget + un-reported comps +
   live shock tags). Exposed read-only as `marketEconomy.news.getHeadlines()`,
   newest first — what the Home-screen Industry Wire panel renders.
-- `MarketEconomySnapshot.schemaVersion` is **2** as of #176 (world envelope 18).
+- **`weeklyReport`** (`weeklyReport.ts`, #177) — the trade pub's longer-form
+  column. A *card*, not a headline: it never spends the wire's daily budget,
+  never enters the ring buffer, and stands until the next one replaces it.
+  Publishes inside the module's one day tick on `publishDayOfWeek` (0 = Monday),
+  covering the days played since the last column. Aggregates three things that
+  are already true in the engine: the week's per-segment heat move (against a
+  baseline the column captured when the week opened — so the number is the week,
+  not the career), a tally of the week's wire by trust tier plus per-segment
+  mention counts (accumulated off `news:headline_published`), and up to
+  `maxForwardCalls` forward calls. Calls are deterministic from current state
+  and deliberately fallible: a `shock` call reads `shocks.previewArrival` across
+  `lookaheadDays` and only fires `callHitProb` of the time; a `drift` call is
+  momentum extrapolation off the week's own move, skipped when the shock call
+  already named that segment. Exposed as `marketEconomy.weeklyReport.getActive()`
+  — what the Home-screen card renders. Persisted as
+  `MarketEconomySnapshot.weekly` (the standing column + the in-progress week's
+  baseline/mentions/tally, so a mid-week reload keeps the week).
+- `MarketEconomySnapshot.schemaVersion` is **3** as of #177 (world envelope 19).
 
 ## Data files
 
@@ -255,11 +278,23 @@ fallback path per slice #155 AC.
   and reliability tier; slots `{segment}` `{pct}` `{label}` `{brand}` `{days}`
   are filled at fire time. Also holds ALL player-facing wire copy — source
   labels, the trust badges (Confirmed / Rumor / Recap) and their plain-language
-  explanations — so wording retunes in one data file. Slice #177 adds the
-  trade-press / OEM-bulletin / competitor-watch voices here.
+  explanations — so wording retunes in one data file. #177 added three voices
+  (`trade_press` — a fictional pub, mostly forward calls + lagging texture;
+  `oem_bulletin` — direct, and only for the shocks the factory actually causes;
+  `competitor_watch` — direct, the tracked-with-numbers sibling of vague lot
+  talk), the `shockSources` map (shockId → the voice that announces it; unmapped
+  shocks draw from the whole pool, and a filter matching nothing falls back to
+  the full pool so a copy gap never swallows a real headline), and the
+  `weeklyReport` copy block (title/subtitle/headings, summaries keyed by week
+  shape, forward-call lines keyed by basis × direction, the tally sentence).
 - `data/market-shocks.json` — stochastic shock catalog (#159). Each shock
   carries per-segment signed magnitude bands + a duration band + a rarity
-  weight used by the scheduler's weighted pick.
+  weight used by the scheduler's weighted pick. #177 added `oem_incentive_push`
+  and `model_year_changeover` — the two factory-caused stories the OEM-bulletin
+  voice needed in order to speak about something that genuinely moves values,
+  rather than narrating an event the engine doesn't have. Which voice announces
+  a given shock is in `news-templates.json`, not here: that's wire copy, not
+  shock physics.
 - `data/auction-sources.json` — auction source catalog (#160). Each save
   rolls a hidden reliability per source from the catalog band via
   `rollAuctionSourceReliability(masterSeed)`; the auction generator picks a

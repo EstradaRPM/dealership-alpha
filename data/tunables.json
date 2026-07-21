@@ -420,6 +420,14 @@
       "falseAlarmProbPerDay": 0.06,
       "blockReportMinComps": 2,
       "blockReportDeltaThreshold": 0.03
+    },
+    "weeklyReport": {
+      "publishDayOfWeek": 0,
+      "lookaheadDays": 7,
+      "callHitProb": 0.6,
+      "driftCallThreshold": 0.02,
+      "quietThreshold": 0.01,
+      "maxForwardCalls": 2
     }
   },
   "competitorMarket": {

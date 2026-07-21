@@ -435,6 +435,28 @@ export const TunablesSchema = z.object({
       blockReportMinComps: z.number().int().positive(),
       blockReportDeltaThreshold: z.number().positive(),
     }),
+    // Weekly market report (slice #177) — the trade pub's longer-form column.
+    // A card, not a headline: it stands on the Home screen until the next one
+    // replaces it, and never spends the daily wire budget.
+    weeklyReport: z.object({
+      // 0 = Monday … 6 = Sunday, on GameClock's day-of-week axis. The report is
+      // published inside that day's tick, after the wire has had its say.
+      publishDayOfWeek: z.number().int().min(0).max(6),
+      // How far into the coming week the desk reads the shock scheduler's
+      // future arrival rolls when making its forward call.
+      lookaheadDays: z.number().int().positive(),
+      // Probability the desk actually calls a shock it can see coming. < 1 for
+      // the same reason the daily rumor's hit rate is: a real setup sometimes
+      // passes unremarked, so the column is worth reading but never gospel.
+      callHitProb: z.number().min(0).max(1),
+      // Minimum |week heat move| before a segment is worth a momentum call.
+      driftCallThreshold: z.number().positive(),
+      // Minimum |week heat move| before the week counts as having moved at all
+      // (below this every segment reads quiet).
+      quietThreshold: z.number().positive(),
+      // Hard cap on forward calls per report.
+      maxForwardCalls: z.number().int().positive(),
+    }),
   }),
   // CompetitorMarket (slice #158). Weekly drift emits
   // `competitor:price_changed` when |new − old| ≥ this threshold. Below the
