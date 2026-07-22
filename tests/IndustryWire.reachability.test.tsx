@@ -143,6 +143,8 @@ describe('#176 industry wire — panel behavior', () => {
         reliability: 'direct' as const,
         reliabilityLabel: 'Confirmed',
         dayLabel: 'Today',
+        locked: false,
+        lockId: null,
       },
       {
         id: '8#1',
@@ -151,6 +153,8 @@ describe('#176 industry wire — panel behavior', () => {
         reliability: 'leading' as const,
         reliabilityLabel: 'Rumor',
         dayLabel: 'Yesterday',
+        locked: false,
+        lockId: null,
       },
     ],
     legend: [
@@ -165,6 +169,8 @@ describe('#176 industry wire — panel behavior', () => {
         note: "A call about what's next. It may not pan out.",
       },
     ],
+    unlocks: [],
+    unlocksHeading: "What you're not reading",
   };
 
   it('renders each headline with its source, trust badge and day stamp', () => {
@@ -188,7 +194,9 @@ describe('#176 industry wire — panel behavior', () => {
 
   it('says so honestly when nothing has come over the wire yet', () => {
     const { getByTestId, queryByTestId } = render(
-      <IndustryWire model={{ headlines: [], legend: MODEL.legend }} />,
+      <IndustryWire
+        model={{ ...MODEL, headlines: [] }}
+      />,
     );
     expect(getByTestId('industry-wire')).toBeTruthy();
     expect(queryByTestId('wire-legend-toggle')).toBeNull();

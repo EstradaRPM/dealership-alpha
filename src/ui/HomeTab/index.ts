@@ -11,6 +11,9 @@ export type {
   WireHeadlineView,
   WireLegendEntry,
   WireReliability,
+  WireLockInput,
+  WireUnlockView,
+  WireGatingCopyInput,
 } from './industryWireModel';
 export { WeeklyMarketReportCard } from './WeeklyMarketReportCard';
 export type { WeeklyMarketReportCardProps } from './WeeklyMarketReportCard';

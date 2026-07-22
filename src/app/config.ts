@@ -36,7 +36,9 @@ import {
   type CashDeltaSplit,
   type IndustryWireModel,
   type WeeklyReportCardModel,
+  type WireLockInput,
 } from '../ui/HomeTab';
+import { gateHeadlines, type NewsAccess, type NewsLock } from '../game/MarketIntel';
 import {
   PART_CATEGORIES,
   SUPPLIER_TIERS,
@@ -340,18 +342,56 @@ const NEWS_COPY = loadNewsTemplatesConfig();
 // current day (for the "Today / Yesterday / Day N" stamp) and the trust-badge
 // copy. Empty until the first headline publishes — the panel says so honestly
 // rather than rendering a placeholder.
+/**
+ * Read access to the wire (#178). Resolved from the live tier + the paid
+ * subscriptions + who is on the desk — the used car manager's presence, not a
+ * skill threshold, because forward calls are the channel-desk *advise* surface
+ * and advise is free on hire (manager-roles-channel-desk.md §3).
+ */
+export function resolveWireAccess(world: World): NewsAccess {
+  return world.marketIntel.accessFor({
+    tier: world.tierManager.currentTier,
+    hasDeskManager: world.staffOrg.currentRoster.some(
+      (s) => s.role_id === 'used-car-manager',
+    ),
+  });
+}
+
+/** Engine-side gating verdict → the view's structural lock input. */
+function toWireLock(lock: NewsLock): WireLockInput {
+  return {
+    id: lock.id,
+    label: lock.label,
+    hint: lock.hint,
+    blurb: lock.blurb,
+    kind: lock.kind,
+    dailyCost: lock.dailyCost,
+    available: lock.available,
+    active: lock.satisfied,
+  };
+}
+
 export function buildIndustryWire(world: World): IndustryWireModel {
+  const access = resolveWireAccess(world);
   return buildIndustryWireModel({
-    headlines: world.marketEconomy.news.getHeadlines().map((h) => ({
-      id: h.id,
-      day: h.day,
-      text: h.text,
-      sourceLabel: h.sourceLabel,
-      reliability: h.reliability,
-    })),
+    // The engine published every one of these regardless of access (#178) — the
+    // gate is a read-side lens, so what the player bought never perturbs the
+    // seed stream and a fixed seed replays the same world (#122).
+    headlines: gateHeadlines(world.marketEconomy.news.getHeadlines(), access).map(
+      (row) => ({
+        id: row.headline.id,
+        day: row.headline.day,
+        text: row.headline.text,
+        sourceLabel: row.headline.sourceLabel,
+        reliability: row.headline.reliability,
+        lock: row.readable ? null : toWireLock(row.lock),
+      }),
+    ),
     currentDay: world.clock.currentDay,
     reliabilityLabels: NEWS_COPY.reliabilityLabels,
     reliabilityNotes: NEWS_COPY.reliabilityNotes,
+    locks: access.locks.map(toWireLock),
+    gatingCopy: world.marketIntel.config.copy,
   });
 }
 
@@ -362,6 +402,14 @@ export function buildIndustryWire(world: World): IndustryWireModel {
 // honestly rather than rendering an empty card.
 export function buildWeeklyReport(world: World): WeeklyReportCardModel | null {
   const report = world.marketEconomy.weeklyReport.getActive();
+  // The column's forward calls ARE the wire's `leading` lane, published under
+  // the column's own voice — so they go through the same door (#178). Gating
+  // them here (rather than leaving the card a free back way in) is what keeps
+  // the forward-call unlock worth anything.
+  const callsLock = resolveWireAccess(world).lockFor(
+    NEWS_COPY.weeklyReport.source,
+    'leading',
+  );
   return buildWeeklyReportCard({
     report: report
       ? {
@@ -386,6 +434,7 @@ export function buildWeeklyReport(world: World): WeeklyReportCardModel | null {
       : null,
     copy: NEWS_COPY.weeklyReport,
     reliabilityLabels: NEWS_COPY.reliabilityLabels,
+    callsLockedHint: callsLock?.hint ?? null,
   });
 }
 

@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "_doc": "News access gating (#178, parent #150). What the player is ALLOWED to read on the industry wire, as opposed to what the market engine publishes — the engine always publishes everything (so the seed stream, and therefore replay, is identical whether or not anything is unlocked); this file decides which lanes reach the player's eyes. Three access lanes, each a different currency: PUBLIC (free — lot talk, the trade magazine, factory recall/incentive bulletins: vague, late, or already public), PAID (a data subscription — the block's actual numbers, a rival's actual percentages: the same events you already hear about, quantified), and STAFFED (a used car manager on the desk — forward calls, per manager-roles-channel-desk.md §3 'advise = free on hire'). A lane's `requires` names an unlock id; `null` is free. Lane matching is by SPECIFICITY, not array order: an exact source+reliability rule beats a source wildcard, which beats a reliability wildcard (ties fall back to declaration order), so a new voice can be slotted in anywhere in the list. All costs are first-pass placeholders tuned in the S14 balance pass (#286).",
+  "unlocks": [
+    {
+      "id": "auction_data",
+      "kind": "subscription",
+      "label": "Auction data feed",
+      "blurb": "The block's actual numbers, wired to your desk every morning instead of read off a rumor.",
+      "dailyCost": 45,
+      "minTier": 2,
+      "lockedHint": "Subscribe to the auction data feed — ${cost} a day — to read what the block actually did.",
+      "tierLockedHint": "The auction data feed sells to lots at Tier {tier} and up."
+    },
+    {
+      "id": "competitor_tracking",
+      "kind": "subscription",
+      "label": "Competitor price tracking",
+      "blurb": "You always hear that a rival moved. This tells you by how much, and on which shelf.",
+      "dailyCost": 30,
+      "minTier": 2,
+      "lockedHint": "Subscribe to competitor price tracking — ${cost} a day — to get the numbers behind the talk.",
+      "tierLockedHint": "Competitor price tracking sells to lots at Tier {tier} and up."
+    },
+    {
+      "id": "desk_manager",
+      "kind": "staff",
+      "label": "A used car manager on the desk",
+      "blurb": "Reading what is coming is part of the job — the day you hire one, the forward calls are yours.",
+      "minTier": 3,
+      "lockedHint": "Hire a used car manager. Calling the market before it moves is part of the job.",
+      "tierLockedHint": "A used car manager comes on the desk at Tier {tier}."
+    }
+  ],
+  "_lanesDoc": "source '*' / reliability '*' are wildcards. The first lane is the free catch-all, so a voice added to the news catalog without a lane of its own FAILS OPEN — readable rather than silently unreadable. Same philosophy as #177's source fallback: a copy or config gap must never swallow news about something that really happened. A test cross-checks every (source, reliability) pair the catalog can publish against these lanes, so an unintended free lane is caught at review, not in play.",
+  "lanes": [
+    { "source": "*", "reliability": "*", "requires": null },
+    { "source": "*", "reliability": "leading", "requires": "desk_manager" },
+    { "source": "auction_report", "reliability": "*", "requires": "auction_data" },
+    { "source": "competitor_watch", "reliability": "*", "requires": "competitor_tracking" },
+    { "source": "lot_talk", "reliability": "*", "requires": null },
+    { "source": "oem_bulletin", "reliability": "*", "requires": null },
+    { "source": "trade_press", "reliability": "direct", "requires": null },
+    { "source": "trade_press", "reliability": "lagging", "requires": null }
+  ],
+  "copy": {
+    "lockedRowText": "{source} filed a report you can't read yet.",
+    "unlocksHeading": "What you're not reading",
+    "subscribeLabel": "Subscribe",
+    "cancelLabel": "Cancel",
+    "activeNote": "Active — ${cost} a day"
+  }
+}

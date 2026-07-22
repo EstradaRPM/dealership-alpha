@@ -393,6 +393,7 @@ export function RouteContent({
           openInGameMenu={saveSlots.openInGameMenu}
           persistCurrentSave={persistCurrentSave}
           setLotVehicles={setLotVehicles}
+          bump={bump}
         />
       </View>
     );

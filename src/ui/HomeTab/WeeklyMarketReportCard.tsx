@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
-import { Surface, Badge, type BadgeTone } from '../kit';
+import { Surface, Badge, Icon, type BadgeTone } from '../kit';
 import type { WeeklyReportCardModel } from './weeklyReportModel';
 
 const DIRECTION_TONE = {
@@ -126,7 +126,19 @@ export function WeeklyMarketReportCard({ model }: WeeklyMarketReportCardProps) {
           />
         )}
       </View>
-      {model.calls.length > 0 ? (
+      {model.callsLockedHint != null ? (
+        // #178: the column's forward calls ride the same locked lane as the
+        // wire's, so the same door — and the same sentence — stands in front of
+        // them. Withheld reads differently from "the desk had nothing to say".
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm }}
+        >
+          <Icon name="lock-closed" size="sm" tone="muted" />
+          <Text style={{ ...caption, flex: 1 }} testID="weekly-calls-locked">
+            {model.callsLockedHint}
+          </Text>
+        </View>
+      ) : model.calls.length > 0 ? (
         model.calls.map((c) => (
           <Text
             key={c.id}

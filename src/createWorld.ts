@@ -130,6 +130,7 @@ import { createBodyShopDepartment } from './bodyShopDepartment';
 import { createTelemetry, type Telemetry } from './game/Telemetry';
 import { createHistoryLog, type HistoryLog } from './game/HistoryLog';
 import { createRecords, type Records } from './game/Records';
+import { createMarketIntel, type MarketIntel } from './game/MarketIntel';
 import { createKPIDashboard, type KPIDashboard } from './game/KPIDashboard';
 import { createTierGate, loadTierGateConfig, type TierGate } from './game/TierGate';
 import {
@@ -203,6 +204,7 @@ export interface World {
   telemetry: Telemetry;
   historyLog: HistoryLog;
   records: Records;
+  marketIntel: MarketIntel;
   kpiDashboard: KPIDashboard;
   tierGate: TierGate;
   dayLoop: DayLoopController;
@@ -893,6 +895,14 @@ export function createWorld(deps: {
   // app's day-close handler, guaranteeing every mark for the just-closed day
   // has fired by the time the Reveal is assembled.
   const records = createRecords({ bus });
+  // MarketIntel (#178): what the player is allowed to KNOW, and what that costs.
+  // The wire publishes everything the market engine does; this owns the other
+  // half — which lanes reach the player, opened by money (a standing data
+  // subscription, debited daily) or by people (a used car manager on the desk).
+  // Gating is read-side only, so the engine's headline stream — and replay
+  // (#122) — is identical whether or not anything is unlocked.
+  const marketIntel = createMarketIntel({ economy });
+  bus.subscribe('clock:day_started', () => marketIntel.advanceDay(clock.currentDay));
   // Month-close hook (#123): the KPIDashboard supplies the month-to-date
   // snapshot the interstitial composes.
   const kpiDashboard = createKPIDashboard({ bus });
@@ -1350,6 +1360,7 @@ export function createWorld(deps: {
     telemetry,
     historyLog,
     records,
+    marketIntel,
     kpiDashboard,
     tierGate,
     dayLoop,

@@ -74,6 +74,8 @@ export interface GameScreenProps {
   openInGameMenu: () => void;
   persistCurrentSave: () => void;
   setLotVehicles: (v: readonly LotVehicle[]) => void;
+  /** Force a re-render after a world write the EventBus doesn't announce. */
+  bump: () => void;
 }
 
 // The live-game screen (#242 extraction): assembles every MANAGERIAL/FLOOR view
@@ -99,6 +101,7 @@ export function GameScreen({
   openInGameMenu,
   persistCurrentSave,
   setLotVehicles,
+  bump,
 }: GameScreenProps) {
   const loopState = world.dayLoop.state();
   const floor = world.dayLoop.currentFloor();
@@ -381,6 +384,13 @@ export function GameScreen({
         recapChip={recapChip}
         demandReadout={demandReadout}
         industryWire={buildIndustryWire(world)}
+        onToggleSubscription={(id, on) => {
+          // #178: a standing subscription is world state (persisted, billed
+          // daily), so the toggle writes through the module and the shell
+          // re-renders off the same `bump` the wire's publish uses.
+          world.marketIntel.setSubscribed(id, on);
+          bump();
+        }}
         weeklyReport={buildWeeklyReport(world)}
       />
     ),

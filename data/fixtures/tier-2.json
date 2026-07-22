@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 19,
+    "version": 20,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -2801,6 +2801,10 @@
         "monthGross": 0,
         "monthIndex": 1,
         "currentStreak": 0
+      },
+      "marketIntel": {
+        "schemaVersion": 1,
+        "activeSubscriptions": []
       }
     }
   },

@@ -6,9 +6,9 @@ comes from that doc and the filed issues.
 
 ## Current phase
 
-**Phase 4 — B3 news/adverse-events engine (#176–#179)**
+**Phase 5 — C3 playtest gate (#74), round 1 — HITL**
 
-(Phase 3 B1 closed 2026-07-19 — #328, #329, #330 + the #331 trailing hygiene.)
+(Phase 4 B3 closed 2026-07-22 — #176, #177, #178; #179 landed earlier in A4.)
 
 ## Blockers
 
@@ -25,8 +25,8 @@ resolved just-in-time at the phase boundary, never earlier).
 | 1 | A1 advisor hiring + promotion wiring (#323, #324), + A3 hygiene (close #269, #266, #297) | — | done |
 | 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | done |
 | 3 | B1 Reveal ranking + records | — | done |
-| 4 | B3 news/adverse-events engine (#176–#179) | — | active |
-| 5 | C3 playtest gate (#74), round 1 — HITL | — | pending |
+| 4 | B3 news/adverse-events engine (#176–#179) | — | done |
+| 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
@@ -47,6 +47,63 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-22 — BUILT + closed **#178** (B3 S3 — news progression gating). The
+  wire now has an *access* half. New module **`src/game/MarketIntel/`** — "what
+  the player is allowed to KNOW, and what that access costs" — in the
+  ServiceMarketing mold (library/factory, no bus, composition root drives
+  `advanceDay`). Three lanes, three currencies: **public** (lot talk, the trade
+  magazine, factory recall/incentive bulletins — vague, late, or genuinely
+  public) is free; **paid** (`auction_data` $45/day, `competitor_tracking`
+  $30/day, both T2+) buys the numbers behind stories you already hear; **staffed**
+  (a used car manager on the desk) opens the forward calls.
+  **DECISION (asked, user chose):** #178's "Market Analyst hire" was adjudicated
+  onto the **UCM**, not a net-new role — the channel-desk lock (UCM/NCM/GM, SM
+  dropped) came *after* #178 was written and already owns intel, and §3's
+  "advise = free on hire" makes the gate the *hire itself*, never a skill
+  threshold (a green UCM reads the same wire a seasoned one does; skill buys
+  precision elsewhere, #284). So the two axes are money and people, cleanly split.
+  **Gating is a READ-SIDE lens:** the engine publishes every headline regardless,
+  so the seed stream — and replay (#122) — is byte-identical whether or not
+  anything is unlocked (asserted with two same-seed worlds, one fully subscribed).
+  `data/news-progression-gating.json` holds unlocks + lanes + gating copy; lane
+  matching is by **specificity** (exact source 2 > exact reliability 1, ties by
+  declaration order), never array order, and the first lane is a free catch-all
+  so a voice added without a lane **fails OPEN** — same philosophy as #177's
+  source fallback. A test cross-checks every `(source, reliability)` the catalog
+  can publish against its intended lane, so an unintended free lane is caught at
+  review. **UI:** a locked headline keeps its place in the chronology — dimmed,
+  padlocked, still naming who filed it and when, with the report replaced by
+  "{source} filed a report you can't read yet." Seeing *that* somebody reported
+  something without the number is the tease. The wire footer ("What you're not
+  reading") lists every door with a withheld-count badge, the plain-language
+  hint, and — for a subscription the player's tier already sells them — a
+  Subscribe/Cancel button right there; a below-tier door shows the tier sentence
+  and no button, a staff door shows the hire sentence (hiring stays on People,
+  no second hiring surface). **The weekly column's forward calls ride the same
+  door** — otherwise the column would be a free back way into the leading tier;
+  its recap half was never gated. New `marketIntel` world key, envelope **19→20**
+  + migration (behavior-neutral: subscribed to nothing, which is what a loaded
+  career was already paying for); tier-2 dev fixture migrated in place (5 lines)
+  via the real `migrateWorldSnapshot`. Two kit icons (`lock-closed`,
+  `checkmark`); `bump` threaded to GameScreen for the toggle. Tests: 20 in
+  `tests/MarketIntel.test.ts` (free lane, tier sweep 1–5, both currencies,
+  fail-open, specificity, gateHeadlines, catalog cross-check, billing, snapshot
+  round-trip incl. a discontinued product) + 15 in
+  `tests/NewsGating.reachability.test.tsx` (live world withholds + leaks nothing,
+  seed-identical either way, subscriptions open exactly their lane, daily billing
+  measured against a twin unsubscribed world, the UCM hire opening the calls,
+  weekly-column calls, save/load, composition guards, panel behavior) + a v19→20
+  migration test. **All costs are first-pass → #286.** **Observation for #286:** in
+  a bare bus-driven world the paid lanes barely fire — block reports need the
+  player's own transactions and competitor tracking needs rivals repricing — so
+  the felt value of `auction_data` scales with how much you're actually trading.
+  /verify: BLOCKED for the live-GUI drive (native expo-sqlite + no
+  react-native-web + on-device-only HITL path) — reachability + smoke +
+  wiring-guard cited as the reachable ceiling. **PHASE 4 (B3) CLOSED** — #176,
+  #177, #178 all landed (#179 closed in A4). Pointer advanced to phase 5 (C3
+  playtest gate #74, round 1 — HITL). Next /next runs the **#74 playtest** unit:
+  prepare and hand the user the playtest script; the artifact is the filed
+  calibration notes/issue.
 - 2026-07-21 — BUILT + closed **#177** (B3 S2 — news sources expansion + the
   weekly market report). The wire got three more voices and, next to it, a
   second *shape* of news: a column. **Voices** were mostly data, which was the

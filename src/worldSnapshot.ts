@@ -72,11 +72,15 @@ import {
   createDefaultRecordsSnapshot,
   type RecordsSnapshot,
 } from './game/Records';
+import {
+  createDefaultMarketIntelSnapshot,
+  type MarketIntelSnapshot,
+} from './game/MarketIntel';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 19;
+export const WORLD_SNAPSHOT_VERSION = 20;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -141,6 +145,9 @@ export type WorldSnapshot = {
     // #329 Career high-water marks + the in-progress day/month accumulators
     // that feed them.
     readonly records: RecordsSnapshot;
+    // #178 The wire subscriptions the player is paying for — the money half of
+    // news access gating (the staff half is read off the live roster).
+    readonly marketIntel: MarketIntelSnapshot;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -380,6 +387,20 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         },
       },
     }),
+    19: (snap) => ({
+      version: 20,
+      modules: {
+        ...snap.modules,
+        // #178 added MarketIntel — the wire subscriptions the player pays for.
+        // Behavior-neutral: a loaded career starts subscribed to nothing, which
+        // is what it was already paying for, and reads exactly the free lanes it
+        // has been reading. Nothing is retroactively taken away, because gating
+        // is read-side: the headlines it already lived through are still in the
+        // ring buffer, and the ones it can no longer read were never numbers it
+        // acted on.
+        marketIntel: createDefaultMarketIntelSnapshot(),
+      },
+    }),
   };
 
 /**
@@ -449,6 +470,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       bodyShopInsights: world.bodyShopInsights.snapshot(),
       prepBet: world.getPrepBet(),
       records: world.records.snapshot(),
+      marketIntel: world.marketIntel.snapshot(),
     },
   };
 }
@@ -493,5 +515,6 @@ export function restoreWorld(
   world.setBodyShopChannelPosture(snap.modules.bodyShopChannelPosture);
   world.bodyShopInsights.restore(snap.modules.bodyShopInsights);
   world.setPrepBet(snap.modules.prepBet);
+  world.marketIntel.restore(snap.modules.marketIntel);
   world.records.restore(snap.modules.records);
 }

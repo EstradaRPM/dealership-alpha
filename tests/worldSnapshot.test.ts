@@ -858,6 +858,27 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     });
   });
 
+  it('migrates a v19 snapshot by materializing an unsubscribed MarketIntel (#178)', () => {
+    const { world } = build(178);
+    const current = snapshotWorld(world);
+    const { marketIntel, ...legacyModules } = current.modules;
+    expect(marketIntel.schemaVersion).toBe(1);
+
+    const persisted: PersistedWorldSnapshot = { version: 19, modules: legacyModules };
+    const migrated = migrateWorldSnapshot(persisted);
+
+    expect(migrated.version).toBe(WORLD_SNAPSHOT_VERSION);
+    // Behavior-neutral: a loaded career is subscribed to nothing, which is what
+    // it was already paying for.
+    expect(migrated.modules.marketIntel).toEqual({
+      schemaVersion: 1,
+      activeSubscriptions: [],
+    });
+    // …and every pre-existing blob rides through untouched.
+    expect(migrated.modules.gameClock).toEqual(current.modules.gameClock);
+    expect(migrated.modules.records).toEqual(current.modules.records);
+  });
+
   // The AC round-trip: write a save at version N, bump the runtime to N+1 with a
   // registered migration, load → the older snapshot upgrades correctly.
   it('upgrades an older snapshot through a registered migration on load', () => {

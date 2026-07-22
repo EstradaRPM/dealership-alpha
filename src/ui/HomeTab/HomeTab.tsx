@@ -51,6 +51,8 @@ export interface HomeTabProps {
   demandReadout?: DemandReadoutModel;
   /** Industry-wire headlines (#176). Absent ⇒ hint shown (test renders). */
   industryWire?: IndustryWireModel;
+  /** Buy/cancel a wire subscription (#178). Absent ⇒ footer is read-only. */
+  onToggleSubscription?: (id: string, on: boolean) => void;
   /** The standing weekly column (#177). Absent ⇒ none has published yet. */
   weeklyReport?: WeeklyReportCardModel | null;
 }
@@ -69,6 +71,7 @@ export function HomeTab({
   recapChip,
   demandReadout,
   industryWire,
+  onToggleSubscription,
   weeklyReport,
 }: HomeTabProps) {
   const t = useTheme();
@@ -153,7 +156,10 @@ export function HomeTab({
         <SectionHeader title="Industry Wire" />
         <View style={regionBody}>
           {industryWire ? (
-            <IndustryWire model={industryWire} />
+            <IndustryWire
+              model={industryWire}
+              onToggleSubscription={onToggleSubscription}
+            />
           ) : (
             <Text style={hint}>The wire starts up when your first day opens.</Text>
           )}

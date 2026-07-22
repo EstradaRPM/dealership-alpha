@@ -47,6 +47,13 @@ export interface WeeklyReportCardModel {
   readonly callsHeading: string;
   readonly calls: readonly WeeklyCallRow[];
   readonly callsBadge: WeeklyBadge | null;
+  /**
+   * Access gating (#178): the calls half of the column is the same forward-call
+   * lane the wire gates, so it is held back by the same door. Non-null means
+   * `calls` is empty because the player can't read them — not because the desk
+   * had nothing to say — and this is the sentence saying what would open it.
+   */
+  readonly callsLockedHint: string | null;
   /** Shown in place of the calls when the desk declined to bet. */
   readonly noCallsText: string;
   readonly tallyText: string;
@@ -87,6 +94,13 @@ export interface WeeklyReportCopyInput {
 export interface WeeklyReportInputs {
   /** Null until the first column publishes. */
   readonly report: WeeklyReportInput | null;
+  /**
+   * The forward-call lock (#178), or null when the player can read the calls.
+   * Resolved engine-side by MarketIntel against the very same lane the wire's
+   * `leading` headlines go through, so the column and the ticker can never
+   * disagree about whether forward calls are yours.
+   */
+  readonly callsLockedHint?: string | null;
   readonly copy: WeeklyReportCopyInput;
   readonly reliabilityLabels: Readonly<Partial<Record<WireReliability, string>>>;
 }
@@ -117,6 +131,7 @@ export function buildWeeklyReportCard(
 ): WeeklyReportCardModel | null {
   const { report, copy } = inputs;
   if (!report) return null;
+  const callsLocked = inputs.callsLockedHint != null;
 
   return {
     title: copy.title,
@@ -144,7 +159,10 @@ export function buildWeeklyReportCard(
     // two badges the wire uses, so the player reads them the same way.
     recapBadge: badge('lagging', inputs.reliabilityLabels),
     callsHeading: copy.callsHeading,
-    calls: report.forwardCalls.map((c, i) => ({ id: `${c.kind}-${i}`, text: c.text })),
+    calls: callsLocked
+      ? []
+      : report.forwardCalls.map((c, i) => ({ id: `${c.kind}-${i}`, text: c.text })),
+    callsLockedHint: callsLocked ? (inputs.callsLockedHint as string) : null,
     callsBadge: badge('leading', inputs.reliabilityLabels),
     noCallsText: copy.noCallsText,
     tallyText: fill(copy.wireTallyText, {
