@@ -12,7 +12,11 @@ comes from that doc and the filed issues.
 
 ## Blockers
 
-(none)
+- **Phase 5 (#74) is waiting on the user.** The round-1 playtest script is written and
+  handed off (`docs/planning/playtest-round-1.md`). The unit that unblocks it is the user
+  playing Session A (5 days, fresh T1) + Session B (3 days, T2 fixture) on device and
+  reporting the 12-question observation sheet. Nothing agent-side can advance it — there is
+  no autonomous runtime surface for the GUI (see `.claude/skills/verify`).
 
 ## Phase table
 
@@ -47,6 +51,30 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-22 — **PREPARED the #74 round-1 playtest** (phase 5's HITL unit): wrote and
+  handed off `docs/planning/playtest-round-1.md`, and filed the round-1 notes home as a
+  comment on #74. **Session A** = fresh T1 career, 5 scripted days — the capacity criterion
+  is measured by *contrast* (one salesperson Days 1–2, a second before Day 3) rather than by
+  vibe, Day 1 runs at 1× end-to-end to calibrate the felt day length before any skipping,
+  Day 2 is the auction, Day 4 moves two prices. **Session B** = the Tier 2 dev fixture, 3
+  days, one probe per day (manager delegation card / paid intel lanes / Service as a second
+  business). Ends in a 12-question observation sheet and the explicit proceed / adjust /
+  rethink call. **FINDING surfaced while writing it — two acceptance criteria are currently
+  unobservable in play:** nothing in `src/ui/**` renders a deal's payment method, down
+  payment, or credit tier (`deal:closed` carries all of it, `events.ts:411`), and the LTV
+  block is a *pick-time filter* (`SalesProcess/affordability.ts:93`) so a credit-blocked
+  buyer walks as `no_fit` — "wanted something you didn't have" — indistinguishable from an
+  empty-shelf walk. The script routes around it via the DEV Event Log so the criteria can
+  still be answered this round, but the gap is a real round-1 finding and likely becomes a
+  follow-on issue (finance-mix surface + a distinct credit-blocked walk reason), not a
+  calibration nudge. Also flagged in-script: DEV → Time Skip advances `GameClock` directly,
+  not the day loop, so it is NOT a fast-forward for playing days; no T3 fixture exists
+  (known C2 item); Finance/Growth tabs are known-dark. Triage protocol restated from #105
+  (Class A broken → fixed before Class B flat is judged; miscalibrated number = data fix
+  inside #74, logic defect = its own issue; all tuned values in ONE calibration commit).
+  **Phase 5 now blocked on the user playing it** — see Blockers. Next /next either collects
+  the results (Class A → Class B triage, then the calibration commit) or, if the user hasn't
+  played yet, moves to phase 6 (C1 staff-teeth — DECIDE/GRILL, the ungrilled core mechanic).
 - 2026-07-22 — BUILT + closed **#178** (B3 S3 — news progression gating). The
   wire now has an *access* half. New module **`src/game/MarketIntel/`** — "what
   the player is allowed to KNOW, and what that access costs" — in the
