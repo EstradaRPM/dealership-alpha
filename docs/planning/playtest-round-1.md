@@ -5,6 +5,12 @@ ranking + records) and B3 (the news wire) landed, the T1–T3 loop is finally wh
 answer the only question that matters — *is playing this actually engaging?* Round 1 runs
 now; round 2 runs after the C2 calibration campaign (#286).
 
+**Running it on a phone:** this doc is the source of truth, but you don't take notes in it. Open
+the companion page — <https://claude.ai/code/artifact/82d22c0a-399d-482e-833d-368373e92748> — in
+a browser tab next to Expo Go. Same script, but the steps are tickable, every day has a note
+field, the deal log tallies itself, and **Export** produces a markdown block to paste back into
+the chat. It saves to the device as you type, so backgrounding it to play doesn't lose anything.
+
 **Your job:** play it and report what you felt. **Not** your job: diagnosing, deciding
 whether something is a bug or a bad number, or proposing fixes. Report raw observations —
 "I sold nothing for two days and didn't know why", "the day is too long", "I didn't
