@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { EventBus } from '../../game/EventBus';
 import type { World } from '../../createWorld';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import type { SaveStore } from '../../game/SaveStore';
+import type { PlaytestContext, PlaytestLog } from '../../game/PlaytestLog';
+import { attachPlaytestCapture } from '../../game/PlaytestLog';
+import { PlaytestFlag } from '../../ui/PlaytestFlag';
 import { TradeEscalationModal } from '../../ui/TradeEscalationModal';
 import { DiscountEscalationModal } from '../../ui/DiscountEscalationModal';
 import { DayRecapModal } from '../../ui/DayRecap';
@@ -19,6 +22,8 @@ export interface AppOverlaysProps {
   profile: CharacterProfile | null;
   bus: EventBus;
   saveStore: SaveStore;
+  /** #74 playtest recorder (#332). */
+  playtestLog: PlaytestLog;
   handleSaveCleared: () => void;
   bump: () => void;
 }
@@ -35,6 +40,7 @@ export function AppOverlays({
   profile,
   bus,
   saveStore,
+  playtestLog,
   handleSaveCleared,
   bump,
 }: AppOverlaysProps) {
@@ -62,6 +68,41 @@ export function AppOverlays({
     setRecoveryQueue,
     endCard,
   } = dayLoop;
+
+  // ── #74 playtest capture (#332) ───────────────────────────────────────────
+  // Stays attached for the whole session while a world exists: the finance mix
+  // is a *rate* question, so a partial sample answers it wrongly. `deal:closed`
+  // carries no day, hence the clock cursor.
+  const [flagCount, setFlagCount] = useState(() => playtestLog.count());
+  const pendingCtx = useRef<PlaytestContext | null>(null);
+
+  useEffect(() => {
+    if (!__DEV__ || world == null) return;
+    return attachPlaytestCapture(bus, playtestLog, () => world.clock.currentDay);
+  }, [bus, playtestLog, world]);
+
+  // Stamped on FAB tap, spent on save — the useful moment is when the player
+  // reacted, not when they finished typing the note.
+  const stampContext = useCallback(() => {
+    pendingCtx.current = {
+      day: world?.clock.currentDay ?? 0,
+      phase: world?.dayLoop.state().phase ?? 'UNKNOWN',
+      cash: world?.economy.cash ?? 0,
+      tier: world?.tierManager.currentTier ?? 0,
+    };
+  }, [world]);
+
+  const saveFlag = useCallback(
+    (note: string) => {
+      playtestLog.flag(
+        note,
+        pendingCtx.current ?? { day: 0, phase: 'UNKNOWN', cash: 0, tier: 0 },
+      );
+      pendingCtx.current = null;
+      setFlagCount(playtestLog.count());
+    },
+    [playtestLog],
+  );
 
   return (
     <>
@@ -135,16 +176,29 @@ export function AppOverlays({
         />
       )}
       {__DEV__ && world && (
-        <AdminConsole
-          bus={bus}
-          clock={world.clock}
-          economy={world.economy}
-          inventory={world.inventory}
-          saveStore={saveStore}
-          telemetry={world.telemetry}
-          customerPool={world.customerPool}
-          onSaveCleared={handleSaveCleared}
-        />
+        <>
+          <AdminConsole
+            bus={bus}
+            clock={world.clock}
+            economy={world.economy}
+            inventory={world.inventory}
+            saveStore={saveStore}
+            telemetry={world.telemetry}
+            customerPool={world.customerPool}
+            playtestLog={playtestLog}
+            tier={world.tierManager.currentTier}
+            onSaveCleared={handleSaveCleared}
+          />
+          {/* Sits above the DEV FAB and is the cheaper of the two to reach —
+              reacting to something must cost one tap, or the observation is
+              lost and the felt-day-length reading gets corrupted by the
+              context switch. */}
+          <PlaytestFlag
+            count={flagCount}
+            onOpen={stampContext}
+            onSave={saveFlag}
+          />
+        </>
       )}
     </>
   );

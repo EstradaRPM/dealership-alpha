@@ -399,6 +399,7 @@ export function DealershipApp({
             profile={profile}
             bus={bus}
             saveStore={saveStore}
+            playtestLog={services.playtestLog}
             handleSaveCleared={handleSaveCleared}
             bump={bump}
           />

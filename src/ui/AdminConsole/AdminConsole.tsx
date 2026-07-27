@@ -22,6 +22,8 @@ import type { SaveStore } from '../../game/SaveStore';
 import type { Telemetry } from '../../game/Telemetry';
 import type { CustomerPool } from '../../game/CustomerPool';
 import { SALES_ARCHETYPES } from '../../game/CustomerPool';
+import type { PlaytestLog } from '../../game/PlaytestLog';
+import { exportMarkdown } from '../../game/PlaytestLog';
 import { CustomerCard } from '../CustomerCard';
 import { colors } from '../theme';
 
@@ -33,10 +35,13 @@ interface Props {
   saveStore: SaveStore;
   telemetry: Telemetry;
   customerPool: CustomerPool;
+  /** #74 playtest recorder (#332) — read-out + export + clear live here. */
+  playtestLog: PlaytestLog;
+  tier: number;
   onSaveCleared: () => void;
 }
 
-export function AdminConsole({ bus, clock, economy, inventory, saveStore, telemetry, customerPool, onSaveCleared }: Props) {
+export function AdminConsole({ bus, clock, economy, inventory, saveStore, telemetry, customerPool, playtestLog, tier, onSaveCleared }: Props) {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const [eventCount, setEventCount] = useState(telemetry.getEventCount());
@@ -140,6 +145,14 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, sessionTick, customerPool]);
 
+  // Recomputed whenever the console opens (or a clear bumps sessionTick) — the
+  // log itself is appended to from the bus, which never re-renders this modal.
+  const playtestCounts = React.useMemo(
+    () => playtestLog.counts(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [open, sessionTick, playtestLog],
+  );
+
   const exportTelemetry = async () => {
     const count = telemetry.getEventCount();
     setEventCount(count);
@@ -159,6 +172,50 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
     } catch (err) {
       setStatus(`export failed: ${(err as Error).message}`);
     }
+  };
+
+  const exportPlaytestLog = async () => {
+    const counts = playtestLog.counts();
+    if (playtestLog.count() === 0) {
+      setStatus('playtest log is empty');
+      return;
+    }
+    await playtestLog.flush();
+    const md = exportMarkdown(playtestLog.entries(), {
+      day: clock.currentDay,
+      tier,
+      exportedAt: new Date().toISOString(),
+    });
+    try {
+      const result = await Share.share({
+        message: md,
+        title: `playtest-log-D${clock.currentDay}.md`,
+      });
+      setStatus(result.action === Share.dismissedAction
+        ? 'export dismissed'
+        : `exported ${counts.flag} flags / ${counts.deal} deals / ${counts.walk} walks`);
+    } catch (err) {
+      setStatus(`export failed: ${(err as Error).message}`);
+    }
+  };
+
+  const clearPlaytestLog = () => {
+    Alert.alert(
+      'Clear Playtest Log',
+      `This deletes all ${playtestLog.count()} recorded entries. Export first if you haven't.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            await playtestLog.clear();
+            setSessionTick((t) => t + 1);
+            setStatus('playtest log cleared');
+          },
+        },
+      ],
+    );
   };
 
   const resetSave = () => {
@@ -321,6 +378,26 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
                   ))}
                 </ScrollView>
               )}
+
+              <Text style={styles.sectionLabel}>PLAYTEST LOG</Text>
+              <Text style={styles.statLine}>
+                {playtestCounts.flag} flags · {playtestCounts.deal} deals · {playtestCounts.walk} walk-offs
+              </Text>
+              <View style={styles.cashRow}>
+                <TouchableOpacity
+                  testID="playtest-export"
+                  style={[styles.primaryBtn, styles.halfBtn]}
+                  onPress={exportPlaytestLog}
+                >
+                  <Text style={styles.primaryBtnLabel}>Export</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.primaryBtn, styles.halfBtn]}
+                  onPress={clearPlaytestLog}
+                >
+                  <Text style={styles.primaryBtnLabel}>Clear</Text>
+                </TouchableOpacity>
+              </View>
 
               <Text style={styles.sectionLabel}>TELEMETRY</Text>
               <TouchableOpacity style={styles.primaryBtn} onPress={exportTelemetry}>

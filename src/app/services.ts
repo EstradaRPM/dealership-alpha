@@ -17,6 +17,8 @@ import {
   createSnapshotStore,
 } from '../game/SaveStore';
 import { createEventBus } from '../game/EventBus';
+import { createPlaytestLog } from '../game/PlaytestLog';
+import type { PlaytestLog } from '../game/PlaytestLog';
 import type {
   SaveStore,
   MultiSlotSaveStore,
@@ -35,6 +37,12 @@ export interface AppServices {
   saveStore: SaveStore;
   slotStore: MultiSlotSaveStore;
   legacyStore: LegacyStore;
+  /**
+   * #74 playtest recorder (#332). Seed-free and slot-free on purpose: it holds
+   * its own driver cell, so it survives `Reset Save` and spans the whole
+   * multi-day playtest round rather than one career.
+   */
+  playtestLog: PlaytestLog;
   snapshotStoreForActiveSlot(): Promise<SnapshotStore | null>;
 }
 
@@ -62,11 +70,15 @@ export function createAppServices(driverFactory: DriverFactory): AppServices {
     },
   };
 
+  const playtestLog = createPlaytestLog(driverFactory('playtest-log'));
+  void playtestLog.hydrate();
+
   return {
     bus: createEventBus(),
     saveStore,
     slotStore,
     legacyStore,
+    playtestLog,
     async snapshotStoreForActiveSlot() {
       const activeSlotId = await slotStore.getActiveSlotId();
       return activeSlotId === null

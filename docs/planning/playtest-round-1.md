@@ -27,11 +27,27 @@ npm run dev
 Scan the QR in **Expo Go** (tunnel mode — the project default; never LAN/adb). There is no
 web or simulator path: `expo-sqlite` is native and `react-native-web` isn't installed.
 
+### The flag button — the only thing you have to remember
+
+There is an amber **⚑** button above the DEV FAB, on screen at all times. **Tap it the
+instant anything makes you react** — bored, confused, delighted, surprised, annoyed. It
+stamps the day, phase, cash and tier for you; the note is optional, and there are four
+one-tap canned notes if typing is too much friction in the moment.
+
+That is the whole discipline. Don't try to hold observations in your head until the end of
+a session — tap and keep playing. The count on the button is your running total.
+
+Deals and walk-offs record themselves; you never have to write those down (see §5).
+
+When you're done: **DEV → PLAYTEST LOG → Export** hands you a markdown file. Send me that,
+then answer §6 at a keyboard.
+
 **The DEV FAB** (floating "DEV" button, dev builds only) gives you:
 
 | Lever | Use it for |
 |---|---|
-| **Event Log** | Live EventBus tap. **You need this** — see §5. |
+| **Playtest Log → Export** | The whole round's flags + deals + walk-offs. This is what you send me. |
+| **Event Log** | Live EventBus tap. Optional now — the playtest log captures §5 for you. |
 | **Cash → Inject / Set To** | Only if you want to isolate a question from a cash constraint. |
 | **Customer Spawn** | Force a specific archetype onto the floor. |
 | **Danger Zone → Reset Save** | Start session B clean. |
@@ -139,7 +155,7 @@ do you know how far you are from the next tier, and what to do about it?
 
 ---
 
-## 5. The one thing you have to instrument by hand
+## 5. The finance mix — captured for you
 
 Two of #74's acceptance criteria are about the **finance mix**, and **nothing in the UI shows
 it today.** No screen displays a deal's payment method, down payment, or the customer's
@@ -147,16 +163,16 @@ credit tier; and when a subprime buyer is blocked by the LTV ceiling on an overp
 the vehicle is simply filtered out at pick time — so it surfaces as a generic *"wanted
 something you didn't have. Walked."*, indistinguishable from an empty-shelf walk.
 
-**That gap is itself a round-1 finding** (I expect it becomes a follow-on issue). To answer
-the criteria anyway, open **DEV → Event Log** during a day and watch `deal:closed`. Its
-payload carries `paymentMethod`, `downPayment`, `loanAmount`, `term`, `apr`. Jot down ~10
-deals across the two sessions:
+**That gap is itself a round-1 finding** and still becomes a follow-on issue — a finance-mix
+surface plus a distinct credit-blocked walk reason. What #332 changed is that you no longer
+have to hand-transcribe around it: the playtest log auto-captures every `deal:closed` with
+its full structure (method, down, loan, term, APR, front/back gross, days in inventory) and
+every walk-off with its **named** reason, and the export computes the cash-vs-finance split
+and the average down for you.
 
-| # | cash/finance | down payment | notes |
-|---|---|---|---|
-
-Then answer: does the cash-vs-finance split look like a real used-car lot? Do heavy-down
-deals show up at a believable rate?
+So there is nothing to jot down here. Just play; the export answers "does the split look
+like a real used-car lot" and "do heavy-down deals show up at a believable rate" with the
+real numbers rather than a ten-deal memory sample.
 
 ---
 
