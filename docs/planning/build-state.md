@@ -13,10 +13,13 @@ comes from that doc and the filed issues.
 ## Blockers
 
 - **Phase 5 (#74) is waiting on the user.** The round-1 playtest script is written and
-  handed off (`docs/planning/playtest-round-1.md`). The unit that unblocks it is the user
-  playing Session A (5 days, fresh T1) + Session B (3 days, T2 fixture) on device and
-  reporting the 12-question observation sheet. Nothing agent-side can advance it — there is
-  no autonomous runtime surface for the GUI (see `.claude/skills/verify`).
+  handed off (`docs/planning/playtest-round-1.md`), and the in-game capture tool (#332) is
+  now built, so playing costs one tap per reaction and nothing has to be written down
+  during a session. The unit that unblocks it is the user playing Session A (5 days, fresh
+  T1) + Session B (3 days, T2 fixture) on device, exporting the playtest log (DEV →
+  PLAYTEST LOG → Export) and answering the 12-question sheet. Nothing agent-side can
+  advance it — there is no autonomous runtime surface for the GUI (see
+  `.claude/skills/verify`).
 
 ## Phase table
 
@@ -51,6 +54,37 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-27 — BUILT + closed **#332** (in-game playtest capture) — phase 5 tooling,
+  filed and built in-session after the user asked whether the observation data was worth
+  capturing in-app rather than in a separate artifact. **DECISION (asked, user chose
+  "build it"):** split the capture by *when the observation happens* — in-the-moment
+  reactions go in the game, the 12-question reflection sheet stays in the doc. Typing
+  twelve paragraphs on a phone would *add* activation cost; tapping once when something
+  annoys you removes it. New **`src/game/PlaytestLog/`** in the Telemetry mold (nothing in
+  the sim reads it): a **manual flag** on an always-on-screen ⚑ FAB above the DEV button
+  (context stamped at *tap* time, not save time — the useful moment is when the player
+  reacted, not when they finished typing; note optional, four canned one-tap notes), plus
+  **auto-capture** of `deal:closed` (full finance structure) and `staff:auto_resolved`
+  `no_sale` (the *named* walk reason the on-screen line flattens away). Capture stays
+  attached all session — the finance mix is a **rate** question, so a partial sample
+  answers it wrongly; `deal:closed` carries no day so the day comes from an injected clock
+  cursor (the HistoryLog/Records seam). **Export** is one markdown blob with the §5 deal
+  table and the cash-vs-finance split + average down **computed**, not left to be
+  eyeballed. **Persistence is its own `StorageDriver` cell** (`driverFactory('playtest-log')`
+  in `services.ts`), deliberately outside the world save envelope: no version bump, no
+  migration for a dev tool, and the log survives `Reset Save` so it spans a whole
+  multi-day round rather than one career. Write-behind through one serialized chain; a
+  failed write is **swallowed, never retried** (a rejected chain would silently stop all
+  later appends — caught by a test, and each append rewrites the whole blob so a dropped
+  write self-heals). AdminConsole gains a PLAYTEST LOG section (counts / Export / confirmed
+  Clear). **Script §1 + §5 rewritten** — §5 no longer asks for any hand-transcription.
+  **The two unobservable #74 criteria are still a real round-1 finding** (finance-mix
+  surface + a distinct credit-blocked walk reason); this makes them answerable without
+  pretending the gap is closed. Tests: 24 unit + 9 reachability/composition (incl.
+  anti-orphan wiring guards on AppOverlays/AppRoot/AdminConsole); typecheck + full suite
+  (2345, +33) green. /verify: BLOCKED for the live-GUI drive as usual — reachability +
+  wiring guards are the reachable ceiling. **Phase 5 still blocked on the user playing
+  it**, but the activation cost is now materially lower.
 - 2026-07-22 — **PREPARED the #74 round-1 playtest** (phase 5's HITL unit): wrote and
   handed off `docs/planning/playtest-round-1.md`, and filed the round-1 notes home as a
   comment on #74. **Session A** = fresh T1 career, 5 scripted days — the capacity criterion
