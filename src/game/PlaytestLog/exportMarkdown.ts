@@ -1,3 +1,9 @@
+import {
+  DAY_DONE_STEP_ID,
+  deriveGuideState,
+  loadPlaytestScript,
+  type PlaytestScript,
+} from './script';
 import type {
   PlaytestDealEntry,
   PlaytestEntry,
@@ -83,13 +89,61 @@ function walkRow(e: PlaytestWalkEntry): string {
 }
 
 /**
- * One paste-ready markdown blob: the flags in chronology, the §5 deal table
- * with its split already computed, and the walk-offs with their *named*
- * reasons (which the on-screen line flattens into one sentence).
+ * The guided-script trace (#333): every scripted day, which steps were actually
+ * done and which were skipped. An unticked step is real signal — it usually
+ * means the instruction couldn't be followed — so the script is rendered in
+ * full rather than only the entries that exist.
+ */
+function scriptTrace(
+  script: PlaytestScript,
+  entries: readonly PlaytestEntry[],
+): string[] {
+  const state = deriveGuideState(script, entries);
+  const out: string[] = [];
+  let touched = false;
+  let session = '';
+
+  for (const day of script.days) {
+    const ticks = day.steps.map((s) => state.stepsDone[`${day.id}:${s.id}`] === true);
+    const answered = day.probes.filter((p) => (state.answers[p.id] ?? '') !== '');
+    const done = state.stepsDone[`${day.id}:${DAY_DONE_STEP_ID}`] === true;
+    if (!done && !ticks.some(Boolean) && answered.length === 0) continue;
+    touched = true;
+
+    if (day.sessionLabel !== session) {
+      session = day.sessionLabel;
+      out.push('', `### ${session}`);
+    }
+    out.push('', `**${day.title}**${done ? '' : ' — *not marked done*'}`, '');
+    day.steps.forEach((s, i) => {
+      out.push(`- [${ticks[i] ? 'x' : ' '}] ${s.text}`);
+    });
+    for (const probe of day.probes) {
+      const answer = state.answers[probe.id] ?? '';
+      out.push(
+        answer === ''
+          ? `- *${probe.prompt}* — **(unanswered)**`
+          : `- *${probe.prompt}* — **${answer}**`,
+      );
+    }
+  }
+
+  return touched ? out : ['', '*(the guide was never opened)*'];
+}
+
+/**
+ * One paste-ready markdown blob: the guided-script trace with its probe answers,
+ * the flags in chronology, the §5 deal table with its split already computed,
+ * and the walk-offs with their *named* reasons (which the on-screen line
+ * flattens into one sentence).
+ *
+ * The script is a parameter only so tests can inject a fixture — production
+ * always uses the one loaded script.
  */
 export function exportMarkdown(
   entries: readonly PlaytestEntry[],
   meta: PlaytestExportMeta,
+  script: PlaytestScript = loadPlaytestScript(),
 ): string {
   const ordered = [...entries].sort((a, b) => a.seq - b.seq);
   const flags = ordered.filter((e): e is PlaytestFlagEntry => e.kind === 'flag');
@@ -102,6 +156,9 @@ export function exportMarkdown(
     '',
     `Exported day ${meta.day} · Tier ${meta.tier} · ${meta.exportedAt}`,
     `${flags.length} flags · ${deals.length} deals · ${walks.length} walk-offs`,
+    '',
+    '## Script trace',
+    ...scriptTrace(script, ordered),
     '',
     '## Flags',
     '',

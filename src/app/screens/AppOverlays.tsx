@@ -1,11 +1,24 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EventBus } from '../../game/EventBus';
 import type { World } from '../../createWorld';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import type { SaveStore } from '../../game/SaveStore';
-import type { PlaytestContext, PlaytestLog } from '../../game/PlaytestLog';
-import { attachPlaytestCapture } from '../../game/PlaytestLog';
+import type {
+  PlaytestContext,
+  PlaytestLog,
+  PlaytestProbe,
+  PlaytestScriptStep,
+  ProbeWhen,
+} from '../../game/PlaytestLog';
+import {
+  attachPlaytestCapture,
+  deriveGuideState,
+  loadPlaytestScript,
+  pendingProbes,
+  DAY_DONE_STEP_ID,
+} from '../../game/PlaytestLog';
 import { PlaytestFlag } from '../../ui/PlaytestFlag';
+import { PlaytestGuide } from '../../ui/PlaytestGuide';
 import { TradeEscalationModal } from '../../ui/TradeEscalationModal';
 import { DiscountEscalationModal } from '../../ui/DiscountEscalationModal';
 import { DayRecapModal } from '../../ui/DayRecap';
@@ -104,6 +117,118 @@ export function AppOverlays({
     [playtestLog],
   );
 
+  // ── #74 guided script (#333) ──────────────────────────────────────────────
+  // The cursor lives in the log's own step entries, so `guideRev` only has to
+  // force a recompute after an append — there is no second source of truth to
+  // keep in sync, and a reset save can't desync it.
+  const script = loadPlaytestScript();
+  const [guideRev, setGuideRev] = useState(0);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guideFocus, setGuideFocus] = useState<ProbeWhen>('day_open');
+  // A boundary the guide *should* present at, held until nothing is stacked
+  // above it. Set from the bus, spent by the effect below.
+  const [guideDue, setGuideDue] = useState<ProbeWhen | null>(null);
+
+  const guideState = useMemo(
+    () => deriveGuideState(script, playtestLog.entries()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [script, playtestLog, guideRev],
+  );
+
+  const currentCtx = useCallback(
+    (): PlaytestContext => ({
+      day: world?.clock.currentDay ?? 0,
+      phase: world?.dayLoop.state().phase ?? 'UNKNOWN',
+      cash: world?.economy.cash ?? 0,
+      tier: world?.tierManager.currentTier ?? 0,
+    }),
+    [world],
+  );
+
+  // The two moments a scripted instruction is actionable: the managerial window
+  // ("before opening, hire a second salesperson") and after the day's close
+  // ("did the day visibly change?"). Bus-driven rather than render-driven — a
+  // phase change doesn't reliably re-render this overlay channel.
+  useEffect(() => {
+    if (!__DEV__ || world == null) return;
+    const onPrep = () => setGuideDue('day_open');
+    const onClose = () => setGuideDue('day_close');
+    bus.subscribe('clock:managerial_prep', onPrep);
+    bus.subscribe('floor:day_complete', onClose);
+    return () => {
+      bus.unsubscribe('clock:managerial_prep', onPrep);
+      bus.unsubscribe('floor:day_complete', onClose);
+    };
+  }, [bus, world]);
+
+  // Never stack the guide on top of a beat the player is already reading: the
+  // recap, the month close, a chapter or recovery card, or the end card all own
+  // the screen first. The due boundary just waits for them.
+  const guideBlocked =
+    recapModalOpen ||
+    monthClose != null ||
+    chapterQueue.length > 0 ||
+    recoveryQueue.length > 0 ||
+    endCard != null ||
+    tradeReview != null ||
+    discountReview != null;
+
+  useEffect(() => {
+    if (guideDue == null || guideBlocked || guideState.complete) return;
+    // A day-close boundary with every probe already answered has nothing to
+    // ask — don't interrupt for an empty card.
+    if (guideDue === 'day_close' && pendingProbes(guideState, 'day_close').length === 0) {
+      setGuideDue(null);
+      return;
+    }
+    setGuideFocus(guideDue);
+    setGuideOpen(true);
+    setGuideDue(null);
+  }, [guideDue, guideBlocked, guideState]);
+
+  const toggleStep = useCallback(
+    (step: PlaytestScriptStep, done: boolean) => {
+      if (guideState.day == null) return;
+      playtestLog.recordStep({
+        ctx: currentCtx(),
+        dayId: guideState.day.id,
+        stepId: step.id,
+        label: step.text,
+        done,
+      });
+      setGuideRev((r) => r + 1);
+    },
+    [currentCtx, guideState, playtestLog],
+  );
+
+  const answerProbe = useCallback(
+    (probe: PlaytestProbe, response: string) => {
+      if (guideState.day == null) return;
+      playtestLog.recordAnswer({
+        ctx: currentCtx(),
+        dayId: guideState.day.id,
+        probeId: probe.id,
+        prompt: probe.prompt,
+        response,
+      });
+      setGuideRev((r) => r + 1);
+    },
+    [currentCtx, guideState, playtestLog],
+  );
+
+  const finishDay = useCallback(() => {
+    if (guideState.day == null) return;
+    playtestLog.recordStep({
+      ctx: currentCtx(),
+      dayId: guideState.day.id,
+      stepId: DAY_DONE_STEP_ID,
+      label: guideState.day.title,
+      done: true,
+    });
+    setGuideRev((r) => r + 1);
+    setGuideOpen(false);
+  }, [currentCtx, guideState, playtestLog]);
+
   return (
     <>
       <TradeEscalationModal
@@ -197,6 +322,19 @@ export function AppOverlays({
             count={flagCount}
             onOpen={stampContext}
             onSave={saveFlag}
+          />
+          {/* The guided script (#333): what the round asked you to do, presented
+              at the boundary where it's actionable, rather than a doc you have
+              to remember to consult on a second screen. */}
+          <PlaytestGuide
+            state={guideState}
+            knownDark={script.knownDark}
+            open={guideOpen}
+            onOpenChange={setGuideOpen}
+            onToggleStep={toggleStep}
+            onAnswer={answerProbe}
+            onDayDone={finishDay}
+            focus={guideFocus}
           />
         </>
       )}

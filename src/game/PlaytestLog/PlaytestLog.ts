@@ -1,11 +1,13 @@
 import type { StorageDriver } from '../SaveStore';
 import type {
+  PlaytestAnswerEntry,
   PlaytestContext,
   PlaytestDealEntry,
   PlaytestEntry,
   PlaytestEntryCounts,
   PlaytestFlagEntry,
   PlaytestLog,
+  PlaytestStepEntry,
   PlaytestWalkEntry,
 } from './types';
 
@@ -114,6 +116,19 @@ export function createPlaytestLog(
       append<PlaytestWalkEntry>({ kind: 'walk', ...stamp(), ...walk });
     },
 
+    recordStep(step) {
+      return append<PlaytestStepEntry>({ kind: 'step', ...stamp(), ...step });
+    },
+
+    recordAnswer(answer) {
+      return append<PlaytestAnswerEntry>({
+        kind: 'answer',
+        ...stamp(),
+        ...answer,
+        response: answer.response.trim(),
+      });
+    },
+
     entries() {
       return entries;
     },
@@ -123,7 +138,13 @@ export function createPlaytestLog(
     },
 
     counts(): PlaytestEntryCounts {
-      const c: PlaytestEntryCounts = { flag: 0, deal: 0, walk: 0 };
+      const c: PlaytestEntryCounts = {
+        flag: 0,
+        deal: 0,
+        walk: 0,
+        step: 0,
+        answer: 0,
+      };
       for (const e of entries) c[e.kind] += 1;
       return c;
     },

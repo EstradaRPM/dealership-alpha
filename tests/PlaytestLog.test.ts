@@ -62,7 +62,7 @@ describe('PlaytestLog — capture + persistence (#332)', () => {
     log.recordDeal(deal({ customerId: 'c2' }));
     log.recordWalk({ day: 1, customerId: 'c3', reason: 'no_fit' });
 
-    expect(log.counts()).toEqual({ flag: 1, deal: 2, walk: 1 });
+    expect(log.counts()).toEqual({ flag: 1, deal: 2, walk: 1, step: 0, answer: 0 });
     expect(log.count()).toBe(4);
   });
 
@@ -87,7 +87,7 @@ describe('PlaytestLog — capture + persistence (#332)', () => {
     await b.hydrate();
 
     expect(b.count()).toBe(3);
-    expect(b.counts()).toEqual({ flag: 1, deal: 1, walk: 1 });
+    expect(b.counts()).toEqual({ flag: 1, deal: 1, walk: 1, step: 0, answer: 0 });
     expect(b.entries()[0]).toMatchObject({ kind: 'flag', note: 'note one' });
   });
 

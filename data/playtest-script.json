@@ -1,0 +1,213 @@
+{
+  "version": 1,
+  "round": "Round 1 — the felt-loop gate (#74)",
+  "knownDark": [
+    "Finance and Growth tabs are placeholder cards.",
+    "There is no Tier 3 dev fixture; hero art exists only for Tier 1.",
+    "Every number is a first-pass placeholder — report felt wrongness (\"nothing ever sells\"), not suspected bad constants.",
+    "The balance harness bankrupts a competent bot before Tier 2. That is modeled and expected — don't be alarmed if a career gets tight."
+  ],
+  "sessions": [
+    {
+      "id": "A",
+      "label": "Session A — a fresh Tier 1 career, 5 days",
+      "days": [
+        {
+          "id": "a0",
+          "title": "Day 0 — the managerial window",
+          "brief": "Before you open the floor for the first time. You start with $50,000 cash, three seed cars (SUV, truck, sedan — recon-complete, priced at market retail, sellable today), an empty roster, Tier 1. All of that is intentional.",
+          "steps": [
+            { "id": "a0-s1", "text": "Main Menu → New Game → name the slot → name your character, pick a backstory → Begin." },
+            { "id": "a0-s2", "text": "Sit on Home for a minute before doing anything at all." },
+            { "id": "a0-s3", "text": "Operations → Hiring → hire exactly ONE salesperson. Nothing else." },
+            { "id": "a0-s4", "text": "Look at the lot. Don't reprice anything — the seed asks are the baseline." },
+            { "id": "a0-s5", "text": "Tap Open Floor →." }
+          ],
+          "probes": [
+            {
+              "id": "a0-p1",
+              "when": "day_open",
+              "prompt": "Sitting on Home before you touched anything — did you know what you were supposed to do next?",
+              "quick": ["Yes — obviously open the floor", "Roughly", "No idea"]
+            }
+          ]
+        },
+        {
+          "id": "a1",
+          "title": "Day 1 — watch it",
+          "brief": "Run this whole day at 1×, even though it's slow. You're calibrating your sense of the day's length and density before you start skipping. Watch how often a customer arrives, how often anything happens, whether the floor ever feels dead.",
+          "steps": [
+            { "id": "a1-s1", "text": "Play the entire day at 1× — no speed control, no skip to close." },
+            { "id": "a1-s2", "text": "When it closes, read the Reveal all the way through before dismissing it." }
+          ],
+          "probes": [
+            {
+              "id": "a1-p1",
+              "when": "day_close",
+              "prompt": "How long did the day FEEL at 1×?",
+              "quick": ["Too long", "About right", "Too short"]
+            },
+            {
+              "id": "a1-p2",
+              "when": "day_close",
+              "prompt": "Was there a stretch where nothing happened and you wanted to skip? When?",
+              "quick": ["Never felt dead", "Yes — the middle", "Yes — most of it"]
+            },
+            {
+              "id": "a1-p3",
+              "when": "day_close",
+              "prompt": "The Reveal at day-end — did you look forward to it, or dismiss it?",
+              "quick": ["Looked forward to it", "Read it dutifully", "Dismissed it"]
+            }
+          ]
+        },
+        {
+          "id": "a2",
+          "title": "Day 2 — buy something",
+          "brief": "Your first sourcing decision. Take the pre-purchase inspection on one car and skip it on the other — the contrast is the measurement.",
+          "steps": [
+            { "id": "a2-s1", "text": "Operations → Visit Auction." },
+            { "id": "a2-s2", "text": "Buy one or two cars. Inspect one before buying; skip the inspection on the other." },
+            { "id": "a2-s3", "text": "Play the day at 2×." }
+          ],
+          "probes": [
+            {
+              "id": "a2-p1",
+              "when": "day_close",
+              "prompt": "Did the auction feel like a real decision or a menu?",
+              "quick": ["A real decision", "In between", "A menu"]
+            },
+            {
+              "id": "a2-p2",
+              "when": "day_close",
+              "prompt": "Did you have any basis for choosing WHAT to buy?",
+              "quick": ["Yes — I knew what I needed", "Sort of", "I guessed"]
+            }
+          ]
+        },
+        {
+          "id": "a3",
+          "title": "Day 3 — the second hire",
+          "brief": "This is the capacity measurement. One salesperson yesterday, two today — the question is whether the day visibly changes. If you can't tell the difference, say so plainly; that IS the finding.",
+          "steps": [
+            { "id": "a3-s1", "text": "Before opening: hire a SECOND salesperson." },
+            { "id": "a3-s2", "text": "Play the day at 2×." }
+          ],
+          "probes": [
+            {
+              "id": "a3-p1",
+              "when": "day_close",
+              "prompt": "Did the day visibly change with two salespeople — more customers worked, fewer walks, more gross?",
+              "quick": ["Obviously", "Slightly", "Couldn't tell at all"]
+            }
+          ]
+        },
+        {
+          "id": "a4",
+          "title": "Day 4 — move a price",
+          "brief": "Two price moves in opposite directions on the same day. Note both numbers in the flag before you open, so the export has your starting point.",
+          "steps": [
+            { "id": "a4-s1", "text": "Pick your oldest unsold unit and CUT its ask." },
+            { "id": "a4-s2", "text": "Pick another and RAISE its ask." },
+            { "id": "a4-s3", "text": "Tap ⚑ and note both numbers before you open." },
+            { "id": "a4-s4", "text": "Play the day at 2×." }
+          ],
+          "probes": [
+            {
+              "id": "a4-p1",
+              "when": "day_close",
+              "prompt": "Did either price move do anything you could SEE?",
+              "quick": ["Yes — same day", "Maybe", "Nothing visible"]
+            }
+          ]
+        },
+        {
+          "id": "a5",
+          "title": "Day 5 — read the room",
+          "brief": "Play straight through, then read Home top-to-bottom. A readout you enjoy but never act on is a different verdict than one you skip.",
+          "steps": [
+            { "id": "a5-s1", "text": "Play the day straight through." },
+            { "id": "a5-s2", "text": "Read Market — the demand readout (segment heat, observed mix, coverage gap)." },
+            { "id": "a5-s3", "text": "Read the Market Report — the weekly column (only appears once a Monday boundary has passed)." },
+            { "id": "a5-s4", "text": "Read the Industry Wire — the headline ticker, its Confirmed/Rumor/Recap badges, and the \"What you're not reading\" footer." }
+          ],
+          "probes": [
+            {
+              "id": "a5-p1",
+              "when": "day_close",
+              "prompt": "Did any of the three change what you'd do tomorrow?",
+              "quick": ["Market did", "Market Report did", "The Wire did", "None of them"]
+            },
+            {
+              "id": "a5-p2",
+              "when": "day_close",
+              "prompt": "If a month close landed during the round: did you know how far you were from the next tier, and what to do about it?",
+              "quick": ["Didn't happen", "Yes — clear", "No — opaque"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "B",
+      "label": "Session B — Tier 2, 3 days",
+      "days": [
+        {
+          "id": "b1",
+          "title": "Session B, Day 1 — the manager",
+          "brief": "A different career: Main Menu → Start at Tier 2 (dev fixture). There is no Tier 3 fixture — T3 is unreachable under the current un-tuned gate thresholds. That's a known calibration item, not a bug to report.",
+          "steps": [
+            { "id": "b1-s1", "text": "Main Menu → Start at Tier 2 (dev fixture)." },
+            { "id": "b1-s2", "text": "People tab → Manager Status card." },
+            { "id": "b1-s3", "text": "Hire a used car manager if you don't have one." },
+            { "id": "b1-s4", "text": "Play the day." }
+          ],
+          "probes": [
+            {
+              "id": "b1-p1",
+              "when": "day_close",
+              "prompt": "Is it clear what the manager is now doing FOR you — advising you, or acting on your behalf?",
+              "quick": ["Clear", "Vague", "No idea what changed"]
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "title": "Session B, Day 2 — paid intel",
+          "brief": "Known going in: the paid lanes are quiet unless you're actively trading. Block reports need your own transactions; competitor tracking needs rivals repricing. Judge it anyway.",
+          "steps": [
+            { "id": "b2-s1", "text": "Industry Wire → subscribe to auction_data ($45/day) and/or competitor_tracking ($30/day)." },
+            { "id": "b2-s2", "text": "Play the day." }
+          ],
+          "probes": [
+            {
+              "id": "b2-p1",
+              "when": "day_close",
+              "prompt": "Did you get anything worth $45?",
+              "quick": ["Yes", "No", "Couldn't tell"]
+            }
+          ]
+        },
+        {
+          "id": "b3",
+          "title": "Session B, Day 3 — service",
+          "brief": "The second profit centre. The question is whether it reads as a business you run or a settings page you configure once.",
+          "steps": [
+            { "id": "b3-s1", "text": "Hire a service advisor." },
+            { "id": "b3-s2", "text": "Operations → Service Overview." },
+            { "id": "b3-s3", "text": "Set a pricing posture." },
+            { "id": "b3-s4", "text": "Play the day." }
+          ],
+          "probes": [
+            {
+              "id": "b3-p1",
+              "when": "day_close",
+              "prompt": "Does the service department read as a second business, or as a settings page?",
+              "quick": ["A second business", "Somewhere between", "A settings page"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

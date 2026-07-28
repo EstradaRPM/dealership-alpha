@@ -61,15 +61,45 @@ export interface PlaytestWalkEntry extends EntryBase {
   wantedCategory?: string;
 }
 
+/** A scripted step ticked (or un-ticked) on the guide card (#333). Append-only:
+ *  the read model takes the *last* entry per `stepId`, so a mis-tap is corrected
+ *  by tapping again rather than by mutating history. */
+export interface PlaytestStepEntry extends EntryBase {
+  kind: 'step';
+  ctx: PlaytestContext;
+  /** Script day node this step belongs to — the guide's cursor unit. */
+  dayId: string;
+  stepId: string;
+  /** Denormalized so the export reads without the script beside it. */
+  label: string;
+  done: boolean;
+}
+
+/** An answer to a scripted watch-probe (#333) — the short in-the-moment
+ *  question, asked on the phone at the moment it's answerable. The 12-question
+ *  observation sheet stays a keyboard exercise; these are not it. */
+export interface PlaytestAnswerEntry extends EntryBase {
+  kind: 'answer';
+  ctx: PlaytestContext;
+  dayId: string;
+  probeId: string;
+  prompt: string;
+  response: string;
+}
+
 export type PlaytestEntry =
   | PlaytestFlagEntry
   | PlaytestDealEntry
-  | PlaytestWalkEntry;
+  | PlaytestWalkEntry
+  | PlaytestStepEntry
+  | PlaytestAnswerEntry;
 
 export interface PlaytestEntryCounts {
   flag: number;
   deal: number;
   walk: number;
+  step: number;
+  answer: number;
 }
 
 export interface PlaytestLog {
@@ -80,6 +110,12 @@ export interface PlaytestLog {
   flag(note: string, ctx: PlaytestContext): PlaytestFlagEntry;
   recordDeal(deal: Omit<PlaytestDealEntry, 'kind' | 'seq' | 'at'>): void;
   recordWalk(walk: Omit<PlaytestWalkEntry, 'kind' | 'seq' | 'at'>): void;
+  /** Tick / un-tick a guided script step (#333). Last write per `stepId` wins. */
+  recordStep(step: Omit<PlaytestStepEntry, 'kind' | 'seq' | 'at'>): PlaytestStepEntry;
+  /** Answer a scripted watch-probe (#333). Last write per `probeId` wins. */
+  recordAnswer(
+    answer: Omit<PlaytestAnswerEntry, 'kind' | 'seq' | 'at'>,
+  ): PlaytestAnswerEntry;
   entries(): readonly PlaytestEntry[];
   count(): number;
   counts(): PlaytestEntryCounts;

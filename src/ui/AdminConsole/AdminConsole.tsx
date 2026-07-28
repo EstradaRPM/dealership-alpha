@@ -383,6 +383,9 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
               <Text style={styles.statLine}>
                 {playtestCounts.flag} flags · {playtestCounts.deal} deals · {playtestCounts.walk} walk-offs
               </Text>
+              <Text style={styles.statLine}>
+                {playtestCounts.step} script steps · {playtestCounts.answer} probe answers
+              </Text>
               <View style={styles.cashRow}>
                 <TouchableOpacity
                   testID="playtest-export"
