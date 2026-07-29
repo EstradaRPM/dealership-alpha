@@ -14,7 +14,9 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 
 **Cross-agent handoff:** follow `docs/agent-handoff.md`. Do not rely on private agent memory for load-bearing context; put task intent, acceptance criteria, implementation decisions, and closeout notes in GitHub issues and repo docs.
 
-**Context discipline:** Read a module's `CLAUDE.md` before its code; prefer `Grep` + ranged `Read` over whole-file reads. Treat design-record issues (#95/#99/#107) as locked — don't re-grill or re-derive them.
+**Context discipline:** prefer `Grep` + ranged `Read` over whole-file reads. Treat design-record issues (#95/#99/#107) as locked — don't re-grill or re-derive them.
+
+**Area rules load themselves.** The standing constraints for each area of the tree live in `.claude/rules/*.md` and are loaded automatically when a matching file is touched — `src/game/**`, `src/ui/**`, `data/**`, `tests/**`, `scripts/**`. They are not restated here, and a session that doesn't touch an area pays nothing for its rule. Editing them: `.claude/rules/meta-rules.md`.
 
 **Before implementing a slice, do NOT cold-read 10+ files into this context to relearn where things live.** That exploration is repeated, stable knowledge and burns the main context (a recent slice spent ~90k tokens this way before writing any code). Instead:
 - **Generation seams** (a value generated per customer/visit from `data/`, injected through a factory, composed in `createWorld`) follow a fixed recipe — read `docs/generation-seam-recipe.md`, not the prior slices' source. Most remaining MarketEconomy slices (#155–#181) are generation seams.
@@ -23,14 +25,10 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 
 ## Non-negotiable engineering principle
 
-**All code must be built for long-term modular flexibility.** This is a multi-year project; architectural shortcuts will be rejected at review.
+**All code must be built for long-term modular flexibility.** This is a multi-year project; architectural shortcuts will be rejected at review. Deep modules, narrow interfaces; game logic fully separable from UI; cross-module communication only through the `EventBus`; every tunable in `data/`, no magic numbers in code.
 
-- Deep modules, narrow interfaces.
-- Game logic is fully separable from UI. UI renders state and dispatches actions — it never reaches into game-logic internals.
-- Cross-module communication goes through the `EventBus`. No module calls another's internals.
-- **Module boundary convention:** every module lives in its own directory under `src/game/<ModuleName>/` and exposes its public surface only through `index.ts` (a barrel). Consumers import from `'@/game/<ModuleName>'` (or the relative path to the directory), never from a file inside it. Anything not re-exported from `index.ts` is private. **Enforced at write time** by the `PreToolUse` hook `.claude/hooks/pre-module-boundary.mjs` — a write that reaches past a barrel is blocked, not caught at review. Pre-existing reach-ins are enumerated in `.claude/hooks/module-boundary-allow.json`; that list is meant to shrink. See `.claude/hooks/README.md`.
-- All tunables (OEM tables, customer archetypes, F&I products, tier definitions, balance numbers) live in versioned data files under `data/`. No magic numbers in code.
-- Subsystems whose current implementation is intentionally simple (static OEMs, static competitors, regulatory meter) are exposed via interfaces so richer replacements drop in later without changing consumers.
+How each of those binds a given file — the barrel convention and the write-time hook that enforces it, the theme-role and plain-language rules for UI, the loader convention for `data/`, the test conventions — is stated in the area rule that loads with that path (`.claude/rules/`), not here.
+
 - Small commits, each verifiable. No multi-day branches without intermediate landings.
 
 ## Stack
@@ -43,7 +41,7 @@ A premium, single-player, mobile dealership-business simulation. Day-cycle, deci
 
 ## Module map (deep modules, communicating via EventBus)
 
-Game logic lives under `src/game/<Module>/`. Each module directory contains a `CLAUDE.md` describing its public surface, events emitted/consumed, and tunable data files — **read the per-module doc before touching that module** rather than re-deriving from `index.ts`.
+Game logic lives under `src/game/<Module>/`. Each module directory contains a `CLAUDE.md` describing its public surface, events emitted/consumed, and tunable data files.
 
 Original 12 (issue #1): `GameClock`, `CustomerPool`, `DepartmentQueue`, `StaffOrg`, `Inventory`, `DealEngine`, `Economy`, `Reputation`, `CompetitorMarket`, `CareerProgression`, `SaveStore`, `EventBus`.
 
@@ -54,12 +52,6 @@ The Service department is composed as a labeled package in `src/serviceDepartmen
 UI (planned, not yet implemented): `HomeView`, `DepartmentScreens`, `SalesWorkspace`, `FollowupView`, `KPIDashboard`, `NarrativeBeat`, `CharacterCreation`, `EndCard`.
 
 The canonical event catalog is `src/game/EventBus/events.ts` — every event name, payload, and ordering note lives there. See issue #1 for the macro-design rationale.
-
-## Testing
-
-- Every game-logic module gets isolation tests on its public interface. Test external behavior, never implementation details.
-- UI gets smoke tests only (renders without crashing).
-- No snapshot tests.
 
 ## Common commands
 
