@@ -45,6 +45,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338→#339; see `docs/agent-workflow-notes.md`) | — | active |
+| 5b | Module-boundary debt clearance (#341 → #342), surfaced by #335's scan | — | pending |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** — prep index: `.claude/skills/decide/gates.md` | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
@@ -103,6 +104,20 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   only fires inside `src|data|tests|scripts`). Typecheck clean; 194 suites / 2374 tests green.
   Next /next BUILDs **#336** (`paths:`-scoped rules so per-module CLAUDE.md loads without
   being remembered) — or `/decide C1` any time to unblock phase 6.
+  **Follow-on, filed same day as phase 5b:** the 81 allow-listed reach-ins are two unrelated
+  jobs and were split so neither hides the other. **#341** is clerical — ~35 files import
+  `parseData` from `game/data/loadJson` when it is *already on the data barrel*, so it is a
+  one-line change per file with no design question. **#342** is not — ~40 files import
+  `createRng`/`deriveSeed` from `game/NPC/Rng`, which is **not** on NPC's barrel, and the
+  consumers span sixteen modules (Weather, MarketEconomy, Inventory, FloorSim, the whole
+  Service/Body stack, the balance harness). Seeded RNG isn't an NPC concept; it lives there
+  because NPC was the first module that needed determinism. So #342 has to say where RNG's
+  public home is — re-export it from NPC's barrel (smallest diff, but asserts something
+  untrue about NPC) or give it its own module beside `data/` (matches what it is, ~40 import
+  lines). That fork is **internal** by `/decide`'s own triage — module ownership, not a
+  player-facing mechanic — so the implementing agent rules on it rather than the director.
+  When both land the allow-list is empty and can be deleted, leaving the hook enforcing the
+  bare rule.
 - 2026-07-29 — BUILT + closed **#340** (phase 5a S2 — the `/decide` skill). Six of the
   seventeen remaining phases can't start until the director rules on something, and opening
   one of those gates has been costing a session of excavation *before* any thinking starts —
