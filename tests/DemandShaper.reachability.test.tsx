@@ -240,7 +240,7 @@ describe('#198 / #278 demand readout — reachable through the live pipeline', (
     expect(console[0].segment).toBe(hottest);
 
     const state = world.dayLoop.state();
-    const { getByTestId } = render(
+    const { getByTestId, getAllByText, queryByText } = render(
       <HomeTab
         state={state}
         demandReadout={{
@@ -251,6 +251,14 @@ describe('#198 / #278 demand readout — reachable through the live pipeline', (
       />,
     );
     expect(getByTestId('demand-heat-console')).toBeTruthy();
+    // What the player actually reads: the axis (demand), never the internal
+    // temperature band the console is modeled on.
+    expect(
+      getAllByText(/^(Very high|High|Steady|Low|Very low) demand$/).length,
+    ).toBe(console.length);
+    for (const word of [/\bhot\b/i, /\bwarm\b/i, /\bcold\b/i, /\bcool\b/i]) {
+      expect(queryByText(word)).toBeNull();
+    }
   });
 
   it('App.tsx wires demandReadout from the live world into the Home tab', () => {

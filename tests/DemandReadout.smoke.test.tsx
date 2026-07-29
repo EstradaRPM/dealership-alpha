@@ -47,7 +47,7 @@ describe('DemandReadout smoke', () => {
     expect(getByText(/recent buyers wanted trucks; you\s*stock 0/i)).toBeTruthy();
   });
 
-  it('renders the heat console (#280): a HOT/WARM/COLD band per segment, with its own header above the trailing window', () => {
+  it('renders the heat console (#280): a plain-language demand band per segment, with its own header above the trailing window', () => {
     const { getByText, getByTestId, getByLabelText } = render(
       <DemandReadout
         model={{
@@ -61,12 +61,36 @@ describe('DemandReadout smoke', () => {
       />,
     );
     expect(getByTestId('demand-heat-console')).toBeTruthy();
-    expect(getByText('Demand Heat')).toBeTruthy();
+    expect(getByText('Demand by Vehicle Type')).toBeTruthy();
     // The console reads as its own region; the trailing window gets its header.
     expect(getByText("Who's Been Walking In")).toBeTruthy();
-    expect(getByLabelText('SUVs demand Hot')).toBeTruthy();
-    expect(getByLabelText('Trucks demand Warm')).toBeTruthy();
-    expect(getByLabelText('Sedans demand Cold')).toBeTruthy();
+    // Labels name the axis (demand), never the internal temperature band.
+    expect(getByText('High demand')).toBeTruthy();
+    expect(getByText('Steady demand')).toBeTruthy();
+    expect(getByText('Low demand')).toBeTruthy();
+    expect(getByLabelText('SUVs High demand')).toBeTruthy();
+    expect(getByLabelText('Trucks Steady demand')).toBeTruthy();
+    expect(getByLabelText('Sedans Low demand')).toBeTruthy();
+  });
+
+  it('never surfaces a bare temperature word — the locked "no vague temperature labels" rule', () => {
+    const { queryByText } = render(
+      <DemandReadout
+        model={{
+          ...MODEL,
+          heatBands: [
+            { segment: 'suv', label: 'SUVs', band: 'very-hot', heatIndex: 1.5 },
+            { segment: 'truck', label: 'Trucks', band: 'hot', heatIndex: 1.2 },
+            { segment: 'sedan', label: 'Sedans', band: 'warm', heatIndex: 1.0 },
+            { segment: 'coupe', label: 'Coupes', band: 'cold', heatIndex: 0.8 },
+            { segment: 'van', label: 'Vans', band: 'very-cold', heatIndex: 0.5 },
+          ],
+        }}
+      />,
+    );
+    for (const word of [/\bhot\b/i, /\bwarm\b/i, /\bcold\b/i, /\bcool\b/i, /\bheat\b/i]) {
+      expect(queryByText(word)).toBeNull();
+    }
   });
 
   it('classifies heat bands off share × segment count (#280): even = warm, over = hot, under = cold', () => {
@@ -98,13 +122,13 @@ describe('DemandReadout smoke', () => {
       />,
     );
     expect(getByText('1.50×')).toBeTruthy();
-    expect(getByLabelText('SUVs demand Very Hot')).toBeTruthy();
+    expect(getByLabelText('SUVs Very high demand')).toBeTruthy();
   });
 
   it('shows an empty hint before any traffic is observed', () => {
     const { getByText } = render(
       <DemandReadout model={{ totalObserved: 0, entries: MODEL.entries }} />,
     );
-    expect(getByText("No traffic yet — open the lot to see what's hot.")).toBeTruthy();
+    expect(getByText('No traffic yet — open the lot to see what buyers want.')).toBeTruthy();
   });
 });

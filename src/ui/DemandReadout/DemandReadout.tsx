@@ -127,13 +127,16 @@ export interface DemandReadoutModel {
   coverageGap?: DemandCoverageGap | null;
 }
 
-/** Warm→cool temperature ramp + glyph for each heat band. */
+// Plain-language DEMAND-axis labels + glyph for each band. The internal model
+// stays hot/warm/cold; the player-facing word names the axis (how much buyers
+// want this vehicle type), never the temperature — the locked "no vague
+// temperature labels" rule, same treatment as ServicePage/BodyShopPage.
 const HEAT_BANDS: Record<HeatBand, { label: string; tone: BadgeTone; icon: IconName }> = {
-  'very-hot': { label: 'Very Hot', tone: 'reward', icon: 'trending-up' },
-  hot: { label: 'Hot', tone: 'reward', icon: 'trending-up' },
-  warm: { label: 'Warm', tone: 'neutral', icon: 'arrow-forward' },
-  cold: { label: 'Cold', tone: 'info', icon: 'trending-down' },
-  'very-cold': { label: 'Very Cold', tone: 'info', icon: 'trending-down' },
+  'very-hot': { label: 'Very high demand', tone: 'reward', icon: 'trending-up' },
+  hot: { label: 'High demand', tone: 'reward', icon: 'trending-up' },
+  warm: { label: 'Steady demand', tone: 'neutral', icon: 'arrow-forward' },
+  cold: { label: 'Low demand', tone: 'info', icon: 'trending-down' },
+  'very-cold': { label: 'Very low demand', tone: 'info', icon: 'trending-down' },
 };
 
 function HeatRow({ entry }: { entry: HeatBandEntry }) {
@@ -169,7 +172,7 @@ function HeatRow({ entry }: { entry: HeatBandEntry }) {
           {entry.heatIndex.toFixed(2)}×
         </Text>
       )}
-      <View accessibilityLabel={`${entry.label} demand ${band.label}`}>
+      <View accessibilityLabel={`${entry.label} ${band.label}`}>
         <Badge label={band.label} tone={band.tone} variant="soft" />
       </View>
     </View>
@@ -273,7 +276,7 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
     <Surface testID="demand-readout">
       {hasHeat && (
         <View testID="demand-heat-console">
-          <SectionHeader title="Demand Heat" />
+          <SectionHeader title="Demand by Vehicle Type" />
           <Text style={{ ...empty, marginTop: t.spacing.xxs, marginBottom: t.spacing.xs }}>
             What buyers want right now — stock and price to it.
           </Text>
@@ -287,7 +290,7 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
         {hasHeat && <SectionHeader title="Who's Been Walking In" />}
         <View style={hasHeat ? { marginTop: t.spacing.sm } : undefined}>
           {model.totalObserved === 0 ? (
-            <Text style={empty}>No traffic yet — open the lot to see what's hot.</Text>
+            <Text style={empty}>No traffic yet — open the lot to see what buyers want.</Text>
           ) : (
             model.entries.map((entry) => (
               <DemandRow key={entry.segment} entry={entry} />
