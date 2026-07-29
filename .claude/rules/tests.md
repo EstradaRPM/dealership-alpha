@@ -1,11 +1,15 @@
 ---
-paths: ["tests/**", "src/**/*.test.ts", "src/**/*.test.tsx"]
+paths: ["tests/**", "src/**/*.test.ts", "src/**/*.test.tsx", "jest.config.js"]
 ---
 
 # Tests
 
 `npm test` is Jest on the `jest-expo` preset. Tests live in `tests/` or co-located as
 `*.test.ts(x)` under `src/`.
+
+- **No path text in a `testMatch` glob** — discovery is scoped with `roots`, and `jest.config.js`
+  says why. A `<rootDir>` prefix there silently matched zero files in a git worktree, so
+  `npm test` ran nothing.
 
 - **Every game-logic module gets isolation tests on its public interface** — drive it through
   the barrel and assert external behavior. A test that reaches into internals to assert them

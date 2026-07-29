@@ -17,19 +17,6 @@
     "build": "npx eas-cli build",
     "tunnel:reset": "npm uninstall @expo/ngrok && rimraf node_modules/@expo/ngrok node_modules/ngrok && npm install -D @expo/ngrok@latest"
   },
-  "jest": {
-    "preset": "jest-expo",
-    "setupFilesAfterEnv": [
-      "<rootDir>/jest.setup.js"
-    ],
-    "testTimeout": 20000,
-    "testMatch": [
-      "<rootDir>/tests/**/*.test.ts",
-      "<rootDir>/tests/**/*.test.tsx",
-      "<rootDir>/src/**/*.test.ts",
-      "<rootDir>/src/**/*.test.tsx"
-    ]
-  },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "15.0.3",

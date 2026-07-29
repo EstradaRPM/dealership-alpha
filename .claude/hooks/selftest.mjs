@@ -297,6 +297,32 @@ expect(
 );
 
 clearState();
+run('post-record-command.mjs', {
+  tool_name: 'Bash',
+  tool_input: { command: 'npm test' },
+  tool_response: { stdout: '', stderr: 'No tests found, exiting with code 1\n  0 matches' },
+});
+const empty = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+expect(
+  'record: a run that found no tests is not credited as the suite',
+  { status: empty.suiteRun ? 1 : 0, stderr: JSON.stringify(empty) },
+  0,
+);
+
+clearState();
+run('post-record-command.mjs', {
+  tool_name: 'Bash',
+  tool_input: { command: 'npm test' },
+  tool_response: { stdout: '', stderr: 'Tests:       196 passed, 196 total' },
+});
+const real = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+expect(
+  'record: a run that executed tests is still credited',
+  { status: real.suiteRun === true ? 0 : 1, stderr: JSON.stringify(real) },
+  0,
+);
+
+clearState();
 
 // --- 6. EARS acceptance criteria on filed issues ----------------------------
 
