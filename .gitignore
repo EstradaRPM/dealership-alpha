@@ -42,6 +42,7 @@ yarn-error.*
 !.claude/skills/
 !.claude/hooks/
 !.claude/rules/
+!.claude/launch.json
 .claude/.session-state/
 
 # Local-only issue snapshot (regenerate via scripts/dump-issues.sh)

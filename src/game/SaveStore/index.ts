@@ -6,6 +6,19 @@ export type { MultiSlotOptions } from './SlotStore';
 export { createInMemoryDriver, createInMemoryDriverFactory } from './inMemoryDriver';
 export { createSqliteDriver, createSqliteDriverFactory } from './sqliteDriver';
 export type { SqliteDriverOptions } from './sqliteDriver';
+export {
+  createWebDriver,
+  createWebDriverFactory,
+  createIndexedDbStore,
+  createLocalStorageStore,
+  createMemoryStore,
+  resolveWebStorageBackend,
+} from './webDriver';
+export type {
+  WebDriverOptions,
+  WebKeyValueStore,
+  WebStorageBackendKind,
+} from './webDriver';
 export type {
   SaveStore,
   SaveState,

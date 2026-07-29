@@ -16,8 +16,9 @@ Persistence layer. The **only** module that touches storage drivers (SQLite or i
   - `deleteSlot(id)` — wipes only that slot's blob; clears active selection iff it was the deleted slot; recreated ids never reuse a deleted blob.
   - `save(state, { day, tier })` / `load()` — addresses the active slot and refreshes its metadata.
   - `writeCheckpoint(cp)` / `readCheckpoint()` / `clearCheckpoint()` — per-slot mid-day checkpoint (#109). Lives in its own cell (`checkpoint:<id>`), independent across slots, separate from the main save blob; `deleteSlot` wipes it too. Payload `MidDayCheckpoint = { seed, day, dayContext, currentTick, actionLog }` — `dayContext`/`actionLog` are opaque serializable data SaveStore round-trips but never inspects. Schema + accessors only; replay logic is #122. Caller clears it on day-complete.
-- Drivers: `createInMemoryDriver` (single-cell, tests), `createSqliteDriver` (production via `expo-sqlite`). Options: `SqliteDriverOptions`.
-- Driver factories (for multi-slot — one isolated cell per key): `createInMemoryDriverFactory` (tests), `createSqliteDriverFactory` (per-key db file).
+- Drivers: `createInMemoryDriver` (single-cell, tests), `createSqliteDriver` (device via `expo-sqlite`), `createWebDriver` (browser). Options: `SqliteDriverOptions`, `WebDriverOptions`.
+- Driver factories (for multi-slot — one isolated cell per key): `createInMemoryDriverFactory` (tests), `createSqliteDriverFactory` (per-key db file), `createWebDriverFactory` (per-key record in one IndexedDB store).
+- Web backends (`webDriver.ts`, #338): resolved once per factory by `resolveWebStorageBackend` — IndexedDB, else localStorage, else memory. Each is a `WebKeyValueStore` and can be injected via `WebDriverOptions.backend`; `createIndexedDbStore` / `createLocalStorageStore` / `createMemoryStore` are exported for that. **Which platform gets which factory is not decided here** — that is `src/app/storage.ts` (`createPlatformDriverFactory`), so no module under `src/game/` imports `react-native`.
 - Migration helpers: `CURRENT_SAVE_VERSION`, `migrate`, `wrap`. Types: `Migration`, `SaveEnvelope`.
 - Types: `SaveStore`, `SaveState`, `StorageDriver`, `DriverFactory`, `MultiSlotSaveStore`, `SlotMetadata`, `MidDayCheckpoint`, `CheckpointAction`, `SnapshotStore`, `WeeklySnapshot`.
 
@@ -29,4 +30,5 @@ Bump `CURRENT_SAVE_VERSION` and append a `Migration` whenever the persisted `Sav
 
 ## No-no
 - Never import `expo-sqlite` outside this module.
+- Never touch browser storage (`indexedDB`, `localStorage`) outside `webDriver.ts`.
 - Never read/write storage from other game-logic modules — they must round-trip through SaveStore.

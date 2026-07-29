@@ -6,6 +6,56 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-07-29 — BUILT + closed **#335** (phase 5a S3 — hooks for the module-boundary
+  convention + the save-envelope ritual). `.claude/settings.json` had exactly one hook, a
+  `UserPromptSubmit` echo; everything else this repo calls non-negotiable was prose an agent
+  had to remember, including the root CLAUDE.md's own admission that the module-boundary rule
+  had **"no lint rule enforcing this"**. Five hooks now live in `.claude/hooks/`, all Node
+  `.mjs` (the repo is driven from Git Bash, cmd and PowerShell — one language beats three
+  copies), stdin JSON in, exit code out. **`pre-module-boundary.mjs`** (PreToolUse Edit/Write)
+  blocks a write whose *new text* imports past another module's `index.ts`; it resolves
+  relative and `@/` specifiers, allows the barrel and `.../index`, and allows a module reading
+  its own internals. **`pre-save-envelope.mjs`** interrupts **once per session** on a
+  `WORLD_SNAPSHOT_VERSION`/migrations/`data/fixtures/` touch with the full ritual — the
+  load-bearing line being that tier-2.json is re-stamped by **migrating in place**, never by
+  `npm run gen:fixtures` (the harness bot bankrupts ~day 125 at tier 1 and writes nothing).
+  It blocks rather than whispers because PreToolUse has no non-blocking channel that reliably
+  reaches the agent, and a reminder nobody reads is the failure being fixed; the re-issued
+  edit passes. **`post-typecheck.mjs`** typechecks after any `src/**` edit —
+  `--incremental` with its buildinfo in the ignored session dir, ~6.5s cold / ~3.4s warm, so
+  an edit burst stays tolerable. **`post-record-command.mjs`** + **`stop-session-hygiene.mjs`**
+  close the loop: if `src/` or `data/` changed but the suite never ran or build-state.md was
+  never updated, the Stop hook says so once (`stop_hook_active` guards the loop).
+  **`module-boundary-allow.json` enumerates the 81 pre-existing reach-ins across 71 files** —
+  without it the first rewrite of `createWorld.ts` would be blocked by debt it didn't create.
+  The scan that generates it (`npm run hooks:scan`) also made the debt countable, and it is
+  two classes: ~35 `../data/loadJson` reach-ins that are **one-line fixes** (`parseData` is
+  already on the data barrel) and ~40 `../NPC/Rng` ones that are **not** — `Rng` is not
+  exported from NPC's barrel, so those need a public-surface call, not a rename. That list is
+  meant to shrink. **`npm run hooks:test` drives all five with synthetic payloads and asserts
+  the exit codes, negative cases included, and CI now runs it** — which immediately earned its
+  keep: the typecheck hook was **silently exiting 0 on every broken file**, because Node 24
+  refuses to spawn `npx.cmd` without `shell: true` and the hook read the resulting null status
+  as "fine". Now it invokes `node_modules/typescript/bin/tsc` under the current node and
+  *blocks* if it can't run at all. Two over-triggers were also caught and scoped away in the
+  build (the hooks tree describes the rule, so it isn't judged by it; the envelope reminder
+  only fires inside `src|data|tests|scripts`). Typecheck clean; 194 suites / 2374 tests green.
+  Next /next BUILDs **#336** (`paths:`-scoped rules so per-module CLAUDE.md loads without
+  being remembered) — or `/decide C1` any time to unblock phase 6.
+  **Follow-on, filed same day as phase 5b:** the 81 allow-listed reach-ins are two unrelated
+  jobs and were split so neither hides the other. **#341** is clerical — ~35 files import
+  `parseData` from `game/data/loadJson` when it is *already on the data barrel*, so it is a
+  one-line change per file with no design question. **#342** is not — ~40 files import
+  `createRng`/`deriveSeed` from `game/NPC/Rng`, which is **not** on NPC's barrel, and the
+  consumers span sixteen modules (Weather, MarketEconomy, Inventory, FloorSim, the whole
+  Service/Body stack, the balance harness). Seeded RNG isn't an NPC concept; it lives there
+  because NPC was the first module that needed determinism. So #342 has to say where RNG's
+  public home is — re-export it from NPC's barrel (smallest diff, but asserts something
+  untrue about NPC) or give it its own module beside `data/` (matches what it is, ~40 import
+  lines). That fork is **internal** by `/decide`'s own triage — module ownership, not a
+  player-facing mechanic — so the implementing agent rules on it rather than the director.
+  When both land the allow-list is empty and can be deleted, leaving the hook enforcing the
+  bare rule.
 - 2026-07-29 — BUILT + closed **#340** (phase 5a S2 — the `/decide` skill). Six of the
   seventeen remaining phases can't start until the director rules on something, and opening
   one of those gates has been costing a session of excavation *before* any thinking starts —

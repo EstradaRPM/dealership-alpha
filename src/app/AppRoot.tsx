@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, AppState, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { createSqliteDriverFactory } from '../game/SaveStore';
+import { createPlatformDriverFactory } from './storage';
 import type {
   DriverFactory,
   MidDayCheckpoint,
@@ -53,7 +53,7 @@ export function DealershipApp({
   const servicesRef = useRef<AppServices | null>(null);
   if (servicesRef.current === null) {
     servicesRef.current = createAppServices(
-      driverFactory ?? createSqliteDriverFactory(),
+      driverFactory ?? createPlatformDriverFactory(),
     );
   }
   const services = servicesRef.current;

@@ -56,7 +56,7 @@ The canonical event catalog is `src/game/EventBus/events.ts` — every event nam
 ## Common commands
 
 - `npm run dev` — start Expo dev server (alias for `expo start`)
-- `npm run ios` / `npm run android` / `npm run web` — launch on a specific target
+- `npm run ios` / `npm run android` / `npm run web` — launch on a specific target. **`web` is the target an agent can drive** (#338) — read `.claude/skills/verify` before running the app, including what a web drive does and does not prove. iOS/Android remain the shipping platforms.
 - `npm test` — Jest (jest-expo preset). Test files live in `tests/` or co-located as `*.test.ts(x)` under `src/`
 - `npm run typecheck` — `tsc --noEmit`, strict mode
 - `npm run build -- --profile <development|preview|production> --platform <ios|android>` — EAS Build. First run requires `npx eas-cli login` and `npx eas-cli init` to bind a project ID.

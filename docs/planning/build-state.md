@@ -24,8 +24,9 @@ session start — open it on demand when a past slice's rationale needs recoveri
   answering the 12-question sheet at a keyboard. Nothing agent-side can advance it — no
   autonomous runtime surface for the GUI (see `.claude/skills/verify`).
 - **While it waits, `/next` works phase 5a** (#334–#340). Real filed work, independent of the
-  playtest; #338 removes the `/verify` BLOCKED ceiling every later slice pays. 5a does not
-  substitute for the playtest — the felt questions stay a human gate.
+  playtest. #338 landed, so the `/verify` BLOCKED ceiling is gone — a UI slice is now driven
+  live on the web target (`.claude/skills/verify`). 5a does not substitute for the playtest —
+  the felt questions stay a human gate.
 - **5a issue states on GitHub are not trustworthy.** #334 was CLOSED-but-undone. Check each
   of #335–#339 against the repo before assuming it landed.
 
@@ -44,7 +45,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
-| 5a | Agent-harness hardening (#334→#340→#335→#336→#337 done; #338→#339 left; see `docs/agent-workflow-notes.md`) | — | active |
+| 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338 done; **#339 left**; see `docs/agent-workflow-notes.md`) | — | active |
 | 5b | Module-boundary debt clearance (#341 → #342), surfaced by #335's scan | — | pending |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** — prep index: `.claude/skills/decide/gates.md` | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
@@ -68,6 +69,42 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-07-29 — BUILT + closed **#338** (phase 5a S6 — a drivable web target). **Every
+  build-state entry since #325 ended with `/verify: BLOCKED for the live-GUI drive`** — a tax
+  paid ~30 times, and on every remaining UI slice. Nothing an agent could run proved the screen
+  renders, the tap lands, or the number on screen matches the number in the world. The block
+  was real and had two halves, and #332's `driverFactory('playtest-log')` had already proved
+  the seam that removes the first. **`src/game/SaveStore/webDriver.ts`** is the web
+  `StorageDriver`: a `WebKeyValueStore` backend resolved **once per factory** — IndexedDB,
+  else localStorage, else memory — with per-key records inside one object store, giving slots
+  the same isolation the per-file sqlite factory gives on device. Resolving once per factory
+  rather than per call is deliberate: a mid-session downgrade would otherwise split one career
+  across two stores. IndexedDB is the default and not localStorage because a single career blob
+  is ~41KB and the snapshot ring holds six of them per slot — the ~5MB localStorage cap is a
+  ceiling a long career reaches, so it is the fallback, not the choice. **The platform branch
+  lives in `src/app/storage.ts`, not in SaveStore** — that is what keeps `react-native` out of
+  every module under `src/game/` (still zero imports), and an anti-orphan test asserts the
+  composition root defaults through it. `react-native-web` + `react-dom` + `@expo/metro-runtime`
+  installed via `npx expo install`; **nothing under `src/ui/` needed a fix** — the kit renders
+  on RNW as-is, with only RN's own `shadow*`/`pointerEvents` deprecation warnings.
+  **Verified by actually playing it**: start menu → dev T2 fixture → Home at Day 31 /
+  $222,734 / Tier 2, all five tabs, People showing the UCM delegation rows, the live floor view
+  with the clock running 9:13a → 10:27a, then a **full page reload → Continue → the same
+  career**, with the two IndexedDB records (`index`, `slot:slot-1`) read back to prove the
+  write landed rather than trusting the screen. Zero console errors throughout.
+  `.claude/skills/verify` is rewritten around this: the drive loop, `read_page` as the primary
+  instrument (screenshots fail whenever the Browser pane isn't displayed, and coordinate clicks
+  are refused without one), the dev-T2 shortcut to a mid-game state, how to read the save out
+  of IndexedDB — and **BLOCKED now reserved for what genuinely needs a device, which the
+  verdict must name**. The trap that cost the most time in this slice is written down because
+  it presents as a broken button with no error: **the ref→screen coordinate mapping goes stale
+  after a reload**, so clicks land elsewhere silently — re-`resize_window` after every
+  navigation, and confirm with a capture-phase click listener. Typecheck clean; 196 suites /
+  2401 tests green (8 new); `npm run hooks:test` green. **What this does not do is replace the
+  felt half — phase 5 (#74) stays a human gate.** A driven GUI answers *does the surface exist
+  and respond*, never *does it land*.
+  Next /next BUILDs **#339** (the balance-harness optimizer — last of phase 5a) — or
+  `/decide C1` any time to unblock phase 6.
 - 2026-07-29 — BUILT + closed **#337** (phase 5a S5 — EARS acceptance criteria as a filing
   convention). Acceptance criteria on filed slices were prose, and on an AFK slice the issue
   body is the *entire* brief — the implementing session reads the issue, the recipes and the
@@ -136,53 +173,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   shares `.claude/rules/` the way it already shares hooks and skills. Typecheck clean; 195
   suites / 2393 tests green. Next /next BUILDs **#337** (EARS acceptance criteria as a filing
   convention) — or `/decide C1` any time to unblock phase 6.
-- 2026-07-29 — BUILT + closed **#335** (phase 5a S3 — hooks for the module-boundary
-  convention + the save-envelope ritual). `.claude/settings.json` had exactly one hook, a
-  `UserPromptSubmit` echo; everything else this repo calls non-negotiable was prose an agent
-  had to remember, including the root CLAUDE.md's own admission that the module-boundary rule
-  had **"no lint rule enforcing this"**. Five hooks now live in `.claude/hooks/`, all Node
-  `.mjs` (the repo is driven from Git Bash, cmd and PowerShell — one language beats three
-  copies), stdin JSON in, exit code out. **`pre-module-boundary.mjs`** (PreToolUse Edit/Write)
-  blocks a write whose *new text* imports past another module's `index.ts`; it resolves
-  relative and `@/` specifiers, allows the barrel and `.../index`, and allows a module reading
-  its own internals. **`pre-save-envelope.mjs`** interrupts **once per session** on a
-  `WORLD_SNAPSHOT_VERSION`/migrations/`data/fixtures/` touch with the full ritual — the
-  load-bearing line being that tier-2.json is re-stamped by **migrating in place**, never by
-  `npm run gen:fixtures` (the harness bot bankrupts ~day 125 at tier 1 and writes nothing).
-  It blocks rather than whispers because PreToolUse has no non-blocking channel that reliably
-  reaches the agent, and a reminder nobody reads is the failure being fixed; the re-issued
-  edit passes. **`post-typecheck.mjs`** typechecks after any `src/**` edit —
-  `--incremental` with its buildinfo in the ignored session dir, ~6.5s cold / ~3.4s warm, so
-  an edit burst stays tolerable. **`post-record-command.mjs`** + **`stop-session-hygiene.mjs`**
-  close the loop: if `src/` or `data/` changed but the suite never ran or build-state.md was
-  never updated, the Stop hook says so once (`stop_hook_active` guards the loop).
-  **`module-boundary-allow.json` enumerates the 81 pre-existing reach-ins across 71 files** —
-  without it the first rewrite of `createWorld.ts` would be blocked by debt it didn't create.
-  The scan that generates it (`npm run hooks:scan`) also made the debt countable, and it is
-  two classes: ~35 `../data/loadJson` reach-ins that are **one-line fixes** (`parseData` is
-  already on the data barrel) and ~40 `../NPC/Rng` ones that are **not** — `Rng` is not
-  exported from NPC's barrel, so those need a public-surface call, not a rename. That list is
-  meant to shrink. **`npm run hooks:test` drives all five with synthetic payloads and asserts
-  the exit codes, negative cases included, and CI now runs it** — which immediately earned its
-  keep: the typecheck hook was **silently exiting 0 on every broken file**, because Node 24
-  refuses to spawn `npx.cmd` without `shell: true` and the hook read the resulting null status
-  as "fine". Now it invokes `node_modules/typescript/bin/tsc` under the current node and
-  *blocks* if it can't run at all. Two over-triggers were also caught and scoped away in the
-  build (the hooks tree describes the rule, so it isn't judged by it; the envelope reminder
-  only fires inside `src|data|tests|scripts`). Typecheck clean; 194 suites / 2374 tests green.
-  Next /next BUILDs **#336** (`paths:`-scoped rules so per-module CLAUDE.md loads without
-  being remembered) — or `/decide C1` any time to unblock phase 6.
-  **Follow-on, filed same day as phase 5b:** the 81 allow-listed reach-ins are two unrelated
-  jobs and were split so neither hides the other. **#341** is clerical — ~35 files import
-  `parseData` from `game/data/loadJson` when it is *already on the data barrel*, so it is a
-  one-line change per file with no design question. **#342** is not — ~40 files import
-  `createRng`/`deriveSeed` from `game/NPC/Rng`, which is **not** on NPC's barrel, and the
-  consumers span sixteen modules (Weather, MarketEconomy, Inventory, FloorSim, the whole
-  Service/Body stack, the balance harness). Seeded RNG isn't an NPC concept; it lives there
-  because NPC was the first module that needed determinism. So #342 has to say where RNG's
-  public home is — re-export it from NPC's barrel (smallest diff, but asserts something
-  untrue about NPC) or give it its own module beside `data/` (matches what it is, ~40 import
-  lines). That fork is **internal** by `/decide`'s own triage — module ownership, not a
-  player-facing mechanic — so the implementing agent rules on it rather than the director.
-  When both land the allow-list is empty and can be deleted, leaving the hook enforcing the
-  bare rule.

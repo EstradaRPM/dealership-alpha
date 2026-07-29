@@ -113,6 +113,17 @@ the same thing the vision-QA vendors sell, without the vendor.
 
 It does **not** replace the felt half of playtesting (see §4).
 
+**Built 2026-07-29.** `src/game/SaveStore/webDriver.ts` is the web `StorageDriver`
+(IndexedDB → localStorage → memory, resolved once per factory); `src/app/storage.ts` picks it
+by `Platform.OS`, which is why the platform branch lives in the composition root and no module
+under `src/game/` imports `react-native`. `npm run web` boots the real app —
+verified live: start menu → dev T2 fixture → Home showing Day 31 / $222,734, all five tabs,
+the live floor with a running clock, and a full page reload resuming the same career out of
+IndexedDB. `.claude/skills/verify` now documents the drive loop and **reserves BLOCKED for
+what genuinely needs a device**, which it must name. The trap worth knowing before you spend
+an hour on it: the ref→screen coordinate mapping goes stale after a reload and clicks land
+elsewhere with no error — re-`resize_window` after every navigation.
+
 ### d) The balance harness has no optimizer → #339
 Every slice log ends *"all magnitudes are first-pass → #286."* That debt is now dozens of
 placeholder constants spread across `data/*.json`, all converging on one HITL campaign. We
