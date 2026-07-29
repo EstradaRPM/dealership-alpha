@@ -44,7 +44,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
-| 5a | Agent-harness hardening (#334→#340→#335→#336 done; #337→#338→#339 left; see `docs/agent-workflow-notes.md`) | — | active |
+| 5a | Agent-harness hardening (#334→#340→#335→#336→#337 done; #338→#339 left; see `docs/agent-workflow-notes.md`) | — | active |
 | 5b | Module-boundary debt clearance (#341 → #342), surfaced by #335's scan | — | pending |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** — prep index: `.claude/skills/decide/gates.md` | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
@@ -68,6 +68,42 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-07-29 — BUILT + closed **#337** (phase 5a S5 — EARS acceptance criteria as a filing
+  convention). Acceptance criteria on filed slices were prose, and on an AFK slice the issue
+  body is the *entire* brief — the implementing session reads the issue, the recipes and the
+  touched module's `CLAUDE.md` and nothing else, so an implicit trigger is exactly where a
+  slice quietly builds the adjacent thing. `docs/agent-handoff.md` now carries an
+  **"Acceptance criteria (EARS)"** section: the five patterns (ubiquitous / event-driven /
+  state-driven / unwanted / optional), the rule that **each criterion names a test that fails
+  without it**, the rule that the section holds criteria only (context goes in Scope/Notes,
+  indented sub-bullets are free), and **two worked examples whose test names were verified
+  against the real suites** rather than invented — #329 Records (`tests/Records.test.ts`
+  "starts with no marks set", "does not crown an empty day", and the
+  `tests/worldSnapshot.test.ts` "migrates pre-#329 snapshots to an empty scoreboard" case) and
+  #335's boundary hook (four real `npm run hooks:test` labels). The game-side example is
+  chosen to show what the patterns buy: the event name *is* the trigger, the null-vs-zero
+  decision is stated instead of left to the implementer, and the zero-unit divide-by-zero case
+  is a criterion rather than a bug found later. **The half that makes it stick is a sixth
+  hook** — a doc-only convention is skipped by forgetting, not by deciding, which is the same
+  failure #335/#336 removed. `.claude/hooks/pre-issue-criteria.mjs` (PreToolUse Bash/PowerShell)
+  reads the body out of `--body`, `--body-file` or a heredoc, finds the criteria section, and
+  **blocks** a create that has none or whose top-level bullets are prose, answering with the
+  five patterns. Two scoping decisions are load-bearing and both are in the selftest:
+  **new issues only** (`gh issue edit` is never judged — rewriting an already-filed issue would
+  change agreed scope silently, which #337 explicitly forbids), and **only a create the shell
+  will actually run** (the match must sit at a command boundary, so a grep, a `node -e` string
+  or a doc *about* this hook files nothing and is left alone). That second rule was tightened
+  twice **by the hook catching me**: first blocking a probe command, then blocking this slice's
+  own commit message, which named the tool in markdown inline code — so a backtick is
+  deliberately not a command separator. An inline body's first heading does not sit at
+  a line start, so the flag's opening quote is broken onto its own line before parsing; that
+  bug was caught by the prose-criteria negative case failing with the *wrong* reason rather than
+  passing by luck. `npm run hooks:test` gained 10 cases (both negatives, the heredoc form, the
+  body-file form, a chained second create judged on its own body, and the two over-trigger
+  guards) and CI already runs it. Typecheck clean; 195 suites / 2393 tests green.
+  Next /next BUILDs **#338** (a drivable web target so `/verify` can actually run the GUI —
+  it removes the BLOCKED ceiling every later slice pays) — or `/decide C1` any time to unblock
+  phase 6.
 - 2026-07-29 — BUILT + closed **#336** (phase 5a S4 — path-scoped area rules). The repo's
   per-area conventions were prose in the **always-loaded** root `CLAUDE.md`, which paid the
   context cost on every session and then only worked if the agent remembered — including the
@@ -150,31 +186,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   player-facing mechanic — so the implementing agent rules on it rather than the director.
   When both land the allow-list is empty and can be deleted, leaving the hook enforcing the
   bare rule.
-- 2026-07-29 — BUILT + closed **#340** (phase 5a S2 — the `/decide` skill). Six of the
-  seventeen remaining phases can't start until the director rules on something, and opening
-  one of those gates has been costing a session of excavation *before* any thinking starts —
-  the same activation-cost pathology #332/#333 fixed for the playtest. `.claude/skills/decide/`
-  now holds two files. **`SKILL.md`** is the procedure: select one gate (lowest pending
-  GRILL/ADJUDICATE row, or the one the user names), load rather than re-derive, then **triage
-  every open question into two piles** — internal forks (module ownership, data shape, event
-  naming, test seams) the agent decides and reports as one-line calls, and player-facing forks
-  the user rules on, presented **one at a time** with plain-language options, `file:line`
-  evidence, and a recommendation (`feedback-hitl-single-decision`). Options the agent
-  introduced are labelled `[agent-proposed]` in both the presentation and the record so
-  nothing gets smuggled into a doc as already-agreed
-  (`feedback-no-smuggled-mechanics`); every option must be a complete mechanic, never a
-  "simple version" (`feedback-no-half-assed-solutions`). It terminates like `/next` — one gate,
-  recorded in the owning doc, phase table flipped, committed — and a deferred fork is recorded
-  *as an open fork with what would unblock it*, never left in chat. **The load-bearing half is
-  `gates.md`**: a per-gate index of all eight pending gates (C1 staff-teeth, A2 slots, B2 F&I
-  resume, B4 bite-unlock, F2/F3/D3, E2 fixed-ops fork, G1/G2, G4) giving each one's scope §,
-  the docs to load in order, the LOCKED inputs that must be read but never reopened, and where
-  the ruling gets written. Without it the skill would just re-derive the map each time, which
-  is the cost being removed. **Only C1 is marked grill-worthy** — the rest are short fork sets
-  and the skill explicitly forbids running a grill on one, which is what would otherwise turn a
-  three-question adjudication into an hour. `/next`'s DECIDE branch now delegates here instead
-  of carrying its own gate logic (selection stays in `/next`, depth lives in `/decide`); phase
-  6's table cell and the table preamble point at `gates.md`. Typecheck clean; no source
-  touched, so the suite was not re-run. Next /next BUILDs **#335** (hooks for the
-  module-boundary convention + the save-envelope re-stamp ritual) — but `/decide` is now live,
-  so a `/decide C1` any time unblocks phase 6 ahead of it.

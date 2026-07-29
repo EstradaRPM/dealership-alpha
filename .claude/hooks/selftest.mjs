@@ -298,7 +298,141 @@ expect(
 
 clearState();
 
-// --- 6. the repo itself still satisfies the rule ----------------------------
+// --- 6. EARS acceptance criteria on filed issues ----------------------------
+
+const EARS_BODY = [
+  '## Scope',
+  'Wire the thing.',
+  '',
+  '## Acceptance criteria (EARS)',
+  '',
+  '- When a day closes with a gross above the standing mark, the system shall update',
+  '  `bestDayGross` and emit `records:broken`.',
+  '  - test: tests/records.test.ts "beats the standing day-gross mark"',
+  '- While no mark has ever been set, the system shall report the mark as null.',
+  '- If the day closes with zero units, then the system shall leave `bestPvr` unchanged.',
+  '',
+  '## Notes',
+  'Nothing else.',
+].join('\n');
+
+const ghCreate = (body) => `gh issue create --title "Probe" --body "${body.replace(/"/g, '\\"')}"`;
+
+expect(
+  'issue criteria: allows a create carrying EARS criteria',
+  run('pre-issue-criteria.mjs', { tool_name: 'Bash', tool_input: { command: ghCreate(EARS_BODY) } }),
+  0,
+);
+
+expect(
+  'issue criteria: blocks a create with no criteria section',
+  run('pre-issue-criteria.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: 'gh issue create --title "Probe" --body "Just do the thing."' },
+  }),
+  2,
+  (r) => r.stderr.includes('no "Acceptance criteria (EARS)" section'),
+);
+
+expect(
+  'issue criteria: blocks prose criteria under the right heading',
+  run('pre-issue-criteria.mjs', {
+    tool_name: 'Bash',
+    tool_input: {
+      command: ghCreate(
+        ['## Acceptance criteria (EARS)', '', '- The record updates when a day is better.'].join('\n'),
+      ),
+    },
+  }),
+  2,
+  (r) => r.stderr.includes('prose, not EARS'),
+);
+
+expect(
+  'issue criteria: reads the body out of --body-file',
+  (() => {
+    const bodyFile = path.join(PROJECT, `.claude/.session-state/selftest-body-${process.pid}.md`);
+    fs.mkdirSync(path.dirname(bodyFile), { recursive: true });
+    fs.writeFileSync(bodyFile, EARS_BODY);
+    try {
+      return run('pre-issue-criteria.mjs', {
+        tool_name: 'Bash',
+        tool_input: { command: `gh issue create --title "Probe" --body-file ${bodyFile}` },
+      });
+    } finally {
+      fs.rmSync(bodyFile, { force: true });
+    }
+  })(),
+  0,
+);
+
+expect(
+  'issue criteria: a second chained create is judged on its own body',
+  run('pre-issue-criteria.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: `${ghCreate(EARS_BODY)} && gh issue create --title "Probe 2" --body "no criteria"` },
+  }),
+  2,
+);
+
+expect(
+  'issue criteria: reads a heredoc body',
+  run('pre-issue-criteria.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: `gh issue create --title "Probe" --body "$(cat <<'EOF'\n${EARS_BODY}\nEOF\n)"` },
+  }),
+  0,
+);
+
+// The over-trigger guard: the words appear in plenty of commands that file nothing.
+expect(
+  'issue criteria: ignores the words inside a quoted string',
+  run('pre-issue-criteria.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: `node -e "console.log('gh issue create --title x')"` },
+  }),
+  0,
+);
+
+expect(
+  'issue criteria: ignores the words in markdown inline code (a commit message)',
+  run('pre-issue-criteria.mjs', {
+    tool_name: 'Bash',
+    tool_input: {
+      command: "git commit -F - <<'MSG'\nBlocks a `gh issue create` with no criteria.\nMSG",
+    },
+  }),
+  0,
+);
+
+expect(
+  'issue criteria: ignores a grep for the words',
+  run('pre-issue-criteria.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: 'git log --oneline | grep "gh issue create"' },
+  }),
+  0,
+);
+
+expect(
+  'issue criteria: silent on any other command',
+  run('pre-issue-criteria.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: 'gh issue list --state open' },
+  }),
+  0,
+);
+
+expect(
+  'issue criteria: never blocks an edit of an existing issue',
+  run('pre-issue-criteria.mjs', {
+    tool_name: 'Bash',
+    tool_input: { command: 'gh issue edit 337 --body "prose only"' },
+  }),
+  0,
+);
+
+// --- 7. the repo itself still satisfies the rule ----------------------------
 
 const scan = spawnSync(process.execPath, [path.join(HOOKS, 'scan-module-boundary.mjs')], {
   cwd: PROJECT,

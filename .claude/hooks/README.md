@@ -10,6 +10,7 @@ Registered in `.claude/settings.json` (committed, so every session gets the same
 |---|---|---|
 | `pre-module-boundary.mjs` | `PreToolUse` Edit/Write | **Blocks** a write importing past another module's `index.ts` barrel. |
 | `pre-save-envelope.mjs` | `PreToolUse` Edit/Write | **Interrupts once per session** when the world-snapshot envelope or a fixture is touched, with the full re-stamp ritual. |
+| `pre-issue-criteria.mjs` | `PreToolUse` Bash/PowerShell | **Blocks** a `gh issue create` whose body has no `## Acceptance criteria (EARS)` section, or whose criteria are prose (#337). |
 | `post-typecheck.mjs` | `PostToolUse` Edit/Write | Typechecks after any `src/**` edit, and records the touched path. |
 | `post-record-command.mjs` | `PostToolUse` Bash/PowerShell | Records that `npm test` / `npm run typecheck` ran. |
 | `stop-session-hygiene.mjs` | `Stop` | If `src/` or `data/` changed but the suite never ran or `build-state.md` was never updated, says so. Once. |
@@ -36,6 +37,25 @@ npm run hooks:scan
 ```
 
 Sweeps the repo with the boundary rule and reports every reach-in not in the allow-list.
+
+## The EARS check
+
+`pre-issue-criteria.mjs` reads the body out of `--body`, `--body-file` or a heredoc, finds the
+acceptance-criteria section, and requires every **top-level** bullet in it to be one of the
+five EARS patterns (indented sub-bullets are free — they carry the test mapping). The
+convention and its worked examples live in `docs/agent-handoff.md`; the hook points at that
+doc rather than restating it.
+
+Two scoping decisions worth knowing:
+
+- **New issues only.** `gh issue edit` is never judged. Issues filed before the convention
+  keep their text — rewriting them would change agreed scope silently.
+- **Only a create the shell will actually run.** The words appear in plenty of commands that
+  file nothing (a grep, a script body, a commit message describing this hook), so the match
+  must sit at the start of a command or right after a separator — and a backtick is not a
+  separator, because markdown inline code is far commoner than legacy `` `cmd` ``
+  substitution. Every one of those cases is in the selftest; the commit-message one is there
+  because it blocked this hook's own commit.
 
 ## The module-boundary allow-list
 

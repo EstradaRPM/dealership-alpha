@@ -38,7 +38,11 @@ exactly what input unblocks it.
      path-to-finished-product.md.
    - **No open issue covers the phase's remaining work** → SLICE. Run /to-issues scoped to
      this phase only, pulling scope from the phase's section of
-     `docs/planning/path-to-finished-product.md`.
+     `docs/planning/path-to-finished-product.md`. **Every filed issue carries an
+     `## Acceptance criteria (EARS)` section** — the five patterns and two worked examples are
+     in `docs/agent-handoff.md`; each criterion names the test that fails without it.
+     `.claude/hooks/pre-issue-criteria.mjs` blocks a `gh issue create` that skips it, so this
+     is a convention you cannot forget rather than one you must remember.
    - Otherwise → BUILD the lowest-numbered open, deps-met issue belonging to the phase.
 4. Execute the unit.
    - BUILD sessions do NOT read path-to-finished-product.md. Context = the issue itself,

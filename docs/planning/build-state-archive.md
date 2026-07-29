@@ -6,6 +6,34 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-07-29 — BUILT + closed **#340** (phase 5a S2 — the `/decide` skill). Six of the
+  seventeen remaining phases can't start until the director rules on something, and opening
+  one of those gates has been costing a session of excavation *before* any thinking starts —
+  the same activation-cost pathology #332/#333 fixed for the playtest. `.claude/skills/decide/`
+  now holds two files. **`SKILL.md`** is the procedure: select one gate (lowest pending
+  GRILL/ADJUDICATE row, or the one the user names), load rather than re-derive, then **triage
+  every open question into two piles** — internal forks (module ownership, data shape, event
+  naming, test seams) the agent decides and reports as one-line calls, and player-facing forks
+  the user rules on, presented **one at a time** with plain-language options, `file:line`
+  evidence, and a recommendation (`feedback-hitl-single-decision`). Options the agent
+  introduced are labelled `[agent-proposed]` in both the presentation and the record so
+  nothing gets smuggled into a doc as already-agreed
+  (`feedback-no-smuggled-mechanics`); every option must be a complete mechanic, never a
+  "simple version" (`feedback-no-half-assed-solutions`). It terminates like `/next` — one gate,
+  recorded in the owning doc, phase table flipped, committed — and a deferred fork is recorded
+  *as an open fork with what would unblock it*, never left in chat. **The load-bearing half is
+  `gates.md`**: a per-gate index of all eight pending gates (C1 staff-teeth, A2 slots, B2 F&I
+  resume, B4 bite-unlock, F2/F3/D3, E2 fixed-ops fork, G1/G2, G4) giving each one's scope §,
+  the docs to load in order, the LOCKED inputs that must be read but never reopened, and where
+  the ruling gets written. Without it the skill would just re-derive the map each time, which
+  is the cost being removed. **Only C1 is marked grill-worthy** — the rest are short fork sets
+  and the skill explicitly forbids running a grill on one, which is what would otherwise turn a
+  three-question adjudication into an hour. `/next`'s DECIDE branch now delegates here instead
+  of carrying its own gate logic (selection stays in `/next`, depth lives in `/decide`); phase
+  6's table cell and the table preamble point at `gates.md`. Typecheck clean; no source
+  touched, so the suite was not re-run. Next /next BUILDs **#335** (hooks for the
+  module-boundary convention + the save-envelope re-stamp ritual) — but `/decide` is now live,
+  so a `/decide C1` any time unblocks phase 6 ahead of it.
 - 2026-07-29 — BUILT + closed **#334** (phase 5a S1 — trim build-state to live state +
   archive the log). This file was **708 lines** and `/next` step 1 read all of it every
   session to recover four live facts; it is now **144** — the issue's "under 120 lines"

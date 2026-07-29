@@ -9,6 +9,78 @@ This repo is designed for iterative work by Codex, Claude Code, and future AI ag
 - Keep reusable wiring patterns in small recipe docs so later slices read one durable source instead of re-deriving prior code. Existing recipes include `docs/generation-seam-recipe.md` (per-customer generate+wire) and `docs/save-migration-recipe.md` (worldSnapshot versioning — read before changing any persisted state).
 - Keep module public APIs narrow and documented through the module barrel plus the module agent doc.
 
+## Acceptance criteria (EARS)
+
+Every filed slice carries an `## Acceptance criteria (EARS)` section, and every criterion in
+it is one of five sentence patterns. On an AFK slice the issue body is the *entire* brief —
+the implementing session reads the issue, the recipes, and the touched module's `CLAUDE.md`,
+and nothing else. Prose criteria leave the trigger and the required response implicit, which
+is where a slice quietly builds the adjacent thing instead of the asked one.
+
+| Pattern | Shape |
+| --- | --- |
+| Ubiquitous | *The system shall \<response\>.* |
+| Event-driven | *When \<trigger\>, the system shall \<response\>.* |
+| State-driven | *While \<state\>, the system shall \<response\>.* |
+| Unwanted behavior | *If \<condition\>, then the system shall \<response\>.* |
+| Optional feature | *Where \<feature is present\>, the system shall \<response\>.* |
+
+Two rules go with the patterns:
+
+- **Each criterion maps to at least one named test** that fails when the criterion is unmet.
+  Name it in an indented sub-bullet. A criterion with no test is a wish.
+- **The section holds criteria only.** Context, rationale and open questions go in `## Scope`
+  or `## Notes`. Indented sub-bullets are free — they carry the test mapping and any detail.
+
+### Worked example — a game-side slice (#329, Records)
+
+```markdown
+## Acceptance criteria (EARS)
+
+- When `floor:day_complete` fires with a day gross above the standing mark, the system shall
+  update `bestDayGross` and emit `records:broken`.
+  - test: tests/Records.test.ts — "settles the day total on floor:day_complete using front + back"
+- While a mark has never been set, `getMark(kind)` shall return null rather than zero.
+  - test: tests/Records.test.ts — "starts with no marks set"
+- If a day closes with no units, then the system shall crown nothing.
+  - test: tests/Records.test.ts — "does not crown an empty day"
+- Where a save predates the Records key, the system shall materialize
+  `createDefaultRecordsSnapshot()` through the world-snapshot migration.
+  - test: tests/worldSnapshot.test.ts — "migrates pre-#329 snapshots to an empty scoreboard"
+```
+
+Note what the patterns buy: the event name *is* the trigger, the null-vs-zero decision is
+stated rather than left to the implementer, and the zero-unit divide-by-zero case is a
+criterion instead of a bug someone finds later.
+
+### Worked example — a harness slice (#335, the module-boundary hook)
+
+```markdown
+## Acceptance criteria (EARS)
+
+- The hook shall read its payload from stdin and answer with an exit code — 0 proceed,
+  2 block with the reason on stderr.
+  - test: `npm run hooks:test` — every case asserts the exit code, negative cases included
+- When a write introduces an import that reaches past another module's `index.ts`, the hook
+  shall block the call and name the barrel to import from instead.
+  - test: `npm run hooks:test` — "boundary: blocks a reach-in past another module barrel"
+- While a reach-in is listed in `module-boundary-allow.json`, the hook shall allow it.
+  - test: `npm run hooks:test` — "boundary: grandfathered reach-in is not blocked"
+- If the edited file already carries older debt, then the hook shall judge only the text
+  being introduced.
+  - test: `npm run hooks:test` — "boundary: an Edit is judged on new_string only"
+- Where the edited file lives under `.claude/`, the hook shall not judge it by the rule it
+  implements.
+  - test: `npm run hooks:test` — "boundary: the hooks tree is not judged by the rule it enforces"
+```
+
+### Enforcement
+
+`.claude/hooks/pre-issue-criteria.mjs` blocks a `gh issue create` whose body has no
+acceptance-criteria section, or whose criteria are prose. It judges **new** issues only:
+issues filed before this convention keep their text, because rewriting them would change
+agreed scope silently.
+
 ## Context Packets
 
 For multi-issue epics, create or update a `docs/*-recipe.md` context packet.

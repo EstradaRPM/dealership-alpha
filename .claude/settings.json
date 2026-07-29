@@ -26,6 +26,10 @@
           { "type": "command", "command": "node .claude/hooks/pre-module-boundary.mjs" },
           { "type": "command", "command": "node .claude/hooks/pre-save-envelope.mjs" }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/pre-issue-criteria.mjs" }]
       }
     ],
     "PostToolUse": [

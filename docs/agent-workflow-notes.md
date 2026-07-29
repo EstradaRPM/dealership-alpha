@@ -133,6 +133,14 @@ EARS ("When \<trigger\>, the system shall \<response\>") turns fuzzy criteria in
 parseable statements. Cheap to adopt, and it directly raises fidelity on AFK slices, where
 the issue body is the entire brief.
 
+**Built 2026-07-29.** The convention plus two worked examples is a section of
+`docs/agent-handoff.md`, and `/next`'s SLICE branch points at it. The half that makes it
+stick is `.claude/hooks/pre-issue-criteria.mjs`: a `gh issue create` whose body has no
+acceptance-criteria section — or whose criteria are prose — is blocked with the five patterns
+in the message. A convention that only lives in a doc is skipped by forgetting, not by
+deciding, which is the same failure #335 and #336 were built to remove. New issues only;
+`gh issue edit` is untouched, so nothing already filed gets silently rescoped.
+
 ### g) Nothing lowers the cost of a *decision* → #340
 
 Named after #334–#339 were filed, by asking what those six still don't cover. They close the
