@@ -23,7 +23,10 @@ exactly what input unblocks it.
 
 ## Procedure
 
-1. Read `docs/planning/build-state.md` — current phase pointer, phase table, blockers.
+1. Read `docs/planning/build-state.md` — current phase pointer, phase table, blockers, and
+   the newest 3 log entries. That file is the whole session-start read; it stays short by
+   design. Do NOT read `docs/planning/build-state-archive.md` here — open it only when a
+   past slice's rationale actually needs recovering.
 2. If the current phase's work is complete (its issues all closed, decisions resolved),
    advance the pointer in build-state.md. Advancing is bookkeeping, not the unit — continue.
 3. Pick the unit for the current phase, first match wins:
@@ -41,6 +44,10 @@ exactly what input unblocks it.
    - A phase whose unit is HITL (e.g. the #74 playtest) → the unit is preparing and handing
      the user the playtest script; the artifact is the filed calibration notes/issue.
 5. Update build-state.md: progress note, any new blocker, pointer if the phase closed.
+   **Roll the log:** after appending the new entry at the top of `## Log`, move every entry
+   beyond the newest 3 to the top of the `## Log` in `docs/planning/build-state-archive.md`
+   — **text unchanged, never summarized**, newest first. The rationale in an old entry is
+   the record of why a decision was made; it gets relocated, not compressed.
 6. Report what landed, ending with exactly one state line:
    `State: phase N (<name>) — next /next will <BUILD #X | SLICE phase N | DECIDE Y>.`
 
