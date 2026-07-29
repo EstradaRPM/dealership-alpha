@@ -128,9 +128,25 @@ table, last outcome). The same closeout logs are duplicated in agent memory
 (`session-resume.md`), so there are two copies free to drift apart.
 
 ### f) Acceptance criteria are prose → #337
-EARS ("When <trigger>, the system shall <response>") turns fuzzy criteria into testable,
+
+EARS ("When \<trigger\>, the system shall \<response\>") turns fuzzy criteria into testable,
 parseable statements. Cheap to adopt, and it directly raises fidelity on AFK slices, where
 the issue body is the entire brief.
+
+### g) Nothing lowers the cost of a *decision* → #340
+
+Named after #334–#339 were filed, by asking what those six still don't cover. They close the
+tooling gap; they do nothing about the actual rate limiter. Six of the seventeen remaining
+phases are blocked on a GRILL or ADJUDICATE that only the director can rule on.
+
+Same pathology as the playtest before #332/#333: the work wasn't hard, *starting* it was
+expensive, and it sat blocked until tooling made starting cheap. A pending grill means
+reloading design context and re-deriving what the forks even are before any thinking begins.
+The thinking is the user's. The reloading and deriving are not.
+
+`/decide` prepares one gate — forks triaged (internal ones decided by the agent, never
+asked), evidence pulled with `file:line`, a recommendation per player-facing fork — and
+records the ruling so the gate never reopens.
 
 ---
 
@@ -139,23 +155,31 @@ the issue body is the entire brief.
 Leverage and order are not the same thing. The cheap harness items compound — every session
 after them costs less — so they go first even though the last two carry more leverage:
 
-**#334** (trim build-state) → **#335** (hooks) → **#336** (scoped rules) → **#337** (EARS) →
-**#338** (web verify target) → **#339** (harness objective + search loop).
+**#334** (trim build-state) → **#340** (`/decide`) → **#335** (hooks) → **#336** (scoped
+rules) → **#337** (EARS) → **#338** (web verify target) → **#339** (harness objective +
+search loop).
+
+#340 sits second despite being the newest: it is one skill file, and it is the only item that
+unblocks anything on the *product* side — six phases are waiting behind a ruling.
 
 Filed as phase 5a in `docs/planning/build-state.md`, which `/next` can work while phase 5
 (the #74 playtest gate) waits on the user.
 
-## 4. What #334–#339 do not cover
+## 4. What #334–#340 do not cover
 
-Honest residue, so nobody mistakes the list for a complete answer:
+Honest residue, so nobody mistakes the list for a complete answer. All three are the same
+thing wearing different clothes: **judgment doesn't delegate.**
 
 - **The felt half of playtesting.** #74's questions — is the day the right length, is the
   capacity squeeze legible, is any of this fun — are judgment, not measurement. A driven GUI
-  can answer *does the surface exist and respond*; it cannot answer *does it land*. Phase 5
-  stays a human gate by design.
-- **Design decisions.** The pending grills and adjudications in the phase table (staff-teeth,
-  F&I resume, staff slots, G1/G2) are director calls. Tooling shortens the write-up, not the
-  decision.
-- **Taste on generated numbers.** #337 proposes tunable diffs against authored targets. The
-  targets themselves are the user's to author, and a config that satisfies them can still
-  feel wrong — the optimizer narrows the search, it doesn't close it.
+  (#338) can answer *does the surface exist and respond*; it cannot answer *does it land*.
+  Phase 5 stays a human gate by design.
+- **The rulings themselves.** #340 makes a gate cheap to *open* — context loaded, forks
+  triaged, evidence pulled, a recommendation on the table. It does not make the call. Six
+  phases wait on the director having an opinion, and that stays true after #340 lands.
+- **Taste on generated numbers.** #339 proposes tunable diffs against authored targets. The
+  targets themselves are the user's to author, and a config that satisfies every one of them
+  can still feel wrong — the optimizer narrows the search, it doesn't close it.
+
+None of the seven changes the *rate* at which slices get built either. They change what it
+costs to start one, whether it can be verified, and whether its numbers are honest.
