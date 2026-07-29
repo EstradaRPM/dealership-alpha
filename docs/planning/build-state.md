@@ -24,6 +24,11 @@ comes from that doc and the filed issues.
   agent-side can advance it — there is no autonomous runtime surface for the GUI (see
   `.claude/skills/verify`).
 
+  **While it waits, `/next` works phase 5a** (agent-harness hardening, #334–#339) — it is
+  real filed work that does not depend on the playtest, and #338 directly removes the
+  `/verify` BLOCKED ceiling that every phase-5-and-later slice currently pays. Phase 5 is
+  still the gate; 5a is what there is to build while the gate is held by the user.
+
 ## Phase table
 
 Status: `pending` → `active` → `done`. "Decision first" = a DECIDE unit must run before
@@ -37,6 +42,7 @@ resolved just-in-time at the phase boundary, never earlier).
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
+| 5a | Agent-harness hardening (#334→#335→#336→#337→#338→#339; see `docs/agent-workflow-notes.md`) | — | active |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
@@ -57,6 +63,32 @@ resolved just-in-time at the phase boundary, never earlier).
 
 ## Log
 
+- 2026-07-29 — SLICED **phase 5a (agent-harness hardening)** out of a field survey of
+  AI-agent game-dev tooling, run at the user's request and written up as
+  `docs/agent-workflow-notes.md`. The survey's verdict on the field: the 49-agent "studio"
+  frameworks solve a consistency-across-many-streams problem this project does not have
+  (one product, one director, locked spec, one-unit-per-session discipline) — take their
+  **hooks and path-scoped rules**, skip the org chart; spec-driven tooling (Spec Kit, Kiro,
+  OpenSpec) is a lateral move because issue #1 + `spec-condensed.md` + the issue queue
+  already *is* a spec-first pipeline, with **EARS notation** the one portable piece; the
+  live frontier worth taking is automated balancing ([RuleSmith](https://arxiv.org/abs/2602.06232)
+  = engine + agents + Bayesian optimization over a rule space) and vision-driven GUI QA.
+  Things this repo already does that the field does not: the `/next` never-end-in-analysis
+  contract, reachability/anti-orphan tests, `docs/*-recipe.md`, and `build-state.md` itself.
+  Six gaps filed, ordered cheap-first because the cheap ones compound: **#334** trim
+  build-state to live state + archive the log (this file is 669 lines and `/next` reads all
+  of it every session), **#335** hooks for the module-boundary convention (today enforced by
+  the root CLAUDE.md admitting "no lint rule enforces this") + the save-envelope re-stamp
+  ritual, **#336** `paths:`-scoped rules so per-module CLAUDE.md loads without being
+  remembered, **#337** EARS acceptance criteria on filed slices, **#338** a drivable web
+  target (web `StorageDriver` + `react-native-web`) so `/verify` stops returning BLOCKED on
+  every surface slice — **this supersedes the verify skill's "do not install
+  react-native-web" line**, which was correct only while the `expo-sqlite` block stood —
+  and **#339** fix the harness's dishonest bankruptcy metric (a run dying ~day 125 currently
+  scores clean) then add a Bayesian search over a declared tunable manifest, feeding #286 a
+  ranked diff instead of a from-scratch hand-tune. Phase 5a is workable **while phase 5
+  waits on the user**; it does not substitute for the playtest — the felt questions stay a
+  human gate. Next /next BUILDs **#334**.
 - 2026-07-28 — BUILT + closed **#333** (guided playtest script in-game) — phase 5 tooling,
   filed and built in-session after the user said the #332 overlay "is not nearly as guided
   as I had hoped": #332 recorded what the player *noticed* but never what the round **asked
