@@ -32,7 +32,7 @@ describe('App save/load flow', () => {
 
     await waitFor(() => expect(screen.getByTestId('home-dashboard')).toBeTruthy());
     // START DAY enters the floor MODE from the pinned shell action (#215).
-    fireEvent.press(screen.getByText('Open Floor →'));
+    fireEvent.press(screen.getByText('Open Floor'));
     await waitFor(() => expect(screen.getByText('FLOOR')).toBeTruthy());
 
     fireEvent.press(screen.getByLabelText('Open game menu'));

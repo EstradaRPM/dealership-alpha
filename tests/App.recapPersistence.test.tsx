@@ -48,7 +48,7 @@ describe('App day-recap modal + persistence (#253)', () => {
     expect(screen.queryByLabelText('Open Day 1 recap')).toBeNull();
 
     // Open the floor, then burn the day to close in one jump.
-    fireEvent.press(screen.getByText('Open Floor →'));
+    fireEvent.press(screen.getByText('Open Floor'));
     await waitFor(() => expect(screen.getByText('FLOOR')).toBeTruthy());
     fireEvent.press(screen.getByLabelText('Skip to close'));
 

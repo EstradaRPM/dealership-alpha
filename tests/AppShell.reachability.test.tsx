@@ -46,12 +46,12 @@ describe('#215 AppShell — 5-tab IA reachability', () => {
         tierLabel="Tier 1 — Micro Lot"
         stats={[{ label: 'CASH', value: '$5,000' }]}
         tabs={TABS}
-        primaryAction={{ label: 'Next Day →', onPress }}
+        primaryAction={{ label: 'Next Day', onPress }}
       />,
     );
 
     expect(getByText('$5,000')).toBeTruthy();
-    fireEvent.press(getByText('Next Day →'));
+    fireEvent.press(getByText('Next Day'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 

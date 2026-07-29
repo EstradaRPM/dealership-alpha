@@ -447,7 +447,8 @@ export function GameScreen({
       activeTabKey={shellTab}
       onTabChange={setShellTab}
       primaryAction={{
-        label: loopState.hasRecap ? 'Next Day →' : 'Open Floor →',
+        // No "→" in the label — the shell's CTA draws the onward arrow itself.
+        label: loopState.hasRecap ? 'Next Day' : 'Open Floor',
         onPress: handleNextDay,
       }}
       // Persistent recovery banner (#326): derived from the live monitor state,

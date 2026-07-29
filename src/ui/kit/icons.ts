@@ -32,13 +32,19 @@ export const ICON_MAP = {
   'chevron-down': 'expand-more',
   'chevron-up': 'expand-less',
   construct: 'build',
+  /** Checkered flag — the day-action CTA's leading glyph (home-hub mockup). */
+  'flag-checkered': 'sports-score',
   home: 'home',
   'lock-closed': 'lock',
   menu: 'menu',
+  /** Filed column / wire copy — the market-report + industry-wire empty states. */
+  newspaper: 'article',
   people: 'people',
   remove: 'remove',
   star: 'star',
   storefront: 'storefront',
+  /** Clock face — "nothing here yet, it arrives later" empty states. */
+  time: 'schedule',
   'trending-down': 'trending-down',
   'trending-up': 'trending-up',
   wallet: 'account-balance-wallet',

@@ -16,6 +16,7 @@ import {
   IconBadge,
   GaugeArc,
   GradientSurface,
+  ProgressBar,
   type IconName,
   type IconBadgeTone,
 } from '../kit';
@@ -77,12 +78,6 @@ export function HomeTab({
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
   const regionBody: ViewStyle = { marginTop: t.spacing.md };
-  // Empty-state copy: a calm muted caption, NOT italic — the italic one-liners
-  // read as wireframe placeholder filler (#265). Informative, not apologetic.
-  const hint: TextStyle = {
-    ...t.typography.caption,
-    color: t.colors.textMuted,
-  };
 
   return (
     <View>
@@ -115,7 +110,7 @@ export function HomeTab({
           ) : (
             // No day has closed yet — honest pre-Day-1 copy, never a "Night
             // before Day 1" string stamped onto a Day-15 save (#253).
-            <Text style={hint}>Your first day hasn&apos;t opened yet.</Text>
+            <EmptyNote icon="calendar">Your first day hasn&apos;t opened yet.</EmptyNote>
           )}
         </View>
       </View>
@@ -126,7 +121,9 @@ export function HomeTab({
           {demandReadout ? (
             <DemandReadout model={demandReadout} />
           ) : (
-            <Text style={hint}>Open the lot to build the demand readout.</Text>
+            <EmptyNote icon="storefront">
+              Open the lot to build the demand readout.
+            </EmptyNote>
           )}
         </View>
       </View>
@@ -141,9 +138,9 @@ export function HomeTab({
           {weeklyReport ? (
             <WeeklyMarketReportCard model={weeklyReport} />
           ) : (
-            <Text style={hint}>
+            <EmptyNote icon="newspaper">
               The first weekly report comes out after your first full week.
-            </Text>
+            </EmptyNote>
           )}
         </View>
       </View>
@@ -161,11 +158,52 @@ export function HomeTab({
               onToggleSubscription={onToggleSubscription}
             />
           ) : (
-            <Text style={hint}>The wire starts up when your first day opens.</Text>
+            <EmptyNote icon="newspaper">
+              The wire starts up when your first day opens.
+            </EmptyNote>
           )}
         </View>
       </View>
     </View>
+  );
+}
+
+/**
+ * A region with nothing in it yet, rendered as a REAL contained note rather
+ * than a bare grey sentence floating under a tracked-caps eyebrow. Every other
+ * band on this page is a card; an un-contained line of muted text in that stack
+ * is what makes the lower half read as an unfinished wireframe even when the
+ * copy itself is honest and correct. Same words, given a surface to sit on and
+ * a muted glyph to say which region is waiting.
+ */
+function EmptyNote({
+  icon,
+  children,
+}: {
+  icon: IconName;
+  children: React.ReactNode;
+}) {
+  const t = useTheme();
+  return (
+    <Surface
+      variant="inset"
+      padded={false}
+      style={{
+        padding: t.spacing.lg,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.spacing.md,
+      }}
+    >
+      <IconBadge name={icon} tone="muted" variant="soft" size="sm" />
+      {/* Calm and muted, NOT italic — the italic one-liners read as wireframe
+          placeholder filler (#265). Informative, not apologetic. */}
+      <Text
+        style={{ ...t.typography.caption, color: t.colors.textMuted, flex: 1 }}
+      >
+        {children}
+      </Text>
+    </Surface>
   );
 }
 
@@ -213,12 +251,17 @@ function Dashboard({
   onOpenOperations?: () => void;
 }) {
   const t = useTheme();
-  const cardRow: ViewStyle = {
-    flexDirection: 'row',
-    marginTop: t.spacing.md,
-    gap: t.spacing.md,
-  };
   const cardCol: ViewStyle = { flex: 1 };
+  // Hairline rule splitting the headline slab into its two faces — the same
+  // divider idiom the quick-stat strip uses, so the two cards read as one
+  // family. `alignSelf: stretch` keeps it flush to both edges of the taller
+  // face, which is what makes the split read as one slab.
+  const cardDivider: ViewStyle = {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: t.colors.border,
+    marginHorizontal: t.spacing.lg,
+  };
   const subValue: TextStyle = {
     ...t.typography.caption,
     color: t.colors.textSecondary,
@@ -249,52 +292,58 @@ function Dashboard({
           persistent AppShell header (#238 HITL / hero-backdrop collapse): the
           shell paints the lot photo as the page background and these cards
           float up over its bottom fade. */}
-      {/* Cash + reputation cards — both Surfaces flex-fill their column so the
-          two slabs always render the same height regardless of content. */}
-      <View style={cardRow}>
-        <View style={cardCol}>
-          <Surface style={{ flex: 1 }}>
-            <StatCard
-              label="Cash"
-              value={model.cash.value}
-              delta={model.cash.delta}
-              deltaContext={model.cash.deltaContext}
-              trend={model.cash.trend}
-              icon="cash"
-              iconTone="positive"
-            />
-          </Surface>
-        </View>
-        <View style={cardCol}>
-          <Surface style={{ flex: 1 }}>
-            {/* Header mirrors the cash StatCard's badge-over-label, then the
-                score reads as a gold gauge dial instead of a flat number (#262). */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: t.spacing.sm,
-                marginBottom: t.spacing.sm,
-              }}
-            >
-              <IconBadge name="star" tone="reward" variant="solid" size="sm" />
-              <Text style={{ ...t.typography.statLabel, color: t.colors.textMuted }}>
-                Reputation
-              </Text>
-            </View>
-            <View style={{ flex: 1, justifyContent: 'center' }}>
-              <GaugeArc
-                value={model.reputation.score / 100}
-                tone="reward"
-                readout={`${model.reputation.score}`}
-                readoutSuffix="/ 100"
-                caption={model.reputation.csiLabel}
-                captionTone="positive"
-                testID="home-reputation-gauge"
+      {/* The two headline numbers — money and standing — share ONE slab split
+          by a hairline, the way the mockup carries them. As two separate cards
+          with a gutter between them they read as two unrelated widgets that
+          happened to land side by side; on one slab with a rule down the middle
+          they read as the business's vitals, and the pair gains the full card
+          width instead of two half-width bevels. */}
+      <View style={{ marginTop: t.spacing.md }}>
+        <Surface>
+          <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
+            <View style={cardCol}>
+              <StatCard
+                label="Cash"
+                value={model.cash.value}
+                delta={model.cash.delta}
+                deltaContext={model.cash.deltaContext}
+                trend={model.cash.trend}
+                icon="cash"
+                iconTone="positive"
               />
             </View>
-          </Surface>
-        </View>
+            <View style={cardDivider} />
+            <View style={cardCol}>
+              {/* Header mirrors the cash StatCard's badge-over-label, then the
+                  score reads as a gold gauge dial instead of a flat number (#262). */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: t.spacing.sm,
+                  marginBottom: t.spacing.sm,
+                }}
+              >
+                <IconBadge name="star" tone="reward" variant="solid" size="sm" />
+                <Text style={{ ...t.typography.statLabel, color: t.colors.textMuted }}>
+                  Reputation
+                </Text>
+              </View>
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <GaugeArc
+                  value={model.reputation.score / 100}
+                  tone="reward"
+                  readout={`${model.reputation.score}`}
+                  readoutSuffix="/ 100"
+                  caption={model.reputation.csiLabel}
+                  captionTone="positive"
+                  size={84}
+                  testID="home-reputation-gauge"
+                />
+              </View>
+            </View>
+          </View>
+        </Surface>
       </View>
 
       {/* Calendar — collapsed to a single row by default; tapping the row opens
@@ -339,6 +388,32 @@ function Dashboard({
                   label={model.calendar.weather.todayLabel}
                 />
               ) : null}
+            </View>
+            {/* Month burn-down (the mockup's "Days this month" bar). The month
+                is the tier-gate cadence, so how much of it is left is the one
+                piece of calendar arithmetic the player plans against — without
+                it this card is a strip of labels with nothing to read. */}
+            <View style={{ marginTop: t.spacing.md }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  marginBottom: t.spacing.xs,
+                }}
+              >
+                <Text style={{ ...subValue, marginTop: 0 }}>Days this month</Text>
+                <Text
+                  style={{
+                    ...subValue,
+                    marginTop: 0,
+                    color: t.colors.textPrimary,
+                    fontVariant: ['tabular-nums'],
+                  }}
+                >
+                  {model.calendar.monthProgress.label}
+                </Text>
+              </View>
+              <ProgressBar value={model.calendar.monthProgress.value} tone="primary" />
             </View>
           </Surface>
         </Pressable>

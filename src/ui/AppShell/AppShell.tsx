@@ -89,7 +89,12 @@ export interface AppShellProps {
    * footer above the tab bar so day close can never push it below the fold —
    * the capacity problem this shell absorbs (#215).
    */
-  primaryAction?: { label: string; onPress: () => void };
+  primaryAction?: {
+    label: string;
+    onPress: () => void;
+    /** Leading glyph on the CTA face. Default: the checkered start flag. */
+    icon?: IconName;
+  };
   /**
    * Optional persistent status strip pinned above the primary-action footer,
    * visible across every tab (the recovery banner, #326). Absent ⇒ nothing
@@ -100,6 +105,10 @@ export interface AppShellProps {
 
 /** Collapsed identity-bar body height, below the status-bar inset. */
 const BAR_BODY = 52;
+/** Side of the circular game-menu button in the identity bar. */
+const MENU_BUTTON = 38;
+/** Height of the collapsed single-line readout, centered on the title row. */
+const COMPACT_ROW = 30;
 /** Tallest the hero backdrop runs (below the status-bar inset). */
 const HERO_BODY_MAX = 236;
 /** Hero backdrop height as a fraction of screen width (2:1-ish art, cropped). */
@@ -276,8 +285,8 @@ export function AppShell({
     ...onHeroShadow,
   };
   const menuBtn: ViewStyle = {
-    width: 38,
-    height: 38,
+    width: MENU_BUTTON,
+    height: MENU_BUTTON,
     borderRadius: t.radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
@@ -333,6 +342,7 @@ export function AppShell({
   };
   const tabBar: ViewStyle = {
     flexDirection: 'row',
+    paddingHorizontal: t.spacing.sm,
     backgroundColor: t.colors.surface,
     borderTopWidth: 1,
     borderTopColor: t.colors.surfaceRaised,
@@ -471,7 +481,9 @@ export function AppShell({
           }}
           pointerEvents="box-none"
         >
-          <View style={{ flex: 1 }} pointerEvents="none">
+          {/* `overflow: hidden` so a long dealership name ellipsizes at the
+              column edge instead of spilling into the compact-readout zone. */}
+          <View style={{ flex: 1, overflow: 'hidden' }} pointerEvents="none">
             <Animated.View
               style={{
                 alignSelf: 'flex-start',
@@ -529,28 +541,36 @@ export function AppShell({
                 </View>
               )}
             </Animated.View>
-          </View>
 
-          {/* Collapsed-only: tier + stats fold up INTO the slim bar as one
-              inline line, vertically centered on the title row — never below
-              the bar. */}
-          {(stats.length > 0 || tierCompact) && (
-            <Animated.View
-              style={{
-                opacity: compactOpacity,
-                alignSelf: 'flex-start',
-                height: 30,
-                justifyContent: 'center',
-              }}
-              pointerEvents="none"
-            >
-              <Text style={compactStat} numberOfLines={1}>
-                {[tierCompact, ...stats.map((s) => `${s.label} ${s.value}`)]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </Text>
-            </Animated.View>
-          )}
+            {/* Collapsed-only: tier + stats fold up INTO the slim bar as one
+                inline line, right-aligned and vertically centered on the title
+                row — never below the bar. Positioned ABSOLUTELY inside this
+                column rather than laid out as a flex sibling of it: as a
+                sibling it reserved its full intrinsic width in the EXPANDED
+                state too, where it is invisible, squeezing the identity column
+                to roughly a third of the bar — enough to stretch the tier pill
+                out to its clipping edge and push the dealership name past its
+                own box. Absolute, it costs the expanded state nothing. */}
+            {(stats.length > 0 || tierCompact) && (
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  opacity: compactOpacity,
+                  height: COMPACT_ROW,
+                  justifyContent: 'center',
+                }}
+                pointerEvents="none"
+              >
+                <Text style={compactStat} numberOfLines={1}>
+                  {[tierCompact, ...stats.map((s) => `${s.label} ${s.value}`)]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              </Animated.View>
+            )}
+          </View>
 
           {onOpenGameMenu ? (
             <Pressable
@@ -569,11 +589,16 @@ export function AppShell({
 
       {primaryAction && (
         <View style={footer} testID="app-shell-action-footer">
+          {/* Mockup's START DAY face: start flag on the left rim, the verb
+              centered, the onward arrow on the right rim. The arrow is a
+              trailing ICON, never a "→" glued onto the label — that drew the
+              arrow twice, once on each side of the verb. */}
           <Button
             label={primaryAction.label}
             onPress={primaryAction.onPress}
             size="hero"
-            icon="arrow-forward"
+            icon={primaryAction.icon ?? 'flag-checkered'}
+            trailingIcon="arrow-forward"
           />
         </View>
       )}
@@ -581,13 +606,20 @@ export function AppShell({
       <View style={tabBar} testID="app-shell-tabbar" accessibilityRole="tablist">
         {tabs.map((tab) => {
           const selected = tab.key === active?.key;
+          // The active tab sits in its own filled, rounded slot (home-hub
+          // mockup) rather than under a 2px top rule: on a dark bar the rule
+          // reads as a hairline artifact, while the tinted slot reads as a
+          // selected control and carries the accent the same way the tab's
+          // icon + label do.
           const tabStyle: ViewStyle = {
             flex: 1,
             alignItems: 'center',
             gap: t.spacing.xxs,
             paddingVertical: t.spacing.sm,
-            borderTopWidth: 2,
-            borderTopColor: selected ? t.colors.primary : 'transparent',
+            marginVertical: t.spacing.xs,
+            marginHorizontal: t.spacing.xxs,
+            borderRadius: t.radius.md,
+            backgroundColor: selected ? t.colors.primaryTint : 'transparent',
           };
           // Sentence-case nav labels (#265): tab labels are wayfinding, not
           // status tags — tracked all-caps here is wireframe texture. Keep the

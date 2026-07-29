@@ -26,6 +26,13 @@ export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> 
   size?: ButtonSize;
   /** Optional leading glyph drawn before the label (the hero day-action CTA). */
   icon?: IconName;
+  /**
+   * Optional trailing glyph drawn after the label — the "and onward" arrow the
+   * mockup's hero CTA carries on its right edge. Kept a separate slot from
+   * `icon` so a caller never has to smuggle a directional glyph into the label
+   * string (which double-draws it beside a leading `icon`).
+   */
+  trailingIcon?: IconName;
 }
 
 /**
@@ -40,6 +47,7 @@ export function Button({
   variant = 'primary',
   size = 'md',
   icon,
+  trailingIcon,
   disabled,
   ...rest
 }: ButtonProps) {
@@ -110,6 +118,10 @@ export function Button({
   const text: TextStyle = {
     ...(isHero ? t.typography.buttonHero : t.typography.button),
     color: t.colors.textPrimary,
+    // With glyphs on BOTH edges the mockup centers the verb in the face and
+    // pins the icons to the rims; letting the label claim the middle keeps it
+    // optically centered instead of shunted left by the trailing glyph.
+    ...(trailingIcon ? { flex: 1, textAlign: 'center' as const } : null),
   };
 
   return (
@@ -132,6 +144,7 @@ export function Button({
         />
         {icon ? <Icon name={icon} size="md" tone="onPrimary" /> : null}
         <Text style={text}>{label}</Text>
+        {trailingIcon ? <Icon name={trailingIcon} size="md" tone="onPrimary" /> : null}
       </GradientSurface>
     </Pressable>
   );

@@ -112,6 +112,13 @@ export interface HomeCalendarModel {
   seasonLabel: string;
   /** Flavor in-game date, e.g. "Spring · Week 6 · Day 12". */
   dateLabel: string;
+  /**
+   * How far into the gameplay month today sits — "Day 12 of 30" plus the 0–1
+   * fraction behind it. The month is the gate cadence, so its burn-down is the
+   * one piece of calendar arithmetic the player actually plans against — the
+   * mockup carries it as a labeled bar on the calendar card.
+   */
+  monthProgress: { label: string; value: number };
   /** Current gameplay month laid out as a 7-wide grid, today highlighted. */
   miniCal: MiniCalDay[];
   /** Weather readout line + one-day forecast (#231); absent without input. */
@@ -318,6 +325,10 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
       quarter,
       seasonLabel,
       dateLabel: `${seasonLabel} · Week ${week} · Day ${dayOfMonth}`,
+      monthProgress: {
+        label: `Day ${dayOfMonth} of ${daysPerMonth}`,
+        value: dayOfMonth / daysPerMonth,
+      },
       miniCal,
       weather,
     },
