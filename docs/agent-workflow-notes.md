@@ -148,6 +148,12 @@ The thinking is the user's. The reloading and deriving are not.
 asked), evidence pulled with `file:line`, a recommendation per player-facing fork — and
 records the ruling so the gate never reopens.
 
+**Built 2026-07-29** as `.claude/skills/decide/`. The load-bearing half is
+`gates.md` beside the skill: a per-gate index (scope §, docs to load, locked inputs that
+must not be reopened, where the ruling gets recorded) for all eight pending gates, so
+opening one is a read, not an excavation. Only C1 staff-teeth is marked grill-worthy;
+the rest are short fork sets and the skill forbids running a grill on them.
+
 ---
 
 ### Build order

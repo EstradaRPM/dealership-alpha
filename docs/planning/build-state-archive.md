@@ -6,6 +6,34 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-07-28 — BUILT + closed **#333** (guided playtest script in-game) — phase 5 tooling,
+  filed and built in-session after the user said the #332 overlay "is not nearly as guided
+  as I had hoped": #332 recorded what the player *noticed* but never what the round **asked
+  them to do**, which stayed in the doc + a browser companion page. A second screen is a
+  handoff you have to remember to consult, and by day 3 nobody does — losing exactly the
+  instructions the measurement depends on (*one salesperson, a second on day 3*; *cut one
+  ask and raise another*). **DECISION (asked, user chose):** the 12-question observation
+  sheet **stays a keyboard exercise** — probes are the in-the-moment half, and typing twelve
+  paragraphs on a phone would add activation cost rather than remove it (same split as
+  #332). **`data/playtest-script.json`** holds round 1 as data: both sessions flattened into
+  ONE linear list of day nodes (brief + step checklist + probes tagged
+  `day_open`/`day_close`); the markdown doc stays the human-readable source of truth.
+  **The cursor IS the log** — `deriveGuideState` returns the first day node not marked done,
+  derived purely from `step` entries, so there is no second cursor to persist and nothing to
+  desync; it survives a Reset Save, session B's whole second career, and unscripted extra
+  days. Ticking a step is *evidence*; the reserved `DAY_DONE_STEP_ID` marker is what
+  advances. Two new **append-only** entry kinds (`step`, `answer`) with last-write-per-id
+  winning, so a mis-tap is corrected by tapping again rather than mutating history.
+  **`src/ui/PlaytestGuide/`** is the card (brief, tickable steps, one-tap probe chips + free
+  text, known-dark list inline, `Day done →`); FAB reads `▤ 3/9 · 2/4`. **Presentation is
+  bus-driven** — `clock:managerial_prep` + `floor:day_complete`, because a phase change
+  doesn't reliably re-render the overlay channel — and a due boundary **queues behind** the
+  recap, month close, chapter card, recovery beat, end card and both escalation modals
+  rather than stacking on a beat the player is already reading; a day-close boundary with
+  every probe answered is dropped instead of interrupting for an empty card. **Export** gains
+  a `## Script trace` section rendering the FULL script with checkboxes — an *unticked* step
+  is signal (the instruction couldn't be followed), so it must be visible rather than absent.
+  Script §1 rewritten: the browser companion page is retired.
 - 2026-07-27 — BUILT + closed **#332** (in-game playtest capture) — phase 5 tooling,
   filed and built in-session after the user asked whether the observation data was worth
   capturing in-app rather than in a separate artifact. **DECISION (asked, user chose

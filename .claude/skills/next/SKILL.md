@@ -15,7 +15,8 @@ Every invocation MUST end in exactly one of these artifacts:
 2. **SLICE** — the current phase broken into filed GitHub issues via /to-issues, filed in
    build order so "lowest open issue" stays correct.
 3. **DECIDE** — a pending adjudication or grill resolved with the user and recorded in a
-   repo doc (planning doc or design-record issue), so it never needs re-deciding.
+   repo doc (planning doc or design-record issue), so it never needs re-deciding. Run via
+   the /decide skill, which prepares the gate so the user only rules.
 
 Never end with only analysis, a plan, or an open question. If genuinely blocked mid-unit,
 land the largest verifiable sub-result, record the blocker in build-state.md, and say
@@ -30,9 +31,11 @@ exactly what input unblocks it.
 2. If the current phase's work is complete (its issues all closed, decisions resolved),
    advance the pointer in build-state.md. Advancing is bookkeeping, not the unit — continue.
 3. Pick the unit for the current phase, first match wins:
-   - Phase table marks a **decision or grill pending** → DECIDE. Interactive session with
-     the user. Use /grill-me only for items the table marks ungrilled. NEVER re-grill
-     anything tagged LOCKED or FILED in path-to-finished-product.md.
+   - Phase table marks a **decision or grill pending** → DECIDE. **Invoke /decide with the
+     phase named** — it owns the gate's context index (`.claude/skills/decide/gates.md`), the
+     internal-vs-player-facing fork triage, and where the ruling gets recorded. Do not
+     re-derive any of that here. NEVER re-grill anything tagged LOCKED or FILED in
+     path-to-finished-product.md.
    - **No open issue covers the phase's remaining work** → SLICE. Run /to-issues scoped to
      this phase only, pulling scope from the phase's section of
      `docs/planning/path-to-finished-product.md`.

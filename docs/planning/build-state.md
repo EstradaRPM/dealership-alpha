@@ -33,7 +33,9 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Status: `pending` → `active` → `done`. "Decision first" = a DECIDE unit must run before
 slicing/building that phase (the doc's `[NEW]` items, ungrilled designs, and forks —
-resolved just-in-time at the phase boundary, never earlier).
+resolved just-in-time at the phase boundary, never earlier). **Every gate below has a
+prepared context row in `.claude/skills/decide/gates.md`** — run `/decide` (or `/decide <gate>`
+to jump one early); it loads the gate rather than re-deriving it.
 
 | # | Work (doc section) | Decision first? | Status |
 |---|---|---|---|
@@ -43,7 +45,7 @@ resolved just-in-time at the phase boundary, never earlier).
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338→#339; see `docs/agent-workflow-notes.md`) | — | active |
-| 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** | pending |
+| 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** — prep index: `.claude/skills/decide/gates.md` | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
@@ -65,6 +67,34 @@ resolved just-in-time at the phase boundary, never earlier).
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-07-29 — BUILT + closed **#340** (phase 5a S2 — the `/decide` skill). Six of the
+  seventeen remaining phases can't start until the director rules on something, and opening
+  one of those gates has been costing a session of excavation *before* any thinking starts —
+  the same activation-cost pathology #332/#333 fixed for the playtest. `.claude/skills/decide/`
+  now holds two files. **`SKILL.md`** is the procedure: select one gate (lowest pending
+  GRILL/ADJUDICATE row, or the one the user names), load rather than re-derive, then **triage
+  every open question into two piles** — internal forks (module ownership, data shape, event
+  naming, test seams) the agent decides and reports as one-line calls, and player-facing forks
+  the user rules on, presented **one at a time** with plain-language options, `file:line`
+  evidence, and a recommendation (`feedback-hitl-single-decision`). Options the agent
+  introduced are labelled `[agent-proposed]` in both the presentation and the record so
+  nothing gets smuggled into a doc as already-agreed
+  (`feedback-no-smuggled-mechanics`); every option must be a complete mechanic, never a
+  "simple version" (`feedback-no-half-assed-solutions`). It terminates like `/next` — one gate,
+  recorded in the owning doc, phase table flipped, committed — and a deferred fork is recorded
+  *as an open fork with what would unblock it*, never left in chat. **The load-bearing half is
+  `gates.md`**: a per-gate index of all eight pending gates (C1 staff-teeth, A2 slots, B2 F&I
+  resume, B4 bite-unlock, F2/F3/D3, E2 fixed-ops fork, G1/G2, G4) giving each one's scope §,
+  the docs to load in order, the LOCKED inputs that must be read but never reopened, and where
+  the ruling gets written. Without it the skill would just re-derive the map each time, which
+  is the cost being removed. **Only C1 is marked grill-worthy** — the rest are short fork sets
+  and the skill explicitly forbids running a grill on one, which is what would otherwise turn a
+  three-question adjudication into an hour. `/next`'s DECIDE branch now delegates here instead
+  of carrying its own gate logic (selection stays in `/next`, depth lives in `/decide`); phase
+  6's table cell and the table preamble point at `gates.md`. Typecheck clean; no source
+  touched, so the suite was not re-run. Next /next BUILDs **#335** (hooks for the
+  module-boundary convention + the save-envelope re-stamp ritual) — but `/decide` is now live,
+  so a `/decide C1` any time unblocks phase 6 ahead of it.
 - 2026-07-29 — BUILT + closed **#334** (phase 5a S1 — trim build-state to live state +
   archive the log). This file was **708 lines** and `/next` step 1 read all of it every
   session to recover four live facts; it is now **144** — the issue's "under 120 lines"
@@ -118,31 +148,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   it never reopens) — the same activation-cost fix #332/#333 were for the playtest. It sits
   **second** in build order despite being newest: one skill file, and the only item that
   unblocks anything on the product side. Next /next BUILDs **#334**.
-- 2026-07-28 — BUILT + closed **#333** (guided playtest script in-game) — phase 5 tooling,
-  filed and built in-session after the user said the #332 overlay "is not nearly as guided
-  as I had hoped": #332 recorded what the player *noticed* but never what the round **asked
-  them to do**, which stayed in the doc + a browser companion page. A second screen is a
-  handoff you have to remember to consult, and by day 3 nobody does — losing exactly the
-  instructions the measurement depends on (*one salesperson, a second on day 3*; *cut one
-  ask and raise another*). **DECISION (asked, user chose):** the 12-question observation
-  sheet **stays a keyboard exercise** — probes are the in-the-moment half, and typing twelve
-  paragraphs on a phone would add activation cost rather than remove it (same split as
-  #332). **`data/playtest-script.json`** holds round 1 as data: both sessions flattened into
-  ONE linear list of day nodes (brief + step checklist + probes tagged
-  `day_open`/`day_close`); the markdown doc stays the human-readable source of truth.
-  **The cursor IS the log** — `deriveGuideState` returns the first day node not marked done,
-  derived purely from `step` entries, so there is no second cursor to persist and nothing to
-  desync; it survives a Reset Save, session B's whole second career, and unscripted extra
-  days. Ticking a step is *evidence*; the reserved `DAY_DONE_STEP_ID` marker is what
-  advances. Two new **append-only** entry kinds (`step`, `answer`) with last-write-per-id
-  winning, so a mis-tap is corrected by tapping again rather than mutating history.
-  **`src/ui/PlaytestGuide/`** is the card (brief, tickable steps, one-tap probe chips + free
-  text, known-dark list inline, `Day done →`); FAB reads `▤ 3/9 · 2/4`. **Presentation is
-  bus-driven** — `clock:managerial_prep` + `floor:day_complete`, because a phase change
-  doesn't reliably re-render the overlay channel — and a due boundary **queues behind** the
-  recap, month close, chapter card, recovery beat, end card and both escalation modals
-  rather than stacking on a beat the player is already reading; a day-close boundary with
-  every probe answered is dropped instead of interrupting for an empty card. **Export** gains
-  a `## Script trace` section rendering the FULL script with checkboxes — an *unticked* step
-  is signal (the instruction couldn't be followed), so it must be visible rather than absent.
-  Script §1 rewritten: the browser companion page is retired.
