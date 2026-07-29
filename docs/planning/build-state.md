@@ -44,7 +44,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
-| 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338→#339; see `docs/agent-workflow-notes.md`) | — | active |
+| 5a | Agent-harness hardening (#334→#340→#335→#336 done; #337→#338→#339 left; see `docs/agent-workflow-notes.md`) | — | active |
 | 5b | Module-boundary debt clearance (#341 → #342), surfaced by #335's scan | — | pending |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** — prep index: `.claude/skills/decide/gates.md` | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
@@ -68,6 +68,38 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-07-29 — BUILT + closed **#336** (phase 5a S4 — path-scoped area rules). The repo's
+  per-area conventions were prose in the **always-loaded** root `CLAUDE.md`, which paid the
+  context cost on every session and then only worked if the agent remembered — including the
+  root doc asking, in a sentence, that the per-module `CLAUDE.md` be read before the module's
+  code. **The mechanism was verified against the installed CLI (2.1.219) rather than assumed**:
+  `.claude/rules/` is loaded natively per project, the frontmatter key is `paths:`, values are
+  gitignore-style globs matched on repo-relative paths (a trailing `/**` is optional, and the
+  parser accepts an array, a comma string, or `{a,b}` groups), and the load is reported as
+  `load_reason: path_glob_match`. The load-bearing trap found in the same pass: **a rule file
+  with no `paths:` loads unconditionally in every session** — so a `README.md` in that
+  directory would be the exact cost being removed, and there deliberately isn't one.
+  Six rules now exist: `src/game/**` + `src/*.ts` (barrel convention + the write-time hook,
+  EventBus-only, deep modules, no magic numbers, and "read `src/game/<Module>/CLAUDE.md` —
+  the path is mechanical"), `src/ui/**` + `App.tsx` (never reach into game logic, theme roles
+  with `kit.noleak` as the enforcement, plain-language labels that **name the axis** and never
+  a temperature word, fixed 5 tabs never tier-gated), `data/**` (every loader through
+  `parseData`, a new block needs a schema entry, fixtures are save state and route through the
+  envelope hook), `tests/**` + co-located `src/**/*.test.ts(x)` (public-interface isolation
+  tests, UI smoke only, no snapshots, **reachability/anti-orphan test for any player-facing
+  surface**, seeded-stream scoping for determinism), `scripts/**` (points at
+  `docs/balance-harness-recipe.md`, whose opening block is what stops a wasted session on the
+  expected pre-T2 bankruptcy), and `.claude/rules/**` documenting the directory itself so its
+  conventions cost nothing unless you edit it. **Rules point at the existing doc; they do not
+  restate it** — that is the anti-drift rule, since a copy inside a rule wins by accident.
+  Root `CLAUDE.md` lost its per-path detail and its whole Testing section; the principle
+  headline stays, because it binds design discussions that touch no file at all and a rule
+  would never fire for those. `tests/claude-rules.test.ts` guards all three rot modes — an
+  unscoped rule, a scope whose path no longer exists, a body pointing at a moved doc — and
+  **both negative cases were run and fired** before the guard was trusted. `.gitignore` now
+  shares `.claude/rules/` the way it already shares hooks and skills. Typecheck clean; 195
+  suites / 2393 tests green. Next /next BUILDs **#337** (EARS acceptance criteria as a filing
+  convention) — or `/decide C1` any time to unblock phase 6.
 - 2026-07-29 — BUILT + closed **#335** (phase 5a S3 — hooks for the module-boundary
   convention + the save-envelope ritual). `.claude/settings.json` had exactly one hook, a
   `UserPromptSubmit` echo; everything else this repo calls non-negotiable was prose an agent
@@ -146,23 +178,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   touched, so the suite was not re-run. Next /next BUILDs **#335** (hooks for the
   module-boundary convention + the save-envelope re-stamp ritual) — but `/decide` is now live,
   so a `/decide C1` any time unblocks phase 6 ahead of it.
-- 2026-07-29 — BUILT + closed **#334** (phase 5a S1 — trim build-state to live state +
-  archive the log). This file was **708 lines** and `/next` step 1 read all of it every
-  session to recover four live facts; it is now **144** — the issue's "under 120 lines"
-  criterion is missed by 24 and deliberately not chased: live state alone (header + phase +
-  blockers + the 22-row phase table) is ~65 lines and this repo's log entries run 16–34 lines
-  each, so 3 retained entries cannot fit. The alternatives were retaining 2 entries or
-  trimming retained text, and trimming is wrong — a retained entry is the exact text that
-  later rolls off into the archive. 708 → 144 is the delivered cut. Everything older than the newest 3 log
-  entries moved **verbatim** to `docs/planning/build-state-archive.md` (newest first; verified
-  as a byte-identical line multiset against the pre-trim file, 581/581, zero diffs) — nothing
-  summarized, because the rationale in those entries *is* the record of why decisions were
-  made. `/next` step 1 now reads only this file and is told NOT to read the archive; step 5
-  gains the **roll rule** (append, then move anything past the newest 3 into the archive with
-  its text unchanged). Memory `session-resume.md` held a second copy of the same closeout
-  history — free to drift from the repo's — so it is stripped to the hard rules + pointers.
-  **Found while starting the unit: #334 was already CLOSED on GitHub ("completed") with no
-  work landed** — no archive file, no roll rule, file still at full length. Reopened, done,
-  re-closed with a comment recording the false close; the same mismatch may affect
-  #335–#339, so each gets checked against the repo (now a standing blocker note above).
-  Next /next BUILDs **#340** (`/decide`, second in 5a build order).

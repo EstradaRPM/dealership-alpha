@@ -6,6 +6,26 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-07-29 — BUILT + closed **#334** (phase 5a S1 — trim build-state to live state +
+  archive the log). This file was **708 lines** and `/next` step 1 read all of it every
+  session to recover four live facts; it is now **144** — the issue's "under 120 lines"
+  criterion is missed by 24 and deliberately not chased: live state alone (header + phase +
+  blockers + the 22-row phase table) is ~65 lines and this repo's log entries run 16–34 lines
+  each, so 3 retained entries cannot fit. The alternatives were retaining 2 entries or
+  trimming retained text, and trimming is wrong — a retained entry is the exact text that
+  later rolls off into the archive. 708 → 144 is the delivered cut. Everything older than the newest 3 log
+  entries moved **verbatim** to `docs/planning/build-state-archive.md` (newest first; verified
+  as a byte-identical line multiset against the pre-trim file, 581/581, zero diffs) — nothing
+  summarized, because the rationale in those entries *is* the record of why decisions were
+  made. `/next` step 1 now reads only this file and is told NOT to read the archive; step 5
+  gains the **roll rule** (append, then move anything past the newest 3 into the archive with
+  its text unchanged). Memory `session-resume.md` held a second copy of the same closeout
+  history — free to drift from the repo's — so it is stripped to the hard rules + pointers.
+  **Found while starting the unit: #334 was already CLOSED on GitHub ("completed") with no
+  work landed** — no archive file, no roll rule, file still at full length. Reopened, done,
+  re-closed with a comment recording the false close; the same mismatch may affect
+  #335–#339, so each gets checked against the repo (now a standing blocker note above).
+  Next /next BUILDs **#340** (`/decide`, second in 5a build order).
 - 2026-07-29 — SLICED **phase 5a (agent-harness hardening)** out of a field survey of
   AI-agent game-dev tooling, run at the user's request and written up as
   `docs/agent-workflow-notes.md`. The survey's verdict on the field: the 49-agent "studio"
