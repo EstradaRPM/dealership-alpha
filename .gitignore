@@ -34,10 +34,13 @@ yarn-error.*
 .env*.local
 
 # Claude Code: ignore everything personal/local, but share settings.json
-# (the project-level allowlist) so the team gets the same defaults.
+# (the project-level allowlist), the skills, and the hooks that enforce the
+# repo's non-negotiable conventions, so the team gets the same defaults.
 .claude/*
 !.claude/settings.json
 !.claude/skills/
+!.claude/hooks/
+.claude/.session-state/
 
 # Local-only issue snapshot (regenerate via scripts/dump-issues.sh)
 ISSUES.md

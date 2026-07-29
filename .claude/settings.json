@@ -4,7 +4,8 @@
       "Bash(npm test)",
       "Bash(npm test *)",
       "Bash(npm run typecheck)",
-      "Bash(npm run typecheck *)"
+      "Bash(npm run typecheck *)",
+      "Bash(node .claude/hooks/*)"
     ]
   },
   "hooks": {
@@ -16,6 +17,30 @@
             "command": "echo HARD RULE non-negotiable: There is ONE finished product, the full tier ladder T1 to T7. Every agreed mechanic gets BUILT as the complete real thing. NEVER tell the user something is out-of-scope, v1, v2, MVP, deferred, or a later version, and NEVER invent a euphemism like runway, frontier, current scope, or near-term that sorts agreed work into now versus later. Build order is ONLY a commit-sequence question. When unsure, build the full mechanic."
           }
         ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/pre-module-boundary.mjs" },
+          { "type": "command", "command": "node .claude/hooks/pre-save-envelope.mjs" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/post-typecheck.mjs", "timeout": 180 }]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/post-record-command.mjs" }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/stop-session-hygiene.mjs" }]
       }
     ]
   }

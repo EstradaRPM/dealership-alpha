@@ -6,6 +6,40 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-07-29 — SLICED **phase 5a (agent-harness hardening)** out of a field survey of
+  AI-agent game-dev tooling, run at the user's request and written up as
+  `docs/agent-workflow-notes.md`. The survey's verdict on the field: the 49-agent "studio"
+  frameworks solve a consistency-across-many-streams problem this project does not have
+  (one product, one director, locked spec, one-unit-per-session discipline) — take their
+  **hooks and path-scoped rules**, skip the org chart; spec-driven tooling (Spec Kit, Kiro,
+  OpenSpec) is a lateral move because issue #1 + `spec-condensed.md` + the issue queue
+  already *is* a spec-first pipeline, with **EARS notation** the one portable piece; the
+  live frontier worth taking is automated balancing ([RuleSmith](https://arxiv.org/abs/2602.06232)
+  = engine + agents + Bayesian optimization over a rule space) and vision-driven GUI QA.
+  Things this repo already does that the field does not: the `/next` never-end-in-analysis
+  contract, reachability/anti-orphan tests, `docs/*-recipe.md`, and `build-state.md` itself.
+  Six gaps filed, ordered cheap-first because the cheap ones compound: **#334** trim
+  build-state to live state + archive the log (this file is 669 lines and `/next` reads all
+  of it every session), **#335** hooks for the module-boundary convention (today enforced by
+  the root CLAUDE.md admitting "no lint rule enforces this") + the save-envelope re-stamp
+  ritual, **#336** `paths:`-scoped rules so per-module CLAUDE.md loads without being
+  remembered, **#337** EARS acceptance criteria on filed slices, **#338** a drivable web
+  target (web `StorageDriver` + `react-native-web`) so `/verify` stops returning BLOCKED on
+  every surface slice — **this supersedes the verify skill's "do not install
+  react-native-web" line**, which was correct only while the `expo-sqlite` block stood —
+  and **#339** fix the harness's dishonest bankruptcy metric (a run dying ~day 125 currently
+  scores clean) then add a Bayesian search over a declared tunable manifest, feeding #286 a
+  ranked diff instead of a from-scratch hand-tune. Phase 5a is workable **while phase 5
+  waits on the user**; it does not substitute for the playtest — the felt questions stay a
+  human gate. **#340** was filed after the other six, by asking what they still don't cover:
+  they close the *tooling* gap, but the rate limiter on the remaining phases is director
+  decision bandwidth — six of seventeen are blocked on a GRILL or ADJUDICATE. `/decide` is
+  the prep unit for one gate (context loaded, internal forks decided by the agent and never
+  asked, player-facing forks presented with evidence + a recommendation, ruling recorded so
+  it never reopens) — the same activation-cost fix #332/#333 were for the playtest. It sits
+  **second** in build order despite being newest: one skill file, and the only item that
+  unblocks anything on the product side. Next /next BUILDs **#334**.
+
 - 2026-07-28 — BUILT + closed **#333** (guided playtest script in-game) — phase 5 tooling,
   filed and built in-session after the user said the #332 overlay "is not nearly as guided
   as I had hoped": #332 recorded what the player *noticed* but never what the round **asked

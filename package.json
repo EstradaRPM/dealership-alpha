@@ -12,6 +12,8 @@
     "balance": "tsx scripts/balance-harness/cli.ts",
     "gen:fixtures": "tsx scripts/balance-harness/gen-fixtures.ts",
     "typecheck": "tsc --noEmit",
+    "hooks:test": "node .claude/hooks/selftest.mjs",
+    "hooks:scan": "node .claude/hooks/scan-module-boundary.mjs",
     "build": "npx eas-cli build",
     "tunnel:reset": "npm uninstall @expo/ngrok && rimraf node_modules/@expo/ngrok node_modules/ngrok && npm install -D @expo/ngrok@latest"
   },

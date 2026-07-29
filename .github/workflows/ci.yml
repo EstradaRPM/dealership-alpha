@@ -17,3 +17,6 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test -- --ci
+      # The agent hooks enforce the module-boundary convention at write time.
+      # CI proves they still fire — a hook that silently no-ops is worse than none.
+      - run: npm run hooks:test

@@ -67,6 +67,42 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-07-29 — BUILT + closed **#335** (phase 5a S3 — hooks for the module-boundary
+  convention + the save-envelope ritual). `.claude/settings.json` had exactly one hook, a
+  `UserPromptSubmit` echo; everything else this repo calls non-negotiable was prose an agent
+  had to remember, including the root CLAUDE.md's own admission that the module-boundary rule
+  had **"no lint rule enforcing this"**. Five hooks now live in `.claude/hooks/`, all Node
+  `.mjs` (the repo is driven from Git Bash, cmd and PowerShell — one language beats three
+  copies), stdin JSON in, exit code out. **`pre-module-boundary.mjs`** (PreToolUse Edit/Write)
+  blocks a write whose *new text* imports past another module's `index.ts`; it resolves
+  relative and `@/` specifiers, allows the barrel and `.../index`, and allows a module reading
+  its own internals. **`pre-save-envelope.mjs`** interrupts **once per session** on a
+  `WORLD_SNAPSHOT_VERSION`/migrations/`data/fixtures/` touch with the full ritual — the
+  load-bearing line being that tier-2.json is re-stamped by **migrating in place**, never by
+  `npm run gen:fixtures` (the harness bot bankrupts ~day 125 at tier 1 and writes nothing).
+  It blocks rather than whispers because PreToolUse has no non-blocking channel that reliably
+  reaches the agent, and a reminder nobody reads is the failure being fixed; the re-issued
+  edit passes. **`post-typecheck.mjs`** typechecks after any `src/**` edit —
+  `--incremental` with its buildinfo in the ignored session dir, ~6.5s cold / ~3.4s warm, so
+  an edit burst stays tolerable. **`post-record-command.mjs`** + **`stop-session-hygiene.mjs`**
+  close the loop: if `src/` or `data/` changed but the suite never ran or build-state.md was
+  never updated, the Stop hook says so once (`stop_hook_active` guards the loop).
+  **`module-boundary-allow.json` enumerates the 81 pre-existing reach-ins across 71 files** —
+  without it the first rewrite of `createWorld.ts` would be blocked by debt it didn't create.
+  The scan that generates it (`npm run hooks:scan`) also made the debt countable, and it is
+  two classes: ~35 `../data/loadJson` reach-ins that are **one-line fixes** (`parseData` is
+  already on the data barrel) and ~40 `../NPC/Rng` ones that are **not** — `Rng` is not
+  exported from NPC's barrel, so those need a public-surface call, not a rename. That list is
+  meant to shrink. **`npm run hooks:test` drives all five with synthetic payloads and asserts
+  the exit codes, negative cases included, and CI now runs it** — which immediately earned its
+  keep: the typecheck hook was **silently exiting 0 on every broken file**, because Node 24
+  refuses to spawn `npx.cmd` without `shell: true` and the hook read the resulting null status
+  as "fine". Now it invokes `node_modules/typescript/bin/tsc` under the current node and
+  *blocks* if it can't run at all. Two over-triggers were also caught and scoped away in the
+  build (the hooks tree describes the rule, so it isn't judged by it; the envelope reminder
+  only fires inside `src|data|tests|scripts`). Typecheck clean; 194 suites / 2374 tests green.
+  Next /next BUILDs **#336** (`paths:`-scoped rules so per-module CLAUDE.md loads without
+  being remembered) — or `/decide C1` any time to unblock phase 6.
 - 2026-07-29 — BUILT + closed **#340** (phase 5a S2 — the `/decide` skill). Six of the
   seventeen remaining phases can't start until the director rules on something, and opening
   one of those gates has been costing a session of excavation *before* any thinking starts —
@@ -115,36 +151,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   re-closed with a comment recording the false close; the same mismatch may affect
   #335–#339, so each gets checked against the repo (now a standing blocker note above).
   Next /next BUILDs **#340** (`/decide`, second in 5a build order).
-- 2026-07-29 — SLICED **phase 5a (agent-harness hardening)** out of a field survey of
-  AI-agent game-dev tooling, run at the user's request and written up as
-  `docs/agent-workflow-notes.md`. The survey's verdict on the field: the 49-agent "studio"
-  frameworks solve a consistency-across-many-streams problem this project does not have
-  (one product, one director, locked spec, one-unit-per-session discipline) — take their
-  **hooks and path-scoped rules**, skip the org chart; spec-driven tooling (Spec Kit, Kiro,
-  OpenSpec) is a lateral move because issue #1 + `spec-condensed.md` + the issue queue
-  already *is* a spec-first pipeline, with **EARS notation** the one portable piece; the
-  live frontier worth taking is automated balancing ([RuleSmith](https://arxiv.org/abs/2602.06232)
-  = engine + agents + Bayesian optimization over a rule space) and vision-driven GUI QA.
-  Things this repo already does that the field does not: the `/next` never-end-in-analysis
-  contract, reachability/anti-orphan tests, `docs/*-recipe.md`, and `build-state.md` itself.
-  Six gaps filed, ordered cheap-first because the cheap ones compound: **#334** trim
-  build-state to live state + archive the log (this file is 669 lines and `/next` reads all
-  of it every session), **#335** hooks for the module-boundary convention (today enforced by
-  the root CLAUDE.md admitting "no lint rule enforces this") + the save-envelope re-stamp
-  ritual, **#336** `paths:`-scoped rules so per-module CLAUDE.md loads without being
-  remembered, **#337** EARS acceptance criteria on filed slices, **#338** a drivable web
-  target (web `StorageDriver` + `react-native-web`) so `/verify` stops returning BLOCKED on
-  every surface slice — **this supersedes the verify skill's "do not install
-  react-native-web" line**, which was correct only while the `expo-sqlite` block stood —
-  and **#339** fix the harness's dishonest bankruptcy metric (a run dying ~day 125 currently
-  scores clean) then add a Bayesian search over a declared tunable manifest, feeding #286 a
-  ranked diff instead of a from-scratch hand-tune. Phase 5a is workable **while phase 5
-  waits on the user**; it does not substitute for the playtest — the felt questions stay a
-  human gate. **#340** was filed after the other six, by asking what they still don't cover:
-  they close the *tooling* gap, but the rate limiter on the remaining phases is director
-  decision bandwidth — six of seventeen are blocked on a GRILL or ADJUDICATE. `/decide` is
-  the prep unit for one gate (context loaded, internal forks decided by the agent and never
-  asked, player-facing forks presented with evidence + a recommendation, ruling recorded so
-  it never reopens) — the same activation-cost fix #332/#333 were for the playtest. It sits
-  **second** in build order despite being newest: one skill file, and the only item that
-  unblocks anything on the product side. Next /next BUILDs **#334**.
