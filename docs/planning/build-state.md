@@ -28,7 +28,11 @@ session start — open it on demand when a past slice's rationale needs recoveri
   live on the web target (`.claude/skills/verify`). 5a does not substitute for the playtest —
   the felt questions stay a human gate.
 - **5a issue states on GitHub are not trustworthy.** #334 was CLOSED-but-undone. Check each
-  of #335–#339 against the repo before assuming it landed.
+  of #335–#339 against the repo before assuming it landed. (#339 is closed as **sliced**, not
+  built — its work is #343/#344/#345.)
+- **Phase 5a's remaining issues (#343–#345) outnumber phase 5b's (#341, #342).** The phase
+  table is the order, not the issue numbers; the chronological rule is a tiebreaker *within* a
+  phase. 5a finishes first.
 
 ## Phase table
 
@@ -45,7 +49,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
-| 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338 done; **#339 left**; see `docs/agent-workflow-notes.md`) | — | active |
+| 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338 done; #339 sliced into **#343 → #344 → #345**; see `docs/agent-workflow-notes.md`) | — | active |
 | 5b | Module-boundary debt clearance (#341 → #342), surfaced by #335's scan | — | pending |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** — prep index: `.claude/skills/decide/gates.md` | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
@@ -69,6 +73,47 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-07-29 — **SLICED** phase 5a's last issue. #339 (balance-harness honest objective +
+  tunable search loop) was five scope items, three of which are each a normal slice, so it was
+  filed as an ordered chain and closed as superseded — **nothing dropped, the scope is carried
+  verbatim**. The trigger was the user asking outright whether it needed slicing; the answer was
+  yes, and the seams fell out of a short orientation rather than a design argument.
+  **#343 — A: honest objective.** Per-run failure scoring + the four terms reported separately.
+  Half the fix turned out to be already in: `EndReasonBreakdown` (`types.ts:87`) had already
+  split `modeledBankruptcy` from the hard `insolventThrow`, so the "bankruptcy rate: 0%" lie the
+  parent issue leads with is **already dead** in the breakdown — what's missing is the per-run
+  verdict and the term split. Two things the orientation added that the parent didn't spell out:
+  **cash-negative should be read off the per-day `RunSample` series**, which dates the failure
+  earlier and more honestly than the terminal event (~day 125 on the instrumented fixture seed);
+  and **`runner.ts` subscribes to none of the three `*_contraction` events**, so "forced
+  contraction" — named in the parent's scope — is currently *invisible* to the harness and has to
+  be wired, not just scored. Also specified: the time-to-tier fit must stay **differentiable past
+  the tolerance band**, because a binary WITHIN/OUT flag gives the slice-C optimizer zero
+  gradient over exactly the region the un-tuned tunables sit in.
+  **#344 — B: manifest + multi-file overrides + frozen-key guard.** `overrides.ts:18` knows only
+  `tier-gate` and `tunables`, but the parent's debt list spans six more data files
+  (`sourcing`, `intel-precision`, `bodyshop-demand`, `news-progression-gating`, `service-manager`,
+  `starting-inventory`) — so the plumbing is real work, not a config line. The manifest lives in
+  the harness next to `policies.ts`, **not under `data/`**: `data/**` is schema-validated game
+  content read by loaders, and this is tooling config no game module reads (same reasoning that
+  keeps the policy bots' strategy numbers out of `data/`). "Keys not listed are frozen" is filed
+  as an asserted byte-comparison across every registered file, which is the criterion that makes
+  the freeze checkable instead of trusted.
+  **#345 — C: the search loop.** GP + RBF + Expected Improvement over B's surface, adaptive
+  re-sampling (cheap seed subset first, full spread only for promising candidates, **with the
+  seed count recorded so a cheap score is never compared to a full one**), resumable study file
+  that refuses to resume against a changed manifest fingerprint, ranked report carrying the four
+  terms plus `file:path current → proposed` diffs, and the explicit `apply` step that is the only
+  thing that writes `data/**`. Filed with the testability constraint stated up front: a real
+  evaluation is ~7 ms × 360 days × N seeds, so **the loop must take its evaluator injected** or it
+  is untestable — tests drive a synthetic objective with a known optimum and assert convergence.
+  **#339 closed rather than left open** so "lowest-numbered open issue whose deps are met" keeps
+  pointing at real work (it is now #343); #339 remains the design record all three cite as parent.
+  Recorded in the blockers: 5a's remaining issues now outnumber 5b's (#341/#342), so the phase
+  table is the order and the chronological rule is a within-phase tiebreaker.
+  No code changed this session — this was a SLICE unit, not a BUILD.
+  Next /next BUILDs **#343** (harness honest objective) — or `/decide C1` any time to unblock
+  phase 6.
 - 2026-07-29 — **NOT a /next unit.** User-requested polish pass: compare the live Home hub
   against `docs/planning/mockups/home-hub.png` and close the gap. Second session in a row where
   driving the app on the web target (#338) found things no test would have — but **screenshots
@@ -139,39 +184,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   more AFK slices run in worktrees.
   Phase 5a is unchanged — next /next still BUILDs **#339** (the balance-harness optimizer, last
   of 5a) — or `/decide C1` any time to unblock phase 6.
-- 2026-07-29 — BUILT + closed **#338** (phase 5a S6 — a drivable web target). **Every
-  build-state entry since #325 ended with `/verify: BLOCKED for the live-GUI drive`** — a tax
-  paid ~30 times, and on every remaining UI slice. Nothing an agent could run proved the screen
-  renders, the tap lands, or the number on screen matches the number in the world. The block
-  was real and had two halves, and #332's `driverFactory('playtest-log')` had already proved
-  the seam that removes the first. **`src/game/SaveStore/webDriver.ts`** is the web
-  `StorageDriver`: a `WebKeyValueStore` backend resolved **once per factory** — IndexedDB,
-  else localStorage, else memory — with per-key records inside one object store, giving slots
-  the same isolation the per-file sqlite factory gives on device. Resolving once per factory
-  rather than per call is deliberate: a mid-session downgrade would otherwise split one career
-  across two stores. IndexedDB is the default and not localStorage because a single career blob
-  is ~41KB and the snapshot ring holds six of them per slot — the ~5MB localStorage cap is a
-  ceiling a long career reaches, so it is the fallback, not the choice. **The platform branch
-  lives in `src/app/storage.ts`, not in SaveStore** — that is what keeps `react-native` out of
-  every module under `src/game/` (still zero imports), and an anti-orphan test asserts the
-  composition root defaults through it. `react-native-web` + `react-dom` + `@expo/metro-runtime`
-  installed via `npx expo install`; **nothing under `src/ui/` needed a fix** — the kit renders
-  on RNW as-is, with only RN's own `shadow*`/`pointerEvents` deprecation warnings.
-  **Verified by actually playing it**: start menu → dev T2 fixture → Home at Day 31 /
-  $222,734 / Tier 2, all five tabs, People showing the UCM delegation rows, the live floor view
-  with the clock running 9:13a → 10:27a, then a **full page reload → Continue → the same
-  career**, with the two IndexedDB records (`index`, `slot:slot-1`) read back to prove the
-  write landed rather than trusting the screen. Zero console errors throughout.
-  `.claude/skills/verify` is rewritten around this: the drive loop, `read_page` as the primary
-  instrument (screenshots fail whenever the Browser pane isn't displayed, and coordinate clicks
-  are refused without one), the dev-T2 shortcut to a mid-game state, how to read the save out
-  of IndexedDB — and **BLOCKED now reserved for what genuinely needs a device, which the
-  verdict must name**. The trap that cost the most time in this slice is written down because
-  it presents as a broken button with no error: **the ref→screen coordinate mapping goes stale
-  after a reload**, so clicks land elsewhere silently — re-`resize_window` after every
-  navigation, and confirm with a capture-phase click listener. Typecheck clean; 196 suites /
-  2401 tests green (8 new); `npm run hooks:test` green. **What this does not do is replace the
-  felt half — phase 5 (#74) stays a human gate.** A driven GUI answers *does the surface exist
-  and respond*, never *does it land*.
-  Next /next BUILDs **#339** (the balance-harness optimizer — last of phase 5a) — or
-  `/decide C1` any time to unblock phase 6.

@@ -6,6 +6,42 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-07-29 — BUILT + closed **#338** (phase 5a S6 — a drivable web target). **Every
+  build-state entry since #325 ended with `/verify: BLOCKED for the live-GUI drive`** — a tax
+  paid ~30 times, and on every remaining UI slice. Nothing an agent could run proved the screen
+  renders, the tap lands, or the number on screen matches the number in the world. The block
+  was real and had two halves, and #332's `driverFactory('playtest-log')` had already proved
+  the seam that removes the first. **`src/game/SaveStore/webDriver.ts`** is the web
+  `StorageDriver`: a `WebKeyValueStore` backend resolved **once per factory** — IndexedDB,
+  else localStorage, else memory — with per-key records inside one object store, giving slots
+  the same isolation the per-file sqlite factory gives on device. Resolving once per factory
+  rather than per call is deliberate: a mid-session downgrade would otherwise split one career
+  across two stores. IndexedDB is the default and not localStorage because a single career blob
+  is ~41KB and the snapshot ring holds six of them per slot — the ~5MB localStorage cap is a
+  ceiling a long career reaches, so it is the fallback, not the choice. **The platform branch
+  lives in `src/app/storage.ts`, not in SaveStore** — that is what keeps `react-native` out of
+  every module under `src/game/` (still zero imports), and an anti-orphan test asserts the
+  composition root defaults through it. `react-native-web` + `react-dom` + `@expo/metro-runtime`
+  installed via `npx expo install`; **nothing under `src/ui/` needed a fix** — the kit renders
+  on RNW as-is, with only RN's own `shadow*`/`pointerEvents` deprecation warnings.
+  **Verified by actually playing it**: start menu → dev T2 fixture → Home at Day 31 /
+  $222,734 / Tier 2, all five tabs, People showing the UCM delegation rows, the live floor view
+  with the clock running 9:13a → 10:27a, then a **full page reload → Continue → the same
+  career**, with the two IndexedDB records (`index`, `slot:slot-1`) read back to prove the
+  write landed rather than trusting the screen. Zero console errors throughout.
+  `.claude/skills/verify` is rewritten around this: the drive loop, `read_page` as the primary
+  instrument (screenshots fail whenever the Browser pane isn't displayed, and coordinate clicks
+  are refused without one), the dev-T2 shortcut to a mid-game state, how to read the save out
+  of IndexedDB — and **BLOCKED now reserved for what genuinely needs a device, which the
+  verdict must name**. The trap that cost the most time in this slice is written down because
+  it presents as a broken button with no error: **the ref→screen coordinate mapping goes stale
+  after a reload**, so clicks land elsewhere silently — re-`resize_window` after every
+  navigation, and confirm with a capture-phase click listener. Typecheck clean; 196 suites /
+  2401 tests green (8 new); `npm run hooks:test` green. **What this does not do is replace the
+  felt half — phase 5 (#74) stays a human gate.** A driven GUI answers *does the surface exist
+  and respond*, never *does it land*.
+  Next /next BUILDs **#339** (the balance-harness optimizer — last of phase 5a) — or
+  `/decide C1` any time to unblock phase 6.
 - 2026-07-29 — BUILT + closed **#337** (phase 5a S5 — EARS acceptance criteria as a filing
   convention). Acceptance criteria on filed slices were prose, and on an AFK slice the issue
   body is the *entire* brief — the implementing session reads the issue, the recipes and the
