@@ -6,6 +6,44 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-07-29 — **NOT a /next unit.** User-requested polish pass: compare the live Home hub
+  against `docs/planning/mockups/home-hub.png` and close the gap. Second session in a row where
+  driving the app on the web target (#338) found things no test would have — but **screenshots
+  were unavailable the whole session** (the Browser pane was not displayed, so the page never
+  composited and every `screenshot` timed out), so the entire comparison ran on DOM geometry and
+  computed styles read through `javascript_tool`. That turned out to be a *better* instrument
+  than an eyeball for this: two of the six findings are numbers you cannot see. Six changes.
+  **(1) The shell header was squeezed to a third of its width.** The collapsed single-line
+  readout was a flex sibling, so it reserved its full 150px intrinsic width **in the expanded
+  state too**, where it is invisible — the identity column measured **123px**, the dealership
+  name painted 213px past its own box, and the tier pill was stretched to exactly its clipping
+  edge (a Tier-3 label would have wrapped). It is now absolutely positioned inside that column,
+  which costs the expanded state nothing: column **123 → 285px**, header 106 → 92.
+  **(2) The hero CTA drew its arrow twice** — `icon="arrow-forward"` *plus* a literal `→` glued
+  onto the label string, on a button that means "go forward". `Button` gained a `trailingIcon`
+  slot so a directional glyph is never smuggled into a label again, and the face is now the
+  mockup's: start flag on the left rim (`U+F06E`), verb centered, arrow on the right rim
+  (`U+E5C8`) — verified by codepoint and x-position, and each new glyph confirmed to carry real,
+  *distinct* ink on canvas rather than trusting that the vendored MaterialIcons ttf has them.
+  **(3)** Cash + Reputation merged onto one slab split by a hairline (was two half-width cards
+  with a gutter, reading as two unrelated widgets); gauge 92 → 84 so the faces balance.
+  **(4) The four empty states were bare grey sentences under tracked-caps eyebrows** — every
+  other band on the page is a card, and an un-contained line of muted text in that stack is the
+  single biggest reason the lower half read as an unfinished wireframe even though the copy was
+  honest. Same words, now in inset wells with a muted glyph (`EmptyNote`). **(5)** The calendar
+  card had nothing to *read*; it gained the mockup's month burn-down ("Days this month / Day N
+  of 30" + bar), the month being the tier-gate cadence and so the one calendar figure the player
+  plans against. **(6)** Tab bar active state: 2px top rule → filled rounded slot.
+  Typecheck clean; 196 suites / 2402 tests green. **Known and deliberately unchanged:** in the
+  COLLAPSED bar the scaled title (~181px) and the compact readout (150px) still cannot both fit
+  in 285px — ~46px overlap on a long name. Geometry there is byte-identical to before this pass
+  (it was ~78px), so it is pre-existing and is a **content** question — whether the slim bar
+  should spell out "REG PRESSURE 0/100" — not a layout bug, and that is the user's call.
+  Also left alone: the hero photo is `lot-tier1.jpg` at Tier 2 (tier 2/3 art is #251, not
+  landed), and the quick-stat strip has no colored sub-lines because the honest data for them
+  does not exist yet — inventing numbers to fill the mockup's shape was the wrong trade.
+  Phase 5a is unchanged — next /next still BUILDs **#339**.
+
 - 2026-07-29 — **NOT a /next unit.** User-reported defect, found by driving the app on the new
   web target (#338) — the first time the drive has caught something no test would have. The
   Home tab's demand console rendered each vehicle type as `Sedans / 1.00× / WARM`, a bare

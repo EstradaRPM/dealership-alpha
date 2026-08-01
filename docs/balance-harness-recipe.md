@@ -54,8 +54,9 @@ observed-vs-target.
 npm run balance -- <mode> [flags]
 ```
 
-The harness runs through `tsx` (a dev-only TypeScript runner) — no build step,
-no jest. It imports the same game modules the app composes, so it is always
+Modes: `pacing` (A) · `sweep` (B) · `calib` (C) · `space` (D — the searchable
+tunable manifest). The harness runs through `tsx` (a dev-only TypeScript runner)
+— no build step, no jest. It imports the same game modules the app composes, so it is always
 measuring the shipping logic.
 
 ### Mode A — pacing (the headline report)
@@ -108,9 +109,19 @@ npm run balance -- sweep --tunable tier-gate:tiers.1.units --range 6,12,5 --poli
 npm run balance -- sweep --tunable tunables:inventory.carrying.insurancePerDay --range 5,25,5
 ```
 
-`--tunable FILE:dot.path` — `FILE` is `tier-gate` or `tunables`; the path is a
-dotted key into that JSON (e.g. `tiers.2.cash`, `floorSim.baseDailyArrivals`).
+`--tunable FILE:dot.path` — `FILE` is any file registered in `overrides.ts`
+(`knownFiles()`: `tier-gate`, `tunables`, `sourcing`, `intel-precision`,
+`bodyshop-demand`, `news-progression-gating`, `service-manager`,
+`body-shop-manager`, `starting-inventory`); the path is a dotted key into that
+JSON (e.g. `tiers.2.cash`, `floorSim.baseDailyArrivals`). A path segment may
+select an array element by field — `unlocks[id=auction_data].dailyCost`,
+`slots[category=suv].targetRetail` — which keeps pointing at the right entry if
+the array is reordered, as a numeric index silently would not.
 `--range MIN,MAX,STEPS`. Other flags as mode A (seeds default 30).
+
+**Registering a file makes it reachable, not searchable.** What a search may vary
+is the manifest below; a sweep is a hand-driven tool and can still name any
+registered path.
 
 ### Mode C — calibration time-series (CSV)
 
@@ -124,6 +135,44 @@ npm run balance -- calib --metric cash --seeds 10 --maxDays 360 --out cash_befor
 
 `--metric cash|lotCount|lotValue|cumUnits|tier|csi`. Wide CSV: one row per day,
 one column per seed.
+
+### Mode D — space (the tunable manifest, #344)
+
+The declared surface a balance search is allowed to touch, and the guard that
+keeps it there. `scripts/balance-harness/searchSpace.ts` owns it.
+
+```
+npm run balance -- space          # every dimension, its bound, its current value in data/**
+```
+
+Each dimension names a registered file, a path, a numeric `range` (min/max/step)
+**or** a discrete `values` set, and one line on why that key is a *magnitude
+someone guessed* rather than a *choice someone made*. **Every key not listed is
+frozen** — `tests/balanceHarness.searchSpace.test.ts` serializes all nine
+registered files before, during, and after a candidate and asserts the diff names
+exactly the manifest paths the candidate varied, and nothing else.
+
+- **The manifest lives in the harness, not `data/`.** `data/**` is game content
+  read by schema-validated loaders; this is tooling config no game module reads
+  — same reasoning that keeps the policy bots' strategy numbers out of `data/`.
+- **`data/tier-pacing-targets.json` is not even a registered file.** The pacing
+  targets are the director's to author (#343), so no search can reach them.
+  Other deliberate freezes, with reasons, are listed in the module's header:
+  `tier-gate` `streak` (the campaign rule), `inventory.frontlineHoldDays` (locked
+  by #295), `news-progression-gating` `minTier` and copy, `intel-precision`
+  `heatGranularity`, `starting-inventory` `candidateTrials`.
+- **Out-of-range is rejected, never clamped**, and a candidate is validated whole
+  before any of it is applied — a half-applied candidate would leave `data/**` in
+  a state no one asked for.
+- The report **flags a current value sitting outside its own declared bound**;
+  the test asserts there are none, because that state means either the range or
+  the shipped number is wrong and a search would start from a point it would
+  itself refuse to propose.
+- Adding a data file: register it in `overrides.ts` (`FILES`), then add its
+  dimensions. The in-place-mutation property has to keep holding — the loaders
+  must read the same Node-cached JSON object and must not memoize their parse.
+  The test proves it per file by applying a candidate and reading the value back
+  through each real loader.
 
 ## Determinism
 

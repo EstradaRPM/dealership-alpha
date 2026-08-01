@@ -4,6 +4,7 @@
  *   npm run balance -- pacing  [--policy naive|competent|optimal|all] [--seeds N] [--maxDays N] [--baseSeed N] [--out FILE]
  *   npm run balance -- sweep   --tunable FILE:dot.path --range MIN,MAX,STEPS [--policy P] [--seeds N] [--maxDays N] [--baseSeed N] [--out FILE]
  *   npm run balance -- calib   --metric cash|lotCount|lotValue|cumUnits|tier|csi [--policy P] [--seeds N] [--maxDays N] [--baseSeed N] [--out FILE]
+ *   npm run balance -- space   [--out FILE]   # the searchable tunable manifest (#344)
  *
  * The acceptance command (a 100-seed competent pacing run against the current
  * tunables) is simply:  npm run balance -- pacing
@@ -20,12 +21,14 @@ import { runCohort } from './runner';
 import {
   formatCalibCsv,
   formatPacing,
+  formatSearchSpace,
   formatSweep,
   isMetric,
   metricNames,
   summarizePacing,
   type SweepRow,
 } from './reports';
+import { describeSpace, validateSearchSpace } from './searchSpace';
 import {
   applyOverride,
   knownFiles,
@@ -152,6 +155,11 @@ function runCalib(args: Args): void {
   emit(formatCalibCsv(metric, results, maxDays), args);
 }
 
+function runSpace(args: Args): void {
+  validateSearchSpace();
+  emit(formatSearchSpace(describeSpace()), args);
+}
+
 function main(): void {
   const { mode, args } = parseArgs(process.argv.slice(2));
   switch (mode) {
@@ -161,8 +169,10 @@ function main(): void {
       return runSweep(args);
     case 'calib':
       return runCalib(args);
+    case 'space':
+      return runSpace(args);
     default:
-      log(`Unknown mode '${mode}'. Use: pacing | sweep | calib`);
+      log(`Unknown mode '${mode}'. Use: pacing | sweep | calib | space`);
       process.exit(1);
   }
 }

@@ -11,6 +11,7 @@
 import pacingTargets from '../../data/tier-pacing-targets.json';
 import { loadTunables } from '../../src/game/data';
 import { FAILURE_CAUSES, SUSTAINED_MISS_MONTHS, scoreCohort, type ScoreOptions } from './scoring';
+import type { SpaceRow } from './searchSpace';
 import type {
   CohortScore,
   EndReasonBreakdown,
@@ -215,6 +216,45 @@ export function formatSweep(file: string, path: string, rows: readonly SweepRow[
         `  ${fmt(row.pacing.medianFinalTier, 1).padStart(12)}` +
         `  ${t(1)}  ${t(2)}  ${t(3)}`,
     );
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
+// ── Mode D: the search space (#344) ──────────────────────────────────────────
+
+/** Marks a shipped value that sits outside its own declared bound. */
+export const OUTSIDE_BOUND_FLAG = '!! outside declared bound';
+
+/**
+ * The tunable manifest as a readable table — every dimension, its declared
+ * bound, and the value `data/**` currently holds, so the searchable surface is
+ * inspectable without reading source.
+ */
+export function formatSearchSpace(rows: readonly SpaceRow[]): string {
+  const lines: string[] = [];
+  lines.push('# Balance harness — tunable search space (#344)');
+  lines.push('');
+  lines.push(
+    `${rows.length} dimensions. Every key NOT listed here is frozen — asserted by ` +
+      'tests/balanceHarness.searchSpace.test.ts, not trusted.',
+  );
+  lines.push('');
+  const idW = Math.max(...rows.map((r) => r.id.length));
+  const boundW = Math.max(...rows.map((r) => r.bound.length));
+  let file = '';
+  for (const row of rows) {
+    if (row.file !== file) {
+      file = row.file;
+      lines.push('');
+      lines.push(`  ${file}.json`);
+    }
+    lines.push(
+      `    ${row.id.padEnd(idW)}  ${row.bound.padEnd(boundW)}` +
+        `  current=${row.current}` +
+        (row.outsideBound ? `  ${OUTSIDE_BOUND_FLAG}` : ''),
+    );
+    lines.push(`    ${' '.repeat(idW)}  ${row.path} — ${row.why}`);
   }
   lines.push('');
   return lines.join('\n');
