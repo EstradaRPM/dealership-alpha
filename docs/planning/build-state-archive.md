@@ -6,6 +6,40 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-07-29 — **NOT a /next unit.** User-reported defect, found by driving the app on the new
+  web target (#338) — the first time the drive has caught something no test would have. The
+  Home tab's demand console rendered each vehicle type as `Sedans / 1.00× / WARM`, a bare
+  temperature word on a player-facing label, which `.claude/rules/ui.md` and the locked "no
+  vague temperature labels" rule forbid outright. **Label copy only** — the internal heat-map
+  model is untouched (`HeatBand`, `classifyHeatBand`, `classifyHeatBandFine`, the thresholds,
+  the heat index, the `demand-heat-console` testID all unchanged). `HEAT_BANDS`
+  (`src/ui/DemandReadout/DemandReadout.tsx`) now reads Very high / High / Steady / Low / Very
+  low demand, which is the exact treatment `ServicePage`/`BodyShopPage` already carried since
+  #308 — **this surface was simply never given the same pass**, so the rule was being honored
+  in two of the three places it applies. Three other strings in the same section carried the
+  same defect and went with it: the section header `Demand Heat` → **Demand by Vehicle Type**
+  (mirrors Service's "Demand by Job"), the empty state's "see what's hot" → "see what buyers
+  want", and the badge's a11y label, which with the new copy would have read "SUVs demand High
+  demand" and is now `${label} ${band.label}` like ServicePage's. **The guard moved up a
+  level**: the reachability test previously asserted only the testID, so the console could have
+  rendered anything; it now builds a real world, bands the live spawn-driving heat vector, and
+  asserts one plain-language demand label per segment **and that no temperature word renders at
+  all** — the smoke test carries the same negative across all five bands. That negative is the
+  part worth keeping: it fails on the next surface that reintroduces the word, which is how this
+  one survived. Typecheck clean; 196 suites / 2402 tests green. Driven live to confirm (mobile
+  viewport, dev T2 fixture): `DEMAND BY VEHICLE TYPE / SUVs 1.45× VERY HIGH DEMAND / Sedans
+  0.89× STEADY DEMAND / Trucks 0.66× LOW DEMAND`, zero console errors.
+  **Left open, deliberately:** `FloorDashboard.tsx:321` renders a `PENDING-WARM` stat tile —
+  same defect, different surface, but "warm lead" is real auto-retail idiom so whether the rule
+  bites is the user's call, not an agent's. Filed as a side task, not silently changed.
+  **Also surfaced:** `npm test` matches **zero** files inside a git worktree — jest's
+  `<rootDir>` resolves with mixed separators (`…dealership-alpha\.claude/worktrees/…`) and
+  micromatch eats the backslash. Pre-existing and unrelated, but it means a worktree session
+  gets a green-looking no-op unless it passes an explicit `--config`; worth a real fix before
+  more AFK slices run in worktrees.
+  Phase 5a is unchanged — next /next still BUILDs **#339** (the balance-harness optimizer, last
+  of 5a) — or `/decide C1` any time to unblock phase 6.
+
 - 2026-07-29 — BUILT + closed **#338** (phase 5a S6 — a drivable web target). **Every
   build-state entry since #325 ended with `/verify: BLOCKED for the live-GUI drive`** — a tax
   paid ~30 times, and on every remaining UI slice. Nothing an agent could run proved the screen

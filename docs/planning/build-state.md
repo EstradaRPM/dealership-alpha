@@ -49,7 +49,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
-| 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338 done; #339 sliced into **#343 → #344 → #345**; see `docs/agent-workflow-notes.md`) | — | active |
+| 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338 done; #339 sliced into #343 done → **#344 → #345**; see `docs/agent-workflow-notes.md`) | — | active |
 | 5b | Module-boundary debt clearance (#341 → #342), surfaced by #335's scan | — | pending |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** — prep index: `.claude/skills/decide/gates.md` | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
@@ -73,6 +73,42 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-01 — **BUILT #343** (balance-harness honest objective), slice A of #339. Landed
+  `scripts/balance-harness/scoring.ts` + `tests/balanceHarness.scoring.test.ts` (19 tests);
+  197 suites / 2421 tests green, typecheck clean.
+  **The headline is what the live harness now says.** On a 5-seed × 200-day competent cohort
+  the old view prints `bankrupt: 60% … completed=2` — readable as "two seeds were fine." The
+  honest verdict on the same cohort is **`FAILED: 100% of 5 seeds, median failure day 120,
+  [verdictMissStreak=5]`**. The two "completed" runs survived to `maxDays` while missing the
+  tier gate **every graded month**. That is precisely the lie #339 leads with, and it was not
+  a bankruptcy-accounting bug — `endedReason` cannot express it at all.
+  **Five ruin conditions, earliest one dates the run.** Two were previously unseeable.
+  *Cash-negative* is read off the per-day `RunSample` series, not the terminal event — the
+  test asserts a run that dips negative on day 40 **and recovers** still fails, on day 40.
+  *Forced contraction* needed wiring, not just scoring: `runner.ts` subscribed to **none** of
+  the three contraction events, and a contraction doesn't touch `endedReason` (it knocks the
+  run back a tier and continues), so a contracted run read as healthy. Proven with a
+  runner-level test against a **live** short run — `runOne` gained an optional injected bus,
+  because the defect was a *missing subscription* and no synthetic `RunResult` can catch one.
+  `SUSTAINED_MISS_MONTHS = 3` is derived in a comment from the campaign streak rule in
+  `tier-pacing-targets.json` (advancement is an unbroken run of good months, so ruin is its
+  mirror; three of them exceeds the entire T1 dwell target of 2). `nearMiss` is honest
+  progress and **resets** the streak — asserted both ways.
+  **Two constraints from #339's filing carried through intact.** (1) `tierFit` is smooth —
+  1.0 on target, exactly 0.5 at the `toleranceBand` edge, strictly monotone forever after —
+  because a WITHIN/OUT flag ties every out-of-band config and hands #345's optimizer zero
+  gradient over exactly the region the un-tuned tunables sit in *today* (T1 median dwell is
+  1.0mo vs a 2.0mo target, i.e. deep out of band). Tested for monotonicity across three dwells
+  all outside the band. (2) `searchScore` is labelled `(BLEND — search signal only)` and the
+  report test asserts **every one of the four term labels appears before it**, so the blend
+  can never be printed alone.
+  Also: `MonthVerdictRec` gained the verdict `day` (the event already carried it) so a streak
+  is dated off the clock rather than a month index; `summarizePacing` now takes `{maxDays}`;
+  the sweep table gained a `failed%` column but deliberately **not** the blend. The
+  targets-file read-only criterion is a byte comparison, not a promise.
+  Recipe doc updated — the "bankruptcy rate is misleading" trap block now points readers at
+  the `FAILED:` line, and mode A documents the verdict block.
+  Next /next BUILDs **#344** (tunable manifest + multi-file overrides + frozen-key guard).
 - 2026-07-29 — **SLICED** phase 5a's last issue. #339 (balance-harness honest objective +
   tunable search loop) was five scope items, three of which are each a normal slice, so it was
   filed as an ordered chain and closed as superseded — **nothing dropped, the scope is carried
@@ -151,36 +187,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   landed), and the quick-stat strip has no colored sub-lines because the honest data for them
   does not exist yet — inventing numbers to fill the mockup's shape was the wrong trade.
   Phase 5a is unchanged — next /next still BUILDs **#339**.
-- 2026-07-29 — **NOT a /next unit.** User-reported defect, found by driving the app on the new
-  web target (#338) — the first time the drive has caught something no test would have. The
-  Home tab's demand console rendered each vehicle type as `Sedans / 1.00× / WARM`, a bare
-  temperature word on a player-facing label, which `.claude/rules/ui.md` and the locked "no
-  vague temperature labels" rule forbid outright. **Label copy only** — the internal heat-map
-  model is untouched (`HeatBand`, `classifyHeatBand`, `classifyHeatBandFine`, the thresholds,
-  the heat index, the `demand-heat-console` testID all unchanged). `HEAT_BANDS`
-  (`src/ui/DemandReadout/DemandReadout.tsx`) now reads Very high / High / Steady / Low / Very
-  low demand, which is the exact treatment `ServicePage`/`BodyShopPage` already carried since
-  #308 — **this surface was simply never given the same pass**, so the rule was being honored
-  in two of the three places it applies. Three other strings in the same section carried the
-  same defect and went with it: the section header `Demand Heat` → **Demand by Vehicle Type**
-  (mirrors Service's "Demand by Job"), the empty state's "see what's hot" → "see what buyers
-  want", and the badge's a11y label, which with the new copy would have read "SUVs demand High
-  demand" and is now `${label} ${band.label}` like ServicePage's. **The guard moved up a
-  level**: the reachability test previously asserted only the testID, so the console could have
-  rendered anything; it now builds a real world, bands the live spawn-driving heat vector, and
-  asserts one plain-language demand label per segment **and that no temperature word renders at
-  all** — the smoke test carries the same negative across all five bands. That negative is the
-  part worth keeping: it fails on the next surface that reintroduces the word, which is how this
-  one survived. Typecheck clean; 196 suites / 2402 tests green. Driven live to confirm (mobile
-  viewport, dev T2 fixture): `DEMAND BY VEHICLE TYPE / SUVs 1.45× VERY HIGH DEMAND / Sedans
-  0.89× STEADY DEMAND / Trucks 0.66× LOW DEMAND`, zero console errors.
-  **Left open, deliberately:** `FloorDashboard.tsx:321` renders a `PENDING-WARM` stat tile —
-  same defect, different surface, but "warm lead" is real auto-retail idiom so whether the rule
-  bites is the user's call, not an agent's. Filed as a side task, not silently changed.
-  **Also surfaced:** `npm test` matches **zero** files inside a git worktree — jest's
-  `<rootDir>` resolves with mixed separators (`…dealership-alpha\.claude/worktrees/…`) and
-  micromatch eats the backslash. Pre-existing and unrelated, but it means a worktree session
-  gets a green-looking no-op unless it passes an explicit `--config`; worth a real fix before
-  more AFK slices run in worktrees.
-  Phase 5a is unchanged — next /next still BUILDs **#339** (the balance-harness optimizer, last
-  of 5a) — or `/decide C1` any time to unblock phase 6.
