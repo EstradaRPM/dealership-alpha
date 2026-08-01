@@ -3,6 +3,9 @@
  *   A — pacing:     median/p10/p90 days-in-tier vs data/tier-pacing-targets.json
  *   B — sweep:      one tunable across a range → pacing delta
  *   C — calibration: per-day time-series of a named metric across seeds (CSV)
+ *   D — space:      the searchable tunable manifest and its bounds (#344)
+ *   E — study:      ranked search candidates with their terms and diffs (#345)
+ *   F — apply plan: exactly what a candidate would write into data/** (#345)
  *
  * The harness MEASURES; it does not judge. The pacing targets are the user's to
  * author (locked 2026-06-11) — this report only states observed-vs-target so the
@@ -11,7 +14,10 @@
 import pacingTargets from '../../data/tier-pacing-targets.json';
 import { loadTunables } from '../../src/game/data';
 import { FAILURE_CAUSES, SUSTAINED_MISS_MONTHS, scoreCohort, type ScoreOptions } from './scoring';
-import type { SpaceRow } from './searchSpace';
+import { rankTrials, trialDiff } from './search';
+import type { PlannedEdit } from './applyTuning';
+import type { Dimension, SpaceRow } from './searchSpace';
+import type { Study } from './study';
 import type {
   CohortScore,
   EndReasonBreakdown,
@@ -257,6 +263,102 @@ export function formatSearchSpace(rows: readonly SpaceRow[]): string {
     lines.push(`    ${' '.repeat(idW)}  ${row.path} — ${row.why}`);
   }
   lines.push('');
+  return lines.join('\n');
+}
+
+// ── Mode E: the search study (#345) ──────────────────────────────────────────
+
+/** Header of the ranked-candidate report. Exported so a test can find the table. */
+export const STUDY_REPORT_TITLE = '# Balance harness — search study (mode E)';
+
+/** Marks a score taken on a reduced seed subset — NOT comparable to a full one. */
+export const CHEAP_STAGE_FLAG = 'screened';
+
+/**
+ * The ranked candidates: each with its four terms, the seed count behind its
+ * score, and a readable `file:path current → proposed` diff. The review is
+ * "accept this diff", not "read this JSON blob".
+ *
+ * Printing order carries the #343 rule — every one of the four term labels
+ * appears before the blend on every row, so no candidate can be accepted on the
+ * blend alone. The seed count is on the row for the same reason: a cheap screen
+ * and a full evaluation are not the same measurement, and the report says which
+ * one it is rather than letting the ranking imply they are equals.
+ */
+export function formatStudyReport(study: Study, dims: readonly Dimension[]): string {
+  const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
+  const c = study.header.config;
+  const lines: string[] = [];
+  lines.push(STUDY_REPORT_TITLE);
+  lines.push(
+    `Study: ${study.path}   manifest fingerprint ${study.header.fingerprint}   ` +
+      `opened ${study.header.createdAt}`,
+  );
+  lines.push(
+    `Cohort: policy ${c.policyId} × ${c.seedCount} seeds × ${c.maxDays} days ` +
+      `(baseSeed ${c.baseSeed}, cheap screen ${c.cheapSeedCount} seeds)`,
+  );
+  lines.push(`Dimensions searched (${c.dimensionIds.length}): ${c.dimensionIds.join(', ')}`);
+  lines.push(`Trials: ${study.trials.length}`);
+  lines.push('');
+  lines.push(
+    'A score from a reduced seed subset is NOT comparable to a full-spread score — ' +
+      `each row states the seeds behind it, and a ${CHEAP_STAGE_FLAG} row is a screen, not a result.`,
+  );
+  lines.push('');
+
+  const ranked = rankTrials(study.trials);
+  ranked.forEach((trial, rank) => {
+    const t = trial.terms;
+    lines.push(
+      `## #${rank + 1}  trial ${trial.index} (${trial.source})   ` +
+        `seeds=${trial.seedCount} (${trial.stage === 'cheap' ? CHEAP_STAGE_FLAG : 'full'})`,
+    );
+    lines.push(
+      `   ${TERM_LABELS.survival}: median ${fmt(t.medianSurvivalDay, 0)}` +
+        `   ${TERM_LABELS.tier}: median ${fmt(t.medianTierReached, 1)}`,
+    );
+    lines.push(
+      `   ${TERM_LABELS.verdictPass}: mean ${pct(t.meanVerdictPassRate)}` +
+        `   ${TERM_LABELS.pacingFit}: mean ${fmt(t.meanTimeToTierFit, 3)}` +
+        `   FAILED: ${pct(trial.failureRate)}`,
+    );
+    lines.push(`   ${SEARCH_SCORE_LABEL}: ${fmt(trial.score, 4)}`);
+    const diff = trialDiff(trial.candidate, dims);
+    if (diff.length === 0) {
+      lines.push('   diff vs data/**: (none — this is the current configuration)');
+    } else {
+      lines.push('   diff vs data/**:');
+      const width = Math.max(...diff.map((d) => d.label.length));
+      for (const row of diff) {
+        lines.push(`     ${row.label.padEnd(width)}  ${row.current} → ${row.proposed}`);
+      }
+    }
+    lines.push('');
+  });
+
+  const best = ranked.find((t) => t.stage === 'full');
+  if (best) {
+    lines.push(
+      `Apply the top candidate with:  npm run balance -- apply --study ${study.path} ` +
+        `--trial ${best.index} --confirm`,
+    );
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+/** The `apply` preview: exactly what would change, before anything is written. */
+export function formatApplyPlan(edits: readonly PlannedEdit[]): string {
+  const lines = ['# Balance harness — apply plan (mode F)'];
+  if (edits.length === 0) {
+    lines.push('   (nothing to change — this candidate matches data/** already)');
+    return lines.join('\n');
+  }
+  const width = Math.max(...edits.map((e) => `${e.file}:${e.path}`.length));
+  for (const e of edits) {
+    lines.push(`   ${`${e.file}:${e.path}`.padEnd(width)}  ${e.current} → ${e.next}`);
+  }
   return lines.join('\n');
 }
 

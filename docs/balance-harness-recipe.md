@@ -55,7 +55,9 @@ npm run balance -- <mode> [flags]
 ```
 
 Modes: `pacing` (A) · `sweep` (B) · `calib` (C) · `space` (D — the searchable
-tunable manifest). The harness runs through `tsx` (a dev-only TypeScript runner)
+tunable manifest) · `search` (E — Bayesian optimization over it) · `apply`
+(F — the one command that writes `data/**`).
+The harness runs through `tsx` (a dev-only TypeScript runner)
 — no build step, no jest. It imports the same game modules the app composes, so it is always
 measuring the shipping logic.
 
@@ -174,6 +176,72 @@ exactly the manifest paths the candidate varied, and nothing else.
   The test proves it per file by applying a candidate and reading the value back
   through each real loader.
 
+### Mode E — search (Bayesian optimization over the manifest, #345)
+
+The loop that closes A + B: propose a configuration, run the cohort, score it
+honestly, learn, propose a better one. `scripts/balance-harness/search.ts` owns
+the loop, `gp.ts` the surrogate, `study.ts` the durable record, `evaluator.ts`
+the adapter onto the real sim. It exists so the #286 calibration campaign is a
+review of ranked candidates instead of a hand-tune of dozens of placeholders.
+
+```
+npm run balance -- search --study studies/t1-cash.jsonl \
+  --dims gate.t1.units,gate.t1.cash,inventory.carrying.insurancePerDay \
+  --trials 60 --seeds 20 --cheapSeeds 5 --maxDays 240
+npm run balance -- search --study studies/t1-cash.jsonl --trials 120   # resume, deeper
+```
+
+Flags: `--study FILE` (required), `--dims a,b,c|all` (default `all`), `--trials N`
+(total trial records, default 40), `--initial N` (initial-design size),
+`--seeds N` (default 20), `--cheapSeeds N` (screen subset, default ¼ of seeds),
+plus `--policy` / `--maxDays` / `--baseSeed` / `--out` as elsewhere.
+
+- **Pick a subset with `--dims`.** All 55 dimensions at a budget of tens of
+  evaluations is not a search, it is sampling. A focused study over the handful
+  of numbers a pacing report implicates converges; the whole manifest does not.
+- **Trial 0 is the incumbent** — whatever `data/**` holds today, on the full seed
+  spread. Every proposal is ranked against a measured score for the current game,
+  and the report's diff has a baseline that was actually run.
+- **Adaptive sampling:** a candidate is first screened on the first
+  `--cheapSeeds` seeds; only one within `PROMOTION_MARGIN` of the observed best
+  earns the full spread, and the refined score replaces the screen. **Every score
+  states the seeds behind it** (`seeds=5 (screened)` vs `seeds=20 (full)`) and the
+  surrogate treats a cheap score as noisier rather than as an equal. If the
+  top-ranked trial is still a screen when the budget runs out, it is promoted
+  before the study names a best — **a recommendation is never a cheap score**.
+- **The study file is append-only JSONL** — header, then one line per completed
+  evaluation, written *before* the next starts. An interrupted study loses at
+  most the run in flight; re-invoking with a bigger `--trials` resumes.
+- **Resuming refuses rather than mixes.** The header fingerprints the manifest
+  and records the cohort config; a changed bound, a renamed dimension, or a
+  different seed cohort throws with the difference named. Trials scored under
+  different bounds were never measuring the same thing.
+- The report ranks candidates with the four #343 terms **and never the blend
+  alone**, plus a `file:path current → proposed` line per varied key.
+- Determinism: same manifest + `--baseSeed` + `--trials` ⇒ the same trial
+  sequence.
+
+### Mode F — apply (the only writer of `data/**`)
+
+```
+npm run balance -- apply --study studies/t1-cash.jsonl --trial 37            # prints the plan, writes nothing, exits 1
+npm run balance -- apply --study studies/t1-cash.jsonl --trial 37 --confirm  # writes
+```
+
+- **No auto-apply anywhere.** Search writes its study file and its report; this
+  is a separate human step, and without `--confirm` it prints the plan, writes
+  nothing, and exits non-zero.
+- **It refuses a stale write.** The study recorded what `data/**` held when it
+  opened; if disk has moved since (a hand-tune, or an earlier trial from the same
+  study already applied), the reviewed diff is not the diff that would land, so
+  the write is refused and the study should be re-run.
+- **Surgical text edit, not a reserialization.** `applyTuning.ts` scans the raw
+  JSON to the exact span of the target value and replaces those characters —
+  `JSON.stringify` would reformat the hand-authored one-line objects and turn
+  `1.0` into `1`, burying a two-number tuning in a thousand-line diff. Asserted:
+  the file has the same line count afterwards and exactly the tuned lines differ.
+- Accepted tunings land in **ONE calibration commit** (standing #105 protocol).
+
 ## Determinism
 
 Same flags ⇒ byte-identical output. The seed cohort is derived from `--baseSeed`
@@ -277,6 +345,11 @@ npm run gen:fixtures -- --policy optimal   # capture from a stronger policy (see
   staff-teeth pass (#249), since salary drain moves the cash/gross faces. Until
   then expect plenty of `OUT` rows against the current first-pass tunables —
   that gap is exactly the signal the harness exists to surface.
+- **The first real study will be climbing out of a hole, not fine-tuning.** Under
+  the current un-tuned numbers the competent bot bankrupts at ~day 125 still at
+  Tier 1, so early candidates differ in *how badly* they fail. That is the signal
+  the smooth `tierFit` (#343) exists to preserve — do not read a low absolute
+  score as a broken search.
 - **`askingPrice` is currently inert** in the deal path (DealEngine doesn't yet
   consume it — see Inventory/CLAUDE.md), so optimal's margin pricing exercises
   the lever but won't move gross until that downstream slice lands.

@@ -48,6 +48,11 @@ yarn-error.*
 # Local-only issue snapshot (regenerate via scripts/dump-issues.sh)
 ISSUES.md
 
+# Balance-search study files (#345) — append-only trial logs, one per study.
+# Local by default: they grow with every evaluation. `git add -f` a study
+# deliberately when it is the evidence behind a calibration commit.
+studies/
+
 # typescript
 *.tsbuildinfo
 

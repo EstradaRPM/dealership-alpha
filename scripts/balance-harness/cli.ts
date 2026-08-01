@@ -5,6 +5,8 @@
  *   npm run balance -- sweep   --tunable FILE:dot.path --range MIN,MAX,STEPS [--policy P] [--seeds N] [--maxDays N] [--baseSeed N] [--out FILE]
  *   npm run balance -- calib   --metric cash|lotCount|lotValue|cumUnits|tier|csi [--policy P] [--seeds N] [--maxDays N] [--baseSeed N] [--out FILE]
  *   npm run balance -- space   [--out FILE]   # the searchable tunable manifest (#344)
+ *   npm run balance -- search  --study FILE [--dims a,b,…] [--trials N] [--initial N] [--seeds N] [--cheapSeeds N] [--policy P] [--maxDays N] [--baseSeed N] [--out FILE]
+ *   npm run balance -- apply   --study FILE --trial N [--confirm]
  *
  * The acceptance command (a 100-seed competent pacing run against the current
  * tunables) is simply:  npm run balance -- pacing
@@ -19,16 +21,28 @@ import { deriveSeeds } from './seeds';
 import { POLICIES, policyById, type Policy } from './policies';
 import { runCohort } from './runner';
 import {
+  formatApplyPlan,
   formatCalibCsv,
   formatPacing,
   formatSearchSpace,
+  formatStudyReport,
   formatSweep,
   isMetric,
   metricNames,
   summarizePacing,
   type SweepRow,
 } from './reports';
-import { describeSpace, validateSearchSpace } from './searchSpace';
+import {
+  SEARCH_SPACE,
+  describeSpace,
+  dimensionById,
+  validateSearchSpace,
+  type Dimension,
+} from './searchSpace';
+import { runSearch } from './search';
+import { createCohortEvaluator } from './evaluator';
+import { readStudy } from './study';
+import { ApplyRefused, applyCandidateToDisk, planEdits } from './applyTuning';
 import {
   applyOverride,
   knownFiles,
@@ -160,6 +174,101 @@ function runSpace(args: Args): void {
   emit(formatSearchSpace(describeSpace()), args);
 }
 
+function selectDimensions(args: Args): Dimension[] {
+  const requested = str(args, 'dims', '');
+  if (!requested || requested === 'all') return [...SEARCH_SPACE];
+  return requested
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0)
+    .map((id) => dimensionById(id));
+}
+
+function studyPath(args: Args): string {
+  const path = str(args, 'study', '');
+  if (!path) throw new Error('--study FILE is required (the resumable study file).');
+  return path;
+}
+
+function runSearchMode(args: Args): void {
+  validateSearchSpace();
+  const dims = selectDimensions(args);
+  const path = studyPath(args);
+  const baseSeed = num(args, 'baseSeed', 1);
+  const seedCount = num(args, 'seeds', 20);
+  const seeds = deriveSeeds(baseSeed, seedCount);
+  const cheapSeedCount = Math.min(num(args, 'cheapSeeds', Math.max(1, Math.round(seedCount / 4))), seedCount);
+  const maxDays = num(args, 'maxDays', 360);
+  const [policy] = selectPolicies(args, 'competent');
+  const trials = num(args, 'trials', 40);
+  const initialDesign = num(args, 'initial', Math.max(4, Math.min(12, dims.length * 2)));
+
+  log(
+    `[search] ${dims.length} dims × ${trials} trials — ${policy.id} × ${seeds.length} seeds ` +
+      `× ${maxDays} days (screen: ${cheapSeedCount} seeds) → ${path}`,
+  );
+  const result = runSearch({
+    studyPath: path,
+    dims,
+    seeds,
+    cheapSeedCount,
+    trials,
+    initialDesign,
+    config: {
+      policyId: policy.id,
+      maxDays,
+      baseSeed,
+      seedCount: seeds.length,
+      cheapSeedCount,
+      dimensionIds: dims.map((d) => d.id),
+    },
+    evaluate: createCohortEvaluator({ policy, maxDays, dims }),
+    onTrial: (trial, budget) =>
+      log(
+        `  trial ${trial.index + 1}/${budget} (${trial.source}, ${trial.stage}, ` +
+          `${trial.seedCount} seeds): score ${trial.score.toFixed(4)}  ${(trial.wallMs / 1000).toFixed(1)}s`,
+      ),
+  });
+  log(`[search] ${result.evaluated} evaluation(s) this run; ${result.study.trials.length} trials total.`);
+  emit(formatStudyReport(result.study, dims), args);
+}
+
+function runApply(args: Args): void {
+  const path = studyPath(args);
+  const study = readStudy(path);
+  const index = num(args, 'trial', NaN);
+  const trial = study.trials.find((t) => t.index === index);
+  if (!trial) {
+    throw new Error(
+      `--trial N must name a trial in the study (0…${study.trials.length - 1}). Got '${args.trial}'.`,
+    );
+  }
+  const dims = study.header.config.dimensionIds.map((id) => dimensionById(id));
+  const confirm = args.confirm === true || args.confirm === 'true';
+
+  log(`[apply] study ${path}, trial ${trial.index} (${trial.source}, ${trial.seedCount} seeds)`);
+  if (trial.stage === 'cheap') {
+    log(
+      '  WARNING: this trial was screened on a reduced seed subset — its score is not ' +
+        'comparable to a full-spread one.',
+    );
+  }
+  emit(formatApplyPlan(planEdits(trial.candidate, dims)), args);
+  try {
+    const edits = applyCandidateToDisk(trial.candidate, dims, {
+      confirm,
+      baseline: study.header.baseline,
+    });
+    log(`[apply] wrote ${edits.length} value(s) into data/**. Land them in ONE calibration commit.`);
+  } catch (err) {
+    if (err instanceof ApplyRefused) {
+      log(`[apply] ${err.message}`);
+      process.exit(1);
+    }
+    throw err;
+  }
+}
+
 function main(): void {
   const { mode, args } = parseArgs(process.argv.slice(2));
   switch (mode) {
@@ -171,8 +280,12 @@ function main(): void {
       return runCalib(args);
     case 'space':
       return runSpace(args);
+    case 'search':
+      return runSearchMode(args);
+    case 'apply':
+      return runApply(args);
     default:
-      log(`Unknown mode '${mode}'. Use: pacing | sweep | calib | space`);
+      log(`Unknown mode '${mode}'. Use: pacing | sweep | calib | space | search | apply`);
       process.exit(1);
   }
 }

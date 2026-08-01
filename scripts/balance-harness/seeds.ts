@@ -6,7 +6,7 @@
  * masterSeeds — the backbone of the harness's "same seeds ⇒ identical output"
  * determinism guarantee.
  */
-import { deriveSeed } from '../../src/game/NPC/Rng';
+import { createRng, deriveSeed } from '../../src/game/NPC/Rng';
 
 export function deriveSeeds(baseSeed: number, count: number): number[] {
   const seeds: number[] = [];
@@ -14,4 +14,14 @@ export function deriveSeeds(baseSeed: number, count: number): number[] {
     seeds.push(deriveSeed(baseSeed, 'balance.harness.seed', { i }));
   }
   return seeds;
+}
+
+/**
+ * A seeded uniform stream for the harness's own decisions — the #345 search's
+ * initial design and acquisition sampling. Re-exported through this module so
+ * the harness keeps exactly one reach into the game's RNG, and so a study's
+ * trial sequence is a pure function of its base seed.
+ */
+export function createHarnessRng(seed: number): () => number {
+  return createRng(deriveSeed(seed, 'balance.harness.search', {}));
 }

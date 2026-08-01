@@ -33,20 +33,56 @@ import tunablesRaw from '../../data/tunables.json';
 
 type AnyRecord = Record<string, unknown>;
 
-const FILES: Readonly<Record<string, AnyRecord>> = {
-  'body-shop-manager': bodyShopManagerRaw as unknown as AnyRecord,
-  'bodyshop-demand': bodyShopDemandRaw as unknown as AnyRecord,
-  'intel-precision': intelPrecisionRaw as unknown as AnyRecord,
-  'news-progression-gating': newsGatingRaw as unknown as AnyRecord,
-  'service-manager': serviceManagerRaw as unknown as AnyRecord,
-  sourcing: sourcingRaw as unknown as AnyRecord,
-  'starting-inventory': startingInventoryRaw as unknown as AnyRecord,
-  'tier-gate': tierGateRaw as unknown as AnyRecord,
-  tunables: tunablesRaw as unknown as AnyRecord,
+/** The live object a loader reads, plus where it came from. The disk path is
+ *  spelled out rather than derived from the key: the `apply` step
+ *  (`applyTuning.ts`) writes that path, and a naming convention is a poor thing
+ *  to have standing between a tuning proposal and the file it edits. */
+interface RegisteredFile {
+  readonly root: AnyRecord;
+  /** Repo-relative path of the JSON on disk. */
+  readonly diskPath: string;
+}
+
+const FILES: Readonly<Record<string, RegisteredFile>> = {
+  'body-shop-manager': {
+    root: bodyShopManagerRaw as unknown as AnyRecord,
+    diskPath: 'data/body-shop-manager.json',
+  },
+  'bodyshop-demand': {
+    root: bodyShopDemandRaw as unknown as AnyRecord,
+    diskPath: 'data/bodyshop-demand.json',
+  },
+  'intel-precision': {
+    root: intelPrecisionRaw as unknown as AnyRecord,
+    diskPath: 'data/intel-precision.json',
+  },
+  'news-progression-gating': {
+    root: newsGatingRaw as unknown as AnyRecord,
+    diskPath: 'data/news-progression-gating.json',
+  },
+  'service-manager': {
+    root: serviceManagerRaw as unknown as AnyRecord,
+    diskPath: 'data/service-manager.json',
+  },
+  sourcing: { root: sourcingRaw as unknown as AnyRecord, diskPath: 'data/sourcing.json' },
+  'starting-inventory': {
+    root: startingInventoryRaw as unknown as AnyRecord,
+    diskPath: 'data/starting-inventory.json',
+  },
+  'tier-gate': { root: tierGateRaw as unknown as AnyRecord, diskPath: 'data/tier-gate.json' },
+  tunables: { root: tunablesRaw as unknown as AnyRecord, diskPath: 'data/tunables.json' },
 };
 
 export function knownFiles(): string[] {
   return Object.keys(FILES);
+}
+
+function registryEntry(file: string): RegisteredFile {
+  const entry = FILES[file];
+  if (!entry) {
+    throw new Error(`Unknown tunable file '${file}'. Known: ${knownFiles().join(', ')}`);
+  }
+  return entry;
 }
 
 /**
@@ -55,11 +91,12 @@ export function knownFiles(): string[] {
  * and after a candidate is applied.
  */
 export function registeredFile(file: string): AnyRecord {
-  const root = FILES[file];
-  if (!root) {
-    throw new Error(`Unknown tunable file '${file}'. Known: ${knownFiles().join(', ')}`);
-  }
-  return root;
+  return registryEntry(file).root;
+}
+
+/** Repo-relative path of a registered file's JSON on disk. */
+export function dataFilePath(file: string): string {
+  return registryEntry(file).diskPath;
 }
 
 /**
