@@ -19,6 +19,17 @@
 > so "bankruptcy rate: 0%" can coexist with most seeds bankrupting. Don't read
 > "0%" as "solvent."
 >
+> **Read the `FAILED:` line instead (#343).** The report now prints an honest
+> per-run verdict above the tier table. `bankrupt:`/`completed=` remain as
+> end-state bookkeeping and still under-report ruin — a run can survive to
+> `maxDays`, be counted `completed`, and have missed the gate every graded month.
+> `FAILED:` counts five conditions (hard throw, modeled bankruptcy, **cash below
+> zero on any sampled day**, three consecutive `miss` verdicts, and any forced
+> contraction), reports the **earliest** day the run went wrong, and splits the
+> cohort by cause. On a 5-seed × 200-day competent cohort the old view reads
+> "bankrupt 60%, completed=2" while the honest verdict is **100% failed, median
+> day 120, all five on the miss streak**.
+>
 > **"optimal" is anti-optimal** — most overhead, and its one differentiator,
 > margin pricing, is a no-op (`askingPrice` inert in the deal path; see caveats).
 > Only re-open this if it stops being a clean-tree pre-existing fact (a recent
@@ -64,6 +75,27 @@ Columns: `reached` (seeds that hit the tier), `advanced` (of those, the ones
 that also reached the next tier, so dwell is defined), `p10d/medianMo/p90d`
 (dwell quantiles — days, median in game-months, days), `targetMo`, and
 `WITHIN/OUT` of the ±`toleranceBand` from the targets file.
+
+#### The honest verdict block (`scoring.ts`, #343)
+
+Above the tier table the report prints a `FAILED:` line and **four terms kept
+separate on purpose**. `scripts/balance-harness/scoring.ts` owns all of it.
+
+- **Failure** is any of: hard insolvency throw, modeled bankruptcy, **cash below
+  zero on any sampled day** (dates ruin earlier and more honestly than the
+  terminal event does), `SUSTAINED_MISS_MONTHS` consecutive `miss` verdicts
+  (`nearMiss` is progress and resets the streak), or a forced contraction. The
+  reported day is the **earliest** condition that fired; the cohort is split by
+  cause.
+- **The four terms** — survival day, tier reached, month-verdict pass rate,
+  time-to-tier fit — are never pre-blended in a report.
+- **`tierFit` is smooth, not a threshold**: 1.0 on target, exactly 0.5 at the
+  tolerance-band edge, decaying strictly monotonically forever after. A binary
+  WITHIN/OUT flag would hand #345's optimizer zero gradient over exactly the
+  region the un-tuned tunables sit in today.
+- **`searchScore` is a search signal only.** It exists so #345 has one direction
+  to climb; every printer that shows it shows all four terms first. Never accept
+  a config on the blend alone.
 
 ### Mode B — sensitivity sweep
 

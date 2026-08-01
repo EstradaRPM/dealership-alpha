@@ -10,7 +10,9 @@
  */
 import pacingTargets from '../../data/tier-pacing-targets.json';
 import { loadTunables } from '../../src/game/data';
+import { FAILURE_CAUSES, SUSTAINED_MISS_MONTHS, scoreCohort, type ScoreOptions } from './scoring';
 import type {
+  CohortScore,
   EndReasonBreakdown,
   PolicyPacing,
   RunResult,
@@ -51,7 +53,11 @@ export function bankruptRate(p: PolicyPacing): number {
   return (p.endReasons.insolventThrow + p.endReasons.modeledBankruptcy) / p.seedCount;
 }
 
-export function summarizePacing(policyId: string, results: readonly RunResult[]): PolicyPacing {
+export function summarizePacing(
+  policyId: string,
+  results: readonly RunResult[],
+  opts: ScoreOptions,
+): PolicyPacing {
   const seedCount = results.length;
   const endReasons: EndReasonBreakdown = {
     completed: results.filter((r) => r.endedReason === 'completed').length,
@@ -99,6 +105,7 @@ export function summarizePacing(policyId: string, results: readonly RunResult[])
     endReasons,
     tiers,
     medianFinalTier: seedCount === 0 ? 0 : median(results.map((r) => r.finalTier)),
+    score: scoreCohort(policyId, results, opts),
   };
 }
 
@@ -106,11 +113,47 @@ function fmt(n: number | null, digits = 1): string {
   return n == null || Number.isNaN(n) ? '—' : n.toFixed(digits);
 }
 
+/** Labels of the four terms. Exported so the guard test can assert that every
+ *  one of them is printed — the blend must never appear on its own (#343). */
+export const TERM_LABELS = {
+  survival: 'survival day',
+  tier: 'tier reached',
+  verdictPass: 'verdict pass rate',
+  pacingFit: 'time-to-tier fit',
+} as const;
+
+/** The blend's label. Carries the caveat inline so it is unmissable in output. */
+export const SEARCH_SCORE_LABEL = 'search score (BLEND — search signal only)';
+
+/**
+ * The honest-verdict block: failure rate and cause split, then the four terms
+ * as four separate values, and only then the blend. Printing order is the point
+ * — the blend is never the first or the only number a reader sees.
+ */
+export function formatCohortScore(s: CohortScore): string[] {
+  const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
+  const causes = FAILURE_CAUSES.filter((c) => s.causeCounts[c] > 0)
+    .map((c) => `${c}=${s.causeCounts[c]}`)
+    .join(', ');
+  return [
+    `   FAILED: ${pct(s.failureRate)} of ${s.seedCount} seeds` +
+      `   median failure day: ${fmt(s.medianFailureDay, 0)}` +
+      (causes ? `   [${causes}]` : ''),
+    `   terms (reported separately — never judge on the blend alone):`,
+    `     ${TERM_LABELS.survival}: median ${fmt(s.medianSurvivalDay, 0)}` +
+      `   ${TERM_LABELS.tier}: median ${fmt(s.medianTierReached, 1)}`,
+    `     ${TERM_LABELS.verdictPass}: mean ${pct(s.meanVerdictPassRate)}` +
+      `   ${TERM_LABELS.pacingFit}: mean ${fmt(s.meanTimeToTierFit, 3)}`,
+    `   ${SEARCH_SCORE_LABEL}: ${fmt(s.meanSearchScore, 4)}`,
+  ];
+}
+
 export function formatPacing(pacings: readonly PolicyPacing[]): string {
   const lines: string[] = [];
   lines.push('# Balance harness — pacing report (mode A)');
   lines.push(`Targets: data/tier-pacing-targets.json (tolerance ±${TOLERANCE_BAND * 100}%)`);
   lines.push(`Days per game-month: ${DAYS_PER_MONTH}`);
+  lines.push(`Sustained-miss streak that scores a run failed: ${SUSTAINED_MISS_MONTHS} months`);
   lines.push('');
   for (const p of pacings) {
     lines.push(`## policy: ${p.policyId}  (seeds=${p.seedCount})`);
@@ -121,6 +164,7 @@ export function formatPacing(pacings: readonly PolicyPacing[]): string {
         `   completed=${e.completed}  other-gameover=${e.otherGameOver}` +
         `   median final tier: ${fmt(p.medianFinalTier, 1)}`,
     );
+    lines.push(...formatCohortScore(p.score));
     lines.push(
       '   tier  reached  advanced   p10d  medianMo  p90d   targetMo   status',
     );
@@ -156,13 +200,18 @@ export function formatSweep(file: string, path: string, rows: readonly SweepRow[
   lines.push('# Balance harness — sensitivity sweep (mode B)');
   lines.push(`Tunable: ${file}:${path}`);
   lines.push('');
-  lines.push('   value      bankrupt%  medFinalTier  T1 medMo  T2 medMo  T3 medMo');
+  // `failed%` is the honest verdict (#343) — bankrupt% counts only the two
+  // bankruptcy buckets and so under-reports a run ruined by a miss streak or a
+  // forced contraction. The search blend is deliberately NOT a column here:
+  // it may never be printed without all four of its terms.
+  lines.push('   value      bankrupt%    failed%  medFinalTier  T1 medMo  T2 medMo  T3 medMo');
   for (const row of rows) {
     const t = (tier: number) =>
       fmt(row.pacing.tiers.find((x) => x.tier === tier)?.medianMonths ?? null, 1).padStart(8);
     lines.push(
       `   ${String(row.value).padStart(8)}` +
         `  ${(bankruptRate(row.pacing) * 100).toFixed(0).padStart(8)}%` +
+        `  ${(row.pacing.score.failureRate * 100).toFixed(0).padStart(6)}%` +
         `  ${fmt(row.pacing.medianFinalTier, 1).padStart(12)}` +
         `  ${t(1)}  ${t(2)}  ${t(3)}`,
     );

@@ -99,7 +99,7 @@ function runPacing(args: Args): void {
   const pacings = policies.map((policy) => {
     log(`[pacing] ${policy.id}: ${seeds.length} seeds × ${maxDays} days …`);
     const results = runCohort(policy, seeds, { maxDays });
-    return summarizePacing(policy.id, results);
+    return summarizePacing(policy.id, results, { maxDays });
   });
   emit(formatPacing(pacings), args);
 }
@@ -131,7 +131,7 @@ function runSweep(args: Args): void {
     try {
       log(`  ${file}:${path}=${value} — ${policy.id} × ${seeds.length} seeds …`);
       const results = runCohort(policy, seeds, { maxDays });
-      rows.push({ value, pacing: summarizePacing(policy.id, results) });
+      rows.push({ value, pacing: summarizePacing(policy.id, results, { maxDays }) });
     } finally {
       restoreOverride(file, path, previous);
     }

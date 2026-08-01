@@ -9,12 +9,13 @@
  * and recorded as a `bankrupt` outcome; a modeled `career:game_over` ends the
  * run as `gameover`.
  */
-import { createEventBus } from '../../src/game/EventBus';
+import { createEventBus, type EventBus } from '../../src/game/EventBus';
 import { createWorld } from '../../src/createWorld';
 import { loadTunables } from '../../src/game/data';
 import type { CharacterProfile } from '../../src/game/CareerProgression';
 import { resetPolicies, type Policy } from './policies';
 import type {
+  ContractionRec,
   EndedReason,
   MonthVerdictRec,
   RunResult,
@@ -40,6 +41,9 @@ const STRONG_MATCH = loadTunables().matchPayoff.strongMatchThreshold;
 
 export interface RunOptions {
   readonly maxDays: number;
+  /** Bus to compose the world on. Defaults to a fresh one; supplied only by
+   *  tests that need to observe or drive the run's traffic. */
+  readonly bus?: EventBus;
 }
 
 function bindingFace(
@@ -52,7 +56,7 @@ function bindingFace(
 
 export function runOne(policy: Policy, seed: number, opts: RunOptions): RunResult {
   resetPolicies();
-  const bus = createEventBus();
+  const bus = opts.bus ?? createEventBus();
   const world = createWorld({
     bus,
     masterSeed: seed,
@@ -67,6 +71,7 @@ export function runOne(policy: Policy, seed: number, opts: RunOptions): RunResul
   const tierReachedDay: Record<number, number> = { 1: 0 };
   const verdicts: MonthVerdictRec[] = [];
   const samples: RunSample[] = [];
+  const contractions: ContractionRec[] = [];
   let arrivals = 0;
   let closes = 0;
   let strongMatches = 0;
@@ -87,6 +92,7 @@ export function runOne(policy: Policy, seed: number, opts: RunOptions): RunResul
   bus.subscribe('tierGate:month_verdict', (p) => {
     const binding = bindingFace(p.faces as readonly { id: string; ratio: number }[]);
     verdicts.push({
+      day: p.day,
       month: p.month,
       tier: p.tier,
       overall: p.overall,
@@ -97,6 +103,18 @@ export function runOne(policy: Policy, seed: number, opts: RunOptions): RunResul
   bus.subscribe('career:game_over', (p) => {
     gameOver = true;
     gameOverReason = p.data.reason;
+  });
+  // A forced contraction knocks the run back a tier instead of ending it, so it
+  // is invisible in `endedReason` and was previously invisible to the harness
+  // altogether — nothing subscribed to these three (#343).
+  bus.subscribe('career:bankruptcy_contraction', (p) => {
+    contractions.push({ day: p.day, kind: 'bankruptcy', fromTier: p.fromTier });
+  });
+  bus.subscribe('career:indictment_contraction', (p) => {
+    contractions.push({ day: p.day, kind: 'indictment', fromTier: p.fromTier });
+  });
+  bus.subscribe('regulatory:ag_complaint_contraction', (p) => {
+    contractions.push({ day: p.day, kind: 'agComplaint', fromTier: p.fromTier });
   });
 
   let endedReason: EndedReason = 'completed';
@@ -146,6 +164,7 @@ export function runOne(policy: Policy, seed: number, opts: RunOptions): RunResul
     finalCash: Math.round(world.economy.cash),
     endedReason,
     gameOverReason,
+    contractions,
     endedDay,
   };
 }
