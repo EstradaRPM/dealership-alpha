@@ -6,6 +6,47 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-07-29 — **SLICED** phase 5a's last issue. #339 (balance-harness honest objective +
+  tunable search loop) was five scope items, three of which are each a normal slice, so it was
+  filed as an ordered chain and closed as superseded — **nothing dropped, the scope is carried
+  verbatim**. The trigger was the user asking outright whether it needed slicing; the answer was
+  yes, and the seams fell out of a short orientation rather than a design argument.
+  **#343 — A: honest objective.** Per-run failure scoring + the four terms reported separately.
+  Half the fix turned out to be already in: `EndReasonBreakdown` (`types.ts:87`) had already
+  split `modeledBankruptcy` from the hard `insolventThrow`, so the "bankruptcy rate: 0%" lie the
+  parent issue leads with is **already dead** in the breakdown — what's missing is the per-run
+  verdict and the term split. Two things the orientation added that the parent didn't spell out:
+  **cash-negative should be read off the per-day `RunSample` series**, which dates the failure
+  earlier and more honestly than the terminal event (~day 125 on the instrumented fixture seed);
+  and **`runner.ts` subscribes to none of the three `*_contraction` events**, so "forced
+  contraction" — named in the parent's scope — is currently *invisible* to the harness and has to
+  be wired, not just scored. Also specified: the time-to-tier fit must stay **differentiable past
+  the tolerance band**, because a binary WITHIN/OUT flag gives the slice-C optimizer zero
+  gradient over exactly the region the un-tuned tunables sit in.
+  **#344 — B: manifest + multi-file overrides + frozen-key guard.** `overrides.ts:18` knows only
+  `tier-gate` and `tunables`, but the parent's debt list spans six more data files
+  (`sourcing`, `intel-precision`, `bodyshop-demand`, `news-progression-gating`, `service-manager`,
+  `starting-inventory`) — so the plumbing is real work, not a config line. The manifest lives in
+  the harness next to `policies.ts`, **not under `data/`**: `data/**` is schema-validated game
+  content read by loaders, and this is tooling config no game module reads (same reasoning that
+  keeps the policy bots' strategy numbers out of `data/`). "Keys not listed are frozen" is filed
+  as an asserted byte-comparison across every registered file, which is the criterion that makes
+  the freeze checkable instead of trusted.
+  **#345 — C: the search loop.** GP + RBF + Expected Improvement over B's surface, adaptive
+  re-sampling (cheap seed subset first, full spread only for promising candidates, **with the
+  seed count recorded so a cheap score is never compared to a full one**), resumable study file
+  that refuses to resume against a changed manifest fingerprint, ranked report carrying the four
+  terms plus `file:path current → proposed` diffs, and the explicit `apply` step that is the only
+  thing that writes `data/**`. Filed with the testability constraint stated up front: a real
+  evaluation is ~7 ms × 360 days × N seeds, so **the loop must take its evaluator injected** or it
+  is untestable — tests drive a synthetic objective with a known optimum and assert convergence.
+  **#339 closed rather than left open** so "lowest-numbered open issue whose deps are met" keeps
+  pointing at real work (it is now #343); #339 remains the design record all three cite as parent.
+  Recorded in the blockers: 5a's remaining issues now outnumber 5b's (#341/#342), so the phase
+  table is the order and the chronological rule is a within-phase tiebreaker.
+  No code changed this session — this was a SLICE unit, not a BUILD.
+  Next /next BUILDs **#343** (harness honest objective) — or `/decide C1` any time to unblock
+  phase 6.
 - 2026-07-29 — **NOT a /next unit.** User-requested polish pass: compare the live Home hub
   against `docs/planning/mockups/home-hub.png` and close the gap. Second session in a row where
   driving the app on the web target (#338) found things no test would have — but **screenshots

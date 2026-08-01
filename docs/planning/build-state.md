@@ -23,16 +23,15 @@ session start — open it on demand when a past slice's rationale needs recoveri
   + Session B (3 days, T2 fixture) on device, exporting DEV → PLAYTEST LOG → Export, and
   answering the 12-question sheet at a keyboard. Nothing agent-side can advance it — no
   autonomous runtime surface for the GUI (see `.claude/skills/verify`).
-- **While it waits, `/next` works phase 5a** (#334–#340). Real filed work, independent of the
-  playtest. #338 landed, so the `/verify` BLOCKED ceiling is gone — a UI slice is now driven
-  live on the web target (`.claude/skills/verify`). 5a does not substitute for the playtest —
-  the felt questions stay a human gate.
+- **While it waits, `/next` works phase 5b** (#341 → #342) — phase 5a closed 2026-08-01. Real
+  filed work, independent of the playtest. #338 landed, so the `/verify` BLOCKED ceiling is
+  gone — a UI slice is now driven live on the web target (`.claude/skills/verify`). 5b does not
+  substitute for the playtest — the felt questions stay a human gate.
 - **5a issue states on GitHub are not trustworthy.** #334 was CLOSED-but-undone. Check each
   of #335–#339 against the repo before assuming it landed. (#339 is closed as **sliced**, not
-  built — its work is #343/#344/#345.)
-- **Phase 5a's remaining issues (#343–#345) outnumber phase 5b's (#341, #342).** The phase
-  table is the order, not the issue numbers; the chronological rule is a tiebreaker *within* a
-  phase. 5a finishes first.
+  built — its work was #343/#344/#345, all three now built.)
+- **After 5b there is no agent-side work left before the playtest.** Phases 6 and 7 both open
+  with a gate (`/decide C1`, then A2), so the next `/next` after #342 is a DECIDE, not a BUILD.
 
 ## Phase table
 
@@ -49,8 +48,8 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
-| 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338 done; #339 sliced into #343, #344 done → **#345**; see `docs/agent-workflow-notes.md`) | — | active |
-| 5b | Module-boundary debt clearance (#341 → #342), surfaced by #335's scan | — | pending |
+| 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
+| 5b | Module-boundary debt clearance (**#341** → #342), surfaced by #335's scan | — | active |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** — prep index: `.claude/skills/decide/gates.md` | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
@@ -144,44 +143,37 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   Recipe doc updated — the "bankruptcy rate is misleading" trap block now points readers at
   the `FAILED:` line, and mode A documents the verdict block.
   Next /next BUILDs **#344** (tunable manifest + multi-file overrides + frozen-key guard).
-- 2026-07-29 — **SLICED** phase 5a's last issue. #339 (balance-harness honest objective +
-  tunable search loop) was five scope items, three of which are each a normal slice, so it was
-  filed as an ordered chain and closed as superseded — **nothing dropped, the scope is carried
-  verbatim**. The trigger was the user asking outright whether it needed slicing; the answer was
-  yes, and the seams fell out of a short orientation rather than a design argument.
-  **#343 — A: honest objective.** Per-run failure scoring + the four terms reported separately.
-  Half the fix turned out to be already in: `EndReasonBreakdown` (`types.ts:87`) had already
-  split `modeledBankruptcy` from the hard `insolventThrow`, so the "bankruptcy rate: 0%" lie the
-  parent issue leads with is **already dead** in the breakdown — what's missing is the per-run
-  verdict and the term split. Two things the orientation added that the parent didn't spell out:
-  **cash-negative should be read off the per-day `RunSample` series**, which dates the failure
-  earlier and more honestly than the terminal event (~day 125 on the instrumented fixture seed);
-  and **`runner.ts` subscribes to none of the three `*_contraction` events**, so "forced
-  contraction" — named in the parent's scope — is currently *invisible* to the harness and has to
-  be wired, not just scored. Also specified: the time-to-tier fit must stay **differentiable past
-  the tolerance band**, because a binary WITHIN/OUT flag gives the slice-C optimizer zero
-  gradient over exactly the region the un-tuned tunables sit in.
-  **#344 — B: manifest + multi-file overrides + frozen-key guard.** `overrides.ts:18` knows only
-  `tier-gate` and `tunables`, but the parent's debt list spans six more data files
-  (`sourcing`, `intel-precision`, `bodyshop-demand`, `news-progression-gating`, `service-manager`,
-  `starting-inventory`) — so the plumbing is real work, not a config line. The manifest lives in
-  the harness next to `policies.ts`, **not under `data/`**: `data/**` is schema-validated game
-  content read by loaders, and this is tooling config no game module reads (same reasoning that
-  keeps the policy bots' strategy numbers out of `data/`). "Keys not listed are frozen" is filed
-  as an asserted byte-comparison across every registered file, which is the criterion that makes
-  the freeze checkable instead of trusted.
-  **#345 — C: the search loop.** GP + RBF + Expected Improvement over B's surface, adaptive
-  re-sampling (cheap seed subset first, full spread only for promising candidates, **with the
-  seed count recorded so a cheap score is never compared to a full one**), resumable study file
-  that refuses to resume against a changed manifest fingerprint, ranked report carrying the four
-  terms plus `file:path current → proposed` diffs, and the explicit `apply` step that is the only
-  thing that writes `data/**`. Filed with the testability constraint stated up front: a real
-  evaluation is ~7 ms × 360 days × N seeds, so **the loop must take its evaluator injected** or it
-  is untestable — tests drive a synthetic objective with a known optimum and assert convergence.
-  **#339 closed rather than left open** so "lowest-numbered open issue whose deps are met" keeps
-  pointing at real work (it is now #343); #339 remains the design record all three cite as parent.
-  Recorded in the blockers: 5a's remaining issues now outnumber 5b's (#341/#342), so the phase
-  table is the order and the chronological rule is a within-phase tiebreaker.
-  No code changed this session — this was a SLICE unit, not a BUILD.
-  Next /next BUILDs **#343** (harness honest objective) — or `/decide C1` any time to unblock
-  phase 6.
+- 2026-08-01 — **BUILT #345** (Bayesian search loop), slice C of #339 — **phase 5a is done.**
+  New `gp.ts` / `search.ts` / `study.ts` / `evaluator.ts` / `applyTuning.ts` + CLI modes
+  `search` (E) and `apply` (F) + `tests/balanceHarness.search.test.ts` (26 tests); 199 suites /
+  2467 tests green, typecheck clean, no module-boundary violations, `data/**` byte-unchanged.
+  **"Never compare a cheap score to a full one" is enforced inside the optimizer, not only in
+  the report.** The GP takes **per-observation noise** scaled by `fullSeeds / seedCount`, so a
+  subset score is modelled as a noisier estimate of the same quantity rather than trusted as an
+  equal. Two more guards ride on top: every row states its seed count, and if a screened
+  candidate is still top-ranked when the budget ends it is **promoted to the full spread before
+  the study names a best** — a recommendation is never a cheap score. Asserted both ways.
+  **`apply` edits the character span of the target value, not the file.** `JSON.stringify` on
+  `data/sourcing.json` does not round-trip — the repo's JSON keeps hand-authored one-line objects
+  and `1.0` comes back as `1` — so reserializing would bury a two-number tuning in a
+  thousand-line diff and silently reformat everything else. The test asserts the file has the
+  same line count afterwards and that exactly the tuned lines differ. Two more refusals: no
+  `--confirm` → prints the plan, writes nothing, **exits 1** (asserted through a real CLI
+  process, the one thing here that can't be proven in-process); and disk drifted from the
+  study's recorded baseline → refuse, because the reviewed diff is then not the diff that lands.
+  **Trial 0 is the incumbent** — today's `data/**` on the full seed spread. Every proposal is
+  ranked against a measured score for the current game, which is also what gives the report's
+  diff a baseline that was actually run rather than assumed.
+  The synthetic evaluator in the test **goes through `applyCandidate` and reads back through the
+  live registry** before restoring. A stub scoring the candidate object directly would have
+  passed every assertion while proving nothing about whether the search moves the values it
+  claims to, or puts them back.
+  Also: `overrides.ts`'s registry now carries each file's disk path explicitly (a naming
+  convention is a poor thing to stand between a proposal and the file it edits); `seeds.ts`
+  gained `createHarnessRng` so the harness keeps exactly **one** reach into the game's RNG
+  (the allow-listed deep import); `studies/` is gitignored — `git add -f` a study when it is
+  the evidence behind a calibration commit. Recipe doc gained modes E and F.
+  Real-run smoke: a 3-dim × 5-trial × 3-seed × 60-day study runs end to end, screens at 1 seed,
+  and correctly leaves the baseline on top (no cheap score outranked it).
+  Next /next BUILDs **#341** — phase 5b (module-boundary debt), the last agent-side work before
+  the #74 playtest gate.
