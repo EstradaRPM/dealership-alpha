@@ -9,23 +9,21 @@ import {
 import { useTheme } from '../theme';
 import { SectionHeader } from '../kit';
 import type { DeptKey } from '../../game/DepartmentQueue';
-import { BottomNav } from '../BottomNav';
 import { OwnershipLevers, type OwnershipLeversProps } from '../OwnershipLevers';
+import { DepartmentDock, type DeptTile } from './DepartmentDock';
 
 export interface OperationsTabProps {
-  /** Department launch badges + dispatch (the day-to-day department dock). */
-  badges: Record<DeptKey, number>;
+  /**
+   * The departments the world has stood up (#346). The composition root builds
+   * this list; a department with no mechanic behind it at the current tier is
+   * simply absent from it. This component holds zero unlock logic.
+   */
+  dock: readonly DeptTile[];
   onDeptPress: (dept: DeptKey) => void;
   /** Pre-open ownership levers (#120). Absent ⇒ auction fallback / hint. */
   leverProps?: OwnershipLeversProps;
   /** Fallback when there are no levers yet. */
   onOpenAuction?: () => void;
-  /** Open the Service department read-model page (#308). Absent ⇒ entry hidden. */
-  onOpenService?: () => void;
-  /** Open the Body Shop department read-model page (#315). Absent ⇒ entry hidden
-   *  (the composition root passes it only at/after Tier 3 — the Body Shop is
-   *  dark before the showroom tier; navigation itself is never tier-gated). */
-  onOpenBodyShop?: () => void;
 }
 
 /**
@@ -35,12 +33,10 @@ export interface OperationsTabProps {
  * locked IA. Pure composition of existing read-model surfaces.
  */
 export function OperationsTab({
-  badges,
+  dock,
   onDeptPress,
   leverProps,
   onOpenAuction,
-  onOpenService,
-  onOpenBodyShop,
 }: OperationsTabProps) {
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
@@ -67,28 +63,11 @@ export function OperationsTab({
       <View style={region} testID="ops-region-departments">
         <SectionHeader title="Departments" />
         <View style={regionBody}>
-          <BottomNav badges={badges} onPress={onDeptPress} />
+          {/* One tile per department, and one entry per department — the
+              separate "Service Overview →" / "Body Shop Overview →" buttons
+              were a second door into a room the dock already opens (#346). */}
+          <DepartmentDock tiles={dock} onPress={onDeptPress} />
         </View>
-        {onOpenService && (
-          <Pressable
-            style={[secondaryBtn, { marginTop: t.spacing.md }]}
-            accessibilityRole="button"
-            accessibilityLabel="Open Service overview"
-            onPress={onOpenService}
-          >
-            <Text style={secondaryBtnText}>Service Overview →</Text>
-          </Pressable>
-        )}
-        {onOpenBodyShop && (
-          <Pressable
-            style={[secondaryBtn, { marginTop: t.spacing.md }]}
-            accessibilityRole="button"
-            accessibilityLabel="Open Body Shop overview"
-            onPress={onOpenBodyShop}
-          >
-            <Text style={secondaryBtnText}>Body Shop Overview →</Text>
-          </Pressable>
-        )}
       </View>
 
       <View style={region} testID="ops-region-prep">

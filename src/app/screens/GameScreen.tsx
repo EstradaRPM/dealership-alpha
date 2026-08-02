@@ -53,6 +53,7 @@ import {
   buildRecoveryBanners,
   buildIndustryWire,
   buildWeeklyReport,
+  buildDepartmentDock,
 } from '../config';
 
 export interface GameScreenProps {
@@ -396,16 +397,10 @@ export function GameScreen({
     ),
     operations: (
       <OperationsTab
-        badges={world.departmentQueue.getBadges()}
+        dock={buildDepartmentDock(world)}
         onDeptPress={handleDeptPress}
         leverProps={leverProps}
         onOpenAuction={() => nav.navigate('auction')}
-        onOpenService={() => nav.navigate('service')}
-        onOpenBodyShop={
-          world.tierManager.currentTier >= BODY_SHOP_MIN_TIER
-            ? () => nav.navigate('bodyShop')
-            : undefined
-        }
       />
     ),
     people: <PeopleTab managerStatus={buildManagerStatus(world)} />,

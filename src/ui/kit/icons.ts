@@ -23,6 +23,8 @@ const IconSet = createIconSet(glyphMap, 'dealership-icons', materialFont);
  */
 export const ICON_MAP = {
   'arrow-forward': 'arrow-forward',
+  /** Paint gun / refinish — the Body Shop department tile (issue 346). */
+  brush: 'brush',
   business: 'business',
   calendar: 'calendar-today',
   'car-sport': 'directions-car',
@@ -34,6 +36,8 @@ export const ICON_MAP = {
   construct: 'build',
   /** Checkered flag — the day-action CTA's leading glyph (home-hub mockup). */
   'flag-checkered': 'sports-score',
+  /** Two hands closing — the Sales department tile (issue 346). */
+  handshake: 'handshake',
   home: 'home',
   'lock-closed': 'lock',
   menu: 'menu',

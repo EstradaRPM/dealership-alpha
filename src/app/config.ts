@@ -30,6 +30,7 @@ import type { World } from '../createWorld';
 import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
 import type { PersonnelRoleOption } from '../ui/PersonnelScreen';
+import type { DeptTile } from '../ui/OperationsTab';
 import {
   buildIndustryWire as buildIndustryWireModel,
   buildWeeklyReportCard,
@@ -107,6 +108,73 @@ export const DEPT_TITLES: Record<DeptKey, string> = {
   lot: 'Lot',
   bodyshop: 'Body Shop',
 };
+
+/**
+ * The Operations department dock model (#346, locked IA §4 + rule 3).
+ *
+ * A department appears **only once the world has stood it up.** BDC and Office
+ * are absent from every tier here because no mechanic produces work for them
+ * yet — the spine names BDC as Tier 5's hire, and Office's meaning is parked
+ * pending the Finance surface (second-level-ia.md §5). When those mechanics
+ * land, they gain a clause here and the dock renders them; the UI component
+ * never changes, because it holds zero unlock logic.
+ */
+export function buildDepartmentDock(world: World): DeptTile[] {
+  const badges = world.departmentQueue.getBadges();
+  const tier = world.tierManager.currentTier;
+  // Each department's staffing gate is read off the same staff-roles data that
+  // gates hiring — never a second copy of the number.
+  const serviceMinTier = staffTaxonomy.roles['service-advisor']?.hireTier ?? 2;
+  const units = world.inventory.getLotVehicles();
+  const aging = units.filter((v) => v.aged).length;
+
+  const tiles: DeptTile[] = [
+    {
+      key: 'lot',
+      label: DEPT_TITLES.lot,
+      icon: 'car-sport',
+      badge: badges.lot ?? 0,
+      // The Lot is the hero through Act 1 because it owns the whole stock
+      // pipeline — stock list, pricing, sourcing (IA §4).
+      hero: true,
+      status:
+        units.length === 0
+          ? 'Nothing in stock. Go buy something.'
+          : `${units.length} in stock` + (aging > 0 ? ` · ${aging} aging` : ''),
+    },
+    {
+      key: 'sales',
+      label: DEPT_TITLES.sales,
+      icon: 'handshake',
+      badge: badges.sales ?? 0,
+      hero: false,
+      status: 'Deals being worked on the floor.',
+    },
+  ];
+
+  if (tier >= serviceMinTier) {
+    tiles.push({
+      key: 'service',
+      label: DEPT_TITLES.service,
+      icon: 'construct',
+      badge: badges.service ?? 0,
+      hero: false,
+      status: 'Repair orders and the shop schedule.',
+    });
+  }
+  if (tier >= BODY_SHOP_MIN_TIER) {
+    tiles.push({
+      key: 'bodyshop',
+      label: DEPT_TITLES.bodyshop,
+      icon: 'brush',
+      badge: badges.bodyshop ?? 0,
+      hero: false,
+      status: 'Collision work and insurance jobs.',
+    });
+  }
+
+  return tiles;
+}
 
 // Representative open-hours window for the FLOOR-OPEN HUD clock (#121).
 export const RENDER_LOOP = loadTunables().renderLoop;

@@ -312,9 +312,12 @@ export function DealershipApp({
     return () => sub.remove();
   }, []);
 
-  // Bottom-nav dispatch (#76). Every department pushes the generic
-  // DepartmentScreen for its queue. Always responds.
+  // Department-dock dispatch (#76, retargeted in #346). A department that has
+  // its own room opens that room; the rest fall through to the generic
+  // DepartmentScreen queue. Always responds.
   const handleDeptPress = (dept: DeptKey) => {
+    if (dept === 'service') return nav.navigate('service');
+    if (dept === 'bodyshop') return nav.navigate('bodyShop');
     nav.navigate('department', { dept });
   };
 
