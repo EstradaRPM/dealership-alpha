@@ -39,6 +39,31 @@ document.addEventListener('click', e => console.log(e.clientX, e.clientY, e.targ
 RN `Pressable`/`TouchableOpacity` render as plain `div`s, so the accessibility tree labels
 most controls `generic` — match on the text content in the `read_page` output.
 
+**Two more traps, both found the hard way (2026-08-02):**
+
+- **The Browser pane must actually be displayed, or modals are unreachable.** With the pane
+  hidden, `document.visibilityState` is `hidden` and `requestAnimationFrame` fires **zero
+  frames**. React-native-web's `Modal animationType="slide"` clears its entry transform on
+  `animationend`, so with no compositing every modal stays parked at `translateY(+viewport)` —
+  present in the DOM, fully below the fold, unclickable. That silently blocks hiring, the day
+  recap, escalations, and the Reveal. Probe it before blaming the app:
+  `new Promise(r => requestAnimationFrame(() => r(document.visibilityState)))`.
+  The floor sim itself keeps running (it's `setInterval`), but hidden tabs throttle intervals
+  to ≥1s, so day pacing observed this way is meaningless.
+- **`read_page` and `screenshot` disagree, and neither is always right.** The a11y tree can go
+  stale and omit a modal that is still mounted and still eating every click; the screenshot can
+  be a frame behind. When a click "does nothing", ask the DOM who is actually on top:
+
+  ```js
+  document.elementFromPoint(x, y).textContent
+  ```
+
+  Note the two coordinate spaces: `computer` clicks take **screenshot pixels**, while
+  `getBoundingClientRect` returns **CSS viewport pixels**. The pane letterboxes (a 375×812
+  viewport composites into a 469×1015 surface), so the two differ by roughly 1.25× plus an
+  offset. Prefer clicking by `ref`; when you must use a coordinate, take a fresh screenshot
+  first and read the position off that image, not off the DOM.
+
 ### Reaching a mid-game state fast
 
 The `__DEV__` **START AT TIER · T2** button on the start menu creates a slot, seeds it from
