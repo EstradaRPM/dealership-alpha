@@ -39,6 +39,11 @@ export type RouteParamMap = {
   // A non-sales department resolve-list, pushed over the game (#76). Sales is
   // not here — the Sales tab routes to the hand-play workspace, not a screen.
   department: { dept: DeptKey };
+  // The Lot room (#346, locked IA §4): the whole stock pipeline as one room —
+  // stock list, pricing strategy, per-unit pricing entry, and sourcing (the
+  // auction). Pushed from the Operations dock's Lot tile; closed with back().
+  // Replaces the generic `department` queue screen for the Lot.
+  lot: undefined;
   // The Service department read-model page (#308): demand heat + stock coverage
   // + base health. Pushed over the game from the Operations tab; closed with
   // back(). Distinct from the `department` resolve-list — this is the

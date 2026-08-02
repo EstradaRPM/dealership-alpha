@@ -183,41 +183,14 @@ export function GameScreen({
   const recapChip = lastRecap
     ? { day: lastRecap.day, onOpen: () => setRecapModalOpen(true) }
     : undefined;
-  // MANAGERIAL pre-open ownership levers (#120). Assembled here in the
-  // composition root; greyed by `ownershipUnlocked` (⇔ MANAGERIAL).
+  // MANAGERIAL pre-open Prep levers (#120), reduced in #346 to what the locked
+  // IA §4 says Prep is: hours of operation + trade policy. Greyed by
+  // `ownershipUnlocked` (⇔ MANAGERIAL). Everything else that used to be
+  // assembled here moved to the room that owns it — the stock list, per-unit
+  // pricing and sourcing to the Lot room, hiring to People, the advertising
+  // campaign to the demand console.
   const leverProps = {
     enabled: loopState.ownershipUnlocked,
-    vehicles: lotVehicles.map((v) => ({
-      id: v.id,
-      year: v.year,
-      make: v.make,
-      model: v.model,
-      trim: v.trim,
-      suggestedRetail: v.suggestedRetail,
-      askingPrice: v.askingPrice,
-      daysInInventory: v.daysInInventory,
-      carryingCostToDate: v.carryingCostToDate,
-      dailyCarryingCost: v.dailyCarryingCost,
-      aged: v.aged,
-    })),
-    onSetAskingPrice: (vehicleId: string, price: number) => {
-      world.inventory.setAskingPrice(vehicleId, price);
-      setLotVehicles(world.inventory.getLotVehicles());
-      persistCurrentSave();
-    },
-    onOpenPricing: (vehicleId: string) =>
-      nav.navigate('pricing', { vehicleId }),
-    pricingStrategyOptions: PRICING_STRATEGY_OPTIONS,
-    pricingStrategyId: levers.pricingStrategyId,
-    onSelectPricingStrategy: levers.handleSelectPricingStrategy,
-    // #285 (spine S13): the strategy is a standing auto-pricing policy once a
-    // UCM is on staff (the same roster signal S12's intel-precision reads).
-    autoPricingActive: world.staffOrg.currentRoster.some(
-      (s) => s.role_id === 'used-car-manager',
-    ),
-    onOpenAuction: () => nav.navigate('auction'),
-    onOpenHiring: () => nav.navigate('personnel'),
-    rosterCount: world.staffOrg.currentRoster.length,
     hoursOptions: HOURS_OF_OP.options,
     hoursOfOpId: levers.hoursOfOpId,
     onSelectHours: levers.handleSelectHours,
@@ -230,9 +203,6 @@ export function GameScreen({
     })),
     tradePolicyId: levers.tradePolicyId,
     onSelectTradePolicy: levers.handleSelectTradePolicy,
-    advertisingOptions: world.demandControls.advertisingOptions,
-    advertisingCampaignId: world.demandControls.getAdvertisingCampaignId(),
-    onSelectAdvertisingCampaign: levers.handleSelectAdvertisingCampaign,
   };
   // Segment-heat readout (#198 / #278). Read live off DemandShaper each
   // render; reflects the trailing arrival window at MANAGERIAL time. #211
@@ -256,6 +226,14 @@ export function GameScreen({
     entries: demandEntries,
     totalObserved: observed.reduce((sum, e) => sum + e.count, 0),
     targetingLevers: buildTargetingLevers(world),
+    // Advertising campaign (#212), moved off Prep in #346: the locked IA §4
+    // takes marketing/demand levers out of Operations and gives them to the
+    // demand console, which Growth inherits with the rest of the stack.
+    advertising: {
+      options: world.demandControls.advertisingOptions,
+      selectedId: world.demandControls.getAdvertisingCampaignId(),
+      onSelect: levers.handleSelectAdvertisingCampaign,
+    },
     coverageGap: buildCoverageGap(demandEntries, lotVehicles),
   };
   // Live-clock speed/pause controls (#121), wired into the floor MODE.
@@ -400,10 +378,20 @@ export function GameScreen({
         dock={buildDepartmentDock(world)}
         onDeptPress={handleDeptPress}
         leverProps={leverProps}
-        onOpenAuction={() => nav.navigate('auction')}
       />
     ),
-    people: <PeopleTab managerStatus={buildManagerStatus(world)} />,
+    people: (
+      <PeopleTab
+        managerStatus={buildManagerStatus(world)}
+        // Hiring is People's charter, not Prep's (locked IA §4). #346 moves the
+        // entry here off the Prep block; #347 rebuilds the tab around the
+        // roster + hiring pool proper.
+        roster={{
+          count: world.staffOrg.currentRoster.length,
+          onOpenHiring: () => nav.navigate('personnel'),
+        }}
+      />
+    ),
     finance: null,
     growth: null,
   };

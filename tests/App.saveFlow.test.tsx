@@ -70,9 +70,12 @@ describe('App save/load flow', () => {
     fireEvent.press(screen.getByText('Begin'));
 
     await waitFor(() => expect(screen.getByTestId('home-dashboard')).toBeTruthy());
-    // The auction lever lives under Operations in the rebranded IA (#215).
+    // Sourcing lives in the Lot room, reached from the Operations dock — the
+    // Lot owns the whole stock pipeline (#346, locked IA §4).
     fireEvent.press(screen.getByLabelText('Operations'));
-    fireEvent.press(screen.getByText('Visit Auction →'));
+    fireEvent.press(screen.getByTestId('dept-tile-lot'));
+    await waitFor(() => expect(screen.getByTestId('lot-room')).toBeTruthy());
+    fireEvent.press(screen.getByText('Go to the Auction'));
     await waitFor(() => expect(screen.getByText('Auction Lane')).toBeTruthy());
 
     fireEvent.press(screen.getAllByText(/^\d{4} /)[0]);
@@ -110,9 +113,12 @@ describe('App save/load flow', () => {
     fireEvent.press(screen.getByText('Begin'));
 
     await waitFor(() => expect(screen.getByTestId('home-dashboard')).toBeTruthy());
-    // Auction + pricing levers live under Operations in the rebranded IA (#215).
+    // Sourcing and per-unit pricing both live in the Lot room, reached from the
+    // Operations dock — the Lot owns the whole stock pipeline (#346).
     fireEvent.press(screen.getByLabelText('Operations'));
-    fireEvent.press(screen.getByText('Visit Auction →'));
+    fireEvent.press(screen.getByTestId('dept-tile-lot'));
+    await waitFor(() => expect(screen.getByTestId('lot-room')).toBeTruthy());
+    fireEvent.press(screen.getByText('Go to the Auction'));
     await waitFor(() => expect(screen.getByText('Auction Lane')).toBeTruthy());
 
     fireEvent.press(screen.getAllByText(/^\d{4} /)[0]);
@@ -129,9 +135,8 @@ describe('App save/load flow', () => {
     const vehicle = savedVehicle!;
 
     fireEvent.press(screen.getByText(/Back/));
-    // The shell preserves the active tab across a sub-screen round-trip (#226),
-    // so returning from the auction lands back on Operations — where the pricing
-    // lever lives — rather than snapping to Home.
+    // Back from the auction pops to the Lot room it was opened from — where the
+    // bought unit's price row now is.
     const askingPriceInput = await screen.findByLabelText(
       `Asking price for ${vehicle.id}`,
     );
@@ -147,17 +152,21 @@ describe('App save/load flow', () => {
       );
     });
 
-    fireEvent.press(screen.getByLabelText('Open game menu'));
+    // Back out of the Lot room to the shell, which owns the game menu.
+    fireEvent.press(screen.getByLabelText('Back'));
+    fireEvent.press(await screen.findByLabelText('Open game menu'));
     await waitFor(() => expect(screen.getByText('Game Menu')).toBeTruthy());
     fireEvent.press(screen.getByText('Save & Main Menu'));
 
     await waitFor(() => expect(screen.getByText('DEALERSHIP')).toBeTruthy());
     fireEvent.press(screen.getByText('Continue'));
 
-    // Wait for the shell to remount after Continue, then make sure we're on
-    // Operations (the active tab persists across navigation per #226, so we may
-    // already be there; pressing it is idempotent).
+    // Wait for the shell to remount after Continue, then walk back into the Lot
+    // room (the active tab persists across navigation per #226, so pressing
+    // Operations is idempotent; the pushed room does not survive the reset).
     fireEvent.press(await screen.findByLabelText('Operations'));
+    fireEvent.press(screen.getByTestId('dept-tile-lot'));
+    await waitFor(() => expect(screen.getByTestId('lot-room')).toBeTruthy());
     expect(
       screen.getByLabelText(
         `Open pricing for ${vehicle.year} ${vehicle.make} ${vehicle.model}`,

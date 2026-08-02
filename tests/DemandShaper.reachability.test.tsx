@@ -271,10 +271,13 @@ describe('#198 / #278 demand readout — reachable through the live pipeline', (
     );
     expect(src).toMatch(/targetingLevers: buildTargetingLevers\(world\)/);
     expect(src).toMatch(/coverageGap: buildCoverageGap\(demandEntries, lotVehicles\)/);
-    expect(src).toMatch(/advertisingOptions: world\.demandControls\.advertisingOptions/);
+    // The advertising campaign is a control ON the demand console since #346 —
+    // the locked IA §4 pulled marketing/demand levers out of Operations Prep.
+    expect(src).toMatch(/options: world\.demandControls\.advertisingOptions/);
     expect(src).toMatch(
-      /onSelectAdvertisingCampaign: levers\.handleSelectAdvertisingCampaign/,
+      /selectedId: world\.demandControls\.getAdvertisingCampaignId\(\)/,
     );
+    expect(src).toMatch(/onSelect: levers\.handleSelectAdvertisingCampaign/);
     expect(src).toMatch(/demandReadout=\{demandReadout\}/);
   });
 });

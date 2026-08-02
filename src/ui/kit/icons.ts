@@ -36,6 +36,8 @@ export const ICON_MAP = {
   construct: 'build',
   /** Checkered flag — the day-action CTA's leading glyph (home-hub mockup). */
   'flag-checkered': 'sports-score',
+  /** Auctioneer's gavel — sourcing / the wholesale auction (issue 346). */
+  gavel: 'gavel',
   /** Two hands closing — the Sales department tile (issue 346). */
   handshake: 'handshake',
   home: 'home',

@@ -5,6 +5,8 @@ export {
   heatIndexFor,
 } from './DemandReadout';
 export type {
+  DemandAdvertisingControl,
+  DemandAdvertisingOption,
   DemandCoverageGap,
   DemandReadoutEntry,
   DemandReadoutModel,

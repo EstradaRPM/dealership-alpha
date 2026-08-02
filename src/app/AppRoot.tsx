@@ -318,6 +318,7 @@ export function DealershipApp({
   const handleDeptPress = (dept: DeptKey) => {
     if (dept === 'service') return nav.navigate('service');
     if (dept === 'bodyshop') return nav.navigate('bodyShop');
+    if (dept === 'lot') return nav.navigate('lot');
     nav.navigate('department', { dept });
   };
 

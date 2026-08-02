@@ -28,9 +28,9 @@ session start — open it on demand when a past slice's rationale needs recoveri
   UI-rebrand chain stopped after Home (S1–S4, S3a–S3f); no Operations/People/Finance/Growth
   slice was ever filed. #346–#351 are that filing. **Do not re-grill the IA** — where shipped
   and locked disagree, locked wins.
-- **Phase 5b is done** (#341, #342) — as is 5a. **There is no agent-side work left before the
-  playtest.** Phase 6's gate is now ruled (`/decide C1`, 2026-08-02); phase 7's is not, and
-  C1's R3 made it a prerequisite — so the next `/next` is **`/decide A2`**, not a BUILD.
+- **Phase 5b is done** (#341, #342) — as is 5a. Phase 6's gate is ruled (`/decide C1`,
+  2026-08-02); phase 7's is not, and C1's R3 made it a prerequisite — so **`/decide A2` is the
+  unit that follows phase 5c**, before any phase-6 slice.
 - **Phase 6 cannot be sliced alone.** C1's scarcity ruling points at the CSV's per-role staff
   counts, and nothing in the repo enforces them (`staffOrg.headcountCapByTier` is a flat
   `{1:4,2:8,3:16}`). Rule A2 first, then slice 6 and 7 together — building staff-teeth against a
@@ -57,7 +57,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | blocked on 5c |
-| 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance | — (locked IA already rules it) | active |
+| 5c | UI layout rebuild — ~~#346 Operations~~ (built 2026-08-02) · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance | — (locked IA already rules it) | active |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`.** Next unit: SLICE (after phase 7) | pending |
@@ -82,6 +82,45 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-02 — **BUILT #346** (Operations rebuild) — the first and largest phase-5c slice.
+  Six of the nine destinations the audit counted from Operations are gone or now open a real
+  room; the tab is one visual language top to bottom.
+  **The Lot became a room instead of a queue.** `src/ui/LotRoom/` + `LotRoomContainer`, a new
+  `lot` Navigator route the dock's Lot tile opens (`handleDeptPress`), holding the whole stock
+  pipeline the locked IA §4 gives it: the stock list with days-on-lot and carrying cost, the
+  per-unit `Tune ›` entry into the pricing screen, the inline asking-price field, the standing
+  pricing strategy, and sourcing. **The auction lives here now** — it was a button in Prep.
+  Before this, tapping Lot opened `DepartmentScreen` on `departmentQueue.getQueue('lot')`:
+  *"Nothing waiting in Lot"* while three cars sat on the lot one tab away.
+  **Prep is now what the IA says it is: two levers, one block, zero navigation.** Hours and
+  trade policy. `OwnershipLevers` went from 463 lines with its own `StyleSheet` off the raw
+  `colors` map — **the last pre-kit surface anywhere in the app** — to a kit surface reading
+  every value through `useTheme()`. Its own `"NEXT-DAY PREP"` heading is gone, which was the
+  duplicate that rendered directly under the tab's `SectionHeader "Prep"`.
+  **Where the evicted controls went, and why hiring did not wait for #347.** Stock list +
+  price rows + pricing strategy + auction → the Lot room. Advertising → the demand console's
+  "What You're Promoting" section (the readout of what that lever does), which Growth inherits
+  whole in #349. Hiring → **People**, as a roster-count + `Hire Staff` entry. #347 owns the
+  People rebuild, but the criterion "Prep contains no navigation links" makes hiring
+  unreachable the moment Prep loses it, so the entry landed with the eviction rather than one
+  slice later; #347 replaces it with the real roster + hiring pool.
+  **Reuse over reinvention.** The three chip selectors (hours, trade policy, pricing strategy,
+  advertising) all run on `DeptControls`' existing `ChipRow`, which grew one optional
+  `disabled` prop so the floor-open lock survives the migration. No fourth chip implementation.
+  **Two guards worth keeping.** The kit no-leak test now scans migrated *surfaces*, not just
+  `src/ui/kit/` — hex/rgb literals and a raw `colors` import both fail it, with comments
+  stripped first because this repo cites issues as `#346`, which is a valid 3-digit hex to that
+  pattern. And `actionFooterClearance(theme)` derives the shell's bottom inset from the CTA it
+  has to clear (label line box + padding), so a re-skin can't silently shrink the gap that
+  audit P8 was about.
+  **Driven on web at T1** (three units on the lot): dock → Lot room renders all three units
+  with carry lines and editable prices → `Go to the Auction` opens Auction Lane → back returns
+  to the Lot room; People → `Hire Staff` opens Personnel; Operations scrolled to the bottom
+  shows Prep's two cards clear of the Open Floor CTA. 201 suites / **2496** tests, typecheck
+  clean. One drive note: a click that "opened the floor" from the Lot room was a stale
+  ref→coordinate mapping, not a bug — the capture-listener readback in `.claude/skills/verify`
+  is what proved it.
+  Next: **BUILD #347** (People rebuild).
 - 2026-08-02 — **AUDITED the whole UI on the web target; filed phase 5c (#346–#351).**
   Director drove the #74 playtest request into a layout audit. Record:
   **`docs/audits/ui-layout-audit.md`** — every surface driven live at T1, every tappable target
@@ -152,39 +191,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   above. It is a ~2-line fix (`flexDirection: 'row'` + `overflow: 'hidden'` on `skillBarBg`),
   independent of everything else, and blocks nothing — a decision unit does not get to start
   building the phase it just unblocked.
-- 2026-08-01 — **BUILT #342** (seeded RNG gets its own module) — **phase 5b is done, and with
-  it every agent-side item before the #74 playtest.**
-  **The fork went to a new module, not a re-export.** `src/game/NPC/Rng.ts` → `src/game/Rng/`
-  (`Rng.ts` + a two-line barrel + `CLAUDE.md`), 34 import lines rewritten. Re-exporting from
-  NPC's barrel was the one-line option and it is the wrong one: it would make determinism part
-  of NPC's *public promise*, a claim about NPC that isn't true, and it would leave `Inventory →
-  NPC`, `Weather → NPC`, `PartsInventory → NPC` as dependencies that exist for no domain reason.
-  Sixteen modules plus `createWorld` plus the harness draw from it — that is infrastructure, in
-  the same class as `data/`. `tests/Rng.test.ts` now asserts **both** directions: the two
-  functions are on the Rng barrel, and they are still *absent* from NPC's.
-  **The move nearly broke every stream in the game, and the catch is the story.** `deriveSeed`
-  joins namespace and ctx with a **literal NUL (U+0000)** — invisible in an editor, rendered as
-  a space by the file-read path, and therefore silently retyped as a space when the file was
-  copied to its new home. Ten suites went red: `deriveSeed(12345, 'customer', {day:1,slot:0})`
-  came back `2170378250` instead of `3789376038`. Every seed in the game had moved. **The only
-  thing standing between that and a commit was the regression lock** — a single hard-coded
-  expected seed, exactly the kind of assertion that looks redundant next to the
-  same-input-same-output tests around it. It is now commented at the call site with why the
-  byte is load-bearing (collision-proofing *and* fixture compatibility) and how to re-verify.
-  Two-sided proof that determinism survived: the code in `Rng.ts` is **byte-identical to the
-  pre-move original** apart from that comment, and a 5-seed × 150-day competent pacing run
-  captured **before** the move is `cmp`-identical to the same run after. `data/**` untouched,
-  so the committed tier fixtures are the same bytes and `tests/tierFixtures.test.ts` is green.
-  199 suites / **2469** tests (2467 + the two new barrel assertions), typecheck clean.
-  **The allow-list is 81/71 → 22 reach-ins / 13 files**, and both bulk classes are gone (#341
-  cleared `parseData`, this cleared `NPC/Rng`). It does **not** become empty, as #342's fourth
-  criterion assumed — the residue is 22 individually-argued one-offs, mostly tests asserting
-  against a module's internal Zod schemas. So the file survives as a short list of decisions
-  rather than a backlog; `.claude/hooks/README.md` now says that.
-  One trap found while cleaning up: `hooks:test`'s "grandfathered reach-in is not blocked" case
-  named `createWorld → NPC/Rng`, which this change turned from grandfathered into blocked — the
-  selftest would have gone red on a correct repo. It now names a pair that is genuinely in the
-  allow-list, with a comment saying the case must be re-pointed whenever a class is cleared.
-  `.claude/hooks/selftest.mjs`'s other Rng probes pointed at a path that no longer exists;
-  repointed at `NPC/schemas/staff`. ADR-0001 carries an amendment note rather than a rewrite.
-  Next /next is **`/decide C1`** (staff-teeth grill) — phase 6. Not a BUILD.

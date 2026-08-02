@@ -103,6 +103,21 @@ export interface AppShellProps {
   banner?: React.ReactNode;
 }
 
+/**
+ * Vertical room the pinned day-action footer occupies: the hero CTA's own body
+ * (its label line box plus `lg` padding above and below) plus the footer's `md`
+ * padding on each side. Tab content carries at least this much bottom inset, so
+ * the last interactive control in a tab can never end up beneath the Open Floor
+ * CTA or the floating chips that hover just above it (#346, audit P8). Derived
+ * from theme tokens rather than a literal so a re-skin can't silently
+ * invalidate the clearance.
+ */
+export function actionFooterClearance(t: ReturnType<typeof useTheme>): number {
+  const labelSize = t.typography.buttonHero.fontSize ?? 17;
+  const ctaBody = labelSize * 1.4 + t.spacing.lg * 2;
+  return Math.round(ctaBody + t.spacing.md * 2);
+}
+
 /** Collapsed identity-bar body height, below the status-bar inset. */
 const BAR_BODY = 52;
 /** Side of the circular game-menu button in the identity bar. */
@@ -430,8 +445,11 @@ export function AppShell({
             flexGrow: 1,
             backgroundColor: t.colors.base,
             paddingHorizontal: t.spacing.lg,
-            paddingBottom: t.spacing.xl,
+            // Clear the pinned CTA footer (and the chips floating above it) —
+            // scrolled to the bottom, the last card must still be tappable.
+            paddingBottom: actionFooterClearance(t),
           }}
+          testID="app-shell-sheet"
         >
           <Animated.View style={{ opacity: contentFade }}>
             {active?.content}

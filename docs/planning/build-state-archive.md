@@ -6,6 +6,42 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-01 — **BUILT #342** (seeded RNG gets its own module) — **phase 5b is done, and with
+  it every agent-side item before the #74 playtest.**
+  **The fork went to a new module, not a re-export.** `src/game/NPC/Rng.ts` → `src/game/Rng/`
+  (`Rng.ts` + a two-line barrel + `CLAUDE.md`), 34 import lines rewritten. Re-exporting from
+  NPC's barrel was the one-line option and it is the wrong one: it would make determinism part
+  of NPC's *public promise*, a claim about NPC that isn't true, and it would leave `Inventory →
+  NPC`, `Weather → NPC`, `PartsInventory → NPC` as dependencies that exist for no domain reason.
+  Sixteen modules plus `createWorld` plus the harness draw from it — that is infrastructure, in
+  the same class as `data/`. `tests/Rng.test.ts` now asserts **both** directions: the two
+  functions are on the Rng barrel, and they are still *absent* from NPC's.
+  **The move nearly broke every stream in the game, and the catch is the story.** `deriveSeed`
+  joins namespace and ctx with a **literal NUL (U+0000)** — invisible in an editor, rendered as
+  a space by the file-read path, and therefore silently retyped as a space when the file was
+  copied to its new home. Ten suites went red: `deriveSeed(12345, 'customer', {day:1,slot:0})`
+  came back `2170378250` instead of `3789376038`. Every seed in the game had moved. **The only
+  thing standing between that and a commit was the regression lock** — a single hard-coded
+  expected seed, exactly the kind of assertion that looks redundant next to the
+  same-input-same-output tests around it. It is now commented at the call site with why the
+  byte is load-bearing (collision-proofing *and* fixture compatibility) and how to re-verify.
+  Two-sided proof that determinism survived: the code in `Rng.ts` is **byte-identical to the
+  pre-move original** apart from that comment, and a 5-seed × 150-day competent pacing run
+  captured **before** the move is `cmp`-identical to the same run after. `data/**` untouched,
+  so the committed tier fixtures are the same bytes and `tests/tierFixtures.test.ts` is green.
+  199 suites / **2469** tests (2467 + the two new barrel assertions), typecheck clean.
+  **The allow-list is 81/71 → 22 reach-ins / 13 files**, and both bulk classes are gone (#341
+  cleared `parseData`, this cleared `NPC/Rng`). It does **not** become empty, as #342's fourth
+  criterion assumed — the residue is 22 individually-argued one-offs, mostly tests asserting
+  against a module's internal Zod schemas. So the file survives as a short list of decisions
+  rather than a backlog; `.claude/hooks/README.md` now says that.
+  One trap found while cleaning up: `hooks:test`'s "grandfathered reach-in is not blocked" case
+  named `createWorld → NPC/Rng`, which this change turned from grandfathered into blocked — the
+  selftest would have gone red on a correct repo. It now names a pair that is genuinely in the
+  allow-list, with a comment saying the case must be re-pointed whenever a class is cleared.
+  `.claude/hooks/selftest.mjs`'s other Rng probes pointed at a path that no longer exists;
+  repointed at `NPC/schemas/staff`. ADR-0001 carries an amendment note rather than a rewrite.
+  Next /next is **`/decide C1`** (staff-teeth grill) — phase 6. Not a BUILD.
 - 2026-08-01 — **BUILT #341** (route the `data/loadJson` reach-ins through the data barrel),
   first of phase 5b. 25 files, one import line each: `../data/loadJson` → `../data`,
   `./game/data/loadJson` → `./game/data`. Allow-list regenerated. 199 suites / 2467 tests green,

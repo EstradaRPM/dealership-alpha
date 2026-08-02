@@ -96,24 +96,31 @@ export function ChipRow({
   options,
   selectedId,
   onSelect,
+  disabled = false,
+  testID,
 }: {
   options: readonly DeptChipOption[] | readonly DeptTierOption[];
   selectedId: string;
   onSelect: (id: string) => void;
+  /** Inert + dimmed — the pre-open levers are locked while the floor is live
+   *  (#107 d11, #346). Default `false`: department policy chips are always live. */
+  disabled?: boolean;
+  testID?: string;
 }) {
   const t = useTheme();
   const s = makeControlStyles(t);
   return (
-    <View style={s.chipRow}>
+    <View style={s.chipRow} testID={testID}>
       {options.map((o) => {
         const sel = o.id === selectedId;
         return (
           <TouchableOpacity
             key={o.id}
-            style={[s.chip, sel && s.chipSel]}
+            style={[s.chip, sel && s.chipSel, disabled && s.chipDisabled]}
+            disabled={disabled}
             onPress={() => onSelect(o.id)}
             accessibilityRole="button"
-            accessibilityState={{ selected: sel }}
+            accessibilityState={{ selected: sel, disabled }}
             accessibilityLabel={o.label}
           >
             <Text style={[s.chipText, sel && s.chipTextSel]}>{o.label}</Text>
@@ -283,6 +290,7 @@ export function makeControlStyles(t: ReturnType<typeof useTheme>) {
       backgroundColor: t.colors.base,
     },
     chipSel: { borderColor: t.colors.accent, backgroundColor: t.colors.primaryDim },
+    chipDisabled: { opacity: 0.45 },
     chipText: { ...t.typography.caption, color: t.colors.textSecondary },
     chipTextSel: { color: t.colors.accent },
     postureRow: {

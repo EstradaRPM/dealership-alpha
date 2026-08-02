@@ -1,30 +1,8 @@
-import React, { useState } from 'react';
-import { colors } from '../theme';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
-
-export interface LeverVehicle {
-  readonly id: string;
-  readonly year: number;
-  readonly make: string;
-  readonly model: string;
-  readonly trim: string;
-  readonly suggestedRetail: number;
-  readonly askingPrice: number;
-  /** Days the unit has sat on the lot (#173). */
-  readonly daysInInventory: number;
-  /** Floorplan + carrying cost burned against the unit so far (#173). */
-  readonly carryingCostToDate: number;
-  /** The unit's current daily burn rate (#173). */
-  readonly dailyCarryingCost: number;
-  /** `true` once days-on-lot crosses the aged threshold (#173). */
-  readonly aged: boolean;
-}
+import React from 'react';
+import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
+import { useTheme } from '../theme';
+import { Surface, SectionHeader } from '../kit';
+import { ChipRow } from '../DeptControls';
 
 export interface HoursOption {
   readonly id: string;
@@ -40,42 +18,10 @@ export interface TradePolicyLeverOption {
   readonly blurb: string;
 }
 
-/** One selectable list-price strategy (#154). Same shape as trade policy. */
-export interface PricingStrategyLeverOption {
-  readonly id: string;
-  readonly label: string;
-  readonly blurb: string;
-}
-
-/** Reserved advertising campaign lever (#212). */
-export interface AdvertisingLeverOption {
-  readonly id: string;
-  readonly label: string;
-  readonly blurb: string;
-}
-
 export interface OwnershipLeversProps {
   /** ⇔ DayLoopState.ownershipUnlocked. All levers greyed + inert when false
    *  (#107 d11: levers greyed while the floor is live). */
   enabled: boolean;
-  vehicles: readonly LeverVehicle[];
-  onSetAskingPrice: (vehicleId: string, price: number) => void;
-  /** Open the per-vehicle real-time pricing screen (#175). */
-  onOpenPricing: (vehicleId: string) => void;
-  /** Pricing-strategy lever (#154): options + current selection + setter. */
-  pricingStrategyOptions: readonly PricingStrategyLeverOption[];
-  pricingStrategyId: string;
-  onSelectPricingStrategy: (id: string) => void;
-  /**
-   * Standing auto-pricing policy active (#285, spine S13). True once a UCM is
-   * on staff — the strategy then auto-prices incoming inventory to its
-   * book↔market target. False ⇒ suggestion-only (the toggle only drives the
-   * per-vehicle pricing screen; the player prices by hand).
-   */
-  autoPricingActive: boolean;
-  onOpenAuction: () => void;
-  onOpenHiring: () => void;
-  rosterCount: number;
   hoursOptions: readonly HoursOption[];
   hoursOfOpId: string;
   onSelectHours: (id: string) => void;
@@ -83,381 +29,92 @@ export interface OwnershipLeversProps {
   tradePolicyOptions: readonly TradePolicyLeverOption[];
   tradePolicyId: string;
   onSelectTradePolicy: (id: string) => void;
-  /** Advertising lever (#212): reserved campaign seam + setter. */
-  advertisingOptions: readonly AdvertisingLeverOption[];
-  advertisingCampaignId: string;
-  onSelectAdvertisingCampaign: (id: string) => void;
-}
-
-const ACCENT = colors.primary;
-
-function PriceRow({
-  vehicle,
-  enabled,
-  onCommit,
-  onOpen,
-}: {
-  vehicle: LeverVehicle;
-  enabled: boolean;
-  onCommit: (price: number) => void;
-  onOpen: () => void;
-}) {
-  const [text, setText] = useState(String(vehicle.askingPrice));
-  const commit = () => {
-    const n = Number(text.replace(/[^0-9.]/g, ''));
-    if (Number.isFinite(n)) onCommit(n);
-    else setText(String(vehicle.askingPrice));
-  };
-  return (
-    <View style={styles.priceRow}>
-      <TouchableOpacity
-        style={styles.priceInfo}
-        onPress={onOpen}
-        disabled={!enabled}
-        accessibilityRole="button"
-        accessibilityLabel={`Open pricing for ${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-      >
-        <Text style={styles.vehName} numberOfLines={1}>
-          {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.trim}
-          {vehicle.aged ? <Text style={styles.agedFlag}>  AGED</Text> : null}
-        </Text>
-        <Text style={styles.vehSuggested}>
-          Suggested ${vehicle.suggestedRetail.toLocaleString()}  ·  Tune ›
-        </Text>
-        <Text style={[styles.vehCarry, vehicle.aged && styles.vehCarryAged]}>
-          {vehicle.daysInInventory}d on lot · carry $
-          {vehicle.carryingCostToDate.toLocaleString()} · $
-          {vehicle.dailyCarryingCost.toLocaleString()}/day
-        </Text>
-      </TouchableOpacity>
-      <TextInput
-        style={[styles.priceInput, !enabled && styles.inputDisabled]}
-        value={text}
-        editable={enabled}
-        keyboardType="number-pad"
-        onChangeText={setText}
-        onEndEditing={commit}
-        onBlur={commit}
-        accessibilityLabel={`Asking price for ${vehicle.id}`}
-      />
-    </View>
-  );
 }
 
 /**
- * MANAGERIAL pre-open ownership levers (#120, design #107 d11). Thin input
- * forms only — Pricing → Inventory, Stock/Auction → existing AuctionMenu,
- * Hiring → StaffOrg via PersonnelScreen, Hours-of-op → scaled ticksPerDay
- * (stored by the composition root; FloorSim feed is downstream), Advertising
- * → reserved DemandShaper influence seam (#212).
+ * The pre-open Prep levers (#120, design #107 d11), reduced in #346 to what the
+ * locked IA §4 says Prep is: **pure pre-open policy — hours of operation and
+ * trade policy.** Two levers, one block, no navigation links parked here.
+ *
+ * What used to live here and where it went: the stock list, per-unit price rows
+ * and pricing strategy → the Lot room (the Lot owns the stock pipeline); the
+ * auction → the Lot room's sourcing section; hiring → the People tab; the
+ * advertising campaign → the demand console, which Growth inherits.
+ *
+ * The block paints no heading of its own — the Operations tab's "Prep"
+ * `SectionHeader` is the only one (it used to draw a second "NEXT-DAY PREP"
+ * line directly beneath it).
  */
 export function OwnershipLevers({
   enabled,
-  vehicles,
-  onSetAskingPrice,
-  onOpenPricing,
-  pricingStrategyOptions,
-  pricingStrategyId,
-  onSelectPricingStrategy,
-  autoPricingActive,
-  onOpenAuction,
-  onOpenHiring,
-  rosterCount,
   hoursOptions,
   hoursOfOpId,
   onSelectHours,
   tradePolicyOptions,
   tradePolicyId,
   onSelectTradePolicy,
-  advertisingOptions,
-  advertisingCampaignId,
-  onSelectAdvertisingCampaign,
 }: OwnershipLeversProps) {
+  const t = useTheme();
   const selectedPolicy =
     tradePolicyOptions.find((p) => p.id === tradePolicyId) ??
     tradePolicyOptions[0];
-  const selectedStrategy =
-    pricingStrategyOptions.find((p) => p.id === pricingStrategyId) ??
-    pricingStrategyOptions[0];
-  const selectedAdvertising =
-    advertisingOptions.find((p) => p.id === advertisingCampaignId) ??
-    advertisingOptions[0];
+  const root: ViewStyle = { alignSelf: 'stretch' };
+  const locked: TextStyle = {
+    ...t.typography.caption,
+    color: t.colors.textMuted,
+    marginBottom: t.spacing.sm,
+  };
+  const hint: TextStyle = {
+    ...t.typography.caption,
+    color: t.colors.textMuted,
+    marginTop: t.spacing.xxs,
+    marginBottom: t.spacing.xs,
+  };
+  const blurb: TextStyle = {
+    ...t.typography.caption,
+    color: t.colors.textMuted,
+    marginTop: t.spacing.sm,
+  };
+  const region: ViewStyle = { marginTop: t.spacing.md };
+  const dim: ViewStyle = enabled ? {} : { opacity: 0.45 };
+
   return (
-    <View
-      style={styles.root}
-      testID="ownership-levers"
-    >
-      <Text style={styles.heading}>Next-Day Prep</Text>
-      {!enabled && (
-        <Text style={styles.lockedNote}>Floor open — levers locked.</Text>
-      )}
+    <View style={root} testID="ownership-levers">
+      {!enabled && <Text style={locked}>Floor open — levers locked.</Text>}
 
-      <View style={[styles.card, !enabled && styles.cardDisabled]}>
-        <Text style={styles.cardTitle}>Pricing</Text>
-        <View style={styles.hoursRow}>
-          {pricingStrategyOptions.map((o) => {
-            const sel = o.id === pricingStrategyId;
-            return (
-              <TouchableOpacity
-                key={o.id}
-                style={[
-                  styles.hoursOpt,
-                  sel && styles.hoursOptSel,
-                  !enabled && styles.btnDisabled,
-                ]}
-                disabled={!enabled}
-                onPress={() => onSelectPricingStrategy(o.id)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: sel }}
-              >
-                <Text style={[styles.hoursOptText, sel && styles.hoursOptTextSel]}>
-                  {o.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {selectedStrategy && (
-          <Text style={styles.policyBlurb}>{selectedStrategy.blurb}</Text>
-        )}
-        {/* #285 (spine S13): the toggle is a standing auto-pricing policy once a
-            UCM is on staff; below that it's suggestion-only. State the mode so
-            the player knows whether incoming inventory is auto-priced. */}
-        <Text
-          style={[
-            styles.policyStatus,
-            autoPricingActive
-              ? styles.policyStatusOn
-              : styles.policyStatusOff,
-          ]}
-          testID="auto-pricing-status"
-        >
-          {autoPricingActive
-            ? `Auto-pricing on — incoming inventory lists at your ${selectedStrategy?.label ?? 'chosen'} target. Override any unit below.`
-            : 'Suggestion only — hire a Used-Car Manager to auto-price incoming inventory.'}
-        </Text>
-        {vehicles.length === 0 ? (
-          <Text style={styles.empty}>No vehicles on the lot.</Text>
-        ) : (
-          vehicles.map((v) => (
-            <PriceRow
-              key={v.id}
-              vehicle={v}
-              enabled={enabled}
-              onCommit={(p) => onSetAskingPrice(v.id, p)}
-              onOpen={() => onOpenPricing(v.id)}
+      <View style={dim}>
+        <Surface testID="prep-hours">
+          <SectionHeader title="Hours of Operation" />
+          <Text style={hint}>How long you keep the lot open tomorrow.</Text>
+          <ChipRow
+            options={hoursOptions.map((o) => ({ id: o.id, label: o.label }))}
+            selectedId={hoursOfOpId}
+            onSelect={onSelectHours}
+            disabled={!enabled}
+          />
+        </Surface>
+
+        <View style={region}>
+          <Surface testID="prep-trade-policy">
+            <SectionHeader title="Trade Policy" />
+            <Text style={hint}>
+              How aggressively you take trade-ins against the customer&apos;s car.
+            </Text>
+            <ChipRow
+              options={tradePolicyOptions.map((o) => ({
+                id: o.id,
+                label: o.label,
+              }))}
+              selectedId={tradePolicyId}
+              onSelect={onSelectTradePolicy}
+              disabled={!enabled}
             />
-          ))
-        )}
-      </View>
-
-      <View style={[styles.card, !enabled && styles.cardDisabled]}>
-        <Text style={styles.cardTitle}>Stock / Auction</Text>
-        <TouchableOpacity
-          style={[styles.actionBtn, !enabled && styles.btnDisabled]}
-          disabled={!enabled}
-          onPress={onOpenAuction}
-          accessibilityRole="button"
-        >
-          <Text style={styles.actionBtnText}>Visit Auction →</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={[styles.card, !enabled && styles.cardDisabled]}>
-        <Text style={styles.cardTitle}>Hiring & Staff</Text>
-        <Text style={styles.subtle}>{rosterCount} on payroll</Text>
-        <TouchableOpacity
-          style={[styles.actionBtn, !enabled && styles.btnDisabled]}
-          disabled={!enabled}
-          onPress={onOpenHiring}
-          accessibilityRole="button"
-        >
-          <Text style={styles.actionBtnText}>Hire Staff →</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={[styles.card, !enabled && styles.cardDisabled]}>
-        <Text style={styles.cardTitle}>Hours of Operation</Text>
-        <View style={styles.hoursRow}>
-          {hoursOptions.map((o) => {
-            const sel = o.id === hoursOfOpId;
-            return (
-              <TouchableOpacity
-                key={o.id}
-                style={[
-                  styles.hoursOpt,
-                  sel && styles.hoursOptSel,
-                  !enabled && styles.btnDisabled,
-                ]}
-                disabled={!enabled}
-                onPress={() => onSelectHours(o.id)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: sel }}
-              >
-                <Text style={[styles.hoursOptText, sel && styles.hoursOptTextSel]}>
-                  {o.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+            {selectedPolicy && (
+              <Text style={blurb}>{selectedPolicy.blurb}</Text>
+            )}
+          </Surface>
         </View>
-      </View>
-
-      <View style={[styles.card, !enabled && styles.cardDisabled]}>
-        <Text style={styles.cardTitle}>Advertising</Text>
-        <View style={styles.hoursRow}>
-          {advertisingOptions.map((o) => {
-            const sel = o.id === advertisingCampaignId;
-            return (
-              <TouchableOpacity
-                key={o.id}
-                style={[
-                  styles.hoursOpt,
-                  sel && styles.hoursOptSel,
-                  !enabled && styles.btnDisabled,
-                ]}
-                disabled={!enabled}
-                onPress={() => onSelectAdvertisingCampaign(o.id)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: sel }}
-              >
-                <Text style={[styles.hoursOptText, sel && styles.hoursOptTextSel]}>
-                  {o.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {selectedAdvertising && (
-          <Text style={styles.policyBlurb}>{selectedAdvertising.blurb}</Text>
-        )}
-      </View>
-
-      <View style={[styles.card, !enabled && styles.cardDisabled]}>
-        <Text style={styles.cardTitle}>Trade Policy</Text>
-        <View style={styles.hoursRow}>
-          {tradePolicyOptions.map((o) => {
-            const sel = o.id === tradePolicyId;
-            return (
-              <TouchableOpacity
-                key={o.id}
-                style={[
-                  styles.hoursOpt,
-                  sel && styles.hoursOptSel,
-                  !enabled && styles.btnDisabled,
-                ]}
-                disabled={!enabled}
-                onPress={() => onSelectTradePolicy(o.id)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: sel }}
-              >
-                <Text style={[styles.hoursOptText, sel && styles.hoursOptTextSel]}>
-                  {o.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        {selectedPolicy && (
-          <Text style={styles.policyBlurb}>{selectedPolicy.blurb}</Text>
-        )}
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { alignSelf: 'stretch' },
-  heading: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
-  lockedNote: {
-    fontSize: 12,
-    color: colors.textMuted,
-    fontStyle: 'italic',
-    marginBottom: 8,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: 14,
-    marginTop: 12,
-  },
-  cardDisabled: { opacity: 0.45 },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: ACCENT,
-    marginBottom: 8,
-  },
-  empty: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
-  subtle: { fontSize: 13, color: colors.textMuted, marginBottom: 8 },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-  },
-  priceInfo: { flex: 1, paddingRight: 12 },
-  vehName: { fontSize: 14, color: colors.textPrimary },
-  vehSuggested: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
-  vehCarry: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
-  vehCarryAged: { color: colors.danger },
-  agedFlag: { fontSize: 11, fontWeight: '700', color: colors.danger },
-  priceInput: {
-    width: 96,
-    backgroundColor: colors.base,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    color: colors.textPrimary,
-    fontSize: 14,
-    textAlign: 'right',
-  },
-  inputDisabled: { color: colors.textMuted },
-  actionBtn: {
-    backgroundColor: colors.primaryDim,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  actionBtnText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
-  btnDisabled: { opacity: 0.6 },
-  hoursRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  hoursOpt: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.base,
-  },
-  hoursOptSel: { borderColor: ACCENT, backgroundColor: colors.primaryDim },
-  hoursOptText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
-  hoursOptTextSel: { color: ACCENT },
-  policyBlurb: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 10,
-    lineHeight: 17,
-  },
-  policyStatus: {
-    fontSize: 11,
-    marginTop: 6,
-    lineHeight: 15,
-    fontWeight: '600',
-  },
-  policyStatusOn: {
-    color: colors.positive,
-  },
-  policyStatusOff: {
-    color: colors.textMuted,
-  },
-});

@@ -4,37 +4,10 @@ import {
   OwnershipLevers,
   type OwnershipLeversProps,
 } from '../src/ui/OwnershipLevers';
+import { OperationsTab } from '../src/ui/OperationsTab';
 
 const BASE: OwnershipLeversProps = {
   enabled: true,
-  vehicles: [
-    {
-      id: 'v1',
-      year: 2019,
-      make: 'Toyota',
-      model: 'Camry',
-      trim: 'LE',
-      suggestedRetail: 15000,
-      askingPrice: 15000,
-      daysInInventory: 12,
-      carryingCostToDate: 240,
-      dailyCarryingCost: 20,
-      aged: false,
-    },
-  ],
-  onSetAskingPrice: jest.fn(),
-  onOpenPricing: jest.fn(),
-  pricingStrategyOptions: [
-    { id: 'aggressive', label: 'Aggressive', blurb: 'List above market.' },
-    { id: 'market', label: 'Market', blurb: 'List at market.' },
-    { id: 'value', label: 'Value', blurb: 'List below market.' },
-  ],
-  pricingStrategyId: 'market',
-  onSelectPricingStrategy: jest.fn(),
-  autoPricingActive: false,
-  onOpenAuction: jest.fn(),
-  onOpenHiring: jest.fn(),
-  rosterCount: 2,
   hoursOptions: [
     { id: 'short', label: '8 hrs', ticksPerDay: 120 },
     { id: 'standard', label: '10 hrs', ticksPerDay: 180 },
@@ -48,12 +21,6 @@ const BASE: OwnershipLeversProps = {
   ],
   tradePolicyId: 'market',
   onSelectTradePolicy: jest.fn(),
-  advertisingOptions: [
-    { id: 'none', label: 'No campaign', blurb: 'No paid advertising push.' },
-    { id: 'local-radio', label: 'Local radio', blurb: 'Aim at practical shoppers.' },
-  ],
-  advertisingCampaignId: 'none',
-  onSelectAdvertisingCampaign: jest.fn(),
 };
 
 describe('OwnershipLevers smoke tests', () => {
@@ -63,80 +30,12 @@ describe('OwnershipLevers smoke tests', () => {
 
   it('shows the selected trade policy blurb and dispatches a policy change', () => {
     const onSelectTradePolicy = jest.fn();
-    const { getByText, getAllByText } = render(
+    const { getByText } = render(
       <OwnershipLevers {...BASE} onSelectTradePolicy={onSelectTradePolicy} />,
     );
-    // The market blurb is visible for the current selection.
     expect(getByText('Appraise at honest book.')).toBeTruthy();
-    // Both the Pricing and Trade-Policy cards have an "Aggressive" chip; the
-    // Trade-Policy card renders last, so it is the second match.
-    fireEvent.press(getAllByText('Aggressive')[1]);
+    fireEvent.press(getByText('Aggressive'));
     expect(onSelectTradePolicy).toHaveBeenCalledWith('aggressive');
-  });
-
-  it('shows the pricing strategy blurb and dispatches a strategy change', () => {
-    const onSelectPricingStrategy = jest.fn();
-    const { getByText, getAllByText } = render(
-      <OwnershipLevers
-        {...BASE}
-        onSelectPricingStrategy={onSelectPricingStrategy}
-      />,
-    );
-    expect(getByText('List at market.')).toBeTruthy();
-    // Pricing card renders first → its "Aggressive" chip is the first match.
-    fireEvent.press(getAllByText('Aggressive')[0]);
-    expect(onSelectPricingStrategy).toHaveBeenCalledWith('aggressive');
-  });
-
-  it('states suggestion-only when no UCM is on staff (#285)', () => {
-    const { getByTestId } = render(
-      <OwnershipLevers {...BASE} autoPricingActive={false} />,
-    );
-    expect(getByTestId('auto-pricing-status').props.children).toMatch(
-      /Suggestion only/,
-    );
-  });
-
-  it('states the standing policy is active once auto-pricing unlocks (#285)', () => {
-    const { getByTestId } = render(
-      <OwnershipLevers {...BASE} autoPricingActive pricingStrategyId="aggressive" />,
-    );
-    expect(getByTestId('auto-pricing-status').props.children).toMatch(
-      /Auto-pricing on/,
-    );
-  });
-
-  it('tapping a vehicle row opens the pricing screen', () => {
-    const onOpenPricing = jest.fn();
-    const { getByLabelText } = render(
-      <OwnershipLevers {...BASE} onOpenPricing={onOpenPricing} />,
-    );
-    fireEvent.press(getByLabelText('Open pricing for 2019 Toyota Camry'));
-    expect(onOpenPricing).toHaveBeenCalledWith('v1');
-  });
-
-  it('renders greyed (no vehicles) when disabled', () => {
-    expect(() =>
-      render(
-        <OwnershipLevers {...BASE} enabled={false} vehicles={[]} />,
-      ),
-    ).not.toThrow();
-  });
-
-  it('Stock/Auction + Hiring buttons dispatch when enabled', () => {
-    const onOpenAuction = jest.fn();
-    const onOpenHiring = jest.fn();
-    const { getByText } = render(
-      <OwnershipLevers
-        {...BASE}
-        onOpenAuction={onOpenAuction}
-        onOpenHiring={onOpenHiring}
-      />,
-    );
-    fireEvent.press(getByText('Visit Auction →'));
-    fireEvent.press(getByText('Hire Staff →'));
-    expect(onOpenAuction).toHaveBeenCalledTimes(1);
-    expect(onOpenHiring).toHaveBeenCalledTimes(1);
   });
 
   it('selecting an hours option dispatches its id', () => {
@@ -148,16 +47,56 @@ describe('OwnershipLevers smoke tests', () => {
     expect(onSelectHours).toHaveBeenCalledWith('short');
   });
 
-  it('selecting an advertising campaign dispatches its id', () => {
-    const onSelectAdvertisingCampaign = jest.fn();
+  it('renders greyed and inert while the floor is live', () => {
+    const onSelectHours = jest.fn();
     const { getByText } = render(
-      <OwnershipLevers
-        {...BASE}
-        onSelectAdvertisingCampaign={onSelectAdvertisingCampaign}
-      />,
+      <OwnershipLevers {...BASE} enabled={false} onSelectHours={onSelectHours} />,
     );
-    expect(getByText('No paid advertising push.')).toBeTruthy();
-    fireEvent.press(getByText('Local radio'));
-    expect(onSelectAdvertisingCampaign).toHaveBeenCalledWith('local-radio');
+    expect(getByText('Floor open — levers locked.')).toBeTruthy();
+    fireEvent.press(getByText('8 hrs'));
+    expect(onSelectHours).not.toHaveBeenCalled();
+  });
+});
+
+// #346 — the locked IA §4 says Prep is "pure pre-open policy levers (hours,
+// trade policy). No navigation links parked here." These assert the reduction
+// itself, so a lever or a link creeping back into Prep fails the build.
+describe('#346 Prep holds exactly two levers and no navigation', () => {
+  it('renders the hours and trade-policy levers and nothing else', () => {
+    const { queryByTestId } = render(<OwnershipLevers {...BASE} />);
+
+    expect(queryByTestId('prep-hours')).not.toBeNull();
+    expect(queryByTestId('prep-trade-policy')).not.toBeNull();
+    // The stock list, per-unit price rows, pricing strategy and its auto-pricing
+    // status all moved to the Lot room.
+    expect(queryByTestId('auto-pricing-status')).toBeNull();
+    expect(queryByTestId('lot-stock-list')).toBeNull();
+  });
+
+  it('parks no navigation link in Prep — every control is a policy chip', () => {
+    const { getAllByRole } = render(<OwnershipLevers {...BASE} />);
+
+    // The auction and hiring buttons were the two nav links here; both are gone,
+    // and the only remaining pressables are the policy chips (5 = 2 hours + 3
+    // trade policies), each of which dispatches a setter, never a route — a
+    // selection chip always reports `accessibilityState.selected`, a nav link
+    // never does.
+    const buttons = getAllByRole('button');
+    expect(buttons).toHaveLength(
+      BASE.hoursOptions.length + BASE.tradePolicyOptions.length,
+    );
+    for (const b of buttons) {
+      expect(b.props.accessibilityState?.selected).toBeDefined();
+    }
+  });
+
+  it('renders the "Prep" heading exactly once on the Operations tab', () => {
+    // The block used to paint its own "Next-Day Prep" line directly beneath the
+    // tab's "Prep" SectionHeader.
+    const { queryAllByText } = render(
+      <OperationsTab dock={[]} onDeptPress={() => {}} leverProps={BASE} />,
+    );
+
+    expect(queryAllByText(/prep/i)).toHaveLength(1);
   });
 });

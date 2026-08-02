@@ -12,6 +12,7 @@ import {
   type IconName,
   type IconProps,
 } from '../kit';
+import { ChipRow } from '../DeptControls';
 
 /**
  * Pure read-model for the MANAGERIAL "what's hot on the lot" segment-heat
@@ -107,6 +108,26 @@ export interface DemandTargetingLever {
   lean: readonly DemandTargetingLean[];
 }
 
+/** One selectable advertising campaign (#212). */
+export interface DemandAdvertisingOption {
+  id: string;
+  label: string;
+  blurb: string;
+}
+
+/**
+ * The advertising campaign control (#212), moved onto the demand console in
+ * #346 — the locked IA §4 takes marketing/demand levers out of Operations Prep
+ * and gives them to the console, which Growth inherits with the whole stack.
+ * It sits with "What You're Promoting" because that is the readout of what this
+ * lever does.
+ */
+export interface DemandAdvertisingControl {
+  options: readonly DemandAdvertisingOption[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}
+
 export interface DemandCoverageGap {
   category: string;
   label: string;
@@ -124,6 +145,8 @@ export interface DemandReadoutModel {
   /** Total arrivals in the trailing window (0 ⇒ "no data yet"). */
   totalObserved: number;
   targetingLevers?: readonly DemandTargetingLever[];
+  /** The advertising campaign the player is running (#212 / #346). */
+  advertising?: DemandAdvertisingControl;
   coverageGap?: DemandCoverageGap | null;
 }
 
@@ -301,6 +324,23 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
 
       <View style={dividedSection}>
         <SectionHeader title="What You're Promoting" />
+        {model.advertising && (
+          <View style={{ marginTop: t.spacing.sm }} testID="demand-advertising">
+            <ChipRow
+              options={model.advertising.options.map((o) => ({
+                id: o.id,
+                label: o.label,
+              }))}
+              selectedId={model.advertising.selectedId}
+              onSelect={model.advertising.onSelect}
+            />
+            <Text style={{ ...empty, marginTop: t.spacing.sm }}>
+              {model.advertising.options.find(
+                (o) => o.id === model.advertising!.selectedId,
+              )?.blurb ?? ''}
+            </Text>
+          </View>
+        )}
         <View style={{ marginTop: t.spacing.sm }}>
           {model.targetingLevers && model.targetingLevers.length > 0 ? (
             model.targetingLevers.map((lever) => (

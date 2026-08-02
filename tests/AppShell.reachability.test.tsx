@@ -1,9 +1,14 @@
 import React from 'react';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Text } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
-import { AppShell, type ShellTab } from '../src/ui/AppShell';
+import {
+  AppShell,
+  actionFooterClearance,
+  type ShellTab,
+} from '../src/ui/AppShell';
+import { defaultTheme } from '../src/ui/theme';
 
 // Anti-orphan (#215): the 5-tab shell must mount the available tabs, keep each
 // reachable, and keep the day-close primary action reachable above the nav.
@@ -85,5 +90,35 @@ describe('#215 AppShell — 5-tab IA reachability', () => {
     expect(src).toMatch(/primaryAction=\{\{/);
     // The floor is a MODE, not a tab.
     expect(src).toMatch(/loopState\.phase === 'FLOOR_OPEN' && floorModel/);
+  });
+});
+
+// #346 (audit P8): the pinned Open Floor CTA — and the chips floating just above
+// it — used to land on top of the last interactive control in a tab. Tab content
+// now carries at least the CTA's own height as bottom inset.
+describe('#346 the day-action CTA never occludes tab content', () => {
+  it('insets the scrolling content sheet by at least the CTA footer height', () => {
+    const { getByTestId } = render(
+      <AppShell
+        businessName="Ray's Lot"
+        tierLabel="Tier 1"
+        tabs={TABS}
+        primaryAction={{ label: 'Open Floor', onPress: () => {} }}
+      />,
+    );
+
+    const sheet = getByTestId('app-shell-sheet');
+    const style = StyleSheet.flatten(sheet.props.style) as { paddingBottom?: number };
+    expect(style.paddingBottom).toBe(actionFooterClearance(defaultTheme));
+  });
+
+  it('derives the clearance from the CTA it has to clear, not a literal', () => {
+    // The hero CTA's own body: its label line box plus `lg` padding above and
+    // below. The clearance must cover that with the footer's padding on top,
+    // so a theme change can never shrink the gap below the button.
+    const labelSize = defaultTheme.typography.buttonHero.fontSize ?? 17;
+    const ctaBody = labelSize * 1.4 + defaultTheme.spacing.lg * 2;
+
+    expect(actionFooterClearance(defaultTheme)).toBeGreaterThanOrEqual(ctaBody);
   });
 });

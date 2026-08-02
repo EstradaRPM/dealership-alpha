@@ -27,6 +27,7 @@ import { BodyShopPage } from '../../ui/BodyShopPage';
 import { GameScreen } from './GameScreen';
 import { AuctionScreen } from './AuctionScreen';
 import { PricingScreenContainer } from './PricingScreenContainer';
+import { LotRoomContainer } from './LotRoomContainer';
 import { PersonnelScreenContainer } from './PersonnelScreenContainer';
 import {
   DEPT_TITLES,
@@ -233,6 +234,19 @@ export function RouteContent({
         nav={nav}
         vehicleId={vehicleId}
         pricingStrategyId={levers.pricingStrategyId}
+        persistCurrentSave={persistCurrentSave}
+        setLotVehicles={setLotVehicles}
+      />
+    );
+  }
+  if (screen === 'lot' && world) {
+    return (
+      <LotRoomContainer
+        world={world}
+        nav={nav}
+        lotVehicles={lotVehicles}
+        pricingStrategyId={levers.pricingStrategyId}
+        onSelectPricingStrategy={levers.handleSelectPricingStrategy}
         persistCurrentSave={persistCurrentSave}
         setLotVehicles={setLotVehicles}
       />
