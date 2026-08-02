@@ -116,7 +116,14 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   `flexDirection: 'row'` — RN defaults to **column**, so fill and spacer stack vertically in a
   6px-tall box and the bar carries zero information. The A-vs-B comparison this entire gate
   depends on is currently impossible to make on screen, so it is not a later polish pass.
+  **Not a build — nothing under `src/` changed but one stale `StaffOrg/CLAUDE.md` line** (it
+  claimed `staff-roles.json` holds salaries; it holds none). Suite run anyway to prove that:
+  199 suites / **2469** tests green, unchanged counts from #342.
   Next /next is **`/decide A2`** (phase 7) per R3's sequencing finding, then SLICE 6+7.
+  **Carried into phase 6's slice, unfixed by design:** the `PersonnelScreen` skill-bar defect
+  above. It is a ~2-line fix (`flexDirection: 'row'` + `overflow: 'hidden'` on `skillBarBg`),
+  independent of everything else, and blocks nothing — a decision unit does not get to start
+  building the phase it just unblocked.
 - 2026-08-01 — **BUILT #342** (seeded RNG gets its own module) — **phase 5b is done, and with
   it every agent-side item before the #74 playtest.**
   **The fork went to a new module, not a re-export.** `src/game/NPC/Rng.ts` → `src/game/Rng/`
