@@ -151,12 +151,17 @@ the protagonists.
 
 ## 5. Workstream C — Staff-teeth + the numbers (make decisions cost something)
 
-### C1. Staff-teeth design session + build `[LOCKED intent — macro-spine §5; calibration anchor in staff-performance-ladder.md]`
-The one remaining *designed-but-ungrilled* core mechanic: salary drain (a star is a liability you
-feed with volume), talent-scaled hire cost, scarcity (can't buy five A-players), poaching/retention.
-Uses the real-industry 5-grade ladder (#249 doc) as the calibration anchor. This is what turns the
-People axis from a shopping list into a game, gives the People dashboard content, and gives Reveal
-reactions their staff protagonists.
+### C1. Staff-teeth design session + build `[LOCKED 2026-08-02 — staff-teeth-design.md]`
+Design ruled; build is a SLICE. Three rulings: **one daily wage per person, set by grade × role**
+(commission rejected — it is four comp structures, and a fixed cost against variable revenue is the
+sharper drain anyway); **raises are a moment you play** — they ask, you pay or refuse, and a rival's
+offer is the same prompt with a name on it, so retention + poaching are one mechanic; **the CSV tier
+slot table is the scarcity cap** — no rarity roll, no persistent labor market. Talent-scaled hire fee
+becomes a multiple of the daily wage. Uses the real-industry 5-grade ladder (#249 doc) as the
+calibration anchor. This is what turns the People axis from a shopping list into a game, gives the
+People dashboard content, and gives Reveal reactions their staff protagonists.
+**Sequencing:** R3 makes A2's per-role slot table load-bearing here — adjudicate/slice A2 before or
+with this build, or the wage does all the work alone. See the design doc §6.
 
 ### C2. The calibration campaign `[FILED #286]` — after C1
 Every number in the game is currently a placeholder: manager-gate thresholds, execution drift,

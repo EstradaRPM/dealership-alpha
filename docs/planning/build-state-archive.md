@@ -6,6 +6,40 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-01 — **BUILT #345** (Bayesian search loop), slice C of #339 — **phase 5a is done.**
+  New `gp.ts` / `search.ts` / `study.ts` / `evaluator.ts` / `applyTuning.ts` + CLI modes
+  `search` (E) and `apply` (F) + `tests/balanceHarness.search.test.ts` (26 tests); 199 suites /
+  2467 tests green, typecheck clean, no module-boundary violations, `data/**` byte-unchanged.
+  **"Never compare a cheap score to a full one" is enforced inside the optimizer, not only in
+  the report.** The GP takes **per-observation noise** scaled by `fullSeeds / seedCount`, so a
+  subset score is modelled as a noisier estimate of the same quantity rather than trusted as an
+  equal. Two more guards ride on top: every row states its seed count, and if a screened
+  candidate is still top-ranked when the budget ends it is **promoted to the full spread before
+  the study names a best** — a recommendation is never a cheap score. Asserted both ways.
+  **`apply` edits the character span of the target value, not the file.** `JSON.stringify` on
+  `data/sourcing.json` does not round-trip — the repo's JSON keeps hand-authored one-line objects
+  and `1.0` comes back as `1` — so reserializing would bury a two-number tuning in a
+  thousand-line diff and silently reformat everything else. The test asserts the file has the
+  same line count afterwards and that exactly the tuned lines differ. Two more refusals: no
+  `--confirm` → prints the plan, writes nothing, **exits 1** (asserted through a real CLI
+  process, the one thing here that can't be proven in-process); and disk drifted from the
+  study's recorded baseline → refuse, because the reviewed diff is then not the diff that lands.
+  **Trial 0 is the incumbent** — today's `data/**` on the full seed spread. Every proposal is
+  ranked against a measured score for the current game, which is also what gives the report's
+  diff a baseline that was actually run rather than assumed.
+  The synthetic evaluator in the test **goes through `applyCandidate` and reads back through the
+  live registry** before restoring. A stub scoring the candidate object directly would have
+  passed every assertion while proving nothing about whether the search moves the values it
+  claims to, or puts them back.
+  Also: `overrides.ts`'s registry now carries each file's disk path explicitly (a naming
+  convention is a poor thing to stand between a proposal and the file it edits); `seeds.ts`
+  gained `createHarnessRng` so the harness keeps exactly **one** reach into the game's RNG
+  (the allow-listed deep import); `studies/` is gitignored — `git add -f` a study when it is
+  the evidence behind a calibration commit. Recipe doc gained modes E and F.
+  Real-run smoke: a 3-dim × 5-trial × 3-seed × 60-day study runs end to end, screens at 1 seed,
+  and correctly leaves the baseline on top (no cheap score outranked it).
+  Next /next BUILDs **#341** — phase 5b (module-boundary debt), the last agent-side work before
+  the #74 playtest gate.
 - 2026-08-01 — **BUILT #344** (tunable manifest + multi-file overrides + the frozen-key
   guard), slice B of #339. New `scripts/balance-harness/searchSpace.ts` + `space` CLI mode +
   `tests/balanceHarness.searchSpace.test.ts` (20 tests); 198 suites / 2441 tests green,

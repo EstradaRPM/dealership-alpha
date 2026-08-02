@@ -12,23 +12,12 @@ the row in the same commit as the ruling.
 
 ---
 
-## Phase 6 — C1 staff-teeth · **GRILL** (the one ungrilled core mechanic)
-
-- **Scope:** `path-to-finished-product.md` §5 C1 (`docs/planning/path-to-finished-product.md:154`).
-  Salary drain (a star is a liability you feed with volume), talent-scaled hire cost, scarcity,
-  poaching/retention.
-- **Load:** `docs/planning/macro-loop-spine.md` §5 (staff = the engine of the whole arc) ·
-  `docs/planning/staff-performance-ladder.md` (the real-industry 5-grade ladder, #249 — the
-  calibration anchor) · `docs/planning/poaching-cut.md` (what was cut and why) ·
-  `src/game/StaffOrg/CLAUDE.md` + `src/game/StaffMorale/CLAUDE.md` for the current surface.
-- **Locked:** macro-spine §5 intent; the 5-grade ladder; the engagement spine's rule that every
-  starred reaction stars an entity with a fate (staff are those protagonists).
-- **Grill?** **Yes** — this is the only gate that earns `/grill-me`. Everything else here is a
-  short fork set.
-- **Record:** new `docs/planning/staff-teeth-design.md` (the design record), plus the C1 section
-  tag flipped to `[LOCKED <date> — staff-teeth-design.md]`. Next unit after: SLICE phase 6.
-
 ## Phase 7 — A2 per-tier staff slots + facility scale · **ADJUDICATE** `[NEW]`
+
+> **Raised in priority by C1's R3 ruling (2026-08-02):** the CSV slot table *is* staff-teeth's
+> scarcity gate, and nothing enforces it today (`headcountCapByTier` is a flat 4/8/16, no
+> per-role breakdown). This gate should be ruled before or with phase 6's build.
+
 
 - **Scope:** §3 A2 (`path-to-finished-product.md:90`). Per-tier slot/lot caps in `data/` +
   a roster surface showing filled/empty slots; service bays as facility slots.
@@ -107,3 +96,8 @@ the row in the same commit as the ruling.
 ## Settled
 
 (Ruled gates move here: gate · date · doc holding the ruling.)
+
+- **Phase 6 — C1 staff-teeth** · 2026-08-02 · `docs/planning/staff-teeth-design.md`.
+  Daily wage by grade × role (commission rejected); raises are a played moment that also
+  carries poaching; CSV slot table is the scarcity cap. Next unit: SLICE phase 6 — but see
+  the A2 note above, C1's R3 made phase 7 a prerequisite.

@@ -54,7 +54,8 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 
 ## Data
 - `data/tunables.json#staffOrg` — `hiringCostByTier`, `candidatesPerRole`, `headcountCapByTier`.
-- `data/staff-roles.json` — role definitions, salaries.
+- `data/staff-roles.json` — role definitions (no pay data; the salary book arrives with
+  staff-teeth, C1 — see `docs/planning/staff-teeth-design.md`).
 - `data/staff-archetypes.json`, `data/staff-skills.json` — used via `NPC` for candidate generation.
 
 ## Persistence (#190)

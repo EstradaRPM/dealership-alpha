@@ -24,8 +24,12 @@ session start — open it on demand when a past slice's rationale needs recoveri
   answering the 12-question sheet at a keyboard. Nothing agent-side can advance it — no
   autonomous runtime surface for the GUI (see `.claude/skills/verify`).
 - **Phase 5b is done** (#341, #342) — as is 5a. **There is no agent-side work left before the
-  playtest.** Phases 6 and 7 both open with a gate, so the next `/next` is a DECIDE (`/decide C1`,
-  the staff-teeth grill), not a BUILD.
+  playtest.** Phase 6's gate is now ruled (`/decide C1`, 2026-08-02); phase 7's is not, and
+  C1's R3 made it a prerequisite — so the next `/next` is **`/decide A2`**, not a BUILD.
+- **Phase 6 cannot be sliced alone.** C1's scarcity ruling points at the CSV's per-role staff
+  counts, and nothing in the repo enforces them (`staffOrg.headcountCapByTier` is a flat
+  `{1:4,2:8,3:16}`). Rule A2 first, then slice 6 and 7 together — building staff-teeth against a
+  flat cap leaves half the mechanic inert.
 - **5a issue states on GitHub are not trustworthy.** #334 was CLOSED-but-undone. Check each
   of #335–#339 against the repo before assuming it landed. (#339 is closed as **sliced**, not
   built — its work was #343/#344/#345, all three now built.)
@@ -50,8 +54,8 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
-| 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** — prep index: `.claude/skills/decide/gates.md` | pending |
-| 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
+| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`.** Next unit: SLICE (after phase 7) | pending |
+| 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** — **run before phase 6's build** (C1's R3 made the CSV slot table staff-teeth's scarcity gate) | pending |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | pending |
@@ -72,6 +76,47 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-02 — **RULED C1 staff-teeth** (`/decide C1`) — the last designed-but-ungrilled core
+  mechanic. Record: **`docs/planning/staff-teeth-design.md`**; §5 C1 flipped to
+  `[LOCKED 2026-08-02]`; gate row moved to `gates.md`'s Settled section.
+  **The measured "zero teeth" state was worse than the spine claimed, and all five facts are in
+  the doc's table.** Payroll is a flat `$800/week` constant (`weeklyPayrollStub`, posted at
+  `Economy.ts:67`) — the fifth hire costs **$0/week**. Hire cost is flat per role class
+  (`StaffOrg.ts:175`); no salary field exists at all (`staff-roles.json` has none, and
+  `StaffOrg/CLAUDE.md:57` claimed otherwise — stale). The candidate board is wiped and rerolled
+  **every morning** (`StaffOrg.ts:145`), so disliking today's three costs one free day. And
+  `payVsMarketBonus` fires **unconditionally** every payroll night (`StaffMorale.ts:93`) —
+  a placeholder wearing a mechanic's name.
+  **R1 — one daily wage, grade × role. Commission was rejected, and the standing recommendation
+  going in was wrong on its own terms.** The director's objection is recorded because it is the
+  reusable lesson: draw-against-commission is **four comp structures**, not one (sales/F&I on
+  commission, techs flat-rate hours, advisors salary + service cut, managers salary + dept bonus)
+  — four rules to explain one line item, against a hard standing bar of *playable, enjoyable,
+  easy to understand*. And the case for it ("a flat drain never teaches you anything") is
+  **backwards**: a fixed cost against variable revenue is exactly what makes a slow day hurt;
+  commission partly self-insures a bad week. The simpler rule was also the sharper one.
+  **R2 — raises are a moment you play.** They ask, you pay or refuse; refusing feeds the existing
+  `StaffMorale` → `staff:quit` path. Chosen over auto-repricing and fixed-forever because it is a
+  *decision*, which is precisely `poaching-cut.md`'s finding. **Retention and poaching are now one
+  mechanic** — a rival offer is the same prompt with a name and a deadline, so spine §5's required
+  poaching teeth cost no second thing to learn.
+  **R3 — the CSV slot table is the scarcity cap.** No rarity roll, no persistent named labor
+  market: you can't field five A-players because you don't have five slots (T1 = 1 salesperson),
+  and the wage gates quality on top. **This makes phase 7 (A2) a prerequisite for phase 6's build**
+  — `headcountCapByTier` is a flat `{1:4,2:8,3:16}` with no per-role breakdown, so nothing
+  enforces the CSV today and the slot half would sit inert. Recorded in the doc §6, in the phase
+  table, and as a note on A2's `gates.md` row.
+  **Internal calls (8, all in doc §3), two of which do real work:** `grade` is a *derived* band of
+  the existing `effectiveness` composite — not a second source of truth; and `paidGrade` (stored
+  at hire) vs current grade **is** the whole raise trigger, falling straight out of the Model B
+  growth already shipped in #294. No new state machine, no new counters.
+  **A director-reported UI defect is folded into C1's scope, with a root cause.** Skill bars look
+  identical for every employee: `SkillRow` (`PersonnelScreen.tsx:22`) sizes the fill with
+  `flex: ratio` against a `flex: 1 - ratio` spacer, but `skillBarBg` (`:565`) never sets
+  `flexDirection: 'row'` — RN defaults to **column**, so fill and spacer stack vertically in a
+  6px-tall box and the bar carries zero information. The A-vs-B comparison this entire gate
+  depends on is currently impossible to make on screen, so it is not a later polish pass.
+  Next /next is **`/decide A2`** (phase 7) per R3's sequencing finding, then SLICE 6+7.
 - 2026-08-01 — **BUILT #342** (seeded RNG gets its own module) — **phase 5b is done, and with
   it every agent-side item before the #74 playtest.**
   **The fork went to a new module, not a re-export.** `src/game/NPC/Rng.ts` → `src/game/Rng/`
@@ -135,37 +180,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   Next /next BUILDs **#342** — which opens with an internal fork (re-export `Rng` from NPC's
   barrel vs. give it its own `src/game/Rng/` module). That fork is the implementing agent's call,
   not a director gate, per the issue. **#342 is the last agent-side work before the #74 playtest.**
-- 2026-08-01 — **BUILT #345** (Bayesian search loop), slice C of #339 — **phase 5a is done.**
-  New `gp.ts` / `search.ts` / `study.ts` / `evaluator.ts` / `applyTuning.ts` + CLI modes
-  `search` (E) and `apply` (F) + `tests/balanceHarness.search.test.ts` (26 tests); 199 suites /
-  2467 tests green, typecheck clean, no module-boundary violations, `data/**` byte-unchanged.
-  **"Never compare a cheap score to a full one" is enforced inside the optimizer, not only in
-  the report.** The GP takes **per-observation noise** scaled by `fullSeeds / seedCount`, so a
-  subset score is modelled as a noisier estimate of the same quantity rather than trusted as an
-  equal. Two more guards ride on top: every row states its seed count, and if a screened
-  candidate is still top-ranked when the budget ends it is **promoted to the full spread before
-  the study names a best** — a recommendation is never a cheap score. Asserted both ways.
-  **`apply` edits the character span of the target value, not the file.** `JSON.stringify` on
-  `data/sourcing.json` does not round-trip — the repo's JSON keeps hand-authored one-line objects
-  and `1.0` comes back as `1` — so reserializing would bury a two-number tuning in a
-  thousand-line diff and silently reformat everything else. The test asserts the file has the
-  same line count afterwards and that exactly the tuned lines differ. Two more refusals: no
-  `--confirm` → prints the plan, writes nothing, **exits 1** (asserted through a real CLI
-  process, the one thing here that can't be proven in-process); and disk drifted from the
-  study's recorded baseline → refuse, because the reviewed diff is then not the diff that lands.
-  **Trial 0 is the incumbent** — today's `data/**` on the full seed spread. Every proposal is
-  ranked against a measured score for the current game, which is also what gives the report's
-  diff a baseline that was actually run rather than assumed.
-  The synthetic evaluator in the test **goes through `applyCandidate` and reads back through the
-  live registry** before restoring. A stub scoring the candidate object directly would have
-  passed every assertion while proving nothing about whether the search moves the values it
-  claims to, or puts them back.
-  Also: `overrides.ts`'s registry now carries each file's disk path explicitly (a naming
-  convention is a poor thing to stand between a proposal and the file it edits); `seeds.ts`
-  gained `createHarnessRng` so the harness keeps exactly **one** reach into the game's RNG
-  (the allow-listed deep import); `studies/` is gitignored — `git add -f` a study when it is
-  the evidence behind a calibration commit. Recipe doc gained modes E and F.
-  Real-run smoke: a 3-dim × 5-trial × 3-seed × 60-day study runs end to end, screens at 1 seed,
-  and correctly leaves the baseline on top (no cheap score outranked it).
-  Next /next BUILDs **#341** — phase 5b (module-boundary debt), the last agent-side work before
-  the #74 playtest gate.
