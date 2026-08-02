@@ -1,11 +1,13 @@
 import React from 'react';
+import { readAppCompositionSource } from './helpers/appComposition';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fireEvent, render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld, type World } from '../src/createWorld';
 import { buildIndustryWire, buildWeeklyReport } from '../src/app/config';
-import { IndustryWire } from '../src/ui/HomeTab';
+// #349: the wire moved to the Growth demand console (Home keeps a glance).
+import { IndustryWire } from '../src/ui/GrowthTab';
 import { snapshotWorld, restoreWorld } from '../src/worldSnapshot';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
@@ -215,11 +217,9 @@ describe('#178 news gating — live world', () => {
 });
 
 describe('#178 news gating — composition wiring', () => {
-  it('is mounted: the Home wire gets the subscription toggle', () => {
-    const src = fs.readFileSync(
-      path.join(__dirname, '..', 'src', 'app', 'screens', 'GameScreen.tsx'),
-      'utf8',
-    );
+  it('is mounted: the Growth wire gets the subscription toggle', () => {
+    // #349: the toggle moved to GrowthTabContainer with the wire itself.
+    const src = readAppCompositionSource();
     expect(src).toMatch(/onToggleSubscription=\{/);
     expect(src).toMatch(/marketIntel\.setSubscribed/);
   });

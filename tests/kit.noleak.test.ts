@@ -34,7 +34,13 @@ function kitFiles(): string[] {
  * different games). Add each newly-migrated surface directory here so it cannot
  * regress; the list only ever grows.
  */
-const MIGRATED_SURFACES = ['OwnershipLevers', 'OperationsTab', 'LotRoom', 'PeopleTab'];
+const MIGRATED_SURFACES = [
+  'OwnershipLevers',
+  'OperationsTab',
+  'LotRoom',
+  'PeopleTab',
+  'GrowthTab',
+];
 
 function surfaceFiles(): string[] {
   const uiDir = path.join(__dirname, '..', 'src', 'ui');

@@ -105,6 +105,28 @@ export interface GateProgress {
   readonly faces: readonly FaceProgress[];
 }
 
+/** One face's standing bar at a tier — the target, not today's progress. */
+export interface TierFaceRequirement {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: GateFaceKind;
+  readonly target: number;
+}
+
+/**
+ * The full standing gate spec for ONE tier (#349) — what that tier asks for
+ * every month, independent of the month in progress. The Growth board reads it
+ * for the tier ABOVE the current one: foreshadowing the climb is the gate
+ * board's job (`second-level-ia.md` §4), and it can only be honest if the bar
+ * comes off the same config the verdict grades against. `streak` is the
+ * consecutive meet-or-better months needed to leave the tier (#250).
+ */
+export interface TierRequirements {
+  readonly tier: number;
+  readonly streak: number;
+  readonly faces: readonly TierFaceRequirement[];
+}
+
 /** One face's month-end grade. */
 export interface FaceVerdict {
   readonly id: string;

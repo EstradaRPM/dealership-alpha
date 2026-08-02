@@ -113,6 +113,13 @@ export interface DemandAdvertisingOption {
   id: string;
   label: string;
   blurb: string;
+  /**
+   * Pre-formatted daily spend — "$75/day" (#349). Absent for the free "no
+   * campaign" option. The console shows it on every chip, not just the running
+   * one: comparing what each push costs IS the decision, and a lever with no
+   * visible price is a lever with no teeth.
+   */
+  costLabel?: string;
 }
 
 /**
@@ -326,10 +333,12 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
         <SectionHeader title="What You're Promoting" />
         {model.advertising && (
           <View style={{ marginTop: t.spacing.sm }} testID="demand-advertising">
+            {/* The price rides the chip so the campaigns compare against each
+                other without selecting one (#349). */}
             <ChipRow
               options={model.advertising.options.map((o) => ({
                 id: o.id,
-                label: o.label,
+                label: o.costLabel ? `${o.label} · ${o.costLabel}` : o.label,
               }))}
               selectedId={model.advertising.selectedId}
               onSelect={model.advertising.onSelect}
@@ -339,6 +348,23 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
                 (o) => o.id === model.advertising!.selectedId,
               )?.blurb ?? ''}
             </Text>
+            {(() => {
+              const running = model.advertising.options.find(
+                (o) => o.id === model.advertising!.selectedId,
+              );
+              return running?.costLabel ? (
+                <Text
+                  testID="demand-advertising-cost"
+                  style={{
+                    ...t.typography.caption,
+                    color: t.colors.textSecondary,
+                    marginTop: t.spacing.xs,
+                  }}
+                >
+                  Billed {running.costLabel} while it runs.
+                </Text>
+              ) : null;
+            })()}
           </View>
         )}
         <View style={{ marginTop: t.spacing.sm }}>

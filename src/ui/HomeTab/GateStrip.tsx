@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
+import { View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
 import {
   Surface,
@@ -8,6 +8,7 @@ import {
   Icon,
   IconBadge,
   ProgressBar,
+  Sparkline,
   type IconName,
   type IconBadgeTone,
 } from '../kit';
@@ -27,7 +28,15 @@ import type {
  * sparkline. No daily judgment / letter-grade — the 4-band verdict is month-end
  * only. Presentation only; every value arrives pre-formatted from `buildGateStrip`.
  */
-export function GateStrip({ model }: { model: GateStripModel }) {
+export function GateStrip({
+  model,
+  onOpen,
+}: {
+  model: GateStripModel;
+  /** Deep-link into the Growth gate board (#349) — every Home glance routes
+   *  into its owning room, and the board is where the detail lives. */
+  onOpen?: () => void;
+}) {
   const t = useTheme();
   return (
     // Region idiom matching Today/Market (#258): the SectionHeader titles the
@@ -48,7 +57,14 @@ export function GateStrip({ model }: { model: GateStripModel }) {
           ) : undefined
         }
       />
-      <View style={{ marginTop: t.spacing.md }}>
+      <Pressable
+        onPress={onOpen}
+        disabled={!onOpen}
+        accessibilityRole="button"
+        accessibilityLabel="Open the tier-gate board"
+        testID="home-gate-strip-open"
+        style={{ marginTop: t.spacing.md }}
+      >
         <Surface>
           {model.faces.map((face, i) => (
             <View key={face.id} style={{ marginTop: i === 0 ? 0 : t.spacing.md }}>
@@ -76,7 +92,7 @@ export function GateStrip({ model }: { model: GateStripModel }) {
             </Text>
           ) : null}
         </Surface>
-      </View>
+      </Pressable>
     </View>
   );
 }
@@ -203,50 +219,13 @@ function TrendFace({ face }: { face: TrendFaceView }) {
           <TrendArrow trend={face.trend} />
         </View>
       </View>
-      <Sparkline values={face.sparkline} />
-    </View>
-  );
-}
-
-/** A tiny bar sparkline — the CSI rolling window's shape (oldest→newest). */
-function Sparkline({ values }: { values: number[] }) {
-  const t = useTheme();
-  if (values.length === 0) {
-    return (
-      <Text
-        style={{
-          ...t.typography.caption,
-          color: t.colors.textMuted,
-          marginTop: t.spacing.xxs,
-        }}
-      >
-        Trend builds over the month.
-      </Text>
-    );
-  }
-  const maxH = t.spacing.lg;
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        gap: 2,
-        height: maxH,
-        marginTop: t.spacing.xs,
-      }}
-      testID="gate-csi-sparkline"
-    >
-      {values.map((v, i) => (
-        <View
-          key={i}
-          style={{
-            flex: 1,
-            height: Math.max(2, v * maxH),
-            borderRadius: t.radius.sm,
-            backgroundColor: t.colors.primary,
-          }}
-        />
-      ))}
+      {/* The kit's shared sparkline (#349) — the Growth gate board renders the
+          same trend face at detail scale, so the shape lives in one place. */}
+      <Sparkline
+        values={face.sparkline}
+        emptyLabel="Trend builds over the month."
+        testID="gate-csi-sparkline"
+      />
     </View>
   );
 }

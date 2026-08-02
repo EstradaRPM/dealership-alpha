@@ -8,7 +8,9 @@ import type {
   GateProgress,
   GateTrend,
   LevelSamples,
+  TierFaceRequirement,
   TierGateSnapshot,
+  TierRequirements,
 } from './types';
 
 /**
@@ -73,6 +75,13 @@ export interface TierGateDeps {
 export interface TierGate {
   /** The live multi-face gate readout (decision 3 native idioms). */
   getProgress(): GateProgress;
+  /**
+   * The standing gate spec for any tier (#349) — the bars that tier asks for
+   * every month, with no month-to-date state in it. `null` when the tier has no
+   * entry in config (i.e. past the top of the built ladder), which is how the
+   * Growth board knows there is no next rung to foreshadow.
+   */
+  getTierRequirements(tier: number): TierRequirements | null;
   /** #188 SaveStore seam: capture/rehydrate the in-progress month. */
   snapshot(): TierGateSnapshot;
   restore(snap: TierGateSnapshot): void;
@@ -279,6 +288,26 @@ export function createTierGate(deps: TierGateDeps): TierGate {
     return { day, dayOfMonth, daysInMonth: daysPerMonth, daysRemaining, tier, faces };
   }
 
+  /**
+   * The standing spec for a tier (#349). Same source and same filter the
+   * month-end verdict uses — only real, non-stepped faces — so the board can
+   * never foreshadow a bar the gate does not actually grade. Non-face control
+   * tunables in the tier entry (`streak`) are lifted out rather than dropped.
+   */
+  function getTierRequirements(tier: number): TierRequirements | null {
+    const entry = config.tiers[String(tier)];
+    if (!entry) return null;
+    const faces: TierFaceRequirement[] = Object.entries(entry)
+      .filter(([id]) => config.faces[id] && config.faces[id].kind !== 'stepped')
+      .map(([id, target]) => ({
+        id,
+        label: config.faces[id].label,
+        kind: config.faces[id].kind,
+        target,
+      }));
+    return { tier, streak: entry.streak ?? 1, faces };
+  }
+
   /** ratio used to band a face at month-end, by kind. */
   function faceRatio(id: string, target: number): number {
     if (target <= 0) return 1;
@@ -325,6 +354,7 @@ export function createTierGate(deps: TierGateDeps): TierGate {
 
   return {
     getProgress,
+    getTierRequirements,
 
     snapshot() {
       return {

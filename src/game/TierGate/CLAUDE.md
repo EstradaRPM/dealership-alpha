@@ -32,6 +32,12 @@ coach); each face renders in its **native idiom** (decision 3).
       (climbing/flat/sliding), `meetsThreshold`, `recentSamples` (the rolling
       window's raw points, oldest→newest — the S3b CSI sparkline; deterministic,
       so still replay-safe).
+  - `getTierRequirements(tier) → TierRequirements | null` (#349) — the STANDING
+    spec for any tier: `{ tier, streak, faces: [{ id, label, kind, target }] }`,
+    with no month-to-date state in it. `null` past the top of the built ladder.
+    Filtered exactly like the month-end verdict (real, non-stepped faces only),
+    so the Growth gate board's climb foreshadow can never show a bar the gate
+    does not actually grade.
   - `snapshot()/restore()` — module-owned `schemaVersion`; round-trips the
     in-progress month (#188 world seam).
 - `createDefaultTierGateSnapshot()` — behavior-neutral fresh-month default (the

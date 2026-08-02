@@ -213,8 +213,16 @@ export interface World {
   competitorMarket: CompetitorMarket;
   demandShaper: DemandShaper;
   demandControls: {
-    readonly advertisingOptions: readonly { id: string; label: string; blurb: string }[];
+    readonly advertisingOptions: readonly {
+      id: string;
+      label: string;
+      blurb: string;
+      /** Spend per day while this campaign runs; 0 for "no campaign" (#349). */
+      dailyCost: number;
+    }[];
     getAdvertisingCampaignId(): string;
+    /** The running campaign's daily spend — 0 when nothing is running (#349). */
+    getAdvertisingDailyCost(): number;
     setAdvertisingCampaign(id: string): void;
   };
   // #322 Morning-prep bet (engagement spine tracer S4): the day's stocking
@@ -974,11 +982,12 @@ export function createWorld(deps: {
   syncDemandInfluences();
   const demandControls = {
     advertisingOptions: [
-      { id: 'none', label: 'No campaign', blurb: 'No paid advertising push.' },
+      { id: 'none', label: 'No campaign', blurb: 'No paid advertising push.', dailyCost: 0 },
       ...(demandShaperConfig.advertisingInfluence?.campaigns.map((campaign) => ({
         id: campaign.id,
         label: campaign.label,
         blurb: campaign.blurb,
+        dailyCost: campaign.dailyCost,
       })) ?? []),
     ],
     getAdvertisingCampaignId: () => {
@@ -987,6 +996,10 @@ export function createWorld(deps: {
         .find((input) => input.producer === 'advertising' && hasInfluence(input.targetWeights));
       return active ? active.id.replace(/^advertising:/, '') : 'none';
     },
+    getAdvertisingDailyCost: () =>
+      demandShaperConfig.advertisingInfluence?.campaigns.find(
+        (c) => c.id === demandControls.getAdvertisingCampaignId(),
+      )?.dailyCost ?? 0,
     setAdvertisingCampaign: (id: string) => {
       const existingIds = demandShaper
         .getInfluenceInputs()
@@ -1004,6 +1017,19 @@ export function createWorld(deps: {
   bus.subscribe('deal:closed', syncDemandInfluences);
   bus.subscribe('clock:overnight_reputation_drift', syncDemandInfluences);
   bus.subscribe('clock:day_started', () => demandShaper.advanceInfluenceDay());
+  // #349: a running campaign bills every day, the same standing-spend shape
+  // ServiceMarketing's arms and the wire subscription use. `forceDebit` (not
+  // `postExpense`) because the bill posts even when cash is short — the money
+  // is already spent by the time the day ends.
+  bus.subscribe('clock:day_ended', () => {
+    const spend = demandControls.getAdvertisingDailyCost();
+    if (spend > 0) {
+      economy.forceDebit(
+        spend,
+        `Advertising: ${demandControls.getAdvertisingCampaignId()}`,
+      );
+    }
+  });
   const archetypeByPersona = new Map(
     SALES_ARCHETYPES.map((a) => [a.personId, a]),
   );

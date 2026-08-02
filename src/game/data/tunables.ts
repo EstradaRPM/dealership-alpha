@@ -140,6 +140,11 @@ export const TunablesSchema = z.object({
             id: z.string().min(1),
             label: z.string().min(1),
             blurb: z.string().min(1),
+            /** Daily spend while the campaign runs (#349). A demand lever with
+             *  no price is a strictly dominant choice — the demand console's
+             *  campaign section only holds a decision because running one costs
+             *  money every day, the same shape ServiceMarketing's arms use. */
+            dailyCost: z.number().nonnegative(),
             lagDays: z.number().int().nonnegative(),
             decayDays: z.number().int().nonnegative().optional(),
             weights: z.record(z.string().min(1), z.number()),

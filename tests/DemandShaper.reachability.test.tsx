@@ -4,7 +4,9 @@ import { render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { createRng } from '../src/game/Rng';
-import { HomeTab } from '../src/ui/HomeTab';
+// #349: the demand console moved off Home into the Growth tab. Same model,
+// same component underneath — the room it renders in changed.
+import { GrowthTab } from '../src/ui/GrowthTab';
 import { buildHeatConsole, resolvePricingIntel } from '../src/app/config';
 import type { DemandReadoutModel, DemandTargetingLever } from '../src/ui/DemandReadout';
 import type { CharacterProfile } from '../src/game/CareerProgression';
@@ -210,12 +212,12 @@ describe('#198 / #278 demand readout — reachable through the live pipeline', (
     expect(state.phase).toBe('MANAGERIAL');
 
     const { getAllByText, getByText } = render(
-      <HomeTab state={state} demandReadout={demandReadout} />,
+      <GrowthTab demandReadout={demandReadout} />,
     );
 
     // The readout is mounted and shows the segment heat map. (No internal card
     // title — the Market region header owns it, #257.)
-    expect(getByText('Market')).toBeTruthy();
+    expect(getByText('Demand Console')).toBeTruthy();
     expect(getByText('SUVs')).toBeTruthy();
     expect(getByText("What You're Promoting")).toBeTruthy();
     expect(getAllByText(/Reputation|Inventory composition/).length).toBeGreaterThan(0);
@@ -241,8 +243,7 @@ describe('#198 / #278 demand readout — reachable through the live pipeline', (
 
     const state = world.dayLoop.state();
     const { getByTestId, getAllByText, queryByText } = render(
-      <HomeTab
-        state={state}
+      <GrowthTab
         demandReadout={{
           heatBands: console,
           entries: [],

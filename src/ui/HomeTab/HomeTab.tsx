@@ -21,12 +21,7 @@ import {
   type IconBadgeTone,
 } from '../kit';
 import type { DayLoopState } from '../../game/DayLoopController';
-import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { GateStrip } from './GateStrip';
-import { IndustryWire } from './IndustryWire';
-import type { IndustryWireModel } from './industryWireModel';
-import { WeeklyMarketReportCard } from './WeeklyMarketReportCard';
-import type { WeeklyReportCardModel } from './weeklyReportModel';
 import type { HomeDashboardModel, HomeStat, MiniCalDay } from './homeModel';
 
 /** Leading glyph + accent per quick-stat tile (#240), keyed by the read-model's
@@ -48,20 +43,32 @@ export interface HomeTabProps {
    *  modal that pops on day close; this chip reopens it. Absent ⇒ no day has
    *  closed yet (pre-Day-1), so honest copy shows instead of a lie. */
   recapChip?: { day: number; onOpen: () => void };
-  /** Observed persona-mix readout (#198). Absent ⇒ hint shown. */
-  demandReadout?: DemandReadoutModel;
-  /** Industry-wire headlines (#176). Absent ⇒ hint shown (test renders). */
-  industryWire?: IndustryWireModel;
-  /** Buy/cancel a wire subscription (#178). Absent ⇒ footer is read-only. */
-  onToggleSubscription?: (id: string, on: boolean) => void;
-  /** The standing weekly column (#177). Absent ⇒ none has published yet. */
-  weeklyReport?: WeeklyReportCardModel | null;
+  /**
+   * The market GLANCE (#349) — two pre-formatted lines summarizing what the
+   * demand console holds in full. The console itself (readout, campaign lever,
+   * weekly report, wire) moved to Growth; Home's charter is glances only, and
+   * every glance routes into its owning room (locked IA rules 1 + 4).
+   */
+  marketGlance?: HomeMarketGlance;
+  /** Deep-link into the Growth demand console — the market glance's press. */
+  onOpenGrowth?: () => void;
+}
+
+/** The market glance's content — what's selling, and what you're paying for. */
+export interface HomeMarketGlance {
+  /** "Buyers want: SUVs" — the hottest vehicle type right now. */
+  headline: string;
+  /** "Running Local radio · $75/day" or "No campaign running". */
+  campaignLabel: string;
 }
 
 /**
  * The management-phase Home hub (#215/#230). The day-cycle launch surface: a
  * status dashboard (identity, cash, reputation/CSI, calendar, quick stats) over
- * the day-close recap and the market demand readout. Presentation only — every
+ * the day-close recap and a market glance. GLANCES ONLY (locked IA §1): the
+ * demand console, the weekly report, the wire and the gate detail board all live
+ * in Growth as of #349, and every glance here routes into its owning room —
+ * inventory → Operations, gate strip and market → Growth. Presentation only — every
  * value arrives pre-formatted in the read models the composition root builds;
  * the pinned START DAY action lives in the surrounding `AppShell` footer.
  */
@@ -70,10 +77,8 @@ export function HomeTab({
   dashboard,
   onOpenOperations,
   recapChip,
-  demandReadout,
-  industryWire,
-  onToggleSubscription,
-  weeklyReport,
+  marketGlance,
+  onOpenGrowth,
 }: HomeTabProps) {
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
@@ -82,7 +87,11 @@ export function HomeTab({
   return (
     <View>
       {dashboard ? (
-        <Dashboard model={dashboard} onOpenOperations={onOpenOperations} />
+        <Dashboard
+          model={dashboard}
+          onOpenOperations={onOpenOperations}
+          onOpenGrowth={onOpenGrowth}
+        />
       ) : (
         <View testID="home-region-identity">
           <Text style={{ ...t.typography.statValue, color: t.colors.textPrimary }}>
@@ -115,11 +124,16 @@ export function HomeTab({
         </View>
       </View>
 
+      {/* Market GLANCE (#349). The full stack that used to render here — the
+          demand readout with its campaign lever, the weekly report, the industry
+          wire — moved to the Growth demand console. Home's charter is glances
+          only, and a glance's whole job is to route (locked IA rules 1 + 4).
+          Two lines: what buyers want, and what you're paying to steer them. */}
       <View style={region} testID="home-region-market">
         <SectionHeader title="Market" />
         <View style={regionBody}>
-          {demandReadout ? (
-            <DemandReadout model={demandReadout} />
+          {marketGlance ? (
+            <MarketGlance glance={marketGlance} onOpen={onOpenGrowth} />
           ) : (
             <EmptyNote icon="storefront">
               Open the lot to build the demand readout.
@@ -127,44 +141,52 @@ export function HomeTab({
           )}
         </View>
       </View>
-
-      {/* Weekly Market Report (#177) — the column, above the ticker. It sits
-          between the player's own readout and the wire for the same reason the
-          wire sits below the readout: it is a longer, slower read of the same
-          week, and it stands until the next one replaces it. */}
-      <View style={region} testID="home-region-weekly-report">
-        <SectionHeader title="Market Report" />
-        <View style={regionBody}>
-          {weeklyReport ? (
-            <WeeklyMarketReportCard model={weeklyReport} />
-          ) : (
-            <EmptyNote icon="newspaper">
-              The first weekly report comes out after your first full week.
-            </EmptyNote>
-          )}
-        </View>
-      </View>
-
-      {/* Industry Wire (#176) — what the rest of the business is saying, sorted
-          newest first and stamped with how much each line is worth. It sits
-          BELOW the demand readout deliberately: the readout is what the player
-          can verify about their own lot, the wire is everyone else's word. */}
-      <View style={region} testID="home-region-wire">
-        <SectionHeader title="Industry Wire" />
-        <View style={regionBody}>
-          {industryWire ? (
-            <IndustryWire
-              model={industryWire}
-              onToggleSubscription={onToggleSubscription}
-            />
-          ) : (
-            <EmptyNote icon="newspaper">
-              The wire starts up when your first day opens.
-            </EmptyNote>
-          )}
-        </View>
-      </View>
     </View>
+  );
+}
+
+/**
+ * The market glance (#349) — a pressable card that opens the Growth demand
+ * console. Same chevron idiom as the recap chip, because it is the same promise:
+ * the detail is one tap away, in the room that owns it.
+ */
+function MarketGlance({
+  glance,
+  onOpen,
+}: {
+  glance: HomeMarketGlance;
+  onOpen?: () => void;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={onOpen}
+      disabled={!onOpen}
+      accessibilityRole="button"
+      accessibilityLabel="Open the demand console"
+      testID="home-market-glance"
+    >
+      <Surface variant="inset" padded={false} style={{ padding: t.spacing.lg }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md }}>
+          <IconBadge name="storefront" tone="accent" variant="solid" size="sm" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ ...t.typography.label, color: t.colors.textPrimary }}>
+              {glance.headline}
+            </Text>
+            <Text
+              style={{
+                ...t.typography.caption,
+                color: t.colors.textSecondary,
+                marginTop: t.spacing.xxs,
+              }}
+            >
+              {glance.campaignLabel}
+            </Text>
+          </View>
+          <Icon name="chevron-forward" size="sm" tone="primary" />
+        </View>
+      </Surface>
+    </Pressable>
   );
 }
 
@@ -246,9 +268,11 @@ function RecapChip({ day, onOpen }: { day: number; onOpen: () => void }) {
 function Dashboard({
   model,
   onOpenOperations,
+  onOpenGrowth,
 }: {
   model: HomeDashboardModel;
   onOpenOperations?: () => void;
+  onOpenGrowth?: () => void;
 }) {
   const t = useTheme();
   const cardCol: ViewStyle = { flex: 1 };
@@ -473,7 +497,7 @@ function Dashboard({
           TARGETS bar: each active face in its native idiom, the day's haul
           ticking up the bars, % on track in the header. */}
       {model.gate && model.gate.faces.length > 0 ? (
-        <GateStrip model={model.gate} />
+        <GateStrip model={model.gate} onOpen={onOpenGrowth} />
       ) : null}
 
       {/* Quick-stat strip (#264) */}

@@ -6,6 +6,46 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-02 — **BUILT #346** (Operations rebuild) — the first and largest phase-5c slice.
+  Six of the nine destinations the audit counted from Operations are gone or now open a real
+  room; the tab is one visual language top to bottom.
+  **The Lot became a room instead of a queue.** `src/ui/LotRoom/` + `LotRoomContainer`, a new
+  `lot` Navigator route the dock's Lot tile opens (`handleDeptPress`), holding the whole stock
+  pipeline the locked IA §4 gives it: the stock list with days-on-lot and carrying cost, the
+  per-unit `Tune ›` entry into the pricing screen, the inline asking-price field, the standing
+  pricing strategy, and sourcing. **The auction lives here now** — it was a button in Prep.
+  Before this, tapping Lot opened `DepartmentScreen` on `departmentQueue.getQueue('lot')`:
+  *"Nothing waiting in Lot"* while three cars sat on the lot one tab away.
+  **Prep is now what the IA says it is: two levers, one block, zero navigation.** Hours and
+  trade policy. `OwnershipLevers` went from 463 lines with its own `StyleSheet` off the raw
+  `colors` map — **the last pre-kit surface anywhere in the app** — to a kit surface reading
+  every value through `useTheme()`. Its own `"NEXT-DAY PREP"` heading is gone, which was the
+  duplicate that rendered directly under the tab's `SectionHeader "Prep"`.
+  **Where the evicted controls went, and why hiring did not wait for #347.** Stock list +
+  price rows + pricing strategy + auction → the Lot room. Advertising → the demand console's
+  "What You're Promoting" section (the readout of what that lever does), which Growth inherits
+  whole in #349. Hiring → **People**, as a roster-count + `Hire Staff` entry. #347 owns the
+  People rebuild, but the criterion "Prep contains no navigation links" makes hiring
+  unreachable the moment Prep loses it, so the entry landed with the eviction rather than one
+  slice later; #347 replaces it with the real roster + hiring pool.
+  **Reuse over reinvention.** The three chip selectors (hours, trade policy, pricing strategy,
+  advertising) all run on `DeptControls`' existing `ChipRow`, which grew one optional
+  `disabled` prop so the floor-open lock survives the migration. No fourth chip implementation.
+  **Two guards worth keeping.** The kit no-leak test now scans migrated *surfaces*, not just
+  `src/ui/kit/` — hex/rgb literals and a raw `colors` import both fail it, with comments
+  stripped first because this repo cites issues as `#346`, which is a valid 3-digit hex to that
+  pattern. And `actionFooterClearance(theme)` derives the shell's bottom inset from the CTA it
+  has to clear (label line box + padding), so a re-skin can't silently shrink the gap that
+  audit P8 was about.
+  **Driven on web at T1** (three units on the lot): dock → Lot room renders all three units
+  with carry lines and editable prices → `Go to the Auction` opens Auction Lane → back returns
+  to the Lot room; People → `Hire Staff` opens Personnel; Operations scrolled to the bottom
+  shows Prep's two cards clear of the Open Floor CTA. 201 suites / **2496** tests, typecheck
+  clean. One drive note: a click that "opened the floor" from the Lot room was a stale
+  ref→coordinate mapping, not a bug — the capture-listener readback in `.claude/skills/verify`
+  is what proved it.
+  Next: **BUILD #347** (People rebuild).
+
 - 2026-08-02 — **AUDITED the whole UI on the web target; filed phase 5c (#346–#351).**
   Director drove the #74 playtest request into a layout audit. Record:
   **`docs/audits/ui-layout-audit.md`** — every surface driven live at T1, every tappable target

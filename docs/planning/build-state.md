@@ -28,7 +28,8 @@ session start — open it on demand when a past slice's rationale needs recoveri
   UI-rebrand chain stopped after Home (S1–S4, S3a–S3f); no Operations/People/Finance/Growth
   slice was ever filed. #346–#351 are that filing. **Do not re-grill the IA** — where shipped
   and locked disagree, locked wins. (Audit rows O5 and the six dead Operations destinations are
-  closed out as of #348; Finance/Growth placeholders remain, and are #349/#350/#351.)
+  closed out as of #348; #349 took the Growth placeholder and the Home market stack. Finance is
+  the last placeholder tab — #350/#351.)
 - **Phase 5b is done** (#341, #342) — as is 5a. Phase 6's gate is ruled (`/decide C1`,
   2026-08-02); phase 7's is not, and C1's R3 made it a prerequisite — so **`/decide A2` is the
   unit that follows phase 5c**, before any phase-6 slice.
@@ -58,7 +59,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | blocked on 5c |
-| 5c | UI layout rebuild — ~~#346 Operations~~ · ~~#347 People~~ · ~~#348 nav stacks~~ (all built 2026-08-02) · #349 Growth · #350 chart kit · #351 Finance | — (locked IA already rules it) | active |
+| 5c | UI layout rebuild — ~~#346 Operations~~ · ~~#347 People~~ · ~~#348 nav stacks~~ · ~~#349 Growth~~ (all built 2026-08-02) · #350 chart kit · #351 Finance | — (locked IA already rules it) | active |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`.** Next unit: SLICE (after phase 7) | pending |
@@ -82,6 +83,55 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-02 — **BUILT #349** (Growth) — the tab stops being a placeholder card, and two
+  homeless surfaces get the room the locked IA assigned them.
+  **The demand console is one room now.** `src/ui/GrowthTab/` + `GrowthTabContainer`: the heat
+  read, who's been walking in, the targeting levers, the advertising campaign, then the weekly
+  market report and the industry wire. Before this the readout lived on **Home** — whose charter
+  is glances only — and the campaign lever had been evicted to the console in #346 while the
+  console itself still rendered in the wrong tab.
+  **The wire and the weekly report MOVED, not copied.** `IndustryWire`, `WeeklyMarketReportCard`
+  and both their models are `git mv`'d out of `src/ui/HomeTab/` into `src/ui/GrowthTab/`; the
+  HomeTab barrel now carries a pointer comment instead of the exports. Leaving them under
+  `HomeTab/` would have been a lie in the tree for the next agent to trip on.
+  **Home keeps a glance that routes, and the glance can't disagree with the room.**
+  `buildMarketGlance` is a projection of the *console's own model* ("Buyers want SUVs most" /
+  "Running Local radio · $75/day"), not a hand-written summary — so drift is impossible by
+  construction. Both Home glances now deep-link: the market card and the gate strip each open
+  Growth (IA rule 4).
+  **The tier-gate board is the detail surface the gate never had.** `GateBoard` + the pure
+  `buildGateBoard`: each face opened up with every number the engine already computes (pace
+  line, cushion, still-to-go, per-day-needed, projected finish; threshold vs month-average vs
+  right-now; rolling average + window), then **the climb** — what the next rung asks for and how
+  many banked months stand in the way. Deliberately a **separate model from `gateStripModel`**:
+  "compress to one line" and "show all of it" are different jobs. No "% on track" here — that
+  compression is the glance's job. No bottleneck callout either (decision 2: facts, no coach).
+  **Two engine surfaces grew, both narrow.** `tierGate.getTierRequirements(tier)` returns a
+  tier's standing spec with **the same filter the month-end verdict uses**, so the board can
+  never foreshadow a bar the gate doesn't grade (facility is data-present/engine-dormant and is
+  excluded); `null` past the top of the ladder simply drops the climb section rather than
+  rendering a tease. And **the advertising campaign now costs money** — `dailyCost` on the
+  tunables schema, `getAdvertisingDailyCost()`, and a `clock:day_ended` `forceDebit`, the same
+  standing-spend shape ServiceMarketing's arms and the wire subscription already use. A demand
+  lever with no price is a strictly dominant choice; the spend is what makes the campaign
+  section a decision at all. The price rides every chip, so campaigns compare without selecting.
+  **`Sparkline` moved into the kit** — the CSI trend face renders in two surfaces now, and a
+  second hand-rolled copy would let them drift. `GrowthTab` joins `MIGRATED_SURFACES` in the
+  kit no-leak scan.
+  **The web drive found two defects, both fixed before commit.** (1) The campaign chips showed
+  no price at all — `advertisingOptions` carries a `dailyCost` *number* and the view wants a
+  formatted `costLabel`; the composition root never bridged them. (2) The climb read **"for 2
+  straight months"** directly above **"month 0 of 1"** — `ruleLabel` was quoting the NEXT tier's
+  streak when the months-to-climb is how long it takes to leave where you *are*. Both are locked
+  by tests.
+  **Driven on web at T1** (Continue, the Playtest R1 slot — left exactly as found, campaign
+  toggled back off): Home shows the two-line market glance with no readout/wire/report anywhere
+  → the glance opens the Demand Console → the gate strip opens the same tab → `Local radio ·
+  $75/day` selects in place and adds "Billed $75/day while it runs." → Home's glance updates to
+  "Running Local radio · $75/day" → `Next up: Tier 2` lists 15 units / $30,000 gross / $150,000
+  cash over "for one month to move up." 206 suites / **2558** tests, typecheck clean.
+  Next: **BUILD #350** (chart kit).
 
 - 2026-08-02 — **BUILT #348** (in-tab navigation stacks) — the structural half of phase 5c.
   Walking into a room no longer costs you the console.
@@ -168,43 +218,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   Operations showing Prep's two levers with no hiring entry anywhere. 201 suites / **2512**
   tests, typecheck clean.
   Next: **BUILD #348** (in-tab nav stacks).
-
-- 2026-08-02 — **BUILT #346** (Operations rebuild) — the first and largest phase-5c slice.
-  Six of the nine destinations the audit counted from Operations are gone or now open a real
-  room; the tab is one visual language top to bottom.
-  **The Lot became a room instead of a queue.** `src/ui/LotRoom/` + `LotRoomContainer`, a new
-  `lot` Navigator route the dock's Lot tile opens (`handleDeptPress`), holding the whole stock
-  pipeline the locked IA §4 gives it: the stock list with days-on-lot and carrying cost, the
-  per-unit `Tune ›` entry into the pricing screen, the inline asking-price field, the standing
-  pricing strategy, and sourcing. **The auction lives here now** — it was a button in Prep.
-  Before this, tapping Lot opened `DepartmentScreen` on `departmentQueue.getQueue('lot')`:
-  *"Nothing waiting in Lot"* while three cars sat on the lot one tab away.
-  **Prep is now what the IA says it is: two levers, one block, zero navigation.** Hours and
-  trade policy. `OwnershipLevers` went from 463 lines with its own `StyleSheet` off the raw
-  `colors` map — **the last pre-kit surface anywhere in the app** — to a kit surface reading
-  every value through `useTheme()`. Its own `"NEXT-DAY PREP"` heading is gone, which was the
-  duplicate that rendered directly under the tab's `SectionHeader "Prep"`.
-  **Where the evicted controls went, and why hiring did not wait for #347.** Stock list +
-  price rows + pricing strategy + auction → the Lot room. Advertising → the demand console's
-  "What You're Promoting" section (the readout of what that lever does), which Growth inherits
-  whole in #349. Hiring → **People**, as a roster-count + `Hire Staff` entry. #347 owns the
-  People rebuild, but the criterion "Prep contains no navigation links" makes hiring
-  unreachable the moment Prep loses it, so the entry landed with the eviction rather than one
-  slice later; #347 replaces it with the real roster + hiring pool.
-  **Reuse over reinvention.** The three chip selectors (hours, trade policy, pricing strategy,
-  advertising) all run on `DeptControls`' existing `ChipRow`, which grew one optional
-  `disabled` prop so the floor-open lock survives the migration. No fourth chip implementation.
-  **Two guards worth keeping.** The kit no-leak test now scans migrated *surfaces*, not just
-  `src/ui/kit/` — hex/rgb literals and a raw `colors` import both fail it, with comments
-  stripped first because this repo cites issues as `#346`, which is a valid 3-digit hex to that
-  pattern. And `actionFooterClearance(theme)` derives the shell's bottom inset from the CTA it
-  has to clear (label line box + padding), so a re-skin can't silently shrink the gap that
-  audit P8 was about.
-  **Driven on web at T1** (three units on the lot): dock → Lot room renders all three units
-  with carry lines and editable prices → `Go to the Auction` opens Auction Lane → back returns
-  to the Lot room; People → `Hire Staff` opens Personnel; Operations scrolled to the bottom
-  shows Prep's two cards clear of the Open Floor CTA. 201 suites / **2496** tests, typecheck
-  clean. One drive note: a click that "opened the floor" from the Lot room was a stale
-  ref→coordinate mapping, not a bug — the capture-listener readback in `.claude/skills/verify`
-  is what proved it.
-  Next: **BUILD #347** (People rebuild).

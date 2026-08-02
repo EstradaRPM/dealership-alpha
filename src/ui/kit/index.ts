@@ -26,5 +26,7 @@ export { GaugeArc } from './GaugeArc';
 export type { GaugeArcProps, GaugeTone } from './GaugeArc';
 export { StatCard } from './StatCard';
 export type { StatCardProps, TrendDirection } from './StatCard';
+export { Sparkline } from './Sparkline';
+export type { SparklineProps } from './Sparkline';
 export { SectionHeader } from './SectionHeader';
 export type { SectionHeaderProps } from './SectionHeader';

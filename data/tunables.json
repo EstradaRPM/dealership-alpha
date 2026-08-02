@@ -116,6 +116,7 @@
           "id": "local-radio",
           "label": "Local radio",
           "blurb": "Run a modest radio push aimed at practical family and commute shoppers.",
+          "dailyCost": 75,
           "lagDays": 3,
           "decayDays": 2,
           "weights": {

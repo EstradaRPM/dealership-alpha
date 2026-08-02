@@ -10,8 +10,9 @@ import { StrategicTab } from '../src/ui/StrategicTab';
 // The 5-tab IA is FIXED — navigation is never gated by tier (#226 reverted the
 // progressive tab-unlock that was never an agreed mechanic). All five tabs are
 // always present; progression is altitude rising inside a surface, not tabs
-// appearing/disappearing. People/Finance/Growth are placeholders until their
-// own per-surface slice. This file guards the static nav + the active-tab fix.
+// appearing/disappearing. Finance is the last placeholder (#351); Home,
+// Operations, People and Growth all back real surfaces. This file guards the
+// static nav + the active-tab fix.
 
 describe('the fixed 5-tab IA — always present, never tier-gated', () => {
   it('is exactly the canonical five, in order, regardless of tier', () => {
@@ -32,11 +33,11 @@ describe('the fixed 5-tab IA — always present, never tier-gated', () => {
     expect(raw).not.toMatch(/unlockTier|revealTier/);
   });
 
-  it('every strategic tab carries the tagline its placeholder needs', () => {
+  it('every remaining placeholder tab carries the tagline it needs', () => {
+    // #349 built Growth, so Finance is the last tab still falling back to
+    // StrategicTab. The tagline is only load-bearing for a placeholder.
     for (const def of loadNavTabs()) {
-      if (def.key === 'people' || def.key === 'finance' || def.key === 'growth') {
-        expect(def.tagline).toBeTruthy();
-      }
+      if (def.key === 'finance') expect(def.tagline).toBeTruthy();
     }
   });
 });

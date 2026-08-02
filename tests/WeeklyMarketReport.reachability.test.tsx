@@ -1,11 +1,17 @@
 import React from 'react';
+import { readAppCompositionSource } from './helpers/appComposition';
 import * as fs from 'fs';
 import * as path from 'path';
 import { render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { buildWeeklyReport } from '../src/app/config';
-import { HomeTab, WeeklyMarketReportCard, buildWeeklyReportCard } from '../src/ui/HomeTab';
+// #349: the weekly column moved to the Growth demand console with the wire.
+import {
+  GrowthTab,
+  WeeklyMarketReportCard,
+  buildWeeklyReportCard,
+} from '../src/ui/GrowthTab';
 import { snapshotWorld, restoreWorld } from '../src/worldSnapshot';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 import type { DayLoopState } from '../src/game/DayLoopController';
@@ -81,10 +87,8 @@ describe('#177 weekly market report — live world', () => {
     expect(model?.recapBadge?.label).toBe('Recap');
     expect(model?.callsBadge?.label).toBe('Rumor');
 
-    const { getByTestId } = render(
-      <HomeTab state={MANAGERIAL} weeklyReport={model} />,
-    );
-    expect(getByTestId('home-region-weekly-report')).toBeTruthy();
+    const { getByTestId } = render(<GrowthTab weeklyReport={model} />);
+    expect(getByTestId('growth-region-weekly-report')).toBeTruthy();
     expect(getByTestId('weekly-market-report')).toBeTruthy();
     expect(getByTestId('weekly-report-summary')).toBeTruthy();
   });
@@ -116,11 +120,9 @@ describe('#177 weekly market report — live world', () => {
     expect(buildWeeklyReport(world2)).toEqual(buildWeeklyReport(world));
   });
 
-  it('is actually mounted on the Home tab by the composition root', () => {
-    const src = fs.readFileSync(
-      path.join(__dirname, '..', 'src', 'app', 'screens', 'GameScreen.tsx'),
-      'utf8',
-    );
+  it('is actually mounted on the Growth tab by the composition root', () => {
+    // #349: the column moved to Growth with the wire; read the whole layer.
+    const src = readAppCompositionSource();
     expect(src).toMatch(/weeklyReport=\{buildWeeklyReport\(world\)\}/);
 
     const worldState = fs.readFileSync(
@@ -201,8 +203,8 @@ describe('#177 weekly market report — card behavior', () => {
     expect(getByTestId('weekly-no-calls')).toBeTruthy();
   });
 
-  it('renders the Home tab with no column at all (pre-first-week)', () => {
-    const { getByTestId } = render(<HomeTab state={MANAGERIAL} />);
-    expect(getByTestId('home-region-weekly-report')).toBeTruthy();
+  it('renders the Growth tab with no column at all (pre-first-week)', () => {
+    const { getByTestId } = render(<GrowthTab />);
+    expect(getByTestId('growth-region-weekly-report')).toBeTruthy();
   });
 });

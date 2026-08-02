@@ -1,11 +1,13 @@
 import React from 'react';
+import { readAppCompositionSource } from './helpers/appComposition';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fireEvent, render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { buildIndustryWire } from '../src/app/config';
-import { HomeTab, IndustryWire } from '../src/ui/HomeTab';
+// #349: the wire moved to the Growth demand console (Home keeps a glance).
+import { GrowthTab, IndustryWire } from '../src/ui/GrowthTab';
 import { snapshotWorld, restoreWorld } from '../src/worldSnapshot';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 import type { DayLoopState } from '../src/game/DayLoopController';
@@ -94,8 +96,8 @@ describe('#176 industry wire — live world', () => {
       'lagging',
     ]);
 
-    const { getByTestId } = render(<HomeTab state={MANAGERIAL} industryWire={model} />);
-    expect(getByTestId('home-region-wire')).toBeTruthy();
+    const { getByTestId } = render(<GrowthTab industryWire={model} />);
+    expect(getByTestId('growth-region-wire')).toBeTruthy();
     expect(getByTestId('industry-wire')).toBeTruthy();
   });
 
@@ -117,11 +119,10 @@ describe('#176 industry wire — live world', () => {
     );
   });
 
-  it('is actually mounted on the Home tab by the composition root', () => {
-    const src = fs.readFileSync(
-      path.join(__dirname, '..', 'src', 'app', 'screens', 'GameScreen.tsx'),
-      'utf8',
-    );
+  it('is actually mounted on the Growth tab by the composition root', () => {
+    // #349: the wire's wire-up moved from GameScreen into GrowthTabContainer,
+    // so this reads the whole composition layer rather than one file.
+    const src = readAppCompositionSource();
     expect(src).toMatch(/industryWire=\{buildIndustryWire\(world\)\}/);
 
     const worldState = fs.readFileSync(
@@ -202,8 +203,8 @@ describe('#176 industry wire — panel behavior', () => {
     expect(queryByTestId('wire-legend-toggle')).toBeNull();
   });
 
-  it('renders the Home tab with no wire at all (pre-day-1)', () => {
-    const { getByTestId } = render(<HomeTab state={MANAGERIAL} />);
-    expect(getByTestId('home-region-wire')).toBeTruthy();
+  it('renders the Growth tab with no wire at all (pre-day-1)', () => {
+    const { getByTestId } = render(<GrowthTab />);
+    expect(getByTestId('growth-region-wire')).toBeTruthy();
   });
 });

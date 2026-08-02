@@ -31,14 +31,14 @@ import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
 import type { PeopleRoleOption } from '../ui/PeopleTab';
 import type { DeptTile } from '../ui/OperationsTab';
+import type { CashDeltaSplit } from '../ui/HomeTab';
 import {
   buildIndustryWire as buildIndustryWireModel,
   buildWeeklyReportCard,
-  type CashDeltaSplit,
   type IndustryWireModel,
   type WeeklyReportCardModel,
   type WireLockInput,
-} from '../ui/HomeTab';
+} from '../ui/GrowthTab';
 import { gateHeadlines, type NewsAccess, type NewsLock } from '../game/MarketIntel';
 import {
   PART_CATEGORIES,

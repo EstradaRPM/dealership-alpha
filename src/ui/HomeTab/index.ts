@@ -1,33 +1,11 @@
 export { HomeTab } from './HomeTab';
-export type { HomeTabProps } from './HomeTab';
+export type { HomeTabProps, HomeMarketGlance } from './HomeTab';
 export { GateStrip } from './GateStrip';
-export { IndustryWire } from './IndustryWire';
-export type { IndustryWireProps } from './IndustryWire';
-export { buildIndustryWire, wireDayLabel } from './industryWireModel';
-export type {
-  IndustryWireModel,
-  IndustryWireInputs,
-  WireHeadlineInput,
-  WireHeadlineView,
-  WireLegendEntry,
-  WireReliability,
-  WireLockInput,
-  WireUnlockView,
-  WireGatingCopyInput,
-} from './industryWireModel';
-export { WeeklyMarketReportCard } from './WeeklyMarketReportCard';
-export type { WeeklyMarketReportCardProps } from './WeeklyMarketReportCard';
-export { buildWeeklyReportCard, signedPercent } from './weeklyReportModel';
-export type {
-  WeeklyReportCardModel,
-  WeeklyReportInputs,
-  WeeklyReportInput,
-  WeeklyReportCopyInput,
-  WeeklyMoveRow,
-  WeeklyCallRow,
-  WeeklyBadge,
-} from './weeklyReportModel';
+// The Industry Wire + Weekly Market Report moved to `src/ui/GrowthTab/` in
+// #349 — they are the demand console's market reads, and Home renders glances
+// only (locked IA §1). Import them from '../GrowthTab'.
 export { buildHomeDashboard, csiLabel } from './homeModel';
+export { buildMarketGlance } from './marketGlanceModel';
 export { buildGateStrip } from './gateStripModel';
 export type {
   CashDeltaSplit,

@@ -15,9 +15,15 @@ import {
   type ShellTabKey,
   type ShellStat,
 } from '../../ui/AppShell';
-import { HomeTab, buildHomeDashboard, buildGateStrip } from '../../ui/HomeTab';
+import {
+  HomeTab,
+  buildHomeDashboard,
+  buildGateStrip,
+  buildMarketGlance,
+} from '../../ui/HomeTab';
 import { OperationsTab } from '../../ui/OperationsTab';
 import { PeopleTabContainer } from './PeopleTabContainer';
+import { GrowthTabContainer } from './GrowthTabContainer';
 import { RecoveryBanner } from '../../ui/NarrativeBeat';
 import { StrategicTab } from '../../ui/StrategicTab';
 import {
@@ -51,8 +57,6 @@ import {
   resolvePricingIntel,
   buildManagerStatus,
   buildRecoveryBanners,
-  buildIndustryWire,
-  buildWeeklyReport,
   buildDepartmentDock,
 } from '../config';
 
@@ -236,7 +240,15 @@ export function GameScreen({
     // takes marketing/demand levers out of Operations and gives them to the
     // demand console, which Growth inherits with the rest of the stack.
     advertising: {
-      options: world.demandControls.advertisingOptions,
+      // #349 prices the lever: each option carries its daily spend, formatted
+      // here (the view renders strings, the world holds numbers). A campaign
+      // with no visible price is a campaign with no decision in it.
+      options: world.demandControls.advertisingOptions.map((o) => ({
+        id: o.id,
+        label: o.label,
+        blurb: o.blurb,
+        costLabel: o.dailyCost > 0 ? `$${o.dailyCost.toLocaleString()}/day` : undefined,
+      })),
       selectedId: world.demandControls.getAdvertisingCampaignId(),
       onSelect: levers.handleSelectAdvertisingCampaign,
     },
@@ -367,16 +379,11 @@ export function GameScreen({
         dashboard={homeDashboard}
         onOpenOperations={() => tabs.setActiveTab('operations')}
         recapChip={recapChip}
-        demandReadout={demandReadout}
-        industryWire={buildIndustryWire(world)}
-        onToggleSubscription={(id, on) => {
-          // #178: a standing subscription is world state (persisted, billed
-          // daily), so the toggle writes through the module and the shell
-          // re-renders off the same `bump` the wire's publish uses.
-          world.marketIntel.setSubscribed(id, on);
-          bump();
-        }}
-        weeklyReport={buildWeeklyReport(world)}
+        // #349: the market stack moved to Growth; Home keeps a glance built off
+        // the very same console model, and both it and the gate strip route
+        // there (locked IA rule 4 — Home never renders detail).
+        marketGlance={buildMarketGlance(demandReadout)}
+        onOpenGrowth={() => tabs.setActiveTab('growth')}
       />
     ),
     operations: (
@@ -399,7 +406,13 @@ export function GameScreen({
       />
     ),
     finance: null,
-    growth: null,
+    // The compounding tab (#349): the demand console (readout + campaign lever +
+    // the market reads) over the tier-gate detail board. Both were homeless —
+    // the console rendered on Home against its glances-only charter, and the
+    // gate had no detail surface at all.
+    growth: (
+      <GrowthTabContainer world={world} demandReadout={demandReadout} bump={bump} />
+    ),
   };
   const shellTabs: ShellTab[] = loadNavTabs().map((tab) => ({
     key: tab.key,

@@ -15,6 +15,8 @@ export type {
   LevelFaceProgress,
   TrendFaceProgress,
   GateProgress,
+  TierFaceRequirement,
+  TierRequirements,
   FaceVerdict,
   GateMonthVerdict,
   LevelSamples,
