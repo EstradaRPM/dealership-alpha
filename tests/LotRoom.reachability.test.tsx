@@ -129,7 +129,7 @@ describe('#346 Lot room — mounted in the live app', () => {
   it('is a real route the Lot dock tile opens, not the generic queue screen', () => {
     const src = readAppCompositionSource();
 
-    expect(src).toContain("if (dept === 'lot') return nav.navigate('lot')");
+    expect(src).toContain("if (dept === 'lot') return tabs.navigate('lot')");
     expect(src).toContain('<LotRoomContainer');
   });
 
@@ -137,8 +137,8 @@ describe('#346 Lot room — mounted in the live app', () => {
     const src = readAppCompositionSource();
 
     expect(src).toContain('world.inventory.setAskingPrice(vehicleId, price)');
-    expect(src).toMatch(/onOpenAuction=\{\(\) => nav\.navigate\('auction'\)\}/);
-    expect(src).toMatch(/onOpenPricing=\{\(vehicleId\) =>\s*nav\.navigate\('pricing', \{ vehicleId \}\)\}/);
+    expect(src).toMatch(/onOpenAuction=\{\(\) => tabs\.navigate\('auction'\)\}/);
+    expect(src).toMatch(/onOpenPricing=\{\(vehicleId\) =>\s*tabs\.navigate\('pricing', \{ vehicleId \}\)\}/);
   });
 });
 
@@ -147,10 +147,10 @@ describe('#346 hiring left Prep — and #347 landed it on People for good', () =
     const src = readAppCompositionSource();
 
     // The two navigation links the locked IA bans in Prep.
-    expect(src).not.toContain("onOpenAuction: () => nav.navigate('auction')");
+    expect(src).not.toContain("onOpenAuction: () => tabs.navigate('auction')");
     expect(src).not.toContain('rosterCount: world.staffOrg.currentRoster.length');
     // #347: the stop-gap People→personnel push is gone too — hiring resolves
     // inside the People tab, so no surface anywhere pushes that route.
-    expect(src).not.toContain("nav.navigate('personnel')");
+    expect(src).not.toContain("navigate('personnel')");
   });
 });

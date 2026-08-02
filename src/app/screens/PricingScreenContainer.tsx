@@ -2,7 +2,8 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { World } from '../../createWorld';
-import type { Navigator } from '../../ui/Navigator';
+import type { TabStacks } from '../../ui/Navigator';
+import type { ShellTabKey } from '../../ui/AppShell';
 import type { LotVehicle } from '../../game/Inventory';
 import { PricingScreen } from '../../ui/PricingScreen';
 import {
@@ -18,7 +19,7 @@ import {
 
 export interface PricingScreenContainerProps {
   world: World;
-  nav: Navigator;
+  tabs: TabStacks<ShellTabKey>;
   vehicleId: string;
   pricingStrategyId: string;
   persistCurrentSave: () => void;
@@ -29,7 +30,7 @@ export interface PricingScreenContainerProps {
 // suggestion model off the live World for one lot unit. Verbatim from App.tsx.
 export function PricingScreenContainer({
   world,
-  nav,
+  tabs,
   vehicleId,
   pricingStrategyId,
   persistCurrentSave,
@@ -38,7 +39,7 @@ export function PricingScreenContainer({
   const v = world.inventory.getLotVehicles().find((x) => x.id === vehicleId);
   if (!v) {
     // Unit sold/abandoned while the screen was queued — bounce to the game.
-    nav.back();
+    tabs.back();
     return <View style={styles.container} />;
   }
   const { bookValue, marketPrice } = world.marketEconomy.valuationFor(v);
@@ -106,7 +107,7 @@ export function PricingScreenContainer({
           setLotVehicles(world.inventory.getLotVehicles());
           persistCurrentSave();
         }}
-        onClose={() => nav.back()}
+        onClose={() => tabs.back()}
       />
     </>
   );

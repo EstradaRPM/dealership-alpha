@@ -9,8 +9,8 @@ describe('Navigator', () => {
 
   it('navigate pushes a new screen and back pops it', () => {
     const nav = createNavigator('game');
-    nav.navigate('auction');
-    expect(nav.current.route).toBe('auction');
+    nav.navigate('in-game-menu');
+    expect(nav.current.route).toBe('in-game-menu');
     expect(nav.canGoBack).toBe(true);
 
     nav.back();
@@ -25,7 +25,7 @@ describe('Navigator', () => {
     expect(nav.canGoBack).toBe(false);
   });
 
-  it('reaches every screen and unwinds the stack via back', () => {
+  it('reaches every root screen and unwinds the stack via back', () => {
     const nav = createNavigator('loading');
     nav.navigate('character-creation');
     nav.navigate('game');
@@ -33,25 +33,26 @@ describe('Navigator', () => {
     expect(nav.current.route).toBe('settings');
     nav.back();
     expect(nav.current.route).toBe('game');
-    nav.navigate('service');
-    expect(nav.current.route).toBe('service');
+    nav.navigate('kpi-dashboard');
+    expect(nav.current.route).toBe('kpi-dashboard');
 
     nav.back();
     expect(nav.current.route).toBe('game');
-    nav.navigate('auction');
-    expect(nav.current.route).toBe('auction');
+    nav.navigate('history');
+    expect(nav.current.route).toBe('history');
     nav.back();
     expect(nav.current.route).toBe('game');
   });
 
-  it('pushes the department screen with its dept param and pops back to game', () => {
+  // #348: the sub-screens are NOT root routes any more. They live on the tab
+  // stacks (TabStacks.test.ts), because pushing them here is exactly what
+  // unmounted the 5-tab shell.
+  it('will not accept a tab route on the root stack', () => {
     const nav = createNavigator('game');
-    nav.navigate('department', { dept: 'service' });
-    expect(nav.current.route).toBe('department');
-    expect(nav.current.params).toEqual({ dept: 'service' });
 
-    nav.back();
-    expect(nav.current.route).toBe('game');
+    // @ts-expect-error — 'lot' is a TAB route; the compiler is the guard that
+    // keeps a room from ever replacing the shell again.
+    nav.navigate('lot');
   });
 
   it('reset replaces the whole stack so back cannot resurrect prior screens', () => {
@@ -66,7 +67,7 @@ describe('Navigator', () => {
     expect(nav.current.route).toBe('game');
 
     // Modals still push/pop on top of a reset root and return to it.
-    nav.navigate('auction');
+    nav.navigate('in-game-menu');
     expect(nav.canGoBack).toBe(true);
     nav.back();
     expect(nav.current.route).toBe('game');
@@ -78,7 +79,7 @@ describe('Navigator', () => {
     const before = nav.current;
     expect(nav.current).toBe(before);
 
-    nav.navigate('auction');
+    nav.navigate('in-game-menu');
     expect(nav.current).not.toBe(before);
 
     nav.back();
@@ -92,12 +93,12 @@ describe('Navigator', () => {
       calls++;
     });
 
-    nav.navigate('auction');
+    nav.navigate('in-game-menu');
     nav.back();
     expect(calls).toBe(2);
 
     unsub();
-    nav.navigate('service');
+    nav.navigate('settings');
     expect(calls).toBe(2);
   });
 });

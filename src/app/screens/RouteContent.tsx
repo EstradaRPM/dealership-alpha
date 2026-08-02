@@ -2,15 +2,14 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import type { EventBus } from '../../game/EventBus';
-import type { Navigator } from '../../ui/Navigator';
+import type { Navigator, TabStacks } from '../../ui/Navigator';
+import type { ShellTabKey } from '../../ui/AppShell';
 import type {
   SaveStore,
   MultiSlotSaveStore,
 } from '../../game/SaveStore';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import type { DeptKey } from '../../game/DepartmentQueue';
-import type { PartCategory, SupplierTier } from '../../game/PartsInventory';
-import type { ConquestSelection } from '../../game/ServiceMarketing';
 import type { FloorRenderLoop } from '../../ui/FloorRenderLoop';
 import { makeSeed } from '../../createWorld';
 import { CharacterCreation } from '../../ui/CharacterCreation';
@@ -21,22 +20,12 @@ import { LegacyWallView } from '../../ui/LegacyWall';
 import { KPIDashboard } from '../../ui/KPIDashboard';
 import { HistoryScreen } from '../../ui/HistoryScreen';
 import { EndCard } from '../../ui/EndCard';
-import { DepartmentScreen } from '../../ui/DepartmentScreen';
-import { ServicePage } from '../../ui/ServicePage';
-import { BodyShopPage } from '../../ui/BodyShopPage';
 import { GameScreen } from './GameScreen';
-import { AuctionScreen } from './AuctionScreen';
-import { PricingScreenContainer } from './PricingScreenContainer';
-import { LotRoomContainer } from './LotRoomContainer';
+import { TabStackContent } from './TabStackContent';
 import {
-  DEPT_TITLES,
   TRADE_POLICY,
   PRICING_STRATEGIES,
   HOURS_OF_OP,
-  buildServicePageModel,
-  buildServiceControlsModel,
-  buildBodyShopPageModel,
-  buildBodyShopControlsModel,
   buildMarketState,
 } from '../config';
 import type { WorldState } from '../useWorldState';
@@ -47,6 +36,8 @@ import { TIER_FIXTURES, type TierFixture } from '../devFixtures';
 
 export interface RouteContentProps {
   nav: Navigator;
+  /** Per-tab stacks (#348): which tab is up, and how deep the player is in it. */
+  tabs: TabStacks<ShellTabKey>;
   bus: EventBus;
   saveStore: SaveStore;
   slotStore: MultiSlotSaveStore;
@@ -69,6 +60,7 @@ export interface RouteContentProps {
 // file, not the composition root.
 export function RouteContent({
   nav,
+  tabs,
   bus,
   saveStore,
   slotStore,
@@ -212,164 +204,6 @@ export function RouteContent({
       </>
     );
   }
-  if (screen === 'auction' && world) {
-    return (
-      <AuctionScreen
-        world={world}
-        nav={nav}
-        bus={bus}
-        lotVehicles={lotVehicles}
-        cash={cash}
-        persistCurrentSave={persistCurrentSave}
-        setCash={setCash}
-      />
-    );
-  }
-  if (screen === 'pricing' && world) {
-    const { vehicleId } = nav.current.params as { vehicleId: string };
-    return (
-      <PricingScreenContainer
-        world={world}
-        nav={nav}
-        vehicleId={vehicleId}
-        pricingStrategyId={levers.pricingStrategyId}
-        persistCurrentSave={persistCurrentSave}
-        setLotVehicles={setLotVehicles}
-      />
-    );
-  }
-  if (screen === 'lot' && world) {
-    return (
-      <LotRoomContainer
-        world={world}
-        nav={nav}
-        lotVehicles={lotVehicles}
-        pricingStrategyId={levers.pricingStrategyId}
-        onSelectPricingStrategy={levers.handleSelectPricingStrategy}
-        persistCurrentSave={persistCurrentSave}
-        setLotVehicles={setLotVehicles}
-      />
-    );
-  }
-  if (screen === 'department' && world) {
-    const dept = (nav.current.params as { dept: DeptKey }).dept;
-    return (
-      <>
-        <StatusBar style="light" />
-        <DepartmentScreen
-          title={DEPT_TITLES[dept]}
-          items={world.departmentQueue.getQueue(dept)}
-          onResolve={(id) => {
-            world.departmentQueue.resolveItem(id);
-            bump();
-          }}
-          onClose={() => nav.back()}
-        />
-      </>
-    );
-  }
-  if (screen === 'service' && world) {
-    // Service department page (#308 readouts + #309 controls): demand heat +
-    // stock coverage + base health, plus the policy levers (par/supplier/posture/
-    // marketing). Each control dispatches into the already-built game logic, then
-    // re-snapshots + re-renders so the page reflects the new policy. Policy-style
-    // — set once, applied automatically. Navigation is never tier-gated.
-    const w = world;
-    const apply = () => {
-      persistCurrentSave();
-      bump();
-    };
-    return (
-      <>
-        <StatusBar style="light" />
-        <ServicePage
-          model={buildServicePageModel(w)}
-          controls={{
-            model: buildServiceControlsModel(w),
-            onSetReorderPoint: (category, value) => {
-              w.partsInventory.setPolicy(category as PartCategory, {
-                reorderPoint: value,
-              });
-              apply();
-            },
-            onSetTarget: (category, value) => {
-              w.partsInventory.setPolicy(category as PartCategory, {
-                target: value,
-              });
-              apply();
-            },
-            onSetSupplierTier: (category, tier) => {
-              w.partsInventory.setPolicy(category as PartCategory, {
-                tier: tier as SupplierTier,
-              });
-              apply();
-            },
-            onSetPricingPosture: (value) => {
-              w.setServicePricingPosture(value);
-              apply();
-            },
-            onSetRetention: (id) => {
-              w.serviceMarketing.setRetentionCampaign(id);
-              apply();
-            },
-            onSetConquest: (category) => {
-              w.serviceMarketing.setConquestSpecial(category as ConquestSelection);
-              apply();
-            },
-          }}
-          onClose={() => nav.back()}
-        />
-      </>
-    );
-  }
-  if (screen === 'bodyShop' && world) {
-    // Body Shop department page (#315 readouts + #318 controls): demand heat +
-    // stock coverage + conquest health, plus the policy levers (par/supplier per
-    // collision category + the insurance↔retail channel dial). Each control
-    // dispatches into the already-built game logic, then re-snapshots + re-renders
-    // so the page reflects the new policy. Policy-style — set once, applied
-    // automatically. Navigation is never tier-gated (the page renders its dark/
-    // empty states below Tier 3 because the read-model is silent).
-    const w = world;
-    const apply = () => {
-      persistCurrentSave();
-      bump();
-    };
-    return (
-      <>
-        <StatusBar style="light" />
-        <BodyShopPage
-          model={buildBodyShopPageModel(w)}
-          controls={{
-            model: buildBodyShopControlsModel(w),
-            onSetReorderPoint: (category, value) => {
-              w.partsInventory.setPolicy(category as PartCategory, {
-                reorderPoint: value,
-              });
-              apply();
-            },
-            onSetTarget: (category, value) => {
-              w.partsInventory.setPolicy(category as PartCategory, {
-                target: value,
-              });
-              apply();
-            },
-            onSetSupplierTier: (category, tier) => {
-              w.partsInventory.setPolicy(category as PartCategory, {
-                tier: tier as SupplierTier,
-              });
-              apply();
-            },
-            onSetChannelPosture: (value) => {
-              w.setBodyShopChannelPosture(value);
-              apply();
-            },
-          }}
-          onClose={() => nav.back()}
-        />
-      </>
-    );
-  }
   if (screen === 'game' && profile && world) {
     return (
       <View style={styles.container}>
@@ -383,9 +217,26 @@ export function RouteContent({
           cashDelta={dayLoop.cashDelta}
           floorLoop={floorLoop}
           levers={levers}
-          nav={nav}
-          shellTab={dayLoop.shellTab}
-          setShellTab={dayLoop.setShellTab}
+          tabs={tabs}
+          // The active tab's pushed sub-screen, rendered by the shell with the
+          // tab bar still up (#348). Null at a tab's root, where the tab's own
+          // page renders — so this is also the flag that picks the body mode.
+          stackScreen={
+            tabs.current ? (
+              <TabStackContent
+                tabs={tabs}
+                world={world}
+                bus={bus}
+                levers={levers}
+                lotVehicles={lotVehicles}
+                cash={cash}
+                persistCurrentSave={persistCurrentSave}
+                setLotVehicles={setLotVehicles}
+                setCash={setCash}
+                bump={bump}
+              />
+            ) : null
+          }
           lastRecap={dayLoop.lastRecap}
           setRecapModalOpen={dayLoop.setRecapModalOpen}
           handleNextDay={dayLoop.handleNextDay}

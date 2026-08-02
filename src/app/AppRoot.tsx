@@ -13,10 +13,11 @@ import {
   type PersistedWorldSnapshot,
 } from '../worldSnapshot';
 import { ThemeProvider } from '../ui/theme';
-import { useNavigator } from '../ui/Navigator';
+import { useNavigator, useTabStacks } from '../ui/Navigator';
 import { useFloorRenderLoop } from '../ui/FloorRenderLoop';
 import type { CharacterProfile } from '../game/CareerProgression';
 import type { DeptKey } from '../game/DepartmentQueue';
+import type { ShellTabKey } from '../ui/AppShell';
 import type { DayRecapModel } from '../ui/DayRecap';
 import { createAppServices, type AppServices } from './services';
 import type { TierFixture } from './devFixtures';
@@ -63,6 +64,11 @@ export function DealershipApp({
   }, [onServicesReady]);
   const nav = useNavigator('loading');
   const screen = nav.current.route;
+  // Per-tab navigation stacks (#348, locked IA §3). The Navigator owns the
+  // app's flow states; this owns the active tab and one stack per tab, so a
+  // sub-screen renders INSIDE the shell and switching tabs preserves where the
+  // player was in each. Home is the tab the console opens on.
+  const tabs = useTabStacks<ShellTabKey>('home');
 
   const worldState = useWorldState(bus);
   const {
@@ -235,6 +241,9 @@ export function DealershipApp({
     setFloorEvents([]);
     dayLoop.reset();
     modals.reset();
+    // Every tab back to its root (#348) — a new career must not open inside the
+    // last one's Lot room.
+    tabs.reset();
   }
 
   // New game → build the World from the freshly-minted seed that
@@ -314,12 +323,14 @@ export function DealershipApp({
 
   // Department-dock dispatch (#76, retargeted in #346). A department that has
   // its own room opens that room; the rest fall through to the generic
-  // DepartmentScreen queue. Always responds.
+  // DepartmentScreen queue. Always responds. The push lands on the stack of
+  // whichever tab it was pressed from (#348) — the dock lives in Operations, so
+  // its rooms stack there and People keeps its own position.
   const handleDeptPress = (dept: DeptKey) => {
-    if (dept === 'service') return nav.navigate('service');
-    if (dept === 'bodyshop') return nav.navigate('bodyShop');
-    if (dept === 'lot') return nav.navigate('lot');
-    nav.navigate('department', { dept });
+    if (dept === 'service') return tabs.navigate('service');
+    if (dept === 'bodyshop') return tabs.navigate('bodyShop');
+    if (dept === 'lot') return tabs.navigate('lot');
+    tabs.navigate('department', { dept });
   };
 
   // After a save is wiped (EndCard "New Career" or the dev AdminConsole), the
@@ -360,8 +371,14 @@ export function DealershipApp({
     !!world &&
     world.dayLoop.state().phase === 'FLOOR_OPEN' &&
     !!world.dayLoop.currentFloor();
+  // ...and only while the hero header itself is what's on screen: a pushed
+  // sub-screen starts at the top edge, so it needs the inset back (#348).
   const shellOwnsTopInset =
-    screen === 'game' && !!profile && !!world && !floorIsOpen;
+    screen === 'game' &&
+    !!profile &&
+    !!world &&
+    !floorIsOpen &&
+    tabs.current === undefined;
   return (
     <SafeAreaProvider>
       {/* Single injectable theme (#225): every kit surface reads tokens from
@@ -381,6 +398,7 @@ export function DealershipApp({
           >
             <RouteContent
               nav={nav}
+              tabs={tabs}
               bus={bus}
               saveStore={saveStore}
               slotStore={slotStore}

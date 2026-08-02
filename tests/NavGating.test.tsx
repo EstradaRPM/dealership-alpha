@@ -79,9 +79,9 @@ describe('AppShell — controlled active tab survives a sub-screen round-trip', 
   });
 
   it('keeps the active tab across a sub-screen round-trip (the reset bug)', () => {
-    // At Operations, navigate away (AppShell unmounts), come back. Because the
-    // parent holds activeTabKey, the remount restores Operations rather than
-    // snapping back to Home.
+    // At Operations, open a sub-screen and come back. #348 made this structural
+    // — the shell no longer unmounts at all — but the controlled-tab contract
+    // still has to hold across a remount.
     const { rerender, getByText } = render(
       <AppShell
         businessName="Ray's Lot"
@@ -108,7 +108,9 @@ describe('App.tsx wiring', () => {
     expect(src).toMatch(/loadNavTabs\(\)/);
     expect(src).not.toMatch(/resolveNavTabs/);
     expect(src).toMatch(/<StrategicTab/);
-    expect(src).toMatch(/activeTabKey=\{shellTab\}/);
-    expect(src).toMatch(/onTabChange=\{setShellTab\}/);
+    // #348: the active tab moved from a lifted useState into TabStacks, which
+    // owns the tab AND that tab's stack position.
+    expect(src).toMatch(/activeTabKey=\{tabs\.activeTab\}/);
+    expect(src).toMatch(/onTabChange=\{tabs\.setActiveTab\}/);
   });
 });

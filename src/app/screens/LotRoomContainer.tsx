@@ -1,14 +1,15 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import type { World } from '../../createWorld';
-import type { Navigator } from '../../ui/Navigator';
+import type { TabStacks } from '../../ui/Navigator';
+import type { ShellTabKey } from '../../ui/AppShell';
 import type { LotVehicle } from '../../game/Inventory';
 import { LotRoom } from '../../ui/LotRoom';
 import { PRICING_STRATEGY_OPTIONS } from '../config';
 
 export interface LotRoomContainerProps {
   world: World;
-  nav: Navigator;
+  tabs: TabStacks<ShellTabKey>;
   lotVehicles: readonly LotVehicle[];
   pricingStrategyId: string;
   onSelectPricingStrategy: (id: string) => void;
@@ -25,7 +26,7 @@ export interface LotRoomContainerProps {
  */
 export function LotRoomContainer({
   world,
-  nav,
+  tabs,
   lotVehicles,
   pricingStrategyId,
   onSelectPricingStrategy,
@@ -54,7 +55,7 @@ export function LotRoomContainer({
           setLotVehicles(world.inventory.getLotVehicles());
           persistCurrentSave();
         }}
-        onOpenPricing={(vehicleId) => nav.navigate('pricing', { vehicleId })}
+        onOpenPricing={(vehicleId) => tabs.navigate('pricing', { vehicleId })}
         pricingStrategyOptions={PRICING_STRATEGY_OPTIONS}
         pricingStrategyId={pricingStrategyId}
         onSelectPricingStrategy={onSelectPricingStrategy}
@@ -63,8 +64,8 @@ export function LotRoomContainer({
         autoPricingActive={world.staffOrg.currentRoster.some(
           (s) => s.role_id === 'used-car-manager',
         )}
-        onOpenAuction={() => nav.navigate('auction')}
-        onClose={() => nav.back()}
+        onOpenAuction={() => tabs.navigate('auction')}
+        onClose={() => tabs.back()}
       />
     </>
   );

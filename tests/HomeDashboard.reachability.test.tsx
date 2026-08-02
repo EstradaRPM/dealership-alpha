@@ -157,6 +157,8 @@ describe('#230 Home dashboard — reachable through the live pipeline', () => {
     expect(src).toMatch(/currentDay: world\.clock\.currentDay/);
     expect(src).toMatch(/season: world\.clock\.currentSeason/);
     expect(src).toMatch(/dashboard=\{homeDashboard\}/);
-    expect(src).toMatch(/onOpenOperations=\{\(\) => setShellTab\('operations'\)\}/);
+    expect(src).toMatch(
+      /onOpenOperations=\{\(\) => tabs\.setActiveTab\('operations'\)\}/,
+    );
   });
 });

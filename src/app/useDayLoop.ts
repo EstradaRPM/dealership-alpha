@@ -16,7 +16,6 @@ import {
 } from '../ui/Reveal';
 import type { CashDeltaSplit } from '../ui/HomeTab';
 import { buildRecoveryBeat, type RecoveryBeat } from '../ui/NarrativeBeat';
-import type { ShellTabKey } from '../ui/AppShell';
 import type { SaveState } from '../game/SaveStore';
 import { snapshotWorld, type WorldSnapshot } from '../worldSnapshot';
 import type { AppServices } from './services';
@@ -58,8 +57,6 @@ export interface DayLoop {
   setRecapModalOpen: (open: boolean) => void;
   monthClose: number | null;
   setMonthClose: (m: number | null) => void;
-  shellTab: ShellTabKey;
-  setShellTab: (t: ShellTabKey) => void;
   chapterQueue: readonly TierUpEvent[];
   setChapterQueue: React.Dispatch<React.SetStateAction<readonly TierUpEvent[]>>;
   /** Non-terminal recovery beats (#326): survivable contractions / consent
@@ -143,11 +140,10 @@ export function useDayLoop({
   // Month-close interstitial (#123): the 1-based month that just closed, or
   // null when none is pending.
   const [monthClose, setMonthClose] = useState<number | null>(null);
-  // Active shell tab, lifted out of AppShell so it survives a round-trip
-  // through a sub-screen (auction / pricing / a department). The shell unmounts
-  // on those navigations; without lifting this the tab would reset to Home on
-  // return.
-  const [shellTab, setShellTab] = useState<ShellTabKey>('home');
+  // NOTE: the active shell tab used to be lifted here, because a sub-screen
+  // unmounted the shell and the tab would snap back to Home on return. #348
+  // retired that: sub-screens render inside the shell now, and `TabStacks` owns
+  // the active tab together with each tab's stack position.
   // Event-interrupt overlay channel (#84 / design record #127). Non-terminal
   // beats (career:tier_up / chapter rebrand) enqueue silently during
   // FLOOR_OPEN and drain as sequential full-bleed acknowledge-cards at the
@@ -488,8 +484,6 @@ export function useDayLoop({
     setRecapModalOpen,
     monthClose,
     setMonthClose,
-    shellTab,
-    setShellTab,
     chapterQueue,
     setChapterQueue,
     recoveryQueue,

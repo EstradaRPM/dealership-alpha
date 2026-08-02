@@ -101,6 +101,16 @@ export interface AppShellProps {
    * renders and the footer sits where it always did.
    */
   banner?: React.ReactNode;
+  /**
+   * The active tab's pushed sub-screen (#348, locked IA §3). When present the
+   * shell renders it in the body — filling the space the hero header, the tab
+   * page and the day-action footer occupy — and keeps the TAB BAR mounted and
+   * interactive beneath it. This is what replaces the unmount-the-shell pattern:
+   * a room you walked into is still inside the console, one tap from anywhere
+   * else in it. The sub-screen owns its own header and its own back control, so
+   * the shell contributes no chrome above it.
+   */
+  stackScreen?: React.ReactNode;
 }
 
 /**
@@ -157,6 +167,7 @@ export function AppShell({
   onTabChange,
   primaryAction,
   banner,
+  stackScreen,
 }: AppShellProps) {
   const t = useTheme();
   const { width } = useWindowDimensions();
@@ -362,6 +373,74 @@ export function AppShell({
     borderTopWidth: 1,
     borderTopColor: t.colors.surfaceRaised,
   };
+
+  // The tab bar is the shell's constant: it renders identically whether the
+  // body is a tab page or a pushed sub-screen, which is the whole point of
+  // in-tab stacks (locked IA §3) — you never lose the console by walking into
+  // a room.
+  const tabBarNode = (
+    <View style={tabBar} testID="app-shell-tabbar" accessibilityRole="tablist">
+      {tabs.map((tab) => {
+        const selected = tab.key === active?.key;
+        // The active tab sits in its own filled, rounded slot (home-hub
+        // mockup) rather than under a 2px top rule: on a dark bar the rule
+        // reads as a hairline artifact, while the tinted slot reads as a
+        // selected control and carries the accent the same way the tab's
+        // icon + label do.
+        const tabStyle: ViewStyle = {
+          flex: 1,
+          alignItems: 'center',
+          gap: t.spacing.xxs,
+          paddingVertical: t.spacing.sm,
+          marginVertical: t.spacing.xs,
+          marginHorizontal: t.spacing.xxs,
+          borderRadius: t.radius.md,
+          backgroundColor: selected ? t.colors.primaryTint : 'transparent',
+        };
+        // Sentence-case nav labels (#265): tab labels are wayfinding, not
+        // status tags — tracked all-caps here is wireframe texture. Keep the
+        // small bold size, drop the uppercase + wide tracking.
+        const tabLabel: TextStyle = {
+          ...t.typography.badge,
+          textTransform: 'none',
+          letterSpacing: 0.3,
+          color: selected ? t.colors.primary : t.colors.textMuted,
+        };
+        return (
+          <Pressable
+            key={tab.key}
+            style={tabStyle}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            accessibilityLabel={tab.label}
+            onPress={() => selectTab(tab.key)}
+          >
+            <Icon
+              name={TAB_ICONS[tab.key]}
+              size="md"
+              tone={selected ? 'primary' : 'muted'}
+            />
+            <Text style={tabLabel}>{tab.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  if (stackScreen) {
+    // A pushed sub-screen owns the body outright — it brings its own title and
+    // its own back control, and the day action belongs to the tab page it was
+    // pushed from, not to the room. Everything the shell still contributes is
+    // the tab bar below it.
+    return (
+      <View style={root}>
+        <View style={{ flex: 1 }} testID="app-shell-stack">
+          {stackScreen}
+        </View>
+        {tabBarNode}
+      </View>
+    );
+  }
 
   return (
     <View style={root}>
@@ -621,52 +700,7 @@ export function AppShell({
         </View>
       )}
 
-      <View style={tabBar} testID="app-shell-tabbar" accessibilityRole="tablist">
-        {tabs.map((tab) => {
-          const selected = tab.key === active?.key;
-          // The active tab sits in its own filled, rounded slot (home-hub
-          // mockup) rather than under a 2px top rule: on a dark bar the rule
-          // reads as a hairline artifact, while the tinted slot reads as a
-          // selected control and carries the accent the same way the tab's
-          // icon + label do.
-          const tabStyle: ViewStyle = {
-            flex: 1,
-            alignItems: 'center',
-            gap: t.spacing.xxs,
-            paddingVertical: t.spacing.sm,
-            marginVertical: t.spacing.xs,
-            marginHorizontal: t.spacing.xxs,
-            borderRadius: t.radius.md,
-            backgroundColor: selected ? t.colors.primaryTint : 'transparent',
-          };
-          // Sentence-case nav labels (#265): tab labels are wayfinding, not
-          // status tags — tracked all-caps here is wireframe texture. Keep the
-          // small bold size, drop the uppercase + wide tracking.
-          const tabLabel: TextStyle = {
-            ...t.typography.badge,
-            textTransform: 'none',
-            letterSpacing: 0.3,
-            color: selected ? t.colors.primary : t.colors.textMuted,
-          };
-          return (
-            <Pressable
-              key={tab.key}
-              style={tabStyle}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              accessibilityLabel={tab.label}
-              onPress={() => selectTab(tab.key)}
-            >
-              <Icon
-                name={TAB_ICONS[tab.key]}
-                size="md"
-                tone={selected ? 'primary' : 'muted'}
-              />
-              <Text style={tabLabel}>{tab.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {tabBarNode}
     </View>
   );
 }

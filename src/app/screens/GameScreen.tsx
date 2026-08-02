@@ -3,7 +3,7 @@ import type { World } from '../../createWorld';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import type { LotVehicle } from '../../game/Inventory';
 import type { DeptKey } from '../../game/DepartmentQueue';
-import type { Navigator } from '../../ui/Navigator';
+import type { TabStacks } from '../../ui/Navigator';
 import type { FloorRenderLoop } from '../../ui/FloorRenderLoop';
 import type { DayRecapModel } from '../../ui/DayRecap';
 import type { CashDeltaSplit } from '../../ui/HomeTab';
@@ -65,9 +65,13 @@ export interface GameScreenProps {
   cashDelta: CashDeltaSplit | null;
   floorLoop: FloorRenderLoop;
   levers: Levers;
-  nav: Navigator;
-  shellTab: ShellTabKey;
-  setShellTab: (t: ShellTabKey) => void;
+  /** Per-tab navigation stacks (#348): the active tab AND its stack position.
+   *  One owner for "which tab, and where inside it" — this retired the lifted
+   *  `shellTab` workaround the old unmount-the-shell pattern needed. */
+  tabs: TabStacks<ShellTabKey>;
+  /** The active tab's pushed sub-screen, or null at the tab's root. Handed to
+   *  the shell, which renders it with the tab bar still mounted. */
+  stackScreen?: React.ReactNode;
   lastRecap: DayRecapModel | null;
   setRecapModalOpen: (open: boolean) => void;
   handleNextDay: () => void;
@@ -94,9 +98,8 @@ export function GameScreen({
   cashDelta,
   floorLoop,
   levers,
-  nav,
-  shellTab,
-  setShellTab,
+  tabs,
+  stackScreen,
   lastRecap,
   setRecapModalOpen,
   handleNextDay,
@@ -362,7 +365,7 @@ export function GameScreen({
       <HomeTab
         state={loopState}
         dashboard={homeDashboard}
-        onOpenOperations={() => setShellTab('operations')}
+        onOpenOperations={() => tabs.setActiveTab('operations')}
         recapChip={recapChip}
         demandReadout={demandReadout}
         industryWire={buildIndustryWire(world)}
@@ -430,8 +433,12 @@ export function GameScreen({
       heroSource={HERO_BY_TIER[world.tierManager.currentTier] ?? HERO_BY_TIER[1]}
       onOpenGameMenu={openInGameMenu}
       tabs={shellTabs}
-      activeTabKey={shellTab}
-      onTabChange={setShellTab}
+      activeTabKey={tabs.activeTab}
+      onTabChange={tabs.setActiveTab}
+      // A pushed sub-screen renders in the shell's body with the tab bar still
+      // up (#348, locked IA §3) — walking into a room never unmounts the
+      // console. The live floor below is the one carve-out.
+      stackScreen={stackScreen}
       primaryAction={{
         // No "→" in the label — the shell's CTA draws the onward arrow itself.
         label: loopState.hasRecap ? 'Next Day' : 'Open Floor',

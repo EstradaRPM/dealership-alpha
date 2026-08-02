@@ -128,7 +128,9 @@ describe('#346 department dock — the surface is mounted and dispatches', () =>
   it('routes Service and the Body Shop to their own rooms, not the generic queue', () => {
     const src = readAppCompositionSource();
 
-    expect(src).toContain("nav.navigate('service')");
-    expect(src).toContain("nav.navigate('bodyShop')");
+    // #348: onto the Operations tab's own stack, so the room opens inside the
+    // shell with the tab bar still up.
+    expect(src).toContain("tabs.navigate('service')");
+    expect(src).toContain("tabs.navigate('bodyShop')");
   });
 });

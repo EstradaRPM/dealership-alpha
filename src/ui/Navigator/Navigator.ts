@@ -5,10 +5,23 @@
 
 import type { DeptKey } from '../../game/DepartmentQueue';
 
-// Typed route → params map. Every reachable screen has an entry; `undefined`
-// means the route carries no params. Adding a screen = adding a key here, so
-// there is no string-keyed navigation anywhere in the app.
-export type RouteParamMap = {
+// Routes come in two families, and the split is enforced by the compiler.
+//
+// ROOT routes (below) are whole-app flow states: the boot flow, the start menu,
+// the global overlays reached from the in-game menu, the live game itself, the
+// terminal end card. They live on the Navigator's single stack and each one owns
+// the entire screen.
+//
+// TAB routes (`TabRouteParamMap`) are sub-screens that live INSIDE one tab of
+// the 5-tab shell. Locked IA §3 rules that they render *inside* the shell with
+// the tab bar visible, each tab owning its own stack — so they are pushed onto
+// `TabStacks`, never onto this Navigator. `nav.navigate('auction')` no longer
+// typechecks, because that call is exactly what used to unmount the shell.
+//
+// Every reachable screen has an entry; `undefined` means the route carries no
+// params. Adding a screen = adding a key to one of the two maps, so there is no
+// string-keyed navigation anywhere in the app.
+export type RootRouteParamMap = {
   loading: undefined;
   // Start menu shown on app launch (#195): New Game / Continue / Load. The
   // root of the boot flow — character-creation and game are reached from here
@@ -31,32 +44,6 @@ export type RouteParamMap = {
   history: undefined;
   'character-creation': undefined;
   game: undefined;
-  auction: undefined;
-  // NOTE: there is no `personnel` route. Hiring and the roster are sections of
-  // the People tab (#347, locked IA §4) and resolve in place — pushing a
-  // full-screen route for them unmounted the tab bar, which IA §3 names as the
-  // pattern to replace.
-  // Per-vehicle real-time pricing screen (#175), pushed over the game from the
-  // pre-open ownership levers' Pricing card. Closed with back().
-  pricing: { vehicleId: string };
-  // A non-sales department resolve-list, pushed over the game (#76). Sales is
-  // not here — the Sales tab routes to the hand-play workspace, not a screen.
-  department: { dept: DeptKey };
-  // The Lot room (#346, locked IA §4): the whole stock pipeline as one room —
-  // stock list, pricing strategy, per-unit pricing entry, and sourcing (the
-  // auction). Pushed from the Operations dock's Lot tile; closed with back().
-  // Replaces the generic `department` queue screen for the Lot.
-  lot: undefined;
-  // The Service department read-model page (#308): demand heat + stock coverage
-  // + base health. Pushed over the game from the Operations tab; closed with
-  // back(). Distinct from the `department` resolve-list — this is the
-  // department's dashboard, not its work queue.
-  service: undefined;
-  // The Body Shop department read-model page (#315): demand heat + stock
-  // coverage + conquest health. Pushed over the game from the Operations tab
-  // (the entry appears only at/after Tier 3); closed with back(). The Tier-3
-  // mirror of the `service` page — navigation itself is never tier-gated.
-  bodyShop: undefined;
   // Terminal end-of-career screen (#84 / design record #127). Reached ONLY via
   // a Navigator reset on career:game_over — a new unreachable starting point
   // (canGoBack false). Non-terminal interrupt cards are NOT routes; they are a
@@ -64,7 +51,45 @@ export type RouteParamMap = {
   'end-card': undefined;
 };
 
+// Sub-screens owned by a tab of the shell (#348, locked IA §3). Each renders in
+// the shell's body with the tab bar still mounted, pushed onto the stack of
+// whichever tab the player pushed it from — so the Lot room opened from
+// Operations, and the pricing screen opened from inside it, are two entries deep
+// in the Operations stack while People keeps its own position untouched.
+export type TabRouteParamMap = {
+  auction: undefined;
+  // NOTE: there is no `personnel` route. Hiring and the roster are sections of
+  // the People tab (#347, locked IA §4) and resolve in place — pushing a
+  // full-screen route for them unmounted the tab bar, which IA §3 names as the
+  // pattern to replace.
+  // Per-vehicle real-time pricing screen (#175), pushed from the Lot room's
+  // per-unit price row. Closed with back().
+  pricing: { vehicleId: string };
+  // A non-sales department resolve-list (#76). Sales is not here — the Sales
+  // tab routes to the hand-play workspace, not a screen.
+  department: { dept: DeptKey };
+  // The Lot room (#346, locked IA §4): the whole stock pipeline as one room —
+  // stock list, pricing strategy, per-unit pricing entry, and sourcing (the
+  // auction). Pushed from the Operations dock's Lot tile; closed with back().
+  // Replaces the generic `department` queue screen for the Lot.
+  lot: undefined;
+  // The Service department read-model page (#308): demand heat + stock coverage
+  // + base health. Pushed from the Operations dock; closed with back().
+  // Distinct from the `department` resolve-list — this is the department's
+  // dashboard, not its work queue.
+  service: undefined;
+  // The Body Shop department read-model page (#315): demand heat + stock
+  // coverage + conquest health. Pushed from the Operations dock (the entry
+  // appears only at/after Tier 3); closed with back(). The Tier-3 mirror of the
+  // `service` page — navigation itself is never tier-gated.
+  bodyShop: undefined;
+};
+
+export type RouteParamMap = RootRouteParamMap & TabRouteParamMap;
+
 export type Route = keyof RouteParamMap;
+export type RootRoute = keyof RootRouteParamMap;
+export type TabRoute = keyof TabRouteParamMap;
 
 export type RouteEntry<R extends Route = Route> = {
   readonly route: R;
@@ -73,18 +98,21 @@ export type RouteEntry<R extends Route = Route> = {
 
 // When a route's params type is `undefined`, the params argument is omitted
 // entirely; otherwise it is required. This is what makes navigation typed
-// rather than string-keyed.
-type NavigateArgs<R extends Route> = RouteParamMap[R] extends undefined
+// rather than string-keyed. Generic over the map so the root stack and the tab
+// stacks share one call convention while accepting disjoint route sets.
+export type NavigateArgs<M, R extends keyof M> = M[R] extends undefined
   ? [route: R]
-  : [route: R, params: RouteParamMap[R]];
+  : [route: R, params: M[R]];
+
+type RootNavigateArgs<R extends RootRoute> = NavigateArgs<RootRouteParamMap, R>;
 
 export interface Navigator {
   /** Top of the stack — the screen currently shown. Stable reference until it changes. */
-  readonly current: RouteEntry;
+  readonly current: RouteEntry<RootRoute>;
   /** False when `current` is the root (back() is a no-op). */
   readonly canGoBack: boolean;
   /** Push a new screen onto the stack (a pop-up over the current one). */
-  navigate<R extends Route>(...args: NavigateArgs<R>): void;
+  navigate<R extends RootRoute>(...args: RootNavigateArgs<R>): void;
   /** Pop the top screen. No-op at the root. */
   back(): void;
   /**
@@ -92,13 +120,13 @@ export interface Navigator {
    * (loading → character-creation → game) where the previous screen must NOT
    * be reachable via back(). After a reset, canGoBack is false.
    */
-  reset<R extends Route>(...args: NavigateArgs<R>): void;
+  reset<R extends RootRoute>(...args: RootNavigateArgs<R>): void;
   /** External-store subscription for the React binding. */
   subscribe(listener: () => void): () => void;
 }
 
-export function createNavigator(initial: Route): Navigator {
-  let stack: RouteEntry[] = [{ route: initial, params: undefined }];
+export function createNavigator(initial: RootRoute): Navigator {
+  let stack: RouteEntry<RootRoute>[] = [{ route: initial, params: undefined }];
   const listeners = new Set<() => void>();
 
   const emit = () => {
@@ -112,9 +140,9 @@ export function createNavigator(initial: Route): Navigator {
     get canGoBack() {
       return stack.length > 1;
     },
-    navigate<R extends Route>(...args: NavigateArgs<R>) {
-      const [route, params] = args as [R, RouteParamMap[R]];
-      stack = [...stack, { route, params } as RouteEntry];
+    navigate<R extends RootRoute>(...args: RootNavigateArgs<R>) {
+      const [route, params] = args as [R, RootRouteParamMap[R]];
+      stack = [...stack, { route, params } as RouteEntry<RootRoute>];
       emit();
     },
     back() {
@@ -122,9 +150,9 @@ export function createNavigator(initial: Route): Navigator {
       stack = stack.slice(0, -1);
       emit();
     },
-    reset<R extends Route>(...args: NavigateArgs<R>) {
-      const [route, params] = args as [R, RouteParamMap[R]];
-      stack = [{ route, params } as RouteEntry];
+    reset<R extends RootRoute>(...args: RootNavigateArgs<R>) {
+      const [route, params] = args as [R, RootRouteParamMap[R]];
+      stack = [{ route, params } as RouteEntry<RootRoute>];
       emit();
     },
     subscribe(listener: () => void) {
