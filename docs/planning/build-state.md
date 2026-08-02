@@ -27,7 +27,8 @@ session start — open it on demand when a past slice's rationale needs recoveri
   (locked 2026-06-12) already specifies the fix for nearly every audited defect. The
   UI-rebrand chain stopped after Home (S1–S4, S3a–S3f); no Operations/People/Finance/Growth
   slice was ever filed. #346–#351 are that filing. **Do not re-grill the IA** — where shipped
-  and locked disagree, locked wins.
+  and locked disagree, locked wins. (Audit rows O5 and the six dead Operations destinations are
+  closed out as of #348; Finance/Growth placeholders remain, and are #349/#350/#351.)
 - **Phase 5b is done** (#341, #342) — as is 5a. Phase 6's gate is ruled (`/decide C1`,
   2026-08-02); phase 7's is not, and C1's R3 made it a prerequisite — so **`/decide A2` is the
   unit that follows phase 5c**, before any phase-6 slice.
@@ -57,7 +58,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | blocked on 5c |
-| 5c | UI layout rebuild — ~~#346 Operations~~ · ~~#347 People~~ (both built 2026-08-02) · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance | — (locked IA already rules it) | active |
+| 5c | UI layout rebuild — ~~#346 Operations~~ · ~~#347 People~~ · ~~#348 nav stacks~~ (all built 2026-08-02) · #349 Growth · #350 chart kit · #351 Finance | — (locked IA already rules it) | active |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`.** Next unit: SLICE (after phase 7) | pending |
@@ -81,6 +82,43 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-02 — **BUILT #348** (in-tab navigation stacks) — the structural half of phase 5c.
+  Walking into a room no longer costs you the console.
+  **The route map split in two, and the compiler enforces it.** `RootRouteParamMap` holds the
+  whole-app flow states (boot, start menu, character creation, the game, the in-game
+  menu/KPI/history overlays, the end card); `TabRouteParamMap` holds the six sub-screens that
+  live inside a tab — `lot` · `auction` · `pricing` · `department` · `service` · `bodyShop`.
+  **`nav.navigate('auction')` no longer typechecks.** That call is exactly what used to unmount
+  the 5-tab shell, so the locked IA §3 rule is now a compile error rather than a convention
+  someone has to remember; `tests/Navigator.test.ts` carries a `@ts-expect-error` lock on it.
+  **`TabStacks` is the second machine in the Navigator module** — one stack per tab, pure and
+  framework-free like the Navigator core, generic over the tab key so nav stays independent of
+  the shell's taxonomy. It owns the **active tab as well as** each tab's position, which
+  **retired the lifted `shellTab` `useState`** in `useDayLoop` whose own comment described the
+  workaround the unmount pattern forced ("without lifting this the tab would reset to Home on
+  return"). Pushes land on whichever tab is active, so there is **no route→tab table to drift**.
+  Its `useSyncExternalStore` snapshot is a `version` counter, not the top entry — two different
+  tabs sitting at their roots both read `current === undefined`.
+  **AppShell grew exactly one prop.** With `stackScreen` present it renders that in the body and
+  keeps the tab bar mounted and interactive; the tab bar is now one node shared by both body
+  modes, so the two can't drift apart. `shellOwnsTopInset` in the composition root now also
+  requires no stack screen — the hero bleeds behind the status bar, a pushed room does not.
+  **Both IA carve-outs are untouched and now locked by tests:** the live floor is still a
+  full-screen MODE with no tab bar, and the day recap / trade / discount spotlights are still
+  the overlay channel above the Navigator (asserted rendering with the shell mounted behind).
+  **`RouteContent` stays the root switch; `TabStackContent` is its sibling** for the in-tab
+  routes — RouteContent lost ~200 lines and each file stays a readable screen switch.
+  **The React Navigation trigger count is now 1 of 4** and recorded in the module's `CLAUDE.md`:
+  a root stack plus five sibling tab stacks, two levels, deepest observed path 2 (Lot →
+  pricing). Re-open the build-vs-adopt call if a third level appears.
+  **Driven on web at T1** (the Playtest R1 slot, left untouched at Day 1): Operations → Lot room
+  renders with all five tabs still lit and Operations still selected → `Go to the Auction` goes
+  a second level deep with the shell intact → People shows its own roster at its own root →
+  Operations returns to the **Auction Lane, exactly where it was left** → Back, Back lands on the
+  dock. Open Floor still suspends the console entirely. 203 suites / **2527** tests, typecheck
+  clean.
+  Next: **BUILD #349** (Growth tab).
 
 - 2026-08-02 — **BUILT #347** (People rebuild) — the org tab exists now, and the drive found
   two engine defects on the way that are fixed with it.
@@ -170,25 +208,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   ref→coordinate mapping, not a bug — the capture-listener readback in `.claude/skills/verify`
   is what proved it.
   Next: **BUILD #347** (People rebuild).
-- 2026-08-02 — **AUDITED the whole UI on the web target; filed phase 5c (#346–#351).**
-  Director drove the #74 playtest request into a layout audit. Record:
-  **`docs/audits/ui-layout-audit.md`** — every surface driven live at T1, every tappable target
-  pressed, each control traced to its wiring.
-  **The finding is an absence, not a disagreement.** `second-level-ia.md` locked the second-level
-  IA on 2026-06-12 and it was never decomposed into issues past Home. Operations still runs the
-  #215 shell tracer composition: five hardcoded department buttons routing to one generic
-  empty-queue screen, **Lot among them** — an empty queue while three cars sit on the lot one tab
-  away, when the locked IA gives Lot the entire stock pipeline (list + pricing + auction). Prep
-  holds three navigation links the IA explicitly bans there, plus the advertising lever the IA
-  assigns to Growth. `OwnershipLevers` is the **last pre-kit surface anywhere** — raw `colors`
-  import + literal `StyleSheet` values — which is why the tab's top and bottom look like two
-  different games. People renders only manager delegation (all three ABSENT at T1) while its
-  chartered roster + hiring sit two levels down inside Operations. Finance and Growth are
-  placeholder cards carrying *"coming in a later slice"* copy — the foreshadow-tease IA rule 3
-  forbids. Pushed screens unmount the tab bar, which IA §3 names as the pattern to replace.
-  **Also surfaced, outside the layout:** all three salesperson candidates cost exactly $1,000
-  against 48%/70%/62% effectiveness (`tunables.json:252` keys cost to role class), so the first
-  decision the game asks for has a strictly dominant answer — inside phase 6's C1 ruling already;
-  and roster members have no names.
-  **Sequencing:** #74 moved to `blocked on 5c`. The script is fine; the doors it walks the player
-  through are not. Build order is #346 → #347 → #348 → #349 → #350 → #351.

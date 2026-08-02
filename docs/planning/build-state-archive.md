@@ -6,6 +6,29 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-02 — **AUDITED the whole UI on the web target; filed phase 5c (#346–#351).**
+  Director drove the #74 playtest request into a layout audit. Record:
+  **`docs/audits/ui-layout-audit.md`** — every surface driven live at T1, every tappable target
+  pressed, each control traced to its wiring.
+  **The finding is an absence, not a disagreement.** `second-level-ia.md` locked the second-level
+  IA on 2026-06-12 and it was never decomposed into issues past Home. Operations still runs the
+  #215 shell tracer composition: five hardcoded department buttons routing to one generic
+  empty-queue screen, **Lot among them** — an empty queue while three cars sit on the lot one tab
+  away, when the locked IA gives Lot the entire stock pipeline (list + pricing + auction). Prep
+  holds three navigation links the IA explicitly bans there, plus the advertising lever the IA
+  assigns to Growth. `OwnershipLevers` is the **last pre-kit surface anywhere** — raw `colors`
+  import + literal `StyleSheet` values — which is why the tab's top and bottom look like two
+  different games. People renders only manager delegation (all three ABSENT at T1) while its
+  chartered roster + hiring sit two levels down inside Operations. Finance and Growth are
+  placeholder cards carrying *"coming in a later slice"* copy — the foreshadow-tease IA rule 3
+  forbids. Pushed screens unmount the tab bar, which IA §3 names as the pattern to replace.
+  **Also surfaced, outside the layout:** all three salesperson candidates cost exactly $1,000
+  against 48%/70%/62% effectiveness (`tunables.json:252` keys cost to role class), so the first
+  decision the game asks for has a strictly dominant answer — inside phase 6's C1 ruling already;
+  and roster members have no names.
+  **Sequencing:** #74 moved to `blocked on 5c`. The script is fine; the doors it walks the player
+  through are not. Build order is #346 → #347 → #348 → #349 → #350 → #351.
+
 - 2026-08-02 — **RULED C1 staff-teeth** (`/decide C1`) — the last designed-but-ungrilled core
   mechanic. Record: **`docs/planning/staff-teeth-design.md`**; §5 C1 flipped to
   `[LOCKED 2026-08-02]`; gate row moved to `gates.md`'s Settled section.
