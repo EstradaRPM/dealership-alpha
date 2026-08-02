@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 const ServiceDispatchConfigSchema = z.object({
   minAutoResolveRate: z.number().min(0).max(1),

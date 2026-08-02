@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 // ServiceInsights tunables (#308). The trailing-window sizes + band/trend
 // thresholds that turn the raw intake + return/defection streams into the

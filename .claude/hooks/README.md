@@ -64,13 +64,18 @@ rewrite of `src/createWorld.ts` would be blocked by debt it didn't create, with 
 that isn't a worse decision made under pressure. With it, **new** debt is blocked and the old
 debt is a countable list instead of an unknown.
 
-Today that list is 81 reach-ins across 71 files, and it is almost entirely two classes:
+Today that list is 56 reach-ins across 47 files, and it is dominated by one class:
 
-- **`../data/loadJson` → `parseData`** (~35 files). `src/game/data/index.ts` *already exports
-  `parseData`*, so every one of these is a one-line fix with no design question attached.
 - **`../NPC/Rng` → `createRng` / `deriveSeed`** (~40 files). `src/game/NPC/index.ts` does **not**
   export the RNG. Fixing these means deciding whether seeded RNG is part of NPC's public surface
-  or belongs somewhere else — a real public-surface call, not a rename.
+  or belongs somewhere else — a real public-surface call, not a rename (issue #342).
+- The remainder are one-off reach-ins into `NPC/schemas/*`, `NPC/factories/*`, `StaffOrg/types`,
+  `Inventory/auctionGenerator`, `CompetitorMarket/*` and `EndCard/types` — each its own
+  public-surface question.
+
+The **`../data/loadJson` → `parseData`** class (25 files) is **gone** — cleared by #341. It was
+the clerical half: `src/game/data/index.ts` already exported `parseData`, so every one was a
+one-line import rewrite with no design question attached.
 
 Regenerate after a deliberate cleanup:
 

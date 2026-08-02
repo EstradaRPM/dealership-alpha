@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 // Paid pre-purchase inspection (#164). Spends `cost` up front, blocks
 // purchase for `daysToComplete` days, then exposes a tightened recon band

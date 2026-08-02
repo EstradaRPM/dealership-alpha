@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 import { JOB_CATEGORIES } from '../InstalledBase';
 
 /** The three powertrain keys ServiceDemand skews + draws over. Mirrors the

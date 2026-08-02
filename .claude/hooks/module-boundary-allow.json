@@ -4,29 +4,8 @@
     "scripts/balance-harness/seeds.ts": [
       "../../src/game/NPC/Rng"
     ],
-    "src/bodyShopDispatchConfig.ts": [
-      "./game/data/loadJson"
-    ],
-    "src/bodyShopManagerConfig.ts": [
-      "./game/data/loadJson"
-    ],
     "src/createWorld.ts": [
       "./game/NPC/Rng"
-    ],
-    "src/game/BodyShopInsights/bodyShopInsightsConfig.ts": [
-      "../data/loadJson"
-    ],
-    "src/game/BodyShopQueue/bodyShopQueueData.ts": [
-      "../data/loadJson"
-    ],
-    "src/game/CapacityManager/capacityData.ts": [
-      "../data/loadJson"
-    ],
-    "src/game/CareerProgression/backstoryModifiers.ts": [
-      "../data/loadJson"
-    ],
-    "src/game/CollisionStream/collisionStreamConfig.ts": [
-      "../data/loadJson"
     ],
     "src/game/CollisionStream/composeCollision.ts": [
       "../NPC/Rng"
@@ -34,14 +13,8 @@
     "src/game/CustomerPool/CustomerPool.ts": [
       "../NPC/Rng"
     ],
-    "src/game/DealEngine/creditTier.ts": [
-      "../data/loadJson"
-    ],
     "src/game/DealEngine/trade.ts": [
       "../NPC/Rng"
-    ],
-    "src/game/Economy/economyData.ts": [
-      "../data/loadJson"
     ],
     "src/game/EventBus/events.ts": [
       "../CompetitorMarket/Competitor",
@@ -54,21 +27,11 @@
     "src/game/InstalledBase/InstalledBase.ts": [
       "../NPC/Rng"
     ],
-    "src/game/InstalledBase/installedBaseConfig.ts": [
-      "../data/loadJson"
-    ],
     "src/game/Inventory/auctionGenerator.ts": [
       "../NPC/Rng"
     ],
-    "src/game/Inventory/inventoryConfig.ts": [
-      "../data/loadJson"
-    ],
     "src/game/Inventory/startingInventory.ts": [
-      "../NPC/Rng",
-      "../data/loadJson"
-    ],
-    "src/game/Inventory/vehicleData.ts": [
-      "../data/loadJson"
+      "../NPC/Rng"
     ],
     "src/game/MarketEconomy/auctionSources.ts": [
       "../NPC/Rng"
@@ -91,17 +54,8 @@
     "src/game/MarketEconomy/weeklyReport.ts": [
       "../NPC/Rng"
     ],
-    "src/game/MarketIntel/marketIntelConfig.ts": [
-      "../data/loadJson"
-    ],
     "src/game/PartsInventory/PartsInventory.ts": [
       "../NPC/Rng"
-    ],
-    "src/game/PartsInventory/partsInventoryConfig.ts": [
-      "../data/loadJson"
-    ],
-    "src/game/Reputation/reputationData.ts": [
-      "../data/loadJson"
     ],
     "src/game/SalesProcess/evaluator.ts": [
       "../NPC/Rng"
@@ -112,38 +66,14 @@
     "src/game/ServiceDemand/composeIntake.ts": [
       "../NPC/Rng"
     ],
-    "src/game/ServiceDemand/serviceDemandConfig.ts": [
-      "../data/loadJson"
-    ],
     "src/game/ServiceDispatch/ServiceDispatch.ts": [
       "../NPC/Rng"
-    ],
-    "src/game/ServiceDispatch/serviceDispatchData.ts": [
-      "../data/loadJson"
-    ],
-    "src/game/ServiceDispatch/serviceManagerData.ts": [
-      "../data/loadJson"
-    ],
-    "src/game/ServiceInsights/serviceInsightsConfig.ts": [
-      "../data/loadJson"
-    ],
-    "src/game/ServiceMarketing/serviceMarketingConfig.ts": [
-      "../data/loadJson"
-    ],
-    "src/game/ServiceQueue/serviceQueueData.ts": [
-      "../data/loadJson"
     ],
     "src/game/StaffDispatch/StaffDispatch.ts": [
       "../NPC/Rng"
     ],
-    "src/game/StaffDispatch/staffDispatchData.ts": [
-      "../data/loadJson"
-    ],
     "src/game/StaffMorale/StaffMorale.ts": [
       "../NPC/Rng"
-    ],
-    "src/game/StaffMorale/staffMoraleData.ts": [
-      "../data/loadJson"
     ],
     "src/game/StaffOrg/conditionRead.ts": [
       "../NPC/Rng"
@@ -153,9 +83,6 @@
       "../NPC/factories/StaffFactory",
       "../NPC/schemas/staff",
       "../NPC/schemas/staff-archetype"
-    ],
-    "src/game/StaffOrg/staffOrgData.ts": [
-      "../data/loadJson"
     ],
     "src/game/StaffOrg/types.ts": [
       "../NPC/factories/StaffFactory"

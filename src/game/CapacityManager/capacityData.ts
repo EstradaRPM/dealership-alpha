@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 const CapacityConfigSchema = z.object({
   facilityTierBaseCapacity: z.record(z.string(), z.number().int().nonnegative()),

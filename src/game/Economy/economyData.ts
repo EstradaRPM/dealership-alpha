@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 const EconomyConfigSchema = z.object({
   weeklyRent: z.number().positive(),

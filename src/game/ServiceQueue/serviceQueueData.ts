@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 // Per-job-category display label, keyed by the InstalledBase JobCategory ladder.
 // ServiceQueue derives the queue/economy memo label from the due job category

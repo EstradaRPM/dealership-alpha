@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 /** The four Body-Shop collision job/parts categories, in a fixed order the mix
  *  composes + draws over. */

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 // Skill-gated condition-read tunables (#163). The pure read math lives in
 // conditionRead.ts; these knobs are the only magic numbers.

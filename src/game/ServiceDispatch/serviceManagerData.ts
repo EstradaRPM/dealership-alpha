@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 /**
  * Service-manager automation tuning (#310, parent #297). The decision-function

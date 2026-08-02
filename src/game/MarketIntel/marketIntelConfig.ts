@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 /**
  * One unlock — a door with a price on it. `subscription` doors take money

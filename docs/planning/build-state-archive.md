@@ -6,6 +6,42 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-01 — **BUILT #343** (balance-harness honest objective), slice A of #339. Landed
+  `scripts/balance-harness/scoring.ts` + `tests/balanceHarness.scoring.test.ts` (19 tests);
+  197 suites / 2421 tests green, typecheck clean.
+  **The headline is what the live harness now says.** On a 5-seed × 200-day competent cohort
+  the old view prints `bankrupt: 60% … completed=2` — readable as "two seeds were fine." The
+  honest verdict on the same cohort is **`FAILED: 100% of 5 seeds, median failure day 120,
+  [verdictMissStreak=5]`**. The two "completed" runs survived to `maxDays` while missing the
+  tier gate **every graded month**. That is precisely the lie #339 leads with, and it was not
+  a bankruptcy-accounting bug — `endedReason` cannot express it at all.
+  **Five ruin conditions, earliest one dates the run.** Two were previously unseeable.
+  *Cash-negative* is read off the per-day `RunSample` series, not the terminal event — the
+  test asserts a run that dips negative on day 40 **and recovers** still fails, on day 40.
+  *Forced contraction* needed wiring, not just scoring: `runner.ts` subscribed to **none** of
+  the three contraction events, and a contraction doesn't touch `endedReason` (it knocks the
+  run back a tier and continues), so a contracted run read as healthy. Proven with a
+  runner-level test against a **live** short run — `runOne` gained an optional injected bus,
+  because the defect was a *missing subscription* and no synthetic `RunResult` can catch one.
+  `SUSTAINED_MISS_MONTHS = 3` is derived in a comment from the campaign streak rule in
+  `tier-pacing-targets.json` (advancement is an unbroken run of good months, so ruin is its
+  mirror; three of them exceeds the entire T1 dwell target of 2). `nearMiss` is honest
+  progress and **resets** the streak — asserted both ways.
+  **Two constraints from #339's filing carried through intact.** (1) `tierFit` is smooth —
+  1.0 on target, exactly 0.5 at the `toleranceBand` edge, strictly monotone forever after —
+  because a WITHIN/OUT flag ties every out-of-band config and hands #345's optimizer zero
+  gradient over exactly the region the un-tuned tunables sit in *today* (T1 median dwell is
+  1.0mo vs a 2.0mo target, i.e. deep out of band). Tested for monotonicity across three dwells
+  all outside the band. (2) `searchScore` is labelled `(BLEND — search signal only)` and the
+  report test asserts **every one of the four term labels appears before it**, so the blend
+  can never be printed alone.
+  Also: `MonthVerdictRec` gained the verdict `day` (the event already carried it) so a streak
+  is dated off the clock rather than a month index; `summarizePacing` now takes `{maxDays}`;
+  the sweep table gained a `failed%` column but deliberately **not** the blend. The
+  targets-file read-only criterion is a byte comparison, not a promise.
+  Recipe doc updated — the "bankruptcy rate is misleading" trap block now points readers at
+  the `FAILED:` line, and mode A documents the verdict block.
+  Next /next BUILDs **#344** (tunable manifest + multi-file overrides + frozen-key guard).
 - 2026-07-29 — **SLICED** phase 5a's last issue. #339 (balance-harness honest objective +
   tunable search loop) was five scope items, three of which are each a normal slice, so it was
   filed as an ordered chain and closed as superseded — **nothing dropped, the scope is carried

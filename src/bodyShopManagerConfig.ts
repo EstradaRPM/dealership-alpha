@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from './game/data/loadJson';
+import { parseData } from './game/data';
 
 /**
  * Body-shop-manager automation tuning (#316, parent #297). The decision-function

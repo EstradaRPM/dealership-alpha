@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from './game/data/loadJson';
+import { parseData } from './game/data';
 import type { DeptCapacityConfig } from './game/ServiceDispatch';
 
 /**

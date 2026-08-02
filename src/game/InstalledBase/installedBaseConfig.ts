@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 /** Job categories in early→late drift order; the car's age selects which one a
  *  returning owner is due for (#300). Mirrors the four Service parts categories

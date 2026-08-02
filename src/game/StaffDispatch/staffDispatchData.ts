@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 const StaffDispatchConfigSchema = z.object({
   // Per-tick floor-drain throughput (#101): sales items a salesperson works

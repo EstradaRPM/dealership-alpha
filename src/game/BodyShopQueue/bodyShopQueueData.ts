@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 // Per-collision-job display label, keyed by the Body-Shop parts/job ladder
 // (windows/glass, doors/panels, interior trim, paint). BodyShopQueue derives the

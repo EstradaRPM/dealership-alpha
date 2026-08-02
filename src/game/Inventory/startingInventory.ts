@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 import { createRng, deriveSeed } from '../NPC/Rng';
 import { loadVehicleData, type VehicleData } from './vehicleData';
 import type { VehicleCategory, VehicleCondition } from './types';

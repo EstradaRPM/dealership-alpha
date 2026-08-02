@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 import type { CreditTier, CreditTierCatalog } from './types';
 
 const TierDefSchema = z.object({

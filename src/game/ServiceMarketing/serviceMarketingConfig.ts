@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 import { JOB_CATEGORIES } from '../InstalledBase';
 
 // One retention-arm campaign: a daily-cost lever that lifts the installed

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseData } from '../data/loadJson';
+import { parseData } from '../data';
 
 // BodyShopInsights tunables (#315). The trailing-window sizes + band/trend
 // thresholds that turn the Body-Shop intake stream into the page readouts.
