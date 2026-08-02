@@ -3,7 +3,15 @@
  * manager status card, plus the read-model types the composition root builds.
  */
 export { PeopleTab } from './PeopleTab';
-export type { PeopleTabProps, PeopleRosterEntry } from './PeopleTab';
+export type {
+  PeopleTabProps,
+  PeopleRosterMember,
+  PeopleCandidate,
+  PeopleHiringModel,
+  PeopleRoleOption,
+  PeoplePromotionOption,
+  PeopleSkillRead,
+} from './PeopleTab';
 export { ManagerStatusCard } from './ManagerStatusCard';
 export type {
   ManagerStatusModel,

@@ -21,6 +21,13 @@ export interface ProgressBarProps {
   tickTone?: ProgressTone;
   /** testID hung on the tick segment, for visibility assertions. */
   tickTestID?: string;
+  /**
+   * testID hung on the main fill, for *proportion* assertions — the fill's
+   * width is the whole information content of a bar (issue 347: the personnel
+   * skill bars all rendered identically for years because nothing asserted
+   * that two different values produce two different widths).
+   */
+  fillTestID?: string;
 }
 
 /** Every `ProgressTone` is also a gradient role + flat color role of the same name. */
@@ -40,6 +47,7 @@ export function ProgressBar({
   tick,
   tickTone = 'reward',
   tickTestID,
+  fillTestID,
 }: ProgressBarProps) {
   const t = useTheme();
   const pct = Math.max(0, Math.min(1, value)) * 100;
@@ -65,7 +73,11 @@ export function ProgressBar({
     };
     return (
       <View style={segTrack}>
-        <GradientSurface gradient={roles(tone)} style={{ width: `${pct}%`, height: '100%' }} />
+        <GradientSurface
+          gradient={roles(tone)}
+          style={{ width: `${pct}%`, height: '100%' }}
+          testID={fillTestID}
+        />
         <GradientSurface
           gradient={roles(tickTone)}
           style={{ width: `${tickPct}%`, height: '100%' }}
@@ -87,7 +99,7 @@ export function ProgressBar({
 
   return (
     <View style={track}>
-      <GradientSurface gradient={roles(tone)} style={fill}>
+      <GradientSurface gradient={roles(tone)} style={fill} testID={fillTestID}>
         {/* Top sheen so the fill reads as a glossy lozenge, not a flat stick. */}
         <GradientSurface
           gradient="gloss"

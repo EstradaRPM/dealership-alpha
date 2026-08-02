@@ -3,9 +3,14 @@ import { validateRoleDag, StaffRoleDagError } from '../src/game/NPC/Staff';
 import type { StaffRoleCatalog, StaffSkillCatalog } from '../src/game/NPC/schemas/staff';
 
 const skills: StaffSkillCatalog = {
-  productivity: { tier: 'worker', growth_rate: 0.5, cap: 100 },
-  product_knowledge: { tier: 'customer-facing', growth_rate: 0.3, cap: 100 },
-  pricing: { tier: 'manager', growth_rate: 0.2, cap: 100 },
+  productivity: { label: 'Work rate', tier: 'worker', growth_rate: 0.5, cap: 100 },
+  product_knowledge: {
+    label: 'Product knowledge',
+    tier: 'customer-facing',
+    growth_rate: 0.3,
+    cap: 100,
+  },
+  pricing: { label: 'Pricing cars', tier: 'manager', growth_rate: 0.2, cap: 100 },
 };
 
 const validRoles: StaffRoleCatalog = {

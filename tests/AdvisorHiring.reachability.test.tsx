@@ -2,8 +2,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
-import { PersonnelScreenContainer } from '../src/app/screens/PersonnelScreenContainer';
-import type { Navigator } from '../src/ui/Navigator';
+import { PeopleTabContainer } from '../src/app/screens/PeopleTabContainer';
 import { loadServiceDispatchConfig } from '../src/game/ServiceDispatch';
 import { loadBodyShopDispatchConfig } from '../src/bodyShopDispatchConfig';
 import type { CharacterProfile } from '../src/game/CareerProgression';
@@ -11,8 +10,8 @@ import type { CharacterProfile } from '../src/game/CareerProgression';
 // #323 — Service (T2) and Body Shop (T3) throughput is `min(bays, advisors)`. The
 // two advisor roles were fully engine-supported but UNHIREABLE in the UI, pinning
 // both departments at zero capacity in live play. These tests drive the hire
-// through the real PersonnelScreen container (role options + candidate list + the
-// modal Hire button — NOT a direct `staffOrg.hire` call) and assert the
+// through the real People tab container (role chips + candidate cards + the
+// card's Hire button — NOT a direct `staffOrg.hire` call) and assert the
 // department's capacity flips from 0 to positive, guarding against the
 // engine-hireable/UI-invisible class of hole recurring.
 
@@ -29,8 +28,6 @@ const PROFILE: CharacterProfile = {
 };
 
 type World = ReturnType<typeof createWorld>;
-
-const NAV = { back: () => {} } as unknown as Navigator;
 
 function worldAtTier(tier: number, masterSeed: number): World {
   const bus = createEventBus();
@@ -53,19 +50,18 @@ function slots(
 }
 
 /**
- * Render the container for `roleId`, press the first candidate, then the modal
- * Hire button — exercising the exact UI path a player uses. Fails to hire if the
- * role never surfaces in the hiring options (the pre-#323 bug).
+ * Render the People tab for `roleId` and press the first candidate's Hire
+ * button — the exact affordance a player taps, now inside the tab rather than a
+ * pushed personnel route (#347). Fails to hire if the role never surfaces in
+ * the hiring chips (the pre-#323 bug).
  */
 function hireThroughUi(world: World, roleId: string): void {
   const candidate = world.staffOrg.getCandidates(roleId)[0];
   expect(candidate).toBeDefined();
 
-  const { getByText, getAllByText } = render(
-    <PersonnelScreenContainer
+  const { getByTestId } = render(
+    <PeopleTabContainer
       world={world}
-      nav={NAV}
-      cash={1_000_000}
       selectedHiringRoleId={roleId}
       setSelectedHiringRoleId={() => {}}
       setCash={() => {}}
@@ -73,11 +69,7 @@ function hireThroughUi(world: World, roleId: string): void {
     />,
   );
 
-  // The candidate row and the modal Hire button — the real player affordances.
-  // Multiple candidates can share an archetype label, so press the first row
-  // (the same `candidate` we read the cost from is candidates[0]).
-  fireEvent.press(getAllByText(candidate.archetypeId.replace(/_/g, ' '))[0]);
-  fireEvent.press(getByText(`Hire for $${candidate.hiringCost.toLocaleString()}`));
+  fireEvent.press(getByTestId(`people-hire-${candidate.candidateId}`));
 }
 
 describe('#323 advisor hiring reachability', () => {

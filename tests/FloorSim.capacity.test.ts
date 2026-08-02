@@ -24,6 +24,7 @@ const emptyStaffOrg: StaffOrg = {
   get currentRoster() {
     return [];
   },
+  headcountCap: Infinity,
   getCandidates: () => [],
   hire: () => {},
   fire: () => {},

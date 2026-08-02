@@ -564,3 +564,46 @@ describe('StaffOrg — Model B skill growth (#294)', () => {
     expect(grown).toBeLessThanOrEqual(taxonomy.skills.condition_reading.cap);
   });
 });
+
+// ── Reload collision (#347) ─────────────────────────────────────────────────
+
+describe('StaffOrg — a regenerated pool never offers someone already hired', () => {
+  // The candidate pool is deliberately NOT persisted (#190): it is rebuilt from
+  // the seed each `day_started` and on every reload. A staff id is
+  // `staff:<archetype>:<hireDay>:<slot>`, so a rebuild for the same day
+  // regenerates the exact ids it produced before — including the one you hired.
+  // Driving the People tab after a reload showed the same person on the roster
+  // AND in the pool; hiring them again would push a duplicate id and break
+  // every id-keyed binding (StaffMorale, StaffDispatch).
+  it('excludes hired staff when the pool is rebuilt for the same day', () => {
+    const { clock, staffOrg } = makeSetup();
+    clock.advanceDay();
+
+    const hired = staffOrg.getCandidates('salesperson')[0];
+    staffOrg.hire(hired.candidateId);
+    expect(staffOrg.currentRoster).toHaveLength(1);
+
+    // A reload: same seed, same day, a fresh pool built from the restored roster.
+    const reloaded = makeSetup().staffOrg;
+    reloaded.restore(staffOrg.snapshot());
+
+    const rebuilt = reloaded.getCandidates('salesperson');
+    const rosterIds = new Set(reloaded.currentRoster.map((s) => s.id));
+    for (const c of rebuilt) {
+      expect(rosterIds.has(c.staff.id)).toBe(false);
+    }
+  });
+
+  it('still fills the pool by walking past the collided slot', () => {
+    const { clock, staffOrg } = makeSetup();
+    clock.advanceDay();
+    staffOrg.hire(staffOrg.getCandidates('salesperson')[0].candidateId);
+
+    const reloaded = makeSetup().staffOrg;
+    reloaded.restore(staffOrg.snapshot());
+
+    expect(reloaded.getCandidates('salesperson')).toHaveLength(
+      CHEAP_CONFIG.candidatesPerRole,
+    );
+  });
+});

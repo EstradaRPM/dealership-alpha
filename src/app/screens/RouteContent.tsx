@@ -28,7 +28,6 @@ import { GameScreen } from './GameScreen';
 import { AuctionScreen } from './AuctionScreen';
 import { PricingScreenContainer } from './PricingScreenContainer';
 import { LotRoomContainer } from './LotRoomContainer';
-import { PersonnelScreenContainer } from './PersonnelScreenContainer';
 import {
   DEPT_TITLES,
   TRADE_POLICY,
@@ -371,19 +370,6 @@ export function RouteContent({
       </>
     );
   }
-  if (screen === 'personnel' && world) {
-    return (
-      <PersonnelScreenContainer
-        world={world}
-        nav={nav}
-        cash={cash}
-        selectedHiringRoleId={levers.selectedHiringRoleId}
-        setSelectedHiringRoleId={levers.setSelectedHiringRoleId}
-        setCash={setCash}
-        bump={bump}
-      />
-    );
-  }
   if (screen === 'game' && profile && world) {
     return (
       <View style={styles.container}>
@@ -407,6 +393,7 @@ export function RouteContent({
           openInGameMenu={saveSlots.openInGameMenu}
           persistCurrentSave={persistCurrentSave}
           setLotVehicles={setLotVehicles}
+          setCash={setCash}
           bump={bump}
         />
       </View>

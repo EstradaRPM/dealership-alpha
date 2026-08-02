@@ -1,41 +1,48 @@
 {
   "productivity": {
+    "label": "Work rate",
     "tier": "worker",
     "growth_rate": 0.5,
     "cap": 100,
     "composite_mapping": { "effectiveness": 1.0 }
   },
   "mechanical_aptitude": {
+    "label": "Mechanical skill",
     "tier": "worker",
     "growth_rate": 0.4,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.8, "trustworthiness": 0.2 }
   },
   "product_knowledge": {
+    "label": "Product knowledge",
     "tier": "customer-facing",
     "growth_rate": 0.3,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.6, "trustworthiness": 0.4 }
   },
   "communication": {
+    "label": "Talking with customers",
     "tier": "customer-facing",
     "growth_rate": 0.4,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.5, "trustworthiness": 0.5 }
   },
   "rapport_building": {
+    "label": "Building rapport",
     "tier": "customer-facing",
     "growth_rate": 0.35,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.4, "trustworthiness": 0.6 }
   },
   "diagnostic_clarity": {
+    "label": "Explaining repairs",
     "tier": "customer-facing",
     "growth_rate": 0.3,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.4, "trustworthiness": 0.6 }
   },
   "pricing": {
+    "label": "Pricing cars",
     "tier": "manager",
     "growth_rate": 0.2,
     "cap": 100,
@@ -44,6 +51,7 @@
     "cap_headroom": { "mu": 15, "sigma": 8 }
   },
   "t_o_closing": {
+    "label": "Closing a stalled deal",
     "tier": "manager",
     "growth_rate": 0.2,
     "cap": 100,
@@ -52,42 +60,49 @@
     "cap_headroom": { "mu": 15, "sigma": 8 }
   },
   "finance_structuring": {
+    "label": "Structuring finance",
     "tier": "manager",
     "growth_rate": 0.2,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.7, "trustworthiness": 0.3 }
   },
   "product_presentation": {
+    "label": "Presenting F&I products",
     "tier": "manager",
     "growth_rate": 0.25,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.5, "trustworthiness": 0.5 }
   },
   "shop_throughput": {
+    "label": "Keeping the shop moving",
     "tier": "manager",
     "growth_rate": 0.2,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.9, "trustworthiness": 0.1 }
   },
   "warranty_handling": {
+    "label": "Warranty claims",
     "tier": "manager",
     "growth_rate": 0.2,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.4, "trustworthiness": 0.6 }
   },
   "write_up_accuracy": {
+    "label": "Accurate write-ups",
     "tier": "customer-facing",
     "growth_rate": 0.35,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.7, "trustworthiness": 0.3 }
   },
   "upsell": {
+    "label": "Selling extra work",
     "tier": "customer-facing",
     "growth_rate": 0.3,
     "cap": 100,
     "composite_mapping": { "effectiveness": 0.8, "trustworthiness": 0.2 }
   },
   "condition_reading": {
+    "label": "Reading a car's condition",
     "tier": "manager",
     "growth_rate": 0.2,
     "cap": 100,

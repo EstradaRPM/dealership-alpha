@@ -20,6 +20,14 @@ export type {
   StaffWithComposites,
 } from './factories/StaffFactory';
 
+export {
+  rollPersonName,
+  loadPersonNameCatalog,
+  PERSON_NAME_NAMESPACE,
+} from './factories/PersonNameFactory';
+export type { PersonNameCatalog } from './schemas/person-name';
+export { PersonNameCatalogSchema } from './schemas/person-name';
+
 export { createCustomer } from './factories/CustomerFactory';
 export type {
   CreateCustomerContext,

@@ -81,6 +81,15 @@ export interface PromotionOption {
 
 export interface StaffOrg {
   readonly currentRoster: readonly StaffWithComposites[];
+  /**
+   * How many bodies the current tier allows on payroll (#347) — the same cap
+   * `hire()` throws against. Exposed because the People surface has to be able
+   * to *show* the ceiling and stop offering a hire that would throw; a screen
+   * must never re-derive an engine rule. `Infinity` when the tier has no entry.
+   * A2/C1 replace the flat per-tier number with the CSV's per-role slot table
+   * behind this same read.
+   */
+  readonly headcountCap: number;
   /** #190 SaveStore seam: capture/rehydrate the hired roster. */
   snapshot(): StaffOrgSnapshot;
   restore(snap: StaffOrgSnapshot): void;
@@ -217,16 +226,32 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
     const cost = hiringCostFor(roleId);
     const ids: string[] = [];
 
-    for (let slot = 0; slot < config.candidatesPerRole; slot++) {
+    // Slot walks past collisions rather than stopping at `candidatesPerRole`.
+    // A staff id is `staff:<archetype>:<hireDay>:<slot>`, so the pool for a day
+    // regenerates the SAME ids it generated before — and the pool is rebuilt
+    // from the seed on every reload (it is deliberately not persisted, #190).
+    // Without this guard a reloaded save offered you the person already on your
+    // roster, and hiring them pushed a second entry under a duplicate id, which
+    // would break every id-keyed binding (StaffMorale, StaffDispatch). Bounded
+    // so an exhausted archetype set can't spin.
+    const hiredIds = new Set(roster.map((s) => s.id));
+    const maxAttempts = config.candidatesPerRole * 4;
+
+    for (
+      let slot = 0;
+      slot < maxAttempts && ids.length < config.candidatesPerRole;
+      slot++
+    ) {
       const archetypeId =
         matchingArchetypeIds[slot % matchingArchetypeIds.length];
-      const candidateId = `candidate:${roleId}:${currentDay}:${slot}`;
 
       const staff = createStaff(
         { archetypeId, hireDay: currentDay, slot },
         { masterSeed, taxonomy, archetypes },
       );
+      if (hiredIds.has(staff.id)) continue;
 
+      const candidateId = `candidate:${roleId}:${currentDay}:${slot}`;
       const listing: CandidateListing = { candidateId, archetypeId, staff, hiringCost: cost };
       candidatePool.set(candidateId, listing);
       ids.push(candidateId);
@@ -238,6 +263,11 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   return {
     get currentRoster(): readonly StaffWithComposites[] {
       return roster;
+    },
+
+    get headcountCap(): number {
+      const tier = getTier ? getTier() : 1;
+      return config.headcountCapByTier[String(tier)] ?? Infinity;
     },
 
     snapshot(): StaffOrgSnapshot {

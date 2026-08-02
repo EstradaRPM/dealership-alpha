@@ -67,7 +67,23 @@ describe('ManagerStatusCard (#325)', () => {
   });
 
   it('renders inside the People tab surface', () => {
-    const { getByTestId } = render(<PeopleTab managerStatus={NO_MANAGERS} />);
+    const { getByTestId } = render(
+      <PeopleTab
+        managerStatus={NO_MANAGERS}
+        roster={[]}
+        hiring={{
+          roleOptions: [{ id: 'salesperson', label: 'Salesperson' }],
+          selectedRoleId: 'salesperson',
+          candidates: [],
+          cash: 50_000,
+          headcountCap: 4,
+        }}
+        onSelectHiringRole={() => {}}
+        onHire={() => {}}
+        onPromote={() => {}}
+        onFire={() => {}}
+      />,
+    );
     expect(getByTestId('people-tab')).toBeTruthy();
     expect(getByTestId('manager-status-card')).toBeTruthy();
   });

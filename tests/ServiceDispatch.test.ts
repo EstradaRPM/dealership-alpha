@@ -42,6 +42,7 @@ function makeAdvisor(
 function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
   return {
     get currentRoster() { return roster; },
+    headcountCap: Infinity,
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},

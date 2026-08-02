@@ -17,7 +17,7 @@ import {
 } from '../../ui/AppShell';
 import { HomeTab, buildHomeDashboard, buildGateStrip } from '../../ui/HomeTab';
 import { OperationsTab } from '../../ui/OperationsTab';
-import { PeopleTab } from '../../ui/PeopleTab';
+import { PeopleTabContainer } from './PeopleTabContainer';
 import { RecoveryBanner } from '../../ui/NarrativeBeat';
 import { StrategicTab } from '../../ui/StrategicTab';
 import {
@@ -75,6 +75,8 @@ export interface GameScreenProps {
   openInGameMenu: () => void;
   persistCurrentSave: () => void;
   setLotVehicles: (v: readonly LotVehicle[]) => void;
+  /** Keep the app-level cash mirror in step with an in-tab expense (a hire). */
+  setCash: (n: number) => void;
   /** Force a re-render after a world write the EventBus doesn't announce. */
   bump: () => void;
 }
@@ -102,6 +104,7 @@ export function GameScreen({
   openInGameMenu,
   persistCurrentSave,
   setLotVehicles,
+  setCash,
   bump,
 }: GameScreenProps) {
   const loopState = world.dayLoop.state();
@@ -380,16 +383,16 @@ export function GameScreen({
         leverProps={leverProps}
       />
     ),
+    // The org tab (#347): roster + hiring pool + manager delegation, as three
+    // sections of one surface. Hiring is People's charter, not Prep's (locked
+    // IA §4), and it resolves in place — no pushed personnel route.
     people: (
-      <PeopleTab
-        managerStatus={buildManagerStatus(world)}
-        // Hiring is People's charter, not Prep's (locked IA §4). #346 moves the
-        // entry here off the Prep block; #347 rebuilds the tab around the
-        // roster + hiring pool proper.
-        roster={{
-          count: world.staffOrg.currentRoster.length,
-          onOpenHiring: () => nav.navigate('personnel'),
-        }}
+      <PeopleTabContainer
+        world={world}
+        selectedHiringRoleId={levers.selectedHiringRoleId}
+        setSelectedHiringRoleId={levers.setSelectedHiringRoleId}
+        setCash={setCash}
+        bump={bump}
       />
     ),
     finance: null,

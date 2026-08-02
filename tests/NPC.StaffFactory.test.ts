@@ -4,6 +4,7 @@ import {
   loadStaffTaxonomy,
   loadTraitTaxonomy,
   promoteStaff,
+  rehydrateStaff,
 } from '../src/game/NPC';
 import { validateArchetypes } from '../src/game/NPC/StaffArchetypes';
 import { StaffSchema } from '../src/game/NPC/schemas/staff';
@@ -270,5 +271,66 @@ describe('staff-archetypes data file', () => {
         traits,
       ),
     ).toThrow(/does not apply to staff/);
+  });
+});
+
+// #347 — the two derived reads a staff card needs: a name, and a composite the
+// player can read as a percentage without it exceeding 100%.
+describe('StaffFactory derived person reads (#347)', () => {
+  it('names every staffer, deterministically off (masterSeed, id), without serializing it', () => {
+    const s = createStaff({ archetypeId: 'career_salesperson', hireDay: 1, slot: 0 }, deps);
+
+    expect(s.name).toEqual(expect.any(String));
+    expect(s.name.length).toBeGreaterThan(0);
+
+    // Same seed + same id ⇒ same person.
+    const again = createStaff({ archetypeId: 'career_salesperson', hireDay: 1, slot: 0 }, deps);
+    expect(again.name).toBe(s.name);
+
+    // Different seed ⇒ (very probably) a different draw; the point that matters
+    // is that the name is NOT a stored field, so it never hits a save.
+    expect(Object.keys(s)).not.toContain('name');
+    expect(JSON.parse(JSON.stringify(s)).name).toBeUndefined();
+    expect(StaffSchema.safeParse(s).success).toBe(true);
+  });
+
+  it('re-derives the same name from a plain record via rehydrateStaff', () => {
+    const s = createStaff({ archetypeId: 'career_salesperson', hireDay: 4, slot: 1 }, deps);
+    const plain = JSON.parse(JSON.stringify(s));
+    expect(rehydrateStaff(plain, taxonomy, deps.masterSeed).name).toBe(s.name);
+  });
+
+  it('reports the composites as a 0–1 fraction of what that skill set can reach', () => {
+    // The raw composite is a weighted SUM over the role's skills, so a
+    // six-axis used-car manager runs past 1.0 — "Work quality 275%" on the
+    // roster card. The ratio divides by the ceiling those weights imply.
+    const ucm = createStaff(
+      { archetypeId: 'veteran_used_car_manager', hireDay: 1, slot: 0 },
+      deps,
+    );
+
+    expect(ucm.effectivenessRatio).toBeGreaterThan(0);
+    expect(ucm.effectivenessRatio).toBeLessThanOrEqual(1);
+    expect(ucm.trustworthinessRatio).toBeGreaterThan(0);
+    expect(ucm.trustworthinessRatio).toBeLessThanOrEqual(1);
+
+    // The raw composites are untouched — every promotion/capability gate reads
+    // those, so re-scaling them would silently move every threshold.
+    expect(ucm.effectiveness).toBeGreaterThan(ucm.effectivenessRatio);
+  });
+
+  it('keeps two roles comparable, which the raw composite does not', () => {
+    const seller = createStaff(
+      { archetypeId: 'career_salesperson', hireDay: 1, slot: 0 },
+      deps,
+    );
+    const ucm = createStaff(
+      { archetypeId: 'veteran_used_car_manager', hireDay: 1, slot: 0 },
+      deps,
+    );
+    for (const s of [seller, ucm]) {
+      expect(s.effectivenessRatio).toBeLessThanOrEqual(1);
+      expect(s.effectivenessRatio).toBeGreaterThanOrEqual(0);
+    }
   });
 });

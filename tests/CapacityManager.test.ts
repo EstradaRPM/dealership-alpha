@@ -24,6 +24,7 @@ function makeStaff(id: string, roleId: string): StaffWithComposites {
 function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
   return {
     get currentRoster() { return roster; },
+    headcountCap: Infinity,
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},

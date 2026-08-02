@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { LotRoom, type LotRoomProps } from '../src/ui/LotRoom';
-import { PeopleTab } from '../src/ui/PeopleTab';
 import { readAppCompositionSource } from './helpers/appComposition';
 
 // #346 — the locked IA §4 gives the Lot the whole stock pipeline as ONE room:
@@ -143,28 +142,15 @@ describe('#346 Lot room — mounted in the live app', () => {
   });
 });
 
-describe('#346 hiring left Prep and landed on People', () => {
-  it('People carries the hiring entry', () => {
-    const onOpenHiring = jest.fn();
-    const { getByTestId } = render(
-      <PeopleTab
-        managerStatus={{ ucmPresent: false, ucm: [], departments: [] }}
-        roster={{ count: 2, onOpenHiring }}
-      />,
-    );
-
-    expect(getByTestId('people-roster')).toBeTruthy();
-    fireEvent.press(getByTestId('people-hire-button'));
-    expect(onOpenHiring).toHaveBeenCalledTimes(1);
-  });
-
-  it('is wired to the personnel route from the People tab, not from Prep', () => {
+describe('#346 hiring left Prep — and #347 landed it on People for good', () => {
+  it('Prep builds no hiring or auction link at all', () => {
     const src = readAppCompositionSource();
 
-    expect(src).toMatch(/onOpenHiring: \(\) => nav\.navigate\('personnel'\)/);
-    // The Prep lever block no longer builds a hiring or auction link at all —
-    // those were the two navigation links the locked IA bans there.
+    // The two navigation links the locked IA bans in Prep.
     expect(src).not.toContain("onOpenAuction: () => nav.navigate('auction')");
     expect(src).not.toContain('rosterCount: world.staffOrg.currentRoster.length');
+    // #347: the stop-gap People→personnel push is gone too — hiring resolves
+    // inside the People tab, so no surface anywhere pushes that route.
+    expect(src).not.toContain("nav.navigate('personnel')");
   });
 });

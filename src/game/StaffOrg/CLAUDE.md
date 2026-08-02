@@ -4,6 +4,10 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 
 ## Public API (`index.ts`)
 - `createStaffOrg()` → `StaffOrg`. Error type: `StaffOrgError`.
+- `currentRoster` entries are `StaffWithComposites` — note the non-enumerable
+  `name` getter (#347), derived from `(masterSeed, staff.id)` via
+  `NPC.rollPersonName`. It never serializes and re-derives identically on
+  `restore`, so a roster is people, not stat lines, with no save migration.
 - `loadStaffOrgConfig` — reads `data/staff-roles.json` + related tunables.
 - `computeConditionRead`, `deriveConditionReadSeed` — pure helpers behind
   `assessCondition` (also exported for fixture/test use).
@@ -51,6 +55,7 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 ## Hiring constraints
 - **Role hire-tier gate:** `getCandidates(roleId)` throws if the role's `hireTier` exceeds the current dealership tier (`deps.getTier`).
 - **Headcount cap (#131):** `hire()` throws `StaffOrgError` once `currentRoster.length` reaches `config.headcountCapByTier[currentTier]`. Tier comes from `deps.getTier` (defaults to tier 1 if unwired); the composition root wires it to `TierManager.currentTier`. Missing cap entry ⇒ unbounded.
+  - **`headcountCap` (#347)** is the same number as a read, so the People surface can *show* the ceiling and stop offering a hire that would throw. `Infinity` when the tier has no entry. A2/C1 replace the flat per-tier number with the CSV's per-role slot table behind this same read.
 
 ## Data
 - `data/tunables.json#staffOrg` — `hiringCostByTier`, `candidatesPerRole`, `headcountCapByTier`.
@@ -63,6 +68,12 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
   roster + `currentDay` for save/load. The candidate pool is NOT persisted — it
   is cleared every `clock:day_started` and regenerated deterministically from
   `masterSeed` (same pattern as Inventory's auction board, #189).
+  - **Rebuild excludes the roster (#347).** A staff id is
+    `staff:<archetype>:<hireDay>:<slot>`, so rebuilding a day's pool regenerates
+    the ids it produced before — including the one you hired. `buildCandidatesForRole`
+    skips any generated staffer already on the roster and walks the slot forward
+    to keep the pool at `candidatesPerRole`. Without it, a reloaded save offered
+    you the person you already employ, and hiring them pushed a duplicate id.
 - Roster entries serialize as plain `Staff`; the `effectiveness` /
   `trustworthiness` composites are non-enumerable derived getters that JSON
   drops, then `restore` re-attaches them via `NPC.rehydrateStaff(staff, taxonomy)`

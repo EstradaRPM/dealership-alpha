@@ -33,8 +33,8 @@ describe('Navigator', () => {
     expect(nav.current.route).toBe('settings');
     nav.back();
     expect(nav.current.route).toBe('game');
-    nav.navigate('personnel');
-    expect(nav.current.route).toBe('personnel');
+    nav.navigate('service');
+    expect(nav.current.route).toBe('service');
 
     nav.back();
     expect(nav.current.route).toBe('game');
@@ -97,7 +97,7 @@ describe('Navigator', () => {
     expect(calls).toBe(2);
 
     unsub();
-    nav.navigate('personnel');
+    nav.navigate('service');
     expect(calls).toBe(2);
   });
 });

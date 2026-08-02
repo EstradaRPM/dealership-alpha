@@ -23,6 +23,11 @@ export const SkillCapHeadroomSchema = z
 
 export const StaffSkillSchema = z
   .object({
+    // Plain-language name for the axis, as the player reads it on a staff card
+    // (#347). Required, so a skill added to the data can never reach a surface
+    // as a de-slugged id — "t_o_closing" rendered as "t o closing" is what the
+    // drive-through audit found on the roster.
+    label: z.string().min(1),
     tier: StaffTierSchema,
     growth_rate: z.number().positive(),
     cap: z.number().min(0).max(100),

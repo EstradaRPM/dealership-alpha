@@ -1,4 +1,5 @@
 import { createRng, deriveSeed, type SeedContext } from '../../Rng';
+import { rollPersonName } from './PersonNameFactory';
 import type {
   Staff,
   StaffRoleCatalog,
@@ -23,8 +24,30 @@ export interface CreateStaffDeps {
 }
 
 export interface StaffWithComposites extends Staff {
+  /**
+   * The person's name (#347). Like the composites below it is a non-enumerable
+   * *derived* getter — `rollPersonName(masterSeed, staff.id)` — so it never
+   * serializes and needs no migration, and a rehydrated roster comes back with
+   * the same people it was saved with. See `PersonNameFactory`.
+   */
+  readonly name: string;
   readonly effectiveness: number;
   readonly trustworthiness: number;
+  /**
+   * The two composites re-expressed as a fraction of the ceiling **this
+   * person's own skill set** can reach (#347). `effectiveness` is a weighted
+   * *sum* over the skills a role grants, so its range is the sum of those
+   * weights — 1.5 for a three-skill salesperson, 3.7 for a used-car manager
+   * who accumulated six axes through promotion. Read as a percentage it
+   * produced "Work quality 275%" on the roster card, and it made two people in
+   * different roles incomparable. Dividing by the ceiling answers the question
+   * a staff card actually asks: how close is this person to as good as they
+   * get at *their* job. The raw composites stay exactly as they are — every
+   * promotion/capability gate reads those, and re-scaling them would be a
+   * balance change (C1/C2 own the gate thresholds).
+   */
+  readonly effectivenessRatio: number;
+  readonly trustworthinessRatio: number;
   /**
    * Channel-desk M7 (#294) — Model B *effective* skill per axis, derived (never
    * mutated) from `base + growth(counter)` clamped to the per-hire cap. This is
@@ -84,6 +107,26 @@ function computeComposite(
     const weight = def.composite_mapping?.[key];
     if (weight === undefined) continue;
     total += (value / def.cap) * weight;
+  }
+  return total;
+}
+
+/**
+ * The largest value `computeComposite` could return for this staffer: each
+ * skill contributes at most its own `composite_mapping` weight (the term is
+ * `value/cap × weight`, and `value ≤ cap`). Zero when the staffer carries no
+ * skill that maps onto this composite.
+ */
+function compositeCeiling(
+  staff: Staff,
+  skills: StaffSkillCatalog,
+  key: 'effectiveness' | 'trustworthiness',
+): number {
+  let total = 0;
+  for (const skillId of Object.keys(staff.skills)) {
+    const weight = skills[skillId]?.composite_mapping?.[key];
+    if (weight === undefined) continue;
+    total += weight;
   }
   return total;
 }
@@ -152,6 +195,11 @@ function attachComposites(
   skills: StaffSkillCatalog,
   masterSeed: number,
 ): StaffWithComposites {
+  Object.defineProperty(plain, 'name', {
+    get: () => rollPersonName(masterSeed, plain.id),
+    enumerable: false,
+    configurable: true,
+  });
   Object.defineProperty(plain, 'effectiveness', {
     get: () => computeComposite(plain, skills, 'effectiveness'),
     enumerable: false,
@@ -162,6 +210,16 @@ function attachComposites(
     enumerable: false,
     configurable: true,
   });
+  for (const key of ['effectiveness', 'trustworthiness'] as const) {
+    Object.defineProperty(plain, `${key}Ratio`, {
+      get: () => {
+        const ceiling = compositeCeiling(plain, skills, key);
+        return ceiling > 0 ? computeComposite(plain, skills, key) / ceiling : 0;
+      },
+      enumerable: false,
+      configurable: true,
+    });
+  }
   Object.defineProperty(plain, 'effectiveSkills', {
     get: () => computeEffectiveSkills(plain, skills, masterSeed),
     enumerable: false,
@@ -171,7 +229,7 @@ function attachComposites(
 }
 
 /**
- * Re-attach the non-enumerable composite getters (`effectiveness`,
+ * Re-attach the non-enumerable derived getters (`name`, `effectiveness`,
  * `trustworthiness`) to a plain `Staff` record that lost them in transit —
  * e.g. a roster rehydrated from a JSON save (#190). Pure derivation from the
  * record's `skills` + the taxonomy, identical to the math `createStaff` runs,

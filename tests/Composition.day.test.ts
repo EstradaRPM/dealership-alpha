@@ -26,6 +26,7 @@ const emptyStaffOrg: StaffOrg = {
   get currentRoster() {
     return [];
   },
+  headcountCap: Infinity,
   getCandidates: () => [],
   hire: () => {},
   fire: () => {},
@@ -136,6 +137,7 @@ function makeSalesperson(effectiveness: number, id: string): StaffWithComposites
 function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
   return {
     get currentRoster() { return roster; },
+    headcountCap: Infinity,
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},

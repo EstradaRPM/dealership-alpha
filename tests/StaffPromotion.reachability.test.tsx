@@ -2,14 +2,13 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
-import { PersonnelScreenContainer } from '../src/app/screens/PersonnelScreenContainer';
-import type { Navigator } from '../src/ui/Navigator';
+import { PeopleTabContainer } from '../src/app/screens/PeopleTabContainer';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // #324 — promotion path reachability. `NPC.promoteStaff` was engine-only with
 // zero callers; the player had no way to promote from within. This drives the
-// promote affordance through the real PersonnelScreen container (getPromotionOptions
-// → the roster promote button → staffOrg.promote), guarding the
+// promote affordance through the real People tab container (getPromotionOptions
+// → the roster card's promote button → staffOrg.promote), guarding the
 // engine-supported / UI-invisible class of hole (same shape as #323's hiring gap).
 
 const PROFILE: CharacterProfile = {
@@ -23,8 +22,6 @@ const PROFILE: CharacterProfile = {
     grudgesFlag: false,
   },
 };
-
-const NAV = { back: () => {} } as unknown as Navigator;
 
 it('promotes a lot-porter to salesperson through the roster UI', () => {
   const bus = createEventBus();
@@ -47,11 +44,9 @@ it('promotes a lot-porter to salesperson through the roster UI', () => {
     ],
   });
 
-  const { getByText } = render(
-    <PersonnelScreenContainer
+  const { getByTestId } = render(
+    <PeopleTabContainer
       world={world}
-      nav={NAV}
-      cash={100_000}
       selectedHiringRoleId="salesperson"
       setSelectedHiringRoleId={() => {}}
       setCash={() => {}}
@@ -63,7 +58,7 @@ it('promotes a lot-porter to salesperson through the roster UI', () => {
   expect(world.staffOrg.currentRoster[0].role_id).toBe('lot-porter');
 
   // The promote affordance the container surfaced from getPromotionOptions.
-  fireEvent.press(getByText('↑ salesperson'));
+  fireEvent.press(getByTestId('people-promote-porter-1-salesperson'));
 
   expect(world.staffOrg.currentRoster[0].role_id).toBe('salesperson');
   expect(world.staffOrg.currentRoster[0].id).toBe('porter-1'); // id preserved

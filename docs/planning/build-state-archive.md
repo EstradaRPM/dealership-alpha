@@ -6,6 +6,54 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-02 — **RULED C1 staff-teeth** (`/decide C1`) — the last designed-but-ungrilled core
+  mechanic. Record: **`docs/planning/staff-teeth-design.md`**; §5 C1 flipped to
+  `[LOCKED 2026-08-02]`; gate row moved to `gates.md`'s Settled section.
+  **The measured "zero teeth" state was worse than the spine claimed, and all five facts are in
+  the doc's table.** Payroll is a flat `$800/week` constant (`weeklyPayrollStub`, posted at
+  `Economy.ts:67`) — the fifth hire costs **$0/week**. Hire cost is flat per role class
+  (`StaffOrg.ts:175`); no salary field exists at all (`staff-roles.json` has none, and
+  `StaffOrg/CLAUDE.md:57` claimed otherwise — stale). The candidate board is wiped and rerolled
+  **every morning** (`StaffOrg.ts:145`), so disliking today's three costs one free day. And
+  `payVsMarketBonus` fires **unconditionally** every payroll night (`StaffMorale.ts:93`) —
+  a placeholder wearing a mechanic's name.
+  **R1 — one daily wage, grade × role. Commission was rejected, and the standing recommendation
+  going in was wrong on its own terms.** The director's objection is recorded because it is the
+  reusable lesson: draw-against-commission is **four comp structures**, not one (sales/F&I on
+  commission, techs flat-rate hours, advisors salary + service cut, managers salary + dept bonus)
+  — four rules to explain one line item, against a hard standing bar of *playable, enjoyable,
+  easy to understand*. And the case for it ("a flat drain never teaches you anything") is
+  **backwards**: a fixed cost against variable revenue is exactly what makes a slow day hurt;
+  commission partly self-insures a bad week. The simpler rule was also the sharper one.
+  **R2 — raises are a moment you play.** They ask, you pay or refuse; refusing feeds the existing
+  `StaffMorale` → `staff:quit` path. Chosen over auto-repricing and fixed-forever because it is a
+  *decision*, which is precisely `poaching-cut.md`'s finding. **Retention and poaching are now one
+  mechanic** — a rival offer is the same prompt with a name and a deadline, so spine §5's required
+  poaching teeth cost no second thing to learn.
+  **R3 — the CSV slot table is the scarcity cap.** No rarity roll, no persistent named labor
+  market: you can't field five A-players because you don't have five slots (T1 = 1 salesperson),
+  and the wage gates quality on top. **This makes phase 7 (A2) a prerequisite for phase 6's build**
+  — `headcountCapByTier` is a flat `{1:4,2:8,3:16}` with no per-role breakdown, so nothing
+  enforces the CSV today and the slot half would sit inert. Recorded in the doc §6, in the phase
+  table, and as a note on A2's `gates.md` row.
+  **Internal calls (8, all in doc §3), two of which do real work:** `grade` is a *derived* band of
+  the existing `effectiveness` composite — not a second source of truth; and `paidGrade` (stored
+  at hire) vs current grade **is** the whole raise trigger, falling straight out of the Model B
+  growth already shipped in #294. No new state machine, no new counters.
+  **A director-reported UI defect is folded into C1's scope, with a root cause.** Skill bars look
+  identical for every employee: `SkillRow` (`PersonnelScreen.tsx:22`) sizes the fill with
+  `flex: ratio` against a `flex: 1 - ratio` spacer, but `skillBarBg` (`:565`) never sets
+  `flexDirection: 'row'` — RN defaults to **column**, so fill and spacer stack vertically in a
+  6px-tall box and the bar carries zero information. The A-vs-B comparison this entire gate
+  depends on is currently impossible to make on screen, so it is not a later polish pass.
+  **Not a build — nothing under `src/` changed but one stale `StaffOrg/CLAUDE.md` line** (it
+  claimed `staff-roles.json` holds salaries; it holds none). Suite run anyway to prove that:
+  199 suites / **2469** tests green, unchanged counts from #342.
+  Next /next is **`/decide A2`** (phase 7) per R3's sequencing finding, then SLICE 6+7.
+  **Carried into phase 6's slice, unfixed by design:** the `PersonnelScreen` skill-bar defect
+  above. It is a ~2-line fix (`flexDirection: 'row'` + `overflow: 'hidden'` on `skillBarBg`),
+  independent of everything else, and blocks nothing — a decision unit does not get to start
+  building the phase it just unblocked.
 - 2026-08-01 — **BUILT #342** (seeded RNG gets its own module) — **phase 5b is done, and with
   it every agent-side item before the #74 playtest.**
   **The fork went to a new module, not a re-export.** `src/game/NPC/Rng.ts` → `src/game/Rng/`

@@ -29,7 +29,7 @@ import { loadTierConfig } from '../game/CareerProgression';
 import type { World } from '../createWorld';
 import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
-import type { PersonnelRoleOption } from '../ui/PersonnelScreen';
+import type { PeopleRoleOption } from '../ui/PeopleTab';
 import type { DeptTile } from '../ui/OperationsTab';
 import {
   buildIndustryWire as buildIndustryWireModel,
@@ -223,15 +223,11 @@ export const TIER_CONFIG = loadTierConfig();
 
 export const DEFAULT_HIRING_ROLE_ID = 'salesperson';
 
-// staffTaxonomy is seed-free: kept module-level so SKILL_CAPS (PersonnelScreen
-// bars, #120) and the FLOOR-OPEN staff-strip department lookup don't depend on
-// a built World.
+// staffTaxonomy is seed-free: kept module-level so the People tab's skill reads
+// (labels + caps, #347) and the FLOOR-OPEN staff-strip department lookup don't
+// depend on a built World.
 export const staffTaxonomy = loadStaffTaxonomy();
 export const staffArchetypes = loadStaffArchetypes();
-// skill_id → cap, for the PersonnelScreen skill bars (Hiring lever, #120).
-export const SKILL_CAPS: Record<string, number> = Object.fromEntries(
-  Object.entries(staffTaxonomy.skills).map(([id, s]) => [id, s.cap]),
-);
 
 // role_id → humanized label + serving department, for the impressionistic
 // FLOOR-OPEN staff strip (#117). Pure read mapping off the role catalog.
@@ -246,7 +242,7 @@ const HIRABLE_ROLE_IDS = new Set(
   Object.values(staffArchetypes).map((a) => a.role_id),
 );
 
-export function buildHiringRoleOptions(tier: number): PersonnelRoleOption[] {
+export function buildHiringRoleOptions(tier: number): PeopleRoleOption[] {
   return Object.entries(staffTaxonomy.roles)
     .filter(([roleId, role]) => {
       if (!HIRABLE_ROLE_IDS.has(roleId)) return false;

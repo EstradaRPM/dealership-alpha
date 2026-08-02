@@ -57,7 +57,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | blocked on 5c |
-| 5c | UI layout rebuild — ~~#346 Operations~~ (built 2026-08-02) · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance | — (locked IA already rules it) | active |
+| 5c | UI layout rebuild — ~~#346 Operations~~ · ~~#347 People~~ (both built 2026-08-02) · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance | — (locked IA already rules it) | active |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`.** Next unit: SLICE (after phase 7) | pending |
@@ -81,6 +81,55 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-02 — **BUILT #347** (People rebuild) — the org tab exists now, and the drive found
+  two engine defects on the way that are fixed with it.
+  **People is one surface with three sections.** `people-region-roster` · `people-region-hiring`
+  · `people-region-managers`, all kit-styled off `useTheme()`. Before this the tab rendered
+  *only* the delegation card — three ABSENT rows at Tier 1 — while the roster and the candidate
+  pool sat two levels down behind Operations → Prep → Hire Staff, in the wrong tab entirely.
+  **`PersonnelScreen` is gone, not restyled — and so is the `personnel` route.** The old flow
+  pushed a full-screen route that unmounted the tab bar (IA §3 names that as the pattern to
+  replace) and hid every candidate's skills behind a modal. Hiring now resolves **in place**:
+  the handlers write through `StaffOrg` and `bump()` re-renders the same tab. Driven live —
+  pressing Hire moved "1 of 4" to "2 of 4" and the candidate onto the roster with a morale
+  meter, no navigation. Its container, its two test files, and its 600 lines of raw-`colors`
+  StyleSheet went with it; `PeopleTabContainer` replaces it and the two reachability tests that
+  drove the old container (#323 advisor hiring, #324 promotion) now drive the new one.
+  **Candidates are comparable now, which is the point of the section.** All three render inline
+  — traits, both composites, every skill — instead of one-at-a-time in a modal, because the
+  A-vs-B read is the decision. (The flat $1,000 price against unequal quality is C1's ruling,
+  not this slice's.)
+  **Staff have names.** `data/person-names.json` + `NPC.rollPersonName`, and `name` is a
+  non-enumerable **derived** getter on `StaffWithComposites` — `(masterSeed, staff.id)`
+  determines it, exactly like #294's per-hire skill cap. That is why it cost no field on
+  `Staff`, no change to the `.strict()` schema, and **no save migration**: `restore` hands
+  `rehydrateStaff` the same `masterSeed`, so the people you saved are the people you load
+  (locked by a round-trip test).
+  **Two defects the web drive surfaced, both fixed at the engine.** (1) The UCM's card read
+  **"Work quality 275%"** — `effectiveness` is a weighted *sum* over a role's skills, so its
+  range is role-dependent (1.5 for a three-axis salesperson, 3.7 for a six-axis UCM) and two
+  roles were never comparable. Added `effectivenessRatio`/`trustworthinessRatio` = composite ÷
+  the ceiling that skill set implies. **The raw composites are untouched** — every promotion and
+  capability gate reads those, and re-scaling them is a balance change C1/C2 own. (2) The pool
+  offered **a person already on the roster**: a staff id is `staff:<archetype>:<day>:<slot>` and
+  the pool is rebuilt from the seed on every reload (#190, deliberately not persisted), so it
+  regenerated the id you hired — and hiring them again would have pushed a duplicate id,
+  breaking every id-keyed binding (StaffMorale, StaffDispatch). `buildCandidatesForRole` now
+  skips hired ids and walks the slot forward to keep the pool full.
+  **Also landed:** skill *labels* are data — `data/staff-skills.json` carries a required
+  `label`, so no surface can render `t_o_closing` as "t o closing" again; `staffOrg.headcountCap`
+  is a public read so the tab shows "2 of 4" and stops offering a hire that would throw (A2/C1
+  swap the CSV slot table in behind it); and `ProgressBar`/`Meter` gained `fillTestID` so a bar's
+  **width** is assertable — the skill-bar defect carried in from C1 was `flex: ratio` inside a
+  container that never set `flexDirection: 'row'`, and nothing could have caught it.
+  **No Development section, deliberately** — IA rules 1 + 3, with a regression lock asserting its
+  absence so no foreshadow tease creeps in before the training mechanic exists.
+  **Driven on web at T1** (Continue → People): roster with names + proportional skill bars,
+  three distinguishable candidates (32% / 41% / 72% work quality), hire resolving in place, and
+  Operations showing Prep's two levers with no hiring entry anywhere. 201 suites / **2512**
+  tests, typecheck clean.
+  Next: **BUILD #348** (in-tab nav stacks).
 
 - 2026-08-02 — **BUILT #346** (Operations rebuild) — the first and largest phase-5c slice.
   Six of the nine destinations the audit counted from Operations are gone or now open a real
@@ -143,51 +192,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   and roster members have no names.
   **Sequencing:** #74 moved to `blocked on 5c`. The script is fine; the doors it walks the player
   through are not. Build order is #346 → #347 → #348 → #349 → #350 → #351.
-- 2026-08-02 — **RULED C1 staff-teeth** (`/decide C1`) — the last designed-but-ungrilled core
-  mechanic. Record: **`docs/planning/staff-teeth-design.md`**; §5 C1 flipped to
-  `[LOCKED 2026-08-02]`; gate row moved to `gates.md`'s Settled section.
-  **The measured "zero teeth" state was worse than the spine claimed, and all five facts are in
-  the doc's table.** Payroll is a flat `$800/week` constant (`weeklyPayrollStub`, posted at
-  `Economy.ts:67`) — the fifth hire costs **$0/week**. Hire cost is flat per role class
-  (`StaffOrg.ts:175`); no salary field exists at all (`staff-roles.json` has none, and
-  `StaffOrg/CLAUDE.md:57` claimed otherwise — stale). The candidate board is wiped and rerolled
-  **every morning** (`StaffOrg.ts:145`), so disliking today's three costs one free day. And
-  `payVsMarketBonus` fires **unconditionally** every payroll night (`StaffMorale.ts:93`) —
-  a placeholder wearing a mechanic's name.
-  **R1 — one daily wage, grade × role. Commission was rejected, and the standing recommendation
-  going in was wrong on its own terms.** The director's objection is recorded because it is the
-  reusable lesson: draw-against-commission is **four comp structures**, not one (sales/F&I on
-  commission, techs flat-rate hours, advisors salary + service cut, managers salary + dept bonus)
-  — four rules to explain one line item, against a hard standing bar of *playable, enjoyable,
-  easy to understand*. And the case for it ("a flat drain never teaches you anything") is
-  **backwards**: a fixed cost against variable revenue is exactly what makes a slow day hurt;
-  commission partly self-insures a bad week. The simpler rule was also the sharper one.
-  **R2 — raises are a moment you play.** They ask, you pay or refuse; refusing feeds the existing
-  `StaffMorale` → `staff:quit` path. Chosen over auto-repricing and fixed-forever because it is a
-  *decision*, which is precisely `poaching-cut.md`'s finding. **Retention and poaching are now one
-  mechanic** — a rival offer is the same prompt with a name and a deadline, so spine §5's required
-  poaching teeth cost no second thing to learn.
-  **R3 — the CSV slot table is the scarcity cap.** No rarity roll, no persistent named labor
-  market: you can't field five A-players because you don't have five slots (T1 = 1 salesperson),
-  and the wage gates quality on top. **This makes phase 7 (A2) a prerequisite for phase 6's build**
-  — `headcountCapByTier` is a flat `{1:4,2:8,3:16}` with no per-role breakdown, so nothing
-  enforces the CSV today and the slot half would sit inert. Recorded in the doc §6, in the phase
-  table, and as a note on A2's `gates.md` row.
-  **Internal calls (8, all in doc §3), two of which do real work:** `grade` is a *derived* band of
-  the existing `effectiveness` composite — not a second source of truth; and `paidGrade` (stored
-  at hire) vs current grade **is** the whole raise trigger, falling straight out of the Model B
-  growth already shipped in #294. No new state machine, no new counters.
-  **A director-reported UI defect is folded into C1's scope, with a root cause.** Skill bars look
-  identical for every employee: `SkillRow` (`PersonnelScreen.tsx:22`) sizes the fill with
-  `flex: ratio` against a `flex: 1 - ratio` spacer, but `skillBarBg` (`:565`) never sets
-  `flexDirection: 'row'` — RN defaults to **column**, so fill and spacer stack vertically in a
-  6px-tall box and the bar carries zero information. The A-vs-B comparison this entire gate
-  depends on is currently impossible to make on screen, so it is not a later polish pass.
-  **Not a build — nothing under `src/` changed but one stale `StaffOrg/CLAUDE.md` line** (it
-  claimed `staff-roles.json` holds salaries; it holds none). Suite run anyway to prove that:
-  199 suites / **2469** tests green, unchanged counts from #342.
-  Next /next is **`/decide A2`** (phase 7) per R3's sequencing finding, then SLICE 6+7.
-  **Carried into phase 6's slice, unfixed by design:** the `PersonnelScreen` skill-bar defect
-  above. It is a ~2-line fix (`flexDirection: 'row'` + `overflow: 'hidden'` on `skillBarBg`),
-  independent of everything else, and blocks nothing — a decision unit does not get to start
-  building the phase it just unblocked.

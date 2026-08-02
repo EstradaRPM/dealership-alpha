@@ -32,7 +32,10 @@ export type RouteParamMap = {
   'character-creation': undefined;
   game: undefined;
   auction: undefined;
-  personnel: undefined;
+  // NOTE: there is no `personnel` route. Hiring and the roster are sections of
+  // the People tab (#347, locked IA §4) and resolve in place — pushing a
+  // full-screen route for them unmounted the tab bar, which IA §3 names as the
+  // pattern to replace.
   // Per-vehicle real-time pricing screen (#175), pushed over the game from the
   // pre-open ownership levers' Pricing card. Closed with back().
   pricing: { vehicleId: string };

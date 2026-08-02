@@ -12,13 +12,21 @@ export interface MeterProps {
   readout?: string;
   /** Fill color role. Default `primary`. */
   tone?: ProgressTone;
+  /** Forwarded to the bar's fill, so a caller can assert the fill's width. */
+  fillTestID?: string;
 }
 
 /**
  * Labeled gauge — a captioned `ProgressBar` for the morale / regulatory meters.
  * Label + optional readout sit above the bar. Presentation only.
  */
-export function Meter({ label, value, readout, tone = 'primary' }: MeterProps) {
+export function Meter({
+  label,
+  value,
+  readout,
+  tone = 'primary',
+  fillTestID,
+}: MeterProps) {
   const t = useTheme();
 
   const header: ViewStyle = {
@@ -39,7 +47,7 @@ export function Meter({ label, value, readout, tone = 'primary' }: MeterProps) {
         <Text style={labelText}>{label}</Text>
         {readout != null && <Text style={readoutText}>{readout}</Text>}
       </View>
-      <ProgressBar value={value} tone={tone} />
+      <ProgressBar value={value} tone={tone} fillTestID={fillTestID} />
     </View>
   );
 }
