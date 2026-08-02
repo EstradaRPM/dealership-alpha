@@ -28,8 +28,12 @@ understand what the wire was telling me". Triage is mine (see §7).
 npm run dev
 ```
 
-Scan the QR in **Expo Go** (tunnel mode — the project default; never LAN/adb). There is no
-web or simulator path: `expo-sqlite` is native and `react-native-web` isn't installed.
+Scan the QR in **Expo Go** (tunnel mode — the project default; never LAN/adb). This is the
+path that answers the felt questions — real device, real gesture timing, real day length.
+
+(A drivable **web** target landed in #338 — `npm run web`, and `src/game/SaveStore/webDriver.ts`
+backs it. It exists so an agent can verify a surface renders and responds; it does not answer
+§6, and it is not how you run this round. See `.claude/skills/verify`.)
 
 ### Two buttons, and only one you have to remember
 

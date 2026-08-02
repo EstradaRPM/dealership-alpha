@@ -10,19 +10,24 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Current phase
 
-**Phase 5 — C3 playtest gate (#74), round 1 — HITL**
+**Phase 5c — UI layout rebuild (#346–#351), director-directed 2026-08-02**
 
 (Phase 4 B3 closed 2026-07-22 — #176, #177, #178; #179 landed earlier in A4.)
 
 ## Blockers
 
-- **Phase 5 (#74) is waiting on the user.** Script written
-  (`docs/planning/playtest-round-1.md`) and now presented in-game day by day (#332/#333), so
-  playing costs one tap per reaction and the export carries the script trace, probe answers,
-  flags and deal/walk tables. **Unblocked by:** the user playing Session A (5 days, fresh T1)
-  + Session B (3 days, T2 fixture) on device, exporting DEV → PLAYTEST LOG → Export, and
-  answering the 12-question sheet at a keyboard. Nothing agent-side can advance it — no
-  autonomous runtime surface for the GUI (see `.claude/skills/verify`).
+- **Phase 5 (#74) is blocked behind phase 5c, by director call 2026-08-02.** A drive-through
+  audit on the web target found **6 of the 9 destinations reachable from Operations open an
+  empty or dark screen at Tier 1**, and two of the five primary tabs are placeholder cards.
+  Round 1's script routes the player through Operations on Day 0 and every day after, so
+  running it now measures the doors, not the loop. Audit: `docs/audits/ui-layout-audit.md`.
+  The script itself stays valid — it is `docs/planning/playtest-round-1.md`, presented in-game
+  (#332/#333), and its §1 "no web path" line is stale as of #338.
+- **The layout was never re-decided — it was never built.** `docs/planning/second-level-ia.md`
+  (locked 2026-06-12) already specifies the fix for nearly every audited defect. The
+  UI-rebrand chain stopped after Home (S1–S4, S3a–S3f); no Operations/People/Finance/Growth
+  slice was ever filed. #346–#351 are that filing. **Do not re-grill the IA** — where shipped
+  and locked disagree, locked wins.
 - **Phase 5b is done** (#341, #342) — as is 5a. **There is no agent-side work left before the
   playtest.** Phase 6's gate is now ruled (`/decide C1`, 2026-08-02); phase 7's is not, and
   C1's R3 made it a prerequisite — so the next `/next` is **`/decide A2`**, not a BUILD.
@@ -51,7 +56,8 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | done |
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
-| 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
+| 5 | C3 playtest gate (#74), round 1 — HITL | — | blocked on 5c |
+| 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance | — (locked IA already rules it) | active |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`.** Next unit: SLICE (after phase 7) | pending |
@@ -76,6 +82,28 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-02 — **AUDITED the whole UI on the web target; filed phase 5c (#346–#351).**
+  Director drove the #74 playtest request into a layout audit. Record:
+  **`docs/audits/ui-layout-audit.md`** — every surface driven live at T1, every tappable target
+  pressed, each control traced to its wiring.
+  **The finding is an absence, not a disagreement.** `second-level-ia.md` locked the second-level
+  IA on 2026-06-12 and it was never decomposed into issues past Home. Operations still runs the
+  #215 shell tracer composition: five hardcoded department buttons routing to one generic
+  empty-queue screen, **Lot among them** — an empty queue while three cars sit on the lot one tab
+  away, when the locked IA gives Lot the entire stock pipeline (list + pricing + auction). Prep
+  holds three navigation links the IA explicitly bans there, plus the advertising lever the IA
+  assigns to Growth. `OwnershipLevers` is the **last pre-kit surface anywhere** — raw `colors`
+  import + literal `StyleSheet` values — which is why the tab's top and bottom look like two
+  different games. People renders only manager delegation (all three ABSENT at T1) while its
+  chartered roster + hiring sit two levels down inside Operations. Finance and Growth are
+  placeholder cards carrying *"coming in a later slice"* copy — the foreshadow-tease IA rule 3
+  forbids. Pushed screens unmount the tab bar, which IA §3 names as the pattern to replace.
+  **Also surfaced, outside the layout:** all three salesperson candidates cost exactly $1,000
+  against 48%/70%/62% effectiveness (`tunables.json:252` keys cost to role class), so the first
+  decision the game asks for has a strictly dominant answer — inside phase 6's C1 ruling already;
+  and roster members have no names.
+  **Sequencing:** #74 moved to `blocked on 5c`. The script is fine; the doors it walks the player
+  through are not. Build order is #346 → #347 → #348 → #349 → #350 → #351.
 - 2026-08-02 — **RULED C1 staff-teeth** (`/decide C1`) — the last designed-but-ungrilled core
   mechanic. Record: **`docs/planning/staff-teeth-design.md`**; §5 C1 flipped to
   `[LOCKED 2026-08-02]`; gate row moved to `gates.md`'s Settled section.
@@ -160,30 +188,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   `.claude/hooks/selftest.mjs`'s other Rng probes pointed at a path that no longer exists;
   repointed at `NPC/schemas/staff`. ADR-0001 carries an amendment note rather than a rewrite.
   Next /next is **`/decide C1`** (staff-teeth grill) — phase 6. Not a BUILD.
-- 2026-08-01 — **BUILT #341** (route the `data/loadJson` reach-ins through the data barrel),
-  first of phase 5b. 25 files, one import line each: `../data/loadJson` → `../data`,
-  `./game/data/loadJson` → `./game/data`. Allow-list regenerated. 199 suites / 2467 tests green,
-  typecheck clean — **the same counts as before the change**, which is the whole proof: this was
-  an import-path change and nothing else, so a moved number would have been the finding.
-  **The clerical half of the boundary debt is gone.** The allow-list went **81 reach-ins / 71
-  files → 56 / 47**, and `parseData` no longer appears in it at all. `parseData` was already on
-  `src/game/data/index.ts`, so there was no public-surface question to answer — the only real
-  check was that importing the barrel doesn't drag in work these config modules didn't ask for.
-  It doesn't: `data/index.ts` re-exports `loadJson` plus `tunables`, and `tunables.ts` is schema
-  declarations and a loader *function* — no import-time file read, and it imports nothing but
-  `zod` and its sibling, so no cycle back through a game module.
-  **#342's fourth acceptance criterion is now known to be wrong, and that is recorded on the
-  issue itself** (comment, not just here). It expects an *empty* allow-list once the Rng class
-  is also cleared. Of the 56 that remain, **34 are `NPC/Rng`** — #342's real scope — and **22 are
-  a third class nobody had enumerated**: `EventBus/events.ts` → `CompetitorMarket/Competitor`,
-  `EndCard/types`, `MarketEconomy/schemas`; `StaffOrg` → `NPC/StaffTaxonomy`, `NPC/factories/*`,
-  `NPC/schemas/*`; and test-side reach-ins into `NPC/schemas/*`, `Inventory/auctionGenerator`,
-  `CompetitorMarket/schemas/brand`, `StaffOrg/types`. Each is its own public-surface question, so
-  the allow-list file survives #342 rather than being deleted by it. Read #342's criterion as
-  "zero `NPC/Rng` entries remain."
-  `.claude/hooks/README.md` was the one doc carrying a stale count and a now-dead class; it now
-  states 56/47 and names the residual third class, so the next reader of the hook docs isn't
-  told to go fix 35 imports that no longer exist.
-  Next /next BUILDs **#342** — which opens with an internal fork (re-export `Rng` from NPC's
-  barrel vs. give it its own `src/game/Rng/` module). That fork is the implementing agent's call,
-  not a director gate, per the issue. **#342 is the last agent-side work before the #74 playtest.**

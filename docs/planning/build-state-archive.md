@@ -6,6 +6,33 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-01 — **BUILT #341** (route the `data/loadJson` reach-ins through the data barrel),
+  first of phase 5b. 25 files, one import line each: `../data/loadJson` → `../data`,
+  `./game/data/loadJson` → `./game/data`. Allow-list regenerated. 199 suites / 2467 tests green,
+  typecheck clean — **the same counts as before the change**, which is the whole proof: this was
+  an import-path change and nothing else, so a moved number would have been the finding.
+  **The clerical half of the boundary debt is gone.** The allow-list went **81 reach-ins / 71
+  files → 56 / 47**, and `parseData` no longer appears in it at all. `parseData` was already on
+  `src/game/data/index.ts`, so there was no public-surface question to answer — the only real
+  check was that importing the barrel doesn't drag in work these config modules didn't ask for.
+  It doesn't: `data/index.ts` re-exports `loadJson` plus `tunables`, and `tunables.ts` is schema
+  declarations and a loader *function* — no import-time file read, and it imports nothing but
+  `zod` and its sibling, so no cycle back through a game module.
+  **#342's fourth acceptance criterion is now known to be wrong, and that is recorded on the
+  issue itself** (comment, not just here). It expects an *empty* allow-list once the Rng class
+  is also cleared. Of the 56 that remain, **34 are `NPC/Rng`** — #342's real scope — and **22 are
+  a third class nobody had enumerated**: `EventBus/events.ts` → `CompetitorMarket/Competitor`,
+  `EndCard/types`, `MarketEconomy/schemas`; `StaffOrg` → `NPC/StaffTaxonomy`, `NPC/factories/*`,
+  `NPC/schemas/*`; and test-side reach-ins into `NPC/schemas/*`, `Inventory/auctionGenerator`,
+  `CompetitorMarket/schemas/brand`, `StaffOrg/types`. Each is its own public-surface question, so
+  the allow-list file survives #342 rather than being deleted by it. Read #342's criterion as
+  "zero `NPC/Rng` entries remain."
+  `.claude/hooks/README.md` was the one doc carrying a stale count and a now-dead class; it now
+  states 56/47 and names the residual third class, so the next reader of the hook docs isn't
+  told to go fix 35 imports that no longer exist.
+  Next /next BUILDs **#342** — which opens with an internal fork (re-export `Rng` from NPC's
+  barrel vs. give it its own `src/game/Rng/` module). That fork is the implementing agent's call,
+  not a director gate, per the issue. **#342 is the last agent-side work before the #74 playtest.**
 - 2026-08-01 — **BUILT #345** (Bayesian search loop), slice C of #339 — **phase 5a is done.**
   New `gp.ts` / `search.ts` / `study.ts` / `evaluator.ts` / `applyTuning.ts` + CLI modes
   `search` (E) and `apply` (F) + `tests/balanceHarness.search.test.ts` (26 tests); 199 suites /
