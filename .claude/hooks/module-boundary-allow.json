@@ -1,82 +1,10 @@
 {
   "_comment": "Enumerated pre-existing module-boundary reach-ins, accepted so the PreToolUse hook blocks NEW debt without blocking edits to files that already carry old debt. Regenerate with: node .claude/hooks/scan-module-boundary.mjs --write. Shrinking this file is always an improvement.",
   "allow": {
-    "scripts/balance-harness/seeds.ts": [
-      "../../src/game/NPC/Rng"
-    ],
-    "src/createWorld.ts": [
-      "./game/NPC/Rng"
-    ],
-    "src/game/CollisionStream/composeCollision.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/CustomerPool/CustomerPool.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/DealEngine/trade.ts": [
-      "../NPC/Rng"
-    ],
     "src/game/EventBus/events.ts": [
       "../CompetitorMarket/Competitor",
       "../EndCard/types",
       "../MarketEconomy/schemas"
-    ],
-    "src/game/FloorSim/FloorSim.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/InstalledBase/InstalledBase.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/Inventory/auctionGenerator.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/Inventory/startingInventory.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/MarketEconomy/auctionSources.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/MarketEconomy/news.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/MarketEconomy/personality.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/MarketEconomy/reconVariance.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/MarketEconomy/shocks.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/MarketEconomy/sourcing.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/MarketEconomy/weeklyReport.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/PartsInventory/PartsInventory.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/SalesProcess/evaluator.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/SalesProcess/nonnegotiables.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/ServiceDemand/composeIntake.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/ServiceDispatch/ServiceDispatch.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/StaffDispatch/StaffDispatch.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/StaffMorale/StaffMorale.ts": [
-      "../NPC/Rng"
-    ],
-    "src/game/StaffOrg/conditionRead.ts": [
-      "../NPC/Rng"
     ],
     "src/game/StaffOrg/StaffOrg.ts": [
       "../NPC/StaffTaxonomy",
@@ -87,38 +15,14 @@
     "src/game/StaffOrg/types.ts": [
       "../NPC/factories/StaffFactory"
     ],
-    "src/game/Weather/Weather.ts": [
-      "../NPC/Rng"
-    ],
-    "tests/CollisionStream.test.ts": [
-      "../src/game/NPC/Rng"
-    ],
     "tests/CompetitorMarket.Brand.test.ts": [
       "../src/game/CompetitorMarket/schemas/brand"
-    ],
-    "tests/DealEngine.tradeAsk.test.ts": [
-      "../src/game/NPC/Rng"
-    ],
-    "tests/DealEngine.tradePolicy.test.ts": [
-      "../src/game/NPC/Rng"
-    ],
-    "tests/DemandShaper.reachability.test.tsx": [
-      "../src/game/NPC/Rng"
-    ],
-    "tests/DemandShaper.test.ts": [
-      "../src/game/NPC/Rng"
     ],
     "tests/Inventory.auctionSources.test.ts": [
       "../src/game/Inventory/auctionGenerator"
     ],
     "tests/Inventory.test.ts": [
       "../src/game/Inventory/auctionGenerator"
-    ],
-    "tests/MarketEconomy.motivatedSeller.test.ts": [
-      "../src/game/NPC/Rng"
-    ],
-    "tests/MarketEconomy.reconVariance.test.ts": [
-      "../src/game/NPC/Rng"
     ],
     "tests/NPC.BoundCheck.test.ts": [
       "../src/game/NPC/schemas/competitor",
@@ -134,9 +38,6 @@
     "tests/NPC.CustomerFactory.test.ts": [
       "../src/game/NPC/schemas/customer"
     ],
-    "tests/NPC.Rng.test.ts": [
-      "../src/game/NPC/Rng"
-    ],
     "tests/NPC.Staff.test.ts": [
       "../src/game/NPC/Staff",
       "../src/game/NPC/schemas/staff"
@@ -147,9 +48,6 @@
     ],
     "tests/PersonnelScreen.smoke.test.tsx": [
       "../src/game/StaffOrg/types"
-    ],
-    "tests/SkillDrift.test.ts": [
-      "../src/game/NPC/Rng"
     ]
   }
 }

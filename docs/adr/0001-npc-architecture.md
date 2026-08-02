@@ -44,6 +44,12 @@ src/game/NPC/
 └── schemas/                       Zod schemas for every data file below
 ```
 
+> **Amended by #342 (2026-08-01):** `Rng.ts` no longer lives here. Sixteen other modules plus
+> `createWorld` and the balance harness ended up drawing from it, so it moved out whole to its
+> own module, `src/game/Rng/`. Nothing about the seeding *scheme* below changed — same
+> `deriveSeed(masterSeed, namespace, ctx)`, same streams — only its address. See
+> `src/game/Rng/CLAUDE.md`.
+
 `CustomerPool`, `StaffOrg`, `CompetitorMarket` import only from
 `@/game/NPC` — they own gameplay (pool sizing, hiring market, market
 pressure), not primitive logic.

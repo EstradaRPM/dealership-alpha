@@ -15,7 +15,7 @@ import type {
 import { resolveTradeIn, rollCustomerCounterResponse } from '../DealEngine';
 import type { Person, Visit, SkillDriftConfig } from '../NPC';
 import { skillDriftFraction } from '../NPC';
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import { loadStaffDispatchConfig, type StaffDispatchConfig } from './staffDispatchData';
 import {
   closeAndPrice,

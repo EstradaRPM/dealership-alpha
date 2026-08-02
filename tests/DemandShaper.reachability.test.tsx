@@ -3,7 +3,7 @@ import { readAppCompositionSource } from './helpers/appComposition';
 import { render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
-import { createRng } from '../src/game/NPC/Rng';
+import { createRng } from '../src/game/Rng';
 import { HomeTab } from '../src/ui/HomeTab';
 import { buildHeatConsole, resolvePricingIntel } from '../src/app/config';
 import type { DemandReadoutModel, DemandTargetingLever } from '../src/ui/DemandReadout';

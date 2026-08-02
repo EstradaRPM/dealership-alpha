@@ -1,6 +1,6 @@
 import type { EventBus } from '../EventBus';
 import type { Season } from '../GameClock';
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import { loadTunables } from '../data';
 import {
   accumulateMeters,

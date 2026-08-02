@@ -109,5 +109,5 @@ so collision jobs can stock/consume/cover against the same machinery.**
 ## Determinism
 - `addStock`/`consume` are pure stock math. The only RNG is the order
   lead-time/reliability roll, seeded off `masterSeed +
-  'parts_inventory.order' + {day, category, orderSeq}` (via `NPC/Rng`), so a
+  'parts_inventory.order' + {day, category, orderSeq}` (via `Rng`), so a
   replay — and a save reload — reproduces the same arrival schedule (#122).

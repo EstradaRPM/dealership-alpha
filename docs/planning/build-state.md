@@ -23,15 +23,15 @@ session start — open it on demand when a past slice's rationale needs recoveri
   + Session B (3 days, T2 fixture) on device, exporting DEV → PLAYTEST LOG → Export, and
   answering the 12-question sheet at a keyboard. Nothing agent-side can advance it — no
   autonomous runtime surface for the GUI (see `.claude/skills/verify`).
-- **While it waits, `/next` works phase 5b** (#341 → #342) — phase 5a closed 2026-08-01. Real
-  filed work, independent of the playtest. #338 landed, so the `/verify` BLOCKED ceiling is
-  gone — a UI slice is now driven live on the web target (`.claude/skills/verify`). 5b does not
-  substitute for the playtest — the felt questions stay a human gate.
+- **Phase 5b is done** (#341, #342) — as is 5a. **There is no agent-side work left before the
+  playtest.** Phases 6 and 7 both open with a gate, so the next `/next` is a DECIDE (`/decide C1`,
+  the staff-teeth grill), not a BUILD.
 - **5a issue states on GitHub are not trustworthy.** #334 was CLOSED-but-undone. Check each
   of #335–#339 against the repo before assuming it landed. (#339 is closed as **sliced**, not
   built — its work was #343/#344/#345, all three now built.)
-- **After 5b there is no agent-side work left before the playtest.** Phases 6 and 7 both open
-  with a gate (`/decide C1`, then A2), so the next `/next` after #342 is a DECIDE, not a BUILD.
+- **The seeded-RNG separator is a NUL byte, and it is invisible.** `deriveSeed` joins namespace
+  and ctx with U+0000. #342 nearly shipped a whole-game determinism break by retyping that line
+  with a space. `tests/Rng.test.ts` carries the regression lock that caught it — never weaken it.
 
 ## Phase table
 
@@ -49,7 +49,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
 | 5 | C3 playtest gate (#74), round 1 — HITL | — | active |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
-| 5b | Module-boundary debt clearance (#341 done → **#342**), surfaced by #335's scan | — | active |
+| 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **GRILL (ungrilled core mechanic)** — prep index: `.claude/skills/decide/gates.md` | pending |
 | 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** | pending |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
@@ -72,6 +72,42 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-01 — **BUILT #342** (seeded RNG gets its own module) — **phase 5b is done, and with
+  it every agent-side item before the #74 playtest.**
+  **The fork went to a new module, not a re-export.** `src/game/NPC/Rng.ts` → `src/game/Rng/`
+  (`Rng.ts` + a two-line barrel + `CLAUDE.md`), 34 import lines rewritten. Re-exporting from
+  NPC's barrel was the one-line option and it is the wrong one: it would make determinism part
+  of NPC's *public promise*, a claim about NPC that isn't true, and it would leave `Inventory →
+  NPC`, `Weather → NPC`, `PartsInventory → NPC` as dependencies that exist for no domain reason.
+  Sixteen modules plus `createWorld` plus the harness draw from it — that is infrastructure, in
+  the same class as `data/`. `tests/Rng.test.ts` now asserts **both** directions: the two
+  functions are on the Rng barrel, and they are still *absent* from NPC's.
+  **The move nearly broke every stream in the game, and the catch is the story.** `deriveSeed`
+  joins namespace and ctx with a **literal NUL (U+0000)** — invisible in an editor, rendered as
+  a space by the file-read path, and therefore silently retyped as a space when the file was
+  copied to its new home. Ten suites went red: `deriveSeed(12345, 'customer', {day:1,slot:0})`
+  came back `2170378250` instead of `3789376038`. Every seed in the game had moved. **The only
+  thing standing between that and a commit was the regression lock** — a single hard-coded
+  expected seed, exactly the kind of assertion that looks redundant next to the
+  same-input-same-output tests around it. It is now commented at the call site with why the
+  byte is load-bearing (collision-proofing *and* fixture compatibility) and how to re-verify.
+  Two-sided proof that determinism survived: the code in `Rng.ts` is **byte-identical to the
+  pre-move original** apart from that comment, and a 5-seed × 150-day competent pacing run
+  captured **before** the move is `cmp`-identical to the same run after. `data/**` untouched,
+  so the committed tier fixtures are the same bytes and `tests/tierFixtures.test.ts` is green.
+  199 suites / **2469** tests (2467 + the two new barrel assertions), typecheck clean.
+  **The allow-list is 81/71 → 22 reach-ins / 13 files**, and both bulk classes are gone (#341
+  cleared `parseData`, this cleared `NPC/Rng`). It does **not** become empty, as #342's fourth
+  criterion assumed — the residue is 22 individually-argued one-offs, mostly tests asserting
+  against a module's internal Zod schemas. So the file survives as a short list of decisions
+  rather than a backlog; `.claude/hooks/README.md` now says that.
+  One trap found while cleaning up: `hooks:test`'s "grandfathered reach-in is not blocked" case
+  named `createWorld → NPC/Rng`, which this change turned from grandfathered into blocked — the
+  selftest would have gone red on a correct repo. It now names a pair that is genuinely in the
+  allow-list, with a comment saying the case must be re-pointed whenever a class is cleared.
+  `.claude/hooks/selftest.mjs`'s other Rng probes pointed at a path that no longer exists;
+  repointed at `NPC/schemas/staff`. ADR-0001 carries an amendment note rather than a rewrite.
+  Next /next is **`/decide C1`** (staff-teeth grill) — phase 6. Not a BUILD.
 - 2026-08-01 — **BUILT #341** (route the `data/loadJson` reach-ins through the data barrel),
   first of phase 5b. 25 files, one import line each: `../data/loadJson` → `../data`,
   `./game/data/loadJson` → `./game/data`. Allow-list regenerated. 199 suites / 2467 tests green,
@@ -133,38 +169,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   and correctly leaves the baseline on top (no cheap score outranked it).
   Next /next BUILDs **#341** — phase 5b (module-boundary debt), the last agent-side work before
   the #74 playtest gate.
-- 2026-08-01 — **BUILT #344** (tunable manifest + multi-file overrides + the frozen-key
-  guard), slice B of #339. New `scripts/balance-harness/searchSpace.ts` + `space` CLI mode +
-  `tests/balanceHarness.searchSpace.test.ts` (20 tests); 198 suites / 2441 tests green,
-  typecheck clean, `data/**` byte-unchanged.
-  **The override registry went from 2 files to 9** — `sourcing`, `intel-precision`,
-  `bodyshop-demand`, `news-progression-gating`, `service-manager`, `body-shop-manager`,
-  `starting-inventory` joined `tier-gate`/`tunables`. `body-shop-manager` was **not** in
-  #344's list; leaving it out would have frozen the Tier-3 mirror of numbers whose Service
-  twin is searchable, which is an accidental freeze rather than a decision, so it went in.
-  The load-bearing property (loaders read the same Node-cached JSON object and none of them
-  memoize their parse, so an in-place mutation is live with no disk write) is **asserted per
-  file, not assumed**: the test applies a 9-file candidate and reads every value back through
-  the real loader. A registry entry that mutates an object nothing reads would pass every
-  other test in the file while making the search a silent no-op.
-  **Array paths are addressed by identity, not position** — `unlocks[id=auction_data].dailyCost`,
-  `slots[category=suv].targetRetail`. A numeric index still resolves, but it would silently
-  repoint at a different unlock if the array were reordered, and the manifest is exactly the
-  place that must not drift. `positionalPath()` converts a selector back to indices so a
-  manifest path can be compared against a structural diff.
-  **55 dimensions, and the freeze list is the more interesting half.** Each entry carries a
-  one-line why-this-is-a-magnitude-not-a-choice note, and the module header names what is
-  deliberately unreachable with reasons: `data/tier-pacing-targets.json` is not even
-  registered (the director authors the targets, #343), `tier-gate` `streak` is the campaign
-  rule, `inventory.frontlineHoldDays` is locked by #295, `minTier`/copy/`heatGranularity` are
-  progression and presentation, `candidateTrials` is generation quality.
-  Guard mechanics: a candidate is validated **whole before any of it is applied** (asserted —
-  one illegal value in a 2-key candidate leaves both keys untouched), out-of-range is
-  **rejected, not clamped**, and the freeze is a byte comparison of all nine files taken
-  before/during/after, with the during-diff required to equal exactly the varied manifest
-  paths. The `space` report flags a shipped value sitting outside its own declared bound and
-  a test asserts there are none today — that state means either the range or the number is
-  wrong, and a search would be starting from a point it would itself refuse to propose.
-  Recipe doc gained mode D and the "registering a file makes it reachable, not searchable"
-  distinction.
-  Next /next BUILDs **#345** (GP/EI search loop over this surface) — the last of phase 5a.

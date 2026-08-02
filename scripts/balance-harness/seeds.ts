@@ -6,7 +6,7 @@
  * masterSeeds — the backbone of the harness's "same seeds ⇒ identical output"
  * determinism guarantee.
  */
-import { createRng, deriveSeed } from '../../src/game/NPC/Rng';
+import { createRng, deriveSeed } from '../../src/game/Rng';
 
 export function deriveSeeds(baseSeed: number, count: number): number[] {
   const seeds: number[] = [];

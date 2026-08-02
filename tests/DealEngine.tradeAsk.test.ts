@@ -15,7 +15,7 @@ import {
   loadTraitTaxonomy,
   type CurrentVehicle,
 } from '../src/game/NPC';
-import { deriveSeed } from '../src/game/NPC/Rng';
+import { deriveSeed } from '../src/game/Rng';
 
 const CFG = loadTradeAllowanceNoiseConfig();
 

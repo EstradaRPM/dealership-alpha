@@ -8,7 +8,7 @@ import {
   loadReconVarianceConfig,
   loadReconSurpriseEventsConfig,
 } from '../src/game/MarketEconomy';
-import { deriveSeed } from '../src/game/NPC/Rng';
+import { deriveSeed } from '../src/game/Rng';
 
 const CFG = loadReconVarianceConfig();
 const SURPRISES = loadReconSurpriseEventsConfig();

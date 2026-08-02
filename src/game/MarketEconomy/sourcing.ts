@@ -1,5 +1,5 @@
 import { signedSkillDrift, type SkillDriftConfig } from '../NPC';
-import { deriveSeed } from '../NPC/Rng';
+import { deriveSeed } from '../Rng';
 import { loadSourcingConfig, type SourcingConfig } from './schemas';
 
 /**

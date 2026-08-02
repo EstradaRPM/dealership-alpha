@@ -48,7 +48,7 @@ expect(
     tool_name: 'Write',
     tool_input: {
       file_path: abs('src/game/Economy/probe.ts'),
-      content: "import { createRng } from '../NPC/Rng';\n",
+      content: "import { StaffSchema } from '../NPC/schemas/staff';\n",
     },
   }),
   2,
@@ -85,7 +85,7 @@ expect(
     tool_name: 'Write',
     tool_input: {
       file_path: abs('src/game/NPC/probe.ts'),
-      content: "import { createRng } from './Rng';\nimport x from './schemas/staff';\n",
+      content: "import { createStaff } from './Staff';\nimport x from './schemas/staff';\n",
     },
   }),
   0,
@@ -106,7 +106,7 @@ expect(
     tool_name: 'Write',
     tool_input: {
       file_path: abs('src/ui/probe.ts'),
-      content: "import { createRng } from '@/game/NPC/Rng';\n",
+      content: "import { StaffSchema } from '@/game/NPC/schemas/staff';\n",
     },
   }),
   2,
@@ -125,14 +125,17 @@ expect(
   2,
 );
 
+// Must name a pair that is actually in module-boundary-allow.json today. #341/#342
+// cleared the two bulk classes, so the old probe here (createWorld → NPC/Rng) went
+// from grandfathered to blocked — this case is what catches that drift.
 expect(
   'boundary: grandfathered reach-in is not blocked',
   run('pre-module-boundary.mjs', {
     tool_name: 'Edit',
     tool_input: {
-      file_path: abs('src/createWorld.ts'),
+      file_path: abs('src/game/StaffOrg/StaffOrg.ts'),
       old_string: 'x',
-      new_string: "import { deriveSeed, createRng } from './game/NPC/Rng';\n",
+      new_string: "import { StaffSchema } from '../NPC/schemas/staff';\n",
     },
   }),
   0,
@@ -142,7 +145,7 @@ expect(
   'boundary: ignores non-source files',
   run('pre-module-boundary.mjs', {
     tool_name: 'Write',
-    tool_input: { file_path: abs('docs/probe.md'), content: "from '../NPC/Rng'" },
+    tool_input: { file_path: abs('docs/probe.md'), content: "from '../NPC/schemas/staff'" },
   }),
   0,
 );
@@ -151,7 +154,10 @@ expect(
   'boundary: the hooks tree is not judged by the rule it enforces',
   run('pre-module-boundary.mjs', {
     tool_name: 'Write',
-    tool_input: { file_path: abs('.claude/hooks/probe.mjs'), content: "from '@/game/NPC/Rng'" },
+    tool_input: {
+      file_path: abs('.claude/hooks/probe.mjs'),
+      content: "from '@/game/NPC/schemas/staff'",
+    },
   }),
   0,
 );

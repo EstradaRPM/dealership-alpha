@@ -1,5 +1,5 @@
 import { createCustomer } from '../NPC';
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import type { CreateCustomerDeps, CustomerBundle } from '../NPC';
 import type { EventBus } from '../EventBus';
 import type { DealEngine, CreditTierCatalog } from '../DealEngine';

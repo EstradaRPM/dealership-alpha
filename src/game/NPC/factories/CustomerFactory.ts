@@ -1,4 +1,4 @@
-import { createRng, deriveSeed, type SeedContext } from '../Rng';
+import { createRng, deriveSeed, type SeedContext } from '../../Rng';
 import { resolveEffects } from '../Trait';
 import type { TraitSet, EffectKey, EffectVector } from '../schemas/trait';
 import type { PersonArchetypeCatalog } from '../schemas/person-archetype';

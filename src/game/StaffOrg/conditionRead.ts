@@ -1,4 +1,4 @@
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import type { ConditionReadConfig } from './staffOrgData';
 
 export const CONDITION_READ_NAMESPACE = 'staff.condition_read';

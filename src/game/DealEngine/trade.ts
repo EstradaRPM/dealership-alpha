@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createRng } from '../NPC/Rng';
+import { createRng } from '../Rng';
 import { skillDriftFraction } from '../NPC';
 import type { CurrentVehicle, SkillDriftConfig } from '../NPC';
 import { parseData, loadTunables } from '../data';

@@ -140,7 +140,7 @@ import {
   loadBrands,
   type CompetitorMarket,
 } from './game/CompetitorMarket';
-import { deriveSeed, createRng } from './game/NPC/Rng';
+import { deriveSeed, createRng } from './game/Rng';
 import {
   createDemandShaper,
   type DemandInfluenceInput,

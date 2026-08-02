@@ -8,7 +8,7 @@ import {
   type TradePolicyConfig,
 } from '../src/game/DealEngine';
 import type { CurrentVehicle } from '../src/game/NPC';
-import { createRng } from '../src/game/NPC/Rng';
+import { createRng } from '../src/game/Rng';
 
 // ── resolveTradePolicyMultiplier (the multiplier-wiring seam, #172) ────────────
 

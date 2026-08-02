@@ -11,7 +11,7 @@ import {
   type CollisionStreamInput,
   type CollisionIntakeEntry,
 } from '../src/game/CollisionStream';
-import { createRng } from '../src/game/NPC/Rng';
+import { createRng } from '../src/game/Rng';
 
 const CONFIG: CollisionStreamConfig = loadCollisionStreamConfig();
 

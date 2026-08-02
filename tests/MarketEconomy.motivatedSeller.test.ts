@@ -5,7 +5,7 @@ import {
   loadAuctionSourcesConfig,
   type MotivatedSellerConfig,
 } from '../src/game/MarketEconomy';
-import { deriveSeed } from '../src/game/NPC/Rng';
+import { deriveSeed } from '../src/game/Rng';
 
 const CATALOG = loadAuctionSourcesConfig();
 const CFG: MotivatedSellerConfig = loadMotivatedSellerConfig();

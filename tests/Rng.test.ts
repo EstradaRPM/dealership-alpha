@@ -1,7 +1,8 @@
-import { deriveSeed, createRng } from '../src/game/NPC/Rng';
+import { deriveSeed, createRng } from '../src/game/Rng';
+import * as RngBarrel from '../src/game/Rng';
 import * as NPCBarrel from '../src/game/NPC';
 
-describe('NPC/Rng', () => {
+describe('Rng', () => {
   describe('deriveSeed', () => {
     it('returns a deterministic 32-bit seed', () => {
       const a = deriveSeed(12345, 'customer', { day: 1, slot: 0 });
@@ -100,10 +101,22 @@ describe('NPC/Rng', () => {
     });
   });
 
-  describe('module boundary', () => {
+  describe('module boundary (#342)', () => {
+    it('exposes the seeded RNG through its own barrel', () => {
+      expect(typeof RngBarrel.deriveSeed).toBe('function');
+      expect(typeof RngBarrel.createRng).toBe('function');
+    });
+
+    // The whole point of the #342 move: seeded RNG is shared infrastructure, not
+    // part of NPC's public promise. Re-exporting it from NPC would put the old
+    // reach-ins back as legal imports and re-create the false claim about NPC.
     it('is not re-exported from the NPC barrel', () => {
       expect((NPCBarrel as Record<string, unknown>).deriveSeed).toBeUndefined();
       expect((NPCBarrel as Record<string, unknown>).createRng).toBeUndefined();
+    });
+
+    it('keeps the barrel narrow — the two functions and nothing else', () => {
+      expect(Object.keys(RngBarrel).sort()).toEqual(['createRng', 'deriveSeed']);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { createRng, deriveSeed, type SeedContext } from '../Rng';
+import { createRng, deriveSeed, type SeedContext } from '../../Rng';
 import type {
   Staff,
   StaffRoleCatalog,

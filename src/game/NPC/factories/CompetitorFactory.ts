@@ -1,4 +1,4 @@
-import { createRng, deriveSeed, type SeedContext } from '../Rng';
+import { createRng, deriveSeed, type SeedContext } from '../../Rng';
 import { resolveEffects } from '../Trait';
 import { CompetitorSchema } from '../schemas/competitor';
 import type { Competitor } from '../schemas/competitor';

@@ -1,5 +1,5 @@
 import type { EventBus } from '../EventBus';
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import { loadTunables, type Tunables } from '../data';
 import { wholePercent } from './news';
 import {

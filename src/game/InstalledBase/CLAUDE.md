@@ -130,7 +130,7 @@ Tier 2+.
 Loyalty is a pure function of the upstream `retentionSeed` (itself deterministic
 from `masterSeed`), so accrual replays identically. The #300 return roll draws
 its own RNG but seeds it off `masterSeed + 'installed_base.return' + {day,
-ownerId}` (via `NPC/Rng`), so each owner's roll is keyed, order-independent, and
+ownerId}` (via `Rng`), so each owner's roll is keyed, order-independent, and
 replays byte-identically (#122). The stream is derived state — nothing new is
 persisted. The #306 feedback path draws no RNG (deltas/defection/age-out are pure
 functions of persisted owner state + the live posture/reputation reads), so it

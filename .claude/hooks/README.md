@@ -64,18 +64,23 @@ rewrite of `src/createWorld.ts` would be blocked by debt it didn't create, with 
 that isn't a worse decision made under pressure. With it, **new** debt is blocked and the old
 debt is a countable list instead of an unknown.
 
-Today that list is 56 reach-ins across 47 files, and it is dominated by one class:
+Today that list is **22 reach-ins across 13 files**. Both of the classes that used to dominate
+it are gone:
 
-- **`../NPC/Rng` → `createRng` / `deriveSeed`** (~40 files). `src/game/NPC/index.ts` does **not**
-  export the RNG. Fixing these means deciding whether seeded RNG is part of NPC's public surface
-  or belongs somewhere else — a real public-surface call, not a rename (issue #342).
-- The remainder are one-off reach-ins into `NPC/schemas/*`, `NPC/factories/*`, `StaffOrg/types`,
-  `Inventory/auctionGenerator`, `CompetitorMarket/*` and `EndCard/types` — each its own
-  public-surface question.
+- **`../data/loadJson` → `parseData`** (25 files) — cleared by #341. The clerical half:
+  `src/game/data/index.ts` already exported `parseData`, so every one was a one-line import
+  rewrite with no design question attached.
+- **`../NPC/Rng` → `createRng` / `deriveSeed`** (~34 files) — cleared by #342, which carried a
+  real public-surface call. The answer was **neither module's private surface**: seeded RNG got
+  its own module at `src/game/Rng/`, because re-exporting it from NPC would have made
+  determinism part of NPC's public promise. See `src/game/Rng/CLAUDE.md`.
 
-The **`../data/loadJson` → `parseData`** class (25 files) is **gone** — cleared by #341. It was
-the clerical half: `src/game/data/index.ts` already exported `parseData`, so every one was a
-one-line import rewrite with no design question attached.
+What remains is the genuinely heterogeneous residue — one-off reach-ins into `NPC/schemas/*`,
+`NPC/factories/*`, `NPC/Staff`, `NPC/StaffTaxonomy`, `NPC/StaffArchetypes`, `StaffOrg/types`,
+`Inventory/auctionGenerator`, `CompetitorMarket/*` and `EndCard/types`. There is no third bulk
+class left; each of these is its own public-surface question, and most sit in test files that
+assert against a module's internal schema. So the allow-list file **survives** — it is now a
+short list of individual decisions rather than a backlog.
 
 Regenerate after a deliberate cleanup:
 

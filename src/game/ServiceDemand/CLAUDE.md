@@ -67,7 +67,7 @@ category from `conquestVehicleCategories` and a powertrain from
 ## Determinism & persistence
 Holds **no persisted state** — the intake regenerates deterministically from
 `masterSeed + day` + the live installed base, exactly like Weather and
-InstalledBase's return roll. All randomness is seeded via `NPC/Rng`
+InstalledBase's return roll. All randomness is seeded via `Rng`
 (`deriveSeed(masterSeed, 'service_demand.*', { day, … })`), so the stream is
 order-independent and replays byte-identically (#122). No `worldSnapshot` key,
 no migration.

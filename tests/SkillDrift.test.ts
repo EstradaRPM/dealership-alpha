@@ -3,7 +3,7 @@ import {
   signedSkillDrift,
   type SkillDriftConfig,
 } from '../src/game/NPC';
-import { deriveSeed } from '../src/game/NPC/Rng';
+import { deriveSeed } from '../src/game/Rng';
 
 const CFG: SkillDriftConfig = { maxDriftFraction: 0.2, skillReference: 90 };
 

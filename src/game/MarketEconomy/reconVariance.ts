@@ -1,4 +1,4 @@
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import {
   loadReconVarianceConfig,
   loadReconSurpriseEventsConfig,

@@ -1,6 +1,6 @@
 import { seasonForDay, type Season } from '../GameClock';
 import { loadTunables, type Tunables } from '../data';
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 
 /**
  * Weather / season substrate (#231, slice 1 of the weather-demand mechanic).

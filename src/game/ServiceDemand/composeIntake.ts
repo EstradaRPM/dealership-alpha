@@ -1,4 +1,4 @@
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import { JOB_CATEGORIES, POWERTRAINS, type ServiceDemandConfig } from './serviceDemandConfig';
 import type {
   JobCategory,

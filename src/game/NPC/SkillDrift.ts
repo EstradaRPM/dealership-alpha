@@ -1,4 +1,4 @@
-import { createRng } from './Rng';
+import { createRng } from '../Rng';
 
 /**
  * Execution-fidelity drift (channel-desk M5, #292).

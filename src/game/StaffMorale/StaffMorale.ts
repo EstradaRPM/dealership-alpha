@@ -1,7 +1,7 @@
 import type { EventBus } from '../EventBus';
 import type { StaffOrg } from '../StaffOrg';
 import type { DepartmentQueue } from '../DepartmentQueue';
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import { loadStaffMoraleConfig, type StaffMoraleConfig } from './staffMoraleData';
 
 export interface StaffMoraleDeps {

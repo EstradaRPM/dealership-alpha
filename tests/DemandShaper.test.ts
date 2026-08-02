@@ -2,7 +2,7 @@ import {
   createDemandShaper,
   type DemandShaperSnapshot,
 } from '../src/game/DemandShaper';
-import { createRng } from '../src/game/NPC/Rng';
+import { createRng } from '../src/game/Rng';
 
 const SEGMENTS = ['sedan', 'truck', 'suv'] as const;
 

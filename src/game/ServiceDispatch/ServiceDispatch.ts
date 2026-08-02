@@ -6,7 +6,7 @@ import type { QueueItem, DeptKey } from '../DepartmentQueue';
 import type { DeptDrain } from '../FloorSim';
 import type { PartsInventory, PartCategory } from '../PartsInventory';
 import type { JobCategory } from '../InstalledBase';
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import { loadServiceDispatchConfig, type ServiceDispatchConfig } from './serviceDispatchData';
 
 /** Neutral default for the competitive↔premium pricing dial when no posture
@@ -72,7 +72,7 @@ export interface DeptDispatchProfile {
   advisorRole: string;
   /** DepartmentQueue lane this department's items live in. */
   queueDept: DeptKey;
-  /** NPC/Rng namespace for the per-ticket auto-resolve roll. */
+  /** `Rng` namespace for the per-ticket auto-resolve roll. */
   rngKey: string;
   /** Per-department RNG seed context (key NAME is load-bearing for byte-stability). */
   rngSeedInput(itemId: string, day: number): Record<string, string | number>;

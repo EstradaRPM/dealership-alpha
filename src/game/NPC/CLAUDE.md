@@ -12,7 +12,7 @@ Shared people-and-traits substrate used by `CustomerPool`, `StaffOrg`, and `Comp
 - TradeIncidence (#166): `rollHasTrade`, `loadTradeIncidenceConfig`, `TradeIncidenceConfigSchema`. Types: `TradeIncidenceConfig`. When `tradeIncidenceConfig` + `classifyCreditTier` are both wired, every sales `Visit` carries `hasTrade: boolean` rolled from the composite (archetype × paymentMethod × creditTier) probability matrix. Legacy callers omit the field.
 - TradeAsk (#167): `createCustomer` accepts an optional `tradeAskFn(currentVehicle, seed) → number` seam. When wired *and* a sales visit rolled `hasTrade: true` with a `currentVehicle`, the visit carries `allowanceAsk: number` — the dollar figure the customer wants for their trade. NPC derives the seed; the seam (composed at the root from DealEngine's `generateTradeAsk` bound to the live book-value provider) owns the valuation + noise, so NPC stays free of a DealEngine/MarketEconomy dep. Legacy callers omit the field.
 - Competitors: `loadCompetitorArchetypes`, `loadBrandMarketShare`, `createCompetitor`. Types: `Competitor`, `CreateCompetitorContext`, `CreateCompetitorDeps`.
-- Shared: `Rng` (deterministic RNG seed plumbing). `SkillDrift` — the shared
+- Shared: `SkillDrift` — the shared
   execution-fidelity drift primitive (channel-desk M5, #292): `skillDriftFraction(skill,
   seed, config)` → a non-negative drift fraction in `[0, deficit×maxDriftFraction)`
   the caller applies toward the single *worse* direction (weaker desking counter,
@@ -26,6 +26,12 @@ Shared people-and-traits substrate used by `CustomerPool`, `StaffOrg`, and `Comp
   The three unlocked UCM acting capabilities (pricing/desking/trade) scale their
   drift through this one helper — "higher skill ⇒ tighter adherence + better
   outcomes" expressed once. See `docs/planning/manager-roles-channel-desk.md` §4.
+
+## Not here: the seeded RNG
+`deriveSeed` / `createRng` used to live at `NPC/Rng.ts` and were never on this barrel. They
+moved out to their own module in #342 — `src/game/Rng/`. NPC's factories consume it like any
+other module (`import { createRng, deriveSeed } from '../../Rng'`). Seeded randomness is not
+an NPC concept; do not re-export it from here.
 
 ## Events
 NPC is a factory/library module — does not publish or subscribe. Consumers (CustomerPool, StaffOrg, CompetitorMarket) publish on its outputs.

@@ -1,4 +1,4 @@
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import {
   BODY_SHOP_JOB_CATEGORIES,
   COLLISION_POWERTRAINS,

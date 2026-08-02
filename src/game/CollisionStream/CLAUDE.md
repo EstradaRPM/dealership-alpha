@@ -81,7 +81,7 @@ observable + testable within #313.
 Holds **no persisted state** — the intake regenerates deterministically from
 `masterSeed + day` + the live weather/reputation/posture reads, exactly like
 Weather and ServiceDemand. Both Poisson draws + every per-event/per-category draw
-are seeded via `NPC/Rng` (`deriveSeed(masterSeed, 'collision_stream.*',
+are seeded via `Rng` (`deriveSeed(masterSeed, 'collision_stream.*',
 { day, … })`), so the stream is order-independent and replays byte-identically
 (#122). No `worldSnapshot` key, no migration.
 

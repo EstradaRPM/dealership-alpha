@@ -1,5 +1,5 @@
 import type { EventBus } from '../EventBus';
-import { createRng, deriveSeed } from '../NPC/Rng';
+import { createRng, deriveSeed } from '../Rng';
 import type { InstalledBaseConfig } from './installedBaseConfig';
 import {
   cadenceForPowertrain,
