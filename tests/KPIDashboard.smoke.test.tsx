@@ -38,8 +38,8 @@ const LIVE_SNAPSHOT: KPISnapshot = {
 
 describe('KPIDashboard UI', () => {
   it('renders without crashing with zero data', () => {
-    const { getByText } = render(<KPIDashboard snapshot={ZERO_SNAPSHOT} />);
-    expect(getByText('KPI Dashboard')).toBeTruthy();
+    const { getByTestId, getByText } = render(<KPIDashboard snapshot={ZERO_SNAPSHOT} />);
+    expect(getByTestId('kpi-dashboard')).toBeTruthy();
     expect(getByText('PVR (Per Vehicle Retailed)')).toBeTruthy();
   });
 
@@ -49,14 +49,8 @@ describe('KPIDashboard UI', () => {
     expect(getByText('18 days')).toBeTruthy();
   });
 
-  it('supports an optional close action', () => {
-    const onClose = jest.fn();
-    const { getByLabelText } = render(
-      <KPIDashboard snapshot={ZERO_SNAPSHOT} onClose={onClose} />,
-    );
-    fireEvent.press(getByLabelText('Close KPI dashboard'));
-    expect(onClose).toHaveBeenCalledTimes(1);
-  });
+  // #351: no close action, and no chrome of its own. It is an embedded block
+  // inside whatever surface hosts it, not a screen you dismiss.
 
   it('omits the market-state panel when no marketState is supplied', () => {
     const { queryByTestId } = render(<KPIDashboard snapshot={LIVE_SNAPSHOT} />);

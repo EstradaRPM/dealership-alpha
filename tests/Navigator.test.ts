@@ -33,15 +33,22 @@ describe('Navigator', () => {
     expect(nav.current.route).toBe('settings');
     nav.back();
     expect(nav.current.route).toBe('game');
-    nav.navigate('kpi-dashboard');
-    expect(nav.current.route).toBe('kpi-dashboard');
+    nav.navigate('end-card');
+    expect(nav.current.route).toBe('end-card');
+    nav.back();
+    expect(nav.current.route).toBe('game');
+  });
 
-    nav.back();
-    expect(nav.current.route).toBe('game');
-    nav.navigate('history');
-    expect(nav.current.route).toBe('history');
-    nav.back();
-    expect(nav.current.route).toBe('game');
+  // #351: the KPI readout and the history log were root routes behind the
+  // in-game menu. They are Finance-tab surfaces now, so pushing them here —
+  // which is what unmounted the shell — no longer typechecks.
+  it('will not accept the re-homed Finance sub-screens on the root stack', () => {
+    const nav = createNavigator('game');
+
+    // @ts-expect-error — 'dealHistory' is a TAB route now.
+    nav.navigate('dealHistory');
+    // @ts-expect-error — so is 'monthResults'.
+    nav.navigate('monthResults');
   });
 
   // #348: the sub-screens are NOT root routes any more. They live on the tab

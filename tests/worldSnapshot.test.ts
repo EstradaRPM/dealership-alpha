@@ -71,6 +71,12 @@ describe('Economy snapshot/restore (#188)', () => {
       schemaVersion: 1,
       cash: 60_500,
       inventoryAcquisitionSpend: 0,
+      // #351: the ledger round-trips, so a P&L window that spans a save/load is
+      // continuous instead of restarting empty.
+      ledger: [
+        { day: 1, type: 'revenue', amount: 12_500, label: 'Sale' },
+        { day: 1, type: 'expense', amount: 2_000, label: 'Recon' },
+      ],
     });
 
     const fresh = createEconomy({ bus: createEventBus(), startingCash: 50_000 });

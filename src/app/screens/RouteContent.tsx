@@ -17,8 +17,6 @@ import { MainMenu } from '../../ui/MainMenu';
 import { InGameMenu } from '../../ui/InGameMenu';
 import { SettingsScreen } from '../../ui/SettingsScreen';
 import { LegacyWallView } from '../../ui/LegacyWall';
-import { KPIDashboard } from '../../ui/KPIDashboard';
-import { HistoryScreen } from '../../ui/HistoryScreen';
 import { EndCard } from '../../ui/EndCard';
 import { GameScreen } from './GameScreen';
 import { TabStackContent } from './TabStackContent';
@@ -26,7 +24,6 @@ import {
   TRADE_POLICY,
   PRICING_STRATEGIES,
   HOURS_OF_OP,
-  buildMarketState,
 } from '../config';
 import type { WorldState } from '../useWorldState';
 import type { SaveSlots } from '../useSaveSlots';
@@ -163,8 +160,6 @@ export function RouteContent({
           onLoadSlot={(slotId) => void saveSlots.handleInGameLoadSlot(slotId)}
           onReturnToMainMenu={() => void saveSlots.handleReturnToMainMenu()}
           onSettings={saveSlots.openSettings}
-          onKPIDashboard={saveSlots.openKPIDashboard}
-          onHistory={saveSlots.openHistory}
         />
       </>
     );
@@ -181,29 +176,8 @@ export function RouteContent({
       </>
     );
   }
-  if (screen === 'kpi-dashboard' && world) {
-    return (
-      <>
-        <StatusBar style="light" />
-        <KPIDashboard
-          snapshot={world.kpiDashboard.getSnapshot()}
-          marketState={buildMarketState(world)}
-          onClose={() => nav.back()}
-        />
-      </>
-    );
-  }
-  if (screen === 'history' && world) {
-    return (
-      <>
-        <StatusBar style="light" />
-        <HistoryScreen
-          entries={world.historyLog.getEntries()}
-          onClose={() => nav.back()}
-        />
-      </>
-    );
-  }
+  // The KPI readout and the history log are no longer root routes (#351) —
+  // both live inside the Finance tab now, where the tab bar stays mounted.
   if (screen === 'game' && profile && world) {
     return (
       <View style={styles.container}>

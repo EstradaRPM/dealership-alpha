@@ -10,7 +10,14 @@ const NO_OVERHEAD = { weeklyRent: 0, weeklyPayrollStub: 0 };
 function makeSetup(startingCash = STARTING_CASH, config = NO_OVERHEAD) {
   const bus = createEventBus();
   const clock = createGameClock({ bus });
-  const economy = createEconomy({ bus, startingCash, config });
+  // Wired exactly as `createWorld` does (#351): the clock owns the day and
+  // every ledger entry is stamped with it.
+  const economy = createEconomy({
+    bus,
+    startingCash,
+    config,
+    getCurrentDay: () => clock.currentDay,
+  });
   return { bus, clock, economy };
 }
 
@@ -80,8 +87,10 @@ describe('Economy — inventory-acquisition spend (#255)', () => {
   });
 
   it('categorized entries carry the category in the P&L ledger', () => {
-    const { clock, economy } = makeSetup();
-    clock.advanceDay();
+    // A fresh clock is already ON day 1 — no advance needed, and since #351 an
+    // entry is stamped with the day the clock reports rather than the day that
+    // last ended.
+    const { economy } = makeSetup();
     economy.postExpense(9_000, 'Auction purchase: v1', 'inventoryAcquisition');
     economy.postExpense(300, 'Supplies');
     const entries = economy.getPnL(1, 1).entries;
@@ -143,11 +152,11 @@ describe('Economy — P&L correctness', () => {
     const { clock, economy } = makeSetup();
     const cashBefore = economy.cash;
 
-    clock.advanceDay(); // day 1
+    // Day 1 is where a fresh clock starts.
     economy.postRevenue(10_000, 'Sale 1');
     economy.postExpense(2_000, 'Recon');
 
-    clock.advanceDay(); // day 2
+    clock.advanceDay(); // → day 2
     economy.postRevenue(8_000, 'Sale 2');
     economy.postExpense(1_500, 'Marketing');
 
@@ -163,13 +172,12 @@ describe('Economy — P&L correctness', () => {
   it('getPnL filters to the requested day range', () => {
     const { clock, economy } = makeSetup();
 
-    clock.advanceDay(); // day 1
     economy.postRevenue(5_000, 'Day-1 sale');
 
-    clock.advanceDay(); // day 2
+    clock.advanceDay(); // → day 2
     economy.postRevenue(3_000, 'Day-2 sale');
 
-    clock.advanceDay(); // day 3
+    clock.advanceDay(); // → day 3
     economy.postRevenue(2_000, 'Day-3 sale');
 
     expect(economy.getPnL(2, 2).totalRevenue).toBe(3_000);
@@ -235,7 +243,12 @@ describe('Economy — Inventory integration', () => {
   it('vehicle purchase via Inventory reduces Economy cash', () => {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
-    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const economy = createEconomy({
+      bus,
+      startingCash: STARTING_CASH,
+      config: NO_OVERHEAD,
+      getCurrentDay: () => clock.currentDay,
+    });
     const inventory = createInventory({ bus, masterSeed: 42, economy, vehicleData });
 
     clock.advanceDay();
@@ -248,14 +261,21 @@ describe('Economy — Inventory integration', () => {
   it('vehicle purchase appears as an expense entry in P&L', () => {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
-    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const economy = createEconomy({
+      bus,
+      startingCash: STARTING_CASH,
+      config: NO_OVERHEAD,
+      getCurrentDay: () => clock.currentDay,
+    });
     const inventory = createInventory({ bus, masterSeed: 42, economy, vehicleData });
 
+    // The auction stocks overnight, so the buy lands on day 2 — and since #351
+    // the ledger entry carries the day the buy actually happened on.
     clock.advanceDay();
     const [listing] = inventory.getAuctionListings();
     inventory.buyFromAuction(listing.id);
 
-    const pnl = economy.getPnL(1, 1);
+    const pnl = economy.getPnL(2, 2);
     expect(pnl.totalExpenses).toBe(listing.askingPrice);
     expect(pnl.entries[0].type).toBe('expense');
   });
@@ -263,7 +283,12 @@ describe('Economy — Inventory integration', () => {
   it('auction buy counts as inventory-acquisition spend (#255)', () => {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
-    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const economy = createEconomy({
+      bus,
+      startingCash: STARTING_CASH,
+      config: NO_OVERHEAD,
+      getCurrentDay: () => clock.currentDay,
+    });
     const inventory = createInventory({ bus, masterSeed: 42, economy, vehicleData });
 
     clock.advanceDay();

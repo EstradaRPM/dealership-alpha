@@ -1,4 +1,16 @@
 export interface DealRecord {
+  /**
+   * In-game day the deal closed on (#351). `deal:closed` carries no day, so the
+   * module reads the clock through an injected `getCurrentDay` provider — a
+   * range query can then window the log without every publisher growing a
+   * field, and there is no private cursor to fall out of step with the clock.
+   *
+   * Deals restored from a pre-#351 save carry `0`: they are real (they still
+   * count toward a lifetime read) but they predate day stamping, so they fall
+   * outside every day-1-and-later window rather than being attributed to a day
+   * they did not happen on.
+   */
+  day: number;
   frontGross: number;
   backGross: number;
   daysInInventory: number;
@@ -7,6 +19,27 @@ export interface DealRecord {
   downPayment: number;
   term: number;
   apr: number;
+}
+
+/** An inclusive in-game day window. Both bounds are day indices, not offsets. */
+export interface DayRange {
+  readonly fromDay: number;
+  readonly toDay: number;
+}
+
+/**
+ * One day's retail flow (#351) — the series behind a sparkline or the hero
+ * trend chart. Emitted for **every** day in the queried range, including days
+ * with no deals, so a gap in trading draws as a zero rather than closing up
+ * and misreporting the shape.
+ */
+export interface KPIDayTotals {
+  readonly day: number;
+  readonly units: number;
+  readonly frontGross: number;
+  readonly backGross: number;
+  /** `frontGross + backGross` — total gross written that day. */
+  readonly gross: number;
 }
 
 /**

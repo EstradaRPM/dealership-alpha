@@ -5,6 +5,7 @@ import type {
   FaceProgress,
   FaceVerdict,
   GateBand,
+  GateMonthVerdict,
   GateProgress,
   GateTrend,
   LevelSamples,
@@ -82,6 +83,13 @@ export interface TierGate {
    * Growth board knows there is no next rung to foreshadow.
    */
   getTierRequirements(tier: number): TierRequirements | null;
+  /**
+   * Every month that has closed, oldest→newest (#351) — how the gate graded it
+   * and what each active face scored. The verdict event fires once and the
+   * month-to-date accruals reset immediately after, so this is the only record
+   * that a past month was ever graded; Finance's month-close results read it.
+   */
+  getMonthVerdicts(): readonly GateMonthVerdict[];
   /** #188 SaveStore seam: capture/rehydrate the in-progress month. */
   snapshot(): TierGateSnapshot;
   restore(snap: TierGateSnapshot): void;
@@ -141,6 +149,10 @@ export function createTierGate(deps: TierGateDeps): TierGate {
   let flowAccrual: Record<string, number> = {};
   let levelSamples: Record<string, LevelSamples> = {};
   let trendSamples: Record<string, number[]> = {};
+  // Closed months, oldest→newest (#351). Not month-to-date state — this is the
+  // gate's own record of how each finished month graded, kept because the
+  // verdict event fires once and `resetMonth` erases what produced it.
+  let monthVerdicts: GateMonthVerdict[] = [];
 
   const resetMonth = (): void => {
     flowAccrual = {};
@@ -187,6 +199,13 @@ export function createTierGate(deps: TierGateDeps): TierGate {
 
   bus.subscribe('clock:month_ended', ({ day }) => {
     const verdict = computeVerdict(day);
+    // #351: the gate keeps its own verdicts. The event fires once and is gone,
+    // and the month-to-date accruals reset a line later — so nothing else in
+    // the world could reconstruct how a past month was graded. Finance's
+    // month-close results read this; the financial side of each month is
+    // re-derived from the (day-stamped, persisted) deal log and ledger rather
+    // than stored twice.
+    monthVerdicts.push(verdict);
     bus.publish('tierGate:month_verdict', verdict);
     resetMonth();
   });
@@ -356,9 +375,17 @@ export function createTierGate(deps: TierGateDeps): TierGate {
     getProgress,
     getTierRequirements,
 
+    getMonthVerdicts() {
+      return monthVerdicts.map((v) => ({ ...v, faces: v.faces.map((f) => ({ ...f })) }));
+    },
+
     snapshot() {
       return {
         schemaVersion: 1 as const,
+        monthVerdicts: monthVerdicts.map((v) => ({
+          ...v,
+          faces: v.faces.map((f) => ({ ...f })),
+        })),
         flowAccrual: { ...flowAccrual },
         levelSamples: Object.fromEntries(
           Object.entries(levelSamples).map(([id, s]) => [id, { ...s }]),
@@ -370,6 +397,13 @@ export function createTierGate(deps: TierGateDeps): TierGate {
     },
 
     restore(snap) {
+      // Pre-#351 snapshots have no verdict history; those careers start their
+      // month-close record at the next month to close rather than inventing
+      // grades for months whose accruals are gone.
+      monthVerdicts = (snap.monthVerdicts ?? []).map((v) => ({
+        ...v,
+        faces: v.faces.map((f) => ({ ...f })),
+      }));
       flowAccrual = { ...snap.flowAccrual };
       levelSamples = Object.fromEntries(
         Object.entries(snap.levelSamples).map(([id, s]) => [id, { ...s }]),

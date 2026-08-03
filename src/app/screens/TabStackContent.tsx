@@ -9,6 +9,9 @@ import type { LotVehicle } from '../../game/Inventory';
 import type { PartCategory, SupplierTier } from '../../game/PartsInventory';
 import type { ConquestSelection } from '../../game/ServiceMarketing';
 import { DepartmentScreen } from '../../ui/DepartmentScreen';
+import { HistoryScreen } from '../../ui/HistoryScreen';
+import { MonthResultsScreen, buildMonthResults } from '../../ui/FinanceTab';
+import { DAYS_PER_MONTH } from '../config';
 import { ServicePage } from '../../ui/ServicePage';
 import { BodyShopPage } from '../../ui/BodyShopPage';
 import { AuctionScreen } from './AuctionScreen';
@@ -98,6 +101,45 @@ export function TabStackContent({
         persistCurrentSave={persistCurrentSave}
         setLotVehicles={setLotVehicles}
       />
+    );
+  }
+  if (screen === 'dealHistory') {
+    return (
+      <>
+        <StatusBar style="light" />
+        <HistoryScreen
+          entries={world.historyLog.getEntries()}
+          onClose={() => tabs.back()}
+        />
+      </>
+    );
+  }
+  if (screen === 'monthResults') {
+    // Each closed month's financial side is RE-DERIVED over that month's day
+    // window from the day-stamped deal log and the persisted ledger — the same
+    // reads the dashboard uses — so the results screen can never disagree with
+    // the dashboard about the same days. Only the gate's grade is stored,
+    // because only the gate's grade cannot be recomputed after the month resets.
+    return (
+      <>
+        <StatusBar style="light" />
+        <MonthResultsScreen
+          model={buildMonthResults(
+            world.tierGate.getMonthVerdicts().map((verdict) => {
+              const fromDay = (verdict.month - 1) * DAYS_PER_MONTH + 1;
+              const toDay = verdict.month * DAYS_PER_MONTH;
+              return {
+                verdict,
+                fromDay,
+                toDay,
+                kpi: world.kpiDashboard.getSnapshot({ fromDay, toDay }),
+                pnl: world.economy.getPnL(fromDay, toDay),
+              };
+            }),
+          )}
+          onClose={() => tabs.back()}
+        />
+      </>
     );
   }
   if (screen === 'department') {

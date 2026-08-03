@@ -1,14 +1,43 @@
 import type { EventBus } from '../EventBus';
-import type { DealRecord, KPISnapshot, KPIDashboardSnapshot } from './types';
+import type {
+  DayRange,
+  DealRecord,
+  KPIDayTotals,
+  KPISnapshot,
+  KPIDashboardSnapshot,
+} from './types';
 
 export interface KPIDashboard {
-  getSnapshot(): KPISnapshot;
+  /**
+   * The computed read-model. With no argument this is the career-to-date read;
+   * with a `range` it is the same math over the deals that closed inside that
+   * inclusive day window (#351) — the Finance dashboard's time-range chips.
+   * `dailyCarryingCost` is a live burn rate, not an accrual, so it rides every
+   * snapshot unchanged regardless of the window.
+   */
+  getSnapshot(range?: DayRange): KPISnapshot;
+  /**
+   * Per-day retail flow across the window (#351), oldest→newest, one entry for
+   * every day in the range including days with no deals. The series behind the
+   * dashboard's sparklines and hero trend chart.
+   */
+  getDailyTotals(range: DayRange): readonly KPIDayTotals[];
   snapshot(): KPIDashboardSnapshot;
   restore(snap: KPIDashboardSnapshot): void;
 }
 
 export interface KPIDashboardDeps {
   bus: EventBus;
+  /**
+   * Live current-day read — the clock's `currentDay` (#351), the same provider
+   * shape `TierGate` takes. `deal:closed` carries no day, and a private cursor
+   * latched off the bus would read 1 for the rest of a session resumed from a
+   * save (a restore fires no `clock:day_started`), silently stamping a whole
+   * day of deals onto day 1. The clock owns the day; this module asks it.
+   *
+   * Optional only as a test seam; defaults to day 1.
+   */
+  getCurrentDay?: () => number;
 }
 
 // Threshold above which a finance deal is bucketed as "heavy-down" (a
@@ -97,6 +126,7 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
   // Latest day's lot-wide floorplan + carrying burn (#173). Tracked off the
   // bus so the snapshot can surface it as a line item without Inventory access.
   let dailyCarryingCost = 0;
+  const getCurrentDay = deps.getCurrentDay ?? (() => 1);
 
   bus.subscribe('economy:carrying_cost_posted', (payload) => {
     dailyCarryingCost = payload.totalCost;
@@ -104,6 +134,7 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
 
   bus.subscribe('deal:closed', (payload) => {
     deals.push({
+      day: getCurrentDay(),
       frontGross: payload.frontGross,
       backGross: payload.backGross,
       daysInInventory: payload.daysInInventory,
@@ -115,9 +146,38 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
     });
   });
 
+  function inRange(range: DayRange): DealRecord[] {
+    return deals.filter((d) => d.day >= range.fromDay && d.day <= range.toDay);
+  }
+
   return {
-    getSnapshot(): KPISnapshot {
-      return computeSnapshot(deals, dailyCarryingCost);
+    getSnapshot(range?: DayRange): KPISnapshot {
+      return computeSnapshot(range ? inRange(range) : deals, dailyCarryingCost);
+    },
+
+    getDailyTotals(range): readonly KPIDayTotals[] {
+      const byDay = new Map<number, { units: number; front: number; back: number }>();
+      for (const d of inRange(range)) {
+        const bucket = byDay.get(d.day) ?? { units: 0, front: 0, back: 0 };
+        bucket.units += 1;
+        bucket.front += d.frontGross;
+        bucket.back += d.backGross;
+        byDay.set(d.day, bucket);
+      }
+      const out: KPIDayTotals[] = [];
+      // Every day in the window gets a row, traded or not — a series that skips
+      // the quiet days draws a shape the business never had.
+      for (let day = range.fromDay; day <= range.toDay; day++) {
+        const bucket = byDay.get(day);
+        out.push({
+          day,
+          units: bucket?.units ?? 0,
+          frontGross: bucket?.front ?? 0,
+          backGross: bucket?.back ?? 0,
+          gross: (bucket?.front ?? 0) + (bucket?.back ?? 0),
+        });
+      }
+      return out;
     },
 
     snapshot(): KPIDashboardSnapshot {
@@ -130,7 +190,10 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
 
     restore(snap) {
       deals.length = 0;
-      deals.push(...snap.deals.map((d) => ({ ...d })));
+      // Pre-#351 records have no day. Stamping 0 keeps them in the lifetime
+      // read while excluding them from every real (day ≥ 1) window, rather
+      // than inventing a day they did not close on.
+      deals.push(...snap.deals.map((d) => ({ ...d, day: d.day ?? 0 })));
       dailyCarryingCost = snap.dailyCarryingCost;
     },
   };

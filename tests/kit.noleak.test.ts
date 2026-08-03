@@ -40,6 +40,12 @@ const MIGRATED_SURFACES = [
   'LotRoom',
   'PeopleTab',
   'GrowthTab',
+  'FinanceTab',
+  // #351 migrated both of these out of the pre-kit `colors` map: they render
+  // inside the Finance tab now, where a surface that styles itself differently
+  // reads as a bug.
+  'KPIDashboard',
+  'HistoryScreen',
 ];
 
 function surfaceFiles(): string[] {

@@ -450,7 +450,14 @@ export function createWorld(deps: {
   const departmentQueue = createDepartmentQueue({ bus });
   // Legacy live-day arrival path OFF: FloorSim owns arrivals via the injected
   // customer-source seam below.
-  const economy = createEconomy({ bus, startingCash: 50_000 });
+  // The clock owns the day; Economy stamps every ledger entry with it (#351)
+  // rather than shadowing it off the bus, which drifted by a day during trading
+  // and read 1 for the rest of a session resumed from a save.
+  const economy = createEconomy({
+    bus,
+    startingCash: 50_000,
+    getCurrentDay: () => clock.currentDay,
+  });
   // Per-save auction-source reliability rolled once + shared between Inventory
   // (recon realization at acquisition) and StaffOrg (#163 UCM pre-purchase
   // read). Both need the same hidden reliability or the read drifts from the
@@ -913,7 +920,9 @@ export function createWorld(deps: {
   bus.subscribe('clock:day_started', () => marketIntel.advanceDay(clock.currentDay));
   // Month-close hook (#123): the KPIDashboard supplies the month-to-date
   // snapshot the interstitial composes.
-  const kpiDashboard = createKPIDashboard({ bus });
+  // Same clock provider as Economy (#351): `deal:closed` carries no day, so the
+  // module asks the clock rather than keeping a cursor that a restore can't set.
+  const kpiDashboard = createKPIDashboard({ bus, getCurrentDay: () => clock.currentDay });
   // TierGate (#232): the monthly tier-GATE engine. Accrues each day's haul onto
   // the multi-dimensional monthly bars (units/gross from deal:closed; cash/csi
   // sampled nightly off the live providers below), computes honest per-face

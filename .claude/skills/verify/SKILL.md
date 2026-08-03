@@ -50,6 +50,24 @@ most controls `generic` — match on the text content in the `read_page` output.
   `new Promise(r => requestAnimationFrame(() => r(document.visibilityState)))`.
   The floor sim itself keeps running (it's `setInterval`), but hidden tabs throttle intervals
   to ≥1s, so day pacing observed this way is meaningless.
+- **A hidden pane delivers no `ResizeObserver` callbacks either, so every measuring chart
+  renders empty.** Same root cause as the modal trap: with the pane hidden the browser never
+  runs "update the rendering", which is the step that both fires `requestAnimationFrame` and
+  delivers `ResizeObserver` records. React-native-web implements `onLayout` with a
+  `ResizeObserver`, so `useChartWidth` stays at 0 and `BarChart`/`Sparkline` collapse to a
+  0-height empty `div` — indistinguishable from a broken chart. `DonutChart` still paints
+  (it takes an explicit `size` and never measures), which is the fastest way to tell this
+  artifact apart from a real bug. Probe it directly:
+
+  ```js
+  new Promise(r => { let f=false; const d=document.createElement('div');
+    d.style.cssText='width:200px;height:10px'; document.body.appendChild(d);
+    new ResizeObserver(()=>{f=true}).observe(d);
+    setTimeout(()=>{d.remove(); r(f)}, 500); })
+  ```
+
+  If that resolves `false`, **do not report a measured chart as broken** — say the pane was
+  hidden and the measurement path was unverifiable.
 - **`read_page` and `screenshot` disagree, and neither is always right.** The a11y tree can go
   stale and omit a modal that is still mounted and still eating every click; the screenshot can
   be a frame behind. When a click "does nothing", ask the DOM who is actually on top:

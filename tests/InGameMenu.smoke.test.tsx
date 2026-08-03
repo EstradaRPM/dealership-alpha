@@ -27,7 +27,6 @@ describe('InGameMenu smoke tests', () => {
     const onLoadSlot = jest.fn();
     const onReturnToMainMenu = jest.fn();
     const onSettings = jest.fn();
-    const onKPIDashboard = jest.fn();
 
     const { getByText, getByLabelText } = render(
       <InGameMenu
@@ -39,7 +38,6 @@ describe('InGameMenu smoke tests', () => {
         onLoadSlot={onLoadSlot}
         onReturnToMainMenu={onReturnToMainMenu}
         onSettings={onSettings}
-        onKPIDashboard={onKPIDashboard}
       />,
     );
 
@@ -52,14 +50,12 @@ describe('InGameMenu smoke tests', () => {
     fireEvent.press(getByText('Save Current Game'));
     fireEvent.press(getByText('Save & Main Menu'));
     fireEvent.press(getByText('Settings'));
-    fireEvent.press(getByText('KPI Dashboard'));
     fireEvent.press(getByLabelText('Save current game and load Second Store'));
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onReturnToMainMenu).toHaveBeenCalledTimes(1);
     expect(onSettings).toHaveBeenCalledTimes(1);
-    expect(onKPIDashboard).toHaveBeenCalledTimes(1);
     expect(onLoadSlot).toHaveBeenCalledWith('slot-b');
   });
 });

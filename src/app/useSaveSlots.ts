@@ -42,8 +42,6 @@ export interface SaveSlots {
   handleReturnToMainMenu: () => Promise<void>;
   openSettings: () => void;
   openLegacyWall: () => void;
-  openKPIDashboard: () => void;
-  openHistory: () => void;
   handleRollback: (index: number) => Promise<void>;
 }
 
@@ -181,14 +179,6 @@ export function useSaveSlots({
     nav.navigate('legacy-wall');
   };
 
-  const openKPIDashboard = () => {
-    nav.navigate('kpi-dashboard');
-  };
-
-  const openHistory = () => {
-    nav.navigate('history');
-  };
-
   const handleRollback = async (index: number) => {
     const snapshotStore = await snapshotStoreForActiveSlot();
     const state = await snapshotStore?.rollbackToSnapshot(index);
@@ -218,8 +208,6 @@ export function useSaveSlots({
     handleReturnToMainMenu,
     openSettings,
     openLegacyWall,
-    openKPIDashboard,
-    openHistory,
     handleRollback,
   };
 }

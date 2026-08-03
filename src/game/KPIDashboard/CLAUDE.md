@@ -7,14 +7,28 @@ heavy-down units, avg APR/term/down) on demand. No logic mutates game state.
 ## Public API (`index.ts`)
 - `createKPIDashboard(deps)` → `KPIDashboard`. `deps`: `bus` (EventBus).
 - `KPIDashboard`:
-  - `getSnapshot()` → `KPISnapshot` — the computed read-model (derived fresh
-    each call from the raw log; the log is the source of truth).
+  - `getSnapshot(range?)` → `KPISnapshot` — the computed read-model (derived
+    fresh each call from the raw log; the log is the source of truth). With no
+    argument it is career-to-date; with a `DayRange` it is the same math over
+    the deals that closed inside that **inclusive** day window (#351 — Finance's
+    time-range chips). `dailyCarryingCost` is a live burn rate, not an accrual,
+    so it rides every snapshot unchanged regardless of the window.
+  - `getDailyTotals(range)` → `readonly KPIDayTotals[]` (#351) — per-day retail
+    flow across the window, oldest→newest, **one row for every day including
+    days with no deals**. A series that skips the quiet days draws a shape the
+    business never had. Backs the dashboard's sparklines + hero trend chart.
   - `snapshot()` / `restore()` — save/load blob.
-- Types: `DealRecord`, `KPISnapshot`, `KPIDashboardSnapshot`.
+- Types: `DealRecord`, `DayRange`, `KPIDayTotals`, `KPISnapshot`,
+  `KPIDashboardSnapshot`.
 
 ## Behavior
 - Appends a `DealRecord` per `deal:closed`; KPIs are **derived on read**, never
   stored pre-aggregated.
+- **The module stamps its own day.** `deal:closed` carries no day, so a
+  `clock:day_started` cursor supplies one (the same pattern `HistoryLog` and
+  `Records` use) — a range query can window the log without every publisher
+  growing a field. Deals close during the open day, so the day last *started*
+  is the day they belong to.
 - Finance deals with `downPayment / agreedPrice ≥ HEAVY_DOWN_THRESHOLD` (0.25,
   code-local tunable) are bucketed as `heavyDownUnits`. Cash deals never count
   toward APR/term/down averages.
@@ -24,7 +38,8 @@ heavy-down units, avg APR/term/down) on demand. No logic mutates game state.
 
 ## Events
 - **Consumes:** `deal:closed` (append to log), `economy:carrying_cost_posted`
-  (latch `dailyCarryingCost = payload.totalCost`).
+  (latch `dailyCarryingCost = payload.totalCost`), `clock:day_started` (advance
+  the day cursor that stamps each `DealRecord`).
 - **Emits:** none — pure read-model.
 
 ## Data
@@ -32,9 +47,12 @@ heavy-down units, avg APR/term/down) on demand. No logic mutates game state.
 
 ## Persistence (#193)
 - `KPIDashboardSnapshot` (`schemaVersion: 1`, self-versioned per the #188
-  contract) persists the raw `DealRecord[]` plus `dailyCarryingCost`. KPIs are
-  re-derived on restore, so only the log is saved. Distinct from `KPISnapshot`,
-  which is the computed read-model, never persisted.
+  contract) persists the raw `DealRecord[]` plus `dailyCarryingCost` and the day
+  cursor. KPIs are re-derived on restore, so only the log is saved. Distinct
+  from `KPISnapshot`, which is the computed read-model, never persisted.
+- **Pre-#351 records carry no day and restore as `day: 0`** — real enough to
+  count in a lifetime read, outside every day-1-and-later window, and never
+  attributed to a day they did not close on.
 
 ## Collaborators
 - `DealEngine` emits `deal:closed`; `Economy`/`Inventory` emit

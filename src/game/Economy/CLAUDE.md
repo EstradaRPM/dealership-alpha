@@ -16,7 +16,7 @@ Money ledger. Posts revenue and expense entries, computes P&L summaries.
 
 ## Events
 - **Emits:** `economy:revenue_posted`, `economy:expense_posted` (every post produces one of these).
-- **Consumes:** `deal:closed` (post sale revenue), `staff:hired` (hiring cost), `clock:overnight_payroll` (recurring payroll), `inventory:vehicle_purchased` (auction cost), `service:ticket_closed` (service revenue).
+- **Consumes:** `deal:closed` (post sale revenue), `staff:hired` (hiring cost), `clock:overnight_payroll` (recurring payroll), `inventory:vehicle_purchased` (auction cost), `service:ticket_closed` (service revenue), `clock:day_ended` + `clock:day_started` (the day cursor every ledger entry is stamped with).
 
 ## Data
 - `data/tunables.json` — economy section (interest, fees, recurring expenses).
@@ -24,3 +24,13 @@ Money ledger. Posts revenue and expense entries, computes P&L summaries.
 ## Notes
 - Single source of truth for cash. Never mutate balances elsewhere — always emit/post through Economy.
 - Ledger entries carry a human-readable `label` so the KPI dashboard can group them.
+- **The ledger is persisted whole (#351)** and never pruned: it IS the P&L, and
+  a window that silently loses its early days reports a profit the business did
+  not make. Pre-#351 snapshots lack the field and restore to an empty ledger.
+- **Day stamping rides both clock edges.** `advanceDay()` fires `day_ended` →
+  the overnight phases → `day_started`, so latching on `day_ended` keeps
+  overnight posts (payroll, rent, carrying) on the day that just concluded, and
+  latching again on `day_started` rolls the cursor forward for the new trading
+  day. Before #351 only the first half existed, which stamped every deal closed
+  on day N with day N-1 — invisible while the only consumer was a lifetime
+  total, and exactly one day wrong once Finance windows the ledger.

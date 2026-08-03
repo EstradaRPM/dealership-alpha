@@ -38,8 +38,16 @@ coach); each face renders in its **native idiom** (decision 3).
     Filtered exactly like the month-end verdict (real, non-stepped faces only),
     so the Growth gate board's climb foreshadow can never show a bar the gate
     does not actually grade.
+  - `getMonthVerdicts() → readonly GateMonthVerdict[]` (#351) — every month that
+    has CLOSED, oldest→newest. The verdict event fires once and `resetMonth`
+    erases the accruals that produced it, so this is the only record that a past
+    month was ever graded; Finance's month-close results read it. The financial
+    side of each month is re-derived from the day-stamped deal log + the
+    persisted ledger, never stored twice.
   - `snapshot()/restore()` — module-owned `schemaVersion`; round-trips the
-    in-progress month (#188 world seam).
+    in-progress month (#188 world seam) **plus the closed-month verdict
+    history**. Pre-#351 snapshots lack the history and restore empty rather than
+    inventing grades for months whose accruals are gone.
 - `createDefaultTierGateSnapshot()` — behavior-neutral fresh-month default (the
   #196 migration default for pre-gate saves).
 - Types: `TierGate`, `GateProgress`, `FaceProgress` (+ `Flow`/`Level`/`Trend`

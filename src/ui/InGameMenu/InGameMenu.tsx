@@ -18,8 +18,6 @@ interface Props {
   onLoadSlot: (slotId: string) => void;
   onReturnToMainMenu: () => void;
   onSettings?: () => void;
-  onKPIDashboard?: () => void;
-  onHistory?: () => void;
 }
 
 function formatLastPlayed(iso: string): string {
@@ -36,8 +34,6 @@ export function InGameMenu({
   onLoadSlot,
   onReturnToMainMenu,
   onSettings,
-  onKPIDashboard,
-  onHistory,
 }: Props) {
   return (
     <View style={styles.root}>
@@ -83,25 +79,6 @@ export function InGameMenu({
           </TouchableOpacity>
         ) : null}
 
-        {onKPIDashboard ? (
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            accessibilityRole="button"
-            onPress={onKPIDashboard}
-          >
-            <Text style={styles.secondaryText}>KPI Dashboard</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        {onHistory ? (
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            accessibilityRole="button"
-            onPress={onHistory}
-          >
-            <Text style={styles.secondaryText}>History</Text>
-          </TouchableOpacity>
-        ) : null}
 
         {status ? <Text style={styles.status}>{status}</Text> : null}
 

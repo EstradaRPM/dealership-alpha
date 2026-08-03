@@ -240,6 +240,46 @@ describe('#232 TierGate — month-end 4-band verdict (decision 1: graded once)',
     if (units?.kind !== 'flow') throw new Error('expected flow');
     expect(units.current).toBe(0); // fresh month
   });
+
+  // #351: the verdict event fires once and `resetMonth` erases what produced
+  // it, so nothing else in the world could reconstruct how a past month graded.
+  // Finance's month-close results read this history.
+  it('retains every closed month, oldest-first, after the accruals are gone', () => {
+    const h = makeHarness({ tier: 1 });
+    expect(h.gate.getMonthVerdicts()).toEqual([]);
+
+    runMonth(h, 10, 50000); // month 1 — meets
+    runMonth(h, 2, 10000); // month 2 — misses
+
+    const history = h.gate.getMonthVerdicts();
+    expect(history.map((v) => v.month)).toEqual([1, 2]);
+    expect(history[0].overall).toBe('meet');
+    expect(history[1].overall).toBe('miss');
+    // The grade survives the reset that wiped the accruals behind it.
+    const units = h.gate.getProgress().faces.find((f) => f.id === 'units');
+    if (units?.kind !== 'flow') throw new Error('expected flow');
+    expect(units.current).toBe(0);
+  });
+
+  it('round-trips the verdict history through snapshot/restore', () => {
+    const a = makeHarness({ tier: 1 });
+    runMonth(a, 10, 50000);
+
+    const b = makeHarness({ tier: 1 });
+    b.gate.restore(a.gate.snapshot());
+    expect(b.gate.getMonthVerdicts()).toEqual(a.gate.getMonthVerdicts());
+  });
+
+  it('starts a pre-#351 save with an empty history rather than inventing grades', () => {
+    const h = makeHarness({ tier: 1 });
+    h.gate.restore({
+      schemaVersion: 1,
+      flowAccrual: { units: 3 },
+      levelSamples: {},
+      trendSamples: {},
+    });
+    expect(h.gate.getMonthVerdicts()).toEqual([]);
+  });
 });
 
 describe('#232 TierGate — snapshot/restore round-trips the in-progress month', () => {

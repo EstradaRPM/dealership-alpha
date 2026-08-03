@@ -36,12 +36,12 @@ export type RootRouteParamMap = {
   // In-session pause/save/load surface. Pushed over the live game and closed
   // with back(); save/load side effects stay in the composition root.
   'in-game-menu': undefined;
-  // On-demand KPI readout (#202), reachable from the in-game menu and backed by
-  // the live KPIDashboard module snapshot.
-  'kpi-dashboard': undefined;
-  // Durable player-facing history log (#208), reachable from the in-game menu
-  // and backed by the live HistoryLog module entries.
-  history: undefined;
+  // NOTE: there is no `kpi-dashboard` or `history` root route. Both were
+  // full-screen readouts behind the in-game menu, which is why nobody read
+  // them; #351 re-homed the KPI block into the Finance dashboard and the
+  // history log into a Finance tab route (locked IA §4 — Finance owns the
+  // backward-looking judgment numbers). Reaching them no longer unmounts the
+  // shell.
   'character-creation': undefined;
   game: undefined;
   // Terminal end-of-career screen (#84 / design record #127). Reached ONLY via
@@ -83,6 +83,15 @@ export type TabRouteParamMap = {
   // appears only at/after Tier 3); closed with back(). The Tier-3 mirror of the
   // `service` page — navigation itself is never tier-gated.
   bodyShop: undefined;
+  // Deal history (#208, re-homed by #351): the durable player-facing record,
+  // pushed from the Finance dashboard. Was a root route behind the in-game
+  // menu; a record you consult while reading the month should not cost you the
+  // console to open.
+  dealHistory: undefined;
+  // Month-close results (#351): every closed month's gate grade and the numbers
+  // behind it, pushed from the Finance dashboard. The interstitial is a beat
+  // that goes by once — this is the record you can go back to.
+  monthResults: undefined;
 };
 
 export type RouteParamMap = RootRouteParamMap & TabRouteParamMap;

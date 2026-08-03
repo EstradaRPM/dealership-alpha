@@ -132,8 +132,6 @@ export function DealershipApp({
       modals.tradeReview != null ||
       modals.discountReview != null ||
       screen === 'in-game-menu' ||
-      screen === 'kpi-dashboard' ||
-      screen === 'history' ||
       (screen === 'settings' && world != null) ||
       dayLoop.monthClose != null ||
       dayLoop.chapterQueue.length > 0 ||

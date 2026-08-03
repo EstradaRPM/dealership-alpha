@@ -6,10 +6,7 @@ import type { ExpenseCategory, LedgerEntry, PnLSummary } from './types';
 
 /**
  * Persistence surface for Economy (#188). Module-owned `schemaVersion`, same as
- * GameClock. The tracer slice persists only the cash balance — the running
- * ledger (used for P&L windows) is a later world-snapshot slice; on restore the
- * ledger starts empty, so a P&L query over pre-restore days reads zero until
- * the ledger itself is round-tripped.
+ * GameClock.
  */
 export interface EconomySnapshot {
   readonly schemaVersion: 1;
@@ -19,6 +16,18 @@ export interface EconomySnapshot {
    * snapshots lack it; restore defaults it to 0.
    */
   readonly inventoryAcquisitionSpend?: number;
+  /**
+   * The running ledger (#351). Persisted whole and never pruned: it IS the P&L,
+   * and a window that silently loses its early days reports a profit the
+   * business did not make. Every entry is day-stamped, so the cost of keeping
+   * it is linear in career length and the Finance dashboard's range queries
+   * survive a save/load.
+   *
+   * Optional because pre-#351 snapshots lack it; those restore to an empty
+   * ledger, so a P&L over days that predate the upgrade reads zero — the state
+   * every save was already in before this field existed.
+   */
+  readonly ledger?: readonly LedgerEntry[];
 }
 
 export interface Economy {
@@ -43,6 +52,20 @@ export interface Economy {
 export interface EconomyDeps {
   bus: EventBus;
   startingCash: number;
+  /**
+   * Live current-day read — the clock's `currentDay` (#351), the same provider
+   * shape `TierGate` takes. Every ledger entry is stamped with it.
+   *
+   * The clock's own ordering makes this exactly right at both edges: during
+   * `advanceDay` the overnight phases run BEFORE the day index increments, so
+   * payroll/rent/carrying land on the day that just concluded, and everything
+   * posted during trading lands on the open day. A private cursor latched off
+   * the bus got the second case wrong by one day, and read 1 for the rest of a
+   * session resumed from a save (a restore fires no clock event).
+   *
+   * Optional only as a test seam; defaults to day 1.
+   */
+  getCurrentDay?: () => number;
   config?: EconomyConfig;
 }
 
@@ -51,15 +74,9 @@ export function createEconomy(deps: EconomyDeps): Economy {
   const config = deps.config ?? loadEconomyConfig();
 
   let cash = deps.startingCash;
-  let currentDay = 1;
+  const getCurrentDay = deps.getCurrentDay ?? (() => 1);
   let inventoryAcquisitionSpend = 0;
   const ledger: LedgerEntry[] = [];
-
-  // Track which day is active via day_ended so expenses/revenues posted after
-  // advanceDay() are stamped with the day that just concluded.
-  bus.subscribe('clock:day_ended', ({ day }) => {
-    currentDay = day;
-  });
 
   bus.subscribe('clock:overnight_payroll', ({ day }) => {
     if (day % DAYS_PER_WEEK === 0) {
@@ -86,19 +103,20 @@ export function createEconomy(deps: EconomyDeps): Economy {
 
     postRevenue(amount, label) {
       cash += amount;
-      ledger.push({ day: currentDay, type: 'revenue', amount, label });
-      bus.publish('economy:revenue_posted', { day: currentDay, amount, label });
+      const day = getCurrentDay();
+      ledger.push({ day, type: 'revenue', amount, label });
+      bus.publish('economy:revenue_posted', { day, amount, label });
     },
 
     postExpense(amount, label, category) {
       if (cash < amount) {
         throw new Error(`Insufficient cash (have ${cash}, need ${amount})`);
       }
-      postExpenseInternal(currentDay, amount, label, category);
+      postExpenseInternal(getCurrentDay(), amount, label, category);
     },
 
     forceDebit(amount, label, category) {
-      postExpenseInternal(currentDay, amount, label, category);
+      postExpenseInternal(getCurrentDay(), amount, label, category);
     },
 
     getPnL(fromDay, toDay) {
@@ -113,7 +131,12 @@ export function createEconomy(deps: EconomyDeps): Economy {
     },
 
     snapshot() {
-      return { schemaVersion: 1, cash, inventoryAcquisitionSpend };
+      return {
+        schemaVersion: 1 as const,
+        cash,
+        inventoryAcquisitionSpend,
+        ledger: ledger.map((e) => ({ ...e })),
+      };
     },
 
     restore(snap) {
@@ -121,6 +144,10 @@ export function createEconomy(deps: EconomyDeps): Economy {
       // Pre-#255 snapshots lack the field → start the lifetime counter at 0.
       // The Home delta diffs it across day closes, so only growth matters.
       inventoryAcquisitionSpend = snap.inventoryAcquisitionSpend ?? 0;
+      // #351: the ledger round-trips, so a P&L window spanning a save/load is
+      // continuous. Pre-#351 snapshots restore empty (the prior behaviour).
+      ledger.length = 0;
+      ledger.push(...(snap.ledger ?? []).map((e) => ({ ...e })));
     },
   };
 }

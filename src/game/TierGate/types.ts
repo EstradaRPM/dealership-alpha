@@ -171,4 +171,11 @@ export interface TierGateSnapshot {
   readonly levelSamples: Record<string, LevelSamples>;
   /** Rolling trend windows, keyed by trend face id (`csi`). */
   readonly trendSamples: Record<string, number[]>;
+  /**
+   * Every closed month's verdict, oldest→newest (#351). Unlike the rest of this
+   * blob it is not month-to-date state — it is the career's grade history, and
+   * nothing else in the world retains it. Optional: pre-#351 snapshots lack it
+   * and restore to an empty history.
+   */
+  readonly monthVerdicts?: readonly GateMonthVerdict[];
 }

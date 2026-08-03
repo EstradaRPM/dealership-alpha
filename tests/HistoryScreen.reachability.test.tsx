@@ -72,15 +72,20 @@ describe('#208 HistoryLog persistence + reachability', () => {
     expect(rebuilt.historyLog.getEntries()).toEqual([]);
   });
 
-  it('keeps the History screen mounted in the live App route graph', () => {
+  it('keeps the History screen mounted — now as a Finance tab route (#351)', () => {
     const src = readAppCompositionSource();
 
     expect(src).toMatch(
       /import \{ HistoryScreen \} from '\.\.\/\.\.\/ui\/HistoryScreen'/,
     );
-    expect(src).toMatch(/nav\.navigate\('history'\)/);
-    expect(src).toMatch(/screen === 'history'/);
-    expect(src).toMatch(/onHistory=\{saveSlots\.openHistory\}/);
+    // Pushed onto the active tab's stack, so the console stays mounted behind
+    // it (locked IA §3) — not onto the root Navigator.
+    expect(src).toMatch(/tabs\.navigate\('dealHistory'\)/);
+    expect(src).toMatch(/screen === 'dealHistory'/);
     expect(src).toMatch(/world\.historyLog\.getEntries\(\)/);
+
+    // The old root route and its in-game-menu entry are gone.
+    expect(src).not.toMatch(/nav\.navigate\('history'\)/);
+    expect(src).not.toMatch(/onHistory=/);
   });
 });
