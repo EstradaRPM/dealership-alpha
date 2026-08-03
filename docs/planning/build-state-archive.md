@@ -6,6 +6,43 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-02 — **BUILT #348** (in-tab navigation stacks) — the structural half of phase 5c.
+  Walking into a room no longer costs you the console.
+  **The route map split in two, and the compiler enforces it.** `RootRouteParamMap` holds the
+  whole-app flow states (boot, start menu, character creation, the game, the in-game
+  menu/KPI/history overlays, the end card); `TabRouteParamMap` holds the six sub-screens that
+  live inside a tab — `lot` · `auction` · `pricing` · `department` · `service` · `bodyShop`.
+  **`nav.navigate('auction')` no longer typechecks.** That call is exactly what used to unmount
+  the 5-tab shell, so the locked IA §3 rule is now a compile error rather than a convention
+  someone has to remember; `tests/Navigator.test.ts` carries a `@ts-expect-error` lock on it.
+  **`TabStacks` is the second machine in the Navigator module** — one stack per tab, pure and
+  framework-free like the Navigator core, generic over the tab key so nav stays independent of
+  the shell's taxonomy. It owns the **active tab as well as** each tab's position, which
+  **retired the lifted `shellTab` `useState`** in `useDayLoop` whose own comment described the
+  workaround the unmount pattern forced ("without lifting this the tab would reset to Home on
+  return"). Pushes land on whichever tab is active, so there is **no route→tab table to drift**.
+  Its `useSyncExternalStore` snapshot is a `version` counter, not the top entry — two different
+  tabs sitting at their roots both read `current === undefined`.
+  **AppShell grew exactly one prop.** With `stackScreen` present it renders that in the body and
+  keeps the tab bar mounted and interactive; the tab bar is now one node shared by both body
+  modes, so the two can't drift apart. `shellOwnsTopInset` in the composition root now also
+  requires no stack screen — the hero bleeds behind the status bar, a pushed room does not.
+  **Both IA carve-outs are untouched and now locked by tests:** the live floor is still a
+  full-screen MODE with no tab bar, and the day recap / trade / discount spotlights are still
+  the overlay channel above the Navigator (asserted rendering with the shell mounted behind).
+  **`RouteContent` stays the root switch; `TabStackContent` is its sibling** for the in-tab
+  routes — RouteContent lost ~200 lines and each file stays a readable screen switch.
+  **The React Navigation trigger count is now 1 of 4** and recorded in the module's `CLAUDE.md`:
+  a root stack plus five sibling tab stacks, two levels, deepest observed path 2 (Lot →
+  pricing). Re-open the build-vs-adopt call if a third level appears.
+  **Driven on web at T1** (the Playtest R1 slot, left untouched at Day 1): Operations → Lot room
+  renders with all five tabs still lit and Operations still selected → `Go to the Auction` goes
+  a second level deep with the shell intact → People shows its own roster at its own root →
+  Operations returns to the **Auction Lane, exactly where it was left** → Back, Back lands on the
+  dock. Open Floor still suspends the console entirely. 203 suites / **2527** tests, typecheck
+  clean.
+  Next: **BUILD #349** (Growth tab).
+
 - 2026-08-02 — **BUILT #347** (People rebuild) — the org tab exists now, and the drive found
   two engine defects on the way that are fixed with it.
   **People is one surface with three sections.** `people-region-roster` · `people-region-hiring`

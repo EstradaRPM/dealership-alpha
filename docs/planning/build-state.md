@@ -10,29 +10,35 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Current phase
 
-**Phase 5c — UI layout rebuild (#346–#351), director-directed 2026-08-02**
+**Phase 7 — A2 staff slots / facility scale — DECIDE.**
+
+Phase 5c closed 2026-08-02: #346–#351 all built, no placeholder tabs left. Phase 5 (#74) is
+unblocked as far as the doors go, but C1's R3 made A2 a prerequisite for slicing phase 6, and
+A2 is the only unruled gate standing between here and the next build. **Next unit: `/decide A2`**,
+then SLICE 6 and 7 together.
 
 (Phase 4 B3 closed 2026-07-22 — #176, #177, #178; #179 landed earlier in A4.)
 
 ## Blockers
 
-- **Phase 5 (#74) is blocked behind phase 5c, by director call 2026-08-02.** A drive-through
-  audit on the web target found **6 of the 9 destinations reachable from Operations open an
-  empty or dark screen at Tier 1**, and two of the five primary tabs are placeholder cards.
-  Round 1's script routes the player through Operations on Day 0 and every day after, so
-  running it now measures the doors, not the loop. Audit: `docs/audits/ui-layout-audit.md`.
-  The script itself stays valid — it is `docs/planning/playtest-round-1.md`, presented in-game
-  (#332/#333), and its §1 "no web path" line is stale as of #338.
-- **The layout was never re-decided — it was never built.** `docs/planning/second-level-ia.md`
-  (locked 2026-06-12) already specifies the fix for nearly every audited defect. The
-  UI-rebrand chain stopped after Home (S1–S4, S3a–S3f); no Operations/People/Finance/Growth
-  slice was ever filed. #346–#351 are that filing. **Do not re-grill the IA** — where shipped
-  and locked disagree, locked wins. (Audit rows O5 and the six dead Operations destinations are
-  closed out as of #348; #349 took the Growth placeholder and the Home market stack. Finance is
-  the last placeholder tab — #350/#351.)
-- **Phase 5b is done** (#341, #342) — as is 5a. Phase 6's gate is ruled (`/decide C1`,
-  2026-08-02); phase 7's is not, and C1's R3 made it a prerequisite — so **`/decide A2` is the
-  unit that follows phase 5c**, before any phase-6 slice.
+- **Phase 5c is DONE — the whole UI-layout rebuild landed 2026-08-02** (#346 Operations, #347
+  People, #348 nav stacks, #349 Growth, #350 chart kit, #351 Finance). Every defect in
+  `docs/audits/ui-layout-audit.md` is closed out: no placeholder tabs, no dead Operations
+  destinations, and walking into a room no longer unmounts the console. **Do not re-grill the
+  IA** — `docs/planning/second-level-ia.md` (locked 2026-06-12) stays authoritative; where
+  shipped and locked disagree, locked wins.
+- **Phase 5 (#74) is no longer blocked on the doors.** The script is still
+  `docs/planning/playtest-round-1.md`, presented in-game (#332/#333); its §1 "no web path" line
+  is stale as of #338. It stays sequenced after the A2 ruling only because A2 gates phase 6,
+  not because anything is broken.
+- **`/decide A2` is the next unit.** Phase 6's gate is ruled (`/decide C1`, 2026-08-02);
+  phase 7's is not, and C1's R3 made it a prerequisite for any phase-6 slice.
+- **A hidden Browser pane makes measuring charts unverifiable, and it looks exactly like a bug.**
+  No `ResizeObserver` and no `requestAnimationFrame` fire, so react-native-web's `onLayout` never
+  runs, `useChartWidth` stays 0, and `BarChart`/`Sparkline` collapse to an empty 0-height div.
+  `DonutChart` still paints (explicit `size`, never measures) — that contrast is the fastest
+  tell. Probe + guidance are in `.claude/skills/verify`; do not report a measured chart broken
+  without running it.
 - **Phase 6 cannot be sliced alone.** C1's scarcity ruling points at the CSV's per-role staff
   counts, and nothing in the repo enforces them (`staffOrg.headcountCapByTier` is a flat
   `{1:4,2:8,3:16}`). Rule A2 first, then slice 6 and 7 together — building staff-teeth against a
@@ -58,15 +64,15 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | done |
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
-| 5 | C3 playtest gate (#74), round 1 — HITL | — | blocked on 5c |
-| 5c | UI layout rebuild — ~~#346 Operations~~ · ~~#347 People~~ · ~~#348 nav stacks~~ · ~~#349 Growth~~ · ~~#350 chart kit~~ (all built 2026-08-02) · #351 Finance | — (locked IA already rules it) | active |
+| 5 | C3 playtest gate (#74), round 1 — HITL | — | pending (doors fixed; sequenced after A2) |
+| 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance (all built 2026-08-02) | — (locked IA already ruled it) | done |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`.** Next unit: SLICE (after phase 7) | pending |
-| 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** — **run before phase 6's build** (C1's R3 made the CSV slot table staff-teeth's scarcity gate) | pending |
+| 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** — **run before phase 6's build** (C1's R3 made the CSV slot table staff-teeth's scarcity gate) | active — next unit |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
-| 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | pending |
+| 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
 | 13 | H1 fictional brands (#246) | — | pending |
@@ -83,6 +89,57 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-02 — **BUILT #351** (Finance) — the last placeholder tab, and the books learned what
+  day it is. **Phase 5c is complete.**
+  **The tab is the locked IA's grammar, top to bottom.** `src/ui/FinanceTab/` +
+  `FinanceTabContainer`: time-range chips → four headline stat cards with sparklines and
+  vs-prior-period deltas → the hero gross-written trend → how deals were funded (donut) and
+  where the money went (bars) → the deal-KPI block. Deal history and month-close results are
+  siblings pushed **inside** the tab.
+  **The range chips are the whole slice, and nothing in the engine could serve them.**
+  `DealRecord` had no day, `deal:closed` carries none, and the Economy ledger was never
+  persisted — so "Today" would have been a lifetime total relabelled. Three narrow engine
+  surfaces make them honest: `kpiDashboard.getSnapshot(range?)` + `getDailyTotals(range)` over
+  day-stamped deals; the Economy ledger persisted **whole and never pruned** (it IS the P&L, and
+  a window that loses its early days reports a profit nobody made); and
+  `tierGate.getMonthVerdicts()`. The daily series emits a row for **every** day in the window
+  including days with no deals — a series that skips the quiet days draws a shape the business
+  never had.
+  **Only the month's GRADE is stored.** The verdict event fires once and `resetMonth` erases
+  what produced it, so nothing else could reconstruct how a past month graded. Each month's
+  *financials* are re-derived over its day window from the deal log and the ledger, so the
+  results screen can never disagree with the dashboard about the same days.
+  **Two live defects fell out, both fixed.** Economy's cursor latched only on `clock:day_ended`,
+  which stamped every deal closed on day N with **day N-1** — invisible while the only consumer
+  was a lifetime total, exactly one day wrong the moment Finance windows the ledger. And a
+  private cursor reads **1 for the rest of any session resumed from a save**, because a restore
+  fires no clock event; the web drive caught that one live (a day-31 deal landed on day 1).
+  Both modules now take a **`getCurrentDay` provider off the clock** — the shape TierGate
+  already used — so there is no cursor left to persist or mis-restore, and the clock's own
+  `advanceDay` ordering puts overnight spend on the concluded day for free.
+  **`KPIDashboard` stops being a screen.** It was a full route behind the in-game menu, which is
+  why nobody read it; it is now an embedded kit-styled block with two consumers passing
+  different snapshots (Finance the selected range's, the month-close interstitial the month's) —
+  a KPI row reads identically in both because there is only one of it. `HistoryScreen` moved the
+  same way, root route → tab route. **Both root routes are deleted and pushing them onto the
+  root Navigator no longer typechecks** (`tests/Navigator.test.ts` carries the `@ts-expect-error`
+  lock). The market-state panel (#179) rode along and is alive in a tab instead of a dead menu.
+  **PVR carries no sparkline on purpose** — it is undefined on a zero-unit day, so a per-day
+  series would draw zeroes on quiet days and read as a collapse in per-deal profitability that
+  never happened. Deltas are **suppressed, not shown as "+100%"**, when the prior window is empty
+  or zero. Every stat card renders an empty state rather than a zero that reads as a result.
+  **Driven on web at T2/Day 31**: a closed deal shows under Today as 1 unit / $2,603 / PVR
+  $2,603 with the funding donut at Cash 100%, the 30D chip re-reads as "Day 2–31 · 30 days",
+  and both siblings push with the tab bar mounted and Back returning.
+  **The donut paints a real `react-native-svg` path — #350's open question is answered.** The
+  *measuring* charts could not be confirmed on screen: **a hidden Browser pane delivers no
+  `ResizeObserver` callbacks**, so `onLayout` never fires and `useChartWidth` stays 0. Proven an
+  environment artifact (a bare ResizeObserver probe also never fires) and written into
+  `.claude/skills/verify` with the probe, so the next agent does not chase it as a bug.
+  211 suites / **2644** tests, typecheck clean.
+  Next: **DECIDE A2** (phase 7) — phase 5c is done, and C1's R3 made A2 a prerequisite for
+  slicing phase 6.
 
 - 2026-08-02 — **BUILT #350** (chart primitives) — the enabling kit slice #351 Finance
   depends on. `react-native-svg@15.12.1` (via `expo install`, SDK-54 matched) is now a
@@ -178,40 +235,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   "Running Local radio · $75/day" → `Next up: Tier 2` lists 15 units / $30,000 gross / $150,000
   cash over "for one month to move up." 206 suites / **2558** tests, typecheck clean.
   Next: **BUILD #350** (chart kit).
-
-- 2026-08-02 — **BUILT #348** (in-tab navigation stacks) — the structural half of phase 5c.
-  Walking into a room no longer costs you the console.
-  **The route map split in two, and the compiler enforces it.** `RootRouteParamMap` holds the
-  whole-app flow states (boot, start menu, character creation, the game, the in-game
-  menu/KPI/history overlays, the end card); `TabRouteParamMap` holds the six sub-screens that
-  live inside a tab — `lot` · `auction` · `pricing` · `department` · `service` · `bodyShop`.
-  **`nav.navigate('auction')` no longer typechecks.** That call is exactly what used to unmount
-  the 5-tab shell, so the locked IA §3 rule is now a compile error rather than a convention
-  someone has to remember; `tests/Navigator.test.ts` carries a `@ts-expect-error` lock on it.
-  **`TabStacks` is the second machine in the Navigator module** — one stack per tab, pure and
-  framework-free like the Navigator core, generic over the tab key so nav stays independent of
-  the shell's taxonomy. It owns the **active tab as well as** each tab's position, which
-  **retired the lifted `shellTab` `useState`** in `useDayLoop` whose own comment described the
-  workaround the unmount pattern forced ("without lifting this the tab would reset to Home on
-  return"). Pushes land on whichever tab is active, so there is **no route→tab table to drift**.
-  Its `useSyncExternalStore` snapshot is a `version` counter, not the top entry — two different
-  tabs sitting at their roots both read `current === undefined`.
-  **AppShell grew exactly one prop.** With `stackScreen` present it renders that in the body and
-  keeps the tab bar mounted and interactive; the tab bar is now one node shared by both body
-  modes, so the two can't drift apart. `shellOwnsTopInset` in the composition root now also
-  requires no stack screen — the hero bleeds behind the status bar, a pushed room does not.
-  **Both IA carve-outs are untouched and now locked by tests:** the live floor is still a
-  full-screen MODE with no tab bar, and the day recap / trade / discount spotlights are still
-  the overlay channel above the Navigator (asserted rendering with the shell mounted behind).
-  **`RouteContent` stays the root switch; `TabStackContent` is its sibling** for the in-tab
-  routes — RouteContent lost ~200 lines and each file stays a readable screen switch.
-  **The React Navigation trigger count is now 1 of 4** and recorded in the module's `CLAUDE.md`:
-  a root stack plus five sibling tab stacks, two levels, deepest observed path 2 (Lot →
-  pricing). Re-open the build-vs-adopt call if a third level appears.
-  **Driven on web at T1** (the Playtest R1 slot, left untouched at Day 1): Operations → Lot room
-  renders with all five tabs still lit and Operations still selected → `Go to the Auction` goes
-  a second level deep with the shell intact → People shows its own roster at its own root →
-  Operations returns to the **Auction Lane, exactly where it was left** → Back, Back lands on the
-  dock. Open Floor still suspends the console entirely. 203 suites / **2527** tests, typecheck
-  clean.
-  Next: **BUILD #349** (Growth tab).
