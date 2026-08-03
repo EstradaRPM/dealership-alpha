@@ -28,5 +28,29 @@ export { StatCard } from './StatCard';
 export type { StatCardProps, TrendDirection } from './StatCard';
 export { Sparkline } from './Sparkline';
 export type { SparklineProps } from './Sparkline';
+export { BarChart } from './BarChart';
+export type { BarChartProps, BarDatum } from './BarChart';
+export { DonutChart } from './DonutChart';
+export type { DonutChartProps, DonutDatum } from './DonutChart';
+export { ChartLegend, ChartGrid, ChartEmpty, useChartWidth } from './ChartParts';
+export type {
+  ChartLegendProps,
+  ChartLegendItem,
+  ChartGridProps,
+  ChartGridLine,
+  ChartEmptyProps,
+} from './ChartParts';
+export {
+  clamp01,
+  niceTicks,
+  sparklinePoints,
+  polylinePath,
+  areaPath,
+  barBands,
+  barPath,
+  donutSegments,
+  arcPath,
+} from './chartScale';
+export type { Point, BarBand, DonutSegment } from './chartScale';
 export { SectionHeader } from './SectionHeader';
 export type { SectionHeaderProps } from './SectionHeader';

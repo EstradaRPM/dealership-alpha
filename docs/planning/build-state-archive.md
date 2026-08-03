@@ -6,6 +6,55 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-02 — **BUILT #347** (People rebuild) — the org tab exists now, and the drive found
+  two engine defects on the way that are fixed with it.
+  **People is one surface with three sections.** `people-region-roster` · `people-region-hiring`
+  · `people-region-managers`, all kit-styled off `useTheme()`. Before this the tab rendered
+  *only* the delegation card — three ABSENT rows at Tier 1 — while the roster and the candidate
+  pool sat two levels down behind Operations → Prep → Hire Staff, in the wrong tab entirely.
+  **`PersonnelScreen` is gone, not restyled — and so is the `personnel` route.** The old flow
+  pushed a full-screen route that unmounted the tab bar (IA §3 names that as the pattern to
+  replace) and hid every candidate's skills behind a modal. Hiring now resolves **in place**:
+  the handlers write through `StaffOrg` and `bump()` re-renders the same tab. Driven live —
+  pressing Hire moved "1 of 4" to "2 of 4" and the candidate onto the roster with a morale
+  meter, no navigation. Its container, its two test files, and its 600 lines of raw-`colors`
+  StyleSheet went with it; `PeopleTabContainer` replaces it and the two reachability tests that
+  drove the old container (#323 advisor hiring, #324 promotion) now drive the new one.
+  **Candidates are comparable now, which is the point of the section.** All three render inline
+  — traits, both composites, every skill — instead of one-at-a-time in a modal, because the
+  A-vs-B read is the decision. (The flat $1,000 price against unequal quality is C1's ruling,
+  not this slice's.)
+  **Staff have names.** `data/person-names.json` + `NPC.rollPersonName`, and `name` is a
+  non-enumerable **derived** getter on `StaffWithComposites` — `(masterSeed, staff.id)`
+  determines it, exactly like #294's per-hire skill cap. That is why it cost no field on
+  `Staff`, no change to the `.strict()` schema, and **no save migration**: `restore` hands
+  `rehydrateStaff` the same `masterSeed`, so the people you saved are the people you load
+  (locked by a round-trip test).
+  **Two defects the web drive surfaced, both fixed at the engine.** (1) The UCM's card read
+  **"Work quality 275%"** — `effectiveness` is a weighted *sum* over a role's skills, so its
+  range is role-dependent (1.5 for a three-axis salesperson, 3.7 for a six-axis UCM) and two
+  roles were never comparable. Added `effectivenessRatio`/`trustworthinessRatio` = composite ÷
+  the ceiling that skill set implies. **The raw composites are untouched** — every promotion and
+  capability gate reads those, and re-scaling them is a balance change C1/C2 own. (2) The pool
+  offered **a person already on the roster**: a staff id is `staff:<archetype>:<day>:<slot>` and
+  the pool is rebuilt from the seed on every reload (#190, deliberately not persisted), so it
+  regenerated the id you hired — and hiring them again would have pushed a duplicate id,
+  breaking every id-keyed binding (StaffMorale, StaffDispatch). `buildCandidatesForRole` now
+  skips hired ids and walks the slot forward to keep the pool full.
+  **Also landed:** skill *labels* are data — `data/staff-skills.json` carries a required
+  `label`, so no surface can render `t_o_closing` as "t o closing" again; `staffOrg.headcountCap`
+  is a public read so the tab shows "2 of 4" and stops offering a hire that would throw (A2/C1
+  swap the CSV slot table in behind it); and `ProgressBar`/`Meter` gained `fillTestID` so a bar's
+  **width** is assertable — the skill-bar defect carried in from C1 was `flex: ratio` inside a
+  container that never set `flexDirection: 'row'`, and nothing could have caught it.
+  **No Development section, deliberately** — IA rules 1 + 3, with a regression lock asserting its
+  absence so no foreshadow tease creeps in before the training mechanic exists.
+  **Driven on web at T1** (Continue → People): roster with names + proportional skill bars,
+  three distinguishable candidates (32% / 41% / 72% work quality), hire resolving in place, and
+  Operations showing Prep's two levers with no hiring entry anywhere. 201 suites / **2512**
+  tests, typecheck clean.
+  Next: **BUILD #348** (in-tab nav stacks).
+
 - 2026-08-02 — **BUILT #346** (Operations rebuild) — the first and largest phase-5c slice.
   Six of the nine destinations the audit counted from Operations are gone or now open a real
   room; the tab is one visual language top to bottom.

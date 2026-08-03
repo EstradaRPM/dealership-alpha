@@ -12,6 +12,8 @@ export { elevation } from './elevation';
 export type { ElevationToken } from './elevation';
 export { icon, iconSize, iconTone } from './icons';
 export type { IconSizeToken, IconToneToken } from './icons';
+export { series } from './series';
+export type { SeriesPalette } from './series';
 export { defaultTheme } from './theme';
 export type { Theme } from './theme';
 export { ThemeProvider, useTheme } from './ThemeProvider';

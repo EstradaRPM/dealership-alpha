@@ -51,7 +51,37 @@ function MyScreen() {
 `Icon` (kit glyph by name, themed `size`/`tone`) · `IconBadge` (colored
 tile holding an `Icon`; `solid`·`soft`, rounded·circle) · `ProgressBar` ·
 `Meter` (labeled gauge) · `StatCard` (value·label·trend delta, optional leading
-`icon`) · `SectionHeader`.
+`icon`) · `SectionHeader` · the chart primitives below.
+
+## Charts (#350)
+
+`Sparkline` (inline trend, no axes) · `BarChart` (categorical comparison,
+`vertical`|`horizontal`) · `DonutChart` (composition/share) · shared sub-parts
+`ChartGrid`, `ChartLegend`, `ChartEmpty`, `useChartWidth`. Built on
+`react-native-svg`; `GaugeArc` predates it and stays a pure-`View` build.
+
+- **Geometry is a separate pure module.** Every number lives in `chartScale.ts`
+  — scales, tick ladders, bar bands, ring segments, and the SVG `d` strings
+  themselves — with no React and no theme. A wrong chart is an assertion on a
+  path string, not a screenshot, and an animated or canvas-backed rewrite reuses
+  the same math behind the same props.
+- **A chart must be told its width or measure it.** `useChartWidth(explicit?)`
+  measures the container via `onLayout` and re-renders once; **tests get no
+  layout pass, so they must pass `width`**.
+- **Identity color comes from `theme.series`**, not the semantic `colors` roles.
+  The roles carry meaning (`danger` is a loss) and a category means nothing but
+  "not the one beside me". Slots are assigned in fixed order and **never
+  cycled** — past the last slot categories fold into one muted "Other". The
+  order is a colorblind-safety result, not taste: `series.ts` records the checks
+  it passes and the surface it was validated against. Re-run the validator
+  before changing a hue.
+- **Bars carry one hue by default.** The category axis already states identity;
+  per-datum `tone` is for the one bar a surface is making a point about.
+- **A donut always ships its legend** — a slice has no axis to name it, so
+  identity would otherwise be color alone. Legend text stays in the ink roles;
+  the swatch carries the color.
+- **Every primitive has an empty state.** A blank plot is indistinguishable from
+  a broken one, so `emptyLabel` renders instead of the marks.
 
 Icons (#236) come from `@expo/vector-icons`, rendered as **MaterialIcons**
 glyphs: Android silently rejects SDK 54's vendored Ionicons.ttf (loads +
@@ -69,7 +99,8 @@ shadow). Gradients never hand-painted per surface — always a `gradients` role.
 
 ## Tokens
 
-`colors` (semantic roles, #133) · `gradients` (role→`[from,to,…]` stop arrays,
+`colors` (semantic roles, #133) · `series` (the ordered categorical chart
+palette, #350) · `gradients` (role→`[from,to,…]` stop arrays,
 the depth "material", #235) · `spacing` (4-based rhythm) · `radius` ·
 `typography` (named text roles off a size/weight/line-height ramp) ·
 `elevation` (raised·floating·inset depth — the neo-skeuo bevels).
