@@ -10,13 +10,26 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Current phase
 
-**Phases 6 + 7 — staff teeth & staff slots / facility scale — SLICE (both together).**
+**Phases 6 + 7 — staff teeth & staff slots / facility scale — SLICED 2026-08-04, now BUILD.**
 
-A2 was ruled 2026-08-03 (`/decide A2`), so both gates standing in front of the next build are
-now closed: C1 locked 2026-08-02 (`staff-teeth-design.md`), A2 locked 2026-08-03
-(`path-to-finished-product.md` §3 A2). **Next unit: SLICE 6 and 7 as one pass** — C1's R3 makes
-the slot table staff-teeth's scarcity cap, so wages and slots have to land in one build order or
-half of each mechanic sits inert.
+Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
+`path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
+order**. **Next unit: BUILD #352** (the per-role slot table — the prerequisite every wage slice
+sits on). Work them in number order; the deps are stated in each issue's Notes.
+
+| # | Slice | Phase |
+|---|---|---|
+| #352 | per-role slot table = the hiring cap; `headcountCapByTier` deleted | 7 → unblocks 6 |
+| #353 | `data/staff-pay.json`, derived grade, `paidGrade`, daily payroll drain; `weeklyPayrollStub` deleted | 6 |
+| #354 | People surface: grade + wage per card, total daily payroll, skill-bar `flexDirection` fix | 6 |
+| #355 | hire fee = multiple × daily wage; `hiringCostByTier` retired | 6 |
+| #356 | raise demands (ask/answer) + `payVsMarketBonus` made real | 6 |
+| #357 | rival offers on the same event family (retention + poaching, one moment) | 6 |
+| #358 | `src/game/Facility/` owns built spaces + bays, one bay truth; `baysByTier` retired | 7 |
+| #359 | construction: buy capacity with cash + days, ceiling enforced, Growth build surface | 7 |
+| #360 | facility score lights the dormant tier-gate `facility` face | 7 |
+| #361 | lot cap governs buying ("31 of 35"), trade always lands | 7 |
+| #362 | wholesale this unit — the aged-inventory release valve | 7 |
 
 (Phase 4 B3 closed 2026-07-22 — #176, #177, #178; #179 landed earlier in A4.)
 
@@ -43,11 +56,11 @@ half of each mechanic sits inert.
   `DonutChart` still paints (explicit `size`, never measures) — that contrast is the fastest
   tell. Probe + guidance are in `.claude/skills/verify`; do not report a measured chart broken
   without running it.
-- **Phase 6 cannot be sliced alone.** C1's scarcity ruling points at the CSV's per-role staff
-  counts, and nothing in the repo enforces them (`staffOrg.headcountCapByTier` is a flat
-  `{1:4,2:8,3:16}`). A2 is now ruled, so **slice 6 and 7 together** — building staff-teeth
-  against a flat cap leaves half the mechanic inert. A2's internal call 1 deletes
-  `headcountCapByTier` outright rather than leaving it beside the slot table.
+- **#352 comes first and nothing in phase 6 works without it.** C1's scarcity ruling points at the
+  CSV's per-role staff counts, and nothing in the repo enforces them today
+  (`staffOrg.headcountCapByTier` is a flat `{1:4,2:8,3:16}`). Build a wage against a flat cap and
+  half the mechanic sits inert. The CSV stops repeating `f&i-manager` at T4/T5 — that is a source
+  omission, not a removal; the slot table is **monotonic** (a tier never takes away a desk).
 - **5a issue states on GitHub are not trustworthy.** #334 was CLOSED-but-undone. Check each
   of #335–#339 against the repo before assuming it landed. (#339 is closed as **sliced**, not
   built — its work was #343/#344/#345, all three now built.)
@@ -73,8 +86,8 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance (all built 2026-08-02) | — (locked IA already ruled it) | done |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
-| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`.** Prerequisite (A2) now ruled | pending — SLICE with 7 |
-| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | pending — SLICE with 6 |
+| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — sliced (#353–#357) |
+| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — sliced (#352, #358–#362) |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
@@ -94,6 +107,42 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-04 — **SLICED phases 6 + 7 as one pass** → **#352–#362**, filed in build order, every
+  issue carrying EARS acceptance criteria with named tests.
+  **The order puts the slot table first and the wage stack immediately behind it**, because #352 is
+  C1's scarcity cap (R3) and is the only hard dependency between the two phases; everything else in
+  A2 (facility, lot cap) is orthogonal to wages, so it lands after staff-teeth is fully live rather
+  than in front of it. Sequence: **#352** slots → **#353** wage book + daily drain → **#354** People
+  surface → **#355** hire fee → **#356** raises → **#357** rival offers → **#358** Facility module →
+  **#359** construction → **#360** facility gate face → **#361** lot cap → **#362** wholesale.
+  **Two engine slices deliberately ship without UI, and two UI slices deliberately trail their
+  engine.** #353 charges the wage before #354 displays it — a wage shown on a card and not charged
+  is a lie on screen for a commit; the drain is honest the day it appears, reading in the ledger as
+  "Payroll". #358 changes *no* behavior on purpose (built capacity is seeded to today's per-tier
+  constants), so the risky part — moving bays from constant to owned state behind one provider — is
+  verifiable on its own before #359 lets anyone spend money on it.
+  **Three retirements are criteria, not cleanup.** `headcountCapByTier` (#352), `weeklyPayrollStub`
+  (#353), `hiringCostByTier` (#355) and `baysByTier` (#358) each leave their JSON *and* their zod
+  schema in the same slice that replaces them, so typecheck fails if anything still reads the old
+  number. Two truths that can disagree is the bug this build order exists to avoid.
+  **One placement call was made rather than escalated:** the facility build surface goes in
+  **GROWTH**, derived from the locked charter's filing test — "work ON the business, everything that
+  compounds across months" (`second-level-ia.md` §1). Facility expansion compounds and competes with
+  inventory cash; it is not a room you walk into. The *occupancy* read ("31 of 35") lives where the
+  stock does, on the Lot room and the auction surface. This is a charter application, not a new IA
+  fork.
+  **Two source gaps were resolved in the issues rather than left for the implementer to trip on:**
+  the CSV's staff row stops repeating `f&i-manager` at T4/T5 (an omission — the table is monotonic,
+  a tier never removes a desk), and it never names `lot-porter`/`technician` at all (they are
+  promotion-only per `src/app/config.ts:249`, so their slots gate promotion, and a role the UI offers
+  at a tier may never hold 0 slots — that is the A1 regression class inverted). Roles that do not
+  exist yet (NCM, BDC manager) sit in the table unused; the fixed-ops-manager row is still an open
+  gate at phase 15, and the slot table is data, so it changes without code.
+  Every issue names its rejected alternatives with the director's reasons — draw-against-commission
+  (#353), wage-auto-follows-grade and fixed-at-hire (#356), and R2's five (#361, chief among them the
+  **overflow lot**, which the director raised and withdrew). No slice may reopen one.
+  Next: **BUILD #352**.
 
 - 2026-08-03 — **RULED A2** (phase 7, staff slots + facility scale) via `/decide A2`. Recorded in
   `path-to-finished-product.md` §3 A2, `[NEW]` → `[LOCKED]`. **Both staff gates are now closed;
@@ -187,49 +236,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   211 suites / **2644** tests, typecheck clean.
   Next: **DECIDE A2** (phase 7) — phase 5c is done, and C1's R3 made A2 a prerequisite for
   slicing phase 6.
-
-- 2026-08-02 — **BUILT #350** (chart primitives) — the enabling kit slice #351 Finance
-  depends on. `react-native-svg@15.12.1` (via `expo install`, SDK-54 matched) is now a
-  dependency; `GaugeArc` predates it and stays a pure-`View` build.
-  **The geometry is a separate pure module and that is the point.** `chartScale.ts` holds every
-  number the three primitives draw — scales, the nice-tick ladder, bar bands, ring segments, and
-  the SVG `d` strings themselves — with no React and no theme. A wrong chart is then an
-  assertion on a path string instead of a screenshot: 22 of the 37 new tests never render
-  anything. It also means an animated or canvas-backed rewrite reuses the same math behind the
-  same props.
-  **`theme.series` is a new token family, deliberately not a `colors` role.** The semantic roles
-  carry meaning (`reward` is money, `danger` is a loss); a donut slice for "sedans" means
-  nothing but "not the one beside me", and a red one would read as a problem. Slots assign in
-  fixed order and **never cycle** — a seventh category folds into one muted "Other", it does not
-  wrap back to slot 1 and impersonate the first. The six hues are not taste: candidate orderings
-  were enumerated and run through a palette validator against the app's own card surface, and
-  the shipped order is the best-scoring passing one (worst adjacent colorblind ΔE 22.7, normal
-  vision 22.2, all six inside the dark lightness band, all ≥3:1 on both the card and the base).
-  `series.ts` records those numbers so the next hue change re-runs the check instead of eyeballing.
-  **Bars carry one hue by default.** The category axis already states identity, so coloring by
-  category doubles the encoding and burns the palette on nothing; per-datum `tone` is the
-  exception that earns its color — the one bar a surface is making a point about. A donut is the
-  opposite case (a slice has no axis to name it), so it always ships its legend, with the label
-  in ink roles and the swatch carrying the color.
-  **`Sparkline` was rebuilt, not wrapped.** It was extracted to the kit as *bars* in #349; it is
-  now a real trend line — area fill in the tone's translucent role, 2px stroke, the newest sample
-  dotted so "where it ended" reads. Same props, same barrel export, no call-site edits: exactly
-  the substitution the kit contract promises. Its two consumers (Home's gate strip, Growth's gate
-  board) are untouched.
-  **A chart must be told its width or measure it.** `useChartWidth` reads the container via
-  `onLayout`; **tests get no layout pass, so a test must pass `width`** — written into the kit's
-  `CLAUDE.md` because the failure mode is a chart that silently renders nothing.
-  Empty states are per-primitive and mandatory (a blank plot is indistinguishable from a broken
-  one), negative values are **dropped** from a composition rather than mirrored (folding one in
-  would silently overstate every other slice), and a slice too thin to see still draws a
-  minimum-width mark, because an invisible slice reads as a missing category.
-  **Web drive is partial, and honestly so.** The bundle rebuilds with the new native dependency
-  and the app boots, navigates and renders every tab with zero new console errors — that is the
-  dependency-linkage risk retired. **No chart paints on screen yet**: `BarChart`/`DonutChart`
-  have no consumer until #351 by the issue's own charter, and `Sparkline`'s live face only
-  appears from Tier 3, since `data/tier-gate.json` grades `csi` at tier 3 only (confirmed on the
-  T2 dev slot: `document.querySelectorAll('svg').length === 0`, and the gate board's "THIS MONTH"
-  correctly lists units/gross/cash with CSI under "NEXT UP: TIER 3"). **#351's first job is to
-  confirm react-native-svg actually paints under react-native-web.**
-  207 suites / **2599** tests, typecheck clean.
-  Next: **BUILD #351** (Finance).

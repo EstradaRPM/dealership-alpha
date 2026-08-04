@@ -6,6 +6,52 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-02 — **BUILT #350** (chart primitives) — the enabling kit slice #351 Finance
+  depends on. `react-native-svg@15.12.1` (via `expo install`, SDK-54 matched) is now a
+  dependency; `GaugeArc` predates it and stays a pure-`View` build.
+  **The geometry is a separate pure module and that is the point.** `chartScale.ts` holds every
+  number the three primitives draw — scales, the nice-tick ladder, bar bands, ring segments, and
+  the SVG `d` strings themselves — with no React and no theme. A wrong chart is then an
+  assertion on a path string instead of a screenshot: 22 of the 37 new tests never render
+  anything. It also means an animated or canvas-backed rewrite reuses the same math behind the
+  same props.
+  **`theme.series` is a new token family, deliberately not a `colors` role.** The semantic roles
+  carry meaning (`reward` is money, `danger` is a loss); a donut slice for "sedans" means
+  nothing but "not the one beside me", and a red one would read as a problem. Slots assign in
+  fixed order and **never cycle** — a seventh category folds into one muted "Other", it does not
+  wrap back to slot 1 and impersonate the first. The six hues are not taste: candidate orderings
+  were enumerated and run through a palette validator against the app's own card surface, and
+  the shipped order is the best-scoring passing one (worst adjacent colorblind ΔE 22.7, normal
+  vision 22.2, all six inside the dark lightness band, all ≥3:1 on both the card and the base).
+  `series.ts` records those numbers so the next hue change re-runs the check instead of eyeballing.
+  **Bars carry one hue by default.** The category axis already states identity, so coloring by
+  category doubles the encoding and burns the palette on nothing; per-datum `tone` is the
+  exception that earns its color — the one bar a surface is making a point about. A donut is the
+  opposite case (a slice has no axis to name it), so it always ships its legend, with the label
+  in ink roles and the swatch carrying the color.
+  **`Sparkline` was rebuilt, not wrapped.** It was extracted to the kit as *bars* in #349; it is
+  now a real trend line — area fill in the tone's translucent role, 2px stroke, the newest sample
+  dotted so "where it ended" reads. Same props, same barrel export, no call-site edits: exactly
+  the substitution the kit contract promises. Its two consumers (Home's gate strip, Growth's gate
+  board) are untouched.
+  **A chart must be told its width or measure it.** `useChartWidth` reads the container via
+  `onLayout`; **tests get no layout pass, so a test must pass `width`** — written into the kit's
+  `CLAUDE.md` because the failure mode is a chart that silently renders nothing.
+  Empty states are per-primitive and mandatory (a blank plot is indistinguishable from a broken
+  one), negative values are **dropped** from a composition rather than mirrored (folding one in
+  would silently overstate every other slice), and a slice too thin to see still draws a
+  minimum-width mark, because an invisible slice reads as a missing category.
+  **Web drive is partial, and honestly so.** The bundle rebuilds with the new native dependency
+  and the app boots, navigates and renders every tab with zero new console errors — that is the
+  dependency-linkage risk retired. **No chart paints on screen yet**: `BarChart`/`DonutChart`
+  have no consumer until #351 by the issue's own charter, and `Sparkline`'s live face only
+  appears from Tier 3, since `data/tier-gate.json` grades `csi` at tier 3 only (confirmed on the
+  T2 dev slot: `document.querySelectorAll('svg').length === 0`, and the gate board's "THIS MONTH"
+  correctly lists units/gross/cash with CSI under "NEXT UP: TIER 3"). **#351's first job is to
+  confirm react-native-svg actually paints under react-native-web.**
+  207 suites / **2599** tests, typecheck clean.
+  Next: **BUILD #351** (Finance).
+
 - 2026-08-02 — **BUILT #349** (Growth) — the tab stops being a placeholder card, and two
   homeless surfaces get the room the locked IA assigned them.
   **The demand console is one room now.** `src/ui/GrowthTab/` + `GrowthTabContainer`: the heat
