@@ -10,12 +10,13 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Current phase
 
-**Phase 7 — A2 staff slots / facility scale — DECIDE.**
+**Phases 6 + 7 — staff teeth & staff slots / facility scale — SLICE (both together).**
 
-Phase 5c closed 2026-08-02: #346–#351 all built, no placeholder tabs left. Phase 5 (#74) is
-unblocked as far as the doors go, but C1's R3 made A2 a prerequisite for slicing phase 6, and
-A2 is the only unruled gate standing between here and the next build. **Next unit: `/decide A2`**,
-then SLICE 6 and 7 together.
+A2 was ruled 2026-08-03 (`/decide A2`), so both gates standing in front of the next build are
+now closed: C1 locked 2026-08-02 (`staff-teeth-design.md`), A2 locked 2026-08-03
+(`path-to-finished-product.md` §3 A2). **Next unit: SLICE 6 and 7 as one pass** — C1's R3 makes
+the slot table staff-teeth's scarcity cap, so wages and slots have to land in one build order or
+half of each mechanic sits inert.
 
 (Phase 4 B3 closed 2026-07-22 — #176, #177, #178; #179 landed earlier in A4.)
 
@@ -29,10 +30,13 @@ then SLICE 6 and 7 together.
   shipped and locked disagree, locked wins.
 - **Phase 5 (#74) is no longer blocked on the doors.** The script is still
   `docs/planning/playtest-round-1.md`, presented in-game (#332/#333); its §1 "no web path" line
-  is stale as of #338. It stays sequenced after the A2 ruling only because A2 gates phase 6,
-  not because anything is broken.
-- **`/decide A2` is the next unit.** Phase 6's gate is ruled (`/decide C1`, 2026-08-02);
-  phase 7's is not, and C1's R3 made it a prerequisite for any phase-6 slice.
+  is stale as of #338. It sits behind the 6+7 slice in the commit sequence, not behind any
+  defect.
+- **Both staff gates are ruled — no decision stands in front of the next build.** `/decide C1`
+  2026-08-02, `/decide A2` 2026-08-03. A2's rejected alternatives (overflow lot, forced
+  wholesale, refused trades, soft cap, prep-as-its-own-capacity) are recorded **with reasons**
+  in §3 A2 — do not reopen them, and in particular do not re-propose an overflow lot, which the
+  director raised and then withdrew on inspection.
 - **A hidden Browser pane makes measuring charts unverifiable, and it looks exactly like a bug.**
   No `ResizeObserver` and no `requestAnimationFrame` fire, so react-native-web's `onLayout` never
   runs, `useChartWidth` stays 0, and `BarChart`/`Sparkline` collapse to an empty 0-height div.
@@ -41,8 +45,9 @@ then SLICE 6 and 7 together.
   without running it.
 - **Phase 6 cannot be sliced alone.** C1's scarcity ruling points at the CSV's per-role staff
   counts, and nothing in the repo enforces them (`staffOrg.headcountCapByTier` is a flat
-  `{1:4,2:8,3:16}`). Rule A2 first, then slice 6 and 7 together — building staff-teeth against a
-  flat cap leaves half the mechanic inert.
+  `{1:4,2:8,3:16}`). A2 is now ruled, so **slice 6 and 7 together** — building staff-teeth
+  against a flat cap leaves half the mechanic inert. A2's internal call 1 deletes
+  `headcountCapByTier` outright rather than leaving it beside the slot table.
 - **5a issue states on GitHub are not trustworthy.** #334 was CLOSED-but-undone. Check each
   of #335–#339 against the repo before assuming it landed. (#339 is closed as **sliced**, not
   built — its work was #343/#344/#345, all three now built.)
@@ -64,12 +69,12 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | done |
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
-| 5 | C3 playtest gate (#74), round 1 — HITL | — | pending (doors fixed; sequenced after A2) |
+| 5 | C3 playtest gate (#74), round 1 — HITL | — | pending (doors fixed; sequenced after the 6+7 slice) |
 | 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance (all built 2026-08-02) | — (locked IA already ruled it) | done |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
-| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`.** Next unit: SLICE (after phase 7) | pending |
-| 7 | A2 staff slots / facility scale | **ADJUDICATE [NEW]** — **run before phase 6's build** (C1's R3 made the CSV slot table staff-teeth's scarcity gate) | active — next unit |
+| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`.** Prerequisite (A2) now ruled | pending — SLICE with 7 |
+| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | pending — SLICE with 6 |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
@@ -89,6 +94,48 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-03 — **RULED A2** (phase 7, staff slots + facility scale) via `/decide A2`. Recorded in
+  `path-to-finished-product.md` §3 A2, `[NEW]` → `[LOCKED]`. **Both staff gates are now closed;
+  the next unit is a single SLICE covering phases 6 and 7.**
+  **R1 — desks come with the tier, buildings are bought.** Tier-up hands you the CSV's staff
+  desks outright (T3 = 3 sales + UCM + F&I + SA + BSA, empty and waiting); lot spaces and bays
+  are purchased with cash + construction days up to the tier's ceiling, and you arrive at a new
+  tier holding the previous tier's built capacity. The two ends were both rejected: granting
+  everything leaves no money decision anywhere on the ladder *and* leaves the `facility` gate face
+  in `data/tier-gate.json` with nothing to measure; buying everything puts a construction gate in
+  front of hiring on top of C1's cost + wage and makes tier-up change nothing until you spend
+  again. The split is what lights that dormant face — **built capacity ÷ tier ceiling × 100** —
+  and what puts facility spend in direct competition with inventory cash.
+  **Construction time is real** (~2–3 days, `data/`), reusing #295's frontline-hold idiom. Instant
+  capacity collapses the decision to "do I have the cash"; a delay makes you buy *ahead* of demand.
+  That also answers the CSV's own open row 16 ("construction time? Idk if necessary").
+  **R2 — the lot cap governs buying; a trade always lands.** Every owned unit takes a space,
+  **prep included** — there is no off-lot state in the model and none was invented (a `LotVehicle`
+  exists and accrues carrying cost from `arrivalDay`; recon is a cost, not a place, and the
+  frontline hold only governs whether walk-ins can be *shown* the car). One number, "31 of 35."
+  The cap is checked **at the bid**, counting won-and-inbound units, so you cannot win six cars
+  into four spaces. A trade always comes in and may put you at 36 of 35; being over freezes buying
+  until you're under. Self-correcting by construction — a deal that brings a trade in takes a car
+  out — which is exactly why it needs no machinery.
+  **An overflow lot was raised by the director and withdrawn by the director**, and the reasoning
+  is the durable part: an overflow slot beats a wholesale-at-a-loss in nearly every case, so the
+  choice only ever resolves one way, and a dominated option is a confirmation dialog rather than a
+  decision — *and* parking the unit keeps inventory the same, so the trade neither helped nor hurt.
+  It would have bought a second inventory list, paused recon clocks, FIFO promotion, save fields
+  and a UI surface for a moment that isn't a moment. Forced wholesale, refused trades, a soft cap
+  with an overflow fee, and prep-as-its-own-capacity are recorded rejected alongside it. **Do not
+  re-propose any of them.**
+  **One thing fell out of R2 and ships with A2 on its own merits:** there is no voluntary
+  wholesale-out today — the only dump path is abandoning recon after a surprise
+  (`Inventory.ts:789`, #162). Lot-locked with three aged units and no way to convert them to cash
+  is a dead end, so the inventory card gets a "wholesale this unit" action as the aged-inventory
+  release valve, **not** as a full-lot penalty.
+  Seven internal calls recorded in the section (chief among them: `headcountCapByTier` is deleted
+  rather than kept beside the slot table; bays become owned persisted state read through one
+  provider so `min(bays, advisors)` keeps a single truth; a new `src/game/Facility/` module owns
+  built capacity + the facility score).
+  Next: **SLICE phases 6 + 7 together.**
 
 - 2026-08-02 — **BUILT #351** (Finance) — the last placeholder tab, and the books learned what
   day it is. **Phase 5c is complete.**
@@ -186,52 +233,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   confirm react-native-svg actually paints under react-native-web.**
   207 suites / **2599** tests, typecheck clean.
   Next: **BUILD #351** (Finance).
-
-- 2026-08-02 — **BUILT #349** (Growth) — the tab stops being a placeholder card, and two
-  homeless surfaces get the room the locked IA assigned them.
-  **The demand console is one room now.** `src/ui/GrowthTab/` + `GrowthTabContainer`: the heat
-  read, who's been walking in, the targeting levers, the advertising campaign, then the weekly
-  market report and the industry wire. Before this the readout lived on **Home** — whose charter
-  is glances only — and the campaign lever had been evicted to the console in #346 while the
-  console itself still rendered in the wrong tab.
-  **The wire and the weekly report MOVED, not copied.** `IndustryWire`, `WeeklyMarketReportCard`
-  and both their models are `git mv`'d out of `src/ui/HomeTab/` into `src/ui/GrowthTab/`; the
-  HomeTab barrel now carries a pointer comment instead of the exports. Leaving them under
-  `HomeTab/` would have been a lie in the tree for the next agent to trip on.
-  **Home keeps a glance that routes, and the glance can't disagree with the room.**
-  `buildMarketGlance` is a projection of the *console's own model* ("Buyers want SUVs most" /
-  "Running Local radio · $75/day"), not a hand-written summary — so drift is impossible by
-  construction. Both Home glances now deep-link: the market card and the gate strip each open
-  Growth (IA rule 4).
-  **The tier-gate board is the detail surface the gate never had.** `GateBoard` + the pure
-  `buildGateBoard`: each face opened up with every number the engine already computes (pace
-  line, cushion, still-to-go, per-day-needed, projected finish; threshold vs month-average vs
-  right-now; rolling average + window), then **the climb** — what the next rung asks for and how
-  many banked months stand in the way. Deliberately a **separate model from `gateStripModel`**:
-  "compress to one line" and "show all of it" are different jobs. No "% on track" here — that
-  compression is the glance's job. No bottleneck callout either (decision 2: facts, no coach).
-  **Two engine surfaces grew, both narrow.** `tierGate.getTierRequirements(tier)` returns a
-  tier's standing spec with **the same filter the month-end verdict uses**, so the board can
-  never foreshadow a bar the gate doesn't grade (facility is data-present/engine-dormant and is
-  excluded); `null` past the top of the ladder simply drops the climb section rather than
-  rendering a tease. And **the advertising campaign now costs money** — `dailyCost` on the
-  tunables schema, `getAdvertisingDailyCost()`, and a `clock:day_ended` `forceDebit`, the same
-  standing-spend shape ServiceMarketing's arms and the wire subscription already use. A demand
-  lever with no price is a strictly dominant choice; the spend is what makes the campaign
-  section a decision at all. The price rides every chip, so campaigns compare without selecting.
-  **`Sparkline` moved into the kit** — the CSI trend face renders in two surfaces now, and a
-  second hand-rolled copy would let them drift. `GrowthTab` joins `MIGRATED_SURFACES` in the
-  kit no-leak scan.
-  **The web drive found two defects, both fixed before commit.** (1) The campaign chips showed
-  no price at all — `advertisingOptions` carries a `dailyCost` *number* and the view wants a
-  formatted `costLabel`; the composition root never bridged them. (2) The climb read **"for 2
-  straight months"** directly above **"month 0 of 1"** — `ruleLabel` was quoting the NEXT tier's
-  streak when the months-to-climb is how long it takes to leave where you *are*. Both are locked
-  by tests.
-  **Driven on web at T1** (Continue, the Playtest R1 slot — left exactly as found, campaign
-  toggled back off): Home shows the two-line market glance with no readout/wire/report anywhere
-  → the glance opens the Demand Console → the gate strip opens the same tab → `Local radio ·
-  $75/day` selects in place and adds "Billed $75/day while it runs." → Home's glance updates to
-  "Running Local radio · $75/day" → `Next up: Tier 2` lists 15 units / $30,000 gross / $150,000
-  cash over "for one month to move up." 206 suites / **2558** tests, typecheck clean.
-  Next: **BUILD #350** (chart kit).

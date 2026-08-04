@@ -12,23 +12,6 @@ the row in the same commit as the ruling.
 
 ---
 
-## Phase 7 — A2 per-tier staff slots + facility scale · **ADJUDICATE** `[NEW]`
-
-> **Raised in priority by C1's R3 ruling (2026-08-02):** the CSV slot table *is* staff-teeth's
-> scarcity gate, and nothing enforces it today (`headcountCapByTier` is a flat 4/8/16, no
-> per-role breakdown). This gate should be ruled before or with phase 6's build.
-
-
-- **Scope:** §3 A2 (`path-to-finished-product.md:90`). Per-tier slot/lot caps in `data/` +
-  a roster surface showing filled/empty slots; service bays as facility slots.
-- **Load:** `docs/planning/Gameplay Loops and Dealership progression tiers.csv` (the counts:
-  T3 = 3 sales / 1 UCM / 1 F&I / 1 SA / 1 BSA; T4 = 6 sales / 2 SA / 2 BSA; lot sizes
-  6/12/35/75/120) · `docs/planning/manager-roles-channel-desk.md` · existing tier data under
-  `data/`.
-- **Locked:** the CSV is tier + profit-center truth; the channel-desk doc is manager truth
-  (`tier-progression-canon` memory). The counts are not the fork — the *shape* is.
-- **Record:** the A2 section, `[NEW]` replaced by the ruling; then SLICE phase 7.
-
 ## Phase 9 — B2 F&I plug-in #2 · **RESUME a parked grill**
 
 - **Scope:** §4 B2 (`path-to-finished-product.md:126`). Absorbs #151–#153.
@@ -99,5 +82,14 @@ the row in the same commit as the ruling.
 
 - **Phase 6 — C1 staff-teeth** · 2026-08-02 · `docs/planning/staff-teeth-design.md`.
   Daily wage by grade × role (commission rejected); raises are a played moment that also
-  carries poaching; CSV slot table is the scarcity cap. Next unit: SLICE phase 6 — but see
-  the A2 note above, C1's R3 made phase 7 a prerequisite.
+  carries poaching; CSV slot table is the scarcity cap. Its prerequisite (A2) is now ruled.
+
+- **Phase 7 — A2 staff slots + facility scale** · 2026-08-03 · `path-to-finished-product.md`
+  §3 A2 (the ruling is written into the section itself). **R1:** tier-up grants the CSV's staff
+  desks outright; lot spaces and bays are *bought* with cash + construction days up to the
+  tier's ceiling, and built÷ceiling lights the dormant `facility` tier-gate face. **R2:** the
+  lot cap governs *buying* — every owned unit takes a space (prep included), bidding is blocked
+  at capacity, and a trade always lands and may put you over, which simply freezes buying until
+  you're under. Overflow lots, forced wholesale, refused trades and soft caps are all recorded
+  there as rejected with reasons — do not reopen. A voluntary wholesale-out ships with A2.
+  Next unit: SLICE phases 6 and 7 together.

@@ -87,12 +87,99 @@ archetypes, tests) and unreachable. Since department throughput is `min(bays, ad
 - Add a **reachability test that hires an advisor through the UI layer** so this class of hole
   (engine-hireable, UI-invisible) can't recur.
 
-### A2. Per-tier staff slots + facility scale `[NEW — CSV-derived, needs your sign-off on shape]`
+### A2. Per-tier staff slots + facility scale `[LOCKED 2026-08-03 — ruled below]`
 The CSV staffs each tier with specific counts (T3: 3 sales, 1 UCM, 1 F&I, 1 SA, 1 BSA; T4: 6 sales,
 2 SA, 2 BSA…) and lot sizes (6/12/35/75/120). Nothing models slot counts or lot-size caps. Casual-player
-value: slots make hiring legible ("2 of 3 sales desks filled") and make tier-ups *feel* bigger. Proposal:
-per-tier slot/lot caps in `data/` + a roster surface that shows filled/empty slots. This is also the
-natural place bays live (service bays as facility slots).
+value: slots make hiring legible ("2 of 3 sales desks filled") and make tier-ups *feel* bigger. This is
+also the natural place bays live (service bays as facility slots). **C1's R3 made this load-bearing:**
+the CSV slot table *is* staff-teeth's scarcity cap, so the wage half of #6 does not bite alone until
+these slots exist (`staff-teeth-design.md` §6).
+
+The counts were never the question — the CSV is tier truth (`tier-progression-canon`). The *shape* was.
+Two director rulings, 2026-08-03:
+
+#### R1 — Desks come with the tier. Buildings are bought.
+
+Tier-up hands you the CSV's staff slots outright: reach T3 and three sales desks, a UCM chair, an F&I
+office, a service-advisor desk and a body-shop-advisor desk all appear, **empty and waiting**. Physical
+capacity is the thing you spend on — lot spaces in blocks, service bays, body bays — each with a cash
+cost and **construction days**, buildable up to that tier's ceiling (lot 6/12/35/75/120; service bays
+2/4/6; body bays 0/0/3/5/7). You arrive at a new tier holding the previous tier's built capacity and
+build up from there.
+
+Why this split and not the two ends of it:
+
+- **"Tier grants everything"** makes slots pure legibility with no money decision anywhere on the
+  ladder, and leaves `data/tier-gate.json`'s `facility` face ("Facility / Image", stepped, threshold 50
+  at T3) with nothing to measure — it would have to be deleted rather than lit.
+- **"Everything is bought"** puts a construction gate in front of *hiring*, on top of C1's hiring cost
+  and daily wage, and makes tier-up change nothing visible until you spend again.
+- The split keeps hiring legible the instant you tier up (A2's own stated value — tier-ups must *feel*
+  bigger), puts the cash decision where it competes with inventory (the real T1–T3 tension), and gives
+  the dormant `facility` gate face a number the player controls: **built capacity ÷ tier ceiling × 100**.
+
+Construction time is real (`data/` tunable, ~2–3 days), reusing the frontline-hold idiom from #295.
+Instant capacity reduces the decision to "do I have the cash"; a build delay makes you buy *ahead* of
+demand, which is the actual dealership decision. This answers the CSV's own open row 16
+("Time to upgrade? (construction time? Idk if necessary)").
+
+#### R2 — The lot cap governs **buying**. A trade always lands.
+
+Every car you own takes a space — including cars still inside their 2-day frontline hold and cars won
+at auction that aren't detailed yet. **One number: "31 of 35 spaces."** There is no off-lot state in the
+model and none is being invented: a `LotVehicle` exists from `arrivalDay` and accrues carrying cost from
+`arrivalDay`; recon is a cost, not a place, and the frontline hold only governs whether walk-ins can be
+shown the car (`src/game/Inventory/types.ts:88-114`). A car in prep is sitting on your lot costing you
+money whether or not it is out front.
+
+The cap is checked **at the bid**, counting units already won and inbound — you cannot win six cars into
+four spaces. At 35 of 35 the auction reads "no spaces open" and bidding is closed.
+
+A trade **always** comes in and can put you at 36 of 35, because the trade is part of a sale you already
+made. Being at or over capacity freezes buying until you are under again. That is the whole rule — no
+overflow lot, no forced dump, no new state; the count either has room or it doesn't. It is self-correcting
+by construction: a deal that brings a trade in also takes a car out, so trades net roughly zero and you
+are rarely over by more than one for more than a day, which is exactly why it needs no machinery.
+
+**Considered and rejected — do not reopen:**
+
+- *Forced wholesale on overrun* (agent-proposed): pick a unit to dump at book the moment you go over.
+  Rejected by the director — it reports a loss you already took rather than asking a question.
+- *An overflow lot* (director-proposed, then withdrawn by the director on inspection): park the overrun
+  unit off-lot, unsellable, recon paused, auto-promoting when a space opens. Killed because **an overflow
+  slot beats a wholesale at a loss in nearly every case**, so the choice only ever resolves one way — a
+  dominated option is a confirmation dialog, not a decision — and because parking it *keeps inventory the
+  same*: the trade neither helped nor hurt. It bought a second inventory list, paused recon clocks, FIFO
+  promotion, save fields and a UI surface for a moment that isn't a moment.
+- *Refusing the trade at the cap*: kills a sale mid-deal for a reason the player could not see coming.
+- *Soft cap with an overflow fee*: turns the ceiling into a running fee, and "match your inventory to
+  demand" loses the squeeze that made it a decision.
+- *Prep as its own capacity number*: two ceilings to read before a single bid, for a bottleneck the game
+  expresses today as a 2-day timer with no failure mode.
+
+#### Falls out of R2, and ships with A2
+
+**There is no voluntary wholesale-out today.** The only dump path is abandoning recon after a surprise
+(`src/game/Inventory/Inventory.ts:789`, #162). Lot-locked at 35 with three aged units and no way to turn
+them into cash is a dead end, so A2 adds **"wholesale this unit"** to the inventory card — on its own
+merits as the aged-inventory release valve, *not* as a full-lot penalty.
+
+#### Internal calls (made by the implementing agent; not director gates)
+
+1. `staffOrg.headcountCapByTier` is **deleted**, not kept beside the slot table — two caps that can
+   disagree is a bug waiting. The sum of the role slots is the headcount cap.
+2. Slot table is `data/`, role → count per tier. `StaffOrg` exposes `getSlots(role) → {filled, total}`.
+   `hire()` throws on a full role (the engine's lock), but the UI never offers a candidate for a full
+   role, so the player never meets the throw.
+3. Bays stop being per-tier constants (`serviceDispatch.baysByTier`, `bodyShopDispatch.baysByTier`) and
+   become owned, persisted facility state; the tier number becomes the ceiling. Both dispatch configs
+   read **one** bay provider — one bay truth. `min(bays, advisors)` is unchanged.
+4. New `src/game/Facility/` module owns built lot spaces, built bays and the facility score; emits
+   `facility:*`; everything reads it through a narrow provider.
+5. Save migration bumps the envelope and defaults existing saves to today's constants — no regression.
+6. PeopleTab's existing "N of cap" line (`src/ui/PeopleTab/PeopleTab.tsx:279`) becomes the per-role slot
+   board; an empty slot **is** the hire affordance.
+7. The `facility` tier-gate face stops being excluded from grading once the score has a producer.
 
 ### A3. Issue hygiene `[STALE]`
 Close #269 (Body Shop "anchor" — superseded by the shipped build), #266 (fire is surfaced), and #297

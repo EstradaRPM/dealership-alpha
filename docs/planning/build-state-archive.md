@@ -6,6 +6,55 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-02 — **BUILT #349** (Growth) — the tab stops being a placeholder card, and two
+  homeless surfaces get the room the locked IA assigned them.
+  **The demand console is one room now.** `src/ui/GrowthTab/` + `GrowthTabContainer`: the heat
+  read, who's been walking in, the targeting levers, the advertising campaign, then the weekly
+  market report and the industry wire. Before this the readout lived on **Home** — whose charter
+  is glances only — and the campaign lever had been evicted to the console in #346 while the
+  console itself still rendered in the wrong tab.
+  **The wire and the weekly report MOVED, not copied.** `IndustryWire`, `WeeklyMarketReportCard`
+  and both their models are `git mv`'d out of `src/ui/HomeTab/` into `src/ui/GrowthTab/`; the
+  HomeTab barrel now carries a pointer comment instead of the exports. Leaving them under
+  `HomeTab/` would have been a lie in the tree for the next agent to trip on.
+  **Home keeps a glance that routes, and the glance can't disagree with the room.**
+  `buildMarketGlance` is a projection of the *console's own model* ("Buyers want SUVs most" /
+  "Running Local radio · $75/day"), not a hand-written summary — so drift is impossible by
+  construction. Both Home glances now deep-link: the market card and the gate strip each open
+  Growth (IA rule 4).
+  **The tier-gate board is the detail surface the gate never had.** `GateBoard` + the pure
+  `buildGateBoard`: each face opened up with every number the engine already computes (pace
+  line, cushion, still-to-go, per-day-needed, projected finish; threshold vs month-average vs
+  right-now; rolling average + window), then **the climb** — what the next rung asks for and how
+  many banked months stand in the way. Deliberately a **separate model from `gateStripModel`**:
+  "compress to one line" and "show all of it" are different jobs. No "% on track" here — that
+  compression is the glance's job. No bottleneck callout either (decision 2: facts, no coach).
+  **Two engine surfaces grew, both narrow.** `tierGate.getTierRequirements(tier)` returns a
+  tier's standing spec with **the same filter the month-end verdict uses**, so the board can
+  never foreshadow a bar the gate doesn't grade (facility is data-present/engine-dormant and is
+  excluded); `null` past the top of the ladder simply drops the climb section rather than
+  rendering a tease. And **the advertising campaign now costs money** — `dailyCost` on the
+  tunables schema, `getAdvertisingDailyCost()`, and a `clock:day_ended` `forceDebit`, the same
+  standing-spend shape ServiceMarketing's arms and the wire subscription already use. A demand
+  lever with no price is a strictly dominant choice; the spend is what makes the campaign
+  section a decision at all. The price rides every chip, so campaigns compare without selecting.
+  **`Sparkline` moved into the kit** — the CSI trend face renders in two surfaces now, and a
+  second hand-rolled copy would let them drift. `GrowthTab` joins `MIGRATED_SURFACES` in the
+  kit no-leak scan.
+  **The web drive found two defects, both fixed before commit.** (1) The campaign chips showed
+  no price at all — `advertisingOptions` carries a `dailyCost` *number* and the view wants a
+  formatted `costLabel`; the composition root never bridged them. (2) The climb read **"for 2
+  straight months"** directly above **"month 0 of 1"** — `ruleLabel` was quoting the NEXT tier's
+  streak when the months-to-climb is how long it takes to leave where you *are*. Both are locked
+  by tests.
+  **Driven on web at T1** (Continue, the Playtest R1 slot — left exactly as found, campaign
+  toggled back off): Home shows the two-line market glance with no readout/wire/report anywhere
+  → the glance opens the Demand Console → the gate strip opens the same tab → `Local radio ·
+  $75/day` selects in place and adds "Billed $75/day while it runs." → Home's glance updates to
+  "Running Local radio · $75/day" → `Next up: Tier 2` lists 15 units / $30,000 gross / $150,000
+  cash over "for one month to move up." 206 suites / **2558** tests, typecheck clean.
+  Next: **BUILD #350** (chart kit).
+
 - 2026-08-02 — **BUILT #348** (in-tab navigation stacks) — the structural half of phase 5c.
   Walking into a room no longer costs you the console.
   **The route map split in two, and the compiler enforces it.** `RootRouteParamMap` holds the
