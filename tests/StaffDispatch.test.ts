@@ -59,6 +59,8 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
     headcountCap: Infinity,
     getSlots: (roleId: string) => ({ roleId, filled: 0, total: Infinity }),
     getSlotBoard: () => [],
+    dailyPayroll: 0,
+    getPayBoard: () => [],
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},
@@ -311,7 +313,7 @@ function setup(
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
   createGameClock({ bus });
-  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
   const queue = createDepartmentQueue({ bus });
   const lot = opts.lot ?? [makeLotVehicle('veh:1')];
   const lotMap = new Map(lot.map(v => [v.id, v]));

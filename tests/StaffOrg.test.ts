@@ -3,8 +3,11 @@ import { createGameClock } from '../src/game/GameClock';
 import { createEconomy } from '../src/game/Economy';
 import { createStaffOrg, StaffOrgError, loadStaffOrgConfig } from '../src/game/StaffOrg';
 import { loadStaffTaxonomy, loadStaffArchetypes } from '../src/game/NPC';
-import type { StaffOrgConfig, StaffSlotTable } from '../src/game/StaffOrg';
+import type { StaffOrgConfig, StaffSlotTable, StaffPayTable } from '../src/game/StaffOrg';
+import { loadStaffPay, gradeFor, dailyWageFor } from '../src/game/StaffOrg';
+import { compositeRatio } from '../src/game/NPC';
 import { slotsEverywhere } from './helpers/staffSlots';
+import { flatPay, noPay } from './helpers/staffPay';
 
 const STARTING_CASH = 50_000;
 const MASTER_SEED = 99;
@@ -12,7 +15,7 @@ const MASTER_SEED = 99;
 const taxonomy = loadStaffTaxonomy();
 const archetypes = loadStaffArchetypes();
 
-const NO_OVERHEAD = { weeklyRent: 0, weeklyPayrollStub: 0 };
+const NO_OVERHEAD = { weeklyRent: 0 };
 const CHEAP_CONFIG: StaffOrgConfig = {
   hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
   candidatesPerRole: 3,
@@ -25,11 +28,16 @@ const CHEAP_CONFIG: StaffOrgConfig = {
 };
 
 const ROOMY_SLOTS = slotsEverywhere(9);
+// Wages off by default, same reasoning as ROOMY_SLOTS: a hiring or promotion
+// test should not go red the next time someone tunes `data/staff-pay.json`.
+// The wage suites below pass their own table.
+const NO_PAY = noPay();
 
 function makeSetup(
   startingCash = STARTING_CASH,
   config = CHEAP_CONFIG,
   slots = ROOMY_SLOTS,
+  pay: StaffPayTable = NO_PAY,
 ) {
   const bus = createEventBus();
   const clock = createGameClock({ bus });
@@ -42,6 +50,7 @@ function makeSetup(
     archetypes,
     config,
     slots,
+    pay,
   });
   return { bus, clock, economy, staffOrg };
 }
@@ -397,7 +406,7 @@ describe('StaffOrg — Body Shop hire-tier gating', () => {
   function makeSetupWithTier(tier: number) {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
-    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: { weeklyRent: 0 } });
     const staffOrg = createStaffOrg({
       bus,
       economy,
@@ -449,7 +458,7 @@ describe('StaffOrg — F&I Manager hire-tier gating', () => {
   function makeSetupWithTier(tier: number, startingCash = STARTING_CASH) {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
-    const economy = createEconomy({ bus, startingCash, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const economy = createEconomy({ bus, startingCash, config: { weeklyRent: 0 } });
     const staffOrg = createStaffOrg({
       bus,
       economy,
@@ -496,7 +505,7 @@ describe('StaffOrg — F&I Manager hire-tier gating', () => {
   it('getCandidates skips tier check when getTier dep is not provided', () => {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
-    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: { weeklyRent: 0 } });
     const staffOrg = createStaffOrg({
       bus, economy, masterSeed: MASTER_SEED, taxonomy, archetypes, config: CHEAP_CONFIG,
       // no getTier dep
@@ -523,7 +532,7 @@ describe('StaffOrg — GM hire-tier gating', () => {
   function makeSetupWithTier(tier: number, startingCash = STARTING_CASH) {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
-    const economy = createEconomy({ bus, startingCash, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const economy = createEconomy({ bus, startingCash, config: { weeklyRent: 0 } });
     const staffOrg = createStaffOrg({
       bus,
       economy,
@@ -678,6 +687,232 @@ describe('StaffOrg — a regenerated pool never offers someone already hired', (
 
     expect(reloaded.getCandidates('salesperson')).toHaveLength(
       CHEAP_CONFIG.candidatesPerRole,
+    );
+  });
+});
+
+// ── Grade + wage: the salary book (#353, C1 R1) ──────────────────────────────
+
+const WAGE_TABLE: StaffPayTable = {
+  gradeBands: [0.32, 0.46, 0.6, 0.76],
+  hireFeeMultiple: 5,
+  dailyWageByRole: {
+    ...flatPay(0).dailyWageByRole,
+    salesperson: { '1': 150, '2': 230, '3': 340, '4': 520, '5': 780 },
+    'used-car-manager': { '1': 280, '2': 380, '3': 520, '4': 710, '5': 970 },
+  },
+};
+
+function wageSetup(startingCash = STARTING_CASH) {
+  return makeSetup(startingCash, CHEAP_CONFIG, ROOMY_SLOTS, WAGE_TABLE);
+}
+
+describe('StaffOrg — derived grade', () => {
+  it('derives grade 1 through 5 from the effectiveness bands', () => {
+    // Drive the derivation across the whole ladder by handing it hand-built
+    // skill sets rather than hoping the archetype pool covers all five: the
+    // ratio is what the grade is banded on, so state the ratio.
+    const bands = WAGE_TABLE.gradeBands;
+    const skillsAt = (value: number) => ({
+      product_knowledge: value,
+      communication: value,
+      rapport_building: value,
+    });
+    const gradeAt = (value: number) =>
+      gradeFor(compositeRatio(skillsAt(value), taxonomy.skills, 'effectiveness'), bands);
+
+    expect(gradeAt(0)).toBe(1);
+    expect(gradeAt(20)).toBe(1);
+    expect(gradeAt(40)).toBe(2);
+    expect(gradeAt(50)).toBe(3);
+    expect(gradeAt(70)).toBe(4);
+    expect(gradeAt(100)).toBe(5);
+  });
+
+  it('exposes grade and daily wage per roster member', () => {
+    const { clock, staffOrg } = wageSetup();
+    clock.advanceDay();
+    const candidate = staffOrg.getCandidates('salesperson')[0];
+    staffOrg.hire(candidate.candidateId);
+
+    const board = staffOrg.getPayBoard();
+    expect(board).toHaveLength(1);
+    expect(board[0].staffId).toBe(candidate.staff.id);
+    expect(board[0].roleId).toBe('salesperson');
+    expect(board[0].grade).toBeGreaterThanOrEqual(1);
+    expect(board[0].grade).toBeLessThanOrEqual(5);
+    expect(board[0].dailyWage).toBe(
+      dailyWageFor(WAGE_TABLE, 'salesperson', board[0].paidGrade),
+    );
+  });
+
+  it('lists a grade and a daily wage on every candidate', () => {
+    const { clock, staffOrg } = wageSetup();
+    clock.advanceDay();
+    for (const c of staffOrg.getCandidates('salesperson')) {
+      expect(c.grade).toBeGreaterThanOrEqual(1);
+      expect(c.dailyWage).toBe(dailyWageFor(WAGE_TABLE, 'salesperson', c.grade));
+    }
+  });
+
+  it('grades a stronger candidate above a weaker one', () => {
+    const { clock, staffOrg } = wageSetup();
+    clock.advanceDay();
+    const listings = [...staffOrg.getCandidates('salesperson')].sort(
+      (a, b) => a.staff.effectivenessRatio - b.staff.effectivenessRatio,
+    );
+    expect(listings[0].grade).toBeLessThanOrEqual(listings[listings.length - 1].grade);
+    expect(listings[0].dailyWage).toBeLessThanOrEqual(
+      listings[listings.length - 1].dailyWage,
+    );
+  });
+
+  it('throws for a role the pay book does not name', () => {
+    const { clock, staffOrg } = makeSetup(STARTING_CASH, CHEAP_CONFIG, ROOMY_SLOTS, {
+      ...WAGE_TABLE,
+      dailyWageByRole: { 'lot-porter': { '1': 1, '2': 1, '3': 1, '4': 1, '5': 1 } },
+    });
+    clock.advanceDay();
+    expect(() => staffOrg.getCandidates('salesperson')).toThrow(StaffOrgError);
+  });
+});
+
+describe('StaffOrg — paidGrade', () => {
+  it('stamps paidGrade at hire', () => {
+    const { clock, staffOrg } = wageSetup();
+    clock.advanceDay();
+    const candidate = staffOrg.getCandidates('salesperson')[0];
+    expect(candidate.staff.paidGrade).toBeUndefined();
+
+    staffOrg.hire(candidate.candidateId);
+
+    const hired = staffOrg.currentRoster[0];
+    expect(hired.paidGrade).toBe(candidate.grade);
+    expect(staffOrg.getPayBoard()[0].paidGrade).toBe(candidate.grade);
+  });
+
+  it('serializes, so a reloaded roster is paid what it was paid', () => {
+    const { clock, staffOrg } = wageSetup();
+    clock.advanceDay();
+    staffOrg.hire(staffOrg.getCandidates('salesperson')[0].candidateId);
+    const before = staffOrg.getPayBoard()[0];
+
+    const reloaded = wageSetup().staffOrg;
+    reloaded.restore(JSON.parse(JSON.stringify(staffOrg.snapshot())));
+
+    expect(reloaded.getPayBoard()[0]).toEqual(before);
+  });
+
+  it('materializes paidGrade for a roster saved before the wage book existed', () => {
+    const { clock, staffOrg } = wageSetup();
+    clock.advanceDay();
+    staffOrg.hire(staffOrg.getCandidates('salesperson')[0].candidateId);
+
+    const snap = JSON.parse(JSON.stringify(staffOrg.snapshot()));
+    for (const s of snap.roster) delete s.paidGrade;
+
+    const reloaded = wageSetup().staffOrg;
+    reloaded.restore(snap);
+
+    const row = reloaded.getPayBoard()[0];
+    expect(row.paidGrade).toBe(row.grade);
+    expect(row.dailyWage).toBe(dailyWageFor(WAGE_TABLE, 'salesperson', row.grade));
+  });
+
+  it('growth does not silently reprice — the wage tracks paidGrade, not the current grade', () => {
+    const { clock, staffOrg } = wageSetup();
+    clock.advanceDay();
+    staffOrg.hire(staffOrg.getCandidates('salesperson')[0].candidateId);
+    const hiredWage = staffOrg.getPayBoard()[0].dailyWage;
+
+    for (let i = 0; i < 200; i++) clock.advanceDay();
+
+    const row = staffOrg.getPayBoard()[0];
+    expect(row.dailyWage).toBe(hiredWage);
+    expect(row.grade).toBeGreaterThanOrEqual(row.paidGrade);
+  });
+});
+
+describe('StaffOrg — dailyPayroll', () => {
+  it('is zero with nobody on the roster', () => {
+    expect(wageSetup().staffOrg.dailyPayroll).toBe(0);
+  });
+
+  it('sums the roster and grows with each hire', () => {
+    const { clock, staffOrg } = wageSetup();
+    clock.advanceDay();
+    const candidates = staffOrg.getCandidates('salesperson');
+
+    staffOrg.hire(candidates[0].candidateId);
+    const one = staffOrg.dailyPayroll;
+    expect(one).toBe(candidates[0].dailyWage);
+
+    staffOrg.hire(candidates[1].candidateId);
+    expect(staffOrg.dailyPayroll).toBe(one + candidates[1].dailyWage);
+  });
+
+  it('drops when someone leaves', () => {
+    const { clock, staffOrg } = wageSetup();
+    clock.advanceDay();
+    staffOrg.hire(staffOrg.getCandidates('salesperson')[0].candidateId);
+    staffOrg.fire(staffOrg.currentRoster[0].id);
+    expect(staffOrg.dailyPayroll).toBe(0);
+  });
+
+  it('reprices on promotion — a manager costs manager money', () => {
+    // The wage is role × paidGrade, so a promotion moves it without touching
+    // `paidGrade`: you took the desk, you get the desk's pay.
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const staffOrg = createStaffOrg({
+      bus,
+      economy,
+      masterSeed: MASTER_SEED,
+      taxonomy,
+      archetypes,
+      config: CHEAP_CONFIG,
+      slots: ROOMY_SLOTS,
+      pay: WAGE_TABLE,
+      getTier: () => 3,
+    });
+    clock.advanceDay();
+
+    const best = [...staffOrg.getCandidates('salesperson')].sort(
+      (a, b) => b.staff.effectiveness - a.staff.effectiveness,
+    )[0];
+    staffOrg.hire(best.candidateId);
+    const staffId = staffOrg.currentRoster[0].id;
+    const salesWage = staffOrg.dailyPayroll;
+    const paidGrade = staffOrg.getPayBoard()[0].paidGrade;
+
+    staffOrg.promote(staffId, 'used-car-manager');
+
+    const row = staffOrg.getPayBoard()[0];
+    expect(row.paidGrade).toBe(paidGrade);
+    expect(row.dailyWage).toBe(dailyWageFor(WAGE_TABLE, 'used-car-manager', paidGrade));
+    expect(staffOrg.dailyPayroll).not.toBe(salesWage);
+  });
+});
+
+describe('StaffOrg — the shipped pay book', () => {
+  it('is what an unwired StaffOrg falls back to', () => {
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+    const staffOrg = createStaffOrg({
+      bus,
+      economy,
+      masterSeed: MASTER_SEED,
+      taxonomy,
+      archetypes,
+      config: CHEAP_CONFIG,
+      slots: ROOMY_SLOTS,
+    });
+    clock.advanceDay();
+    const candidate = staffOrg.getCandidates('salesperson')[0];
+    expect(candidate.dailyWage).toBe(
+      dailyWageFor(loadStaffPay(), 'salesperson', candidate.grade),
     );
   });
 });

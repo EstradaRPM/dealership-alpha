@@ -16,7 +16,7 @@ import type { CharacterProfile } from '../src/game/CareerProgression';
 // recon-complete, deterministic from masterSeed and persisted via the snapshot.
 
 const STARTING_CASH = 50_000;
-const NO_OVERNIGHT = { weeklyRent: 0, weeklyPayrollStub: 0 };
+const NO_OVERNIGHT = { weeklyRent: 0 };
 const VEHICLE_DATA = loadVehicleData();
 const SEED_CONFIG = loadStartingInventoryConfig();
 

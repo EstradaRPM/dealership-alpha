@@ -11,7 +11,7 @@ import {
 import type { Inventory, LotVehicle, CarryingConfig } from '../src/game/Inventory';
 
 const STARTING_CASH = 1_000_000;
-const NO_OVERNIGHT = { weeklyRent: 0, weeklyPayrollStub: 0 };
+const NO_OVERNIGHT = { weeklyRent: 0 };
 const VEHICLE_DATA = loadVehicleData();
 const BASE_CONFIG = loadInventoryConfig();
 

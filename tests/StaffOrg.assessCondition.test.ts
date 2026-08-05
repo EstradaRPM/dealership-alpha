@@ -22,7 +22,7 @@ const READ_CFG: ConditionReadConfig = {
   widthSkillExponent: 0.7,
 };
 
-const NO_OVERHEAD = { weeklyRent: 0, weeklyPayrollStub: 0 };
+const NO_OVERHEAD = { weeklyRent: 0 };
 const CHEAP_CONFIG: StaffOrgConfig = {
   hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
   candidatesPerRole: 3,

@@ -5,7 +5,15 @@ Shared people-and-traits substrate used by `CustomerPool`, `StaffOrg`, and `Comp
 ## Public API (`index.ts`)
 - Traits: `resolveEffects`, `TraitAppliesError`, `loadTraitTaxonomy`. Types: `Trait`, `TraitSet`.
 - Names (#347): `rollPersonName(masterSeed, entityId, catalog?)` → `"First Last"`, `loadPersonNameCatalog`, `PERSON_NAME_NAMESPACE`, `PersonNameCatalogSchema`. Type: `PersonNameCatalog`. Draws `first × last` from `data/person-names.json`. **Derived, never stored** — the same reasoning as the per-hire skill cap (#294): `(masterSeed, entityId)` fully determines the name, so it costs no field on `Staff`, no change to the `.strict()` schema, and **no save migration**. The name pool is a static catalog (loaded once inside the factory), not a per-world tunable, so it is not threaded through as a dep — an optional dep would mean a nameless person on whichever path forgot it.
-- Staff: `loadStaffTaxonomy`, `loadStaffArchetypes`, `createStaff`, `promoteStaff`, `effectiveSkillValue`, `computeEffectiveSkills`. Types: `Staff`, `StaffRole`, `StaffSkill`, `CreateStaffContext`, `CreateStaffDeps`, `StaffWithComposites`.
+- Staff: `loadStaffTaxonomy`, `loadStaffArchetypes`, `createStaff`, `promoteStaff`, `effectiveSkillValue`, `computeEffectiveSkills`, `compositeRatio`. Types: `Staff`, `StaffRole`, `StaffSkill`, `CreateStaffContext`, `CreateStaffDeps`, `StaffWithComposites`.
+  - **`compositeRatio(skillValues, catalog, key)` (#353)** — the one formula behind the 0–1
+    composite read, taking the skill values rather than the `Staff` record so it serves both
+    readings: the `effectivenessRatio` getter passes the **base** skills (what every gate is
+    calibrated against), and `StaffOrg`'s grade derivation passes the **grown**
+    `effectiveSkills`, so a person's grade climbs with tenure while the gates stay put.
+  - **`paidGrade` (#353)** — the one pay field on `Staff` (optional, serialized). Deliberately
+    NOT set by `createStaff`/`promoteStaff`: a candidate on the board is not on a payroll.
+    `StaffOrg.hire` stamps it; see `StaffOrg/CLAUDE.md`.
   - **Name (#347):** `StaffWithComposites` carries a non-enumerable `name` getter beside `effectiveness`/`trustworthiness`/`effectiveSkills`, attached on every path (`createStaff`, `rehydrateStaff`, `promoteStaff`) so a rehydrated roster comes back as the same people.
   - **Composite ratios (#347):** `effectivenessRatio` / `trustworthinessRatio` are the two composites divided by the ceiling *that staffer's own skill set* implies (the sum of the mapped weights). The raw composites are weighted **sums**, so their range is role-dependent — 1.5 for a three-axis salesperson, 3.7 for a six-axis UCM — which read as "Work quality 275%" on a staff card and made two roles incomparable. **Surfaces render the ratio; every gate keeps reading the raw composite** (re-scaling those would move every threshold in `staff-roles.json`, which is C1/C2's call).
   - **Skill labels (#347):** every entry in `data/staff-skills.json` carries a required plain-language `label` — a surface renders that, never a de-slugged id (`t_o_closing` → "Closing a stalled deal", not "t o closing").

@@ -16,10 +16,15 @@ Money ledger. Posts revenue and expense entries, computes P&L summaries.
 
 ## Events
 - **Emits:** `economy:revenue_posted`, `economy:expense_posted` (every post produces one of these).
-- **Consumes:** `deal:closed` (post sale revenue), `staff:hired` (hiring cost), `clock:overnight_payroll` (recurring payroll), `inventory:vehicle_purchased` (auction cost), `service:ticket_closed` (service revenue), `clock:day_ended` + `clock:day_started` (the day cursor every ledger entry is stamped with).
+- **Consumes:** `deal:closed` (post sale revenue), `staff:hired` (hiring cost), `clock:overnight_payroll` (**weekly rent only** — the "Payroll" line on that same phase is posted by StaffOrg since #353), `inventory:vehicle_purchased` (auction cost), `service:ticket_closed` (service revenue), `clock:day_ended` + `clock:day_started` (the day cursor every ledger entry is stamped with).
 
 ## Data
 - `data/tunables.json` — economy section (interest, fees, recurring expenses).
+  `economy.tier1` is **`weeklyRent` only**. `weeklyPayrollStub` was deleted in #353 (JSON *and*
+  `EconomyConfigSchema`, same commit) — it was a flat $800/week that made your fifth hire free.
+  Do not add a payroll number back here: `StaffOrg` owns the salary book because it owns the
+  roster, and two numbers that can disagree about what staff cost is the bug that deletion
+  prevents.
 
 ## Notes
 - Single source of truth for cash. Never mutate balances elsewhere — always emit/post through Economy.

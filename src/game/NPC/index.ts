@@ -13,6 +13,7 @@ export {
   rehydrateStaff,
   effectiveSkillValue,
   computeEffectiveSkills,
+  compositeRatio,
 } from './factories/StaffFactory';
 export type {
   CreateStaffContext,

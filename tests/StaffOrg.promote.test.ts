@@ -38,7 +38,7 @@ function setup(
   const economy = createEconomy({
     bus,
     startingCash: 100_000,
-    config: { weeklyRent: 0, weeklyPayrollStub: 0 },
+    config: { weeklyRent: 0 },
   });
   let currentTier = tier;
   const staffOrg = createStaffOrg({
@@ -104,7 +104,7 @@ describe('StaffOrg — promote', () => {
     const economy = createEconomy({
       bus,
       startingCash: 100_000,
-      config: { weeklyRent: 0, weeklyPayrollStub: 0 },
+      config: { weeklyRent: 0 },
     });
     const staffOrg = createStaffOrg({
       bus,

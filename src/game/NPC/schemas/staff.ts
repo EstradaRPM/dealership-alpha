@@ -82,6 +82,18 @@ export const StaffSchema = z
     skills: z.record(z.string().min(1), z.number().min(0).max(100)),
     resources: StaffResourcesSchema,
     counters: StaffCountersSchema,
+    // The grade this person is PAID at (#353, C1 internal call 2) — stamped by
+    // StaffOrg when they are hired and moved only when a raise is accepted.
+    // Current grade is derived from grown skills and climbs on its own;
+    // `currentGrade > paidGrade` IS the raise trigger, so the whole mechanic
+    // costs one number and no state machine. Deliberately NOT set by the
+    // factories: a candidate on the board is not on anyone's payroll, and this
+    // is the only field on `Staff` that means "employed here".
+    //
+    // Optional because saves predating the wage book lack it (StaffOrg.restore
+    // materializes it from the member's current derived grade) and because the
+    // candidate pool carries `Staff` records that have never been hired.
+    paidGrade: z.number().int().min(1).max(5).optional(),
   })
   .strict();
 

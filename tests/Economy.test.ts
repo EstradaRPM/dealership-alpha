@@ -2,10 +2,14 @@ import { createEventBus } from '../src/game/EventBus';
 import { createGameClock, DAYS_PER_WEEK } from '../src/game/GameClock';
 import { createEconomy } from '../src/game/Economy';
 import { createInventory, loadVehicleData } from '../src/game/Inventory';
+import { createStaffOrg, loadStaffOrgConfig } from '../src/game/StaffOrg';
+import { loadStaffTaxonomy, loadStaffArchetypes } from '../src/game/NPC';
+import { slotsEverywhere } from './helpers/staffSlots';
+import { flatPay } from './helpers/staffPay';
 
 const STARTING_CASH = 50_000;
-const CONFIG = { weeklyRent: 1200, weeklyPayrollStub: 800 };
-const NO_OVERHEAD = { weeklyRent: 0, weeklyPayrollStub: 0 };
+const CONFIG = { weeklyRent: 1200 };
+const NO_OVERHEAD = { weeklyRent: 0 };
 
 function makeSetup(startingCash = STARTING_CASH, config = NO_OVERHEAD) {
   const bus = createEventBus();
@@ -195,18 +199,16 @@ describe('Economy — overnight recurring expenses', () => {
     expect(economy.cash).toBe(STARTING_CASH);
   });
 
-  it('rent and payroll post on day 7 (end of week 1)', () => {
+  it('rent posts on day 7 (end of week 1)', () => {
     const { clock, economy } = makeSetup(STARTING_CASH, CONFIG);
     for (let i = 0; i < DAYS_PER_WEEK; i++) clock.advanceDay();
-    const expected = STARTING_CASH - CONFIG.weeklyRent - CONFIG.weeklyPayrollStub;
-    expect(economy.cash).toBe(expected);
+    expect(economy.cash).toBe(STARTING_CASH - CONFIG.weeklyRent);
   });
 
   it('recurring expenses post again at week 2 boundary', () => {
     const { clock, economy } = makeSetup(STARTING_CASH, CONFIG);
     for (let i = 0; i < DAYS_PER_WEEK * 2; i++) clock.advanceDay();
-    const expected = STARTING_CASH - 2 * (CONFIG.weeklyRent + CONFIG.weeklyPayrollStub);
-    expect(economy.cash).toBe(expected);
+    expect(economy.cash).toBe(STARTING_CASH - 2 * CONFIG.weeklyRent);
   });
 
   it('P&L correctness holds over a multi-week window with recurring overheads', () => {
@@ -220,18 +222,106 @@ describe('Economy — overnight recurring expenses', () => {
     const pnl = economy.getPnL(1, DAYS_PER_WEEK * weeks);
 
     expect(cashAfter - cashBefore).toBe(pnl.netIncome);
-    expect(pnl.totalExpenses).toBe(weeks * (CONFIG.weeklyRent + CONFIG.weeklyPayrollStub));
+    expect(pnl.totalExpenses).toBe(weeks * CONFIG.weeklyRent);
     expect(pnl.totalRevenue).toBe(0);
     expect(pnl.netIncome).toBe(-pnl.totalExpenses);
   });
 
-  it('rent entry is labelled "Rent" and payroll entry "Payroll"', () => {
+  it('rent entry is labelled "Rent"', () => {
     const { clock, economy } = makeSetup(STARTING_CASH, CONFIG);
     for (let i = 0; i < DAYS_PER_WEEK; i++) clock.advanceDay();
     const pnl = economy.getPnL(1, DAYS_PER_WEEK);
-    const labels = pnl.entries.map((e) => e.label);
-    expect(labels).toContain('Rent');
-    expect(labels).toContain('Payroll');
+    expect(pnl.entries.map((e) => e.label)).toContain('Rent');
+  });
+
+  it('posts no payroll of its own — the roster owns that number (#353)', () => {
+    const { clock, economy } = makeSetup(STARTING_CASH, CONFIG);
+    for (let i = 0; i < DAYS_PER_WEEK * 2; i++) clock.advanceDay();
+    const pnl = economy.getPnL(1, DAYS_PER_WEEK * 2);
+    expect(pnl.entries.map((e) => e.label)).not.toContain('Payroll');
+  });
+});
+
+// ── The daily payroll drain (#353) ────────────────────────────────────────────
+//
+// StaffOrg owns the salary book; Economy posts what it is handed. These assert
+// the seam from Economy's side: what actually lands in the ledger.
+
+describe('Economy — daily payroll drain', () => {
+  const WAGE = 300;
+
+  function makePayrollSetup(startingCash = STARTING_CASH) {
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({
+      bus,
+      startingCash,
+      config: NO_OVERHEAD,
+      getCurrentDay: () => clock.currentDay,
+    });
+    const staffOrg = createStaffOrg({
+      bus,
+      economy,
+      masterSeed: 7,
+      taxonomy: loadStaffTaxonomy(),
+      archetypes: loadStaffArchetypes(),
+      slots: slotsEverywhere(9),
+      pay: flatPay(WAGE),
+      config: {
+        hiringCostByTier: { worker: 0, 'customer-facing': 0, manager: 0, gm: 0 },
+        candidatesPerRole: 3,
+        conditionRead: loadStaffOrgConfig().conditionRead,
+      },
+    });
+    return { bus, clock, economy, staffOrg };
+  }
+
+  function hireN(staffOrg: ReturnType<typeof makePayrollSetup>['staffOrg'], n: number): void {
+    const candidates = staffOrg.getCandidates('salesperson');
+    for (let i = 0; i < n; i++) staffOrg.hire(candidates[i].candidateId);
+  }
+
+  it('posts daily payroll as the sum of the roster\'s wages', () => {
+    const { clock, economy, staffOrg } = makePayrollSetup();
+    hireN(staffOrg, 3);
+    const cashBefore = economy.cash;
+
+    clock.advanceDay();
+
+    const payroll = economy
+      .getPnL(1, 1)
+      .entries.filter((e) => e.label === 'Payroll');
+    expect(payroll).toHaveLength(1);
+    expect(payroll[0].amount).toBe(3 * WAGE);
+    expect(economy.cash).toBe(cashBefore - 3 * WAGE);
+  });
+
+  it('posts nothing when nobody is on the roster', () => {
+    const { clock, economy } = makePayrollSetup();
+    const cashBefore = economy.cash;
+
+    for (let i = 0; i < 3; i++) clock.advanceDay();
+
+    expect(economy.cash).toBe(cashBefore);
+    expect(economy.getPnL(1, 3).entries).toHaveLength(0);
+  });
+
+  it('charges every night, not once a week — the fifth hire costs five wages', () => {
+    const { clock, economy, staffOrg } = makePayrollSetup();
+    hireN(staffOrg, 1);
+    const cashBefore = economy.cash;
+
+    for (let i = 0; i < 3; i++) clock.advanceDay();
+
+    expect(cashBefore - economy.cash).toBe(3 * WAGE);
+  });
+
+  it('pushes cash negative rather than throwing — payroll is an obligation', () => {
+    const { clock, economy, staffOrg } = makePayrollSetup(WAGE);
+    hireN(staffOrg, 2);
+
+    expect(() => clock.advanceDay()).not.toThrow();
+    expect(economy.cash).toBe(WAGE - 2 * WAGE);
   });
 });
 

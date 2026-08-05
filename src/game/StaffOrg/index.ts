@@ -6,9 +6,19 @@ export type {
   ConditionAssessInput,
   PromotionOption,
   RoleSlots,
+  StaffPay,
 } from './StaffOrg';
 export { loadStaffSlots, slotTotalFor, StaffSlotTableSchema, MAX_TIER } from './staffSlots';
 export type { StaffSlotTable } from './staffSlots';
+export {
+  loadStaffPay,
+  gradeFor,
+  dailyWageFor,
+  StaffPayTableSchema,
+  MIN_GRADE,
+  MAX_GRADE,
+} from './staffPay';
+export type { StaffPayTable } from './staffPay';
 export type { CandidateListing, StaffWithComposites } from './types';
 export { loadStaffOrgConfig } from './staffOrgData';
 export type { StaffOrgConfig, ConditionReadConfig } from './staffOrgData';

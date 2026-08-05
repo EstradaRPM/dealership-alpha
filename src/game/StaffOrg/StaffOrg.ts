@@ -6,11 +6,13 @@ import {
   createStaff,
   rehydrateStaff,
   promoteStaff,
+  compositeRatio,
   type StaffWithComposites,
 } from '../NPC/factories/StaffFactory';
 import type { Staff } from '../NPC/schemas/staff';
 import { loadStaffOrgConfig, type StaffOrgConfig } from './staffOrgData';
 import { loadStaffSlots, slotTotalFor, type StaffSlotTable } from './staffSlots';
+import { loadStaffPay, gradeFor, dailyWageFor, type StaffPayTable } from './staffPay';
 import type { CandidateListing } from './types';
 import {
   computeConditionRead,
@@ -47,6 +49,13 @@ export interface StaffOrgDeps {
    * exercising instead of depending on shipped balance numbers.
    */
   slots?: StaffSlotTable;
+  /**
+   * The salary book (#353) — daily wage per role × grade, plus the grade bands.
+   * Defaults to `data/staff-pay.json`; injectable so a test can state the wages
+   * it is exercising (or opt out of the drain entirely) instead of depending on
+   * shipped balance numbers.
+   */
+  pay?: StaffPayTable;
   getTier?: () => number;
   /**
    * Hidden-truth provider for the UCM condition read (#163). Receives the
@@ -99,6 +108,27 @@ export interface RoleSlots {
   readonly total: number;
 }
 
+/**
+ * What one roster member costs (#353, C1 R1). The People surface reads this
+ * rather than re-deriving a wage from the pay book, so the number on the card
+ * is the number the ledger charges.
+ *
+ * `grade` and `paidGrade` are deliberately two fields. Growth never silently
+ * reprices anyone (R2): the wage tracks the grade the person was **hired at**,
+ * and when their ability outgrows it they come and ask. `grade > paidGrade` is
+ * the whole raise trigger.
+ */
+export interface StaffPay {
+  readonly staffId: string;
+  readonly roleId: string;
+  /** Current, derived from grown skills — climbs with tenure and closed deals. */
+  readonly grade: number;
+  /** The grade the wage is set at; moves only when a raise is accepted. */
+  readonly paidGrade: number;
+  /** `wage(role, paidGrade)` — exactly what the daily drain charges. */
+  readonly dailyWage: number;
+}
+
 export interface StaffOrg {
   readonly currentRoster: readonly StaffWithComposites[];
   /**
@@ -119,6 +149,17 @@ export interface StaffOrg {
    * keeps the screen from re-deriving the ceiling role by role.
    */
   getSlotBoard(): readonly RoleSlots[];
+  /**
+   * What the store burns in wages every day (#353) — the sum of every rostered
+   * member's daily wage, charged overnight whether the floor produced or not.
+   * 0 with nobody on the roster, and nothing is posted in that case.
+   */
+  readonly dailyPayroll: number;
+  /**
+   * Grade + wage for every rostered member, in roster order (#353). The
+   * all-roster read the People surface renders, parallel to `getSlotBoard`.
+   */
+  getPayBoard(): readonly StaffPay[];
   /** #190 SaveStore seam: capture/rehydrate the hired roster. */
   snapshot(): StaffOrgSnapshot;
   restore(snap: StaffOrgSnapshot): void;
@@ -161,6 +202,7 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   const { bus, economy, masterSeed, taxonomy, archetypes } = deps;
   const config = deps.config ?? loadStaffOrgConfig();
   const slots = deps.slots ?? loadStaffSlots();
+  const pay = deps.pay ?? loadStaffPay();
   const getTier = deps.getTier;
   const realizedReconFor = deps.realizedReconFor;
 
@@ -225,6 +267,59 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   function slotsFilled(roleId: string): number {
     return roster.reduce((n, s) => (s.role_id === roleId ? n + 1 : n), 0);
   }
+
+  /**
+   * The person's grade **right now** (#353) — a banded read of their ability as
+   * a fraction of their own ceiling, taken over the *grown* `effectiveSkills`
+   * (Model B, #294) rather than the base roll. That is what makes the grade
+   * climb with tenure and closed deals, which is the entire raise trigger; the
+   * base-skill `effectivenessRatio` getter is left alone because every
+   * promotion/capability gate is calibrated against it.
+   *
+   * Constant within an open day: the counters `effectiveSkills` derives from
+   * only move overnight, so a #122 mid-day replay reproduces the same grade.
+   */
+  function currentGrade(staff: StaffWithComposites): number {
+    return gradeFor(compositeRatio(staff.effectiveSkills, taxonomy.skills, 'effectiveness'), pay.gradeBands);
+  }
+
+  /**
+   * What `roleId` costs per day at `grade`. Throws on a role the pay book does
+   * not name, rather than silently charging nothing — a free employee is the
+   * flat-stub bug this slice exists to delete, and it would read as balance
+   * instead of a missing data row.
+   */
+  function wageFor(roleId: string, grade: number): number {
+    const wage = dailyWageFor(pay, roleId, grade);
+    if (wage === undefined) {
+      throw new StaffOrgError(`No wage row for role "${roleId}" in data/staff-pay.json`);
+    }
+    return wage;
+  }
+
+  /** The wage a roster member is actually on — their `paidGrade`, not their current one. */
+  function paidWageFor(staff: StaffWithComposites): number {
+    return wageFor(staff.role_id, staff.paidGrade ?? currentGrade(staff));
+  }
+
+  function totalDailyPayroll(): number {
+    return roster.reduce((sum, s) => sum + paidWageFor(s), 0);
+  }
+
+  // The daily wage drain (#353, C1 R1). Fires every night — `clock:overnight_payroll`
+  // is a per-day phase; only Economy's rent gates itself to the week. A fixed
+  // cost against variable revenue is what makes a slow day hurt, and the player
+  // reads it in the same beat as the day's gross.
+  //
+  // `forceDebit`, not `postExpense`: this is a recurring obligation, same as
+  // rent and the marketing/subscription drains. Payroll you cannot afford is
+  // supposed to push cash negative and wake `BankruptcyMonitor`, not throw and
+  // abort the overnight sequence.
+  bus.subscribe('clock:overnight_payroll', () => {
+    const total = totalDailyPayroll();
+    if (total <= 0) return;
+    economy.forceDebit(total, 'Payroll');
+  });
 
   function hiringCostFor(roleId: string): number {
     const role = taxonomy.roles[roleId];
@@ -300,7 +395,15 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       if (hiredIds.has(staff.id)) continue;
 
       const candidateId = `candidate:${roleId}:${currentDay}:${slot}`;
-      const listing: CandidateListing = { candidateId, archetypeId, staff, hiringCost: cost };
+      const grade = currentGrade(staff);
+      const listing: CandidateListing = {
+        candidateId,
+        archetypeId,
+        staff,
+        hiringCost: cost,
+        grade,
+        dailyWage: wageFor(roleId, grade),
+      };
       candidatePool.set(candidateId, listing);
       ids.push(candidateId);
     }
@@ -331,6 +434,20 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       }));
     },
 
+    get dailyPayroll(): number {
+      return totalDailyPayroll();
+    },
+
+    getPayBoard(): readonly StaffPay[] {
+      return roster.map((s) => ({
+        staffId: s.id,
+        roleId: s.role_id,
+        grade: currentGrade(s),
+        paidGrade: s.paidGrade ?? currentGrade(s),
+        dailyWage: paidWageFor(s),
+      }));
+    },
+
     snapshot(): StaffOrgSnapshot {
       return {
         schemaVersion: 1,
@@ -343,7 +460,14 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       currentDay = snap.currentDay;
       roster.length = 0;
       for (const s of snap.roster) {
-        roster.push(rehydrateStaff(s, taxonomy, masterSeed));
+        const member = rehydrateStaff(s, taxonomy, masterSeed);
+        // Saves predating the wage book (#353) carry no `paidGrade`. Materialize
+        // it from what the person is worth *now*, which is the behavior-neutral
+        // default: they arrive paid what they're currently worth, so the raise
+        // trigger (`grade > paidGrade`) starts quiet and fires the first time
+        // they actually outgrow it, exactly as a fresh hire does.
+        if (member.paidGrade === undefined) member.paidGrade = currentGrade(member);
+        roster.push(member);
       }
     },
 
@@ -386,6 +510,10 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
 
       economy.postExpense(listing.hiringCost, `Hiring — ${listing.staff.role_id}`);
 
+      // The grade they signed at is the grade they're paid at (#353). Set here
+      // rather than in the factory because a candidate on the board is not on
+      // anyone's payroll — `paidGrade` is what "employed here" means.
+      listing.staff.paidGrade = listing.grade;
       roster.push(listing.staff);
       candidatePool.delete(candidateId);
 

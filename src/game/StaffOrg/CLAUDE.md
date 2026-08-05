@@ -8,11 +8,48 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
   `name` getter (#347), derived from `(masterSeed, staff.id)` via
   `NPC.rollPersonName`. It never serializes and re-derives identically on
   `restore`, so a roster is people, not stat lines, with no save migration.
-- `loadStaffOrgConfig` — reads `data/staff-roles.json` + related tunables.
+- `loadStaffOrgConfig` — reads `data/tunables.json#staffOrg`.
+- `loadStaffPay`, `gradeFor`, `dailyWageFor`, `StaffPayTableSchema`, `MIN_GRADE`/`MAX_GRADE`
+  — the salary book (#353), see "Pay" below.
 - `computeConditionRead`, `deriveConditionReadSeed` — pure helpers behind
   `assessCondition` (also exported for fixture/test use).
 - Types: `StaffOrg`, `StaffOrgDeps`, `StaffOrgConfig`, `CandidateListing`,
-  `ConditionAssessInput`, `ConditionRead`, `ConditionReadConfig`.
+  `ConditionAssessInput`, `ConditionRead`, `ConditionReadConfig`, `StaffPay`,
+  `StaffPayTable`.
+
+## Pay — the salary book (#353, C1 R1)
+- **One rule: a daily wage set by grade (1–5) and role.** `data/staff-pay.json` is
+  `dailyWageByRole` + the four `gradeBands` + `hireFeeMultiple`, loaded by `loadStaffPay`
+  (`staffPay.ts`); `deps.pay` injects an alternative in tests. Draw-against-commission was
+  considered and **rejected** at the gate (four comp structures to read one line item) —
+  `docs/planning/staff-teeth-design.md` §2 R1. Do not re-propose it.
+- **The drain is daily**, posted by StaffOrg on `clock:overnight_payroll` via
+  `economy.forceDebit(total, 'Payroll')`. `forceDebit`, not `postExpense`: payroll you cannot
+  afford pushes cash negative and wakes `BankruptcyMonitor` rather than throwing mid-overnight.
+  Nothing is posted when the roster is empty. Reads in Finance as its own "Payroll" bar
+  (`groupExpenses` keys on the label) — guarded by `tests/Payroll.reachability.test.ts`.
+- **`weeklyPayrollStub` is deleted** from `data/tunables.json` *and* `economyData.ts`. It was a
+  flat $800/week, so your fifth hire cost nothing. Economy's `clock:overnight_payroll`
+  subscription now posts rent only.
+- **Grade is derived, never stored** — `gradeFor(compositeRatio(effectiveSkills, …), bands)`.
+  Two calls matter here: it bands the **0–1 ratio**, not the raw composite (whose range is
+  role-dependent — 1.5 for a salesperson, 3.7 for a UCM — so absolute edges would make every
+  manager a 5), and it reads the **grown** `effectiveSkills`, not the base roll, so grade
+  climbs with tenure. The base-skill `effectivenessRatio` getter is untouched because every
+  promotion/capability gate is calibrated against the raw base composite.
+- **`paidGrade` is the only new field on `Staff`** (optional, serialized). Stamped at `hire()`,
+  never by the factories — a candidate on the board is not on anyone's payroll. The wage is
+  `wage(role, paidGrade)`, so growth never silently reprices anyone and `grade > paidGrade` is
+  the entire raise trigger. A promotion keeps `paidGrade` and moves the wage by role.
+  `restore()` materializes a missing `paidGrade` from the member's current grade, so a
+  pre-#353 save loads paid what the person is currently worth (behavior-neutral) — inside the
+  staffOrg blob, so no envelope bump.
+- Reads: `dailyPayroll` (the sum), `getPayBoard()` (per member: `grade`, `paidGrade`,
+  `dailyWage`). `CandidateListing` carries `grade` + `dailyWage` beside `hiringCost` — what
+  they cost to sign and what they cost to keep are now the two numbers the hire is made on.
+- Magnitudes are **placeholders anchored to `docs/planning/staff-performance-ladder.md`**, not
+  balance; calibration is C2 (#286). The salesperson row is the design doc's worked example
+  (grade 3 = $340/day, grade 4 = $520/day).
 
 ## UCM condition read (#163)
 - `assessCondition(vehicle) → ConditionRead | null`. Returns null when no
@@ -49,8 +86,8 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 - **Emits:** `staff:hired` (with `hiringCost`), `staff:fired`.
 - **Consumes:** `clock:day_ended` (Model B counter accrual, #294),
   `clock:day_started` (reset candidate pool + day close tally), `deal:closed`
-  (day close tally), `staff:quit`, `clock:overnight_payroll` (post payroll
-  expenses via `Economy`).
+  (day close tally), `staff:quit`, `clock:overnight_payroll` (#353 — post the
+  roster's summed daily wages via `Economy.forceDebit`, labelled "Payroll").
 
 ## Hiring constraints
 - **Role hire-tier gate:** `getCandidates(roleId)` throws if the role's `hireTier` exceeds the current dealership tier (`deps.getTier`).
@@ -76,8 +113,10 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 - `data/tunables.json#staffOrg` — `hiringCostByTier`, `candidatesPerRole`, `conditionRead`.
 - `data/staff-slots.json` — the per-role, per-tier slot table (`loadStaffSlots`, `staffSlots.ts`).
   Counts come from the tier CSV's "Staff" row; `deps.slots` injects an alternative in tests.
-- `data/staff-roles.json` — role definitions (no pay data; the salary book arrives with
-  staff-teeth, C1 — see `docs/planning/staff-teeth-design.md`).
+- `data/staff-pay.json` — the salary book (`loadStaffPay`, `staffPay.ts`): daily wage per
+  role × grade, the grade band edges, and the hire-fee multiple. `deps.pay` injects an
+  alternative in tests (`tests/helpers/staffPay.ts` → `flatPay` / `noPay`).
+- `data/staff-roles.json` — role definitions (no pay data; wages live in `staff-pay.json`).
 - `data/staff-archetypes.json`, `data/staff-skills.json` — used via `NPC` for candidate generation.
 
 ## Persistence (#190)

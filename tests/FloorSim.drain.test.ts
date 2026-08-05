@@ -61,6 +61,8 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
     headcountCap: Infinity,
     getSlots: (roleId: string) => ({ roleId, filled: 0, total: Infinity }),
     getSlotBoard: () => [],
+    dailyPayroll: 0,
+    getPayBoard: () => [],
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},
@@ -141,7 +143,7 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
     const economy = createEconomy({
       bus,
       startingCash: 50_000,
-      config: { weeklyRent: 0, weeklyPayrollStub: 0 },
+      config: { weeklyRent: 0 },
     });
     const staffOrg = makeStaffOrg([makeStaff(0.8, 'salesperson')]);
     seedSalesQueue(bus, 10);
@@ -186,7 +188,7 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
       const economy = createEconomy({
         bus,
         startingCash: 50_000,
-        config: { weeklyRent: 0, weeklyPayrollStub: 0 },
+        config: { weeklyRent: 0 },
       });
       const staffOrg = makeStaffOrg([makeStaff(effectiveness, 'salesperson')]);
       seedSalesQueue(bus, 12);
@@ -225,7 +227,7 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
     const legacyEconomy = createEconomy({
       bus: legacyBus,
       startingCash: 50_000,
-      config: { weeklyRent: 0, weeklyPayrollStub: 0 },
+      config: { weeklyRent: 0 },
     });
     createStaffDispatch({
       bus: legacyBus,
@@ -246,7 +248,7 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
     const floorEconomy = createEconomy({
       bus: floorBus,
       startingCash: 50_000,
-      config: { weeklyRent: 0, weeklyPayrollStub: 0 },
+      config: { weeklyRent: 0 },
     });
     seedSalesQueue(floorBus, 15);
     const drain = createStaffFloorDrain({
@@ -282,7 +284,7 @@ describe('FloorSim — per-tick staff routine draining (#101)', () => {
       const economy = createEconomy({
         bus,
         startingCash: 50_000,
-        config: { weeklyRent: 0, weeklyPayrollStub: 0 },
+        config: { weeklyRent: 0 },
       });
       seedSalesQueue(bus, 12);
       const drain = createStaffFloorDrain({
@@ -320,7 +322,7 @@ describe('FloorSim — per-tick service routine draining (#101)', () => {
     const economy = createEconomy({
       bus,
       startingCash: 50_000,
-      config: { weeklyRent: 0, weeklyPayrollStub: 0 },
+      config: { weeklyRent: 0 },
     });
     const closed: unknown[] = [];
     bus.subscribe('service:ticket_closed', e => closed.push(e));

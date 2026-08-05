@@ -71,7 +71,7 @@ it('audit_failure + fraud_flag + lemon-law from the real producers cross the ind
   const economy = createEconomy({
     bus,
     startingCash: 100_000,
-    config: { weeklyRent: 0, weeklyPayrollStub: 0 },
+    config: { weeklyRent: 0 },
   });
   const tierManager = makeTierManager(1); // Tier 1 → terminal indictment.
 

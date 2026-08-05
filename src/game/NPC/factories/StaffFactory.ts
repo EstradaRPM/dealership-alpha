@@ -112,23 +112,34 @@ function computeComposite(
 }
 
 /**
- * The largest value `computeComposite` could return for this staffer: each
- * skill contributes at most its own `composite_mapping` weight (the term is
- * `value/cap × weight`, and `value ≤ cap`). Zero when the staffer carries no
- * skill that maps onto this composite.
+ * A composite expressed as a fraction of its own ceiling — the 0–1 read (#347).
+ * Each skill contributes at most its `composite_mapping` weight (the term is
+ * `value/cap × weight`, and `value ≤ cap`), so the ceiling is the sum of the
+ * mapped weights. Zero when the staffer carries no skill that maps onto this
+ * composite.
+ *
+ * Takes the skill values rather than the `Staff` record so the same formula
+ * serves both readings (#353): the `effectivenessRatio` getter passes the
+ * **base** skills (what every promotion/capability gate is calibrated against),
+ * and StaffOrg's grade derivation passes the **grown** `effectiveSkills`, so a
+ * person's grade climbs with tenure while the gates stay where they were.
  */
-function compositeCeiling(
-  staff: Staff,
+export function compositeRatio(
+  skillValues: Readonly<Record<string, number>>,
   skills: StaffSkillCatalog,
   key: 'effectiveness' | 'trustworthiness',
 ): number {
   let total = 0;
-  for (const skillId of Object.keys(staff.skills)) {
-    const weight = skills[skillId]?.composite_mapping?.[key];
+  let ceiling = 0;
+  for (const [skillId, value] of Object.entries(skillValues)) {
+    const def = skills[skillId];
+    if (!def) continue;
+    const weight = def.composite_mapping?.[key];
     if (weight === undefined) continue;
-    total += weight;
+    total += (value / def.cap) * weight;
+    ceiling += weight;
   }
-  return total;
+  return ceiling > 0 ? total / ceiling : 0;
 }
 
 /**
@@ -212,10 +223,7 @@ function attachComposites(
   });
   for (const key of ['effectiveness', 'trustworthiness'] as const) {
     Object.defineProperty(plain, `${key}Ratio`, {
-      get: () => {
-        const ceiling = compositeCeiling(plain, skills, key);
-        return ceiling > 0 ? computeComposite(plain, skills, key) / ceiling : 0;
-      },
+      get: () => compositeRatio(plain.skills, skills, key),
       enumerable: false,
       configurable: true,
     });

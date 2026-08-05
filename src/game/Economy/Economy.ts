@@ -78,10 +78,12 @@ export function createEconomy(deps: EconomyDeps): Economy {
   let inventoryAcquisitionSpend = 0;
   const ledger: LedgerEntry[] = [];
 
+  // Rent only. The "Payroll" line on this same overnight phase is posted by
+  // StaffOrg now (#353) — it owns the roster, so it owns the salary book, and
+  // Economy posts what it is handed.
   bus.subscribe('clock:overnight_payroll', ({ day }) => {
     if (day % DAYS_PER_WEEK === 0) {
       postExpenseInternal(day, config.weeklyRent, 'Rent');
-      postExpenseInternal(day, config.weeklyPayrollStub, 'Payroll');
     }
   });
 

@@ -8,7 +8,7 @@ const MASTER_SEED = 99;
 const STARTING_CASH = 50000;
 const vehicleData = loadVehicleData();
 
-const NO_OVERNIGHT_CONFIG = { weeklyRent: 0, weeklyPayrollStub: 0 };
+const NO_OVERNIGHT_CONFIG = { weeklyRent: 0 };
 
 function makeSetup(initialDay = 0, startingCash = STARTING_CASH) {
   const bus = createEventBus();

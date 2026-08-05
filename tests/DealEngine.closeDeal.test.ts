@@ -13,7 +13,7 @@ import {
 
 const MASTER_SEED = 77;
 const STARTING_CASH = 100_000;
-const NO_OVERHEAD = { weeklyRent: 0, weeklyPayrollStub: 0 };
+const NO_OVERHEAD = { weeklyRent: 0 };
 const vehicleData = loadVehicleData();
 const npcDeps = {
   masterSeed: MASTER_SEED,

@@ -237,6 +237,33 @@ describe('StaffOrg + StaffMorale snapshot/restore (#190)', () => {
     expect(rebuilt.staffMorale.getMorale(staffId)).toBe(shifted);
   });
 
+  it('migrates pre-wage saves by stamping paidGrade from current grade', () => {
+    // `paidGrade` (#353) lives inside the staffOrg blob, so it is that module's
+    // schema problem, not an envelope bump: a save written before the wage book
+    // simply lacks the field, and restore materializes it from what the person
+    // is worth now. Behavior-neutral — they come back paid what they're
+    // currently worth, so the raise trigger starts quiet exactly as at hire.
+    const seed = 411;
+    const { world: original } = build(seed);
+    original.staffOrg.hire(original.staffOrg.getCandidates('salesperson')[0].candidateId);
+
+    const snap = JSON.parse(JSON.stringify(snapshotWorld(original))) as WorldSnapshot;
+    const roster = (snap.modules.staffOrg as unknown as { roster: Record<string, unknown>[] })
+      .roster;
+    expect(roster).toHaveLength(1);
+    expect(roster[0].paidGrade).toBeDefined();
+    // Age the save back: strip the field the way a pre-#353 save never had it.
+    delete roster[0].paidGrade;
+
+    const { world: rebuilt } = build(seed);
+    restoreWorld(snap, rebuilt);
+
+    const row = rebuilt.staffOrg.getPayBoard()[0];
+    expect(row.paidGrade).toBe(row.grade);
+    expect(row.dailyWage).toBeGreaterThan(0);
+    expect(rebuilt.staffOrg.dailyPayroll).toBe(row.dailyWage);
+  });
+
   it('round-trips newly hireable manager roles and keeps fired staff removed', () => {
     const seed = 204;
     const { world: original } = build(seed);

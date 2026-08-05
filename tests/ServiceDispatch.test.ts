@@ -45,6 +45,8 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
     headcountCap: Infinity,
     getSlots: (roleId: string) => ({ roleId, filled: 0, total: Infinity }),
     getSlotBoard: () => [],
+    dailyPayroll: 0,
+    getPayBoard: () => [],
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},
@@ -138,7 +140,7 @@ function makeIntakePayload(day: number, count = 2) {
 
 function makeSetup(roster: StaffWithComposites[], config: ServiceDispatchConfig = NORMAL_CONFIG) {
   const bus = createEventBus();
-  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
   const queue = createDepartmentQueue({ bus });
   const staffOrg = makeStaffOrg(roster);
   createServiceDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config });
@@ -147,7 +149,7 @@ function makeSetup(roster: StaffWithComposites[], config: ServiceDispatchConfig 
 
 function makeDrainSetup(roster: StaffWithComposites[], config: ServiceDispatchConfig = NORMAL_CONFIG) {
   const bus = createEventBus();
-  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
   const queue = createDepartmentQueue({ bus });
   const staffOrg = makeStaffOrg(roster);
   const drain = createServiceFloorDrain({
@@ -273,7 +275,7 @@ describe('ServiceDispatch — advisor skill affects resolve rate', () => {
     let resolved = 0;
     for (let i = 0; i < n; i++) {
       const bus = createEventBus();
-      const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+      const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
       const queue = createDepartmentQueue({ bus });
       const staffOrg = makeStaffOrg([makeAdvisor(effectiveness)]);
       createServiceDispatch({ bus, staffOrg, queue, economy, masterSeed: MASTER_SEED, config: NORMAL_CONFIG });
@@ -314,7 +316,7 @@ describe('ServiceDispatch — floor drain', () => {
 
   it('bootstraps service items already queued before the day drain exists', () => {
     const bus = createEventBus();
-    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
     const queue = createDepartmentQueue({ bus });
     const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
     const events: unknown[] = [];
@@ -390,7 +392,7 @@ function makeStubParts(initial: Partial<Record<PartCategory, number>> = {}) {
 describe('ServiceDispatch — parts gate consume-on-complete', () => {
   it('consumes one matching-category part and emits parts_consumed + ticket_closed', () => {
     const bus = createEventBus();
-    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
     const queue = createDepartmentQueue({ bus });
     const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
     const parts = makeStubParts({ oil_filters: 2 });
@@ -420,7 +422,7 @@ describe('ServiceDispatch — parts gate consume-on-complete', () => {
 
   it('does not consume a part when the advisor fails to auto-resolve', () => {
     const bus = createEventBus();
-    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
     const queue = createDepartmentQueue({ bus });
     const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
     const parts = makeStubParts({ oil_filters: 2 });
@@ -439,7 +441,7 @@ describe('ServiceDispatch — parts gate consume-on-complete', () => {
 describe('ServiceDispatch — parts gate miss (rush locked)', () => {
   it('turns the job away: job_missed with lost revenue + CSI hit, no ticket_closed, no revenue', () => {
     const bus = createEventBus();
-    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
     const queue = createDepartmentQueue({ bus });
     const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
     const parts = makeStubParts({ oil_filters: 0 });
@@ -475,7 +477,7 @@ describe('ServiceDispatch — parts gate miss (rush locked)', () => {
 describe('ServiceDispatch — parts gate rush (unlocked)', () => {
   it('rush-orders the part and completes the job at full revenue', () => {
     const bus = createEventBus();
-    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
     const queue = createDepartmentQueue({ bus });
     const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
     const parts = makeStubParts({ tires_brakes: 0 });
@@ -531,7 +533,7 @@ describe('ServiceDispatch — parts gate cadence-invariance', () => {
   it('legacy path and per-tick drain yield identical outcomes', () => {
     // Legacy path.
     const busA = createEventBus();
-    const econA = createEconomy({ bus: busA, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const econA = createEconomy({ bus: busA, startingCash: 50_000, config: { weeklyRent: 0 } });
     const queueA = createDepartmentQueue({ bus: busA });
     const partsA = makeStubParts({ oil_filters: 2 });
     createServiceDispatch({
@@ -543,7 +545,7 @@ describe('ServiceDispatch — parts gate cadence-invariance', () => {
 
     // Per-tick drain path.
     const busB = createEventBus();
-    const econB = createEconomy({ bus: busB, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const econB = createEconomy({ bus: busB, startingCash: 50_000, config: { weeklyRent: 0 } });
     const queueB = createDepartmentQueue({ bus: busB });
     const partsB = makeStubParts({ oil_filters: 2 });
     const drainB = createServiceFloorDrain({
@@ -582,7 +584,7 @@ function makeDrainSetupX(
   } = {},
 ) {
   const bus = createEventBus();
-  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+  const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
   const queue = createDepartmentQueue({ bus });
   const staffOrg = makeStaffOrg(roster);
   const drain = createServiceFloorDrain({
@@ -608,7 +610,7 @@ describe('ServiceDispatch — #305 pricing-posture revenue', () => {
 
   function revenueAtPosture(posture: number): number {
     const bus = createEventBus();
-    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+    const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
     const queue = createDepartmentQueue({ bus });
     const staffOrg = makeStaffOrg([makeAdvisor(0.8)]);
     createServiceDispatch({
@@ -634,7 +636,7 @@ describe('ServiceDispatch — #305 pricing-posture revenue', () => {
   it('advisor upsell skill no longer changes revenue (posture-only)', () => {
     function revWithUpsell(upsell: number): number {
       const bus = createEventBus();
-      const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0, weeklyPayrollStub: 0 } });
+      const economy = createEconomy({ bus, startingCash: 50_000, config: { weeklyRent: 0 } });
       const queue = createDepartmentQueue({ bus });
       createServiceDispatch({
         bus, staffOrg: makeStaffOrg([makeAdvisor(0.8, upsell)]), queue, economy,
