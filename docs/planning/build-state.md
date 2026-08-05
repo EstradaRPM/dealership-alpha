@@ -14,13 +14,13 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
 `path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **#352 landed 2026-08-05 — next unit: BUILD #353** (the wage book + daily payroll
-drain). Work them in number order; the deps are stated in each issue's Notes.
+order**. **#352 and #353 landed 2026-08-05 — next unit: BUILD #354** (the People wage surface).
+Work them in number order; the deps are stated in each issue's Notes.
 
 | # | Slice | Phase |
 |---|---|---|
 | ~~#352~~ | ~~per-role slot table = the hiring cap; `headcountCapByTier` deleted~~ **BUILT 2026-08-05** | 7 → unblocks 6 |
-| #353 | `data/staff-pay.json`, derived grade, `paidGrade`, daily payroll drain; `weeklyPayrollStub` deleted | 6 |
+| ~~#353~~ | ~~`data/staff-pay.json`, derived grade, `paidGrade`, daily payroll drain; `weeklyPayrollStub` deleted~~ **BUILT 2026-08-05** | 6 |
 | #354 | People surface: grade + wage per card, total daily payroll, skill-bar `flexDirection` fix | 6 |
 | #355 | hire fee = multiple × daily wage; `hiringCostByTier` retired | 6 |
 | #356 | raise demands (ask/answer) + `payVsMarketBonus` made real | 6 |
@@ -72,6 +72,16 @@ drain). Work them in number order; the deps are stated in each issue's Notes.
 - **The seeded-RNG separator is a NUL byte, and it is invisible.** `deriveSeed` joins namespace
   and ctx with U+0000. #342 nearly shipped a whole-game determinism break by retyping that line
   with a space. `tests/Rng.test.ts` carries the regression lock that caught it — never weaken it.
+- **Staff have TWO grades and they are not interchangeable** (#353). `grade` is derived live
+  from the **grown** `effectiveSkills` and climbs; `paidGrade` is stored on `Staff`, stamped at
+  hire, and is what the wage is computed from. Every wage number the player sees or the ledger
+  charges comes from `paidGrade`. Reading the current grade to price someone is the rejected
+  "wage auto-follows grade" and silently kills #356's raise trigger.
+- **The RN-Testing-Library suites (`App.saveFlow`, `InTabNavigation.reachability`) flake under
+  full-suite CPU load.** Two `waitFor` assertions failed on one `npm test` run and a *different*
+  one failed on the next; all pass in isolation three times over and the full suite is green on
+  a re-run. Timing, not a regression — re-run before investigating, and do not "fix" them by
+  loosening what they assert.
 
 ## Phase table
 
@@ -91,7 +101,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance (all built 2026-08-02) | — (locked IA already ruled it) | done |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
-| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — sliced (#353–#357), next unit #353 |
+| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — #353 built; #354–#357 open |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 built; #358–#362 open |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
@@ -112,6 +122,52 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-05 — **BUILT #353** (the wage book + the nightly payroll drain). Payroll finally
+  scales with the roster: every person burns a daily wage set by grade (1–5) × role, and that
+  is the entire pay model.
+  **`weeklyPayrollStub` left in the same commit that replaced it** — out of `data/tunables.json`,
+  out of `EconomyConfigSchema`, out of the call site — so the old flat $800/week cannot be read
+  and typecheck. Economy's `clock:overnight_payroll` subscription posts **rent only** now;
+  StaffOrg owns the salary book because it owns the roster. ~20 test files carried
+  `weeklyPayrollStub: 0` in an `EconomyConfig` literal; excess-property checking made that a
+  mechanical, compiler-verified sweep rather than a search.
+  **Two calls the design doc left open were resolved in code, and both are load-bearing.**
+  Grade bands the **0–1 ratio**, not the raw `effectiveness` composite: that composite is a
+  weighted *sum* whose range depends on how many axes a role grants (1.5 for a salesperson, 3.7
+  for a UCM), so absolute edges against it would have made every manager a grade 5 and capped
+  every salesperson at 3. The shipped edges put the ladder's own anchors where
+  `staff-performance-ladder.md:27` says they belong — green 0.35 → grade 2, mature 0.75 → grade 4.
+  And it reads the **grown** `effectiveSkills`, not the base roll: the base composite never
+  changes, so banding it would have frozen every grade for the whole career and left #356's
+  raise trigger with nothing to fire on. One formula serves both readings — `compositeRatio`
+  now takes skill *values* and is exported from NPC, so `effectivenessRatio` keeps passing base
+  skills and **every promotion/capability gate stays calibrated exactly where it was**.
+  **`paidGrade` is the one new field on `Staff`, and it is stamped at `hire()`, never by the
+  factories** — a candidate on the board is not on anyone's payroll, so `paidGrade` is what
+  "employed here" means. The wage charged is `wage(role, paidGrade)`; growth never silently
+  reprices anyone (the rejected "wage auto-follows grade"), which is precisely what leaves
+  `grade > paidGrade` as the whole raise trigger with no new counters. A promotion keeps
+  `paidGrade` and moves the wage by role — you took the desk, you get the desk's pay.
+  **No save-envelope bump.** The field sits inside the staffOrg blob, so per the recipe it is
+  that module's problem: `restore` materializes a missing `paidGrade` from the member's current
+  grade, which is behavior-neutral — they load paid what they are currently worth, so the
+  trigger starts quiet exactly as a fresh hire does. The tier-2 fixture needed no re-stamp.
+  **`forceDebit`, not `postExpense`** — payroll you cannot afford is meant to push cash negative
+  and wake `BankruptcyMonitor`, not throw and abort the overnight sequence (the same idiom rent
+  and the marketing drains use). An empty roster posts **nothing**, not a $0 entry.
+  **Two data-shape rules are schema, not convention:** the wage table refuses a file where a
+  higher grade costs less (a transposed digit would read as balance instead of a typo), and the
+  grade bands must strictly increase or a grade is unreachable. A role the pay book does not
+  name throws, the same grammar the slot table uses — a free employee is the bug being deleted.
+  **The Browser pane was not compositing frames**, so the click-through drive was impossible
+  (no screenshot ⇒ no coordinate clicks, and the T2 dev button carries no a11y ref). The
+  evidence is `tests/Payroll.reachability.test.ts` instead: a real `createWorld` charging the
+  *shipped* pay book, and the drain landing as its own "Payroll" bar through the real
+  `groupExpenses` rather than folding into "Other". That runs in CI; a web drive does not.
+  215 suites / **2711** tests, typecheck clean.
+  Next: **BUILD #354** (People surface: grade + wage per card, total daily payroll, the skill-bar
+  `flexDirection` fix).
 
 - 2026-08-05 — **BUILT #352** (per-role slot table). Scarcity is per **job**, not per body:
   `data/staff-slots.json` is role → count per tier, and it is now the only headcount ceiling
@@ -185,45 +241,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   (#353), wage-auto-follows-grade and fixed-at-hire (#356), and R2's five (#361, chief among them the
   **overflow lot**, which the director raised and withdrew). No slice may reopen one.
   Next: **BUILD #352**.
-
-- 2026-08-03 — **RULED A2** (phase 7, staff slots + facility scale) via `/decide A2`. Recorded in
-  `path-to-finished-product.md` §3 A2, `[NEW]` → `[LOCKED]`. **Both staff gates are now closed;
-  the next unit is a single SLICE covering phases 6 and 7.**
-  **R1 — desks come with the tier, buildings are bought.** Tier-up hands you the CSV's staff
-  desks outright (T3 = 3 sales + UCM + F&I + SA + BSA, empty and waiting); lot spaces and bays
-  are purchased with cash + construction days up to the tier's ceiling, and you arrive at a new
-  tier holding the previous tier's built capacity. The two ends were both rejected: granting
-  everything leaves no money decision anywhere on the ladder *and* leaves the `facility` gate face
-  in `data/tier-gate.json` with nothing to measure; buying everything puts a construction gate in
-  front of hiring on top of C1's cost + wage and makes tier-up change nothing until you spend
-  again. The split is what lights that dormant face — **built capacity ÷ tier ceiling × 100** —
-  and what puts facility spend in direct competition with inventory cash.
-  **Construction time is real** (~2–3 days, `data/`), reusing #295's frontline-hold idiom. Instant
-  capacity collapses the decision to "do I have the cash"; a delay makes you buy *ahead* of demand.
-  That also answers the CSV's own open row 16 ("construction time? Idk if necessary").
-  **R2 — the lot cap governs buying; a trade always lands.** Every owned unit takes a space,
-  **prep included** — there is no off-lot state in the model and none was invented (a `LotVehicle`
-  exists and accrues carrying cost from `arrivalDay`; recon is a cost, not a place, and the
-  frontline hold only governs whether walk-ins can be *shown* the car). One number, "31 of 35."
-  The cap is checked **at the bid**, counting won-and-inbound units, so you cannot win six cars
-  into four spaces. A trade always comes in and may put you at 36 of 35; being over freezes buying
-  until you're under. Self-correcting by construction — a deal that brings a trade in takes a car
-  out — which is exactly why it needs no machinery.
-  **An overflow lot was raised by the director and withdrawn by the director**, and the reasoning
-  is the durable part: an overflow slot beats a wholesale-at-a-loss in nearly every case, so the
-  choice only ever resolves one way, and a dominated option is a confirmation dialog rather than a
-  decision — *and* parking the unit keeps inventory the same, so the trade neither helped nor hurt.
-  It would have bought a second inventory list, paused recon clocks, FIFO promotion, save fields
-  and a UI surface for a moment that isn't a moment. Forced wholesale, refused trades, a soft cap
-  with an overflow fee, and prep-as-its-own-capacity are recorded rejected alongside it. **Do not
-  re-propose any of them.**
-  **One thing fell out of R2 and ships with A2 on its own merits:** there is no voluntary
-  wholesale-out today — the only dump path is abandoning recon after a surprise
-  (`Inventory.ts:789`, #162). Lot-locked with three aged units and no way to convert them to cash
-  is a dead end, so the inventory card gets a "wholesale this unit" action as the aged-inventory
-  release valve, **not** as a full-lot penalty.
-  Seven internal calls recorded in the section (chief among them: `headcountCapByTier` is deleted
-  rather than kept beside the slot table; bays become owned persisted state read through one
-  provider so `min(bays, advisors)` keeps a single truth; a new `src/game/Facility/` module owns
-  built capacity + the facility score).
-  Next: **SLICE phases 6 + 7 together.**

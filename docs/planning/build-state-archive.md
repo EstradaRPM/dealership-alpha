@@ -1,4 +1,54 @@
-# Build- 2026-08-02 — **BUILT #351** (Finance) — the last placeholder tab, and the books learned what
+# Build state — log archive
+
+Rolled off the end of `docs/planning/build-state.md`, which keeps only the newest 3 entries.
+Newest first, text unchanged from when it was written. `/next` does **not** read this file at
+session start — open it on demand when a past slice's rationale needs recovering.
+
+## Log
+
+- 2026-08-03 — **RULED A2** (phase 7, staff slots + facility scale) via `/decide A2`. Recorded in
+  `path-to-finished-product.md` §3 A2, `[NEW]` → `[LOCKED]`. **Both staff gates are now closed;
+  the next unit is a single SLICE covering phases 6 and 7.**
+  **R1 — desks come with the tier, buildings are bought.** Tier-up hands you the CSV's staff
+  desks outright (T3 = 3 sales + UCM + F&I + SA + BSA, empty and waiting); lot spaces and bays
+  are purchased with cash + construction days up to the tier's ceiling, and you arrive at a new
+  tier holding the previous tier's built capacity. The two ends were both rejected: granting
+  everything leaves no money decision anywhere on the ladder *and* leaves the `facility` gate face
+  in `data/tier-gate.json` with nothing to measure; buying everything puts a construction gate in
+  front of hiring on top of C1's cost + wage and makes tier-up change nothing until you spend
+  again. The split is what lights that dormant face — **built capacity ÷ tier ceiling × 100** —
+  and what puts facility spend in direct competition with inventory cash.
+  **Construction time is real** (~2–3 days, `data/`), reusing #295's frontline-hold idiom. Instant
+  capacity collapses the decision to "do I have the cash"; a delay makes you buy *ahead* of demand.
+  That also answers the CSV's own open row 16 ("construction time? Idk if necessary").
+  **R2 — the lot cap governs buying; a trade always lands.** Every owned unit takes a space,
+  **prep included** — there is no off-lot state in the model and none was invented (a `LotVehicle`
+  exists and accrues carrying cost from `arrivalDay`; recon is a cost, not a place, and the
+  frontline hold only governs whether walk-ins can be *shown* the car). One number, "31 of 35."
+  The cap is checked **at the bid**, counting won-and-inbound units, so you cannot win six cars
+  into four spaces. A trade always comes in and may put you at 36 of 35; being over freezes buying
+  until you're under. Self-correcting by construction — a deal that brings a trade in takes a car
+  out — which is exactly why it needs no machinery.
+  **An overflow lot was raised by the director and withdrawn by the director**, and the reasoning
+  is the durable part: an overflow slot beats a wholesale-at-a-loss in nearly every case, so the
+  choice only ever resolves one way, and a dominated option is a confirmation dialog rather than a
+  decision — *and* parking the unit keeps inventory the same, so the trade neither helped nor hurt.
+  It would have bought a second inventory list, paused recon clocks, FIFO promotion, save fields
+  and a UI surface for a moment that isn't a moment. Forced wholesale, refused trades, a soft cap
+  with an overflow fee, and prep-as-its-own-capacity are recorded rejected alongside it. **Do not
+  re-propose any of them.**
+  **One thing fell out of R2 and ships with A2 on its own merits:** there is no voluntary
+  wholesale-out today — the only dump path is abandoning recon after a surprise
+  (`Inventory.ts:789`, #162). Lot-locked with three aged units and no way to convert them to cash
+  is a dead end, so the inventory card gets a "wholesale this unit" action as the aged-inventory
+  release valve, **not** as a full-lot penalty.
+  Seven internal calls recorded in the section (chief among them: `headcountCapByTier` is deleted
+  rather than kept beside the slot table; bays become owned persisted state read through one
+  provider so `min(bays, advisors)` keeps a single truth; a new `src/game/Facility/` module owns
+  built capacity + the facility score).
+  Next: **SLICE phases 6 + 7 together.**
+
+- 2026-08-02 — **BUILT #351** (Finance) — the last placeholder tab, and the books learned what
   day it is. **Phase 5c is complete.**
   **The tab is the locked IA's grammar, top to bottom.** `src/ui/FinanceTab/` +
   `FinanceTabContainer`: time-range chips → four headline stat cards with sparklines and
@@ -49,13 +99,6 @@
   Next: **DECIDE A2** (phase 7) — phase 5c is done, and C1's R3 made A2 a prerequisite for
   slicing phase 6.
 
- state — log archive
-
-Rolled off the end of `docs/planning/build-state.md`, which keeps only the newest 3 entries.
-Newest first, text unchanged from when it was written. `/next` does **not** read this file at
-session start — open it on demand when a past slice's rationale needs recovering.
-
-## Log
 
 - 2026-08-02 — **BUILT #350** (chart primitives) — the enabling kit slice #351 Finance
   depends on. `react-native-svg@15.12.1` (via `expo install`, SDK-54 matched) is now a
