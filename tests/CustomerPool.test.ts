@@ -31,6 +31,8 @@ const OPEN_CAPACITY_CONFIG: CapacityConfig = {
 const emptyStaffOrg: StaffOrg = {
   get currentRoster() { return []; },
   headcountCap: Infinity,
+  getSlots: (roleId: string) => ({ roleId, filled: 0, total: Infinity }),
+  getSlotBoard: () => [],
   getCandidates: () => [],
   hire: () => {},
   fire: () => {},

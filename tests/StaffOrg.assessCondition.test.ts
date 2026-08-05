@@ -9,6 +9,7 @@ import {
   type ConditionReadConfig,
 } from '../src/game/StaffOrg';
 import { loadStaffTaxonomy, loadStaffArchetypes } from '../src/game/NPC';
+import { slotsEverywhere } from './helpers/staffSlots';
 
 const MASTER_SEED = 99;
 const taxonomy = loadStaffTaxonomy();
@@ -25,7 +26,6 @@ const NO_OVERHEAD = { weeklyRent: 0, weeklyPayrollStub: 0 };
 const CHEAP_CONFIG: StaffOrgConfig = {
   hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
   candidatesPerRole: 3,
-  headcountCapByTier: { '1': 50, '2': 50, '3': 50 },
   conditionRead: READ_CFG,
 };
 
@@ -50,6 +50,8 @@ function makeSetup(opts: { withTruthSeam?: boolean } = {}) {
     taxonomy,
     archetypes,
     config: CHEAP_CONFIG,
+    // Not a scarcity test — two UCMs on the roster is the tie-break case (#352).
+    slots: slotsEverywhere(9),
     realizedReconFor: opts.withTruthSeam === false ? undefined : () => REALIZED,
   });
   return { bus, clock, economy, staffOrg };

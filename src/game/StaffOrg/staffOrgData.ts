@@ -22,8 +22,11 @@ const ConditionReadConfigSchema = z
 const StaffOrgConfigSchema = z.object({
   hiringCostByTier: z.record(z.string().min(1), z.number().nonnegative()),
   candidatesPerRole: z.number().int().positive(),
-  // dealership-tier (1/2/3) → max total roster headcount
-  headcountCapByTier: z.record(z.string().min(1), z.number().int().nonnegative()),
+  // The headcount ceiling is NOT here. #352 replaced the flat
+  // `headcountCapByTier` with the per-role slot table in
+  // `data/staff-slots.json` (see `staffSlots.ts`); the cap is the sum of the
+  // tier's role slots. Two caps that can disagree is a bug waiting, so the old
+  // key is gone from the JSON and the schema both.
   conditionRead: ConditionReadConfigSchema,
 });
 

@@ -10,6 +10,7 @@ import {
 } from '../NPC/factories/StaffFactory';
 import type { Staff } from '../NPC/schemas/staff';
 import { loadStaffOrgConfig, type StaffOrgConfig } from './staffOrgData';
+import { loadStaffSlots, slotTotalFor, type StaffSlotTable } from './staffSlots';
 import type { CandidateListing } from './types';
 import {
   computeConditionRead,
@@ -40,6 +41,12 @@ export interface StaffOrgDeps {
   taxonomy: StaffTaxonomy;
   archetypes: StaffArchetypeCatalog;
   config?: StaffOrgConfig;
+  /**
+   * The per-role, per-tier desk table (#352). Defaults to
+   * `data/staff-slots.json`; injectable so a test can state the scarcity it is
+   * exercising instead of depending on shipped balance numbers.
+   */
+  slots?: StaffSlotTable;
   getTier?: () => number;
   /**
    * Hidden-truth provider for the UCM condition read (#163). Receives the
@@ -79,17 +86,39 @@ export interface PromotionOption {
   readonly toRoleId: string;
 }
 
+/**
+ * One role's desks at the current tier (#352). `total` is the tier's slot count
+ * from `data/staff-slots.json`; `filled` is how many of them the live roster
+ * sits in. An open slot is the whole hire affordance — the People surface reads
+ * this rather than re-deriving a ceiling, so it never offers a press that
+ * `hire()` would throw on.
+ */
+export interface RoleSlots {
+  readonly roleId: string;
+  readonly filled: number;
+  readonly total: number;
+}
+
 export interface StaffOrg {
   readonly currentRoster: readonly StaffWithComposites[];
   /**
-   * How many bodies the current tier allows on payroll (#347) — the same cap
-   * `hire()` throws against. Exposed because the People surface has to be able
-   * to *show* the ceiling and stop offering a hire that would throw; a screen
-   * must never re-derive an engine rule. `Infinity` when the tier has no entry.
-   * A2/C1 replace the flat per-tier number with the CSV's per-role slot table
-   * behind this same read.
+   * How many bodies the current tier allows on payroll (#347) — now **derived**
+   * as the sum of the tier's role slots (#352), not a separate number. There is
+   * exactly one ceiling in the game and it is the slot table; a second one that
+   * could disagree with it is a bug waiting.
    */
   readonly headcountCap: number;
+  /**
+   * The desks for one role at the current tier (#352). `total` 0 means the tier
+   * has not opened that desk yet; an unknown role throws, same as `hire()`.
+   */
+  getSlots(roleId: string): RoleSlots;
+  /**
+   * Every role's desks at the current tier, in the slot table's order (#352).
+   * The People surface renders this as the slot board — the all-roles read that
+   * keeps the screen from re-deriving the ceiling role by role.
+   */
+  getSlotBoard(): readonly RoleSlots[];
   /** #190 SaveStore seam: capture/rehydrate the hired roster. */
   snapshot(): StaffOrgSnapshot;
   restore(snap: StaffOrgSnapshot): void;
@@ -131,6 +160,7 @@ export class StaffOrgError extends Error {
 export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   const { bus, economy, masterSeed, taxonomy, archetypes } = deps;
   const config = deps.config ?? loadStaffOrgConfig();
+  const slots = deps.slots ?? loadStaffSlots();
   const getTier = deps.getTier;
   const realizedReconFor = deps.realizedReconFor;
 
@@ -177,6 +207,24 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
     const idx = roster.findIndex((s) => s.id === staffId);
     if (idx !== -1) roster.splice(idx, 1);
   });
+
+  /**
+   * The tier's desk count for a role (#352). Throws on a role the slot table
+   * does not name, rather than reading as 0 — a silently unhireable role is the
+   * A1 regression class (a job the engine allows and the surface never offers)
+   * inverted, and it looks like balance instead of a missing data row.
+   */
+  function slotTotal(roleId: string): number {
+    const total = slotTotalFor(slots, roleId, getTier ? getTier() : 1);
+    if (total === undefined) {
+      throw new StaffOrgError(`No slot row for role "${roleId}" in data/staff-slots.json`);
+    }
+    return total;
+  }
+
+  function slotsFilled(roleId: string): number {
+    return roster.reduce((n, s) => (s.role_id === roleId ? n + 1 : n), 0);
+  }
 
   function hiringCostFor(roleId: string): number {
     const role = taxonomy.roles[roleId];
@@ -266,8 +314,21 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
     },
 
     get headcountCap(): number {
-      const tier = getTier ? getTier() : 1;
-      return config.headcountCapByTier[String(tier)] ?? Infinity;
+      let sum = 0;
+      for (const roleId of Object.keys(slots)) sum += slotTotal(roleId);
+      return sum;
+    },
+
+    getSlots(roleId: string): RoleSlots {
+      return { roleId, filled: slotsFilled(roleId), total: slotTotal(roleId) };
+    },
+
+    getSlotBoard(): readonly RoleSlots[] {
+      return Object.keys(slots).map((roleId) => ({
+        roleId,
+        filled: slotsFilled(roleId),
+        total: slotTotal(roleId),
+      }));
     },
 
     snapshot(): StaffOrgSnapshot {
@@ -309,11 +370,17 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         throw new StaffOrgError(`Unknown candidate "${candidateId}"`);
       }
 
-      const tier = getTier ? getTier() : 1;
-      const cap = config.headcountCapByTier[String(tier)] ?? Infinity;
-      if (roster.length >= cap) {
+      // Scarcity is per ROLE, not per body (#352, C1 R3): what stops the player
+      // buying five A-players is that the store has one desk for them. The UI
+      // never offers a candidate for a full role, so this throw is the engine's
+      // lock, not a message the player is meant to read.
+      const roleId = listing.staff.role_id;
+      const total = slotTotal(roleId);
+      const filled = slotsFilled(roleId);
+      if (filled >= total) {
+        const tier = getTier ? getTier() : 1;
         throw new StaffOrgError(
-          `Headcount cap reached: tier ${tier} allows at most ${cap} staff (current: ${roster.length})`,
+          `No open slot for "${roleId}": tier ${tier} has ${total} (filled: ${filled})`,
         );
       }
 
@@ -384,6 +451,10 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       if (!role || !meetsPromotionGates(staff)) return [];
       return role.promotes_to
         .filter((toRoleId) => isTargetTierUnlocked(toRoleId))
+        // A desk you cannot sit at is not an option (#352). Slots gate promotion
+        // exactly as they gate hiring, and worker-tier roles — which are ONLY
+        // reached this way — are gated here alone.
+        .filter((toRoleId) => slotsFilled(toRoleId) < slotTotal(toRoleId))
         .map((toRoleId) => ({ toRoleId }));
     },
 
@@ -411,6 +482,13 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       if (!meetsPromotionGates(staff)) {
         throw new StaffOrgError(
           `Staff "${staffId}" does not meet the promotion gates for "${staff.role_id}"`,
+        );
+      }
+      const targetTotal = slotTotal(toRoleId);
+      const targetFilled = slotsFilled(toRoleId);
+      if (targetFilled >= targetTotal) {
+        throw new StaffOrgError(
+          `No open slot for "${toRoleId}": tier ${getTier ? getTier() : 1} has ${targetTotal} (filled: ${targetFilled})`,
         );
       }
 

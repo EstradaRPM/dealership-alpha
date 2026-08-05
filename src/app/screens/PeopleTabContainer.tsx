@@ -5,6 +5,7 @@ import {
   type PeopleCandidate,
   type PeopleRosterMember,
   type PeopleSkillRead,
+  type PeopleSlotRow,
 } from '../../ui/PeopleTab';
 import type { StaffWithComposites } from '../../game/StaffOrg';
 import {
@@ -97,18 +98,35 @@ export function PeopleTabContainer({
       hiringCost: listing.hiringCost,
     }));
 
-  const cap = world.staffOrg.headcountCap;
+  // The slot board (#352). A row earns its place two ways: the tier opened a
+  // desk you can hire into, or somebody is already sitting in one. A job that
+  // is neither renders NOTHING — a permanently empty "Lot Porter 0 of 2" is a
+  // row the player can do nothing about, and the locked IA bans foreshadow
+  // tiles. `hireable` is the same predicate the role chips use, so the
+  // promotion-only jobs show their occupancy without offering a hire the
+  // engine would refuse.
+  const hireableRoleIds = new Set(roleOptions.map((r) => r.id));
+  const slots: PeopleSlotRow[] = world.staffOrg
+    .getSlotBoard()
+    .filter((row) => row.filled > 0 || (row.total > 0 && hireableRoleIds.has(row.roleId)))
+    .map((row) => ({
+      roleId: row.roleId,
+      label: humanizeRole(row.roleId),
+      filled: row.filled,
+      total: row.total,
+      hireable: hireableRoleIds.has(row.roleId),
+    }));
 
   return (
     <PeopleTab
       managerStatus={buildManagerStatus(world)}
       roster={roster}
+      slots={slots}
       hiring={{
         roleOptions,
         selectedRoleId,
         candidates,
         cash: world.economy.cash,
-        headcountCap: Number.isFinite(cap) ? cap : null,
       }}
       onSelectHiringRole={setSelectedHiringRoleId}
       onHire={(candidateId) => {

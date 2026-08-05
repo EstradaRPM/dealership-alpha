@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useTheme } from '../theme';
 import { SectionHeader, Surface, Button, Badge, Meter } from '../kit';
 import { ChipRow } from '../DeptControls';
@@ -60,8 +60,23 @@ export interface PeopleHiringModel {
   readonly candidates: readonly PeopleCandidate[];
   /** Cash on hand — a candidate you can't afford can't be hired. */
   readonly cash: number;
-  /** Bodies the current tier allows on payroll (`null` = uncapped). */
-  readonly headcountCap: number | null;
+}
+
+/**
+ * One job's desks at the current tier (#352). This replaced the single
+ * "N of cap" line: scarcity is per role, so "3 of 4 people" told the player
+ * nothing about the job they were actually shopping for.
+ */
+export interface PeopleSlotRow {
+  readonly roleId: string;
+  readonly label: string;
+  readonly filled: number;
+  readonly total: number;
+  /**
+   * Whether an open desk here can be filled by hiring. False for the
+   * promotion-only jobs, whose desks are reached from a roster card instead.
+   */
+  readonly hireable: boolean;
 }
 
 export interface PeopleTabProps {
@@ -69,6 +84,8 @@ export interface PeopleTabProps {
   managerStatus: ManagerStatusModel;
   /** Everyone on payroll right now. */
   roster: readonly PeopleRosterMember[];
+  /** The desks this tier opened, per job (#352). */
+  slots: readonly PeopleSlotRow[];
   /** The candidate pool + the role you're shopping for. */
   hiring: PeopleHiringModel;
   onSelectHiringRole: (roleId: string) => void;
@@ -184,20 +201,75 @@ function RosterCard({
   );
 }
 
+/**
+ * The slot board (#352) — every job this tier opened, how many of its desks are
+ * filled, and (for the jobs you can hire into) an open desk you can press to
+ * start shopping for that job. An empty slot IS the hire affordance: the board
+ * is the only place the ceiling is stated, so the surface never re-derives it.
+ */
+function SlotBoard({
+  slots,
+  selectedRoleId,
+  onSelectHiringRole,
+}: {
+  slots: readonly PeopleSlotRow[];
+  selectedRoleId: string;
+  onSelectHiringRole: (roleId: string) => void;
+}) {
+  const t = useTheme();
+  const s = makeStyles(t);
+  if (slots.length === 0) return null;
+  return (
+    <View style={s.slotBoard} testID="people-slot-board">
+      {slots.map((row) => {
+        const open = row.total - row.filled;
+        const canHire = row.hireable && open > 0;
+        return (
+          <Pressable
+            key={row.roleId}
+            testID={`people-slot-${row.roleId}`}
+            onPress={canHire ? () => onSelectHiringRole(row.roleId) : undefined}
+            disabled={!canHire}
+            accessibilityRole={canHire ? 'button' : undefined}
+            // Mirrors the visible "filled of total" rather than restating it
+            // as "open of total" — two readings of the same row is a way to
+            // get the number wrong out loud.
+            accessibilityLabel={
+              canHire
+                ? `Hire a ${row.label} — ${row.filled} of ${row.total} desks filled`
+                : undefined
+            }
+            style={[
+              s.slotRow,
+              row.roleId === selectedRoleId && s.slotRowSelected,
+            ]}
+          >
+            <Text style={s.slotLabel}>{row.label}</Text>
+            <Text style={s.slotCount} testID={`people-slot-count-${row.roleId}`}>
+              {row.filled} of {row.total}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 function CandidateCard({
   candidate,
   affordable,
-  atCap,
+  roleFull,
   onHire,
 }: {
   candidate: PeopleCandidate;
   affordable: boolean;
-  atCap: boolean;
+  /** Every desk for THIS job is taken (#352) — a different job may still be open. */
+  roleFull: boolean;
   onHire: () => void;
 }) {
   const t = useTheme();
   const s = makeStyles(t);
-  const blocked = !affordable || atCap;
+  const blocked = !affordable || roleFull;
   return (
     <Surface testID={`people-candidate-card-${candidate.id}`} style={s.card}>
       <View style={s.cardHead}>
@@ -219,8 +291,8 @@ function CandidateCard({
       <View style={s.actionRow}>
         <Button
           label={
-            atCap
-              ? 'No room on payroll'
+            roleFull
+              ? 'No desk open for this job'
               : affordable
                 ? `Hire — $${candidate.hiringCost.toLocaleString()}`
                 : "Can't afford"
@@ -255,6 +327,7 @@ function CandidateCard({
 export function PeopleTab({
   managerStatus,
   roster,
+  slots,
   hiring,
   onSelectHiringRole,
   onHire,
@@ -263,8 +336,14 @@ export function PeopleTab({
 }: PeopleTabProps) {
   const t = useTheme();
   const s = makeStyles(t);
-  const cap = hiring.headcountCap;
-  const atCap = cap != null && roster.length >= cap;
+  const desks = slots.reduce((n, r) => n + r.total, 0);
+  const filled = slots.reduce((n, r) => n + r.filled, 0);
+  const everyDeskFilled = desks > 0 && filled >= desks;
+  // The ceiling that decides whether a candidate can be hired is the SELECTED
+  // job's desks, not the store's total headcount (#352) — you can be full on
+  // salespeople and still have the service desk open.
+  const selectedSlot = slots.find((r) => r.roleId === hiring.selectedRoleId);
+  const roleFull = selectedSlot != null && selectedSlot.filled >= selectedSlot.total;
 
   return (
     <View style={s.region} testID="people-tab">
@@ -274,19 +353,20 @@ export function PeopleTab({
         <Surface testID="people-roster">
           <SectionHeader
             title="Your Team"
-            accessory={
-              <Text style={s.count}>
-                {cap == null ? `${roster.length}` : `${roster.length} of ${cap}`}
-              </Text>
-            }
+            accessory={<Text style={s.count}>{`${filled} of ${desks}`}</Text>}
           />
           <Text style={s.hint}>
             {roster.length === 0
               ? 'Nobody on payroll — you are working the floor alone.'
-              : atCap
-                ? 'Every slot the store has room for is filled.'
+              : everyDeskFilled
+                ? 'Every desk the store has room for is filled.'
                 : 'Everyone drawing a paycheck from this store.'}
           </Text>
+          <SlotBoard
+            slots={slots}
+            selectedRoleId={hiring.selectedRoleId}
+            onSelectHiringRole={onSelectHiringRole}
+          />
         </Surface>
         {roster.map((member) => (
           <RosterCard
@@ -323,7 +403,7 @@ export function PeopleTab({
               key={c.id}
               candidate={c}
               affordable={hiring.cash >= c.hiringCost}
-              atCap={atCap}
+              roleFull={roleFull}
               onHire={() => onHire(c.id)}
             />
           ))
@@ -373,6 +453,27 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
       marginTop: t.spacing.sm,
     },
     roleRow: { marginTop: t.spacing.sm },
+    slotBoard: { marginTop: t.spacing.md, gap: t.spacing.xxs },
+    slotRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: t.spacing.md,
+      paddingVertical: t.spacing.sm,
+      paddingHorizontal: t.spacing.md,
+      borderRadius: t.radius.sm,
+      backgroundColor: t.colors.surfaceRaised,
+    },
+    slotRowSelected: {
+      borderWidth: 1,
+      borderColor: t.colors.primary,
+    },
+    slotLabel: { ...t.typography.caption, color: t.colors.textSecondary },
+    slotCount: {
+      ...t.typography.statLabel,
+      color: t.colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
     actionRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',

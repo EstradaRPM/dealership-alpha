@@ -257,11 +257,6 @@
       "gm": 5000
     },
     "candidatesPerRole": 3,
-    "headcountCapByTier": {
-      "1": 4,
-      "2": 8,
-      "3": 16
-    },
     "conditionRead": {
       "minHalfWidthFraction": 0.10,
       "maxHalfWidthFraction": 0.80,

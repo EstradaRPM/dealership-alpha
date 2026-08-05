@@ -11,6 +11,7 @@ export type {
   PeopleRoleOption,
   PeoplePromotionOption,
   PeopleSkillRead,
+  PeopleSlotRow,
 } from './PeopleTab';
 export { ManagerStatusCard } from './ManagerStatusCard';
 export type {

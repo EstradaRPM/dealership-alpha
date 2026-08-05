@@ -5,6 +5,7 @@ import {
   type PeopleTabProps,
   type PeopleCandidate,
   type PeopleRosterMember,
+  type PeopleSlotRow,
 } from '../src/ui/PeopleTab';
 
 // #347 — the People tab is the org surface: roster + hiring pool + manager
@@ -39,10 +40,19 @@ const CANDIDATE: PeopleCandidate = {
   hiringCost: 1000,
 };
 
+// #352 — desks are per JOB. Two salesperson desks (one taken by MEMBER), one
+// UCM desk, and a promotion-only technician desk that offers no hire.
+const SLOTS: PeopleSlotRow[] = [
+  { roleId: 'salesperson', label: 'Salesperson', filled: 1, total: 2, hireable: true },
+  { roleId: 'used-car-manager', label: 'Used-Car Manager', filled: 0, total: 1, hireable: true },
+  { roleId: 'technician', label: 'Technician', filled: 0, total: 1, hireable: false },
+];
+
 function baseProps(over: Partial<PeopleTabProps> = {}): PeopleTabProps {
   return {
     managerStatus: { ucmPresent: false, ucm: [], departments: [] },
     roster: [MEMBER],
+    slots: SLOTS,
     hiring: {
       roleOptions: [
         { id: 'salesperson', label: 'Salesperson' },
@@ -51,7 +61,6 @@ function baseProps(over: Partial<PeopleTabProps> = {}): PeopleTabProps {
       selectedRoleId: 'salesperson',
       candidates: [CANDIDATE],
       cash: 50_000,
-      headcountCap: 4,
     },
     onSelectHiringRole: jest.fn(),
     onHire: jest.fn(),
@@ -124,17 +133,75 @@ describe('PeopleTab', () => {
     expect(props.onHire).not.toHaveBeenCalled();
   });
 
-  it('refuses a hire once the tier has no payroll slot left', () => {
-    // `staffOrg.hire` throws at the headcount cap; a surface must not offer a
-    // press that throws, so the cap is read off the engine, never re-derived.
+  it('does not offer a candidate for a full role', () => {
+    // `staffOrg.hire` throws once the ROLE's desks are taken; a surface must
+    // not offer a press that throws, so the count is read off the engine and
+    // never re-derived. Scarcity is per job, not per body (#352).
     const props = baseProps({
-      roster: [MEMBER, { ...MEMBER, id: 'b' }, { ...MEMBER, id: 'c' }, { ...MEMBER, id: 'd' }],
+      slots: [{ ...SLOTS[0], filled: 2, total: 2 }, ...SLOTS.slice(1)],
     });
     const { getByTestId, getByText } = render(<PeopleTab {...props} />);
 
-    expect(getByText('No room on payroll')).toBeTruthy();
+    expect(getByText('No desk open for this job')).toBeTruthy();
     fireEvent.press(getByTestId(`people-hire-${CANDIDATE.id}`));
     expect(props.onHire).not.toHaveBeenCalled();
+  });
+
+  it('still offers a candidate when a DIFFERENT role is the full one', () => {
+    // The regression the flat headcount cap caused: filling the sales floor
+    // used to shut hiring off for the whole store, service desk included.
+    const props = baseProps({
+      slots: [{ ...SLOTS[0], filled: 2, total: 2 }, ...SLOTS.slice(1)],
+      hiring: { ...baseProps().hiring, selectedRoleId: 'used-car-manager' },
+    });
+    const { getByTestId } = render(<PeopleTab {...props} />);
+
+    fireEvent.press(getByTestId(`people-hire-${CANDIDATE.id}`));
+    expect(props.onHire).toHaveBeenCalledWith(CANDIDATE.id);
+  });
+
+  it('renders a slot row per open role with filled of total', () => {
+    const { getByTestId } = render(<PeopleTab {...baseProps()} />);
+
+    expect(getByTestId('people-slot-board')).toBeTruthy();
+    expect(getByTestId('people-slot-count-salesperson').props.children.join('')).toBe(
+      '1 of 2',
+    );
+    expect(getByTestId('people-slot-count-used-car-manager').props.children.join('')).toBe(
+      '0 of 1',
+    );
+  });
+
+  it('an empty slot opens hiring for that role', () => {
+    const props = baseProps();
+    const { getByTestId } = render(<PeopleTab {...props} />);
+
+    fireEvent.press(getByTestId('people-slot-used-car-manager'));
+    expect(props.onSelectHiringRole).toHaveBeenCalledWith('used-car-manager');
+  });
+
+  it('a full slot row is not a hire affordance', () => {
+    const props = baseProps({
+      slots: [{ ...SLOTS[0], filled: 2, total: 2 }, ...SLOTS.slice(1)],
+    });
+    const { getByTestId } = render(<PeopleTab {...props} />);
+
+    fireEvent.press(getByTestId('people-slot-salesperson'));
+    expect(props.onSelectHiringRole).not.toHaveBeenCalled();
+  });
+
+  it('a promotion-only role shows its desks but offers no hire', () => {
+    // `technician` is reached by promoting a lot-porter, never hired cold —
+    // its slot gates the promotion, so the count is worth showing and the
+    // press is not.
+    const props = baseProps();
+    const { getByTestId } = render(<PeopleTab {...props} />);
+
+    expect(getByTestId('people-slot-count-technician').props.children.join('')).toBe(
+      '0 of 1',
+    );
+    fireEvent.press(getByTestId('people-slot-technician'));
+    expect(props.onSelectHiringRole).not.toHaveBeenCalled();
   });
 
   it('says so plainly when nobody is on payroll', () => {

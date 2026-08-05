@@ -96,6 +96,53 @@ describe('#347 the People tab is mounted on the live world', () => {
     expect(world.staffOrg.currentRoster[0].name).toBe(before);
   });
 
+  it('shows the live tier\'s slot board, and hiring fills a desk on it', () => {
+    // #352 anti-orphan proof: the slot table is only scarcity if the surface
+    // reads the LIVE engine's desks. A Tier-1 lot has exactly one sales desk.
+    const world = freshWorld(3520);
+    const { getByTestId, getAllByText, rerender } = renderPeople(world);
+
+    expect(getByTestId('people-slot-board')).toBeTruthy();
+    expect(
+      getByTestId('people-slot-count-salesperson').props.children.join(''),
+    ).toBe('0 of 1');
+
+    const candidate = world.staffOrg.getCandidates('salesperson')[0];
+    fireEvent.press(getByTestId(`people-hire-${candidate.candidateId}`));
+    rerender(
+      <PeopleTabContainer
+        world={world}
+        selectedHiringRoleId="salesperson"
+        setSelectedHiringRoleId={() => {}}
+        setCash={() => {}}
+        bump={() => {}}
+      />,
+    );
+
+    expect(
+      getByTestId('people-slot-count-salesperson').props.children.join(''),
+    ).toBe('1 of 1');
+    // ...and every remaining applicant for that job stops being offered, because
+    // pressing Hire would now throw in the engine.
+    expect(getAllByText('No desk open for this job').length).toBeGreaterThan(0);
+  });
+
+  it('renders no slot row for a job this tier has not opened', () => {
+    // Locked IA rule 3 — a mechanic that does not exist yet renders nothing,
+    // not a "0 of 0" foreshadow. The GM desk arrives at Tier 6.
+    const { queryByTestId } = renderPeople(freshWorld(3521));
+    expect(queryByTestId('people-slot-gm')).toBeNull();
+  });
+
+  it('renders no slot row for an empty promotion-only job', () => {
+    // `lot-porter` has desks at Tier 1 but is never hired cold and nothing
+    // promotes into it — a permanently empty row is one the player can do
+    // nothing about.
+    const { queryByTestId } = renderPeople(freshWorld(3522));
+    expect(queryByTestId('people-slot-lot-porter')).toBeNull();
+    expect(queryByTestId('people-slot-technician')).toBeNull();
+  });
+
   it('is composed into the People tab of the live shell', () => {
     const src = readAppCompositionSource();
     expect(src).toContain('<PeopleTabContainer');

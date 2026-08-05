@@ -14,12 +14,12 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
 `path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **Next unit: BUILD #352** (the per-role slot table — the prerequisite every wage slice
-sits on). Work them in number order; the deps are stated in each issue's Notes.
+order**. **#352 landed 2026-08-05 — next unit: BUILD #353** (the wage book + daily payroll
+drain). Work them in number order; the deps are stated in each issue's Notes.
 
 | # | Slice | Phase |
 |---|---|---|
-| #352 | per-role slot table = the hiring cap; `headcountCapByTier` deleted | 7 → unblocks 6 |
+| ~~#352~~ | ~~per-role slot table = the hiring cap; `headcountCapByTier` deleted~~ **BUILT 2026-08-05** | 7 → unblocks 6 |
 | #353 | `data/staff-pay.json`, derived grade, `paidGrade`, daily payroll drain; `weeklyPayrollStub` deleted | 6 |
 | #354 | People surface: grade + wage per card, total daily payroll, skill-bar `flexDirection` fix | 6 |
 | #355 | hire fee = multiple × daily wage; `hiringCostByTier` retired | 6 |
@@ -56,11 +56,16 @@ sits on). Work them in number order; the deps are stated in each issue's Notes.
   `DonutChart` still paints (explicit `size`, never measures) — that contrast is the fastest
   tell. Probe + guidance are in `.claude/skills/verify`; do not report a measured chart broken
   without running it.
-- **#352 comes first and nothing in phase 6 works without it.** C1's scarcity ruling points at the
-  CSV's per-role staff counts, and nothing in the repo enforces them today
-  (`staffOrg.headcountCapByTier` is a flat `{1:4,2:8,3:16}`). Build a wage against a flat cap and
-  half the mechanic sits inert. The CSV stops repeating `f&i-manager` at T4/T5 — that is a source
-  omission, not a removal; the slot table is **monotonic** (a tier never takes away a desk).
+- **#352 is built — `data/staff-slots.json` is now the ONE ceiling in the game.** `headcountCapByTier`
+  is gone from the JSON and the schema; `staffOrg.headcountCap` survives only as the *derived* sum of
+  the tier's role slots. Every wage slice from here sits on `getSlots`/`getSlotBoard`. The table is
+  monotonic and the schema **refuses a file that decreases**, so the CSV's T4/T5 `f&i-manager` omission
+  cannot be re-introduced as a removal. Do not add a second cap beside it.
+- **The Tier-2 dev fixture holds a UCM, whose desk does not open until T3** — the slot board reads it
+  honestly as "1 of 0". That state predates #352 (the flat cap allowed 8 bodies at T2 regardless of
+  role) and is unreachable in real play, since `hireTier` gates the UCM at T3 and no tier takes a desk
+  away. It is a stale fixture, not a live bug; over-capacity displays plainly and blocks further
+  hiring, which is the same grammar A2 R2 gives the lot cap ("36 of 35").
 - **5a issue states on GitHub are not trustworthy.** #334 was CLOSED-but-undone. Check each
   of #335–#339 against the repo before assuming it landed. (#339 is closed as **sliced**, not
   built — its work was #343/#344/#345, all three now built.)
@@ -86,8 +91,8 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance (all built 2026-08-02) | — (locked IA already ruled it) | done |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
-| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — sliced (#353–#357) |
-| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — sliced (#352, #358–#362) |
+| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — sliced (#353–#357), next unit #353 |
+| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 built; #358–#362 open |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
@@ -107,6 +112,43 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-05 — **BUILT #352** (per-role slot table). Scarcity is per **job**, not per body:
+  `data/staff-slots.json` is role → count per tier, and it is now the only headcount ceiling
+  in the game.
+  **`headcountCapByTier` left in the same commit that replaced it** — gone from
+  `data/tunables.json`, gone from the zod schema, gone from both call sites — so nothing can
+  read the old flat `{1:4, 2:8, 3:16}` and typecheck. `staffOrg.headcountCap` survives as a
+  *derived* read (the sum of the tier's slots) because the criterion asked for it, but there is
+  no second number that could disagree with the table.
+  **Three things the CSV did not say, resolved in data rather than left to the implementer.**
+  The table is **monotonic** and `StaffSlotTableSchema` refuses a file that decreases — the CSV's
+  dropped `f&i-manager` row at T4/T5 is an omission, and the schema now makes re-reading it as a
+  removal impossible. Every role states all seven tiers explicitly; a missing tier key would read
+  as "no slots", which locks the player out of a job and looks like balance instead of a broken
+  file, so `slotTotalFor` **clamps** an out-of-range tier and `getSlots` **throws** for a role the
+  table does not name. The promotion-only worker roles (`lot-porter`, `technician`) each mirror the
+  role they promote into — the bench that feeds a desk is as wide as the desk it feeds — which puts
+  `technician` at 0 at T1, where no service department exists.
+  **Slots gate promotion, not just hiring, and that is where the worker roles are enforced at all.**
+  `promote()` throws on a full target and `getPromotionOptions` filters them out, so no surface
+  renders a press the engine would refuse. Since `src/app/config.ts` keeps worker roles off the
+  hiring surface, their slot counts would otherwise have been inert data.
+  **The People tab's "N of cap" line is now the slot board**, and an empty slot IS the hire
+  affordance — pressing an open desk selects that job in the hiring pool. A candidate is blocked by
+  the **selected job's** desks, not the store total: the regression the flat cap caused was that
+  filling the sales floor shut off hiring for the whole store, service desk included.
+  **A row earns its place two ways only** — the tier opened a desk you can hire into, or somebody
+  is sitting in one. The first web drive showed "Lot Porter 0 of 2" and "Technician 0 of 1" at T2:
+  permanently empty rows for jobs nothing can reach, which is exactly the foreshadow tile the locked
+  IA bans. Both are gone.
+  **Driven on web at T2/Day 31**: the board reads Salesperson 2 of 2 · Service Advisor 0 of 1 ·
+  Used Car Manager **1 of 0**, the three salesperson applicants all say "No desk open for this job",
+  and pressing the open Service Advisor desk swapped the pool to three service advisors offering
+  "Hire — $1,000". The "1 of 0" is the stale T2 fixture (a UCM whose desk opens at T3, hireable back
+  when the cap counted bodies) displayed honestly — the same grammar A2 R2 gives the lot cap.
+  No save migration: slots are derived from tier + roster. 212 suites / **2671** tests, typecheck clean.
+  Next: **BUILD #353** (wage book + daily payroll drain).
 
 - 2026-08-04 — **SLICED phases 6 + 7 as one pass** → **#352–#362**, filed in build order, every
   issue carrying EARS acceptance criteria with named tests.
@@ -185,54 +227,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   provider so `min(bays, advisors)` keeps a single truth; a new `src/game/Facility/` module owns
   built capacity + the facility score).
   Next: **SLICE phases 6 + 7 together.**
-
-- 2026-08-02 — **BUILT #351** (Finance) — the last placeholder tab, and the books learned what
-  day it is. **Phase 5c is complete.**
-  **The tab is the locked IA's grammar, top to bottom.** `src/ui/FinanceTab/` +
-  `FinanceTabContainer`: time-range chips → four headline stat cards with sparklines and
-  vs-prior-period deltas → the hero gross-written trend → how deals were funded (donut) and
-  where the money went (bars) → the deal-KPI block. Deal history and month-close results are
-  siblings pushed **inside** the tab.
-  **The range chips are the whole slice, and nothing in the engine could serve them.**
-  `DealRecord` had no day, `deal:closed` carries none, and the Economy ledger was never
-  persisted — so "Today" would have been a lifetime total relabelled. Three narrow engine
-  surfaces make them honest: `kpiDashboard.getSnapshot(range?)` + `getDailyTotals(range)` over
-  day-stamped deals; the Economy ledger persisted **whole and never pruned** (it IS the P&L, and
-  a window that loses its early days reports a profit nobody made); and
-  `tierGate.getMonthVerdicts()`. The daily series emits a row for **every** day in the window
-  including days with no deals — a series that skips the quiet days draws a shape the business
-  never had.
-  **Only the month's GRADE is stored.** The verdict event fires once and `resetMonth` erases
-  what produced it, so nothing else could reconstruct how a past month graded. Each month's
-  *financials* are re-derived over its day window from the deal log and the ledger, so the
-  results screen can never disagree with the dashboard about the same days.
-  **Two live defects fell out, both fixed.** Economy's cursor latched only on `clock:day_ended`,
-  which stamped every deal closed on day N with **day N-1** — invisible while the only consumer
-  was a lifetime total, exactly one day wrong the moment Finance windows the ledger. And a
-  private cursor reads **1 for the rest of any session resumed from a save**, because a restore
-  fires no clock event; the web drive caught that one live (a day-31 deal landed on day 1).
-  Both modules now take a **`getCurrentDay` provider off the clock** — the shape TierGate
-  already used — so there is no cursor left to persist or mis-restore, and the clock's own
-  `advanceDay` ordering puts overnight spend on the concluded day for free.
-  **`KPIDashboard` stops being a screen.** It was a full route behind the in-game menu, which is
-  why nobody read it; it is now an embedded kit-styled block with two consumers passing
-  different snapshots (Finance the selected range's, the month-close interstitial the month's) —
-  a KPI row reads identically in both because there is only one of it. `HistoryScreen` moved the
-  same way, root route → tab route. **Both root routes are deleted and pushing them onto the
-  root Navigator no longer typechecks** (`tests/Navigator.test.ts` carries the `@ts-expect-error`
-  lock). The market-state panel (#179) rode along and is alive in a tab instead of a dead menu.
-  **PVR carries no sparkline on purpose** — it is undefined on a zero-unit day, so a per-day
-  series would draw zeroes on quiet days and read as a collapse in per-deal profitability that
-  never happened. Deltas are **suppressed, not shown as "+100%"**, when the prior window is empty
-  or zero. Every stat card renders an empty state rather than a zero that reads as a result.
-  **Driven on web at T2/Day 31**: a closed deal shows under Today as 1 unit / $2,603 / PVR
-  $2,603 with the funding donut at Cash 100%, the 30D chip re-reads as "Day 2–31 · 30 days",
-  and both siblings push with the tab bar mounted and Back returning.
-  **The donut paints a real `react-native-svg` path — #350's open question is answered.** The
-  *measuring* charts could not be confirmed on screen: **a hidden Browser pane delivers no
-  `ResizeObserver` callbacks**, so `onLayout` never fires and `useChartWidth` stays 0. Proven an
-  environment artifact (a bare ResizeObserver probe also never fires) and written into
-  `.claude/skills/verify` with the probe, so the next agent does not chase it as a bug.
-  211 suites / **2644** tests, typecheck clean.
-  Next: **DECIDE A2** (phase 7) — phase 5c is done, and C1's R3 made A2 a prerequisite for
-  slicing phase 6.

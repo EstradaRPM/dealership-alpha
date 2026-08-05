@@ -5,7 +5,10 @@ export type {
   StaffOrgSnapshot,
   ConditionAssessInput,
   PromotionOption,
+  RoleSlots,
 } from './StaffOrg';
+export { loadStaffSlots, slotTotalFor, StaffSlotTableSchema, MAX_TIER } from './staffSlots';
+export type { StaffSlotTable } from './staffSlots';
 export type { CandidateListing, StaffWithComposites } from './types';
 export { loadStaffOrgConfig } from './staffOrgData';
 export type { StaffOrgConfig, ConditionReadConfig } from './staffOrgData';

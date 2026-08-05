@@ -71,12 +71,14 @@ describe('ManagerStatusCard (#325)', () => {
       <PeopleTab
         managerStatus={NO_MANAGERS}
         roster={[]}
+        slots={[
+          { roleId: 'salesperson', label: 'Salesperson', filled: 0, total: 1, hireable: true },
+        ]}
         hiring={{
           roleOptions: [{ id: 'salesperson', label: 'Salesperson' }],
           selectedRoleId: 'salesperson',
           candidates: [],
           cash: 50_000,
-          headcountCap: 4,
         }}
         onSelectHiringRole={() => {}}
         onHire={() => {}}

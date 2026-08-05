@@ -43,6 +43,8 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
   return {
     get currentRoster() { return roster; },
     headcountCap: Infinity,
+    getSlots: (roleId: string) => ({ roleId, filled: 0, total: Infinity }),
+    getSlotBoard: () => [],
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},

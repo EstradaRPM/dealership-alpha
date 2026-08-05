@@ -1,4 +1,55 @@
-# Build state — log archive
+# Build- 2026-08-02 — **BUILT #351** (Finance) — the last placeholder tab, and the books learned what
+  day it is. **Phase 5c is complete.**
+  **The tab is the locked IA's grammar, top to bottom.** `src/ui/FinanceTab/` +
+  `FinanceTabContainer`: time-range chips → four headline stat cards with sparklines and
+  vs-prior-period deltas → the hero gross-written trend → how deals were funded (donut) and
+  where the money went (bars) → the deal-KPI block. Deal history and month-close results are
+  siblings pushed **inside** the tab.
+  **The range chips are the whole slice, and nothing in the engine could serve them.**
+  `DealRecord` had no day, `deal:closed` carries none, and the Economy ledger was never
+  persisted — so "Today" would have been a lifetime total relabelled. Three narrow engine
+  surfaces make them honest: `kpiDashboard.getSnapshot(range?)` + `getDailyTotals(range)` over
+  day-stamped deals; the Economy ledger persisted **whole and never pruned** (it IS the P&L, and
+  a window that loses its early days reports a profit nobody made); and
+  `tierGate.getMonthVerdicts()`. The daily series emits a row for **every** day in the window
+  including days with no deals — a series that skips the quiet days draws a shape the business
+  never had.
+  **Only the month's GRADE is stored.** The verdict event fires once and `resetMonth` erases
+  what produced it, so nothing else could reconstruct how a past month graded. Each month's
+  *financials* are re-derived over its day window from the deal log and the ledger, so the
+  results screen can never disagree with the dashboard about the same days.
+  **Two live defects fell out, both fixed.** Economy's cursor latched only on `clock:day_ended`,
+  which stamped every deal closed on day N with **day N-1** — invisible while the only consumer
+  was a lifetime total, exactly one day wrong the moment Finance windows the ledger. And a
+  private cursor reads **1 for the rest of any session resumed from a save**, because a restore
+  fires no clock event; the web drive caught that one live (a day-31 deal landed on day 1).
+  Both modules now take a **`getCurrentDay` provider off the clock** — the shape TierGate
+  already used — so there is no cursor left to persist or mis-restore, and the clock's own
+  `advanceDay` ordering puts overnight spend on the concluded day for free.
+  **`KPIDashboard` stops being a screen.** It was a full route behind the in-game menu, which is
+  why nobody read it; it is now an embedded kit-styled block with two consumers passing
+  different snapshots (Finance the selected range's, the month-close interstitial the month's) —
+  a KPI row reads identically in both because there is only one of it. `HistoryScreen` moved the
+  same way, root route → tab route. **Both root routes are deleted and pushing them onto the
+  root Navigator no longer typechecks** (`tests/Navigator.test.ts` carries the `@ts-expect-error`
+  lock). The market-state panel (#179) rode along and is alive in a tab instead of a dead menu.
+  **PVR carries no sparkline on purpose** — it is undefined on a zero-unit day, so a per-day
+  series would draw zeroes on quiet days and read as a collapse in per-deal profitability that
+  never happened. Deltas are **suppressed, not shown as "+100%"**, when the prior window is empty
+  or zero. Every stat card renders an empty state rather than a zero that reads as a result.
+  **Driven on web at T2/Day 31**: a closed deal shows under Today as 1 unit / $2,603 / PVR
+  $2,603 with the funding donut at Cash 100%, the 30D chip re-reads as "Day 2–31 · 30 days",
+  and both siblings push with the tab bar mounted and Back returning.
+  **The donut paints a real `react-native-svg` path — #350's open question is answered.** The
+  *measuring* charts could not be confirmed on screen: **a hidden Browser pane delivers no
+  `ResizeObserver` callbacks**, so `onLayout` never fires and `useChartWidth` stays 0. Proven an
+  environment artifact (a bare ResizeObserver probe also never fires) and written into
+  `.claude/skills/verify` with the probe, so the next agent does not chase it as a bug.
+  211 suites / **2644** tests, typecheck clean.
+  Next: **DECIDE A2** (phase 7) — phase 5c is done, and C1's R3 made A2 a prerequisite for
+  slicing phase 6.
+
+ state — log archive
 
 Rolled off the end of `docs/planning/build-state.md`, which keeps only the newest 3 entries.
 Newest first, text unchanged from when it was written. `/next` does **not** read this file at

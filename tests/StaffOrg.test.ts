@@ -3,7 +3,8 @@ import { createGameClock } from '../src/game/GameClock';
 import { createEconomy } from '../src/game/Economy';
 import { createStaffOrg, StaffOrgError, loadStaffOrgConfig } from '../src/game/StaffOrg';
 import { loadStaffTaxonomy, loadStaffArchetypes } from '../src/game/NPC';
-import type { StaffOrgConfig } from '../src/game/StaffOrg';
+import type { StaffOrgConfig, StaffSlotTable } from '../src/game/StaffOrg';
+import { slotsEverywhere } from './helpers/staffSlots';
 
 const STARTING_CASH = 50_000;
 const MASTER_SEED = 99;
@@ -15,7 +16,6 @@ const NO_OVERHEAD = { weeklyRent: 0, weeklyPayrollStub: 0 };
 const CHEAP_CONFIG: StaffOrgConfig = {
   hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
   candidatesPerRole: 3,
-  headcountCapByTier: { '1': 50, '2': 50, '3': 50 },
   conditionRead: {
     minHalfWidthFraction: 0.10,
     maxHalfWidthFraction: 0.80,
@@ -24,7 +24,13 @@ const CHEAP_CONFIG: StaffOrgConfig = {
   },
 };
 
-function makeSetup(startingCash = STARTING_CASH, config = CHEAP_CONFIG) {
+const ROOMY_SLOTS = slotsEverywhere(9);
+
+function makeSetup(
+  startingCash = STARTING_CASH,
+  config = CHEAP_CONFIG,
+  slots = ROOMY_SLOTS,
+) {
   const bus = createEventBus();
   const clock = createGameClock({ bus });
   const economy = createEconomy({ bus, startingCash, config: NO_OVERHEAD });
@@ -35,6 +41,7 @@ function makeSetup(startingCash = STARTING_CASH, config = CHEAP_CONFIG) {
     taxonomy,
     archetypes,
     config,
+    slots,
   });
   return { bus, clock, economy, staffOrg };
 }
@@ -182,51 +189,95 @@ describe('StaffOrg — hire', () => {
   });
 });
 
-// ── Headcount cap by tier (#131) ────────────────────────────────────────────
+// ── Per-role slots (#352, A2 R1 + C1 R3) ────────────────────────────────────
+//
+// Scarcity is per ROLE, not per body. What stops the player buying five
+// A-players is that the store has one desk for them. This replaced the flat
+// `headcountCapByTier` ({1:4, 2:8, 3:16}), under which a Tier-1 gravel yard
+// could field four salespeople.
 
-describe('StaffOrg — headcount cap by tier', () => {
-  const CAP_CONFIG: StaffOrgConfig = {
-    hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
-    candidatesPerRole: 3,
-    headcountCapByTier: { '1': 2, '2': 4, '3': 8 },
-    conditionRead: CHEAP_CONFIG.conditionRead,
+describe('StaffOrg — per-role slots', () => {
+  // Two salesperson desks at T1, three at T2; one UCM desk from T3. Stated
+  // here so the assertions read against a table you can see.
+  const SLOTS: StaffSlotTable = {
+    ...slotsEverywhere(0),
+    salesperson: { '1': 2, '2': 3, '3': 3, '4': 6, '5': 10, '6': 10, '7': 10 },
+    'used-car-manager': { '1': 0, '2': 0, '3': 1, '4': 1, '5': 1, '6': 1, '7': 1 },
+    'service-advisor': { '1': 0, '2': 1, '3': 1, '4': 2, '5': 2, '6': 2, '7': 2 },
   };
 
-  function makeCapSetup(tier: number) {
+  function makeSlotSetup(tier: number, slots: StaffSlotTable = SLOTS) {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
     const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
     const staffOrg = createStaffOrg({
       bus, economy, masterSeed: MASTER_SEED, taxonomy, archetypes,
-      config: CAP_CONFIG, getTier: () => tier,
+      config: CHEAP_CONFIG, slots, getTier: () => tier,
     });
     return { bus, clock, economy, staffOrg };
   }
 
-  // Hires up to `count` salespeople, one fresh candidate per day.
-  function hireN(clock: ReturnType<typeof createGameClock>, staffOrg: ReturnType<typeof createStaffOrg>, count: number) {
+  // Hires `count` people into one role, one fresh candidate per day.
+  function hireN(
+    clock: ReturnType<typeof createGameClock>,
+    staffOrg: ReturnType<typeof createStaffOrg>,
+    count: number,
+    roleId = 'salesperson',
+  ) {
     for (let i = 0; i < count; i++) {
       clock.advanceDay();
-      staffOrg.hire(staffOrg.getCandidates('salesperson')[0].candidateId);
+      staffOrg.hire(staffOrg.getCandidates(roleId)[0].candidateId);
     }
   }
 
-  it('allows hiring up to the Tier 1 cap', () => {
-    const { clock, staffOrg } = makeCapSetup(1);
+  it('reports filled and total slots per role', () => {
+    const { clock, staffOrg } = makeSlotSetup(2);
+    expect(staffOrg.getSlots('salesperson')).toEqual({
+      roleId: 'salesperson', filled: 0, total: 3,
+    });
+    hireN(clock, staffOrg, 2);
+    expect(staffOrg.getSlots('salesperson')).toEqual({
+      roleId: 'salesperson', filled: 2, total: 3,
+    });
+    // Filling one role leaves every other role's desks untouched.
+    expect(staffOrg.getSlots('service-advisor')).toEqual({
+      roleId: 'service-advisor', filled: 0, total: 1,
+    });
+  });
+
+  it('reports every role on the slot board', () => {
+    const { staffOrg } = makeSlotSetup(3);
+    const board = staffOrg.getSlotBoard();
+    expect(board).toHaveLength(Object.keys(SLOTS).length);
+    expect(board.find((r) => r.roleId === 'used-car-manager')).toEqual({
+      roleId: 'used-car-manager', filled: 0, total: 1,
+    });
+  });
+
+  it('the headcount cap is the sum of the tier\'s role slots', () => {
+    // T2: 3 salespeople + 1 service advisor + 0 everywhere else.
+    expect(makeSlotSetup(2).staffOrg.headcountCap).toBe(4);
+    // T3 adds the UCM desk.
+    expect(makeSlotSetup(3).staffOrg.headcountCap).toBe(5);
+  });
+
+  it('allows hiring up to the role\'s slot count', () => {
+    const { clock, staffOrg } = makeSlotSetup(1);
     hireN(clock, staffOrg, 2);
     expect(staffOrg.currentRoster).toHaveLength(2);
   });
 
-  it('throws StaffOrgError when hiring past the Tier 1 cap', () => {
-    const { clock, staffOrg } = makeCapSetup(1);
+  it('refuses a hire into a full role', () => {
+    const { clock, staffOrg } = makeSlotSetup(1);
     hireN(clock, staffOrg, 2);
     clock.advanceDay();
     const next = staffOrg.getCandidates('salesperson')[0].candidateId;
-    expect(() => staffOrg.hire(next)).toThrow(/[Hh]eadcount cap/);
+    expect(() => staffOrg.hire(next)).toThrow(StaffOrgError);
+    expect(() => staffOrg.hire(next)).toThrow(/No open slot for "salesperson"/);
   });
 
-  it('does not grow roster or post event when the cap is hit', () => {
-    const { bus, clock, economy, staffOrg } = makeCapSetup(1);
+  it('does not grow the roster, spend cash or post an event on a full role', () => {
+    const { bus, clock, economy, staffOrg } = makeSlotSetup(1);
     hireN(clock, staffOrg, 2);
     clock.advanceDay();
     const events: unknown[] = [];
@@ -239,23 +290,46 @@ describe('StaffOrg — headcount cap by tier', () => {
     expect(economy.cash).toBe(cashBefore);
   });
 
-  it('a higher tier permits a larger roster', () => {
-    const { clock, staffOrg } = makeCapSetup(2);
-    hireN(clock, staffOrg, 4);
+  it('a full role does not block a different role that still has a desk', () => {
+    const { clock, staffOrg } = makeSlotSetup(2);
+    hireN(clock, staffOrg, 3);
+    hireN(clock, staffOrg, 1, 'service-advisor');
     expect(staffOrg.currentRoster).toHaveLength(4);
   });
 
-  it('defaults to the Tier 1 cap when getTier is not provided', () => {
+  it('firing someone reopens their slot', () => {
+    const { clock, staffOrg } = makeSlotSetup(1);
+    hireN(clock, staffOrg, 2);
+    staffOrg.fire(staffOrg.currentRoster[0].id);
+    expect(staffOrg.getSlots('salesperson').filled).toBe(1);
+    hireN(clock, staffOrg, 1);
+    expect(staffOrg.currentRoster).toHaveLength(2);
+  });
+
+  it('a higher tier opens more desks', () => {
+    const { clock, staffOrg } = makeSlotSetup(2);
+    hireN(clock, staffOrg, 3);
+    expect(staffOrg.currentRoster).toHaveLength(3);
+  });
+
+  it('defaults to the Tier 1 slots when getTier is not provided', () => {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
     const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
     const staffOrg = createStaffOrg({
-      bus, economy, masterSeed: MASTER_SEED, taxonomy, archetypes, config: CAP_CONFIG,
+      bus, economy, masterSeed: MASTER_SEED, taxonomy, archetypes,
+      config: CHEAP_CONFIG, slots: SLOTS,
     });
     hireN(clock, staffOrg, 2);
     clock.advanceDay();
     const next = staffOrg.getCandidates('salesperson')[0].candidateId;
-    expect(() => staffOrg.hire(next)).toThrow(/[Hh]eadcount cap/);
+    expect(() => staffOrg.hire(next)).toThrow(/No open slot/);
+  });
+
+  it('throws rather than reading 0 slots for a role the table does not name', () => {
+    // A silently unhireable role looks like balance and is a missing data row.
+    const { staffOrg } = makeSlotSetup(1, { salesperson: SLOTS.salesperson });
+    expect(() => staffOrg.getSlots('used-car-manager')).toThrow(/staff-slots\.json/);
   });
 });
 

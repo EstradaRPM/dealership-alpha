@@ -54,11 +54,28 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 
 ## Hiring constraints
 - **Role hire-tier gate:** `getCandidates(roleId)` throws if the role's `hireTier` exceeds the current dealership tier (`deps.getTier`).
-- **Headcount cap (#131):** `hire()` throws `StaffOrgError` once `currentRoster.length` reaches `config.headcountCapByTier[currentTier]`. Tier comes from `deps.getTier` (defaults to tier 1 if unwired); the composition root wires it to `TierManager.currentTier`. Missing cap entry ⇒ unbounded.
-  - **`headcountCap` (#347)** is the same number as a read, so the People surface can *show* the ceiling and stop offering a hire that would throw. `Infinity` when the tier has no entry. A2/C1 replace the flat per-tier number with the CSV's per-role slot table behind this same read.
+- **Per-role slots (#352, A2 R1 + C1 R3)** — the ONE ceiling in the game. `data/staff-slots.json`
+  is role → count per tier; `hire()` throws `StaffOrgError` when that role's desks are all taken,
+  and `promote()` throws the same way for the target role. Tier comes from `deps.getTier`
+  (defaults to 1 if unwired); the composition root wires it to `TierManager.currentTier`.
+  Scarcity is per **role**, not per body: a full sales floor no longer shuts off the service desk.
+  - `getSlots(roleId) → { roleId, filled, total }` and `getSlotBoard()` (all roles) are the reads
+    the People surface renders. `getPromotionOptions` already filters out full targets, so no
+    surface ever offers a press that throws — the throws are the engine's lock, not player copy.
+  - `headcountCap` survives as a **derived** read: the sum of the tier's role slots. The flat
+    `staffOrg.headcountCapByTier` ({1:4, 2:8, 3:16}) is **deleted** from the JSON and the schema —
+    two ceilings that can disagree is a bug waiting.
+  - A role missing from the slot table **throws** rather than reading as 0 slots; a silently
+    unhireable role looks like balance instead of a missing data row.
+  - The table is **monotonic** (`StaffSlotTableSchema` refuses a file that decreases) and lists all
+    seven tiers per role. Worker-tier roles (`lot-porter`, `technician`) are promotion-only, so
+    their slots gate promotion; each mirrors the role it promotes into.
+  - Slots are derived from tier + roster, so there is **no save migration**.
 
 ## Data
-- `data/tunables.json#staffOrg` — `hiringCostByTier`, `candidatesPerRole`, `headcountCapByTier`.
+- `data/tunables.json#staffOrg` — `hiringCostByTier`, `candidatesPerRole`, `conditionRead`.
+- `data/staff-slots.json` — the per-role, per-tier slot table (`loadStaffSlots`, `staffSlots.ts`).
+  Counts come from the tier CSV's "Staff" row; `deps.slots` injects an alternative in tests.
 - `data/staff-roles.json` — role definitions (no pay data; the salary book arrives with
   staff-teeth, C1 — see `docs/planning/staff-teeth-design.md`).
 - `data/staff-archetypes.json`, `data/staff-skills.json` — used via `NPC` for candidate generation.

@@ -25,6 +25,8 @@ const emptyStaffOrg: StaffOrg = {
     return [];
   },
   headcountCap: Infinity,
+  getSlots: (roleId: string) => ({ roleId, filled: 0, total: Infinity }),
+  getSlotBoard: () => [],
   getCandidates: () => [],
   hire: () => {},
   fire: () => {},

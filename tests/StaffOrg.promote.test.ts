@@ -3,7 +3,8 @@ import { createEconomy } from '../src/game/Economy';
 import { createStaffOrg, StaffOrgError, loadStaffOrgConfig } from '../src/game/StaffOrg';
 import { loadStaffTaxonomy, loadStaffArchetypes } from '../src/game/NPC';
 import type { Staff } from '../src/game/NPC';
-import type { StaffOrg } from '../src/game/StaffOrg';
+import type { StaffOrg, StaffSlotTable } from '../src/game/StaffOrg';
+import { slotsEverywhere } from './helpers/staffSlots';
 
 // #324 — promotion path. `NPC.promoteStaff` existed with zero callers; StaffOrg
 // now exposes `getPromotionOptions` / `promote`, gated to the legal role edges +
@@ -26,7 +27,13 @@ function plainStaff(id: string, roleId: string, skills: Record<string, number>):
   };
 }
 
-function setup(tier = 1): { staffOrg: StaffOrg; setTier: (t: number) => void } {
+function setup(
+  tier = 1,
+  // These are edge-legality tests, not scarcity tests (#352) — a desk for
+  // everyone, so a slot count is never what decides the assertion. The slot
+  // gate gets its own describe below.
+  slots: StaffSlotTable = slotsEverywhere(9),
+): { staffOrg: StaffOrg; setTier: (t: number) => void } {
   const bus = createEventBus();
   const economy = createEconomy({
     bus,
@@ -41,6 +48,7 @@ function setup(tier = 1): { staffOrg: StaffOrg; setTier: (t: number) => void } {
     taxonomy,
     archetypes,
     config: loadStaffOrgConfig(),
+    slots,
     getTier: () => currentTier,
   });
   return { staffOrg, setTier: (t) => (currentTier = t) };
@@ -147,5 +155,69 @@ describe('StaffOrg — promote', () => {
   it('throws for a staffer not on the roster', () => {
     const { staffOrg } = setup();
     expect(() => staffOrg.promote('nobody', 'salesperson')).toThrow(StaffOrgError);
+  });
+});
+
+// ── Slots gate promotion too (#352) ─────────────────────────────────────────
+//
+// Worker-tier roles are reached ONLY by promotion (`src/app/config.ts` keeps
+// them off the hiring surface), so their slot counts are enforced here or
+// nowhere.
+
+describe('StaffOrg — promotion into a full role', () => {
+  /** One desk per role, so the second body into any role has nowhere to sit. */
+  const ONE_EACH: StaffSlotTable = slotsEverywhere(1);
+
+  function seedTwo(staffOrg: StaffOrg, a: Staff, b: Staff): void {
+    staffOrg.restore({ schemaVersion: 1, currentDay: 1, roster: [a, b] });
+  }
+
+  it('refuses a promotion into a full role', () => {
+    const { staffOrg } = setup(1, ONE_EACH);
+    seedTwo(
+      staffOrg,
+      plainStaff('s1', 'lot-porter', { productivity: 55 }),
+      plainStaff('s2', 'salesperson', { product_knowledge: 50 }),
+    );
+    expect(() => staffOrg.promote('s1', 'salesperson')).toThrow(StaffOrgError);
+    expect(() => staffOrg.promote('s1', 'salesperson')).toThrow(/No open slot/);
+    expect(staffOrg.currentRoster[0].role_id).toBe('lot-porter');
+  });
+
+  it('does not offer a promotion the slot table has no room for', () => {
+    // The surface must never render a press that throws.
+    const { staffOrg } = setup(1, ONE_EACH);
+    seedTwo(
+      staffOrg,
+      plainStaff('s1', 'lot-porter', { productivity: 55 }),
+      plainStaff('s2', 'salesperson', { product_knowledge: 50 }),
+    );
+    const targets = staffOrg.getPromotionOptions('s1').map((o) => o.toRoleId);
+    expect(targets).not.toContain('salesperson');
+    expect(targets).toContain('technician');
+  });
+
+  it('allows the promotion once the desk is vacated', () => {
+    const { staffOrg } = setup(1, ONE_EACH);
+    seedTwo(
+      staffOrg,
+      plainStaff('s1', 'lot-porter', { productivity: 55 }),
+      plainStaff('s2', 'salesperson', { product_knowledge: 50 }),
+    );
+    staffOrg.fire('s2');
+    staffOrg.promote('s1', 'salesperson');
+    expect(staffOrg.currentRoster[0].role_id).toBe('salesperson');
+  });
+
+  it('a tier that has not opened a desk offers no promotion into it', () => {
+    // `technician` has no hireTier, so only the slot count can gate it — at a
+    // tier with no service department the desk simply is not there.
+    const { staffOrg } = setup(1, { ...slotsEverywhere(9), technician: {
+      '1': 0, '2': 1, '3': 1, '4': 2, '5': 2, '6': 2, '7': 2,
+    } });
+    seedRoster(staffOrg, plainStaff('s1', 'lot-porter', { productivity: 55 }));
+    expect(staffOrg.getPromotionOptions('s1').map((o) => o.toRoleId)).toEqual([
+      'salesperson',
+    ]);
   });
 });
