@@ -33,6 +33,16 @@ export interface PeopleRosterMember {
   readonly honesty: number;
   /** 0–1, or `null` when morale isn't being tracked for this staffer. */
   readonly morale: number | null;
+  /** What they are worth right now, 1–5 — climbs as their skills grow (#353). */
+  readonly grade: number;
+  /**
+   * The grade their wage is set at (#353). Equal to `grade` for a fresh hire;
+   * once they outgrow it the card states BOTH, because the gap is the thing
+   * the player is about to be asked to close.
+   */
+  readonly paidGrade: number;
+  /** What this person costs per day — `wage(role, paidGrade)`, the sum the ledger charges. */
+  readonly dailyWage: number;
   readonly skills: readonly PeopleSkillRead[];
   readonly promotions: readonly PeoplePromotionOption[];
 }
@@ -45,8 +55,18 @@ export interface PeopleCandidate {
   readonly traits: readonly string[];
   readonly workQuality: number;
   readonly honesty: number;
+  /** The grade they'd sign at, 1–5 — what their wage is priced off (#353). */
+  readonly grade: number;
+  /** What they'd cost per day once hired. */
+  readonly dailyWage: number;
   readonly skills: readonly PeopleSkillRead[];
+  /** One-time sign-on fee — distinct from the wage, so the card labels both. */
   readonly hiringCost: number;
+}
+
+/** `$340/day` — the wage grammar shared by every card on this surface. */
+function wageText(dailyWage: number): string {
+  return `$${dailyWage.toLocaleString()}/day`;
 }
 
 export interface PeopleRoleOption {
@@ -84,6 +104,12 @@ export interface PeopleTabProps {
   managerStatus: ManagerStatusModel;
   /** Everyone on payroll right now. */
   roster: readonly PeopleRosterMember[];
+  /**
+   * What the whole roster burns every day (#353). Read off the engine's own
+   * sum rather than added up here — the number on screen has to be the number
+   * the overnight drain charges, and two additions can disagree.
+   */
+  dailyPayroll: number;
   /** The desks this tier opened, per job (#352). */
   slots: readonly PeopleSlotRow[];
   /** The candidate pool + the role you're shopping for. */
@@ -165,12 +191,23 @@ function RosterCard({
 }) {
   const t = useTheme();
   const s = makeStyles(t);
+  // A grade that has outgrown the paid one is stated as TWO numbers, never
+  // averaged into one (#353): the wage is set at `paidGrade` and stays there
+  // until a raise is agreed, so a blended figure would name a wage nobody is
+  // paying and hide the gap the raise slice fires on.
+  const outgrown = member.grade !== member.paidGrade;
+  const payLine = outgrown
+    ? `Grade ${member.grade} · Paid at grade ${member.paidGrade} · ${wageText(member.dailyWage)}`
+    : `Grade ${member.grade} · ${wageText(member.dailyWage)}`;
   return (
     <Surface testID={`people-roster-card-${member.id}`} style={s.card}>
       <View style={s.cardHead}>
         <View style={s.cardHeadText}>
           <Text style={s.personName}>{member.name}</Text>
           <Text style={s.personRole}>{member.roleLabel}</Text>
+          <Text style={s.payLine} testID={`people-roster-pay-${member.id}`}>
+            {payLine}
+          </Text>
         </View>
       </View>
       <CompositeMeters
@@ -276,8 +313,16 @@ function CandidateCard({
         <View style={s.cardHeadText}>
           <Text style={s.personName}>{candidate.name}</Text>
           <Text style={s.personRole}>{candidate.roleLabel}</Text>
+          {/* The two numbers the hire is now made on (#353): what they cost to
+              keep, here, and what they cost to sign, on the right. */}
+          <Text style={s.payLine} testID={`people-candidate-pay-${candidate.id}`}>
+            {`Grade ${candidate.grade} · ${wageText(candidate.dailyWage)}`}
+          </Text>
         </View>
-        <Text style={s.price}>${candidate.hiringCost.toLocaleString()}</Text>
+        <View style={s.priceColumn}>
+          <Text style={s.price}>${candidate.hiringCost.toLocaleString()}</Text>
+          <Text style={s.priceCaption}>to sign</Text>
+        </View>
       </View>
       {candidate.traits.length > 0 && (
         <View style={s.traitRow}>
@@ -327,6 +372,7 @@ function CandidateCard({
 export function PeopleTab({
   managerStatus,
   roster,
+  dailyPayroll,
   slots,
   hiring,
   onSelectHiringRole,
@@ -367,6 +413,17 @@ export function PeopleTab({
             selectedRoleId={hiring.selectedRoleId}
             onSelectHiringRole={onSelectHiringRole}
           />
+          {/* What the desks above cost to keep occupied (#353). Nobody on
+              payroll renders NO row — a "$0" line is a number the player can do
+              nothing with, and the empty-roster hint already says it. */}
+          {roster.length > 0 && (
+            <View style={s.payrollRow}>
+              <Text style={s.slotLabel}>Daily payroll</Text>
+              <Text style={s.slotCount} testID="people-payroll-total">
+                {wageText(dailyPayroll)}
+              </Text>
+            </View>
+          )}
         </Surface>
         {roster.map((member) => (
           <RosterCard
@@ -435,10 +492,22 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
       color: t.colors.textMuted,
       marginTop: t.spacing.xxs,
     },
+    payLine: {
+      ...t.typography.statLabel,
+      color: t.colors.textSecondary,
+      fontVariant: ['tabular-nums'],
+      marginTop: t.spacing.xxs,
+    },
+    priceColumn: { alignItems: 'flex-end' },
     price: {
       ...t.typography.body,
       color: t.colors.textPrimary,
       fontVariant: ['tabular-nums'],
+    },
+    priceCaption: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      marginTop: t.spacing.xxs,
     },
     count: { ...t.typography.statLabel, color: t.colors.textSecondary },
     hint: {
@@ -463,6 +532,19 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
       paddingHorizontal: t.spacing.md,
       borderRadius: t.radius.sm,
       backgroundColor: t.colors.surfaceRaised,
+    },
+    // Same row grammar as a slot row (label left, figure right), separated by a
+    // rule so the total reads as the board's footer rather than one more desk.
+    payrollRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: t.spacing.md,
+      marginTop: t.spacing.sm,
+      paddingTop: t.spacing.sm,
+      paddingHorizontal: t.spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: t.colors.border,
     },
     slotRowSelected: {
       borderWidth: 1,

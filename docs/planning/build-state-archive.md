@@ -6,6 +6,42 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-04 — **SLICED phases 6 + 7 as one pass** → **#352–#362**, filed in build order, every
+  issue carrying EARS acceptance criteria with named tests.
+  **The order puts the slot table first and the wage stack immediately behind it**, because #352 is
+  C1's scarcity cap (R3) and is the only hard dependency between the two phases; everything else in
+  A2 (facility, lot cap) is orthogonal to wages, so it lands after staff-teeth is fully live rather
+  than in front of it. Sequence: **#352** slots → **#353** wage book + daily drain → **#354** People
+  surface → **#355** hire fee → **#356** raises → **#357** rival offers → **#358** Facility module →
+  **#359** construction → **#360** facility gate face → **#361** lot cap → **#362** wholesale.
+  **Two engine slices deliberately ship without UI, and two UI slices deliberately trail their
+  engine.** #353 charges the wage before #354 displays it — a wage shown on a card and not charged
+  is a lie on screen for a commit; the drain is honest the day it appears, reading in the ledger as
+  "Payroll". #358 changes *no* behavior on purpose (built capacity is seeded to today's per-tier
+  constants), so the risky part — moving bays from constant to owned state behind one provider — is
+  verifiable on its own before #359 lets anyone spend money on it.
+  **Three retirements are criteria, not cleanup.** `headcountCapByTier` (#352), `weeklyPayrollStub`
+  (#353), `hiringCostByTier` (#355) and `baysByTier` (#358) each leave their JSON *and* their zod
+  schema in the same slice that replaces them, so typecheck fails if anything still reads the old
+  number. Two truths that can disagree is the bug this build order exists to avoid.
+  **One placement call was made rather than escalated:** the facility build surface goes in
+  **GROWTH**, derived from the locked charter's filing test — "work ON the business, everything that
+  compounds across months" (`second-level-ia.md` §1). Facility expansion compounds and competes with
+  inventory cash; it is not a room you walk into. The *occupancy* read ("31 of 35") lives where the
+  stock does, on the Lot room and the auction surface. This is a charter application, not a new IA
+  fork.
+  **Two source gaps were resolved in the issues rather than left for the implementer to trip on:**
+  the CSV's staff row stops repeating `f&i-manager` at T4/T5 (an omission — the table is monotonic,
+  a tier never removes a desk), and it never names `lot-porter`/`technician` at all (they are
+  promotion-only per `src/app/config.ts:249`, so their slots gate promotion, and a role the UI offers
+  at a tier may never hold 0 slots — that is the A1 regression class inverted). Roles that do not
+  exist yet (NCM, BDC manager) sit in the table unused; the fixed-ops-manager row is still an open
+  gate at phase 15, and the slot table is data, so it changes without code.
+  Every issue names its rejected alternatives with the director's reasons — draw-against-commission
+  (#353), wage-auto-follows-grade and fixed-at-hire (#356), and R2's five (#361, chief among them the
+  **overflow lot**, which the director raised and withdrew). No slice may reopen one.
+  Next: **BUILD #352**.
+
 - 2026-08-03 — **RULED A2** (phase 7, staff slots + facility scale) via `/decide A2`. Recorded in
   `path-to-finished-product.md` §3 A2, `[NEW]` → `[LOCKED]`. **Both staff gates are now closed;
   the next unit is a single SLICE covering phases 6 and 7.**

@@ -143,6 +143,48 @@ describe('#347 the People tab is mounted on the live world', () => {
     expect(queryByTestId('people-slot-technician')).toBeNull();
   });
 
+  it('states the live wage on a candidate card, and the same wage once hired', () => {
+    // #354 anti-orphan proof: the grade + wage on screen have to be the
+    // engine's own numbers. A candidate is priced off the grade they'd sign at,
+    // and hiring stamps that as `paidGrade` — so the card says the same thing
+    // on both sides of the hire.
+    const world = freshWorld(3540);
+    const candidate = world.staffOrg.getCandidates('salesperson')[0];
+    const expected = `Grade ${candidate.grade} · $${candidate.dailyWage.toLocaleString()}/day`;
+
+    const { getByTestId, rerender } = renderPeople(world);
+    expect(getByTestId(`people-candidate-pay-${candidate.candidateId}`).props.children).toBe(
+      expected,
+    );
+
+    fireEvent.press(getByTestId(`people-hire-${candidate.candidateId}`));
+    rerender(
+      <PeopleTabContainer
+        world={world}
+        selectedHiringRoleId="salesperson"
+        setSelectedHiringRoleId={() => {}}
+        setCash={() => {}}
+        bump={() => {}}
+      />,
+    );
+
+    expect(getByTestId(`people-roster-pay-${candidate.staff.id}`).props.children).toBe(
+      expected,
+    );
+  });
+
+  it('shows the payroll the engine will actually charge overnight', () => {
+    const world = freshWorld(3541);
+    const candidate = world.staffOrg.getCandidates('salesperson')[0];
+    world.staffOrg.hire(candidate.candidateId);
+
+    const { getByTestId } = renderPeople(world);
+    expect(world.staffOrg.dailyPayroll).toBeGreaterThan(0);
+    expect(getByTestId('people-payroll-total').props.children).toBe(
+      `$${world.staffOrg.dailyPayroll.toLocaleString()}/day`,
+    );
+  });
+
   it('is composed into the People tab of the live shell', () => {
     const src = readAppCompositionSource();
     expect(src).toContain('<PeopleTabContainer');

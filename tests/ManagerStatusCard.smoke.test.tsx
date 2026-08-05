@@ -71,6 +71,7 @@ describe('ManagerStatusCard (#325)', () => {
       <PeopleTab
         managerStatus={NO_MANAGERS}
         roster={[]}
+        dailyPayroll={0}
         slots={[
           { roleId: 'salesperson', label: 'Salesperson', filled: 0, total: 1, hireable: true },
         ]}

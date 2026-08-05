@@ -14,14 +14,14 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
 `path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **#352 and #353 landed 2026-08-05 — next unit: BUILD #354** (the People wage surface).
-Work them in number order; the deps are stated in each issue's Notes.
+order**. **#352, #353 and #354 landed 2026-08-05 — next unit: BUILD #355** (hire fee = multiple ×
+daily wage). Work them in number order; the deps are stated in each issue's Notes.
 
 | # | Slice | Phase |
 |---|---|---|
 | ~~#352~~ | ~~per-role slot table = the hiring cap; `headcountCapByTier` deleted~~ **BUILT 2026-08-05** | 7 → unblocks 6 |
 | ~~#353~~ | ~~`data/staff-pay.json`, derived grade, `paidGrade`, daily payroll drain; `weeklyPayrollStub` deleted~~ **BUILT 2026-08-05** | 6 |
-| #354 | People surface: grade + wage per card, total daily payroll, skill-bar `flexDirection` fix | 6 |
+| ~~#354~~ | ~~People surface: grade + wage per card, total daily payroll~~ **BUILT 2026-08-05** (the skill-bar `flexDirection` defect was already dead — #347 deleted `PersonnelScreen`) | 6 |
 | #355 | hire fee = multiple × daily wage; `hiringCostByTier` retired | 6 |
 | #356 | raise demands (ask/answer) + `payVsMarketBonus` made real | 6 |
 | #357 | rival offers on the same event family (retention + poaching, one moment) | 6 |
@@ -77,6 +77,14 @@ Work them in number order; the deps are stated in each issue's Notes.
   hire, and is what the wage is computed from. Every wage number the player sees or the ledger
   charges comes from `paidGrade`. Reading the current grade to price someone is the rejected
   "wage auto-follows grade" and silently kills #356's raise trigger.
+- **The #352–#362 issues can name files 5c deleted.** #354 was filed against
+  `src/ui/PersonnelScreen/PersonnelScreen.tsx:22` and a `flexDirection` defect in it; #347 had
+  already deleted that whole screen and the kit `ProgressBar` that replaced it sizes fills by
+  **percentage width**, so the defect was gone. The slice was written off
+  `docs/audits/ui-layout-audit.md`, which predates the rebuild. **Check a named `file:line`
+  against the repo before treating it as live** — and never re-create a deleted defect to
+  satisfy the letter of a criterion. Assert the criterion against the surface that actually
+  ships.
 - **The RN-Testing-Library suites (`App.saveFlow`, `InTabNavigation.reachability`) flake under
   full-suite CPU load.** Two `waitFor` assertions failed on one `npm test` run and a *different*
   one failed on the next; all pass in isolation three times over and the full suite is green on
@@ -101,7 +109,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance (all built 2026-08-02) | — (locked IA already ruled it) | done |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
-| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — #353 built; #354–#357 open |
+| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — #354 built; #355–#357 open |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 built; #358–#362 open |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
@@ -206,38 +214,39 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   No save migration: slots are derived from tier + roster. 212 suites / **2671** tests, typecheck clean.
   Next: **BUILD #353** (wage book + daily payroll drain).
 
-- 2026-08-04 — **SLICED phases 6 + 7 as one pass** → **#352–#362**, filed in build order, every
-  issue carrying EARS acceptance criteria with named tests.
-  **The order puts the slot table first and the wage stack immediately behind it**, because #352 is
-  C1's scarcity cap (R3) and is the only hard dependency between the two phases; everything else in
-  A2 (facility, lot cap) is orthogonal to wages, so it lands after staff-teeth is fully live rather
-  than in front of it. Sequence: **#352** slots → **#353** wage book + daily drain → **#354** People
-  surface → **#355** hire fee → **#356** raises → **#357** rival offers → **#358** Facility module →
-  **#359** construction → **#360** facility gate face → **#361** lot cap → **#362** wholesale.
-  **Two engine slices deliberately ship without UI, and two UI slices deliberately trail their
-  engine.** #353 charges the wage before #354 displays it — a wage shown on a card and not charged
-  is a lie on screen for a commit; the drain is honest the day it appears, reading in the ledger as
-  "Payroll". #358 changes *no* behavior on purpose (built capacity is seeded to today's per-tier
-  constants), so the risky part — moving bays from constant to owned state behind one provider — is
-  verifiable on its own before #359 lets anyone spend money on it.
-  **Three retirements are criteria, not cleanup.** `headcountCapByTier` (#352), `weeklyPayrollStub`
-  (#353), `hiringCostByTier` (#355) and `baysByTier` (#358) each leave their JSON *and* their zod
-  schema in the same slice that replaces them, so typecheck fails if anything still reads the old
-  number. Two truths that can disagree is the bug this build order exists to avoid.
-  **One placement call was made rather than escalated:** the facility build surface goes in
-  **GROWTH**, derived from the locked charter's filing test — "work ON the business, everything that
-  compounds across months" (`second-level-ia.md` §1). Facility expansion compounds and competes with
-  inventory cash; it is not a room you walk into. The *occupancy* read ("31 of 35") lives where the
-  stock does, on the Lot room and the auction surface. This is a charter application, not a new IA
-  fork.
-  **Two source gaps were resolved in the issues rather than left for the implementer to trip on:**
-  the CSV's staff row stops repeating `f&i-manager` at T4/T5 (an omission — the table is monotonic,
-  a tier never removes a desk), and it never names `lot-porter`/`technician` at all (they are
-  promotion-only per `src/app/config.ts:249`, so their slots gate promotion, and a role the UI offers
-  at a tier may never hold 0 slots — that is the A1 regression class inverted). Roles that do not
-  exist yet (NCM, BDC manager) sit in the table unused; the fixed-ops-manager row is still an open
-  gate at phase 15, and the slot table is data, so it changes without code.
-  Every issue names its rejected alternatives with the director's reasons — draw-against-commission
-  (#353), wage-auto-follows-grade and fixed-at-hire (#356), and R2's five (#361, chief among them the
-  **overflow lot**, which the director raised and withdrew). No slice may reopen one.
-  Next: **BUILD #352**.
+- 2026-08-05 — **BUILT #354** (the People wage surface). Grade and daily wage now sit on every
+  card, and the roster's total daily drain sits under the slot board that produced it.
+  **The issue's central defect was already dead, and the file it named no longer exists.**
+  #354 was written against `src/ui/PersonnelScreen/PersonnelScreen.tsx` — the `SkillRow` that
+  sized its fill with `flex: ratio` inside a container missing `flexDirection: 'row'`, so every
+  skill bar rendered identically. **#347 deleted that screen**; the People tab renders kit
+  `Meter` → `ProgressBar`, which sizes the fill with a **percentage width**, not flex, and
+  carries `fillTestID` precisely so proportion is assertable. The existing smoke test already
+  locked one member's two skills at 70% / 20%; this slice adds the criterion's *other* reading —
+  two **members** differing on the same axis (70% vs 15%). No source change was needed and none
+  was invented; a stale `file:line` in an issue is not a defect to re-create.
+  **The payroll total is a PROP, not a sum over the cards.** `world.staffOrg.dailyPayroll` is the
+  same number `clock:overnight_payroll` charges, so the screen and the ledger cannot drift; a
+  test pins a `dailyPayroll` that deliberately disagrees with the cards to prove the surface is
+  reading the engine rather than re-adding. Same rule for the per-member numbers: they come off
+  `getPayBoard()` keyed by staff id, and a candidate's off `CandidateListing.grade`/`dailyWage`,
+  so the card and `hire()` agree by construction.
+  **A divergent grade is stated as two numbers, never blended** — `Grade 4 · Paid at grade 3 ·
+  $340/day`. Averaging them would name a wage nobody is paying and would hide exactly the gap
+  #356's raise demand fires on. The phrasing covers *both* directions of divergence, because a
+  promotion changes which skills the composite weighs and can move the derived grade **down**
+  while `paidGrade` stays put.
+  **Two money numbers on one candidate card needed labels, not just placement.** The sign-on fee
+  keeps the head-right slot and now carries a `to sign` caption; the wage sits under the role as
+  `Grade 2 · $220/day`. Unlabelled, they read as two prices for the same thing.
+  **The payroll row does not render with an empty roster** — a `$0/day` line is a number the
+  player can do nothing with, and the "Nobody on payroll" hint already says it. Same rule the
+  slot board follows for a job nothing can reach.
+  **The web drive was impossible again for the documented reason**: the Browser pane is hidden,
+  so `document.visibilityState` is `"hidden"` and `requestAnimationFrame` fires zero frames — the
+  rAF probe itself times out, and every `computer` click with it. Evidence is two reachability
+  tests instead, on a real `createWorld`: the candidate card states the engine's own grade+wage,
+  the *same string* appears on the roster card after hiring (proving `paidGrade` is stamped from
+  the listing), and the payroll line matches `staffOrg.dailyPayroll` exactly. Those run in CI.
+  215 suites / **2720** tests, typecheck clean.
+  Next: **BUILD #355** (hire fee = multiple × daily wage; `hiringCostByTier` retired).

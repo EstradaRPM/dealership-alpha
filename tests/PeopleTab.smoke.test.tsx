@@ -20,11 +20,30 @@ const MEMBER: PeopleRosterMember = {
   workQuality: 0.72,
   honesty: 0.64,
   morale: 0.8,
+  // #353 — a fresh hire is paid at the grade they signed at, so the two agree.
+  grade: 3,
+  paidGrade: 3,
+  dailyWage: 340,
   skills: [
     { id: 'communication', label: 'Talking with customers', value: 70, cap: 100 },
     { id: 'rapport_building', label: 'Building rapport', value: 20, cap: 100 },
   ],
   promotions: [{ toRoleId: 'used-car-manager', label: 'Used-Car Manager' }],
+};
+
+/** A second body on the roster, deliberately weaker on the same skill axis. */
+const GREENPEA: PeopleRosterMember = {
+  ...MEMBER,
+  id: 'staff:career_salesperson:1:1',
+  name: 'Dana Whitfield',
+  grade: 1,
+  paidGrade: 1,
+  dailyWage: 160,
+  skills: [
+    { id: 'communication', label: 'Talking with customers', value: 15, cap: 100 },
+    { id: 'rapport_building', label: 'Building rapport', value: 20, cap: 100 },
+  ],
+  promotions: [],
 };
 
 const CANDIDATE: PeopleCandidate = {
@@ -34,6 +53,8 @@ const CANDIDATE: PeopleCandidate = {
   traits: ['Charisma', 'Closer'],
   workQuality: 0.55,
   honesty: 0.41,
+  grade: 2,
+  dailyWage: 220,
   skills: [
     { id: 'communication', label: 'Talking with customers', value: 48, cap: 100 },
   ],
@@ -52,6 +73,7 @@ function baseProps(over: Partial<PeopleTabProps> = {}): PeopleTabProps {
   return {
     managerStatus: { ucmPresent: false, ucm: [], departments: [] },
     roster: [MEMBER],
+    dailyPayroll: MEMBER.dailyWage,
     slots: SLOTS,
     hiring: {
       roleOptions: [
@@ -106,6 +128,81 @@ describe('PeopleTab', () => {
     expect(high.props.style.width).toBe('70%');
     expect(low.props.style.width).toBe('20%');
     expect(high.props.style.width).not.toBe(low.props.style.width);
+  });
+
+  // #354 — grade and daily wage are the two numbers the hire decision is made
+  // on, and the roster's total drain has to be readable in the same glance.
+
+  it('a roster card states grade and the wage being paid', () => {
+    const { getByTestId } = render(<PeopleTab {...baseProps()} />);
+    expect(getByTestId(`people-roster-pay-${MEMBER.id}`).props.children).toBe(
+      'Grade 3 · $340/day',
+    );
+  });
+
+  it('a candidate card states grade and daily wage', () => {
+    const { getByTestId, getByText } = render(<PeopleTab {...baseProps()} />);
+    expect(getByTestId(`people-candidate-pay-${CANDIDATE.id}`).props.children).toBe(
+      'Grade 2 · $220/day',
+    );
+    // ...and the one-time fee stays legible as a DIFFERENT number, not a second
+    // unlabelled dollar figure sitting beside the wage.
+    expect(getByText('to sign')).toBeTruthy();
+  });
+
+  it('shows total daily payroll for the roster', () => {
+    const props = baseProps({
+      roster: [MEMBER, GREENPEA],
+      dailyPayroll: MEMBER.dailyWage + GREENPEA.dailyWage,
+    });
+    const { getByTestId, getByText } = render(<PeopleTab {...props} />);
+
+    expect(getByTestId('people-payroll-total').props.children).toBe('$500/day');
+    expect(getByText('Daily payroll')).toBeTruthy();
+  });
+
+  it('reads the payroll total off the engine rather than re-adding the cards', () => {
+    // The number on screen must be the number the overnight drain charges. If
+    // the surface summed the cards itself, the two could disagree the moment a
+    // wage stops being a plain per-member sum.
+    const props = baseProps({ roster: [MEMBER, GREENPEA], dailyPayroll: 1234 });
+    const { getByTestId } = render(<PeopleTab {...props} />);
+    expect(getByTestId('people-payroll-total').props.children).toBe('$1,234/day');
+  });
+
+  it('shows no payroll line when nobody is on payroll', () => {
+    const { queryByTestId } = render(
+      <PeopleTab {...baseProps({ roster: [], dailyPayroll: 0 })} />,
+    );
+    expect(queryByTestId('people-payroll-total')).toBeNull();
+  });
+
+  it('shows grade and paid grade separately when they diverge', () => {
+    // Growth never silently reprices anyone (#353 R2): the wage stays at the
+    // grade they were hired at, so an outgrown member states BOTH numbers. A
+    // single blended figure would name a wage nobody is paying and hide the
+    // gap the raise demand fires on.
+    const outgrown: PeopleRosterMember = { ...MEMBER, grade: 4, paidGrade: 3 };
+    const props = baseProps({ roster: [outgrown], dailyPayroll: outgrown.dailyWage });
+    const { getByTestId } = render(<PeopleTab {...props} />);
+
+    expect(getByTestId(`people-roster-pay-${MEMBER.id}`).props.children).toBe(
+      'Grade 4 · Paid at grade 3 · $340/day',
+    );
+  });
+
+  it('two members differing in a skill do not render the same bar', () => {
+    const props = baseProps({
+      roster: [MEMBER, GREENPEA],
+      dailyPayroll: MEMBER.dailyWage + GREENPEA.dailyWage,
+    });
+    const { getByTestId } = render(<PeopleTab {...props} />);
+
+    const mature = getByTestId(`roster-${MEMBER.id}-skill-fill-communication`);
+    const green = getByTestId(`roster-${GREENPEA.id}-skill-fill-communication`);
+
+    expect(mature.props.style.width).toBe('70%');
+    expect(green.props.style.width).toBe('15%');
   });
 
   it('hires, promotes and fires through the surface handlers', () => {

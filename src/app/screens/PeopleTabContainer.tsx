@@ -7,7 +7,7 @@ import {
   type PeopleSkillRead,
   type PeopleSlotRow,
 } from '../../ui/PeopleTab';
-import type { StaffWithComposites } from '../../game/StaffOrg';
+import { MIN_GRADE, type StaffWithComposites } from '../../game/StaffOrg';
 import {
   buildHiringRoleOptions,
   buildManagerStatus,
@@ -70,20 +70,31 @@ export function PeopleTabContainer({
     ? selectedHiringRoleId
     : (roleOptions[0]?.id ?? DEFAULT_HIRING_ROLE_ID);
 
-  const roster: PeopleRosterMember[] = world.staffOrg.currentRoster.map((staff) => ({
-    id: staff.id,
-    name: staff.name,
-    roleLabel: humanizeRole(staff.role_id),
-    workQuality: staff.effectivenessRatio,
-    honesty: staff.trustworthinessRatio,
-    // StaffMorale tracks 0–100; the meters are fractions.
-    morale: world.staffMorale.getMorale(staff.id) / 100,
-    skills: skillReads(staff),
-    promotions: world.staffOrg.getPromotionOptions(staff.id).map((p) => ({
-      toRoleId: p.toRoleId,
-      label: humanizeRole(p.toRoleId),
-    })),
-  }));
+  // Grade + wage per member (#353), read off the engine's own pay board rather
+  // than re-derived from the pay book here: the card must state exactly what
+  // the overnight drain charges, and a second computation could disagree.
+  const payBoard = new Map(world.staffOrg.getPayBoard().map((p) => [p.staffId, p]));
+
+  const roster: PeopleRosterMember[] = world.staffOrg.currentRoster.map((staff) => {
+    const pay = payBoard.get(staff.id);
+    return {
+      id: staff.id,
+      name: staff.name,
+      roleLabel: humanizeRole(staff.role_id),
+      workQuality: staff.effectivenessRatio,
+      honesty: staff.trustworthinessRatio,
+      // StaffMorale tracks 0–100; the meters are fractions.
+      morale: world.staffMorale.getMorale(staff.id) / 100,
+      grade: pay?.grade ?? MIN_GRADE,
+      paidGrade: pay?.paidGrade ?? MIN_GRADE,
+      dailyWage: pay?.dailyWage ?? 0,
+      skills: skillReads(staff),
+      promotions: world.staffOrg.getPromotionOptions(staff.id).map((p) => ({
+        toRoleId: p.toRoleId,
+        label: humanizeRole(p.toRoleId),
+      })),
+    };
+  });
 
   const candidates: PeopleCandidate[] = world.staffOrg
     .getCandidates(selectedRoleId)
@@ -94,6 +105,10 @@ export function PeopleTabContainer({
       traits: listing.staff.trait_ids.map(humanizeTrait),
       workQuality: listing.staff.effectivenessRatio,
       honesty: listing.staff.trustworthinessRatio,
+      // The grade they'd sign at and the wage that follows from it (#353) —
+      // carried by the listing, so the card and `hire()` agree by construction.
+      grade: listing.grade,
+      dailyWage: listing.dailyWage,
       skills: skillReads(listing.staff),
       hiringCost: listing.hiringCost,
     }));
@@ -121,6 +136,7 @@ export function PeopleTabContainer({
     <PeopleTab
       managerStatus={buildManagerStatus(world)}
       roster={roster}
+      dailyPayroll={world.staffOrg.dailyPayroll}
       slots={slots}
       hiring={{
         roleOptions,
