@@ -54,3 +54,5 @@ export {
 export type { Point, BarBand, DonutSegment } from './chartScale';
 export { SectionHeader } from './SectionHeader';
 export type { SectionHeaderProps } from './SectionHeader';
+export { Collapsible } from './Collapsible';
+export type { CollapsibleProps } from './Collapsible';

@@ -11,6 +11,7 @@ import { MIN_GRADE, type StaffWithComposites } from '../../game/StaffOrg';
 import {
   buildHiringRoleOptions,
   buildManagerStatus,
+  departmentOfRole,
   humanizeRole,
   staffTaxonomy,
   DEFAULT_HIRING_ROLE_ID,
@@ -85,6 +86,9 @@ export function PeopleTabContainer({
       id: staff.id,
       name: staff.name,
       roleLabel: humanizeRole(staff.role_id),
+      // Which panel they sit under — read off the role catalog, so a promotion
+      // moves the person between department panels for free.
+      department: departmentOfRole(staff.role_id),
       workQuality: staff.effectivenessRatio,
       honesty: staff.trustworthinessRatio,
       // StaffMorale tracks 0–100; the meters are fractions.
@@ -116,6 +120,7 @@ export function PeopleTabContainer({
       id: listing.candidateId,
       name: listing.staff.name,
       roleLabel: humanizeRole(listing.staff.role_id),
+      department: departmentOfRole(listing.staff.role_id),
       traits: listing.staff.trait_ids.map(humanizeTrait),
       workQuality: listing.staff.effectivenessRatio,
       honesty: listing.staff.trustworthinessRatio,
@@ -141,6 +146,7 @@ export function PeopleTabContainer({
     .map((row) => ({
       roleId: row.roleId,
       label: humanizeRole(row.roleId),
+      department: departmentOfRole(row.roleId),
       filled: row.filled,
       total: row.total,
       hireable: hireableRoleIds.has(row.roleId),

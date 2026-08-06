@@ -241,6 +241,50 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-06 — **DIRECTOR-REQUESTED, NOT A `/next` UNIT: People tab rebuilt as collapsible
+  department panels.** No issue number and no phase moved — the director asked for it directly
+  mid-session, between #360 and #361. **#361 is still the next unit.**
+  **The tab is now organised the way the store is**: three regions (who works here, who you
+  could hire, what your managers run), and inside the first two, **one collapsible panel per
+  department** — Sales, Service, Body Shop, Store-Wide — each with the glyph and accent the
+  Operations dock already gives it, its own desk count in the header (*3 of 2 desks filled*),
+  an `N open` / `Full` badge, its own slot board and its own people. Before this, a service
+  advisor and a salesperson were the same undifferentiated row in one flat column.
+  **Department is read off `data/staff-roles.json`, never a second list.** `departmentOfRole()`
+  in `src/app/config.ts` resolves it from the same catalog the promotion DAG and the capability
+  gates are written against, so a promotion moves someone between panels for free. Roles the
+  catalog leaves null (lot porter, GM) land in a named **Store-Wide** group rather than a
+  nameless bucket.
+  **`Collapsible` is a KIT primitive, not a per-surface `useState`** (`src/ui/kit/`,
+  documented in `kit/CLAUDE.md`). Three rules it exists to hold: the header is the whole
+  affordance (`title`/`summary`/`accessory`, so a *shut* panel still says what is in it and
+  whether it needs attention); a shut body **unmounts**, because a hidden-but-mounted subtree
+  keeps doing work nobody asked for; and `pinned` is the one narrow exception — content that
+  shows open or shut.
+  **People are folded too, and `pinned` is why that is safe.** A roster card shuts to name ·
+  job · *Grade 3 · $340/day* and opens onto the composites, every skill axis and Promote /
+  Let go. A raise or rival offer opens the card **and pins its prompt**, so folding someone
+  away can never fold away a question waiting on an answer. Applicant cards shut to name ·
+  wage · signing fee **with the Hire button on the shut card** — hiring is the action the pool
+  exists for and must never be a second tap behind a fold.
+  **Consequence for tests, stated because it will look like a regression otherwise:** the
+  promote/fire buttons and the skill meters are now one tap behind a card header, so
+  `PeopleTab.smoke` and `StaffPromotion.reachability` press `<card>-header` first — that IS
+  the player's tap path. `people-slot-board` became `people-slot-board-<dept>`. The read
+  models grew a required `department` field (`PeopleRosterMember`, `PeopleCandidate`,
+  `PeopleRoleOption`, `PeopleSlotRow`), and `PeopleTab.tsx` was split into `peopleModel.ts` /
+  `peopleCards.tsx` / `departments.ts` behind the same barrel.
+  **Driven on web at the T2 fixture, single clicks.** Folded and unfolded the Sales panel;
+  opened a person and got their meters with the pay line still pinned; selected *Service
+  Advisor* and watched the applicant pool move into the **Service** hiring panel; hired Tessa
+  Nakamura and the Service team panel flipped *1 open · 0 of 1* → **Full · 1 of 1** with her
+  under it, in place, no route change. Console clean of anything from this surface. 216 suites
+  / **2814** tests, typecheck clean.
+  The Tier-2 fixture's *Used Car Manager 1 of 0* row is visible again under the Sales panel —
+  that is the stale-fixture state already recorded in Blockers, displayed plainly on purpose.
+  Not a defect; do not "fix" it.
+  Next: **BUILD #361** (lot cap governs buying — "31 of 35" — trade always lands).
+
 - 2026-08-06 — **BUILT #360** (the facility gate face — the dormant fifth face gets a
   producer). *Facility Build-Out · 23% built vs 50%*. The face has been declared in
   `data/tier-gate.json` since #232 and skipped defensively by the engine ever since,
@@ -338,45 +382,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   morning of day 33 it read **12 of 12 built** with the pill gone, service bays untouched at
   *2 of 4*. 216 suites / **2793** tests, typecheck clean.
   Next: **BUILD #360** (facility score lights the dormant tier-gate `facility` face).
-
-- 2026-08-06 — **BUILT #358** (the Facility module — built capacity, tier as the ceiling).
-  Physical capacity stopped being a per-tier constant nobody owns: `src/game/Facility/` holds
-  built lot spaces, service bays and body bays as persisted state, and the tier's number
-  became the **ceiling** over each. That is A2 R1 — *desks come with the tier, buildings are
-  bought* — made structural before #359 lets anyone spend money on it.
-  **`baysByTier` left in the same commit that replaced it**, out of `data/tunables.json` *and*
-  both zod schemas (`serviceDispatchData.ts`, `bodyShopDispatchConfig.ts`). Fifth placeholder
-  deleted across 6+7 (`headcountCapByTier` #352, `weeklyPayrollStub` #353, `hiringCostByTier`
-  #355, `payVsMarketBonus` #356), and the same bug each time: a number the player could never
-  own. The dispatch engines now take `bays` — a count, the narrowest possible dep — replacing
-  `facilityTier` + a config lookup. `min(bays, advisors)` is untouched.
-  **The ceiling is derived from the live tier and never stored**, so a tier-up cannot leave a
-  stale ceiling behind and there is nothing in it to migrate. Only what is BUILT persists.
-  **Carry-over is the behavior change, and it is the ruling, not an oversight.** A fresh world
-  seeds at its tier's ceilings, so nothing about today's play moves — but a store that
-  tier-ups keeps the bays it had. That is exactly what makes the dormant `facility` gate face
-  (#360) measurable as built ÷ ceiling; "tier grants everything" would peg it at 100 forever.
-  The consequence surfaced immediately in two suites that fake a tier by forcing
-  `tierManager` on a fresh T1 world: they now also have to say the store built out, which they
-  do through `createDefaultFacilitySnapshot(tier)` — the same shape a tier-N save carries.
-  **No `facility:*` event, and the module takes no bus.** Nothing in this slice *changes* a
-  built number; construction (#359) is the first publisher. An event with no publisher is dead
-  code, and this repo's rule is to delete those, not to pre-add them.
-  **`data/facility.json` follows the slot table's precedent exactly** (#352): monotonic by
-  schema (a file that decreases is refused — a tier never takes capacity away), all seven
-  tiers stated per row so a missing key can never read as "no capacity" and silently shut a
-  department, and an out-of-range tier clamped into the ladder. Where the CSV stops (service
-  bays at T3, lot/body at T5) the last value repeats, flagged as C2 calibration, not design.
-  **Envelope v20 → v21, and the migration reads the save's ACTUAL tier** out of the
-  `tierManager` blob rather than defaulting to 1 — the #314 Body-Shop-gate idiom. A migrated
-  Tier-3 store keeps running the bays it was already running; defaulting to 1 would have taken
-  a franchise store's shop away on load. `data/fixtures/tier-2.json` re-stamped **in place**
-  through the real migrate + restoreWorld + snapshotWorld path (not `gen:fixtures` — the
-  harness bot never reaches T2), and it now carries `{lotSpaces:12, serviceBays:4, bodyBays:0}`,
-  which is precisely what the retired constant gave it.
-  **Driven on web at T2, single clicks, no timeouts.** The re-stamped fixture restored through
-  the new `facility` key (Day 31, $222,734, Tier 2), Operations → Service rendered, and a full
-  day opened, ran and closed on the Reveal recap — so the drain built against the Facility-fed
-  bay count end to end. 216 suites / **2776** tests, typecheck clean.
-  Next: **BUILD #359** (construction — buy capacity with cash + days, ceiling enforced, Growth
-  build surface).

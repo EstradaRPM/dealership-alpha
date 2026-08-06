@@ -14,6 +14,8 @@ export type {
   PeopleSlotRow,
   PeopleRaiseAsk,
 } from './PeopleTab';
+export { DEPARTMENT_META, DEPARTMENT_ORDER } from './departments';
+export type { PeopleDepartmentId, PeopleDepartmentMeta } from './departments';
 export { ManagerStatusCard } from './ManagerStatusCard';
 export type {
   ManagerStatusModel,

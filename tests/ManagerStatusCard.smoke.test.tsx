@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { PeopleTab, ManagerStatusCard } from '../src/ui/PeopleTab';
 import type { ManagerStatusModel } from '../src/ui/PeopleTab';
 
@@ -73,10 +73,17 @@ describe('ManagerStatusCard (#325)', () => {
         roster={[]}
         dailyPayroll={0}
         slots={[
-          { roleId: 'salesperson', label: 'Salesperson', filled: 0, total: 1, hireable: true },
+          {
+            roleId: 'salesperson',
+            label: 'Salesperson',
+            department: 'sales',
+            filled: 0,
+            total: 1,
+            hireable: true,
+          },
         ]}
         hiring={{
-          roleOptions: [{ id: 'salesperson', label: 'Salesperson' }],
+          roleOptions: [{ id: 'salesperson', label: 'Salesperson', department: 'sales' }],
           selectedRoleId: 'salesperson',
           candidates: [],
           cash: 50_000,
@@ -90,6 +97,10 @@ describe('ManagerStatusCard (#325)', () => {
       />,
     );
     expect(getByTestId('people-tab')).toBeTruthy();
+    // Delegation is its own panel and starts shut — it is a reference read, not
+    // a decision. Opening it is the tap a player makes to check what their
+    // managers are allowed to do.
+    fireEvent.press(getByTestId('people-delegation-header'));
     expect(getByTestId('manager-status-card')).toBeTruthy();
   });
 });

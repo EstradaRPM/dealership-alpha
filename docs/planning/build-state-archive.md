@@ -6,6 +6,48 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **BUILT #358** (the Facility module — built capacity, tier as the ceiling).
+  Physical capacity stopped being a per-tier constant nobody owns: `src/game/Facility/` holds
+  built lot spaces, service bays and body bays as persisted state, and the tier's number
+  became the **ceiling** over each. That is A2 R1 — *desks come with the tier, buildings are
+  bought* — made structural before #359 lets anyone spend money on it.
+  **`baysByTier` left in the same commit that replaced it**, out of `data/tunables.json` *and*
+  both zod schemas (`serviceDispatchData.ts`, `bodyShopDispatchConfig.ts`). Fifth placeholder
+  deleted across 6+7 (`headcountCapByTier` #352, `weeklyPayrollStub` #353, `hiringCostByTier`
+  #355, `payVsMarketBonus` #356), and the same bug each time: a number the player could never
+  own. The dispatch engines now take `bays` — a count, the narrowest possible dep — replacing
+  `facilityTier` + a config lookup. `min(bays, advisors)` is untouched.
+  **The ceiling is derived from the live tier and never stored**, so a tier-up cannot leave a
+  stale ceiling behind and there is nothing in it to migrate. Only what is BUILT persists.
+  **Carry-over is the behavior change, and it is the ruling, not an oversight.** A fresh world
+  seeds at its tier's ceilings, so nothing about today's play moves — but a store that
+  tier-ups keeps the bays it had. That is exactly what makes the dormant `facility` gate face
+  (#360) measurable as built ÷ ceiling; "tier grants everything" would peg it at 100 forever.
+  The consequence surfaced immediately in two suites that fake a tier by forcing
+  `tierManager` on a fresh T1 world: they now also have to say the store built out, which they
+  do through `createDefaultFacilitySnapshot(tier)` — the same shape a tier-N save carries.
+  **No `facility:*` event, and the module takes no bus.** Nothing in this slice *changes* a
+  built number; construction (#359) is the first publisher. An event with no publisher is dead
+  code, and this repo's rule is to delete those, not to pre-add them.
+  **`data/facility.json` follows the slot table's precedent exactly** (#352): monotonic by
+  schema (a file that decreases is refused — a tier never takes capacity away), all seven
+  tiers stated per row so a missing key can never read as "no capacity" and silently shut a
+  department, and an out-of-range tier clamped into the ladder. Where the CSV stops (service
+  bays at T3, lot/body at T5) the last value repeats, flagged as C2 calibration, not design.
+  **Envelope v20 → v21, and the migration reads the save's ACTUAL tier** out of the
+  `tierManager` blob rather than defaulting to 1 — the #314 Body-Shop-gate idiom. A migrated
+  Tier-3 store keeps running the bays it was already running; defaulting to 1 would have taken
+  a franchise store's shop away on load. `data/fixtures/tier-2.json` re-stamped **in place**
+  through the real migrate + restoreWorld + snapshotWorld path (not `gen:fixtures` — the
+  harness bot never reaches T2), and it now carries `{lotSpaces:12, serviceBays:4, bodyBays:0}`,
+  which is precisely what the retired constant gave it.
+  **Driven on web at T2, single clicks, no timeouts.** The re-stamped fixture restored through
+  the new `facility` key (Day 31, $222,734, Tier 2), Operations → Service rendered, and a full
+  day opened, ran and closed on the Reveal recap — so the drain built against the Facility-fed
+  bay count end to end. 216 suites / **2776** tests, typecheck clean.
+  Next: **BUILD #359** (construction — buy capacity with cash + days, ceiling enforced, Growth
+  build surface).
+
 - 2026-08-06 — **BUILT #357** (rival offers — retention and poaching as one moment).
   *Northside Vyndai offered $610/day. On $340/day now. They leave on day 34 unless you match.*
   → **Match** / **Let them go**. That completes phase 6 (C1 staff-teeth).

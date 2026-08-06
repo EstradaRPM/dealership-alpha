@@ -29,7 +29,7 @@ import { loadTierConfig } from '../game/CareerProgression';
 import type { World } from '../createWorld';
 import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
-import type { PeopleRoleOption } from '../ui/PeopleTab';
+import type { PeopleDepartmentId, PeopleRoleOption } from '../ui/PeopleTab';
 import type { DeptTile } from '../ui/OperationsTab';
 import type { CashDeltaSplit } from '../ui/HomeTab';
 import {
@@ -238,6 +238,19 @@ export function humanizeRole(roleId: string): string {
     .join(' ');
 }
 
+/**
+ * Which department's panel a job belongs to on the People tab. Read straight
+ * off the role catalog, so the grouping the player sees is the same grouping
+ * the promotion DAG and the capability gates are written against — never a
+ * second hand-kept list of "who's in Service".
+ *
+ * A role the catalog leaves unassigned (the lot porter, the GM) works for the
+ * whole store, and lands in the store-wide group rather than a null bucket.
+ */
+export function departmentOfRole(roleId: string): PeopleDepartmentId {
+  return staffTaxonomy.roles[roleId]?.department ?? 'store';
+}
+
 const HIRABLE_ROLE_IDS = new Set(
   Object.values(staffArchetypes).map((a) => a.role_id),
 );
@@ -254,7 +267,7 @@ export function buildHiringRoleOptions(tier: number): PeopleRoleOption[] {
       if (role.tier === 'worker') return false;
       return (role.hireTier ?? 1) <= tier;
     })
-    .map(([id]) => ({ id, label: humanizeRole(id) }))
+    .map(([id]) => ({ id, label: humanizeRole(id), department: departmentOfRole(id) }))
     .sort((a, b) => {
       if (a.id === DEFAULT_HIRING_ROLE_ID) return -1;
       if (b.id === DEFAULT_HIRING_ROLE_ID) return 1;

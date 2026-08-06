@@ -58,6 +58,9 @@ it('promotes a lot-porter to salesperson through the roster UI', () => {
   expect(world.staffOrg.currentRoster[0].role_id).toBe('lot-porter');
 
   // The promote affordance the container surfaced from getPromotionOptions.
+  // A person's card is folded to what they cost; the actions on them are one
+  // tap behind that header, which is the tap a player makes.
+  fireEvent.press(getByTestId('people-roster-card-porter-1-header'));
   fireEvent.press(getByTestId('people-promote-porter-1-salesperson'));
 
   expect(world.staffOrg.currentRoster[0].role_id).toBe('salesperson');

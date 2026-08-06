@@ -51,7 +51,25 @@ function MyScreen() {
 `Icon` (kit glyph by name, themed `size`/`tone`) · `IconBadge` (colored
 tile holding an `Icon`; `solid`·`soft`, rounded·circle) · `ProgressBar` ·
 `Meter` (labeled gauge) · `StatCard` (value·label·trend delta, optional leading
-`icon`) · `SectionHeader` · the chart primitives below.
+`icon`) · `SectionHeader` · `Collapsible` (headed panel that opens and shuts) ·
+the chart primitives below.
+
+`Collapsible` is the grouping primitive for a surface with more content than one
+screen of attention (People's per-department panels, its folded person cards).
+Three rules it is built on, and they are the reason it exists rather than a
+per-surface `useState`:
+
+- **The header is the whole affordance.** `title` + `summary` + `accessory` mean
+  a *shut* panel still says what is inside it and whether it needs attention.
+- **A shut body unmounts.** A collapsed group costs nothing to render; a
+  hidden-but-mounted subtree keeps doing work nobody asked for.
+- **`pinned` is the exception, and it is narrow.** Content that renders whether
+  the panel is open or shut — a prompt waiting on an answer, the price a card is
+  compared on. Everything else goes in `children`.
+
+Uncontrolled by default (`defaultExpanded`); pass `expanded` + `onToggle` when
+the parent must drive it. `variant` + `bodyPadded` let a panel host a card
+instead of raw content without nesting two raised slabs.
 
 ## Charts (#350)
 

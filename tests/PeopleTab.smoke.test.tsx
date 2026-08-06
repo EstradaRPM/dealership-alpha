@@ -17,6 +17,7 @@ const MEMBER: PeopleRosterMember = {
   id: 'staff:career_salesperson:1:0',
   name: 'Marcus Delgado',
   roleLabel: 'Salesperson',
+  department: 'sales',
   workQuality: 0.72,
   honesty: 0.64,
   morale: 0.8,
@@ -51,6 +52,7 @@ const CANDIDATE: PeopleCandidate = {
   id: 'candidate:salesperson:1:0',
   name: 'Priya Nakamura',
   roleLabel: 'Salesperson',
+  department: 'sales',
   traits: ['Charisma', 'Closer'],
   workQuality: 0.55,
   honesty: 0.41,
@@ -63,11 +65,34 @@ const CANDIDATE: PeopleCandidate = {
 };
 
 // #352 — desks are per JOB. Two salesperson desks (one taken by MEMBER), one
-// UCM desk, and a promotion-only technician desk that offers no hire.
+// UCM desk, and a promotion-only technician desk that offers no hire. The
+// technician sits in Service, so the fixture also exercises the department
+// split: two panels, not one column.
 const SLOTS: PeopleSlotRow[] = [
-  { roleId: 'salesperson', label: 'Salesperson', filled: 1, total: 2, hireable: true },
-  { roleId: 'used-car-manager', label: 'Used-Car Manager', filled: 0, total: 1, hireable: true },
-  { roleId: 'technician', label: 'Technician', filled: 0, total: 1, hireable: false },
+  {
+    roleId: 'salesperson',
+    label: 'Salesperson',
+    department: 'sales',
+    filled: 1,
+    total: 2,
+    hireable: true,
+  },
+  {
+    roleId: 'used-car-manager',
+    label: 'Used-Car Manager',
+    department: 'sales',
+    filled: 0,
+    total: 1,
+    hireable: true,
+  },
+  {
+    roleId: 'technician',
+    label: 'Technician',
+    department: 'service',
+    filled: 0,
+    total: 1,
+    hireable: false,
+  },
 ];
 
 function baseProps(over: Partial<PeopleTabProps> = {}): PeopleTabProps {
@@ -78,8 +103,8 @@ function baseProps(over: Partial<PeopleTabProps> = {}): PeopleTabProps {
     slots: SLOTS,
     hiring: {
       roleOptions: [
-        { id: 'salesperson', label: 'Salesperson' },
-        { id: 'used-car-manager', label: 'Used-Car Manager' },
+        { id: 'salesperson', label: 'Salesperson', department: 'sales' },
+        { id: 'used-car-manager', label: 'Used-Car Manager', department: 'sales' },
       ],
       selectedRoleId: 'salesperson',
       candidates: [CANDIDATE],
@@ -95,6 +120,19 @@ function baseProps(over: Partial<PeopleTabProps> = {}): PeopleTabProps {
   };
 }
 
+/**
+ * Open a folded person / applicant card. A card is shut to the line the player
+ * compares people on (name, job, what they cost); the meters, the skill axes
+ * and the promote/let-go buttons are one tap behind that. Tests that assert on
+ * the evidence tap the same header a player does.
+ */
+function openCard(
+  getByTestId: (id: string) => { props: Record<string, unknown> },
+  cardTestId: string,
+): void {
+  fireEvent.press(getByTestId(`${cardTestId}-header`));
+}
+
 describe('PeopleTab', () => {
   it('renders the roster, the hiring pool and manager delegation as one surface', () => {
     const { getByTestId } = render(<PeopleTab {...baseProps()} />);
@@ -102,7 +140,51 @@ describe('PeopleTab', () => {
     expect(getByTestId('people-region-roster')).toBeTruthy();
     expect(getByTestId('people-region-hiring')).toBeTruthy();
     expect(getByTestId('people-region-managers')).toBeTruthy();
+    // Delegation is a reference read, not a decision, so its panel starts shut.
+    fireEvent.press(getByTestId('people-delegation-header'));
     expect(getByTestId('manager-status-card')).toBeTruthy();
+  });
+
+  // ── Department panels: the separation the surface is built on ──────────────
+
+  it('groups the team into one collapsible panel per department', () => {
+    // A salesperson and a service technician are not the same kind of row, and
+    // a flat column said they were. Sales and Service are separate boxes with
+    // their own desk counts and their own fold.
+    const { getByTestId, getAllByText } = render(<PeopleTab {...baseProps()} />);
+
+    expect(getByTestId('people-dept-sales')).toBeTruthy();
+    expect(getByTestId('people-dept-service')).toBeTruthy();
+    // The same department names title the hiring panels, so a job you are
+    // shopping for is grouped under the box its people end up in.
+    expect(getAllByText('Sales').length).toBeGreaterThan(0);
+    expect(getByTestId('people-hiring-dept-sales')).toBeTruthy();
+  });
+
+  it('renders no panel for a department the store has neither desks nor people in', () => {
+    // Locked IA rule 3 — a mechanic that does not exist renders NOTHING. An
+    // empty "Body Shop" panel at Tier 1 is a foreshadow tile.
+    const { queryByTestId } = render(<PeopleTab {...baseProps()} />);
+    expect(queryByTestId('people-dept-body')).toBeNull();
+  });
+
+  it('folds a department shut and its people go with it', () => {
+    const { getByTestId, queryByTestId } = render(<PeopleTab {...baseProps()} />);
+
+    expect(getByTestId(`people-roster-card-${MEMBER.id}`)).toBeTruthy();
+    fireEvent.press(getByTestId('people-dept-sales-header'));
+    expect(queryByTestId(`people-roster-card-${MEMBER.id}`)).toBeNull();
+  });
+
+  it('states each department’s own desk count, not the store total', () => {
+    const { getByTestId } = render(<PeopleTab {...baseProps()} />);
+    // Sales owns two of the three jobs (salesperson 1 of 2, UCM 0 of 1).
+    expect(getByTestId('people-dept-sales-header').props.accessibilityLabel).toBe(
+      'Sales. 1 of 3 desks filled',
+    );
+    expect(getByTestId('people-dept-service-header').props.accessibilityLabel).toBe(
+      'Service. 0 of 1 desks filled',
+    );
   });
 
   it('names each roster member instead of labelling them by role alone', () => {
@@ -124,6 +206,7 @@ describe('PeopleTab', () => {
     // inside a container that never set flexDirection: 'row', so RN stacked
     // fill and spacer vertically and EVERY bar rendered identically.
     const { getByTestId } = render(<PeopleTab {...baseProps()} />);
+    openCard(getByTestId, `people-roster-card-${MEMBER.id}`);
 
     const high = getByTestId(`roster-${MEMBER.id}-skill-fill-communication`);
     const low = getByTestId(`roster-${MEMBER.id}-skill-fill-rapport_building`);
@@ -161,7 +244,7 @@ describe('PeopleTab', () => {
     const { getByTestId, getByText } = render(<PeopleTab {...props} />);
 
     expect(getByTestId('people-payroll-total').props.children).toBe('$500/day');
-    expect(getByText('Daily payroll')).toBeTruthy();
+    expect(getByText('daily payroll')).toBeTruthy();
   });
 
   it('reads the payroll total off the engine rather than re-adding the cards', () => {
@@ -200,6 +283,8 @@ describe('PeopleTab', () => {
       dailyPayroll: MEMBER.dailyWage + GREENPEA.dailyWage,
     });
     const { getByTestId } = render(<PeopleTab {...props} />);
+    openCard(getByTestId, `people-roster-card-${MEMBER.id}`);
+    openCard(getByTestId, `people-roster-card-${GREENPEA.id}`);
 
     const mature = getByTestId(`roster-${MEMBER.id}-skill-fill-communication`);
     const green = getByTestId(`roster-${GREENPEA.id}-skill-fill-communication`);
@@ -212,9 +297,12 @@ describe('PeopleTab', () => {
     const props = baseProps();
     const { getByTestId } = render(<PeopleTab {...props} />);
 
+    // Hiring is the action the pool exists for, so its button sits on the shut
+    // card — never a second tap behind a fold.
     fireEvent.press(getByTestId(`people-hire-${CANDIDATE.id}`));
     expect(props.onHire).toHaveBeenCalledWith(CANDIDATE.id);
 
+    openCard(getByTestId, `people-roster-card-${MEMBER.id}`);
     fireEvent.press(getByTestId(`people-promote-${MEMBER.id}-used-car-manager`));
     expect(props.onPromote).toHaveBeenCalledWith(MEMBER.id, 'used-car-manager');
 
@@ -263,7 +351,7 @@ describe('PeopleTab', () => {
   it('renders a slot row per open role with filled of total', () => {
     const { getByTestId } = render(<PeopleTab {...baseProps()} />);
 
-    expect(getByTestId('people-slot-board')).toBeTruthy();
+    expect(getByTestId('people-slot-board-sales')).toBeTruthy();
     expect(getByTestId('people-slot-count-salesperson').props.children.join('')).toBe(
       '1 of 2',
     );

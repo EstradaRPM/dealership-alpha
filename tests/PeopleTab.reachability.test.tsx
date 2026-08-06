@@ -102,7 +102,9 @@ describe('#347 the People tab is mounted on the live world', () => {
     const world = freshWorld(3520);
     const { getByTestId, getAllByText, rerender } = renderPeople(world);
 
-    expect(getByTestId('people-slot-board')).toBeTruthy();
+    // The board is per department now (#352 counts, grouped by the panel the
+    // job's people sit in) — a Tier-1 lot has exactly one sales desk.
+    expect(getByTestId('people-slot-board-sales')).toBeTruthy();
     expect(
       getByTestId('people-slot-count-salesperson').props.children.join(''),
     ).toBe('0 of 1');
@@ -184,7 +186,7 @@ describe('#347 the People tab is mounted on the live world', () => {
 
     const { getByTestId, getByText } = renderPeople(world);
     expect(
-      getByTestId(`people-candidate-fee-${candidate.candidateId}`).props.children.join(''),
+      getByTestId(`people-candidate-fee-${candidate.candidateId}`).props.children,
     ).toBe(fee);
     expect(getByText(`Hire — ${fee}`)).toBeTruthy();
 
