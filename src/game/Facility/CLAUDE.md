@@ -18,7 +18,7 @@ that can disagree is the bug this build order exists to avoid.
 
 ## Public API (`index.ts`)
 
-- `createFacility({ getTier, ceilings? })` → `Facility`.
+- `createFacility({ bus, getTier, economy, getCurrentDay, data? })` → `Facility`.
 - Reads: `getBuilt()` and `getCeilings()`, both returning the same
   `FacilityCapacity` shape (`lotSpaces` / `serviceBays` / `bodyBays`) — the
   facility score (#360) is one divided by the other, so the shapes must match.
@@ -27,7 +27,14 @@ that can disagree is the bug this build order exists to avoid.
 - `FacilityCapacityReader` (`Pick<Facility, 'getBuilt' | 'getCeilings'>`) is the
   narrow read consumers hold — nothing outside this module can change what is
   built.
-- `loadFacilityCeilings`, `ceilingsAtTier`, `FacilityCeilingSchema`, `MAX_TIER`.
+- Construction (#359): `getBuildOptions()` — one `FacilityBuildOption` per kind,
+  in `FACILITY_CAPACITY_KINDS` order, carrying built / ceiling / in-flight, what
+  the next block costs and takes, and a `refusal` iff `build()` would say no;
+  `getJobs()`; `build(kind)` → `{ ok: true, job } | { ok: false, reason }`.
+  The UI must not re-derive any of those rules — that is why the option row
+  exists at all.
+- `loadFacilityData`, `ceilingsAtTier`, `buildSpecFor`, `FacilityDataSchema`,
+  `MAX_TIER`, `CONSTRUCTION_EXPENSE_LABEL`.
 - `createDefaultFacilitySnapshot(tier)` — built capacity at that tier's ceiling;
   the seed a new world starts with and what the save migration materializes.
 
@@ -41,27 +48,55 @@ Both department lines take their bay count from here and nowhere else:
 duty)` is unchanged. The count is snapshotted per-day with the rest of the drain
 seam, so newly finished construction applies the next morning.
 
+## Construction (#359, A2 R1)
+
+**Cash now, capacity later.** `build(kind)` debits the cost through `Economy`
+(`postExpense`, label `Construction`) and schedules a `ConstructionJob` with an
+absolute `completesOnDay` — the #295 frontline-hold idiom, so nothing ticks a
+counter that could drift out of step with the calendar across a save/load. Jobs
+settle on `clock:day_started`, which puts newly finished capacity on the ground
+*before* the day's department drain snapshots its bay count.
+
+Three rules, and they are all in `optionFor`:
+
+- **A block is the size of one job, not a divisor.** `blockSize` clamped down to
+  the room left — 5 against a gap of 3 builds 3 and is priced for 3 — so the
+  ceiling is always exactly reachable without a second pricing rule.
+- **Committed capacity is built PLUS in flight**, and that is what the ceiling
+  measures against. The same space can never be paid for twice.
+- **A refusal changes nothing at all.** `at-ceiling` and `cannot-afford` are
+  checked before the debit; neither moves cash or schedules anything.
+
 ## Events
 
-**None yet, and no `bus` dep.** Nothing in this slice *changes* a built number —
-a new world is seeded at its tier's constants and a tier-up only lifts the
-ceiling. Construction (#359) is the first thing that moves one, and it is the
-first publisher of `facility:*`. An event with no publisher would be dead code.
+- `facility:capacity_built` — a job finished; `built` is the kind's new TOTAL and
+  `units` the delta, so a consumer never has to add. Published from the morning
+  settle. This is the module's only publisher, and it did not exist before #359,
+  because nothing before construction ever *changed* a built number.
 
 ## Data
 
-- `data/facility.json` — the per-tier ceiling table (`loadFacilityCeilings`,
-  `facilityData.ts`), three rows × seven tiers. **Monotonic by schema** (a file
-  that decreases is refused) and every tier stated explicitly, so a missing key
-  can never read as "no capacity" and silently shut a department.
+- `data/facility.json` — the module's catalog (`loadFacilityData`,
+  `facilityData.ts`): the per-tier ceiling table, three rows × seven tiers, plus
+  a `construction` block giving each kind its `blockSize` / `unitCost` / `days`.
+  The ceilings are **monotonic by schema** (a file that decreases is refused) and
+  every tier is stated explicitly, so a missing key can never read as "no
+  capacity" and silently shut a department. Construction prices are **flat across
+  the ladder** — a service bay costs what a service bay costs; a per-tier price
+  table would be a second number beside the ceiling and would make the same
+  purchase mean two things depending on where the player stood.
 - Where the tier CSV stops (service bays at T3, lot spaces and body bays at T5)
   the last value repeats. Those tail values are placeholders pending calibration
   (C2, #286), not design.
 
 ## Persistence
 
-- `snapshot()`/`restore()` carry `built` only; ceilings are derived from the live
-  tier, so there is nothing there to migrate.
+- `snapshot()`/`restore()` carry `built`, the in-flight `jobs` and the `jobSeq`
+  that keeps job ids unique across a reload; ceilings are derived from the live
+  tier, so there is nothing there to migrate. Jobs joining the blob is the
+  module's own `schemaVersion` **1 → 2** and needs **no envelope bump** — a #358
+  v1 blob restores as "nothing being built", which is the state every save
+  already was in (`AnyFacilitySnapshot` is the union `restore` accepts).
 - Wired into `snapshotWorld`/`restoreWorld` under the `facility` key (envelope
   v20 → v21). The migration reads the save's **actual** tier out of the
   `tierManager` blob and materializes that tier's constants — the numbers that
@@ -74,5 +109,9 @@ first publisher of `facility:*`. An event with no publisher would be dead code.
   ceiling's only input.
 - `ServiceDispatch`'s shared department-dispatch engine, through the two
   department packages.
-- Coming: construction purchase + the Growth build surface (#359), the `facility`
-  tier-gate face (#360), the lot cap on buying (#361).
+- `Economy`, through the narrow `FacilitySpender` (`cash` + `postExpense`) — this
+  module spends and never reads the ledger back.
+- `src/ui/GrowthTab/FacilityBuild.tsx` + `facilityBuildModel.ts` — the build
+  surface, mounted through `GrowthTabContainer`. Growth's charter is "work ON the
+  business"; buying buildings compounds and spends the cash inventory wants.
+- Coming: the `facility` tier-gate face (#360), the lot cap on buying (#361).

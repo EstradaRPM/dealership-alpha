@@ -1,15 +1,21 @@
 import { z } from 'zod';
 import { parseData } from '../data';
-import type { FacilityCapacity } from './types';
+import {
+  FACILITY_CAPACITY_KINDS,
+  type FacilityBuildSpec,
+  type FacilityCapacity,
+  type FacilityCapacityKind,
+} from './types';
 
 /**
- * The per-tier **ceiling** table for physical capacity (#358, A2 R1).
+ * The Facility module's catalog: the per-tier **ceiling** on physical capacity
+ * (#358, A2 R1) and what it costs to build into that ceiling (#359).
  *
- * These were per-tier constants until this slice: `serviceDispatch.baysByTier`
+ * The ceilings were per-tier constants until #358: `serviceDispatch.baysByTier`
  * and `bodyShopDispatch.baysByTier` in `data/tunables.json`, read straight off
  * the facility tier, plus a lot size that was not modelled at all. They are now
  * the *most* a tier lets you build; what is actually standing is owned state on
- * the `Facility` module.
+ * the `Facility` module, and the gap between the two is bought.
  *
  * Counts are the tier CSV's own numbers — lot 6/12/35/75/120 (the CSV's lot-size
  * row) and the two bay rows the retired tunables carried — which is tier truth
@@ -18,7 +24,7 @@ import type { FacilityCapacity } from './types';
  * Two things the source does not say, resolved here the same way the staff slot
  * table resolves them (`StaffOrg/staffSlots.ts`):
  *
- * - **The table is monotonic**, and `FacilityCeilingSchema` refuses a file that
+ * - **The table is monotonic**, and `FacilityDataSchema` refuses a file that
  *   decreases. A tier never takes capacity away; you arrive at a new tier
  *   holding what you built at the last one.
  * - **A row states all seven tiers.** Where the source stops (service bays at
@@ -27,7 +33,7 @@ import type { FacilityCapacity } from './types';
  *   silently shuts a whole department instead of failing loudly. Those repeated
  *   tail values are placeholders pending calibration (C2, #286), not design.
  */
-export type FacilityCeilingTable = z.infer<typeof FacilityCeilingSchema>;
+export type FacilityDataTable = z.infer<typeof FacilityDataSchema>;
 
 /** The tier ladder is T1–T7 (issue #1's product definition). */
 const TIER_IDS = ['1', '2', '3', '4', '5', '6', '7'] as const;
@@ -46,15 +52,46 @@ const TierRowSchema = z
   })
   .strict();
 
-export const FacilityCeilingSchema = z
+/**
+ * What one construction job buys, per capacity kind (#359, A2 R1).
+ *
+ * Flat across the ladder on purpose — a service bay costs what a service bay
+ * costs. A per-tier price table would be a second number to read beside the
+ * ceiling table, and would make the same purchase mean two different decisions
+ * depending on where the player was standing.
+ *
+ * `days` is what makes this a decision rather than a checkbook: instant capacity
+ * collapses it to "do I have the cash", while a build delay makes you buy
+ * capacity *ahead* of demand — the actual dealership decision. Same idiom as the
+ * #295 frontline hold. Costs and days are placeholders pending calibration
+ * (C2, #286), not design.
+ */
+const BuildSpecSchema = z
+  .object({
+    /** Units per job. Clamped down to the room left under the ceiling. */
+    blockSize: z.number().int().positive(),
+    unitCost: z.number().int().positive(),
+    days: z.number().int().positive(),
+  })
+  .strict();
+
+export const FacilityDataSchema = z
   .object({
     lotSpaces: TierRowSchema,
     serviceBays: TierRowSchema,
     bodyBays: TierRowSchema,
+    construction: z
+      .object({
+        lotSpaces: BuildSpecSchema,
+        serviceBays: BuildSpecSchema,
+        bodyBays: BuildSpecSchema,
+      })
+      .strict(),
   })
   .strict()
   .superRefine((table, ctx) => {
-    for (const [kind, row] of Object.entries(table)) {
+    for (const kind of FACILITY_CAPACITY_KINDS) {
+      const row = table[kind];
       for (let i = 1; i < TIER_IDS.length; i++) {
         const prev = row[TIER_IDS[i - 1]];
         const next = row[TIER_IDS[i]];
@@ -69,10 +106,10 @@ export const FacilityCeilingSchema = z
     }
   });
 
-export function loadFacilityCeilings(): FacilityCeilingTable {
+export function loadFacilityData(): FacilityDataTable {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw = require('../../../data/facility.json') as unknown;
-  return parseData(raw, FacilityCeilingSchema, 'data/facility.json');
+  return parseData(raw, FacilityDataSchema, 'data/facility.json');
 }
 
 /**
@@ -81,7 +118,7 @@ export function loadFacilityCeilings(): FacilityCeilingTable {
  * capacity" — that failure mode reads as a balance decision instead of a bug.
  */
 export function ceilingsAtTier(
-  table: FacilityCeilingTable,
+  table: FacilityDataTable,
   tier: number,
 ): FacilityCapacity {
   const key = String(
@@ -92,4 +129,12 @@ export function ceilingsAtTier(
     serviceBays: table.serviceBays[key],
     bodyBays: table.bodyBays[key],
   };
+}
+
+/** What one job of `kind` buys and costs. */
+export function buildSpecFor(
+  table: FacilityDataTable,
+  kind: FacilityCapacityKind,
+): FacilityBuildSpec {
+  return table.construction[kind];
 }

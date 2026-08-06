@@ -1,5 +1,10 @@
 {
   "lotSpaces": { "1": 6, "2": 12, "3": 35, "4": 75, "5": 120, "6": 120, "7": 120 },
   "serviceBays": { "1": 2, "2": 4, "3": 6, "4": 6, "5": 6, "6": 6, "7": 6 },
-  "bodyBays": { "1": 0, "2": 0, "3": 3, "4": 5, "5": 7, "6": 7, "7": 7 }
+  "bodyBays": { "1": 0, "2": 0, "3": 3, "4": 5, "5": 7, "6": 7, "7": 7 },
+  "construction": {
+    "lotSpaces": { "blockSize": 5, "unitCost": 3000, "days": 2 },
+    "serviceBays": { "blockSize": 1, "unitCost": 40000, "days": 3 },
+    "bodyBays": { "blockSize": 1, "unitCost": 55000, "days": 3 }
+  }
 }

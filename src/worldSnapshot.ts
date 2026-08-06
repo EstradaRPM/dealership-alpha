@@ -78,7 +78,7 @@ import {
 } from './game/MarketIntel';
 import {
   createDefaultFacilitySnapshot,
-  type FacilitySnapshot,
+  type AnyFacilitySnapshot,
 } from './game/Facility';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
@@ -154,7 +154,10 @@ export type WorldSnapshot = {
     readonly marketIntel: MarketIntelSnapshot;
     // #358 Built physical capacity — lot spaces + service/body bays. Ceilings
     // are derived from the live tier, so only what is BUILT is persisted.
-    readonly facility: FacilitySnapshot;
+    // #359 added in-flight construction jobs inside the same blob, which is the
+    // module's own `schemaVersion` 1 → 2 and needs no envelope bump; the union
+    // is what lets a v21 save written before construction still type as itself.
+    readonly facility: AnyFacilitySnapshot;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };

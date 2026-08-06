@@ -416,7 +416,12 @@ export function GameScreen({
     // the console rendered on Home against its glances-only charter, and the
     // gate had no detail surface at all.
     growth: (
-      <GrowthTabContainer world={world} demandReadout={demandReadout} bump={bump} />
+      <GrowthTabContainer
+        world={world}
+        demandReadout={demandReadout}
+        bump={bump}
+        setCash={setCash}
+      />
     ),
   };
   const shellTabs: ShellTab[] = loadNavTabs().map((tab) => ({

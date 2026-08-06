@@ -14,8 +14,9 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
 `path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **#352–#357 closed phase 6 (C1 staff-teeth) and #358 has landed — next unit: BUILD
-#359**, construction. Work them in number order; the deps are stated in each issue's Notes.
+order**. **#352–#357 closed phase 6 (C1 staff-teeth); #358 + #359 have landed — next unit:
+BUILD #360**, the facility gate face. Work them in number order; the deps are stated in each
+issue's Notes.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -26,7 +27,7 @@ order**. **#352–#357 closed phase 6 (C1 staff-teeth) and #358 has landed — n
 | ~~#356~~ | ~~raise demands (ask/answer) + `payVsMarketBonus` made real~~ **BUILT 2026-08-06** | 6 |
 | ~~#357~~ | ~~rival offers on the same event family (retention + poaching, one moment)~~ **BUILT 2026-08-06 — phase 6 COMPLETE** | 6 |
 | ~~#358~~ | ~~`src/game/Facility/` owns built spaces + bays, one bay truth; `baysByTier` retired~~ **BUILT 2026-08-06** | 7 |
-| #359 | construction: buy capacity with cash + days, ceiling enforced, Growth build surface | 7 |
+| ~~#359~~ | ~~construction: buy capacity with cash + days, ceiling enforced, Growth build surface~~ **BUILT 2026-08-06** | 7 |
 | #360 | facility score lights the dormant tier-gate `facility` face | 7 |
 | #361 | lot cap governs buying ("31 of 35"), trade always lands | 7 |
 | #362 | wholesale this unit — the aged-inventory release valve | 7 |
@@ -139,6 +140,28 @@ order**. **#352–#357 closed phase 6 (C1 staff-teeth) and #358 has landed — n
   a re-run. Timing, not a regression — re-run before investigating, and do not "fix" them by
   loosening what they assert.
 
+- **Construction jobs live INSIDE the `facility` blob, and that was not an envelope bump**
+  (#359). `FacilitySnapshot` went `schemaVersion` 1 → 2 (`built` + `jobs` + `jobSeq`);
+  `restore` takes the `AnyFacilitySnapshot` union and a #358 v1 blob restores as "nothing
+  being built". `WORLD_SNAPSHOT_VERSION` stays **21**, `data/fixtures/tier-2.json` was
+  deliberately **not** re-stamped, and there is no v21→v22 migration to look for. Do not add
+  one.
+- **`FacilityCeilingSchema`/`loadFacilityCeilings`/`FacilityCeilingTable` are RENAMED** to
+  `FacilityDataSchema`/`loadFacilityData`/`FacilityDataTable` (#359), and `FacilityDeps.ceilings`
+  is now `FacilityDeps.data` — the file holds construction prices as well as ceilings, so the
+  old name was a lie. `createFacility` now requires `bus`, `economy` and `getCurrentDay`; suites
+  that only READ capacity take `readOnlyFacility(() => tier)` from `tests/helpers/facility.ts`.
+- **A block is the size of one job, not a divisor** (#359). `blockSize` is clamped down to the
+  room left under the ceiling and priced for what it actually builds (5 against a gap of 4
+  builds 4 for 4× the unit cost). That is what makes the ceiling exactly reachable with ONE
+  pricing rule; do not add a prorated or full-price "last block" special case. The ceiling is
+  measured against built **plus in flight**, so the same space cannot be bought twice.
+- **A fresh world at any tier is already AT its ceilings, so every Build button is disabled**
+  (#358 seeds built = ceiling). Room to build only exists after a tier-up, which is the whole
+  point of A2 R1. To exercise construction on web you must stand the store below its ceiling —
+  edit `built` in the saved `facility` blob and reload, the way the #359 drive did. This is not
+  a bug, and "the build surface does nothing" on a fresh save is the expected reading.
+
 - **Built capacity CARRIES OVER on tier-up, and that is a real behavior change** (#358). A
   fresh world seeds at its tier's ceilings, so nothing about a new game moved; but a store
   that tier-ups keeps the bays it had, and the ceiling is all that rises. That is A2 R1
@@ -151,9 +174,10 @@ order**. **#352–#357 closed phase 6 (C1 staff-teeth) and #358 has landed — n
   engines take a `bays` **count** (`DeptDispatchDeps`), fed per-day by each department package
   from `facility.getBuilt()`. Omitted ⇒ 1 bay. Do not re-introduce a per-tier bay table beside
   the Facility module, and do not read the tier for a bay count anywhere.
-- **The Facility module deliberately has no `bus` and emits nothing yet** (#358). Nothing in
-  that slice changes a built number, so an event would have no publisher. #359's construction
-  is the first `facility:*`.
+- **`facility:capacity_built` is the module's ONE event** (#359, superseding #358's "no bus"
+  note). It fires from `clock:day_started` when a job lands, carrying the kind's new TOTAL in
+  `built` and the delta in `units`. There is deliberately no `construction_started` event —
+  it would have a publisher and no subscriber, which is the dead code this repo deletes.
 
 ## Phase table
 
@@ -174,7 +198,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
-| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 + #358 built; #359–#362 open |
+| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 + #358 + #359 built; #360–#362 open |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
@@ -194,6 +218,61 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-06 — **BUILT #359** (construction — capacity is bought with cash and days).
+  *Lot spaces · 8 of 12 built · $3,000 each · 2 days to build* → **Build 4 spaces —
+  $12,000** → *Building 4 spaces — opens day 33*. Physical capacity stopped being a
+  number you were handed and became a number you buy, which is what A2 R1 was for.
+  **The construction DELAY is the mechanic, not a garnish.** Instant capacity collapses
+  the decision to "do I have the cash"; a two-to-three-day build makes you buy capacity
+  *ahead* of demand, which is the actual dealership decision. Stored as an absolute
+  `completesOnDay` compared against the current day at the morning settle — the #295
+  frontline-hold idiom exactly, so nothing decrements a counter that could drift out of
+  step with the calendar across a save/load. Also answers the tier CSV's own open row 16
+  ("Time to upgrade? construction time?").
+  **A block is the size of one job, not a divisor.** `blockSize` is clamped down to the
+  room left and priced for what it actually builds — 5 against a gap of 4 builds 4 for
+  $12,000 — so the ceiling is always exactly reachable *without a second pricing rule*.
+  The alternative (a full-price partial block, or a prorated "last block") is two rules
+  where one will do.
+  **Committed capacity is built PLUS in flight, and that is what the ceiling measures.**
+  It is why the same space can never be paid for twice, and why the lot button flipped to
+  "Built out to the tier limit" the instant the job was scheduled rather than three days
+  later. In-flight units are worth nothing on the floor until they land — `getBuilt()`
+  never counts them.
+  **A refusal changes nothing at all.** `at-ceiling` and `cannot-afford` are checked
+  before the debit, so no cash moves and no job is scheduled; the container commits and
+  re-reads rather than guarding first, because the engine owns every rule the button could
+  get wrong. The two refusals get **different sentences**: "Built out to the tier limit"
+  is an achievement, "Not available at this tier" is a lock, and a body shop at T2 is the
+  second one.
+  **Prices are FLAT across the ladder** (`data/facility.json` gained a `construction`
+  block; `facilityData.ts` is now the module's catalog, `loadFacilityData`). A service bay
+  costs what a service bay costs — a per-tier price table would be a second number beside
+  the ceiling and would make the same purchase mean two things depending on where the
+  player stood. Numbers are placeholders pending C2 (#286).
+  **First `facility:*` publisher, and only one event.** `facility:capacity_built` carries
+  the kind's new TOTAL plus the delta, published from `clock:day_started` so finished
+  capacity is standing *before* the day's department drain snapshots its bay count. No
+  `construction_started` event — it would have had a publisher and no subscriber.
+  **No envelope bump.** Jobs live inside the existing `facility` blob, which is the
+  module's own `schemaVersion` 1 → 2 (`AnyFacilitySnapshot` is the union `restore` takes).
+  A #358 v1 blob restores as "nothing being built" — the state every save already was in —
+  so `data/fixtures/tier-2.json` needed no re-stamp and the v1 path stays exercised in
+  real play.
+  **The surface is in GROWTH, derived from the locked charter, not a new IA fork.** Growth
+  is "work ON the business — everything that compounds"; buying buildings compounds and
+  spends the same cash inventory wants. It sits directly above the gate board because the
+  `facility` gate face (#360) is what will grade it.
+  **Driven on web at T2, single clicks, no timeouts.** T2 fixture → a day closed (the
+  autosave wrote the v2 blob with `jobs: []` through the real path) → stood the store below
+  its ceiling in the saved blob → reloaded: *8 of 12 built* / **Build 4 spaces — $12,000**.
+  Pressed it: cash $222,734 → **$210,734** (exactly $12,000, and Home's next-day delta read
+  *-$12,000 vs yesterday*), the row held at *8 of 12 built* with *Building 4 spaces — opens
+  day 33*, and the button flipped to "Built out to the tier limit". Ran days 31→33; on the
+  morning of day 33 it read **12 of 12 built** with the pill gone, service bays untouched at
+  *2 of 4*. 216 suites / **2793** tests, typecheck clean.
+  Next: **BUILD #360** (facility score lights the dormant tier-gate `facility` face).
 
 - 2026-08-06 — **BUILT #358** (the Facility module — built capacity, tier as the ceiling).
   Physical capacity stopped being a per-tier constant nobody owns: `src/game/Facility/` holds
@@ -290,47 +369,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   go** instead, and the roster went 3 of 3 → **2 of 3**, Salesperson 2 of 2 → 1 of 2, payroll
   → **$940**. 215 suites / **2762** tests, typecheck clean.
   Next: **BUILD #358** (phase 7 — `src/game/Facility/` owns built spaces + bays, one bay truth).
-
-
-- 2026-08-06 — **BUILT #356** (raise demands, and `payVsMarketBonus` made real). Growth stops
-  being a drift and becomes a moment: *Asking for $340/day. On $150/day now.* → **Pay it** /
-  **Refuse**.
-  **`payVsMarketBonus` left in the same commit that replaced it** — the fourth placeholder
-  deleted in this phase (`headcountCapByTier` #352, `weeklyPayrollStub` #353,
-  `hiringCostByTier` #355), and the most dishonest of them: it added a flat bonus to everyone
-  every payroll night, so it *compared nothing* while wearing a comparison's name. It is now
-  paid wage vs the grade's asking wage, split into `paidAtMarketBonus` /
-  `paidBelowMarketPenalty` — and the **signs are schema**, because a positive penalty would
-  mean underpaying cheers people up and would read as balance, not as a dropped minus sign.
-  **The comparison is read off `getPayBoard()`, not re-derived in StaffMorale.** That is why
-  `StaffPay` gained `askingWage`: exactly two mechanics read "what someone this good asks
-  for" — the raise trigger and the nightly morale adjustment — and a second derivation of it
-  could disagree with the number on the card.
-  **The trigger is still `currentGrade > paidGrade` and nothing else**, evaluated once on
-  `clock:day_started` because the counters that grow a grade only accrue overnight; checking
-  within an open day would re-ask the same question. **Three suppressions**, each the absence
-  of a decision rather than a rule to learn: a demand already unanswered, a running cooldown,
-  and — the one that matters for tests — an asked wage that does not beat the paid one. Wages
-  rise *weakly* with grade by schema, so `flatPay`/`noPay` would otherwise have raised prompts
-  whose two buttons cost the same across ~20 suites.
-  **Refusal routes into the EXISTING quit machinery, and StaffOrg never touches morale.**
-  Both answers publish `staff:raise_answered`; StaffMorale owns the consequence. That keeps
-  the module boundary intact and means there is no second quit path to keep calibrated —
-  proved by watching the same `staff:quit` the low-morale check has always published.
-  **A promotion voids an outstanding demand but keeps the cooldown.** The two numbers on the
-  prompt were the old role's; "they asked recently" is still true. They re-ask tomorrow at the
-  new desk's numbers.
-  **Persisted inside the staffOrg blob, no envelope bump** — both keys optional, so a pre-#356
-  save restores as "nobody is asking" and re-derives the next morning. Losing the request
-  would answer the player's open decision for them; losing the cooldown would make reloading
-  the way to stop someone re-asking. Both directions are pinned.
-  **Driven on web at T2, and the two halves showed up in the right order.** Loading a save
-  with a grade-3 salesperson put on grade-1 money read *"Grade 3 · Paid at grade 1 ·
-  $150/day"* with **no prompt** (correct — the ask is a morning event); overnight her morale
-  alone fell 95 → **91** (the −4 underpay penalty, the other two untouched at 95); Day 32
-  opened with the prompt on her card only. **Pay it** collapsed the line to *"Grade 3 ·
-  $340/day"* and moved daily payroll $1,090 → **$1,280** in the same beat.
-  215 suites / **2745** tests, typecheck clean.
-  Next: **BUILD #357** (rival offers on the same event family — retention and poaching as one
-  moment).
-

@@ -3,6 +3,9 @@ import { View, Text, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme';
 import { Surface, SectionHeader, IconBadge, type IconName } from '../kit';
 import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
+import { FacilityBuild } from './FacilityBuild';
+import type { FacilityBuildModel } from './facilityBuildModel';
+import type { FacilityCapacityKind } from '../../game/Facility';
 import { GateBoard } from './GateBoard';
 import type { GateBoardModel } from './gateBoardModel';
 import { IndustryWire } from './IndustryWire';
@@ -21,6 +24,10 @@ export interface GrowthTabProps {
   onToggleSubscription?: (id: string, on: boolean) => void;
   /** The tier-gate detail board (#349). */
   gateBoard?: GateBoardModel;
+  /** Built vs the tier's ceiling per capacity kind, and the price of more (#359). */
+  facilityBuild?: FacilityBuildModel;
+  /** Commit the next block of capacity (#359). */
+  onBuildFacility?: (kind: FacilityCapacityKind) => void;
 }
 
 /**
@@ -37,6 +44,10 @@ export interface GrowthTabProps {
  *    slower, and then everybody else's word on it.
  * 2. **The tier-gate detail board** — the scoreboard of growth, and the only
  *    place the climb is foreshadowed (IA rule 3).
+ * 3. **Build Out** (#359) — buying lot spaces and bays up to the tier's ceiling.
+ *    It compounds and it spends the same cash inventory wants, which is the
+ *    charter's test; it sits directly above the gate board because the facility
+ *    gate face is what grades it.
  *
  * All of this rendered on HOME before now, whose charter is glances only; the
  * advertising lever was parked in Operations → Prep, two rooms from the readout
@@ -51,6 +62,8 @@ export function GrowthTab({
   industryWire,
   onToggleSubscription,
   gateBoard,
+  facilityBuild,
+  onBuildFacility,
 }: GrowthTabProps) {
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
@@ -92,6 +105,19 @@ export function GrowthTab({
           ) : (
             <EmptyNote icon="newspaper">
               The wire starts up when your first day opens.
+            </EmptyNote>
+          )}
+        </View>
+      </View>
+
+      <View style={region} testID="growth-region-facility">
+        <SectionHeader title="Build Out" />
+        <View style={regionBody}>
+          {facilityBuild ? (
+            <FacilityBuild model={facilityBuild} onBuild={onBuildFacility} />
+          ) : (
+            <EmptyNote icon="business">
+              Your lot and bays show up here once the store opens.
             </EmptyNote>
           )}
         </View>

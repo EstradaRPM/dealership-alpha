@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import { GrowthTab } from '../src/ui/GrowthTab';
+import { GrowthTab, buildFacilityBuild } from '../src/ui/GrowthTab';
 import type { GateBoardModel } from '../src/ui/GrowthTab';
 import type { DemandReadoutModel } from '../src/ui/DemandReadout';
 import { HomeTab } from '../src/ui/HomeTab';
@@ -137,6 +137,109 @@ describe('#349 the Growth tab renders the demand console and the gate board', ()
       <GrowthTab gateBoard={{ ...BOARD, climb: null }} />,
     );
     expect(queryByTestId('growth-gate-climb')).toBeNull();
+  });
+});
+
+describe('#359 the Growth tab carries the facility build surface', () => {
+  // Built below the ceiling on the lot, at it on service, and a kind this tier
+  // does not have at all — the three states a row can be in, in one model.
+  const BUILD = buildFacilityBuild([
+    {
+      kind: 'lotSpaces',
+      built: 12,
+      ceiling: 35,
+      inFlight: 5,
+      units: 5,
+      cost: 15_000,
+      unitCost: 3_000,
+      days: 2,
+      jobs: [
+        {
+          id: 'build-1',
+          kind: 'lotSpaces',
+          units: 5,
+          cost: 15_000,
+          startedOnDay: 30,
+          completesOnDay: 32,
+        },
+      ],
+    },
+    {
+      kind: 'serviceBays',
+      built: 6,
+      ceiling: 6,
+      inFlight: 0,
+      units: 0,
+      cost: 0,
+      unitCost: 40_000,
+      days: 3,
+      refusal: 'at-ceiling',
+      jobs: [],
+    },
+    {
+      kind: 'bodyBays',
+      built: 0,
+      ceiling: 0,
+      inFlight: 0,
+      units: 0,
+      cost: 0,
+      unitCost: 55_000,
+      days: 3,
+      refusal: 'at-ceiling',
+      jobs: [],
+    },
+  ]);
+
+  it('renders the facility build surface with built, ceiling and cost', () => {
+    const pressed: string[] = [];
+    const { getByTestId, getByText } = render(
+      <GrowthTab
+        facilityBuild={BUILD}
+        onBuildFacility={(kind) => pressed.push(kind)}
+      />,
+    );
+    expect(getByTestId('growth-region-facility')).toBeTruthy();
+    expect(getByTestId('growth-facility-build')).toBeTruthy();
+
+    // Built vs the tier ceiling, the standing price, the build time, and the
+    // job in flight with the day it opens — all four, per the criterion.
+    expect(getByText('12 of 35 built')).toBeTruthy();
+    expect(getByText('$3,000 each · 2 days to build')).toBeTruthy();
+    expect(getByTestId('facility-build-job-build-1')).toBeTruthy();
+    expect(getByText('Building 5 spaces — opens day 32')).toBeTruthy();
+
+    fireEvent.press(getByTestId('facility-build-lotSpaces'));
+    expect(pressed).toEqual(['lotSpaces']);
+  });
+
+  it('says why a row cannot be built rather than just going grey', () => {
+    const { getByText, getByTestId } = render(<GrowthTab facilityBuild={BUILD} />);
+    // Built out to what the tier allows…
+    expect(getByText('Built out to the tier limit')).toBeTruthy();
+    // …is a different sentence from a kind this tier does not have yet.
+    expect(getByText('Not available at this tier')).toBeTruthy();
+    expect(getByTestId('facility-build-serviceBays').props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+  });
+
+  it('names the money you are short of when cash is the blocker', () => {
+    const broke = buildFacilityBuild([
+      {
+        kind: 'serviceBays',
+        built: 4,
+        ceiling: 6,
+        inFlight: 0,
+        units: 1,
+        cost: 40_000,
+        unitCost: 40_000,
+        days: 3,
+        refusal: 'cannot-afford',
+        jobs: [],
+      },
+    ]);
+    const { getByText } = render(<GrowthTab facilityBuild={broke} />);
+    expect(getByText('Costs $40,000 — not enough cash')).toBeTruthy();
   });
 });
 

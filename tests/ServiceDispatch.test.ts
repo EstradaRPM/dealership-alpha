@@ -1,7 +1,7 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createEconomy } from '../src/game/Economy';
 import { createDepartmentQueue } from '../src/game/DepartmentQueue';
-import { createFacility } from '../src/game/Facility';
+import { readOnlyFacility } from './helpers/facility';
 import {
   createServiceDispatch,
   createServiceFloorDrain,
@@ -691,7 +691,7 @@ describe('ServiceDispatch — #305 capacity = min(bays, advisors on duty)', () =
   // a real Facility so the seam the Service package uses is the seam under test.
   it('takes its bay count from the facility provider', () => {
     const atTier = (tier: number) =>
-      createFacility({ getTier: () => tier }).getBuilt().serviceBays;
+      readOnlyFacility(() => tier).getBuilt().serviceBays;
     // The provider is what the numbers move with: a bigger store, built out,
     // clears strictly more with the same four advisors.
     expect(atTier(3)).toBeGreaterThan(atTier(1));

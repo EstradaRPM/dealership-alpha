@@ -58,6 +58,7 @@ describe('#349 the Growth tab is mounted on the live world', () => {
         world={world}
         demandReadout={demandModel(world, () => {})}
         bump={() => {}}
+        setCash={() => {}}
       />,
     );
     expect(getByTestId('growth-region-demand')).toBeTruthy();
@@ -80,6 +81,7 @@ describe('#349 the Growth tab is mounted on the live world', () => {
           world.demandControls.setAdvertisingCampaign(id),
         )}
         bump={() => {}}
+        setCash={() => {}}
       />,
     );
     fireEvent.press(getByText(`${paid!.label} · $${paid!.dailyCost.toLocaleString()}/day`));
@@ -132,6 +134,69 @@ describe('#349 the Growth tab is mounted on the live world', () => {
     expect(glance.campaignLabel).toContain(paid.label);
     expect(glance.campaignLabel).toContain(`$${paid.dailyCost.toLocaleString()}/day`);
     expect(glance.headline).toMatch(/^Buyers want /);
+  });
+
+  // Anti-orphan (#359): construction is only a decision if the player can reach
+  // the button. Driven on a REAL world so the whole seam is under test — the
+  // engine's option, the model's words, the press, the cash, and the day the
+  // capacity actually lands.
+  it('builds capacity from the Growth tab and lands it on the completion day', () => {
+    const world = freshWorld();
+    // A store standing below its ceiling — the state every tier-up leaves you
+    // in, since built capacity carries over and only the ceiling rises (#358).
+    const ceiling = world.facility.getCeilings();
+    world.facility.restore({
+      schemaVersion: 2,
+      built: { ...world.facility.getBuilt(), lotSpaces: ceiling.lotSpaces - 1 },
+      jobs: [],
+      jobSeq: 0,
+    });
+    const option = world.facility
+      .getBuildOptions()
+      .find((o) => o.kind === 'lotSpaces')!;
+    expect(option.units).toBe(1);
+    expect(option.refusal).toBeUndefined();
+
+    let cash = world.economy.cash;
+    const view = render(
+      <GrowthTabContainer
+        world={world}
+        demandReadout={demandModel(world, () => {})}
+        bump={() => {}}
+        setCash={(n) => {
+          cash = n;
+        }}
+      />,
+    );
+    expect(view.getByTestId('facility-build-built-lotSpaces').props.children).toBe(
+      `${ceiling.lotSpaces - 1} of ${ceiling.lotSpaces} built`,
+    );
+
+    const before = world.economy.cash;
+    fireEvent.press(view.getByTestId('facility-build-lotSpaces'));
+
+    // Cash left now; the capacity has not arrived.
+    expect(world.economy.cash).toBe(before - option.cost);
+    expect(cash).toBe(world.economy.cash);
+    expect(world.facility.getBuilt().lotSpaces).toBe(ceiling.lotSpaces - 1);
+    const [job] = world.facility.getJobs();
+    expect(job.completesOnDay).toBe(world.clock.currentDay + option.days);
+    // The container reads the live world each render, so the job in flight is
+    // on the surface the moment it is re-rendered — that is what `bump` is for.
+    view.rerender(
+      <GrowthTabContainer
+        world={world}
+        demandReadout={demandModel(world, () => {})}
+        bump={() => {}}
+        setCash={() => {}}
+      />,
+    );
+    expect(view.getByTestId(`facility-build-job-${job.id}`)).toBeTruthy();
+
+    // And it opens on the morning it was sold for.
+    for (let i = 0; i < option.days; i++) world.clock.advanceDay();
+    expect(world.facility.getBuilt().lotSpaces).toBe(ceiling.lotSpaces);
+    expect(world.facility.getJobs()).toEqual([]);
   });
 
   it('is wired into the composition root', () => {

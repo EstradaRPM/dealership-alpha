@@ -1,5 +1,9 @@
 export { GrowthTab } from './GrowthTab';
 export type { GrowthTabProps } from './GrowthTab';
+export { FacilityBuild } from './FacilityBuild';
+export type { FacilityBuildProps } from './FacilityBuild';
+export { buildFacilityBuild } from './facilityBuildModel';
+export type { FacilityBuildModel, FacilityBuildRow } from './facilityBuildModel';
 export { GateBoard } from './GateBoard';
 export { buildGateBoard } from './gateBoardModel';
 export type {

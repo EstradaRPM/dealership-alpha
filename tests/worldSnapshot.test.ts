@@ -23,7 +23,7 @@ import { createDefaultRecordsSnapshot } from '../src/game/Records';
 import {
   createDefaultFacilitySnapshot,
   ceilingsAtTier,
-  loadFacilityCeilings,
+  loadFacilityData,
 } from '../src/game/Facility';
 
 // #188 — the save/load tracer: the world-serialization seam proven end to end
@@ -1015,11 +1015,38 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     expect(rebuilt.facility.getBuilt()).toEqual(built);
   });
 
+  it('round-trips an in-flight construction job (#359)', () => {
+    const { world } = build(359);
+    // Stand the store below its ceiling — the state a tier-up leaves it in —
+    // then buy the block that closes the gap.
+    const ceiling = world.facility.getCeilings();
+    world.facility.restore({
+      schemaVersion: 2,
+      built: { ...world.facility.getBuilt(), lotSpaces: ceiling.lotSpaces - 1 },
+      jobs: [],
+      jobSeq: 0,
+    });
+    expect(world.facility.build('lotSpaces').ok).toBe(true);
+    const inFlight = world.facility.getJobs();
+    expect(inFlight).toHaveLength(1);
+
+    const persisted = JSON.parse(
+      JSON.stringify(snapshotWorld(world)),
+    ) as PersistedWorldSnapshot;
+    const { world: rebuilt } = build(359);
+    restoreWorld(persisted, rebuilt);
+
+    // The landing day rides through unchanged — a reload must not restart the
+    // clock on a job the player has already paid for.
+    expect(rebuilt.facility.getJobs()).toEqual(inFlight);
+    expect(rebuilt.facility.getBuilt().lotSpaces).toBe(ceiling.lotSpaces - 1);
+  });
+
   it("migrates pre-facility saves to the tier's constant capacity (#358)", () => {
     const { world } = build(3581);
     const current = snapshotWorld(world);
     const { facility, ...legacyModules } = current.modules;
-    expect(facility.schemaVersion).toBe(1);
+    expect(facility.schemaVersion).toBe(2);
 
     // A v20 save that had reached Tier 3: the migration must read that save's
     // ACTUAL tier, not default to 1, or the store would silently lose the bays
@@ -1037,7 +1064,7 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     expect(migrated.modules.facility).toEqual(createDefaultFacilitySnapshot(3));
     // Those ARE the numbers a Tier-3 store was already running.
     expect(migrated.modules.facility.built.serviceBays).toBe(
-      ceilingsAtTier(loadFacilityCeilings(), 3).serviceBays,
+      ceilingsAtTier(loadFacilityData(), 3).serviceBays,
     );
     // …and every pre-existing blob rides through untouched.
     expect(migrated.modules.gameClock).toEqual(current.modules.gameClock);

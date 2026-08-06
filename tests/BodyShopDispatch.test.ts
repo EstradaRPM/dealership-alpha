@@ -10,10 +10,8 @@ import type { PartsInventory, PartCategory } from '../src/game/PartsInventory';
 import type { Reputation } from '../src/game/Reputation';
 import type { Weather } from '../src/game/Weather';
 import type { TierManager } from '../src/game/CareerProgression';
-import {
-  createFacility,
-  type FacilityCapacityReader,
-} from '../src/game/Facility';
+import type { FacilityCapacityReader } from '../src/game/Facility';
+import { readOnlyFacility } from './helpers/facility';
 
 const MASTER_SEED = 42;
 
@@ -179,8 +177,7 @@ function makeDept(
     tierManager: stubTier(opts.tier ?? 3),
     // #358 the one bay truth. Default is the REAL module at this tier, so the
     // suite runs on the bays the game actually ships.
-    facility:
-      opts.facility ?? createFacility({ getTier: () => opts.tier ?? 3 }),
+    facility: opts.facility ?? readOnlyFacility(() => opts.tier ?? 3),
     departmentQueue: queue,
     reputation: stubReputation,
     weather: stubWeather,
@@ -412,7 +409,7 @@ describe('BodyShopDispatch — capacity = min(bays, advisors on duty)', () => {
   // Driven through the real module so the seam the package uses is under test.
   it('takes its bay count from the same facility provider', () => {
     const bodyBaysAt = (tier: number) =>
-      createFacility({ getTier: () => tier }).getBuilt().bodyBays;
+      readOnlyFacility(() => tier).getBuilt().bodyBays;
     // Dark below Tier 3 — a T2 store has built no body bays at all, so four
     // advisors clear nothing; at Tier 3 the same roster works.
     expect(bodyBaysAt(2)).toBe(0);

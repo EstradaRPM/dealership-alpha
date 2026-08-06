@@ -6,6 +6,47 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **BUILT #356** (raise demands, and `payVsMarketBonus` made real). Growth stops
+  being a drift and becomes a moment: *Asking for $340/day. On $150/day now.* → **Pay it** /
+  **Refuse**.
+  **`payVsMarketBonus` left in the same commit that replaced it** — the fourth placeholder
+  deleted in this phase (`headcountCapByTier` #352, `weeklyPayrollStub` #353,
+  `hiringCostByTier` #355), and the most dishonest of them: it added a flat bonus to everyone
+  every payroll night, so it *compared nothing* while wearing a comparison's name. It is now
+  paid wage vs the grade's asking wage, split into `paidAtMarketBonus` /
+  `paidBelowMarketPenalty` — and the **signs are schema**, because a positive penalty would
+  mean underpaying cheers people up and would read as balance, not as a dropped minus sign.
+  **The comparison is read off `getPayBoard()`, not re-derived in StaffMorale.** That is why
+  `StaffPay` gained `askingWage`: exactly two mechanics read "what someone this good asks
+  for" — the raise trigger and the nightly morale adjustment — and a second derivation of it
+  could disagree with the number on the card.
+  **The trigger is still `currentGrade > paidGrade` and nothing else**, evaluated once on
+  `clock:day_started` because the counters that grow a grade only accrue overnight; checking
+  within an open day would re-ask the same question. **Three suppressions**, each the absence
+  of a decision rather than a rule to learn: a demand already unanswered, a running cooldown,
+  and — the one that matters for tests — an asked wage that does not beat the paid one. Wages
+  rise *weakly* with grade by schema, so `flatPay`/`noPay` would otherwise have raised prompts
+  whose two buttons cost the same across ~20 suites.
+  **Refusal routes into the EXISTING quit machinery, and StaffOrg never touches morale.**
+  Both answers publish `staff:raise_answered`; StaffMorale owns the consequence. That keeps
+  the module boundary intact and means there is no second quit path to keep calibrated —
+  proved by watching the same `staff:quit` the low-morale check has always published.
+  **A promotion voids an outstanding demand but keeps the cooldown.** The two numbers on the
+  prompt were the old role's; "they asked recently" is still true. They re-ask tomorrow at the
+  new desk's numbers.
+  **Persisted inside the staffOrg blob, no envelope bump** — both keys optional, so a pre-#356
+  save restores as "nobody is asking" and re-derives the next morning. Losing the request
+  would answer the player's open decision for them; losing the cooldown would make reloading
+  the way to stop someone re-asking. Both directions are pinned.
+  **Driven on web at T2, and the two halves showed up in the right order.** Loading a save
+  with a grade-3 salesperson put on grade-1 money read *"Grade 3 · Paid at grade 1 ·
+  $150/day"* with **no prompt** (correct — the ask is a morning event); overnight her morale
+  alone fell 95 → **91** (the −4 underpay penalty, the other two untouched at 95); Day 32
+  opened with the prompt on her card only. **Pay it** collapsed the line to *"Grade 3 ·
+  $340/day"* and moved daily payroll $1,090 → **$1,280** in the same beat.
+  215 suites / **2745** tests, typecheck clean.
+  Next: **BUILD #357** (rival offers on the same event family — retention and poaching as one
+  moment).
 - 2026-08-06 — **BUILT #355** (the talent-scaled hire fee). What you pay to sign someone is now
   `hireFeeMultiple × their own daily wage`, so one number in `data/staff-pay.json` prices both
   signing them and keeping them.

@@ -679,6 +679,17 @@ export interface EventMap {
   // CareerProgression — player's dealership advanced to the next tier
   'career:tier_up': { fromTier: number; toTier: number; day: number };
 
+  // Facility — a construction job finished and its capacity is now standing
+  // (#359). Published from `clock:day_started`, so newly built bays are usable
+  // before the day's department drain snapshots its bay count. `built` is the
+  // NEW total for that kind, not the delta — `units` is the delta.
+  'facility:capacity_built': {
+    kind: 'lotSpaces' | 'serviceBays' | 'bodyBays';
+    units: number;
+    built: number;
+    day: number;
+  };
+
   // CareerProgression — bankruptcy outcomes (tier-aware per issue #30).
   //   terminal: Tier 1 game-over; routes to end-card flow.
   //   contraction: Tier 2 forced back to Tier 1 with debt overhang.

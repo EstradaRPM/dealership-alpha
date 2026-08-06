@@ -1,7 +1,7 @@
 import React from 'react';
 import type { World } from '../../createWorld';
 import type { DemandReadoutModel } from '../../ui/DemandReadout';
-import { GrowthTab, buildGateBoard } from '../../ui/GrowthTab';
+import { GrowthTab, buildGateBoard, buildFacilityBuild } from '../../ui/GrowthTab';
 import { buildIndustryWire, buildWeeklyReport } from '../config';
 
 export interface GrowthTabContainerProps {
@@ -14,6 +14,11 @@ export interface GrowthTabContainerProps {
   demandReadout: DemandReadoutModel;
   /** Force a re-render after a world write the EventBus doesn't announce. */
   bump: () => void;
+  /**
+   * Sync the shell's cash mirror after a world write that spends (#359) — the
+   * same prop `PeopleTabContainer` takes for hiring, and for the same reason.
+   */
+  setCash: (n: number) => void;
 }
 
 /**
@@ -25,7 +30,12 @@ export interface GrowthTabContainerProps {
  * `tierGate.getTierRequirements`; `null` there (top of the built ladder) simply
  * drops the climb section rather than rendering an empty tease (IA rule 3).
  */
-export function GrowthTabContainer({ world, demandReadout, bump }: GrowthTabContainerProps) {
+export function GrowthTabContainer({
+  world,
+  demandReadout,
+  bump,
+  setCash,
+}: GrowthTabContainerProps) {
   const progress = world.tierGate.getProgress();
   const gateBoard = buildGateBoard(
     progress,
@@ -49,6 +59,15 @@ export function GrowthTabContainer({ world, demandReadout, bump }: GrowthTabCont
         bump();
       }}
       gateBoard={gateBoard}
+      facilityBuild={buildFacilityBuild(world.facility.getBuildOptions())}
+      onBuildFacility={(kind) => {
+        // #359: the engine owns every rule the button could get wrong — the
+        // ceiling, the price, whether the cash is there — so this commits and
+        // re-reads rather than guarding first. A refusal simply changes nothing.
+        world.facility.build(kind);
+        setCash(world.economy.cash);
+        bump();
+      }}
     />
   );
 }
