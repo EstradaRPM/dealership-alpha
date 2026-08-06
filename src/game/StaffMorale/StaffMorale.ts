@@ -66,6 +66,14 @@ export function createStaffMorale(deps: StaffMoraleDeps): StaffMorale {
     moraleMap.delete(staffId);
   });
 
+  // Somebody left. The low-morale check below already clears its own entry
+  // before publishing, but since #357 this module is no longer the only
+  // publisher — StaffOrg hands people to a rival — and an entry for someone who
+  // no longer works here would ride along in every save from then on.
+  bus.subscribe('staff:quit', ({ staffId }) => {
+    moraleMap.delete(staffId);
+  });
+
   bus.subscribe('staff:auto_resolved', ({ staffId, outcome }) => {
     if (outcome === 'closed') {
       adjust(staffId, config.recognitionBonus);
@@ -128,6 +136,7 @@ export function createStaffMorale(deps: StaffMoraleDeps): StaffMorale {
         moraleMap.delete(s.id);
         bus.publish('staff:quit', {
           staffId: s.id,
+          name: s.name,
           roleId: s.role_id,
           day,
           morale,

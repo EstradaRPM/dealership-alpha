@@ -10,9 +10,16 @@ import {
   type StaffWithComposites,
 } from '../NPC/factories/StaffFactory';
 import type { Staff } from '../NPC/schemas/staff';
+import { createRng, deriveSeed } from '../Rng';
 import { loadStaffOrgConfig, type StaffOrgConfig } from './staffOrgData';
 import { loadStaffSlots, slotTotalFor, type StaffSlotTable } from './staffSlots';
-import { loadStaffPay, gradeFor, dailyWageFor, type StaffPayTable } from './staffPay';
+import {
+  loadStaffPay,
+  gradeFor,
+  dailyWageFor,
+  MAX_GRADE,
+  type StaffPayTable,
+} from './staffPay';
 import type { CandidateListing } from './types';
 import {
   computeConditionRead,
@@ -56,6 +63,18 @@ export interface StaffOrgDeps {
    * shipped balance numbers.
    */
   pay?: StaffPayTable;
+  /**
+   * The rival stores that can come for your people (#357) — their display
+   * names, read fresh each morning so a market that changes changes who
+   * poaches. A function rather than a `CompetitorMarket` reference: StaffOrg
+   * needs one string per rival and must not grow a dependency on the module
+   * that happens to hold them today.
+   *
+   * Omit — or return an empty list — and no rival offer ever fires. That is the
+   * honest "there is nobody to poach you" rather than a disable flag, and it
+   * keeps every suite that hires people for other reasons free of them.
+   */
+  rivalNames?: () => readonly string[];
   getTier?: () => number;
   /**
    * Hidden-truth provider for the UCM condition read (#163). Receives the
@@ -76,18 +95,40 @@ export interface StaffOrgDeps {
  *
  * Both wages are captured at ask time so the prompt cannot quietly restate
  * itself: the number the player agreed to is the number they were shown.
+ *
+ * **A rival's offer is this same object with a name and a deadline on it**
+ * (#357, R2's closing paragraph): *"Northside offered Marcus $610/day. He'll
+ * take it Friday."* Retention and poaching are one moment with one pair of
+ * buttons — not a second mechanic — so they are one type, one event family and
+ * one prompt. What the two answers *mean* differs, and only there: declining a
+ * rival is a departure, declining a raise is a cooldown.
  */
 export interface RaiseRequest {
   readonly staffId: string;
   readonly roleId: string;
-  /** The day they asked. */
+  /** The day they asked, or the day the offer arrived. */
   readonly day: number;
-  /** What they are on now — `wage(role, paidGrade)`. */
+  /** What they are on now — the wage the daily drain is charging for them. */
   readonly currentWage: number;
-  /** What they are asking for — `wage(role, grade)`. */
+  /**
+   * What it takes to keep them: `wage(role, grade)` when they are asking for
+   * themselves, or the rival's bid (that wage plus the poaching premium).
+   */
   readonly askedWage: number;
   readonly paidGrade: number;
   readonly grade: number;
+  /**
+   * The rival who made the offer (#357) — present only on a poach. Its absence
+   * is what makes this a plain raise demand; no separate kind field, because a
+   * kind that can disagree with the fields it describes is a bug waiting.
+   */
+  readonly rivalName?: string;
+  /**
+   * The morning they leave if nothing is answered. Present only alongside
+   * `rivalName` — a raise demand has no deadline, since refusing one is an
+   * answer the player gives rather than one the clock gives for them.
+   */
+  readonly deadlineDay?: number;
 }
 
 /**
@@ -216,19 +257,24 @@ export interface StaffOrg {
   /** The outstanding demand for one member, or `null`. */
   getRaiseRequest(staffId: string): RaiseRequest | null;
   /**
-   * **Pay it** (#356). Sets `paidGrade` to the grade they asked at, so the wage
-   * moves to the asked number from the next drain onward, and announces the
-   * answer for StaffMorale to reward. Throws `StaffOrgError` when that member
-   * has no outstanding demand — the surface only offers the button when one is
-   * live, so a throw here means a stale press, not a message for the player.
+   * **Pay it** — or **Match**, when a rival is on the prompt (#356/#357). Moves
+   * the wage to the number they were quoted and `paidGrade` to the grade they
+   * asked at, then announces the answer for StaffMorale to reward. Throws
+   * `StaffOrgError` when that member has no outstanding demand — the surface
+   * only offers the button when one is live, so a throw here means a stale
+   * press, not a message for the player.
    */
   acceptRaise(staffId: string): void;
   /**
-   * **Refuse** (#356). The wage does not move, morale drops (StaffMorale's
-   * answer to the same event), and the member cannot ask again until
-   * `raiseCooldownDays` have passed. There is deliberately no new quit path:
-   * a refusal that pushes morale under the quit threshold is taken from there
-   * by the existing `StaffMorale` → `staff:quit` machinery.
+   * **Refuse** — or **Let them go** (#356/#357). Turning down a raise holds the
+   * wage, drops morale (StaffMorale's answer to the same event) and starts
+   * `raiseCooldownDays`; there is deliberately no new quit path, since a
+   * refusal that pushes morale under the threshold is taken from there by the
+   * existing `StaffMorale` → `staff:quit` machinery.
+   *
+   * Turning down a **rival's** offer is the one difference between the two: the
+   * rival is hiring them, so they leave now, through that same `staff:quit`.
+   * There is no cooldown to start on someone who no longer works here.
    */
   refuseRaise(staffId: string): void;
   /** #190 SaveStore seam: capture/rehydrate the hired roster. */
@@ -271,6 +317,7 @@ export class StaffOrgError extends Error {
 
 export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   const { bus, economy, masterSeed, taxonomy, archetypes } = deps;
+  const rivalNames = deps.rivalNames;
   const config = deps.config ?? loadStaffOrgConfig();
   const slots = deps.slots ?? loadStaffSlots();
   const pay = deps.pay ?? loadStaffPay();
@@ -306,6 +353,16 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
     // Morning is the only moment the answer can have changed: the counters that
     // grow a grade accrue on `clock:day_ended`, so within an open day nobody's
     // grade moves and re-checking would be re-asking the same question.
+    //
+    // Three passes, in this order, and the order is the mechanic:
+    // 1. a deadline that has come up takes the person — before anything else,
+    //    so nobody is poached, or asks for a raise, on the morning they leave;
+    // 2. rivals make their approaches;
+    // 3. whoever is left and has outgrown their pay asks for themselves. An
+    //    outstanding offer suppresses that ask, which is how "one open ask per
+    //    member" falls out of the ordering rather than out of a rule.
+    expireRivalOffers(day);
+    rivalOffers(day);
     raiseAsks(day);
   });
 
@@ -380,9 +437,15 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
     return wage;
   }
 
-  /** The wage a roster member is actually on — their `paidGrade`, not their current one. */
+  /**
+   * The wage a roster member is actually on. Stored on the person (#357),
+   * because it is an **agreed** number: a matched rival offer pays a premium
+   * over what the grade asks for, so it cannot be re-derived from `paidGrade`.
+   * The fallback covers pre-#357 saves and reproduces exactly what #353
+   * charged.
+   */
   function paidWageFor(staff: StaffWithComposites): number {
-    return wageFor(staff.role_id, staff.paidGrade ?? currentGrade(staff));
+    return staff.paidWage ?? wageFor(staff.role_id, staff.paidGrade ?? currentGrade(staff));
   }
 
   function totalDailyPayroll(): number {
@@ -418,7 +481,10 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       const paidGrade = staff.paidGrade ?? grade;
       if (grade <= paidGrade) continue;
 
-      const currentWage = wageFor(staff.role_id, paidGrade);
+      // What they are actually on, not what their paid grade's row says — a
+      // matched rival offer (#357) put them above that row, and someone paid
+      // over book has nothing to ask for.
+      const currentWage = paidWageFor(staff);
       const askedWage = wageFor(staff.role_id, grade);
       if (askedWage <= currentWage) continue;
 
@@ -434,6 +500,98 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       raiseRequests.set(staff.id, request);
       bus.publish('staff:raise_requested', request);
     }
+  }
+
+  /**
+   * A rival's approach (#357) — the poaching half of R2's one moment.
+   *
+   * Who gets approached is **one rule**: the chance scales with grade, so
+   * rivals come for the people worth having and come for them more often the
+   * better those people are. There is no "poachable" flag and no minimum grade
+   * — a floor would be a second rule the player could only infer from an
+   * absence, and it would make the top of the roster feel arbitrary rather than
+   * valuable.
+   *
+   * Two things suppress an approach, both the absence of a decision rather than
+   * a rule to learn: something is already on the prompt for that person, and an
+   * offer that does not beat what they are already paid. The second is what
+   * stops a member you just matched at a premium from being "poached" back down
+   * to the book wage the next morning.
+   *
+   * The refusal cooldown deliberately does NOT suppress it. That cooldown is
+   * about the member not nagging you; a rival calling them is not their doing.
+   */
+  function rivalOffers(day: number): void {
+    const rivals = rivalNames ? rivalNames() : [];
+    if (rivals.length === 0) return;
+    const terms = pay.rivalOffers;
+
+    for (const staff of roster) {
+      if (raiseRequests.has(staff.id)) continue;
+
+      const grade = currentGrade(staff);
+      const currentWage = paidWageFor(staff);
+      const offeredWage = Math.round(terms.wagePremium * wageFor(staff.role_id, grade));
+      if (offeredWage <= currentWage) continue;
+
+      // One stream per (member, day): whether the call comes and who makes it
+      // are drawn in a fixed order from one seed, so a replayed save produces
+      // the same offer from the same rival on the same morning.
+      const rng = createRng(
+        deriveSeed(masterSeed, 'staff_org.rival_offer', { staffId: staff.id, day }),
+      );
+      if (rng() >= terms.dailyChanceAtTopGrade * (grade / MAX_GRADE)) continue;
+      const rivalName = rivals[Math.floor(rng() * rivals.length) % rivals.length];
+
+      const request: RaiseRequest = {
+        staffId: staff.id,
+        roleId: staff.role_id,
+        day,
+        currentWage,
+        askedWage: offeredWage,
+        paidGrade: staff.paidGrade ?? grade,
+        grade,
+        rivalName,
+        deadlineDay: day + terms.deadlineDays,
+      };
+      raiseRequests.set(staff.id, request);
+      bus.publish('staff:raise_requested', request);
+    }
+  }
+
+  /**
+   * The deadline arriving is the answer the player didn't give (#357): the
+   * rival hires them, and they leave through the **existing** `staff:quit` path
+   * with the rival named on it. No second departure mechanic — this module
+   * already removes a quitter from the roster, and now does it for both causes.
+   *
+   * Collected before publishing because `staff:quit` splices the roster we
+   * would otherwise be iterating.
+   */
+  function expireRivalOffers(day: number): void {
+    const leaving = [...raiseRequests.values()].filter(
+      (r) => r.deadlineDay !== undefined && day >= r.deadlineDay,
+    );
+    for (const request of leaving) {
+      const staff = roster.find((s) => s.id === request.staffId);
+      if (!staff) continue;
+      leaveForRival(staff, request, day);
+    }
+  }
+
+  /** Publish the departure; the module's own `staff:quit` subscriber does the rest. */
+  function leaveForRival(
+    staff: StaffWithComposites,
+    request: RaiseRequest,
+    day: number,
+  ): void {
+    bus.publish('staff:quit', {
+      staffId: staff.id,
+      name: staff.name,
+      roleId: staff.role_id,
+      day,
+      toRival: request.rivalName,
+    });
   }
 
   /**
@@ -629,11 +787,13 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         throw new StaffOrgError(`Staff member "${staffId}" not on roster`);
       }
 
-      // Moving `paidGrade` is the whole of "the wage moves": every wage read in
-      // the module derives from it, so there is no second number to keep in
-      // step with this one. It is set to the grade they ASKED at, not to
-      // whatever they are today — you agreed to a stated price.
+      // The wage becomes the number on the prompt, and the grade becomes the
+      // one they asked at — not whatever they are today. You agreed to a stated
+      // price. Both are set: the wage is what the drain charges (and a matched
+      // rival offer is above the grade's book wage, so it cannot be recovered
+      // from the grade), the grade is what the next demand is measured against.
       staff.paidGrade = request.grade;
+      staff.paidWage = request.askedWage;
       raiseRequests.delete(staffId);
       // The cooldown is a consequence of refusal only. Someone you just paid
       // has no reason to be barred from asking again when they grow again.
@@ -646,6 +806,7 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         accepted: true,
         currentWage: request.currentWage,
         askedWage: request.askedWage,
+        rivalName: request.rivalName,
       });
     },
 
@@ -656,7 +817,13 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       }
 
       raiseRequests.delete(staffId);
-      raiseCooldownUntil.set(staffId, currentDay + pay.raiseCooldownDays);
+      // A cooldown is a term of the *raise* negotiation: it buys quiet from
+      // someone who is staying. Nobody who was just poached is staying, so
+      // there is nothing to keep quiet — the entry would only ride along in
+      // every save from here.
+      if (request.rivalName === undefined) {
+        raiseCooldownUntil.set(staffId, currentDay + pay.raiseCooldownDays);
+      }
 
       bus.publish('staff:raise_answered', {
         staffId,
@@ -665,7 +832,17 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         accepted: false,
         currentWage: request.currentWage,
         askedWage: request.askedWage,
+        rivalName: request.rivalName,
       });
+
+      // Letting a rival's offer stand IS letting them go (#357). Published
+      // after the answer so the two facts arrive in the order they happened,
+      // and through the same `staff:quit` the deadline and the morale check
+      // use — one departure path, three causes.
+      if (request.rivalName !== undefined) {
+        const staff = roster.find((s) => s.id === staffId);
+        if (staff) leaveForRival(staff, request, currentDay);
+      }
     },
 
     snapshot(): StaffOrgSnapshot {
@@ -697,6 +874,12 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         // trigger (`grade > paidGrade`) starts quiet and fires the first time
         // they actually outgrow it, exactly as a fresh hire does.
         if (member.paidGrade === undefined) member.paidGrade = currentGrade(member);
+        // Same materialization for the wage (#357): a save written before the
+        // agreed wage was stored is restored paying exactly what #353's derived
+        // reading charged, so a reload changes nobody's pay.
+        if (member.paidWage === undefined) {
+          member.paidWage = wageFor(member.role_id, member.paidGrade);
+        }
         roster.push(member);
       }
     },
@@ -740,10 +923,13 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
 
       economy.postExpense(listing.hiringCost, `Hiring — ${listing.staff.role_id}`);
 
-      // The grade they signed at is the grade they're paid at (#353). Set here
-      // rather than in the factory because a candidate on the board is not on
-      // anyone's payroll — `paidGrade` is what "employed here" means.
+      // The grade they signed at is the grade they're paid at (#353), and the
+      // wage on the listing is the wage they're on (#357) — the card's number
+      // and the ledger's number are the same object. Set here rather than in
+      // the factory because a candidate on the board is not on anyone's
+      // payroll; these two fields are what "employed here" means.
       listing.staff.paidGrade = listing.grade;
+      listing.staff.paidWage = listing.dailyWage;
       roster.push(listing.staff);
       candidatePool.delete(candidateId);
 
@@ -854,7 +1040,13 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       const fromRoleId = staff.role_id;
       // In-place replacement keeps the staff id, so StaffMorale / StaffDispatch
       // bindings (keyed by id) survive the promotion.
-      roster[idx] = promoteStaff(staff, toRoleId, taxonomy, masterSeed);
+      const promoted = promoteStaff(staff, toRoleId, taxonomy, masterSeed);
+      // You took the desk, you get the desk's pay (#353) — so the new role's
+      // wage at the grade they are paid at, which also clears any premium a
+      // matched rival offer had put on the old job (#357). A promotion is a new
+      // agreement, not a carried-over one.
+      promoted.paidWage = wageFor(toRoleId, promoted.paidGrade ?? currentGrade(promoted));
+      roster[idx] = promoted;
       // A demand outstanding against the OLD desk is void (#356). The wage moved
       // by role the moment they took the new job, and the two numbers on the
       // prompt were the old role's. If they are still underpaid for the desk

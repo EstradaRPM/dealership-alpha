@@ -782,6 +782,11 @@ export function createWorld(deps: {
     masterSeed,
     taxonomy: staffTaxonomy,
     archetypes: loadStaffArchetypes(),
+    // Who can come for your people (#357). The stores already competing with
+    // you are the ones who would poach from you, so the rival on the offer is
+    // a name the player has seen on the market screens — not a fresh invented
+    // one. Read through a function so StaffOrg never holds CompetitorMarket.
+    rivalNames: () => competitorMarket.getCompetitors().map((c) => c.name),
     getTier: () => tierManager.currentTier,
     // UCM condition-read truth seam (#163). Replays the same recon roll that
     // Inventory.buyFromAuction will use at acquisition — deterministic from

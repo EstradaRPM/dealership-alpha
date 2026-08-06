@@ -266,7 +266,7 @@ describe('StaffMorale — answering a raise (#356)', () => {
       quitRiskRate: 1.0,
     };
     const { bus, morale } = makeSetup([s], config);
-    const quits: Array<{ staffId: string; morale: number }> = [];
+    const quits: Array<{ staffId: string; morale?: number }> = [];
     bus.subscribe('staff:quit', (e) => quits.push(e));
 
     bus.publish('staff:hired', { staffId: 's7g', roleId: 'salesperson', day: 1, hiringCost: 0 });
@@ -415,7 +415,7 @@ describe('StaffMorale — quit risk', () => {
     const staffOrg = makeStaffOrg(roster);
     createStaffMorale({ bus, staffOrg, queue, masterSeed: MASTER_SEED, config });
 
-    const quitEvents: Array<{ morale: number }> = [];
+    const quitEvents: Array<{ morale?: number }> = [];
     bus.subscribe('staff:quit', (e) => quitEvents.push(e));
 
     bus.publish('staff:hired', { staffId: 's16', roleId: 'salesperson', day: 1, hiringCost: 0 });

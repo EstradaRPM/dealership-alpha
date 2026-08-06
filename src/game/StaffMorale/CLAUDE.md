@@ -8,8 +8,10 @@ Tracks morale for each active staff member. Drifts daily based on outcomes; trig
 - Types: `StaffMorale`, `StaffMoraleDeps`, `StaffMoraleConfig`.
 
 ## Events
-- **Emits:** `staff:quit` (when morale crosses the quit threshold).
-- **Consumes:** `staff:auto_resolved` (success bump / failure ding), `staff:hired` (init morale), `staff:fired` (cleanup), `clock:day_ended` (daily drift), `clock:overnight_payroll` (pay vs market, #356), `staff:raise_answered` (#356).
+- **Emits:** `staff:quit` (when morale crosses the quit threshold). **Not the only publisher
+  since #357** — StaffOrg publishes the same event when a rival's offer is declined or runs
+  out its deadline, which is why this module also *consumes* it.
+- **Consumes:** `staff:auto_resolved` (success bump / failure ding), `staff:hired` (init morale), `staff:fired` (cleanup), `staff:quit` (cleanup — #357 made StaffOrg a second publisher, and an entry for someone who no longer works here would ride along in every save), `clock:day_ended` (daily drift), `clock:overnight_payroll` (pay vs market, #356), `staff:raise_answered` (#356).
 
 ## Pay vs market (#356)
 - Every `clock:overnight_payroll`, each member's **paid** wage is compared against their
@@ -22,7 +24,9 @@ Tracks morale for each active staff member. Drifts daily based on outcomes; trig
   underpaying cheers people up, and would read as balance rather than a dropped minus sign.
 - `staff:raise_answered` is the answer's morale consequence: `raiseAcceptedBonus` /
   `raiseRefusedPenalty`. A refusal has **no quit path of its own** — it lowers morale, and
-  the standing overnight risk check takes it from there.
+  the standing overnight risk check takes it from there. A declined *rival* offer (#357)
+  carries `rivalName` and is followed by StaffOrg's own `staff:quit`; the morale answer is
+  unchanged, because this module does not decide who leaves.
 
 ## Data
 - `data/tunables.json` — morale section (initial value, drift, quit threshold, outcome impacts, the two pay-vs-market edges, the two raise-answer edges).

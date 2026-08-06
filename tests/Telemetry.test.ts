@@ -86,7 +86,7 @@ describe('Telemetry — derived metrics', () => {
       paymentMethod: 'cash', downPayment: 20000, loanAmount: 0, term: 0, apr: 0,
     });
     bus.publish('economy:revenue_posted', { day: 2, amount: 20000, label: 'sale' });
-    bus.publish('staff:quit', { staffId: 's1', roleId: 'sales', day: 2, morale: 5 });
+    bus.publish('staff:quit', { staffId: 's1', name: 'Sam Reyes', roleId: 'sales', day: 2, morale: 5 });
   }
 
   it('dealsPerDay aggregates count and avg gross', () => {

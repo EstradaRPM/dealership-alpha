@@ -25,6 +25,8 @@ import { parseData } from '../data';
  *   (#356). In the pay book because it is a term of the wage negotiation, not a
  *   morale constant: what it delays is the next *ask*, and the ask is priced
  *   entirely off `dailyWageByRole` + `gradeBands` above.
+ * - `rivalOffers` — the poaching half of the same negotiation (#357): how often
+ *   a rival comes for someone, what they offer, and how long the player has.
  * - `dailyWageByRole` — role → wage at each grade.
  *
  * Roles that do not exist in the game yet (`new-car-manager` at T4,
@@ -63,6 +65,39 @@ const WageRowSchema = z
   })
   .strict();
 
+/**
+ * The rival-offer terms (#357, C1 R2's closing paragraph). Poaching is not a
+ * second mechanic — it is the raise prompt with a name and a deadline on it —
+ * so its three numbers live in the pay book beside the wages they are quoted
+ * against.
+ */
+const RivalOfferSchema = z
+  .object({
+    /**
+     * The chance per day that a **grade-5** member is approached. Scaled
+     * linearly by grade (`chance × grade / 5`), so rivals come for the people
+     * worth having and come for them more often the better they are. One
+     * number rather than a chance plus a "who is poachable" floor: a floor is a
+     * second rule the player would have to infer from an absence.
+     */
+    dailyChanceAtTopGrade: z.number().min(0).max(1),
+    /**
+     * What the rival offers, as a multiple of what someone at that grade asks
+     * for. **At least 1** by schema: a rival offering less than the person's
+     * own asking wage is not a poach, and would render as a prompt whose
+     * "Match" button is cheaper than doing nothing.
+     */
+    wagePremium: z.number().min(1),
+    /**
+     * How many days the player has. The offer arrives on day D and, unanswered,
+     * takes them on the morning of `D + deadlineDays` — so at least one whole
+     * day to decide, enforced here rather than left to a 0 that would make the
+     * prompt and the departure the same beat.
+     */
+    deadlineDays: z.number().int().positive(),
+  })
+  .strict();
+
 export const StaffPayTableSchema = z
   .object({
     gradeBands: z.array(z.number().min(0).max(1)).length(GRADE_IDS.length - 1),
@@ -70,6 +105,7 @@ export const StaffPayTableSchema = z
     // Whole days, and at least one: a zero-day cooldown lets a refused member
     // ask again the next morning, which turns a decision into a nag.
     raiseCooldownDays: z.number().int().positive(),
+    rivalOffers: RivalOfferSchema,
     dailyWageByRole: z.record(z.string().min(1), WageRowSchema),
   })
   .strict()

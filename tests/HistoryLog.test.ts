@@ -39,6 +39,41 @@ describe('HistoryLog (#208)', () => {
     expect(entries[1].text).toContain('$2,300');
   });
 
+  it('names the rival when someone is poached, and does not when they quit', () => {
+    // #357 — the log is the only place a departure can be read back days later;
+    // the floor buffer is wiped every morning. A loss to a named store is a
+    // different fact from a loss to low morale, and the entry says which.
+    const bus = createEventBus();
+    const log = createHistoryLog({ bus });
+
+    bus.publish('staff:quit', {
+      staffId: 's1',
+      name: 'Marcus Delgado',
+      roleId: 'salesperson',
+      day: 13,
+      toRival: 'Northside Kaivo',
+    } as never);
+    bus.publish('staff:quit', {
+      staffId: 's2',
+      name: 'Dana Whitfield',
+      roleId: 'salesperson',
+      day: 14,
+      morale: 8,
+    } as never);
+
+    const entries = log.getEntries();
+    expect(entries[1]).toEqual(
+      expect.objectContaining({
+        day: 13,
+        kind: 'staff',
+        text: 'Marcus Delgado left for Northside Kaivo.',
+      }),
+    );
+    expect(entries[0]).toEqual(
+      expect.objectContaining({ day: 14, kind: 'staff', text: 'Dana Whitfield quit.' }),
+    );
+  });
+
   it('retains entries across days (not reset daily)', () => {
     const bus = createEventBus();
     const log = createHistoryLog({ bus });

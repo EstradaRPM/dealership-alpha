@@ -6,6 +6,52 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-05 — **BUILT #353** (the wage book + the nightly payroll drain). Payroll finally
+  scales with the roster: every person burns a daily wage set by grade (1–5) × role, and that
+  is the entire pay model.
+  **`weeklyPayrollStub` left in the same commit that replaced it** — out of `data/tunables.json`,
+  out of `EconomyConfigSchema`, out of the call site — so the old flat $800/week cannot be read
+  and typecheck. Economy's `clock:overnight_payroll` subscription posts **rent only** now;
+  StaffOrg owns the salary book because it owns the roster. ~20 test files carried
+  `weeklyPayrollStub: 0` in an `EconomyConfig` literal; excess-property checking made that a
+  mechanical, compiler-verified sweep rather than a search.
+  **Two calls the design doc left open were resolved in code, and both are load-bearing.**
+  Grade bands the **0–1 ratio**, not the raw `effectiveness` composite: that composite is a
+  weighted *sum* whose range depends on how many axes a role grants (1.5 for a salesperson, 3.7
+  for a UCM), so absolute edges against it would have made every manager a grade 5 and capped
+  every salesperson at 3. The shipped edges put the ladder's own anchors where
+  `staff-performance-ladder.md:27` says they belong — green 0.35 → grade 2, mature 0.75 → grade 4.
+  And it reads the **grown** `effectiveSkills`, not the base roll: the base composite never
+  changes, so banding it would have frozen every grade for the whole career and left #356's
+  raise trigger with nothing to fire on. One formula serves both readings — `compositeRatio`
+  now takes skill *values* and is exported from NPC, so `effectivenessRatio` keeps passing base
+  skills and **every promotion/capability gate stays calibrated exactly where it was**.
+  **`paidGrade` is the one new field on `Staff`, and it is stamped at `hire()`, never by the
+  factories** — a candidate on the board is not on anyone's payroll, so `paidGrade` is what
+  "employed here" means. The wage charged is `wage(role, paidGrade)`; growth never silently
+  reprices anyone (the rejected "wage auto-follows grade"), which is precisely what leaves
+  `grade > paidGrade` as the whole raise trigger with no new counters. A promotion keeps
+  `paidGrade` and moves the wage by role — you took the desk, you get the desk's pay.
+  **No save-envelope bump.** The field sits inside the staffOrg blob, so per the recipe it is
+  that module's problem: `restore` materializes a missing `paidGrade` from the member's current
+  grade, which is behavior-neutral — they load paid what they are currently worth, so the
+  trigger starts quiet exactly as a fresh hire does. The tier-2 fixture needed no re-stamp.
+  **`forceDebit`, not `postExpense`** — payroll you cannot afford is meant to push cash negative
+  and wake `BankruptcyMonitor`, not throw and abort the overnight sequence (the same idiom rent
+  and the marketing drains use). An empty roster posts **nothing**, not a $0 entry.
+  **Two data-shape rules are schema, not convention:** the wage table refuses a file where a
+  higher grade costs less (a transposed digit would read as balance instead of a typo), and the
+  grade bands must strictly increase or a grade is unreachable. A role the pay book does not
+  name throws, the same grammar the slot table uses — a free employee is the bug being deleted.
+  **The Browser pane was not compositing frames**, so the click-through drive was impossible
+  (no screenshot ⇒ no coordinate clicks, and the T2 dev button carries no a11y ref). The
+  evidence is `tests/Payroll.reachability.test.ts` instead: a real `createWorld` charging the
+  *shipped* pay book, and the drain landing as its own "Payroll" bar through the real
+  `groupExpenses` rather than folding into "Other". That runs in CI; a web drive does not.
+  215 suites / **2711** tests, typecheck clean.
+  Next: **BUILD #354** (People surface: grade + wage per card, total daily payroll, the skill-bar
+  `flexDirection` fix).
+
 - 2026-08-05 — **BUILT #352** (per-role slot table). Scarcity is per **job**, not per body:
   `data/staff-slots.json` is role → count per tier, and it is now the only headcount ceiling
   in the game.

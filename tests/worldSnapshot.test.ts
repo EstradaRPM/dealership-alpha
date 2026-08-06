@@ -280,7 +280,11 @@ describe('StaffOrg + StaffMorale snapshot/restore (#190)', () => {
     const staffSnap = original.staffOrg.snapshot();
     original.staffOrg.restore({
       ...staffSnap,
-      roster: staffSnap.roster.map((s) => (s.id === staffId ? { ...s, paidGrade: 1 } : s)),
+      // The agreed wage goes with the grade (#357) — `restore` reprices from
+      // `paidGrade` when it is absent, which is the outgrown-rookie state.
+      roster: staffSnap.roster.map((s) =>
+        s.id === staffId ? { ...s, paidGrade: 1, paidWage: undefined } : s,
+      ),
     });
     original.clock.advanceDay();
     const demand = original.staffOrg.getRaiseRequest(staffId);
@@ -302,6 +306,45 @@ describe('StaffOrg + StaffMorale snapshot/restore (#190)', () => {
     restoreWorld(refusedSnap, afterRefusal);
     afterRefusal.clock.advanceDay();
     expect(afterRefusal.staffOrg.getRaiseRequest(staffId)).toBeNull();
+  });
+
+  it('round-trips an outstanding rival offer', () => {
+    // #357. An offer with a deadline on it is the one piece of staff state a
+    // reload could be used to game in either direction: lose it and the player
+    // keeps someone a rival had already taken; lose the deadline and the
+    // decision never expires. It rides the same staffOrg blob as the raise it
+    // extends, so again no envelope bump.
+    const seed = 3572;
+    const { world: original } = build(seed);
+    const candidate = original.staffOrg.getCandidates('salesperson')[0];
+    original.staffOrg.hire(candidate.candidateId);
+    const staffId = candidate.staff.id;
+
+    // Let the world's own rivals make the approach — an offer crafted by hand
+    // would round-trip a shape rather than the thing the game produces.
+    let offer = null as ReturnType<typeof original.staffOrg.getRaiseRequest>;
+    for (let i = 0; i < 200; i++) {
+      original.clock.advanceDay();
+      const request = original.staffOrg.getRaiseRequest(staffId);
+      if (request?.rivalName !== undefined) {
+        offer = request;
+        break;
+      }
+      if (request) original.staffOrg.acceptRaise(staffId);
+    }
+    expect(offer).not.toBeNull();
+
+    const snap = JSON.parse(JSON.stringify(snapshotWorld(original))) as WorldSnapshot;
+    const { world: rebuilt } = build(seed);
+    restoreWorld(snap, rebuilt);
+
+    expect(rebuilt.staffOrg.getRaiseRequest(staffId)).toEqual(offer);
+    // And the wage they are on comes back too — a matched offer pays over the
+    // grade's book wage, so a reload that re-derived it would quietly cut
+    // someone's pay.
+    expect(rebuilt.staffOrg.getPayBoard()[0].dailyWage).toBe(
+      original.staffOrg.getPayBoard()[0].dailyWage,
+    );
   });
 
   it('round-trips newly hireable manager roles and keeps fired staff removed', () => {

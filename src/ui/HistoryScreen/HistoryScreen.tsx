@@ -10,6 +10,7 @@ const KIND_LABEL: Record<HistoryEntryKind, string> = {
   escalation: 'Escalation',
   market: 'Market',
   tier: 'Milestone',
+  staff: 'Staff',
 };
 
 const KIND_TONE: Record<HistoryEntryKind, BadgeTone> = {
@@ -17,6 +18,8 @@ const KIND_TONE: Record<HistoryEntryKind, BadgeTone> = {
   escalation: 'info',
   market: 'neutral',
   tier: 'positive',
+  // A departure is a loss, and the badge should not congratulate you for it.
+  staff: 'danger',
 };
 
 export interface HistoryScreenProps {

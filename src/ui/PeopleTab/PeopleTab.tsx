@@ -30,8 +30,16 @@ export interface PeoplePromotionOption {
 export interface PeopleRaiseAsk {
   /** What they are paid today. */
   readonly currentWage: number;
-  /** What they are asking to be paid. */
+  /** What they are asking to be paid — or what a rival has offered them. */
   readonly askedWage: number;
+  /**
+   * The rival who made the offer (#357), or `null` when this is the person
+   * asking for themselves. One prompt covers both: with a name on it the two
+   * buttons become **Match** / **Let them go**, and a deadline line appears.
+   */
+  readonly rivalName?: string | null;
+  /** The day they leave unless the offer is matched. Set with `rivalName`. */
+  readonly deadlineDay?: number | null;
 }
 
 /** One person on payroll. */
@@ -208,6 +216,13 @@ function SkillList({
  * about *them*, and their grade, skills and morale are the evidence the player
  * answers it on. Nothing here is a temperature word — "asking for" and "on now"
  * name what the numbers are.
+ *
+ * **A rival's offer is this same prompt with a name and a deadline on it**
+ * (#357). Not a second component and not a second modal: the player learns one
+ * moment and it does both jobs. What changes is the sentence (who is offering)
+ * and what the buttons mean — declining a rival is a departure, so it says
+ * `Let them go` rather than `Refuse`, and the deadline is stated as an exact
+ * day rather than a countdown the player would have to do arithmetic on.
  */
 function RaisePrompt({
   member,
@@ -222,23 +237,40 @@ function RaisePrompt({
   const s = makeStyles(t);
   const raise = member.raise;
   if (!raise) return null;
+  const rival = raise.rivalName;
+  const askLine = rival
+    ? `${rival} offered ${wageText(raise.askedWage)}. On ${wageText(raise.currentWage)} now.`
+    : `Asking for ${wageText(raise.askedWage)}. On ${wageText(raise.currentWage)} now.`;
   return (
     <View style={s.raisePrompt} testID={`people-raise-${member.id}`}>
       <Text style={s.raiseAsk} testID={`people-raise-ask-${member.id}`}>
-        {`Asking for ${wageText(raise.askedWage)}. On ${wageText(raise.currentWage)} now.`}
+        {askLine}
       </Text>
+      {rival != null && raise.deadlineDay != null && (
+        <Text style={s.raiseDeadline} testID={`people-raise-deadline-${member.id}`}>
+          {`They leave on day ${raise.deadlineDay} unless you match.`}
+        </Text>
+      )}
       <View style={s.actionRow}>
         <Button
-          label="Pay it"
+          label={rival ? 'Match' : 'Pay it'}
           onPress={onAccept}
-          accessibilityLabel={`Pay ${member.name} ${wageText(raise.askedWage)}`}
+          accessibilityLabel={
+            rival
+              ? `Match ${rival}'s offer and pay ${member.name} ${wageText(raise.askedWage)}`
+              : `Pay ${member.name} ${wageText(raise.askedWage)}`
+          }
           testID={`people-raise-accept-${member.id}`}
         />
         <Button
-          label="Refuse"
+          label={rival ? 'Let them go' : 'Refuse'}
           variant="secondary"
           onPress={onRefuse}
-          accessibilityLabel={`Refuse ${member.name} the raise`}
+          accessibilityLabel={
+            rival
+              ? `Let ${member.name} go to ${rival}`
+              : `Refuse ${member.name} the raise`
+          }
           testID={`people-raise-refuse-${member.id}`}
         />
       </View>
@@ -644,6 +676,14 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     raiseAsk: {
       ...t.typography.body,
       color: t.colors.textPrimary,
+      fontVariant: ['tabular-nums'],
+    },
+    // The deadline is the consequence, not the offer — secondary text under the
+    // sentence that states the numbers (#357).
+    raiseDeadline: {
+      ...t.typography.caption,
+      color: t.colors.textSecondary,
+      marginTop: t.spacing.xs,
       fontVariant: ['tabular-nums'],
     },
     slotLabel: { ...t.typography.caption, color: t.colors.textSecondary },

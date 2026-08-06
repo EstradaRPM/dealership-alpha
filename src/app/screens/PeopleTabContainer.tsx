@@ -98,7 +98,14 @@ export function PeopleTabContainer({
         label: humanizeRole(p.toRoleId),
       })),
       raise: raise
-        ? { currentWage: raise.currentWage, askedWage: raise.askedWage }
+        ? {
+            currentWage: raise.currentWage,
+            askedWage: raise.askedWage,
+            // Present only on a poach (#357) — the prompt renders the rival's
+            // name and the deadline instead of growing a second component.
+            rivalName: raise.rivalName ?? null,
+            deadlineDay: raise.deadlineDay ?? null,
+          }
         : null,
     };
   });
@@ -167,7 +174,9 @@ export function PeopleTabContainer({
       }}
       // A raise costs nothing today — the new wage is charged by the overnight
       // drain — so neither answer touches the cash mirror. Both just re-render
-      // in place, like every other write on this tab.
+      // in place, like every other write on this tab. The same two handlers
+      // answer a rival's offer (#357); "Let them go" removes them from the
+      // roster, which `bump()` reflects like any other roster write.
       onAcceptRaise={(staffId) => {
         world.staffOrg.acceptRaise(staffId);
         bump();

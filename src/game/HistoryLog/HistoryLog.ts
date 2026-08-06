@@ -22,7 +22,7 @@ export interface HistoryLogConfig {
 }
 
 /** The category of a logged event — drives UI grouping/iconography. */
-export type HistoryEntryKind = 'sale' | 'escalation' | 'market' | 'tier';
+export type HistoryEntryKind = 'sale' | 'escalation' | 'market' | 'tier' | 'staff';
 
 export interface HistoryEntry {
   /** Monotonic id, stable across a session and persisted. */
@@ -125,6 +125,19 @@ export function createHistoryLog(deps: { bus: EventBus }): HistoryLog {
 
   bus.subscribe('career:tier_up', (p: EventMap['career:tier_up']) => {
     append(p.day, 'tier', `Promoted to Tier ${p.toTier}.`);
+  });
+
+  // Losing someone (#357). This is the one place a departure is recorded where
+  // the player can go back and read it: the floor buffer is wiped every
+  // morning, and a person walking out is exactly the kind of thing you notice
+  // three days later and want to check. The rival is named when there is one,
+  // so the loss reads as a loss to *someone* rather than as an empty desk.
+  bus.subscribe('staff:quit', (p: EventMap['staff:quit']) => {
+    append(
+      p.day,
+      'staff',
+      p.toRival ? `${p.name} left for ${p.toRival}.` : `${p.name} quit.`,
+    );
   });
 
   return {

@@ -550,12 +550,23 @@ export interface EventMap {
     staffId: string;
     roleId: string;
     day: number;
-    /** What they are on now — `wage(role, paidGrade)`. */
+    /** What they are on now — the wage the drain is charging for them. */
     currentWage: number;
-    /** What they are asking for — `wage(role, grade)`. */
+    /** What they are asking for — `wage(role, grade)`, or a rival's bid. */
     askedWage: number;
     paidGrade: number;
     grade: number;
+    /**
+     * The rival who made the offer (#357). Present ONLY on a poach; a plain
+     * raise demand is the same event without these two fields. Both halves of
+     * spine §5's teeth ride this one family deliberately — see the note above.
+     */
+    rivalName?: string;
+    /**
+     * The morning they leave if the offer is unanswered (#357). Present only
+     * alongside `rivalName`.
+     */
+    deadlineDay?: number;
   };
   // Emitted by `acceptRaise` / `refuseRaise`. StaffMorale is the consumer: the
   // morale consequence of either answer lives there, because StaffOrg owns the
@@ -569,6 +580,13 @@ export interface EventMap {
     currentWage: number;
     /** The wage they asked for — what they are now on if `accepted`. */
     askedWage: number;
+    /**
+     * The rival whose offer was matched or declined (#357). Present only on a
+     * poach. A declined poach is followed immediately by `staff:quit` — the
+     * answer and the departure are two events because they are two facts, and
+     * only the second one changes the roster.
+     */
+    rivalName?: string;
   };
 
   // StaffDispatch — salesperson auto-resolved a sales queue item
@@ -628,8 +646,26 @@ export interface EventMap {
     reason?: string;
   };
 
-  // StaffMorale — staff member quit due to low morale
-  'staff:quit': { staffId: string; roleId: string; day: number; morale: number };
+  // A staff member left. TWO publishers, one event: StaffMorale when morale
+  // crosses the quit threshold, and StaffOrg when a rival's offer runs out its
+  // deadline unanswered (#357). StaffOrg is the subscriber that removes them
+  // from the roster either way, so a departure has exactly one path however it
+  // was caused.
+  'staff:quit': {
+    staffId: string;
+    /** Who left, by name — the feed records a person, not an id. */
+    name: string;
+    roleId: string;
+    day: number;
+    /**
+     * Their morale on the way out. Absent when they were poached: a rival hired
+     * them, which says nothing about how they felt, and a 0 there would read as
+     * a miserable employee.
+     */
+    morale?: number;
+    /** The rival who took them (#357). Absent on a morale quit. */
+    toRival?: string;
+  };
 
   // CapacityManager — customer admitted (within daily capacity)
   'capacity:customer_admitted': { day: number; customerId: string; label: string };

@@ -94,6 +94,22 @@ export const StaffSchema = z
     // materializes it from the member's current derived grade) and because the
     // candidate pool carries `Staff` records that have never been hired.
     paidGrade: z.number().int().min(1).max(5).optional(),
+    // What this person is actually paid per day (#357). Stamped at hire from
+    // `wage(role, paidGrade)` and moved by an agreed number thereafter — an
+    // accepted raise, a matched rival offer, or the new desk's wage on a
+    // promotion.
+    //
+    // It exists because a rival offer is a NEGOTIATED wage, not a table lookup:
+    // the rival bids a premium over what the grade asks for, so "the number the
+    // player agreed to is the number the ledger charges" stops being derivable
+    // from `paidGrade` alone. `paidGrade` keeps its job — it records the grade
+    // the wage was agreed at, and `currentGrade > paidGrade` is still the whole
+    // raise trigger.
+    //
+    // Optional for the same two reasons as `paidGrade`: pre-#357 saves lack it
+    // (StaffOrg.restore materializes it from `paidGrade`) and a candidate on the
+    // board is on nobody's payroll.
+    paidWage: z.number().nonnegative().optional(),
   })
   .strict();
 

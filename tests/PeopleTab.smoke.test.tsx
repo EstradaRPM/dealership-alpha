@@ -350,4 +350,67 @@ describe('PeopleTab', () => {
     expect(getByTestId(`people-raise-${asking.id}`)).toBeTruthy();
     expect(queryByTestId(`people-raise-${GREENPEA.id}`)).toBeNull();
   });
+
+  // ── The rival's offer: the SAME moment with a name on it (#357) ────────────
+
+  it('renders the rival-offer prompt with name, wage and deadline', () => {
+    const courted: PeopleRosterMember = {
+      ...MEMBER,
+      raise: {
+        currentWage: 340,
+        askedWage: 610,
+        rivalName: 'Northside Kaivo',
+        deadlineDay: 13,
+      },
+    };
+    const props = baseProps({ roster: [courted] });
+    const { getByTestId } = render(<PeopleTab {...props} />);
+
+    // Who is offering, how much, and against what they are on now — one
+    // sentence, same `$N/day` grammar as every other wage on the surface.
+    expect(getByTestId(`people-raise-ask-${courted.id}`).props.children).toBe(
+      'Northside Kaivo offered $610/day. On $340/day now.',
+    );
+    // The deadline is an exact day, not "soon" and not a countdown the player
+    // has to do arithmetic on.
+    expect(getByTestId(`people-raise-deadline-${courted.id}`).props.children).toBe(
+      'They leave on day 13 unless you match.',
+    );
+  });
+
+  it('names the two answers for what they now mean', () => {
+    const courted: PeopleRosterMember = {
+      ...MEMBER,
+      raise: {
+        currentWage: 340,
+        askedWage: 610,
+        rivalName: 'Northside Kaivo',
+        deadlineDay: 13,
+      },
+    };
+    const props = baseProps({ roster: [courted] });
+    const { getByTestId, getByText } = render(<PeopleTab {...props} />);
+
+    // Not "Pay it" / "Refuse": matching a rival is not a raise, and refusing
+    // one is a departure. Same two buttons, same handlers — new words.
+    expect(getByText('Match')).toBeTruthy();
+    expect(getByText('Let them go')).toBeTruthy();
+
+    fireEvent.press(getByTestId(`people-raise-accept-${courted.id}`));
+    expect(props.onAcceptRaise).toHaveBeenCalledWith(courted.id);
+    fireEvent.press(getByTestId(`people-raise-refuse-${courted.id}`));
+    expect(props.onRefuseRaise).toHaveBeenCalledWith(courted.id);
+  });
+
+  it('states no deadline on a plain raise demand', () => {
+    const asking: PeopleRosterMember = {
+      ...MEMBER,
+      raise: { currentWage: 340, askedWage: 520 },
+    };
+    const { queryByTestId, getByText } = render(
+      <PeopleTab {...baseProps({ roster: [asking] })} />,
+    );
+    expect(queryByTestId(`people-raise-deadline-${asking.id}`)).toBeNull();
+    expect(getByText('Pay it')).toBeTruthy();
+  });
 });

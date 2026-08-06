@@ -29,6 +29,11 @@ day-stamped entry:
 | `market:shock_resolved` | `market` | "Market settled — … passed." |
 | `competitor:price_changed` | `market` | "Rival … raised/cut prices." |
 | `career:tier_up` | `tier` | "Promoted to Tier N." |
+| `staff:quit` | `staff` | "X left for <rival>." / "X quit." (#357) |
+
+A departure is logged because this is the only surface a player can go back and read one on:
+the floor buffer is wiped every morning. The rival is named when there is one, so the loss
+reads as a loss to *someone* rather than as an empty desk.
 
 The daily `market:competitive_pressure` heartbeat is intentionally **not** logged
 — it republishes the whole roster every day and would flood the capped log; that

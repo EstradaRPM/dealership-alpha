@@ -84,8 +84,48 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
   pre-#356 save restores as "nobody is asking" and re-derives on the next morning. No
   envelope bump — see `docs/save-migration-recipe.md`.
 - `RaiseRequest` captures **both wages at ask time**, so the number agreed to is the number
-  shown. Rival offers (#357) extend this same event family with a name and a deadline rather
-  than adding a second one.
+  shown.
+
+## Rival offers — the same moment with a name on it (#357, C1 R2)
+
+- **A poach is a `RaiseRequest` carrying `rivalName` + `deadlineDay`.** No `staff:poached`
+  event, no second prompt component, no second list to read: `getRaiseRequests()` returns
+  both kinds and the absence of `rivalName` is what makes one a plain raise. Retention and
+  poaching are **one moment** (`staff-teeth-design.md` §2 R2, closing paragraph) — do not
+  split them.
+- The two answers are the same two methods. `acceptRaise` = **Match**; `refuseRaise` =
+  **Let them go**, and that is the single behavioral difference: a declined poach publishes
+  `staff:raise_answered` and then `staff:quit`, because the rival is hiring them. No cooldown
+  is started on someone who has left.
+- **`staff:quit` now has two publishers** — StaffMorale's threshold check and StaffOrg's
+  deadline/decline. StaffOrg is the subscriber that removes them either way, so there is one
+  departure path with three causes. The payload carries `name` (the feed records a person)
+  and `toRival`; `morale` is optional, absent on a poach.
+- **`Staff.paidWage` is what the drain charges** (new in #357, optional + serialized). A
+  matched offer is a *negotiated* number — the rival bids `wagePremium ×` what the grade asks
+  for — so the wage stopped being derivable from `paidGrade` alone. `paidGrade` keeps its own
+  job: it records the grade the wage was agreed at, and `currentGrade > paidGrade` is still
+  the whole raise trigger. `restore` materializes a missing `paidWage` from `paidGrade`, so a
+  pre-#357 save loads paying exactly what #353 charged. A promotion reprices by role and
+  clears any premium — you took the desk, you get the desk's pay.
+- **Who gets courted is one rule: the chance scales with grade** (`dailyChanceAtTopGrade ×
+  grade / 5`). No minimum-grade floor — a floor is a second rule the player could only infer
+  from an absence.
+- Two suppressions, both the absence of a decision: something is already on that person's
+  prompt, and an offer that does not beat what they are already paid (which is what stops a
+  matched member being "poached" back down to book the next morning). The **refusal cooldown
+  deliberately does not suppress an offer** — it exists so the member does not nag you, and a
+  rival calling them is not their doing.
+- Ordering inside `clock:day_started` is the mechanic: **expire → offer → ask.** Nobody is
+  poached or asks for a raise on the morning they leave, and "one open ask per member" falls
+  out of the ordering rather than out of a rule.
+- Seeded per (member, day) from `staff_org.rival_offer` — whether the call comes and who
+  makes it are drawn in that order from one stream, so a replay reproduces the same offer
+  from the same rival on the same morning.
+- **The rivals are the live competitors**, injected as `deps.rivalNames` (a function, so
+  StaffOrg never holds `CompetitorMarket`); `createWorld` wires it to
+  `competitorMarket.getCompetitors()`. Omitted or empty ⇒ no offer ever fires, which is what
+  every suite that hires people for other reasons runs under.
 
 ## UCM condition read (#163)
 - `assessCondition(vehicle) → ConditionRead | null`. Returns null when no
@@ -120,7 +160,8 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 
 ## Events
 - **Emits:** `staff:hired` (with `hiringCost`), `staff:fired`, `staff:promoted`,
-  `staff:raise_requested` / `staff:raise_answered` (#356).
+  `staff:raise_requested` / `staff:raise_answered` (#356/#357), `staff:quit` (#357 — a rival
+  offer declined or run out; StaffMorale still publishes the low-morale one).
 - **Consumes:** `clock:day_ended` (Model B counter accrual, #294),
   `clock:day_started` (reset candidate pool + day close tally), `deal:closed`
   (day close tally), `staff:quit`, `clock:overnight_payroll` (#353 — post the

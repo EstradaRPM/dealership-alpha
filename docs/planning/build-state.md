@@ -14,8 +14,9 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
 `path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **#352–#356 have landed — next unit: BUILD #357** (rival offers on the raise event
-family). Work them in number order; the deps are stated in each issue's Notes.
+order**. **#352–#357 have landed, which closes phase 6 (C1 staff-teeth) — next unit: BUILD
+#358**, the first of the phase-7 facility slices. Work them in number order; the deps are
+stated in each issue's Notes.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -24,7 +25,7 @@ family). Work them in number order; the deps are stated in each issue's Notes.
 | ~~#354~~ | ~~People surface: grade + wage per card, total daily payroll~~ **BUILT 2026-08-05** (the skill-bar `flexDirection` defect was already dead — #347 deleted `PersonnelScreen`) | 6 |
 | ~~#355~~ | ~~hire fee = multiple × daily wage; `hiringCostByTier` retired~~ **BUILT 2026-08-06** | 6 |
 | ~~#356~~ | ~~raise demands (ask/answer) + `payVsMarketBonus` made real~~ **BUILT 2026-08-06** | 6 |
-| #357 | rival offers on the same event family (retention + poaching, one moment) | 6 |
+| ~~#357~~ | ~~rival offers on the same event family (retention + poaching, one moment)~~ **BUILT 2026-08-06 — phase 6 COMPLETE** | 6 |
 | #358 | `src/game/Facility/` owns built spaces + bays, one bay truth; `baysByTier` retired | 7 |
 | #359 | construction: buy capacity with cash + days, ceiling enforced, Growth build surface | 7 |
 | #360 | facility score lights the dormant tier-gate `facility` face | 7 |
@@ -97,6 +98,21 @@ family). Work them in number order; the deps are stated in each issue's Notes.
   read the name as "the role's price". Consequence for tests: the `noPay()` helper now makes hires
   **free**, so any suite asserting that a hire costs something must pass a real wage table
   (`wageSetup` in `tests/StaffOrg.test.ts`).
+- **The wage a member is paid is now STORED, not derived** (#357). `Staff.paidWage` is what the
+  drain charges; `paidGrade` records the grade it was agreed at and still drives the raise
+  trigger. They can legitimately disagree — a matched rival offer pays *above* the grade's book
+  wage — so never "fix" a card by re-deriving the wage from `paidGrade`. Consequence for tests:
+  a helper that drops someone's `paidGrade` to fake an outgrown rookie **must clear `paidWage`
+  too** (`payAtGrade` in `tests/StaffOrg.test.ts` does), or restore keeps the old money and the
+  ask is correctly suppressed.
+- **`staff:quit` has TWO publishers since #357** — StaffMorale's threshold check and StaffOrg's
+  declined/expired rival offer. StaffOrg's own subscriber removes them from the roster either
+  way; that is the single departure path and there must not be a second. The payload's `morale`
+  is optional (absent on a poach) and `name` is required, because HistoryLog records a person.
+- **Do not add a "poachable" floor or a "recently poached" flag.** Target selection is one rule
+  — the daily chance scales with grade — and the two suppressions are the absence of a decision
+  (an open prompt, or an offer that does not beat current pay). Both were considered and are
+  deliberately not there.
 - **`flatPay`/`noPay` are FLAT across grades, so no test built on them ever raises a demand**
   (#356). The ask is suppressed when the asked wage does not actually beat the paid one — a
   prompt whose two buttons cost the same is a decision with nothing in it. A suite that wants
@@ -142,7 +158,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance (all built 2026-08-02) | — (locked IA already ruled it) | done |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
-| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — #356 built; #357 open |
+| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 built; #358–#362 open |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
@@ -163,6 +179,60 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-06 — **BUILT #357** (rival offers — retention and poaching as one moment).
+  *Northside Vyndai offered $610/day. On $340/day now. They leave on day 34 unless you match.*
+  → **Match** / **Let them go**. That completes phase 6 (C1 staff-teeth).
+  **It is the raise object with two more fields, and that was the ruling, not a shortcut.**
+  No `staff:poached`, no second prompt component, no second list: `getRaiseRequests()` returns
+  both kinds and the absence of `rivalName` is what makes one a plain raise. R2's closing
+  paragraph asked for exactly one thing for the player to learn, and a `kind` field that could
+  disagree with the fields describing it would have been the way to get two.
+  **`Staff.paidWage` is the one new field, and the premium is why it had to exist.** A rival
+  bids `wagePremium ×` what the grade asks for, so the agreed number sits *above* the grade's
+  book wage and stopped being derivable from `paidGrade`. `paidGrade` keeps its own job — it
+  records the grade the wage was agreed at, so `currentGrade > paidGrade` is still the whole
+  raise trigger. Restore materializes a missing `paidWage` from `paidGrade`, so a pre-#357 save
+  loads paying exactly what #353 charged; a promotion reprices by role and clears the premium.
+  **Who gets courted is one rule: the chance scales with grade** (`dailyChanceAtTopGrade ×
+  grade/5`). A minimum-grade floor was written and then deleted — it is a second rule the
+  player could only ever infer from an absence, and it would make the top of the roster feel
+  arbitrary instead of valuable.
+  **Two suppressions, both the absence of a decision**: something is already on that person's
+  prompt, and an offer that does not beat what they are already paid. The second is what stops
+  a member you just matched at a premium being “poached” back down to book the next morning —
+  no “recently poached” flag needed. The refusal **cooldown deliberately does not** suppress an
+  offer: it exists so the member does not nag you, and a rival calling them is not their doing.
+  **Ordering inside `clock:day_started` is the mechanic** — expire → offer → ask. Nobody is
+  poached, or asks for a raise, on the morning they leave, and “one open ask per member” falls
+  out of the ordering rather than out of a rule.
+  **`staff:quit` now has two publishers and still one departure path.** StaffOrg publishes it
+  for a declined or expired offer; StaffMorale still publishes the low-morale one; StaffOrg’s
+  own subscriber removes them either way. Payload gained `name` (the feed records a person, not
+  an id) and `toRival`; `morale` went optional, because a rival hiring someone says nothing
+  about how they felt and a 0 there would read as a miserable employee. StaffMorale gained a
+  `staff:quit` cleanup subscription — it used to clear its own entry inline, which was only
+  correct while it was the sole publisher.
+  **The loss is written where it can be read back: HistoryLog** gains a `staff` kind —
+  *“Marcus Delgado left for Northside Kaivo.”* / *“Dana Whitfield quit.”* The floor buffer is
+  wiped every morning, so without this a person walking out left no record at all.
+  **Rivals are the live competitors**, injected as `deps.rivalNames: () => readonly string[]`
+  and wired in `createWorld` to `competitorMarket.getCompetitors()`. A function, not a module
+  reference — StaffOrg needs one string per rival and must not grow a dependency on whoever
+  holds them. Empty list ⇒ no offer ever fires, which is what every suite that hires people
+  for other reasons runs under (`flatPay`/`noPay` carry a zero chance; `POACHING` turns it on).
+  **The reachability test walks the real calendar rather than crafting an offer**, which is the
+  only thing that exercises the `rivalNames` seam end to end: hire, advance days on a real
+  `createWorld` world answering any plain raise as it arrives (an unanswered prompt is exactly
+  what suppresses the rival), and the offer that lands names a store from that world’s own
+  competitor list.
+  **Driven on web at T2, through the save.** An offer written into the slot’s staffOrg blob
+  restored and rendered on Fatima Fairbanks’ card — *“Northside Vyndai offered $610/day. On
+  $340/day now.”* / *“They leave on day 34 unless you match.”* **Match** moved her line to
+  *Grade 3 · $610/day* and daily payroll $1,280 → **$1,550**; reloaded and pressed **Let them
+  go** instead, and the roster went 3 of 3 → **2 of 3**, Salesperson 2 of 2 → 1 of 2, payroll
+  → **$940**. 215 suites / **2762** tests, typecheck clean.
+  Next: **BUILD #358** (phase 7 — `src/game/Facility/` owns built spaces + bays, one bay truth).
 
 - 2026-08-06 — **BUILT #356** (raise demands, and `payVsMarketBonus` made real). Growth stops
   being a drift and becomes a moment: *Asking for $340/day. On $150/day now.* → **Pay it** /
@@ -237,49 +307,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   table all three read $1,000. Hiring the $700 candidate moved cash $184,305 → $183,605, exactly
   the number on the card. 215 suites / **2725** tests, typecheck clean.
   Next: **BUILD #356** (raise demands + `payVsMarketBonus` made real).
-
-- 2026-08-05 — **BUILT #353** (the wage book + the nightly payroll drain). Payroll finally
-  scales with the roster: every person burns a daily wage set by grade (1–5) × role, and that
-  is the entire pay model.
-  **`weeklyPayrollStub` left in the same commit that replaced it** — out of `data/tunables.json`,
-  out of `EconomyConfigSchema`, out of the call site — so the old flat $800/week cannot be read
-  and typecheck. Economy's `clock:overnight_payroll` subscription posts **rent only** now;
-  StaffOrg owns the salary book because it owns the roster. ~20 test files carried
-  `weeklyPayrollStub: 0` in an `EconomyConfig` literal; excess-property checking made that a
-  mechanical, compiler-verified sweep rather than a search.
-  **Two calls the design doc left open were resolved in code, and both are load-bearing.**
-  Grade bands the **0–1 ratio**, not the raw `effectiveness` composite: that composite is a
-  weighted *sum* whose range depends on how many axes a role grants (1.5 for a salesperson, 3.7
-  for a UCM), so absolute edges against it would have made every manager a grade 5 and capped
-  every salesperson at 3. The shipped edges put the ladder's own anchors where
-  `staff-performance-ladder.md:27` says they belong — green 0.35 → grade 2, mature 0.75 → grade 4.
-  And it reads the **grown** `effectiveSkills`, not the base roll: the base composite never
-  changes, so banding it would have frozen every grade for the whole career and left #356's
-  raise trigger with nothing to fire on. One formula serves both readings — `compositeRatio`
-  now takes skill *values* and is exported from NPC, so `effectivenessRatio` keeps passing base
-  skills and **every promotion/capability gate stays calibrated exactly where it was**.
-  **`paidGrade` is the one new field on `Staff`, and it is stamped at `hire()`, never by the
-  factories** — a candidate on the board is not on anyone's payroll, so `paidGrade` is what
-  "employed here" means. The wage charged is `wage(role, paidGrade)`; growth never silently
-  reprices anyone (the rejected "wage auto-follows grade"), which is precisely what leaves
-  `grade > paidGrade` as the whole raise trigger with no new counters. A promotion keeps
-  `paidGrade` and moves the wage by role — you took the desk, you get the desk's pay.
-  **No save-envelope bump.** The field sits inside the staffOrg blob, so per the recipe it is
-  that module's problem: `restore` materializes a missing `paidGrade` from the member's current
-  grade, which is behavior-neutral — they load paid what they are currently worth, so the
-  trigger starts quiet exactly as a fresh hire does. The tier-2 fixture needed no re-stamp.
-  **`forceDebit`, not `postExpense`** — payroll you cannot afford is meant to push cash negative
-  and wake `BankruptcyMonitor`, not throw and abort the overnight sequence (the same idiom rent
-  and the marketing drains use). An empty roster posts **nothing**, not a $0 entry.
-  **Two data-shape rules are schema, not convention:** the wage table refuses a file where a
-  higher grade costs less (a transposed digit would read as balance instead of a typo), and the
-  grade bands must strictly increase or a grade is unreachable. A role the pay book does not
-  name throws, the same grammar the slot table uses — a free employee is the bug being deleted.
-  **The Browser pane was not compositing frames**, so the click-through drive was impossible
-  (no screenshot ⇒ no coordinate clicks, and the T2 dev button carries no a11y ref). The
-  evidence is `tests/Payroll.reachability.test.ts` instead: a real `createWorld` charging the
-  *shipped* pay book, and the drain landing as its own "Payroll" bar through the real
-  `groupExpenses` rather than folding into "Other". That runs in CI; a web drive does not.
-  215 suites / **2711** tests, typecheck clean.
-  Next: **BUILD #354** (People surface: grade + wage per card, total daily payroll, the skill-bar
-  `flexDirection` fix).

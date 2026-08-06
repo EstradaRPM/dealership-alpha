@@ -222,7 +222,13 @@ describe('#347 the People tab is mounted on the live world', () => {
     const snap = world.staffOrg.snapshot();
     world.staffOrg.restore({
       ...snap,
-      roster: snap.roster.map((s) => (s.id === staffId ? { ...s, paidGrade: 1 } : s)),
+      // `paidWage` goes with the grade (#357) — it is the agreed number, and
+      // `restore` reprices from `paidGrade` when it is absent. Leaving the
+      // hired wage on them would put a grade-1 paid grade beside grade-3 money,
+      // which is what a matched rival offer looks like, not an outgrown rookie.
+      roster: snap.roster.map((s) =>
+        s.id === staffId ? { ...s, paidGrade: 1, paidWage: undefined } : s,
+      ),
     });
     world.clock.advanceDay();
 
@@ -265,7 +271,13 @@ describe('#347 the People tab is mounted on the live world', () => {
     const snap = world.staffOrg.snapshot();
     world.staffOrg.restore({
       ...snap,
-      roster: snap.roster.map((s) => (s.id === staffId ? { ...s, paidGrade: 1 } : s)),
+      // `paidWage` goes with the grade (#357) — it is the agreed number, and
+      // `restore` reprices from `paidGrade` when it is absent. Leaving the
+      // hired wage on them would put a grade-1 paid grade beside grade-3 money,
+      // which is what a matched rival offer looks like, not an outgrown rookie.
+      roster: snap.roster.map((s) =>
+        s.id === staffId ? { ...s, paidGrade: 1, paidWage: undefined } : s,
+      ),
     });
     world.clock.advanceDay();
     const wageBefore = world.staffOrg.dailyPayroll;
@@ -278,6 +290,104 @@ describe('#347 the People tab is mounted on the live world', () => {
     // StaffMorale is wired to the answer through the live bus — no direct call
     // from StaffOrg into it.
     expect(world.staffMorale.getMorale(staffId)).toBeLessThan(moraleBefore);
+  });
+
+  it('a rival in the live market comes for a live hire, and Match keeps them', () => {
+    // #357 anti-orphan proof, and the one place the `rivalNames` seam in
+    // `createWorld` is exercised end to end: nothing is injected here. The
+    // world's own competitors are the rivals, the world's own clock brings the
+    // offer, and the mounted tab both shows it and answers it.
+    const world = freshWorld(3570);
+    const candidate = world.staffOrg.getCandidates('salesperson')[0];
+    world.staffOrg.hire(candidate.candidateId);
+    const staffId = candidate.staff.id;
+
+    // Walk the calendar until somebody calls. A plain raise demand is answered
+    // as it arrives — an unanswered prompt is exactly what suppresses the
+    // rival's approach, so leaving one standing would make this loop wait
+    // forever for a call that is correctly not coming.
+    let offer = null as ReturnType<typeof world.staffOrg.getRaiseRequest>;
+    for (let i = 0; i < 200; i++) {
+      world.clock.advanceDay();
+      const request = world.staffOrg.getRaiseRequest(staffId);
+      if (request?.rivalName !== undefined) {
+        offer = request;
+        break;
+      }
+      if (request) world.staffOrg.acceptRaise(staffId);
+    }
+
+    expect(offer).not.toBeNull();
+    // The rival is a store the player has actually been competing against.
+    expect(world.competitorMarket.getCompetitors().map((c) => c.name)).toContain(
+      offer!.rivalName,
+    );
+    expect(offer!.deadlineDay).toBeGreaterThan(offer!.day);
+
+    const { getByTestId, rerender } = renderPeople(world);
+    expect(getByTestId(`people-raise-ask-${staffId}`).props.children).toBe(
+      `${offer!.rivalName} offered $${offer!.askedWage.toLocaleString()}/day. ` +
+        `On $${offer!.currentWage.toLocaleString()}/day now.`,
+    );
+    expect(getByTestId(`people-raise-deadline-${staffId}`).props.children).toBe(
+      `They leave on day ${offer!.deadlineDay} unless you match.`,
+    );
+
+    fireEvent.press(getByTestId(`people-raise-accept-${staffId}`));
+
+    // They stayed, and they cost what the prompt said they would.
+    expect(world.staffOrg.currentRoster.map((s) => s.id)).toContain(staffId);
+    expect(world.staffOrg.dailyPayroll).toBe(offer!.askedWage);
+    rerender(
+      <PeopleTabContainer
+        world={world}
+        selectedHiringRoleId="salesperson"
+        setSelectedHiringRoleId={() => {}}
+        setCash={() => {}}
+        bump={() => {}}
+      />,
+    );
+    expect(getByTestId('people-payroll-total').props.children).toBe(
+      `$${offer!.askedWage.toLocaleString()}/day`,
+    );
+  });
+
+  it('letting a rival have them empties the desk on the live roster', () => {
+    const world = freshWorld(3571);
+    const candidate = world.staffOrg.getCandidates('salesperson')[0];
+    world.staffOrg.hire(candidate.candidateId);
+    const staffId = candidate.staff.id;
+
+    // State the offer through the same public seam a save loads through, rather
+    // than walking the calendar a second time — this test is about what "Let
+    // them go" does, not about when a rival calls.
+    const snap = world.staffOrg.snapshot();
+    const board = world.staffOrg.getPayBoard()[0];
+    world.staffOrg.restore({
+      ...snap,
+      raiseRequests: [
+        {
+          staffId,
+          roleId: 'salesperson',
+          day: snap.currentDay,
+          currentWage: board.dailyWage,
+          askedWage: board.dailyWage + 200,
+          paidGrade: board.paidGrade,
+          grade: board.grade,
+          rivalName: 'Northside Kaivo',
+          deadlineDay: snap.currentDay + 3,
+        },
+      ],
+    });
+
+    const { getByTestId } = renderPeople(world);
+    fireEvent.press(getByTestId(`people-raise-refuse-${staffId}`));
+
+    expect(world.staffOrg.currentRoster).toHaveLength(0);
+    expect(world.staffOrg.dailyPayroll).toBe(0);
+    // The loss is written where the player can go back and read it, with the
+    // rival named on it.
+    expect(world.historyLog.getEntries()[0].text).toContain('Northside Kaivo');
   });
 
   it('is composed into the People tab of the live shell', () => {

@@ -7,7 +7,7 @@ import type { StaffOrgConfig, StaffSlotTable, StaffPayTable } from '../src/game/
 import { loadStaffPay, gradeFor, dailyWageFor } from '../src/game/StaffOrg';
 import { compositeRatio } from '../src/game/NPC';
 import { slotsEverywhere } from './helpers/staffSlots';
-import { flatPay, noPay } from './helpers/staffPay';
+import { flatPay, noPay, POACHING } from './helpers/staffPay';
 
 const STARTING_CASH = 50_000;
 const MASTER_SEED = 99;
@@ -713,6 +713,8 @@ const WAGE_TABLE: StaffPayTable = {
   gradeBands: [0.32, 0.46, 0.6, 0.76],
   hireFeeMultiple: 5,
   raiseCooldownDays: 7,
+  // Poaching off unless the suite is about it — see `flatPay`'s note.
+  rivalOffers: flatPay(0).rivalOffers,
   dailyWageByRole: {
     ...flatPay(0).dailyWageByRole,
     salesperson: { '1': 150, '2': 230, '3': 340, '4': 520, '5': 780 },
@@ -1016,7 +1018,16 @@ function payAtGrade(staffOrg: StaffOrgHandle, staffId: string, paidGrade: number
   const snap = staffOrg.snapshot();
   staffOrg.restore({
     ...snap,
-    roster: snap.roster.map((s) => (s.id === staffId ? { ...s, paidGrade } : s)),
+    roster: snap.roster.map((s) =>
+      s.id === staffId
+        ? // The agreed wage (#357) is dropped along with the grade, so `restore`
+          // reprices them off the grade being stated here. Carrying the old
+          // number would put them on grade 5's money at grade 3 — the state a
+          // matched rival offer produces, not the outgrown-rookie one this
+          // helper exists to set up.
+          { ...s, paidGrade, paidWage: undefined }
+        : s,
+    ),
   });
 }
 
@@ -1166,5 +1177,257 @@ describe('StaffOrg — raise demands', () => {
     expect(row.dailyWage).toBe(dailyWageFor(TOP_GRADE_TABLE, 'salesperson', row.paidGrade));
     expect(row.askingWage).toBe(dailyWageFor(TOP_GRADE_TABLE, 'salesperson', row.grade));
     expect(row.askingWage).toBeGreaterThan(row.dailyWage);
+  });
+});
+
+// ── Rival offers (#357, C1 R2's closing paragraph) ───────────────────────────
+
+const RIVALS = ['Northside Kaivo', 'Valley Corden'];
+/** The grade-5 wage a salesperson is on, and what a rival bids over it. */
+const GRADE_5_WAGE = TOP_GRADE_TABLE.dailyWageByRole.salesperson['5'];
+const OFFERED_WAGE = Math.round(POACHING.wagePremium * GRADE_5_WAGE);
+
+function poachSetup(
+  rivals: readonly string[] = RIVALS,
+  rivalOffers = POACHING,
+  masterSeed = MASTER_SEED,
+) {
+  const bus = createEventBus();
+  const clock = createGameClock({ bus });
+  const economy = createEconomy({ bus, startingCash: STARTING_CASH, config: NO_OVERHEAD });
+  const staffOrg = createStaffOrg({
+    bus,
+    economy,
+    masterSeed,
+    taxonomy,
+    archetypes,
+    config: CHEAP_CONFIG,
+    slots: ROOMY_SLOTS,
+    pay: { ...TOP_GRADE_TABLE, rivalOffers },
+    rivalNames: () => rivals,
+  });
+  return { bus, clock, economy, staffOrg };
+}
+
+/** Hire the first applicant into a world where rivals are looking. */
+function hireAndPoach(rivals: readonly string[] = RIVALS, rivalOffers = POACHING) {
+  const setup = poachSetup(rivals, rivalOffers);
+  setup.clock.advanceDay();
+  const candidate = setup.staffOrg.getCandidates('salesperson')[0];
+  setup.staffOrg.hire(candidate.candidateId);
+  const staffId = candidate.staff.id;
+  const asks: Array<{
+    staffId: string;
+    day: number;
+    currentWage: number;
+    askedWage: number;
+    rivalName?: string;
+    deadlineDay?: number;
+  }> = [];
+  setup.bus.subscribe('staff:raise_requested', (e) => asks.push(e));
+  const answers: Array<{ staffId: string; accepted: boolean; rivalName?: string }> = [];
+  setup.bus.subscribe('staff:raise_answered', (e) => answers.push(e));
+  const quits: Array<{ staffId: string; name: string; toRival?: string; morale?: number }> = [];
+  setup.bus.subscribe('staff:quit', (e) => quits.push(e));
+  return { ...setup, staffId, asks, answers, quits };
+}
+
+describe('StaffOrg — rival offers', () => {
+  it('a rival offer rides the raise event family with a name and deadline', () => {
+    const { clock, staffOrg, staffId, asks } = hireAndPoach();
+
+    clock.advanceDay();
+
+    // Same event, same reads, extra fields — there is no `staff:poached` and no
+    // second list to check. That IS the ruling being asserted.
+    expect(asks).toHaveLength(1);
+    expect(asks[0].staffId).toBe(staffId);
+    expect(RIVALS).toContain(asks[0].rivalName);
+    expect(asks[0].askedWage).toBe(OFFERED_WAGE);
+    expect(asks[0].currentWage).toBe(GRADE_5_WAGE);
+    const request = staffOrg.getRaiseRequest(staffId);
+    expect(request?.rivalName).toBe(asks[0].rivalName);
+    expect(request?.deadlineDay).toBe(asks[0].day + POACHING.deadlineDays);
+    expect(staffOrg.getRaiseRequests()).toHaveLength(1);
+  });
+
+  it('matching a rival offer keeps the member and reprices them', () => {
+    const { clock, staffOrg, staffId, answers } = hireAndPoach();
+    clock.advanceDay();
+    const rivalName = staffOrg.getRaiseRequest(staffId)?.rivalName;
+
+    staffOrg.acceptRaise(staffId);
+
+    // The wage is the number on the prompt — **above** the grade-5 book wage,
+    // which is the whole bite of a poach: keeping them costs over the table.
+    const row = staffOrg.getPayBoard()[0];
+    expect(row.dailyWage).toBe(OFFERED_WAGE);
+    expect(row.dailyWage).toBeGreaterThan(GRADE_5_WAGE);
+    expect(staffOrg.dailyPayroll).toBe(OFFERED_WAGE);
+    expect(staffOrg.currentRoster.map((s) => s.id)).toEqual([staffId]);
+    expect(staffOrg.getRaiseRequest(staffId)).toBeNull();
+    expect(answers).toEqual([
+      expect.objectContaining({ staffId, accepted: true, rivalName }),
+    ]);
+  });
+
+  it('an unanswered offer loses the member to the named rival', () => {
+    const { clock, staffOrg, staffId, quits } = hireAndPoach();
+    clock.advanceDay();
+    const offer = staffOrg.getRaiseRequest(staffId);
+    const deadlineDay = offer?.deadlineDay ?? 0;
+    const name = staffOrg.currentRoster[0].name;
+
+    // Every morning up to the deadline they are still yours — the offer is a
+    // decision with time on it, not a delayed announcement.
+    while (clock.currentDay < deadlineDay) {
+      expect(staffOrg.currentRoster).toHaveLength(1);
+      clock.advanceDay();
+    }
+
+    expect(staffOrg.currentRoster).toHaveLength(0);
+    expect(quits).toEqual([
+      {
+        staffId,
+        name,
+        roleId: 'salesperson',
+        day: deadlineDay,
+        toRival: offer?.rivalName,
+      },
+    ]);
+    // Nothing is left pointing at someone who now works down the road.
+    expect(staffOrg.getRaiseRequests()).toHaveLength(0);
+    expect(staffOrg.snapshot().raiseRequests).toEqual([]);
+  });
+
+  it('letting them go loses them the same day, through the same quit path', () => {
+    const { clock, staffOrg, staffId, answers, quits } = hireAndPoach();
+    clock.advanceDay();
+    const rivalName = staffOrg.getRaiseRequest(staffId)?.rivalName;
+
+    staffOrg.refuseRaise(staffId);
+
+    expect(staffOrg.currentRoster).toHaveLength(0);
+    expect(answers).toEqual([
+      expect.objectContaining({ staffId, accepted: false, rivalName }),
+    ]);
+    expect(quits).toEqual([expect.objectContaining({ staffId, toRival: rivalName })]);
+    // No cooldown was started: a cooldown buys quiet from someone who stays.
+    expect(staffOrg.snapshot().raiseCooldowns).toEqual([]);
+  });
+
+  it('one open ask per member at a time', () => {
+    // The member is underpaid AND being courted. Only one prompt may exist —
+    // two questions about the same person's wage on the same card is the kind
+    // of double-surfacing the one-moment ruling exists to prevent.
+    const { clock, staffOrg, staffId, asks } = hireAndPoach();
+    clock.advanceDay();
+    expect(asks).toHaveLength(1);
+
+    clock.advanceDay();
+    clock.advanceDay();
+
+    expect(asks).toHaveLength(1);
+    expect(staffOrg.getRaiseRequests()).toHaveLength(1);
+  });
+
+  it('does not court someone already paid over what a rival would offer', () => {
+    // Match once, and the same rival cannot come back tomorrow at a number that
+    // is now below what you pay. The suppression is the absence of a decision,
+    // not a "recently poached" flag.
+    const { clock, staffOrg, staffId, asks } = hireAndPoach();
+    clock.advanceDay();
+    staffOrg.acceptRaise(staffId);
+
+    clock.advanceDay();
+    clock.advanceDay();
+
+    expect(asks).toHaveLength(1);
+    expect(staffOrg.getRaiseRequests()).toHaveLength(0);
+  });
+
+  it('rival offers replay identically from the same seed', () => {
+    // A one-in-five morning, so WHICH morning the call comes is the seeded
+    // draw under test — not just which name comes out of it.
+    const terms = { ...POACHING, dailyChanceAtTopGrade: 0.2 };
+    const firstOffer = (masterSeed: number) => {
+      const setup = poachSetup(RIVALS, terms, masterSeed);
+      setup.clock.advanceDay();
+      setup.staffOrg.hire(setup.staffOrg.getCandidates('salesperson')[0].candidateId);
+      const seen: Array<{ day: number; rivalName?: string }> = [];
+      setup.bus.subscribe('staff:raise_requested', (e) =>
+        seen.push({ day: e.day, rivalName: e.rivalName }),
+      );
+      for (let i = 0; i < 60 && seen.length === 0; i++) setup.clock.advanceDay();
+      return seen;
+    };
+
+    const replay = firstOffer(MASTER_SEED);
+    expect(replay).toHaveLength(1);
+    expect(firstOffer(MASTER_SEED)).toEqual(replay);
+    // …and it is a draw, not a constant: another world's rivals move on their
+    // own schedule.
+    expect(firstOffer(MASTER_SEED + 1)).not.toEqual(replay);
+  });
+
+  it('never fires with nobody to poach', () => {
+    // The empty rival list is the honest "there is no competitor who wants
+    // them", and it is what every suite that hires people for other reasons
+    // runs under.
+    const setup = poachSetup([]);
+    setup.clock.advanceDay();
+    setup.staffOrg.hire(setup.staffOrg.getCandidates('salesperson')[0].candidateId);
+    const asks: unknown[] = [];
+    setup.bus.subscribe('staff:raise_requested', (e) => asks.push(e));
+
+    for (let i = 0; i < 10; i++) setup.clock.advanceDay();
+
+    expect(asks).toHaveLength(0);
+  });
+
+  it('the shipped terms do poach somebody', () => {
+    // Anti-orphan on the DATA: a `dailyChanceAtTopGrade` tuned to 0 in
+    // `data/staff-pay.json` would leave the mechanic built, wired and never
+    // seen. Deterministic, so this is a fact about the shipped file, not a
+    // sample.
+    const shipped = loadStaffPay();
+    const bus = createEventBus();
+    const clock = createGameClock({ bus });
+    const economy = createEconomy({ bus, startingCash: 500_000, config: NO_OVERHEAD });
+    const staffOrg = createStaffOrg({
+      bus,
+      economy,
+      masterSeed: MASTER_SEED,
+      taxonomy,
+      archetypes,
+      config: CHEAP_CONFIG,
+      slots: ROOMY_SLOTS,
+      pay: shipped,
+      rivalNames: () => RIVALS,
+    });
+    clock.advanceDay();
+    staffOrg.hire(staffOrg.getCandidates('salesperson')[0].candidateId);
+    const asks: Array<{ rivalName?: string }> = [];
+    bus.subscribe('staff:raise_requested', (e) => asks.push(e));
+
+    for (let i = 0; i < 300 && asks.every((a) => a.rivalName === undefined); i++) {
+      clock.advanceDay();
+    }
+
+    expect(asks.some((a) => a.rivalName !== undefined)).toBe(true);
+  });
+
+  it('round-trips an outstanding offer with its rival and deadline', () => {
+    const { clock, staffOrg, staffId } = hireAndPoach();
+    clock.advanceDay();
+    const offer = staffOrg.getRaiseRequest(staffId);
+    expect(offer?.rivalName).toBeDefined();
+
+    const reloaded = poachSetup();
+    reloaded.staffOrg.restore(staffOrg.snapshot());
+
+    // Reloading must not be a way to duck a deadline, and must not be a way to
+    // lose the offer either — both directions are the player's decision.
+    expect(reloaded.staffOrg.getRaiseRequest(staffId)).toEqual(offer);
   });
 });
