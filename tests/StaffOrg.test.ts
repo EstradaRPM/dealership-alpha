@@ -712,6 +712,7 @@ describe('StaffOrg — a regenerated pool never offers someone already hired', (
 const WAGE_TABLE: StaffPayTable = {
   gradeBands: [0.32, 0.46, 0.6, 0.76],
   hireFeeMultiple: 5,
+  raiseCooldownDays: 7,
   dailyWageByRole: {
     ...flatPay(0).dailyWageByRole,
     salesperson: { '1': 150, '2': 230, '3': 340, '4': 520, '5': 780 },
@@ -983,5 +984,187 @@ describe('StaffOrg — the shipped pay book', () => {
     expect(candidate.dailyWage).toBe(
       dailyWageFor(loadStaffPay(), 'salesperson', candidate.grade),
     );
+  });
+});
+
+// ── Raise demands (#356, C1 R2) ──────────────────────────────────────────────
+
+/**
+ * A pay book whose bands put everyone at the top grade, so "what this person is
+ * worth now" is stated by the test rather than fished out of the archetype pool
+ * for one seed. The salesperson row is the design doc's own worked example.
+ */
+const TOP_GRADE_TABLE: StaffPayTable = {
+  ...WAGE_TABLE,
+  gradeBands: [0, 0.001, 0.002, 0.003],
+};
+
+function raiseSetup(startingCash = STARTING_CASH) {
+  return makeSetup(startingCash, CHEAP_CONFIG, ROOMY_SLOTS, TOP_GRADE_TABLE);
+}
+
+/**
+ * Put a rostered member on the payroll at a grade BELOW what they are worth
+ * today — the state Model B growth produces once a cheap rookie has been on the
+ * floor a while (`grade` climbs, `paidGrade` does not).
+ *
+ * Done through `snapshot`/`restore`, both public, rather than by mutating the
+ * roster object: the test states its precondition through the same seam a real
+ * save loads through, and does not freeze how the module stores it.
+ */
+function payAtGrade(staffOrg: StaffOrgHandle, staffId: string, paidGrade: number): void {
+  const snap = staffOrg.snapshot();
+  staffOrg.restore({
+    ...snap,
+    roster: snap.roster.map((s) => (s.id === staffId ? { ...s, paidGrade } : s)),
+  });
+}
+
+type StaffOrgHandle = ReturnType<typeof createStaffOrg>;
+
+/** Hire the first applicant and drop their paid grade to 3 (asking 5). */
+function hireAndOutgrow(startingCash = STARTING_CASH) {
+  const setup = raiseSetup(startingCash);
+  setup.clock.advanceDay();
+  const candidate = setup.staffOrg.getCandidates('salesperson')[0];
+  setup.staffOrg.hire(candidate.candidateId);
+  const staffId = candidate.staff.id;
+  payAtGrade(setup.staffOrg, staffId, 3);
+  const asks: Array<{ staffId: string; currentWage: number; askedWage: number }> = [];
+  setup.bus.subscribe('staff:raise_requested', (e) => asks.push(e));
+  const answers: Array<{ staffId: string; accepted: boolean }> = [];
+  setup.bus.subscribe('staff:raise_answered', (e) => answers.push(e));
+  return { ...setup, staffId, asks, answers };
+}
+
+describe('StaffOrg — raise demands', () => {
+  it('asks for a raise when the grown grade passes the paid grade', () => {
+    const { clock, staffOrg, staffId, asks } = hireAndOutgrow();
+
+    clock.advanceDay();
+
+    expect(asks).toHaveLength(1);
+    expect(asks[0].staffId).toBe(staffId);
+    // Both numbers come off the same wage row: on grade 3's money, asking for
+    // grade 5's.
+    expect(asks[0].currentWage).toBe(dailyWageFor(TOP_GRADE_TABLE, 'salesperson', 3));
+    expect(asks[0].askedWage).toBe(dailyWageFor(TOP_GRADE_TABLE, 'salesperson', 5));
+    expect(staffOrg.getRaiseRequest(staffId)).not.toBeNull();
+    expect(staffOrg.getRaiseRequests()).toHaveLength(1);
+  });
+
+  it('does not ask while a member is paid at their current grade', () => {
+    const setup = raiseSetup();
+    setup.clock.advanceDay();
+    const asks: unknown[] = [];
+    setup.bus.subscribe('staff:raise_requested', (e) => asks.push(e));
+    setup.staffOrg.hire(setup.staffOrg.getCandidates('salesperson')[0].candidateId);
+
+    setup.clock.advanceDay();
+
+    expect(asks).toHaveLength(0);
+  });
+
+  it('does not ask twice while the same demand is unanswered', () => {
+    const { clock, asks } = hireAndOutgrow();
+
+    clock.advanceDay();
+    clock.advanceDay();
+    clock.advanceDay();
+
+    expect(asks).toHaveLength(1);
+  });
+
+  it('accepting moves the wage and the paid grade together', () => {
+    const { clock, staffOrg, staffId, answers } = hireAndOutgrow();
+    clock.advanceDay();
+    const before = staffOrg.getPayBoard()[0];
+
+    staffOrg.acceptRaise(staffId);
+
+    const after = staffOrg.getPayBoard()[0];
+    expect(after.paidGrade).toBe(after.grade);
+    expect(after.dailyWage).toBe(dailyWageFor(TOP_GRADE_TABLE, 'salesperson', 5));
+    expect(after.dailyWage).toBeGreaterThan(before.dailyWage);
+    // The whole roster's drain moves with it — the number the ledger charges is
+    // derived from `paidGrade`, so there is nothing else to keep in step.
+    expect(staffOrg.dailyPayroll).toBe(after.dailyWage);
+    expect(staffOrg.getRaiseRequest(staffId)).toBeNull();
+    // The seam StaffMorale's bump rides on.
+    expect(answers).toEqual([expect.objectContaining({ staffId, accepted: true })]);
+  });
+
+  it('refusing costs morale and starts a cooldown', () => {
+    const { clock, staffOrg, staffId, answers } = hireAndOutgrow();
+    clock.advanceDay();
+    const wageBefore = staffOrg.getPayBoard()[0].dailyWage;
+
+    staffOrg.refuseRaise(staffId);
+
+    // The wage does NOT move, and the refusal is announced for StaffMorale to
+    // charge — this module never reaches into the morale dimension itself.
+    expect(staffOrg.getPayBoard()[0].dailyWage).toBe(wageBefore);
+    expect(staffOrg.getRaiseRequest(staffId)).toBeNull();
+    expect(answers).toEqual([expect.objectContaining({ staffId, accepted: false })]);
+  });
+
+  it('does not re-ask during the cooldown', () => {
+    const { clock, staffOrg, staffId, asks } = hireAndOutgrow();
+    clock.advanceDay();
+    staffOrg.refuseRaise(staffId);
+
+    for (let i = 0; i < TOP_GRADE_TABLE.raiseCooldownDays - 1; i++) clock.advanceDay();
+    expect(asks).toHaveLength(1);
+
+    // …and asks again the morning the cooldown runs out, because they are still
+    // underpaid. A refusal buys time, it does not settle the question.
+    clock.advanceDay();
+    expect(asks).toHaveLength(2);
+  });
+
+  it('answering a demand nobody made throws', () => {
+    const { staffOrg, staffId } = hireAndOutgrow();
+    expect(() => staffOrg.acceptRaise(staffId)).toThrow(StaffOrgError);
+    expect(() => staffOrg.refuseRaise(staffId)).toThrow(StaffOrgError);
+  });
+
+  it('forgets a demand when the person leaves', () => {
+    const { clock, staffOrg, staffId } = hireAndOutgrow();
+    clock.advanceDay();
+    expect(staffOrg.getRaiseRequests()).toHaveLength(1);
+
+    staffOrg.fire(staffId);
+
+    expect(staffOrg.getRaiseRequests()).toHaveLength(0);
+    expect(staffOrg.snapshot().raiseRequests).toEqual([]);
+  });
+
+  it('round-trips an outstanding demand and a running cooldown', () => {
+    const { clock, staffOrg, staffId } = hireAndOutgrow();
+    clock.advanceDay();
+    const asked = staffOrg.getRaiseRequest(staffId);
+
+    const reloaded = raiseSetup();
+    reloaded.staffOrg.restore(staffOrg.snapshot());
+    expect(reloaded.staffOrg.getRaiseRequest(staffId)).toEqual(asked);
+
+    // And the cooldown half: a refusal survives, so a reload is not a way to
+    // make a refused member ask again tomorrow.
+    staffOrg.refuseRaise(staffId);
+    const afterRefusal = raiseSetup();
+    afterRefusal.staffOrg.restore(staffOrg.snapshot());
+    const asks: unknown[] = [];
+    afterRefusal.bus.subscribe('staff:raise_requested', (e) => asks.push(e));
+    afterRefusal.clock.advanceDay();
+    expect(asks).toHaveLength(0);
+  });
+
+  it('states the asking wage beside the paid one on the pay board', () => {
+    const { clock, staffOrg } = hireAndOutgrow();
+    clock.advanceDay();
+    const row = staffOrg.getPayBoard()[0];
+    expect(row.dailyWage).toBe(dailyWageFor(TOP_GRADE_TABLE, 'salesperson', row.paidGrade));
+    expect(row.askingWage).toBe(dailyWageFor(TOP_GRADE_TABLE, 'salesperson', row.grade));
+    expect(row.askingWage).toBeGreaterThan(row.dailyWage);
   });
 });

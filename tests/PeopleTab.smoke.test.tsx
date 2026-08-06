@@ -29,6 +29,7 @@ const MEMBER: PeopleRosterMember = {
     { id: 'rapport_building', label: 'Building rapport', value: 20, cap: 100 },
   ],
   promotions: [{ toRoleId: 'used-car-manager', label: 'Used-Car Manager' }],
+  raise: null,
 };
 
 /** A second body on the roster, deliberately weaker on the same skill axis. */
@@ -88,6 +89,8 @@ function baseProps(over: Partial<PeopleTabProps> = {}): PeopleTabProps {
     onHire: jest.fn(),
     onPromote: jest.fn(),
     onFire: jest.fn(),
+    onAcceptRaise: jest.fn(),
+    onRefuseRaise: jest.fn(),
     ...over,
   };
 }
@@ -304,5 +307,47 @@ describe('PeopleTab', () => {
   it('says so plainly when nobody is on payroll', () => {
     const { getByText } = render(<PeopleTab {...baseProps({ roster: [] })} />);
     expect(getByText(/Nobody on payroll/)).toBeTruthy();
+  });
+
+  // ── The raise moment (#356) ────────────────────────────────────────────────
+
+  it('renders the raise prompt with both numbers and two buttons', () => {
+    const asking: PeopleRosterMember = {
+      ...MEMBER,
+      grade: 4,
+      paidGrade: 3,
+      raise: { currentWage: 340, askedWage: 520 },
+    };
+    const props = baseProps({ roster: [asking] });
+    const { getByTestId } = render(<PeopleTab {...props} />);
+
+    // Both wages, in the surface's own `$N/day` grammar, and no temperature word
+    // anywhere near them.
+    expect(getByTestId(`people-raise-ask-${asking.id}`).props.children).toBe(
+      'Asking for $520/day. On $340/day now.',
+    );
+
+    fireEvent.press(getByTestId(`people-raise-accept-${asking.id}`));
+    expect(props.onAcceptRaise).toHaveBeenCalledWith(asking.id);
+
+    fireEvent.press(getByTestId(`people-raise-refuse-${asking.id}`));
+    expect(props.onRefuseRaise).toHaveBeenCalledWith(asking.id);
+  });
+
+  it('shows no prompt for someone who is not asking', () => {
+    const { queryByTestId } = render(<PeopleTab {...baseProps()} />);
+    expect(queryByTestId(`people-raise-${MEMBER.id}`)).toBeNull();
+  });
+
+  it('prompts only the person asking, not the whole roster', () => {
+    const asking: PeopleRosterMember = {
+      ...MEMBER,
+      raise: { currentWage: 340, askedWage: 520 },
+    };
+    const { getByTestId, queryByTestId } = render(
+      <PeopleTab {...baseProps({ roster: [asking, GREENPEA] })} />,
+    );
+    expect(getByTestId(`people-raise-${asking.id}`)).toBeTruthy();
+    expect(queryByTestId(`people-raise-${GREENPEA.id}`)).toBeNull();
   });
 });

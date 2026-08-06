@@ -77,6 +77,10 @@ export function PeopleTabContainer({
 
   const roster: PeopleRosterMember[] = world.staffOrg.currentRoster.map((staff) => {
     const pay = payBoard.get(staff.id);
+    // The demand, if they are making one (#356). Both numbers come off the
+    // request the engine minted when they asked, not off today's pay board —
+    // the player answers the figures they were shown.
+    const raise = world.staffOrg.getRaiseRequest(staff.id);
     return {
       id: staff.id,
       name: staff.name,
@@ -93,6 +97,9 @@ export function PeopleTabContainer({
         toRoleId: p.toRoleId,
         label: humanizeRole(p.toRoleId),
       })),
+      raise: raise
+        ? { currentWage: raise.currentWage, askedWage: raise.askedWage }
+        : null,
     };
   });
 
@@ -156,6 +163,17 @@ export function PeopleTabContainer({
       }}
       onFire={(staffId) => {
         world.staffOrg.fire(staffId);
+        bump();
+      }}
+      // A raise costs nothing today — the new wage is charged by the overnight
+      // drain — so neither answer touches the cash mirror. Both just re-render
+      // in place, like every other write on this tab.
+      onAcceptRaise={(staffId) => {
+        world.staffOrg.acceptRaise(staffId);
+        bump();
+      }}
+      onRefuseRaise={(staffId) => {
+        world.staffOrg.refuseRaise(staffId);
         bump();
       }}
     />

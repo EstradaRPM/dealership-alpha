@@ -14,8 +14,8 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
 `path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **#352–#355 have landed — next unit: BUILD #356** (raise demands + `payVsMarketBonus`
-made real). Work them in number order; the deps are stated in each issue's Notes.
+order**. **#352–#356 have landed — next unit: BUILD #357** (rival offers on the raise event
+family). Work them in number order; the deps are stated in each issue's Notes.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -23,7 +23,7 @@ made real). Work them in number order; the deps are stated in each issue's Notes
 | ~~#353~~ | ~~`data/staff-pay.json`, derived grade, `paidGrade`, daily payroll drain; `weeklyPayrollStub` deleted~~ **BUILT 2026-08-05** | 6 |
 | ~~#354~~ | ~~People surface: grade + wage per card, total daily payroll~~ **BUILT 2026-08-05** (the skill-bar `flexDirection` defect was already dead — #347 deleted `PersonnelScreen`) | 6 |
 | ~~#355~~ | ~~hire fee = multiple × daily wage; `hiringCostByTier` retired~~ **BUILT 2026-08-06** | 6 |
-| #356 | raise demands (ask/answer) + `payVsMarketBonus` made real | 6 |
+| ~~#356~~ | ~~raise demands (ask/answer) + `payVsMarketBonus` made real~~ **BUILT 2026-08-06** | 6 |
 | #357 | rival offers on the same event family (retention + poaching, one moment) | 6 |
 | #358 | `src/game/Facility/` owns built spaces + bays, one bay truth; `baysByTier` retired | 7 |
 | #359 | construction: buy capacity with cash + days, ceiling enforced, Growth build surface | 7 |
@@ -57,6 +57,12 @@ made real). Work them in number order; the deps are stated in each issue's Notes
   30s timeout, and the UI responds. The full path drives fine — start menu → T2 fixture →
   tabs → floor sim → day close → recap modal → Finance. Written up in `.claude/skills/verify`;
   do not file another BLOCKED verdict against the pane without trying the double-click.
+  **Update, later the same day (#356): single clicks worked, returning immediately with no
+  timeout.** So the double-click is a *fallback*, not a standing rule — click once, read the
+  page, and only re-issue if nothing moved. And when a press seems dead, check the console
+  before the app: three "dead" T2 presses were really `Cannot create slot: max of 3 slots
+  reached` from earlier sessions. Clear it by deleting the `dealership` IndexedDB — which
+  needs a page reload first, since an open connection blocks the delete.
 - **A hidden Browser pane makes measuring charts unverifiable, and it looks exactly like a bug.**
   No `ResizeObserver` and no `requestAnimationFrame` fire, so react-native-web's `onLayout` never
   runs, `useChartWidth` stays 0, and `BarChart`/`Sparkline` collapse to an empty 0-height div.
@@ -91,6 +97,19 @@ made real). Work them in number order; the deps are stated in each issue's Notes
   read the name as "the role's price". Consequence for tests: the `noPay()` helper now makes hires
   **free**, so any suite asserting that a hire costs something must pass a real wage table
   (`wageSetup` in `tests/StaffOrg.test.ts`).
+- **`flatPay`/`noPay` are FLAT across grades, so no test built on them ever raises a demand**
+  (#356). The ask is suppressed when the asked wage does not actually beat the paid one — a
+  prompt whose two buttons cost the same is a decision with nothing in it. A suite that wants
+  to exercise a raise must pass a table with a real wage curve (`WAGE_TABLE` /
+  `TOP_GRADE_TABLE` in `tests/StaffOrg.test.ts`).
+- **`payVsMarketBonus` is GONE and the two replacements are sign-checked by schema** (#356):
+  `paidAtMarketBonus` must be positive, `paidBelowMarketPenalty` negative (same for
+  `raiseAcceptedBonus`/`raiseRefusedPenalty`). A positive penalty would mean underpaying
+  cheers people up and would read as balance rather than a dropped minus sign. StaffMorale
+  reads the comparison off `StaffOrg.getPayBoard().askingWage` — never re-derive it there.
+- **A refusal has no quit path of its own.** It lowers morale and the standing overnight
+  risk check takes it from there. Do not add a "quits because refused" branch — the one the
+  design ruled on is the existing `StaffMorale` → `staff:quit`.
 - **The #352–#362 issues can name files 5c deleted.** #354 was filed against
   `src/ui/PersonnelScreen/PersonnelScreen.tsx:22` and a `flexDirection` defect in it; #347 had
   already deleted that whole screen and the kit `ProgressBar` that replaced it sizes fills by
@@ -123,7 +142,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance (all built 2026-08-02) | — (locked IA already ruled it) | done |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
-| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — #355 built; #356–#357 open |
+| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — #356 built; #357 open |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 built; #358–#362 open |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
@@ -144,6 +163,48 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-06 — **BUILT #356** (raise demands, and `payVsMarketBonus` made real). Growth stops
+  being a drift and becomes a moment: *Asking for $340/day. On $150/day now.* → **Pay it** /
+  **Refuse**.
+  **`payVsMarketBonus` left in the same commit that replaced it** — the fourth placeholder
+  deleted in this phase (`headcountCapByTier` #352, `weeklyPayrollStub` #353,
+  `hiringCostByTier` #355), and the most dishonest of them: it added a flat bonus to everyone
+  every payroll night, so it *compared nothing* while wearing a comparison's name. It is now
+  paid wage vs the grade's asking wage, split into `paidAtMarketBonus` /
+  `paidBelowMarketPenalty` — and the **signs are schema**, because a positive penalty would
+  mean underpaying cheers people up and would read as balance, not as a dropped minus sign.
+  **The comparison is read off `getPayBoard()`, not re-derived in StaffMorale.** That is why
+  `StaffPay` gained `askingWage`: exactly two mechanics read "what someone this good asks
+  for" — the raise trigger and the nightly morale adjustment — and a second derivation of it
+  could disagree with the number on the card.
+  **The trigger is still `currentGrade > paidGrade` and nothing else**, evaluated once on
+  `clock:day_started` because the counters that grow a grade only accrue overnight; checking
+  within an open day would re-ask the same question. **Three suppressions**, each the absence
+  of a decision rather than a rule to learn: a demand already unanswered, a running cooldown,
+  and — the one that matters for tests — an asked wage that does not beat the paid one. Wages
+  rise *weakly* with grade by schema, so `flatPay`/`noPay` would otherwise have raised prompts
+  whose two buttons cost the same across ~20 suites.
+  **Refusal routes into the EXISTING quit machinery, and StaffOrg never touches morale.**
+  Both answers publish `staff:raise_answered`; StaffMorale owns the consequence. That keeps
+  the module boundary intact and means there is no second quit path to keep calibrated —
+  proved by watching the same `staff:quit` the low-morale check has always published.
+  **A promotion voids an outstanding demand but keeps the cooldown.** The two numbers on the
+  prompt were the old role's; "they asked recently" is still true. They re-ask tomorrow at the
+  new desk's numbers.
+  **Persisted inside the staffOrg blob, no envelope bump** — both keys optional, so a pre-#356
+  save restores as "nobody is asking" and re-derives the next morning. Losing the request
+  would answer the player's open decision for them; losing the cooldown would make reloading
+  the way to stop someone re-asking. Both directions are pinned.
+  **Driven on web at T2, and the two halves showed up in the right order.** Loading a save
+  with a grade-3 salesperson put on grade-1 money read *"Grade 3 · Paid at grade 1 ·
+  $150/day"* with **no prompt** (correct — the ask is a morning event); overnight her morale
+  alone fell 95 → **91** (the −4 underpay penalty, the other two untouched at 95); Day 32
+  opened with the prompt on her card only. **Pay it** collapsed the line to *"Grade 3 ·
+  $340/day"* and moved daily payroll $1,090 → **$1,280** in the same beat.
+  215 suites / **2745** tests, typecheck clean.
+  Next: **BUILD #357** (rival offers on the same event family — retention and poaching as one
+  moment).
 
 - 2026-08-06 — **BUILT #355** (the talent-scaled hire fee). What you pay to sign someone is now
   `hireFeeMultiple × their own daily wage`, so one number in `data/staff-pay.json` prices both
@@ -222,40 +283,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   215 suites / **2711** tests, typecheck clean.
   Next: **BUILD #354** (People surface: grade + wage per card, total daily payroll, the skill-bar
   `flexDirection` fix).
-
-- 2026-08-05 — **BUILT #354** (the People wage surface). Grade and daily wage now sit on every
-  card, and the roster's total daily drain sits under the slot board that produced it.
-  **The issue's central defect was already dead, and the file it named no longer exists.**
-  #354 was written against `src/ui/PersonnelScreen/PersonnelScreen.tsx` — the `SkillRow` that
-  sized its fill with `flex: ratio` inside a container missing `flexDirection: 'row'`, so every
-  skill bar rendered identically. **#347 deleted that screen**; the People tab renders kit
-  `Meter` → `ProgressBar`, which sizes the fill with a **percentage width**, not flex, and
-  carries `fillTestID` precisely so proportion is assertable. The existing smoke test already
-  locked one member's two skills at 70% / 20%; this slice adds the criterion's *other* reading —
-  two **members** differing on the same axis (70% vs 15%). No source change was needed and none
-  was invented; a stale `file:line` in an issue is not a defect to re-create.
-  **The payroll total is a PROP, not a sum over the cards.** `world.staffOrg.dailyPayroll` is the
-  same number `clock:overnight_payroll` charges, so the screen and the ledger cannot drift; a
-  test pins a `dailyPayroll` that deliberately disagrees with the cards to prove the surface is
-  reading the engine rather than re-adding. Same rule for the per-member numbers: they come off
-  `getPayBoard()` keyed by staff id, and a candidate's off `CandidateListing.grade`/`dailyWage`,
-  so the card and `hire()` agree by construction.
-  **A divergent grade is stated as two numbers, never blended** — `Grade 4 · Paid at grade 3 ·
-  $340/day`. Averaging them would name a wage nobody is paying and would hide exactly the gap
-  #356's raise demand fires on. The phrasing covers *both* directions of divergence, because a
-  promotion changes which skills the composite weighs and can move the derived grade **down**
-  while `paidGrade` stays put.
-  **Two money numbers on one candidate card needed labels, not just placement.** The sign-on fee
-  keeps the head-right slot and now carries a `to sign` caption; the wage sits under the role as
-  `Grade 2 · $220/day`. Unlabelled, they read as two prices for the same thing.
-  **The payroll row does not render with an empty roster** — a `$0/day` line is a number the
-  player can do nothing with, and the "Nobody on payroll" hint already says it. Same rule the
-  slot board follows for a job nothing can reach.
-  **The web drive was impossible again for the documented reason**: the Browser pane is hidden,
-  so `document.visibilityState` is `"hidden"` and `requestAnimationFrame` fires zero frames — the
-  rAF probe itself times out, and every `computer` click with it. Evidence is two reachability
-  tests instead, on a real `createWorld`: the candidate card states the engine's own grade+wage,
-  the *same string* appears on the roster card after hiring (proving `paidGrade` is stamped from
-  the listing), and the payroll line matches `staffOrg.dailyPayroll` exactly. Those run in CI.
-  215 suites / **2720** tests, typecheck clean.
-  Next: **BUILD #355** (hire fee = multiple × daily wage; `hiringCostByTier` retired).

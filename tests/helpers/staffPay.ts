@@ -18,6 +18,7 @@ export function flatPay(dailyWage: number): StaffPayTable {
   return {
     gradeBands: BANDS,
     hireFeeMultiple: 5,
+    raiseCooldownDays: 7,
     dailyWageByRole: Object.fromEntries(
       Object.keys(taxonomy.roles).map((roleId) => [
         roleId,

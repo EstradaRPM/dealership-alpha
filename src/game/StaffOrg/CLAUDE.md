@@ -15,7 +15,7 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
   `assessCondition` (also exported for fixture/test use).
 - Types: `StaffOrg`, `StaffOrgDeps`, `StaffOrgConfig`, `CandidateListing`,
   `ConditionAssessInput`, `ConditionRead`, `ConditionReadConfig`, `StaffPay`,
-  `StaffPayTable`.
+  `StaffPayTable`, `RaiseRequest`.
 
 ## Pay — the salary book (#353, C1 R1)
 - **One rule: a daily wage set by grade (1–5) and role.** `data/staff-pay.json` is
@@ -58,6 +58,35 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
   balance; calibration is C2 (#286). The salesperson row is the design doc's worked example
   (grade 3 = $340/day, grade 4 = $520/day).
 
+## Raises — they ask, you answer (#356, C1 R2)
+
+- **`currentGrade > paidGrade` is the whole trigger.** No state machine, no new counters.
+  Evaluated once per `clock:day_started` (grade only moves overnight, so within an open day
+  re-checking would re-ask the same question) and published as `staff:raise_requested`.
+  *Wage auto-follows grade* and *fixed at hire forever* were both rejected at the gate
+  (`docs/planning/staff-teeth-design.md` §2 R2) — do not re-propose either.
+- Reads: `getRaiseRequests()` (roster order), `getRaiseRequest(staffId)`. Answers:
+  `acceptRaise` / `refuseRaise`, both throwing on a member with no outstanding demand — the
+  surface only offers the buttons when one is live, so a throw is a stale press.
+- **Accept moves `paidGrade` to the grade they asked at.** That IS "the wage moves": every
+  wage read derives from `paidGrade`, so there is no second number to keep in step.
+- **Refuse starts `raiseCooldownDays` (in `data/staff-pay.json`) and nothing else here.**
+  Morale is StaffMorale's answer to `staff:raise_answered`; the quit that may follow is the
+  **existing** `StaffMorale` → `staff:quit` path. There is deliberately no new quit path.
+- **Three things suppress an ask**, all of them the absence of a decision rather than a rule:
+  an unanswered demand is already up; the cooldown is running; or the asked wage doesn't
+  actually beat the paid one (wages rise *weakly* with grade, so a flat stretch of a row —
+  or a test's `flatPay` — would otherwise raise a prompt whose two buttons cost the same).
+- A **promotion voids an outstanding demand** (its two numbers were the old role's); the
+  cooldown survives, since "they asked recently" is still true. Quitting or being fired
+  clears both.
+- Persisted inside the staffOrg blob (`raiseRequests`, `raiseCooldowns`), both optional so a
+  pre-#356 save restores as "nobody is asking" and re-derives on the next morning. No
+  envelope bump — see `docs/save-migration-recipe.md`.
+- `RaiseRequest` captures **both wages at ask time**, so the number agreed to is the number
+  shown. Rival offers (#357) extend this same event family with a name and a deadline rather
+  than adding a second one.
+
 ## UCM condition read (#163)
 - `assessCondition(vehicle) → ConditionRead | null`. Returns null when no
   `used-car-manager` is on the roster OR when `realizedReconFor` is omitted
@@ -90,7 +119,8 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
   `cap_headroom`) are placeholders — calibration deferred to S14 (#286).
 
 ## Events
-- **Emits:** `staff:hired` (with `hiringCost`), `staff:fired`.
+- **Emits:** `staff:hired` (with `hiringCost`), `staff:fired`, `staff:promoted`,
+  `staff:raise_requested` / `staff:raise_answered` (#356).
 - **Consumes:** `clock:day_ended` (Model B counter accrual, #294),
   `clock:day_started` (reset candidate pool + day close tally), `deal:closed`
   (day close tally), `staff:quit`, `clock:overnight_payroll` (#353 — post the
@@ -122,8 +152,9 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 - `data/staff-slots.json` — the per-role, per-tier slot table (`loadStaffSlots`, `staffSlots.ts`).
   Counts come from the tier CSV's "Staff" row; `deps.slots` injects an alternative in tests.
 - `data/staff-pay.json` — the salary book (`loadStaffPay`, `staffPay.ts`): daily wage per
-  role × grade, the grade band edges, and the hire-fee multiple. `deps.pay` injects an
-  alternative in tests (`tests/helpers/staffPay.ts` → `flatPay` / `noPay`).
+  role × grade, the grade band edges, the hire-fee multiple, and `raiseCooldownDays`.
+  `deps.pay` injects an alternative in tests (`tests/helpers/staffPay.ts` → `flatPay` /
+  `noPay`; note both are FLAT across grades, so neither ever raises a demand).
 - `data/staff-roles.json` — role definitions (no pay data; wages live in `staff-pay.json`).
 - `data/staff-archetypes.json`, `data/staff-skills.json` — used via `NPC` for candidate generation.
 

@@ -1,6 +1,7 @@
 {
   "gradeBands": [0.32, 0.46, 0.6, 0.76],
   "hireFeeMultiple": 5,
+  "raiseCooldownDays": 7,
   "dailyWageByRole": {
     "lot-porter": { "1": 90, "2": 110, "3": 135, "4": 165, "5": 200 },
     "salesperson": { "1": 150, "2": 230, "3": 340, "4": 520, "5": 780 },

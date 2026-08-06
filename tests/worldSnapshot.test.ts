@@ -264,6 +264,46 @@ describe('StaffOrg + StaffMorale snapshot/restore (#190)', () => {
     expect(rebuilt.staffOrg.dailyPayroll).toBe(row.dailyWage);
   });
 
+  it('round-trips an outstanding raise request and its cooldown', () => {
+    // #356. A raise demand is a decision the player has been handed and not yet
+    // made — losing it on reload would quietly answer it for them, and losing a
+    // refusal cooldown would make reloading the way to stop someone re-asking.
+    // Both live inside the staffOrg blob, so this is the module's own schema
+    // business and needs no envelope bump.
+    const seed = 3563;
+    const { world: original } = build(seed);
+    const candidate = original.staffOrg.getCandidates('salesperson')[2];
+    original.staffOrg.hire(candidate.candidateId);
+    const staffId = candidate.staff.id;
+
+    // Put them on a grade they have outgrown, then let the morning ask.
+    const staffSnap = original.staffOrg.snapshot();
+    original.staffOrg.restore({
+      ...staffSnap,
+      roster: staffSnap.roster.map((s) => (s.id === staffId ? { ...s, paidGrade: 1 } : s)),
+    });
+    original.clock.advanceDay();
+    const demand = original.staffOrg.getRaiseRequest(staffId);
+    expect(demand).not.toBeNull();
+
+    const snap = JSON.parse(JSON.stringify(snapshotWorld(original))) as WorldSnapshot;
+    const { world: rebuilt } = build(seed);
+    restoreWorld(snap, rebuilt);
+
+    expect(rebuilt.staffOrg.getRaiseRequest(staffId)).toEqual(demand);
+
+    // The cooldown half: refuse, save again, and the reloaded world stays quiet
+    // the next morning rather than re-asking.
+    original.staffOrg.refuseRaise(staffId);
+    const refusedSnap = JSON.parse(
+      JSON.stringify(snapshotWorld(original)),
+    ) as WorldSnapshot;
+    const { world: afterRefusal } = build(seed);
+    restoreWorld(refusedSnap, afterRefusal);
+    afterRefusal.clock.advanceDay();
+    expect(afterRefusal.staffOrg.getRaiseRequest(staffId)).toBeNull();
+  });
+
   it('round-trips newly hireable manager roles and keeps fired staff removed', () => {
     const seed = 204;
     const { world: original } = build(seed);

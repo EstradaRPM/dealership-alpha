@@ -22,6 +22,18 @@ export interface PeoplePromotionOption {
   readonly label: string;
 }
 
+/**
+ * A raise this person is waiting on an answer to (#356). Both wages are carried
+ * because the prompt states both: what they are on, and what they are asking
+ * for. The player is choosing between two numbers, so both have to be on screen.
+ */
+export interface PeopleRaiseAsk {
+  /** What they are paid today. */
+  readonly currentWage: number;
+  /** What they are asking to be paid. */
+  readonly askedWage: number;
+}
+
 /** One person on payroll. */
 export interface PeopleRosterMember {
   readonly id: string;
@@ -45,6 +57,8 @@ export interface PeopleRosterMember {
   readonly dailyWage: number;
   readonly skills: readonly PeopleSkillRead[];
   readonly promotions: readonly PeoplePromotionOption[];
+  /** Their outstanding raise demand, or `null` when they are not asking (#356). */
+  readonly raise: PeopleRaiseAsk | null;
 }
 
 /** One person you could hire today. */
@@ -118,6 +132,10 @@ export interface PeopleTabProps {
   onHire: (candidateId: string) => void;
   onPromote: (staffId: string, toRoleId: string) => void;
   onFire: (staffId: string) => void;
+  /** Pay the asked wage (#356) — the member's wage moves from the next drain. */
+  onAcceptRaise: (staffId: string) => void;
+  /** Turn the demand down (#356) — the wage holds, morale doesn't. */
+  onRefuseRaise: (staffId: string) => void;
 }
 
 function CompositeMeters({
@@ -180,14 +198,66 @@ function SkillList({
   );
 }
 
+/**
+ * The raise moment (#356, C1 R2) — the one place growth turns into a decision
+ * instead of a drift. Two numbers and two buttons, and the numbers are stated
+ * in the same `$N/day` grammar as every other wage on this surface so the
+ * comparison needs no translating.
+ *
+ * It sits on the person's own card rather than in a banner: the question is
+ * about *them*, and their grade, skills and morale are the evidence the player
+ * answers it on. Nothing here is a temperature word — "asking for" and "on now"
+ * name what the numbers are.
+ */
+function RaisePrompt({
+  member,
+  onAccept,
+  onRefuse,
+}: {
+  member: PeopleRosterMember;
+  onAccept: () => void;
+  onRefuse: () => void;
+}) {
+  const t = useTheme();
+  const s = makeStyles(t);
+  const raise = member.raise;
+  if (!raise) return null;
+  return (
+    <View style={s.raisePrompt} testID={`people-raise-${member.id}`}>
+      <Text style={s.raiseAsk} testID={`people-raise-ask-${member.id}`}>
+        {`Asking for ${wageText(raise.askedWage)}. On ${wageText(raise.currentWage)} now.`}
+      </Text>
+      <View style={s.actionRow}>
+        <Button
+          label="Pay it"
+          onPress={onAccept}
+          accessibilityLabel={`Pay ${member.name} ${wageText(raise.askedWage)}`}
+          testID={`people-raise-accept-${member.id}`}
+        />
+        <Button
+          label="Refuse"
+          variant="secondary"
+          onPress={onRefuse}
+          accessibilityLabel={`Refuse ${member.name} the raise`}
+          testID={`people-raise-refuse-${member.id}`}
+        />
+      </View>
+    </View>
+  );
+}
+
 function RosterCard({
   member,
   onPromote,
   onFire,
+  onAcceptRaise,
+  onRefuseRaise,
 }: {
   member: PeopleRosterMember;
   onPromote: (toRoleId: string) => void;
   onFire: () => void;
+  onAcceptRaise: () => void;
+  onRefuseRaise: () => void;
 }) {
   const t = useTheme();
   const s = makeStyles(t);
@@ -216,6 +286,7 @@ function RosterCard({
         morale={member.morale}
       />
       <SkillList skills={member.skills} idPrefix={`roster-${member.id}`} />
+      <RaisePrompt member={member} onAccept={onAcceptRaise} onRefuse={onRefuseRaise} />
       <View style={s.actionRow}>
         {member.promotions.map((p) => (
           <Button
@@ -384,6 +455,8 @@ export function PeopleTab({
   onHire,
   onPromote,
   onFire,
+  onAcceptRaise,
+  onRefuseRaise,
 }: PeopleTabProps) {
   const t = useTheme();
   const s = makeStyles(t);
@@ -436,6 +509,8 @@ export function PeopleTab({
             member={member}
             onPromote={(toRoleId) => onPromote(member.id, toRoleId)}
             onFire={() => onFire(member.id)}
+            onAcceptRaise={() => onAcceptRaise(member.id)}
+            onRefuseRaise={() => onRefuseRaise(member.id)}
           />
         ))}
       </View>
@@ -554,6 +629,22 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     slotRowSelected: {
       borderWidth: 1,
       borderColor: t.colors.primary,
+    },
+    // Set off from the card's read-only meters by its own raised panel and
+    // border: everything above it is information, this is the one thing on the
+    // card asking to be answered.
+    raisePrompt: {
+      marginTop: t.spacing.md,
+      padding: t.spacing.md,
+      borderRadius: t.radius.sm,
+      borderWidth: 1,
+      borderColor: t.colors.primary,
+      backgroundColor: t.colors.surfaceRaised,
+    },
+    raiseAsk: {
+      ...t.typography.body,
+      color: t.colors.textPrimary,
+      fontVariant: ['tabular-nums'],
     },
     slotLabel: { ...t.typography.caption, color: t.colors.textSecondary },
     slotCount: {

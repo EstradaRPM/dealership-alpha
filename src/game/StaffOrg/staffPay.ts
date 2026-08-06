@@ -21,6 +21,10 @@ import { parseData } from '../data';
  *   (#355). Carried here rather than in `staffOrg.hiringCostByTier` — now
  *   **deleted** — because a grade-5 must cost more to sign *and* more to keep
  *   from one number, and a second price table drifts from this one.
+ * - `raiseCooldownDays` — how long a refused member waits before asking again
+ *   (#356). In the pay book because it is a term of the wage negotiation, not a
+ *   morale constant: what it delays is the next *ask*, and the ask is priced
+ *   entirely off `dailyWageByRole` + `gradeBands` above.
  * - `dailyWageByRole` — role → wage at each grade.
  *
  * Roles that do not exist in the game yet (`new-car-manager` at T4,
@@ -63,6 +67,9 @@ export const StaffPayTableSchema = z
   .object({
     gradeBands: z.array(z.number().min(0).max(1)).length(GRADE_IDS.length - 1),
     hireFeeMultiple: z.number().positive(),
+    // Whole days, and at least one: a zero-day cooldown lets a refused member
+    // ask again the next morning, which turns a decision into a nag.
+    raiseCooldownDays: z.number().int().positive(),
     dailyWageByRole: z.record(z.string().min(1), WageRowSchema),
   })
   .strict()

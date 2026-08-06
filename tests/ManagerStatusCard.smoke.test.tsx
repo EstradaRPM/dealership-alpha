@@ -85,6 +85,8 @@ describe('ManagerStatusCard (#325)', () => {
         onHire={() => {}}
         onPromote={() => {}}
         onFire={() => {}}
+        onAcceptRaise={() => {}}
+        onRefuseRaise={() => {}}
       />,
     );
     expect(getByTestId('people-tab')).toBeTruthy();

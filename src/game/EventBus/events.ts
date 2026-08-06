@@ -536,6 +536,41 @@ export interface EventMap {
   // loyalty-flavored alternative to hiring a cold candidate.
   'staff:promoted': { staffId: string; fromRoleId: string; toRoleId: string; day: number };
 
+  // StaffOrg — the raise negotiation (#356, C1 R2). Growth never silently
+  // reprices anyone: when a member's derived grade outgrows the grade their wage
+  // is set at, they ASK, and the player answers. `staff:raise_requested` is
+  // emitted on `clock:day_started` (grade only moves overnight, so the morning
+  // is when it can have changed) for each member with no outstanding request and
+  // no running refusal cooldown.
+  //
+  // This is the ONE retention/poaching family: a rival's offer is the same
+  // moment with a name and a deadline on it, carried as extra fields here rather
+  // than as a second event pair.
+  'staff:raise_requested': {
+    staffId: string;
+    roleId: string;
+    day: number;
+    /** What they are on now — `wage(role, paidGrade)`. */
+    currentWage: number;
+    /** What they are asking for — `wage(role, grade)`. */
+    askedWage: number;
+    paidGrade: number;
+    grade: number;
+  };
+  // Emitted by `acceptRaise` / `refuseRaise`. StaffMorale is the consumer: the
+  // morale consequence of either answer lives there, because StaffOrg owns the
+  // roster and never reaches into the morale dimension layered over it.
+  'staff:raise_answered': {
+    staffId: string;
+    roleId: string;
+    day: number;
+    accepted: boolean;
+    /** The wage they were on when they asked. */
+    currentWage: number;
+    /** The wage they asked for — what they are now on if `accepted`. */
+    askedWage: number;
+  };
+
   // StaffDispatch — salesperson auto-resolved a sales queue item
   'staff:auto_resolved': {
     customerId: string;

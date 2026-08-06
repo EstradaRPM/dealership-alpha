@@ -7,6 +7,7 @@ export type {
   PromotionOption,
   RoleSlots,
   StaffPay,
+  RaiseRequest,
 } from './StaffOrg';
 export { loadStaffSlots, slotTotalFor, StaffSlotTableSchema, MAX_TIER } from './staffSlots';
 export type { StaffSlotTable } from './staffSlots';

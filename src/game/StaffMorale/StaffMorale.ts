@@ -87,11 +87,34 @@ export function createStaffMorale(deps: StaffMoraleDeps): StaffMorale {
     }
   });
 
+  // Pay vs market, every payroll night (#356). This used to add a flat
+  // `payVsMarketBonus` to everyone unconditionally — a placeholder wearing a
+  // mechanic's name, since it compared nothing and so could never make being
+  // underpaid feel like anything. The comparison is now real, and it is the
+  // SAME comparison that fires the raise request in StaffOrg: what they are
+  // paid against what someone at their current grade asks for. Read off
+  // `getPayBoard()` rather than re-derived here — StaffOrg owns the wage book,
+  // and a second reading of it could disagree with the one the player is shown.
   bus.subscribe('clock:overnight_payroll', () => {
-    for (const s of staffOrg.currentRoster) {
-      if (!moraleMap.has(s.id)) moraleMap.set(s.id, config.defaultMorale);
-      adjust(s.id, config.payVsMarketBonus);
+    for (const pay of staffOrg.getPayBoard()) {
+      if (!moraleMap.has(pay.staffId)) moraleMap.set(pay.staffId, config.defaultMorale);
+      adjust(
+        pay.staffId,
+        pay.dailyWage < pay.askingWage
+          ? config.paidBelowMarketPenalty
+          : config.paidAtMarketBonus,
+      );
     }
+  });
+
+  // The answer to a raise demand (#356). StaffOrg moves the wage; the morale
+  // consequence lives here because this module owns the morale dimension. A
+  // refusal deliberately routes into the EXISTING quit machinery below rather
+  // than a quit path of its own: refuse someone often enough and the standing
+  // overnight risk check takes them.
+  bus.subscribe('staff:raise_answered', ({ staffId, accepted }) => {
+    if (!moraleMap.has(staffId)) moraleMap.set(staffId, config.defaultMorale);
+    adjust(staffId, accepted ? config.raiseAcceptedBonus : config.raiseRefusedPenalty);
   });
 
   // Overnight quit risk check — runs last in overnight sequence.

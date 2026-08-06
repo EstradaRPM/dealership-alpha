@@ -24,14 +24,34 @@ function makeStaff(id: string, roleId = 'salesperson'): StaffWithComposites {
   return plain as StaffWithComposites;
 }
 
-function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
+/**
+ * What each staffer is paid vs what their grade asks for (#356). Defaults to
+ * "paid exactly what they're worth", which is what every pre-#356 test in this
+ * file assumed when the pay-vs-market bump was unconditional. A test about the
+ * comparison states its own numbers.
+ */
+type PayStub = Record<string, { dailyWage: number; askingWage: number }>;
+
+function makeStaffOrg(roster: StaffWithComposites[], pay: PayStub = {}): StaffOrg {
   return {
     get currentRoster() { return roster; },
     headcountCap: Infinity,
     getSlots: (roleId: string) => ({ roleId, filled: 0, total: Infinity }),
     getSlotBoard: () => [],
     dailyPayroll: 0,
-    getPayBoard: () => [],
+    getPayBoard: () =>
+      roster.map((s) => ({
+        staffId: s.id,
+        roleId: s.role_id,
+        grade: 3,
+        paidGrade: 3,
+        dailyWage: pay[s.id]?.dailyWage ?? 340,
+        askingWage: pay[s.id]?.askingWage ?? 340,
+      })),
+    getRaiseRequests: () => [],
+    getRaiseRequest: () => null,
+    acceptRaise: () => {},
+    refuseRaise: () => {},
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},
@@ -53,16 +73,23 @@ const BASE_CONFIG: StaffMoraleConfig = {
   workloadOverloadPenalty: -5,
   workloadIdleBonus: 1,
   recognitionBonus: 3,
-  payVsMarketBonus: 2,
+  paidAtMarketBonus: 2,
+  paidBelowMarketPenalty: -4,
+  raiseAcceptedBonus: 6,
+  raiseRefusedPenalty: -12,
   moraleMultiplierMin: 0.6,
   moraleMultiplierMax: 1.2,
 };
 
-function makeSetup(roster: StaffWithComposites[], config: StaffMoraleConfig = BASE_CONFIG) {
+function makeSetup(
+  roster: StaffWithComposites[],
+  config: StaffMoraleConfig = BASE_CONFIG,
+  pay: PayStub = {},
+) {
   const bus = createEventBus();
   const clock = createGameClock({ bus });
   const queue = createDepartmentQueue({ bus });
-  const staffOrg = makeStaffOrg(roster);
+  const staffOrg = makeStaffOrg(roster, pay);
   const morale = createStaffMorale({ bus, staffOrg, queue, masterSeed: MASTER_SEED, config });
   return { bus, clock, queue, morale };
 }
@@ -154,14 +181,108 @@ describe('StaffMorale — workload drift', () => {
 
 // ── Payroll drift ────────────────────────────────────────────────────────────
 
-describe('StaffMorale — payroll drift', () => {
-  it('applies payVsMarketBonus on overnight_payroll for all roster members', () => {
-    const s = makeStaff('s7');
-    const { bus, morale } = makeSetup([s]);
+describe('StaffMorale — pay vs market (#356)', () => {
+  it('pay-vs-market compares the paid wage against the asking wage', () => {
+    // The comparison is the mechanic. Two people on the SAME wage get opposite
+    // adjustments because their grades ask for different money — which is what
+    // the old unconditional `payVsMarketBonus` could never express.
+    const paid = makeStaff('s7');
+    const underpaid = makeStaff('s7b');
+    const { bus, morale } = makeSetup([paid, underpaid], BASE_CONFIG, {
+      s7: { dailyWage: 340, askingWage: 340 },
+      s7b: { dailyWage: 340, askingWage: 520 },
+    });
     bus.publish('staff:hired', { staffId: 's7', roleId: 'salesperson', day: 1, hiringCost: 0 });
+    bus.publish('staff:hired', { staffId: 's7b', roleId: 'salesperson', day: 1, hiringCost: 0 });
     const before = morale.getMorale('s7');
+
     bus.publish('clock:overnight_payroll', { day: 1 });
-    expect(morale.getMorale('s7')).toBe(before + BASE_CONFIG.payVsMarketBonus);
+
+    expect(morale.getMorale('s7')).toBe(before + BASE_CONFIG.paidAtMarketBonus);
+    expect(morale.getMorale('s7b')).toBe(before + BASE_CONFIG.paidBelowMarketPenalty);
+  });
+
+  it('underpaying a grown member costs morale every night', () => {
+    const s = makeStaff('s7c');
+    const { bus, morale } = makeSetup([s], BASE_CONFIG, {
+      s7c: { dailyWage: 340, askingWage: 520 },
+    });
+    bus.publish('staff:hired', { staffId: 's7c', roleId: 'salesperson', day: 1, hiringCost: 0 });
+    const before = morale.getMorale('s7c');
+
+    bus.publish('clock:overnight_payroll', { day: 1 });
+    const afterOne = morale.getMorale('s7c');
+    bus.publish('clock:overnight_payroll', { day: 2 });
+
+    expect(afterOne).toBeLessThan(before);
+    expect(morale.getMorale('s7c')).toBeLessThan(afterOne);
+  });
+
+  it('paying someone above their grade is not a penalty', () => {
+    // Overpaying is at-market or better: the rule is "below asking hurts", not
+    // "different from asking hurts".
+    const s = makeStaff('s7d');
+    const { bus, morale } = makeSetup([s], BASE_CONFIG, {
+      s7d: { dailyWage: 780, askingWage: 340 },
+    });
+    bus.publish('staff:hired', { staffId: 's7d', roleId: 'salesperson', day: 1, hiringCost: 0 });
+    const before = morale.getMorale('s7d');
+    bus.publish('clock:overnight_payroll', { day: 1 });
+    expect(morale.getMorale('s7d')).toBe(before + BASE_CONFIG.paidAtMarketBonus);
+  });
+});
+
+describe('StaffMorale — answering a raise (#356)', () => {
+  it('accepting a raise lifts morale, refusing it costs morale', () => {
+    const a = makeStaff('s7e');
+    const b = makeStaff('s7f');
+    const { bus, morale } = makeSetup([a, b]);
+    bus.publish('staff:hired', { staffId: 's7e', roleId: 'salesperson', day: 1, hiringCost: 0 });
+    bus.publish('staff:hired', { staffId: 's7f', roleId: 'salesperson', day: 1, hiringCost: 0 });
+    const before = morale.getMorale('s7e');
+
+    bus.publish('staff:raise_answered', {
+      staffId: 's7e', roleId: 'salesperson', day: 3,
+      accepted: true, currentWage: 340, askedWage: 520,
+    });
+    bus.publish('staff:raise_answered', {
+      staffId: 's7f', roleId: 'salesperson', day: 3,
+      accepted: false, currentWage: 340, askedWage: 520,
+    });
+
+    expect(morale.getMorale('s7e')).toBe(before + BASE_CONFIG.raiseAcceptedBonus);
+    expect(morale.getMorale('s7f')).toBe(before + BASE_CONFIG.raiseRefusedPenalty);
+  });
+
+  it('a refused member quits through the existing quit path', () => {
+    // No new quit path (#356): refusals only push morale down, and the standing
+    // overnight risk check is what actually takes them. Proved by watching the
+    // SAME `staff:quit` event the low-morale check has always published.
+    const s = makeStaff('s7g');
+    const config: StaffMoraleConfig = {
+      ...BASE_CONFIG,
+      defaultMorale: 34,      // above quitRiskThreshold=30 until refused
+      raiseRefusedPenalty: -12,
+      quitRiskRate: 1.0,
+    };
+    const { bus, morale } = makeSetup([s], config);
+    const quits: Array<{ staffId: string; morale: number }> = [];
+    bus.subscribe('staff:quit', (e) => quits.push(e));
+
+    bus.publish('staff:hired', { staffId: 's7g', roleId: 'salesperson', day: 1, hiringCost: 0 });
+    bus.publish('clock:overnight_followup_decay', { day: 1 });
+    expect(quits).toHaveLength(0);
+
+    bus.publish('staff:raise_answered', {
+      staffId: 's7g', roleId: 'salesperson', day: 2,
+      accepted: false, currentWage: 340, askedWage: 520,
+    });
+    expect(morale.getMorale('s7g')).toBe(22);
+
+    bus.publish('clock:overnight_followup_decay', { day: 2 });
+    expect(quits).toHaveLength(1);
+    expect(quits[0].staffId).toBe('s7g');
+    expect(quits[0].morale).toBe(22);
   });
 });
 

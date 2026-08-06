@@ -68,6 +68,29 @@ export interface StaffOrgDeps {
 }
 
 /**
+ * An outstanding raise demand (#356, C1 R2). Growth never silently reprices
+ * anyone: the wage tracks `paidGrade`, so when someone's ability outgrows what
+ * they signed at, they come and ask — and the player answers **Pay it** or
+ * **Refuse**. `currentGrade > paidGrade` is the entire trigger; there is no
+ * second state machine and no new counters (internal call 2).
+ *
+ * Both wages are captured at ask time so the prompt cannot quietly restate
+ * itself: the number the player agreed to is the number they were shown.
+ */
+export interface RaiseRequest {
+  readonly staffId: string;
+  readonly roleId: string;
+  /** The day they asked. */
+  readonly day: number;
+  /** What they are on now — `wage(role, paidGrade)`. */
+  readonly currentWage: number;
+  /** What they are asking for — `wage(role, grade)`. */
+  readonly askedWage: number;
+  readonly paidGrade: number;
+  readonly grade: number;
+}
+
+/**
  * Persistence surface for StaffOrg (#190, parent #186). Captures the hired
  * roster (source of truth for "who is on payroll") plus `currentDay` so the
  * candidate-id namespace stays stable across a reload. The candidate pool is
@@ -82,6 +105,23 @@ export interface StaffOrgSnapshot {
   readonly schemaVersion: 1;
   readonly currentDay: number;
   readonly roster: readonly Staff[];
+  /**
+   * Raise demands waiting on an answer (#356). Optional because a save written
+   * before this slice has none — `restore` reads a missing key as "nobody is
+   * asking", which is behavior-neutral: the trigger re-evaluates on the next
+   * `clock:day_started` and re-asks for anyone who has outgrown their pay.
+   * Inside StaffOrg's own blob, so this is the module's `schemaVersion`
+   * business and needs no envelope bump (`docs/save-migration-recipe.md`).
+   */
+  readonly raiseRequests?: readonly RaiseRequest[];
+  /**
+   * `[staffId, dayTheyMayAskAgain]` for members whose ask was refused. Carried
+   * separately from the requests because a running cooldown is precisely the
+   * state of *not* having a request — losing it on reload would let a refused
+   * member ask again the next morning, which is the nag the cooldown exists to
+   * prevent.
+   */
+  readonly raiseCooldowns?: readonly (readonly [string, number])[];
 }
 
 /**
@@ -127,6 +167,14 @@ export interface StaffPay {
   readonly paidGrade: number;
   /** `wage(role, paidGrade)` — exactly what the daily drain charges. */
   readonly dailyWage: number;
+  /**
+   * `wage(role, grade)` — what someone this good asks for (#356). Equal to
+   * `dailyWage` for anyone paid at their current grade; above it for anyone who
+   * has outgrown their pay. Exposed rather than left for consumers to re-derive
+   * because it is the one comparison two separate mechanics read: the raise
+   * trigger, and StaffMorale's nightly pay-vs-market adjustment.
+   */
+  readonly askingWage: number;
 }
 
 export interface StaffOrg {
@@ -160,6 +208,29 @@ export interface StaffOrg {
    * all-roster read the People surface renders, parallel to `getSlotBoard`.
    */
   getPayBoard(): readonly StaffPay[];
+  /**
+   * Every raise demand waiting on an answer, in roster order (#356). The People
+   * surface renders one prompt per entry; empty means nobody is asking.
+   */
+  getRaiseRequests(): readonly RaiseRequest[];
+  /** The outstanding demand for one member, or `null`. */
+  getRaiseRequest(staffId: string): RaiseRequest | null;
+  /**
+   * **Pay it** (#356). Sets `paidGrade` to the grade they asked at, so the wage
+   * moves to the asked number from the next drain onward, and announces the
+   * answer for StaffMorale to reward. Throws `StaffOrgError` when that member
+   * has no outstanding demand — the surface only offers the button when one is
+   * live, so a throw here means a stale press, not a message for the player.
+   */
+  acceptRaise(staffId: string): void;
+  /**
+   * **Refuse** (#356). The wage does not move, morale drops (StaffMorale's
+   * answer to the same event), and the member cannot ask again until
+   * `raiseCooldownDays` have passed. There is deliberately no new quit path:
+   * a refusal that pushes morale under the quit threshold is taken from there
+   * by the existing `StaffMorale` → `staff:quit` machinery.
+   */
+  refuseRaise(staffId: string): void;
   /** #190 SaveStore seam: capture/rehydrate the hired roster. */
   snapshot(): StaffOrgSnapshot;
   restore(snap: StaffOrgSnapshot): void;
@@ -212,6 +283,13 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   // roleId → candidateId[] for that role's current pool
   const rolePool = new Map<string, string[]>();
 
+  // The raise negotiation (#356, C1 R2). Two maps, both keyed by staff id: what
+  // is being asked, and who may not ask yet. Neither is a state machine — the
+  // demand itself is re-derived from `currentGrade > paidGrade` every morning.
+  const raiseRequests = new Map<string, RaiseRequest>();
+  /** staffId → the first day they may ask again after a refusal. */
+  const raiseCooldownUntil = new Map<string, number>();
+
   let currentDay = 1;
   // Channel-desk M7 (#294): the day's closed-deal tally, accrued onto each
   // roster member's `deals_closed` counter overnight (NOT live), so effective
@@ -225,6 +303,10 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
     dayDealsClosed = 0;
     candidatePool.clear();
     rolePool.clear();
+    // Morning is the only moment the answer can have changed: the counters that
+    // grow a grade accrue on `clock:day_ended`, so within an open day nobody's
+    // grade moves and re-checking would be re-asking the same question.
+    raiseAsks(day);
   });
 
   bus.subscribe('deal:closed', () => {
@@ -248,6 +330,7 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
   bus.subscribe('staff:quit', ({ staffId }) => {
     const idx = roster.findIndex((s) => s.id === staffId);
     if (idx !== -1) roster.splice(idx, 1);
+    clearRaiseState(staffId);
   });
 
   /**
@@ -304,6 +387,65 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
 
   function totalDailyPayroll(): number {
     return roster.reduce((sum, s) => sum + paidWageFor(s), 0);
+  }
+
+  /** The wage someone this good asks for — `wage(role, currentGrade)` (#356). */
+  function askingWageFor(staff: StaffWithComposites): number {
+    return wageFor(staff.role_id, currentGrade(staff));
+  }
+
+  /**
+   * The raise trigger (#356, internal call 2): anyone whose grown grade has
+   * passed the grade their wage is set at comes and asks, this morning.
+   *
+   * Three things suppress the ask, and each of them is the absence of a
+   * decision rather than a rule the player has to learn:
+   * - they are already asking (the prompt is on screen, unanswered);
+   * - they were refused inside the cooldown (asking again tomorrow is a nag,
+   *   not a mechanic);
+   * - the grade moved but the money didn't. Wages rise **weakly** with grade by
+   *   schema, so a flat stretch of a wage row can leave the asked number equal
+   *   to the paid one. A prompt whose two buttons cost the same is a decision
+   *   with nothing inside it, which is exactly what the C1 gate rejected.
+   */
+  function raiseAsks(day: number): void {
+    for (const staff of roster) {
+      if (raiseRequests.has(staff.id)) continue;
+      const cooldownUntil = raiseCooldownUntil.get(staff.id);
+      if (cooldownUntil !== undefined && day < cooldownUntil) continue;
+
+      const grade = currentGrade(staff);
+      const paidGrade = staff.paidGrade ?? grade;
+      if (grade <= paidGrade) continue;
+
+      const currentWage = wageFor(staff.role_id, paidGrade);
+      const askedWage = wageFor(staff.role_id, grade);
+      if (askedWage <= currentWage) continue;
+
+      const request: RaiseRequest = {
+        staffId: staff.id,
+        roleId: staff.role_id,
+        day,
+        currentWage,
+        askedWage,
+        paidGrade,
+        grade,
+      };
+      raiseRequests.set(staff.id, request);
+      bus.publish('staff:raise_requested', request);
+    }
+  }
+
+  /**
+   * Forget both halves of the negotiation for someone who is no longer on the
+   * roster. A request outstanding against a person who quit would render a
+   * prompt with no one behind it, and a cooldown keyed to a departed id would
+   * silence a *different* future hire only if ids collided — but the stale entry
+   * would still ride along in every save from then on.
+   */
+  function clearRaiseState(staffId: string): void {
+    raiseRequests.delete(staffId);
+    raiseCooldownUntil.delete(staffId);
   }
 
   // The daily wage drain (#353, C1 R1). Fires every night — `clock:overnight_payroll`
@@ -461,7 +603,69 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         grade: currentGrade(s),
         paidGrade: s.paidGrade ?? currentGrade(s),
         dailyWage: paidWageFor(s),
+        askingWage: askingWageFor(s),
       }));
+    },
+
+    getRaiseRequests(): readonly RaiseRequest[] {
+      // Roster order, not insertion order, so the prompts read down the People
+      // surface in the same sequence as the cards they belong to.
+      return roster
+        .map((s) => raiseRequests.get(s.id))
+        .filter((r): r is RaiseRequest => r !== undefined);
+    },
+
+    getRaiseRequest(staffId: string): RaiseRequest | null {
+      return raiseRequests.get(staffId) ?? null;
+    },
+
+    acceptRaise(staffId: string): void {
+      const request = raiseRequests.get(staffId);
+      if (!request) {
+        throw new StaffOrgError(`No outstanding raise request for "${staffId}"`);
+      }
+      const staff = roster.find((s) => s.id === staffId);
+      if (!staff) {
+        throw new StaffOrgError(`Staff member "${staffId}" not on roster`);
+      }
+
+      // Moving `paidGrade` is the whole of "the wage moves": every wage read in
+      // the module derives from it, so there is no second number to keep in
+      // step with this one. It is set to the grade they ASKED at, not to
+      // whatever they are today — you agreed to a stated price.
+      staff.paidGrade = request.grade;
+      raiseRequests.delete(staffId);
+      // The cooldown is a consequence of refusal only. Someone you just paid
+      // has no reason to be barred from asking again when they grow again.
+      raiseCooldownUntil.delete(staffId);
+
+      bus.publish('staff:raise_answered', {
+        staffId,
+        roleId: staff.role_id,
+        day: currentDay,
+        accepted: true,
+        currentWage: request.currentWage,
+        askedWage: request.askedWage,
+      });
+    },
+
+    refuseRaise(staffId: string): void {
+      const request = raiseRequests.get(staffId);
+      if (!request) {
+        throw new StaffOrgError(`No outstanding raise request for "${staffId}"`);
+      }
+
+      raiseRequests.delete(staffId);
+      raiseCooldownUntil.set(staffId, currentDay + pay.raiseCooldownDays);
+
+      bus.publish('staff:raise_answered', {
+        staffId,
+        roleId: request.roleId,
+        day: currentDay,
+        accepted: false,
+        currentWage: request.currentWage,
+        askedWage: request.askedWage,
+      });
     },
 
     snapshot(): StaffOrgSnapshot {
@@ -469,12 +673,22 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         schemaVersion: 1,
         currentDay,
         roster: [...roster],
+        raiseRequests: [...raiseRequests.values()],
+        raiseCooldowns: [...raiseCooldownUntil.entries()],
       };
     },
 
     restore(snap: StaffOrgSnapshot): void {
       currentDay = snap.currentDay;
       roster.length = 0;
+      raiseRequests.clear();
+      raiseCooldownUntil.clear();
+      for (const request of snap.raiseRequests ?? []) {
+        raiseRequests.set(request.staffId, request);
+      }
+      for (const [staffId, until] of snap.raiseCooldowns ?? []) {
+        raiseCooldownUntil.set(staffId, until);
+      }
       for (const s of snap.roster) {
         const member = rehydrateStaff(s, taxonomy, masterSeed);
         // Saves predating the wage book (#353) carry no `paidGrade`. Materialize
@@ -579,6 +793,7 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         throw new StaffOrgError(`Staff member "${staffId}" not on roster`);
       }
       const [fired] = roster.splice(idx, 1);
+      clearRaiseState(fired.id);
       bus.publish('staff:fired', {
         staffId: fired.id,
         roleId: fired.role_id,
@@ -640,6 +855,13 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       // In-place replacement keeps the staff id, so StaffMorale / StaffDispatch
       // bindings (keyed by id) survive the promotion.
       roster[idx] = promoteStaff(staff, toRoleId, taxonomy, masterSeed);
+      // A demand outstanding against the OLD desk is void (#356). The wage moved
+      // by role the moment they took the new job, and the two numbers on the
+      // prompt were the old role's. If they are still underpaid for the desk
+      // they now sit at, they ask again tomorrow — at the new role's numbers.
+      // The cooldown survives: it records that they asked recently, which is
+      // still true.
+      raiseRequests.delete(staffId);
 
       bus.publish('staff:promoted', {
         staffId,

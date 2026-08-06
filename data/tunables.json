@@ -267,7 +267,10 @@
     "workloadOverloadPenalty": -5,
     "workloadIdleBonus": 1,
     "recognitionBonus": 3,
-    "payVsMarketBonus": 2,
+    "paidAtMarketBonus": 2,
+    "paidBelowMarketPenalty": -4,
+    "raiseAcceptedBonus": 6,
+    "raiseRefusedPenalty": -12,
     "moraleMultiplierMin": 0.6,
     "moraleMultiplierMax": 1.2
   },

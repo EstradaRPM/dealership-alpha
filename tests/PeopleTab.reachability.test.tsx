@@ -208,6 +208,78 @@ describe('#347 the People tab is mounted on the live world', () => {
     );
   });
 
+  it('surfaces a live raise demand, and Pay it moves the wage the engine charges', () => {
+    // #356 anti-orphan proof. The raise is the one place skill growth turns
+    // into a decision, so it only exists if the People tab both SHOWS the
+    // engine's demand and can answer it. Seed 3560's third applicant is a
+    // grade-3 salesperson; putting them on grade-1 money is the state Model B
+    // growth produces after a cheap rookie has been on the floor a while.
+    const world = freshWorld(3560);
+    const candidate = world.staffOrg.getCandidates('salesperson')[2];
+    world.staffOrg.hire(candidate.candidateId);
+    const staffId = candidate.staff.id;
+
+    const snap = world.staffOrg.snapshot();
+    world.staffOrg.restore({
+      ...snap,
+      roster: snap.roster.map((s) => (s.id === staffId ? { ...s, paidGrade: 1 } : s)),
+    });
+    world.clock.advanceDay();
+
+    const demand = world.staffOrg.getRaiseRequest(staffId);
+    expect(demand).not.toBeNull();
+    expect(demand!.askedWage).toBeGreaterThan(demand!.currentWage);
+
+    const { getByTestId, rerender } = renderPeople(world);
+    // The two numbers on screen are the engine's, not a re-derivation.
+    expect(getByTestId(`people-raise-ask-${staffId}`).props.children).toBe(
+      `Asking for $${demand!.askedWage.toLocaleString()}/day. ` +
+        `On $${demand!.currentWage.toLocaleString()}/day now.`,
+    );
+
+    fireEvent.press(getByTestId(`people-raise-accept-${staffId}`));
+
+    expect(world.staffOrg.getRaiseRequest(staffId)).toBeNull();
+    expect(world.staffOrg.dailyPayroll).toBe(demand!.askedWage);
+    rerender(
+      <PeopleTabContainer
+        world={world}
+        selectedHiringRoleId="salesperson"
+        setSelectedHiringRoleId={() => {}}
+        setCash={() => {}}
+        bump={() => {}}
+      />,
+    );
+    // The prompt is gone and the payroll line states the raised number.
+    expect(getByTestId('people-payroll-total').props.children).toBe(
+      `$${demand!.askedWage.toLocaleString()}/day`,
+    );
+  });
+
+  it('refusing a live demand holds the wage and costs the member morale', () => {
+    const world = freshWorld(3560);
+    const candidate = world.staffOrg.getCandidates('salesperson')[2];
+    world.staffOrg.hire(candidate.candidateId);
+    const staffId = candidate.staff.id;
+
+    const snap = world.staffOrg.snapshot();
+    world.staffOrg.restore({
+      ...snap,
+      roster: snap.roster.map((s) => (s.id === staffId ? { ...s, paidGrade: 1 } : s)),
+    });
+    world.clock.advanceDay();
+    const wageBefore = world.staffOrg.dailyPayroll;
+    const moraleBefore = world.staffMorale.getMorale(staffId);
+
+    const { getByTestId } = renderPeople(world);
+    fireEvent.press(getByTestId(`people-raise-refuse-${staffId}`));
+
+    expect(world.staffOrg.dailyPayroll).toBe(wageBefore);
+    // StaffMorale is wired to the answer through the live bus — no direct call
+    // from StaffOrg into it.
+    expect(world.staffMorale.getMorale(staffId)).toBeLessThan(moraleBefore);
+  });
+
   it('is composed into the People tab of the live shell', () => {
     const src = readAppCompositionSource();
     expect(src).toContain('<PeopleTabContainer');
