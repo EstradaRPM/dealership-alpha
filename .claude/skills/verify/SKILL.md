@@ -39,6 +39,35 @@ document.addEventListener('click', e => console.log(e.clientX, e.clientY, e.targ
 RN `Pressable`/`TouchableOpacity` render as plain `div`s, so the accessibility tree labels
 most controls `generic` — match on the text content in the `read_page` output.
 
+**The click trap that cost two sessions (2026-08-06): every `left_click` times out, and you
+must issue it TWICE.** The pane delivers `pointerdown`/`mousedown` to the right element, then
+hangs for the full 30s and returns `computer timed out after 30s` — the matching `pointerup`
+is only flushed when the *next* `computer` call arrives. A single click therefore leaves the
+press half-finished and nothing happens, which reads exactly like a dead button. **Fire the
+same `left_click` a second time at the same coordinate**: the queued `pointerup` completes
+press #1, `click` fires on the correct element, and the UI responds. Both calls report a
+timeout — ignore it and read the page. A whole session can be driven this way (start menu →
+T2 fixture → tabs → floor sim → recap modal → Finance), at ~60s per press.
+
+Two corollaries:
+
+- **`hover` is not a probe for whether input works.** It returns success and correct CSS
+  coordinates while dispatching nothing observable; the events surface later, out of order,
+  and a stale queued `pointerup` from a hover will land at the *hover's* position and steal
+  the click. Never hover before a click you care about.
+- **Skip `resize_window {preset:"mobile"}` when you need to click.** At native size the
+  screenshot and the click coordinate space match 1:1 (both 800×755) and you can read
+  coordinates straight off the screenshot. Under mobile emulation the screenshot is 469×1015
+  against a 375×812 viewport and the two disagree. The app renders fine at native width —
+  the tab bar, floor sim, and modals all lay out correctly.
+
+Arm this before doubting the app; it tells you whether events are arriving at all and on what:
+
+```js
+window.__ev=[];['mousedown','mouseup','click'].forEach(n=>document.addEventListener(n,
+  e=>window.__ev.push([n,e.clientX,e.clientY,(e.target.textContent||'').slice(0,25)]),true))
+```
+
 **Two more traps, both found the hard way (2026-08-02):**
 
 - **The Browser pane must actually be displayed, or modals are unreachable.** With the pane

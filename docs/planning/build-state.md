@@ -50,6 +50,13 @@ daily wage). Work them in number order; the deps are stated in each issue's Note
   wholesale, refused trades, soft cap, prep-as-its-own-capacity) are recorded **with reasons**
   in §3 A2 — do not reopen them, and in particular do not re-propose an overflow lot, which the
   director raised and then withdrew on inspection.
+- **#353 and #354 ARE verified on web (2026-08-06) — their log entries' "web drive was
+  impossible" lines are superseded.** The blocker was never the app: `left_click` delivers
+  `pointerdown` and then hangs, flushing `pointerup` only on the *next* `computer` call, so a
+  single click leaves the press half-finished. **Issue every click twice**; both report a
+  30s timeout, and the UI responds. The full path drives fine — start menu → T2 fixture →
+  tabs → floor sim → day close → recap modal → Finance. Written up in `.claude/skills/verify`;
+  do not file another BLOCKED verdict against the pane without trying the double-click.
 - **A hidden Browser pane makes measuring charts unverifiable, and it looks exactly like a bug.**
   No `ResizeObserver` and no `requestAnimationFrame` fire, so react-native-web's `onLayout` never
   runs, `useChartWidth` stays 0, and `BarChart`/`Sparkline` collapse to an empty 0-height div.
