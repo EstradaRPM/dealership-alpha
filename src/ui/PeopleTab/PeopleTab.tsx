@@ -320,7 +320,12 @@ function CandidateCard({
           </Text>
         </View>
         <View style={s.priceColumn}>
-          <Text style={s.price}>${candidate.hiringCost.toLocaleString()}</Text>
+          {/* Priced off this person's own wage (#355), so two applicants for the
+              same desk quote different fees — it is a number to compare, not a
+              constant to skim past. */}
+          <Text style={s.price} testID={`people-candidate-fee-${candidate.id}`}>
+            ${candidate.hiringCost.toLocaleString()}
+          </Text>
           <Text style={s.priceCaption}>to sign</Text>
         </View>
       </View>

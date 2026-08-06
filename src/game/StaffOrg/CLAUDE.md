@@ -47,6 +47,13 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
 - Reads: `dailyPayroll` (the sum), `getPayBoard()` (per member: `grade`, `paidGrade`,
   `dailyWage`). `CandidateListing` carries `grade` + `dailyWage` beside `hiringCost` — what
   they cost to sign and what they cost to keep are now the two numbers the hire is made on.
+- **The hire fee is `hireFeeMultiple × that candidate's daily wage`** (#355), so both numbers
+  on the card come from one place and a grade-5 can never sign for what a greenpea signs for.
+  `staffOrg.hiringCostByTier` (the flat worker 500 / customer-facing 1000 / manager 2500 /
+  gm 5000 table) is **deleted** from `data/tunables.json` *and* `staffOrgData.ts` — a second
+  price table is exactly the thing that drifts from the wage book. `CandidateListing.hiringCost`
+  keeps its name; it is now per **person**, not per role tier. A role the pay book does not
+  name throws rather than falling back to a default fee.
 - Magnitudes are **placeholders anchored to `docs/planning/staff-performance-ladder.md`**, not
   balance; calibration is C2 (#286). The salesperson row is the design doc's worked example
   (grade 3 = $340/day, grade 4 = $520/day).
@@ -110,7 +117,8 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
   - Slots are derived from tier + roster, so there is **no save migration**.
 
 ## Data
-- `data/tunables.json#staffOrg` — `hiringCostByTier`, `candidatesPerRole`, `conditionRead`.
+- `data/tunables.json#staffOrg` — `candidatesPerRole`, `conditionRead`. (No hiring cost and no
+  headcount cap: #355 and #352 moved both to `staff-pay.json` / `staff-slots.json`.)
 - `data/staff-slots.json` — the per-role, per-tier slot table (`loadStaffSlots`, `staffSlots.ts`).
   Counts come from the tier CSV's "Staff" row; `deps.slots` injects an alternative in tests.
 - `data/staff-pay.json` — the salary book (`loadStaffPay`, `staffPay.ts`): daily wage per

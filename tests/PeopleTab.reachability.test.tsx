@@ -173,6 +173,29 @@ describe('#347 the People tab is mounted on the live world', () => {
     );
   });
 
+  it('states the engine\'s own hire fee on the card, before the hire commits', () => {
+    // #355 anti-orphan proof. The fee is now `hireFeeMultiple × this
+    // candidate's daily wage`, so the card has to read the engine rather than
+    // print a per-tier constant — and it has to say so before the press, since
+    // that is the number the decision is made on.
+    const world = freshWorld(3550);
+    const candidate = world.staffOrg.getCandidates('salesperson')[0];
+    const fee = `$${candidate.hiringCost.toLocaleString()}`;
+
+    const { getByTestId, getByText } = renderPeople(world);
+    expect(
+      getByTestId(`people-candidate-fee-${candidate.candidateId}`).props.children.join(''),
+    ).toBe(fee);
+    expect(getByText(`Hire — ${fee}`)).toBeTruthy();
+
+    // Still a candidate, not an employee: the number is quoted up front.
+    expect(world.staffOrg.currentRoster).toHaveLength(0);
+
+    const cashBefore = world.economy.cash;
+    fireEvent.press(getByTestId(`people-hire-${candidate.candidateId}`));
+    expect(cashBefore - world.economy.cash).toBe(candidate.hiringCost);
+  });
+
   it('shows the payroll the engine will actually charge overnight', () => {
     const world = freshWorld(3541);
     const candidate = world.staffOrg.getCandidates('salesperson')[0];

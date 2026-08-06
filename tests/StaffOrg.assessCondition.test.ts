@@ -24,7 +24,6 @@ const READ_CFG: ConditionReadConfig = {
 
 const NO_OVERHEAD = { weeklyRent: 0 };
 const CHEAP_CONFIG: StaffOrgConfig = {
-  hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
   candidatesPerRole: 3,
   conditionRead: READ_CFG,
 };

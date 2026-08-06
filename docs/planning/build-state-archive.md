@@ -6,6 +6,43 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-05 — **BUILT #352** (per-role slot table). Scarcity is per **job**, not per body:
+  `data/staff-slots.json` is role → count per tier, and it is now the only headcount ceiling
+  in the game.
+  **`headcountCapByTier` left in the same commit that replaced it** — gone from
+  `data/tunables.json`, gone from the zod schema, gone from both call sites — so nothing can
+  read the old flat `{1:4, 2:8, 3:16}` and typecheck. `staffOrg.headcountCap` survives as a
+  *derived* read (the sum of the tier's slots) because the criterion asked for it, but there is
+  no second number that could disagree with the table.
+  **Three things the CSV did not say, resolved in data rather than left to the implementer.**
+  The table is **monotonic** and `StaffSlotTableSchema` refuses a file that decreases — the CSV's
+  dropped `f&i-manager` row at T4/T5 is an omission, and the schema now makes re-reading it as a
+  removal impossible. Every role states all seven tiers explicitly; a missing tier key would read
+  as "no slots", which locks the player out of a job and looks like balance instead of a broken
+  file, so `slotTotalFor` **clamps** an out-of-range tier and `getSlots` **throws** for a role the
+  table does not name. The promotion-only worker roles (`lot-porter`, `technician`) each mirror the
+  role they promote into — the bench that feeds a desk is as wide as the desk it feeds — which puts
+  `technician` at 0 at T1, where no service department exists.
+  **Slots gate promotion, not just hiring, and that is where the worker roles are enforced at all.**
+  `promote()` throws on a full target and `getPromotionOptions` filters them out, so no surface
+  renders a press the engine would refuse. Since `src/app/config.ts` keeps worker roles off the
+  hiring surface, their slot counts would otherwise have been inert data.
+  **The People tab's "N of cap" line is now the slot board**, and an empty slot IS the hire
+  affordance — pressing an open desk selects that job in the hiring pool. A candidate is blocked by
+  the **selected job's** desks, not the store total: the regression the flat cap caused was that
+  filling the sales floor shut off hiring for the whole store, service desk included.
+  **A row earns its place two ways only** — the tier opened a desk you can hire into, or somebody
+  is sitting in one. The first web drive showed "Lot Porter 0 of 2" and "Technician 0 of 1" at T2:
+  permanently empty rows for jobs nothing can reach, which is exactly the foreshadow tile the locked
+  IA bans. Both are gone.
+  **Driven on web at T2/Day 31**: the board reads Salesperson 2 of 2 · Service Advisor 0 of 1 ·
+  Used Car Manager **1 of 0**, the three salesperson applicants all say "No desk open for this job",
+  and pressing the open Service Advisor desk swapped the pool to three service advisors offering
+  "Hire — $1,000". The "1 of 0" is the stale T2 fixture (a UCM whose desk opens at T3, hireable back
+  when the cap counted bodies) displayed honestly — the same grammar A2 R2 gives the lot cap.
+  No save migration: slots are derived from tier + roster. 212 suites / **2671** tests, typecheck clean.
+  Next: **BUILD #353** (wage book + daily payroll drain).
+
 - 2026-08-04 — **SLICED phases 6 + 7 as one pass** → **#352–#362**, filed in build order, every
   issue carrying EARS acceptance criteria with named tests.
   **The order puts the slot table first and the wage stack immediately behind it**, because #352 is

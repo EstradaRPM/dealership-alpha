@@ -17,7 +17,6 @@ const archetypes = loadStaffArchetypes();
 
 const NO_OVERHEAD = { weeklyRent: 0 };
 const CHEAP_CONFIG: StaffOrgConfig = {
-  hiringCostByTier: { worker: 100, 'customer-facing': 200, manager: 500, gm: 1000 },
   candidatesPerRole: 3,
   conditionRead: {
     minHalfWidthFraction: 0.10,
@@ -74,13 +73,15 @@ describe('StaffOrg — getCandidates', () => {
     }
   });
 
-  it('candidates carry hiring cost matching the role tier', () => {
-    const { clock, staffOrg } = makeSetup();
+  it('candidates carry a hiring cost priced off their own wage', () => {
+    // #355: the fee is `hireFeeMultiple × this candidate's daily wage`, not a
+    // flat per-tier price. Stated per candidate, because two applicants for the
+    // same desk are quoted different numbers.
+    const { clock, staffOrg } = wageSetup();
     clock.advanceDay();
     const candidates = staffOrg.getCandidates('salesperson');
-    // salesperson is customer-facing tier → cost 200 in CHEAP_CONFIG
     for (const c of candidates) {
-      expect(c.hiringCost).toBe(200);
+      expect(c.hiringCost).toBe(WAGE_TABLE.hireFeeMultiple * c.dailyWage);
     }
   });
 
@@ -143,10 +144,13 @@ describe('StaffOrg — hire', () => {
   });
 
   it('deducts hiring cost from Economy cash', () => {
-    const { clock, economy, staffOrg } = makeSetup();
+    // Priced off a real wage book (#355), not the default no-pay table: a fee
+    // of $0 would make this assertion true without charging anything.
+    const { clock, economy, staffOrg } = wageSetup();
     clock.advanceDay();
     const cashBefore = economy.cash;
     const [first] = staffOrg.getCandidates('salesperson');
+    expect(first.hiringCost).toBeGreaterThan(0);
     staffOrg.hire(first.candidateId);
     expect(economy.cash).toBe(cashBefore - first.hiringCost);
   });
@@ -180,7 +184,9 @@ describe('StaffOrg — hire', () => {
   });
 
   it('throws when cash is insufficient and does not post event', () => {
-    const { bus, clock, staffOrg } = makeSetup(50);
+    // A real wage book, so the fee is a real number: under the no-pay table the
+    // signing fee is $0 and there is nothing a lot with $50 cannot afford.
+    const { bus, clock, staffOrg } = wageSetup(50);
     clock.advanceDay();
     const events: unknown[] = [];
     bus.subscribe('staff:hired', (e) => events.push(e));
@@ -190,7 +196,7 @@ describe('StaffOrg — hire', () => {
   });
 
   it('roster does not grow when hire throws', () => {
-    const { clock, staffOrg } = makeSetup(50);
+    const { clock, staffOrg } = wageSetup(50);
     clock.advanceDay();
     const [first] = staffOrg.getCandidates('salesperson');
     try { staffOrg.hire(first.candidateId); } catch { /* expected */ }
@@ -396,7 +402,17 @@ describe('StaffOrg — config', () => {
   it('loadStaffOrgConfig returns the bundled tunables without error', () => {
     const config = loadStaffOrgConfig();
     expect(config.candidatesPerRole).toBeGreaterThan(0);
-    expect(typeof config.hiringCostByTier['customer-facing']).toBe('number');
+    expect(config.conditionRead.maxBiasFraction).toBeGreaterThan(0);
+  });
+
+  it('the per-tier hiring-cost table is gone from the config schema', () => {
+    // #355 retired `hiringCostByTier`. Asserted against the raw JSON as well as
+    // the parsed config, because the schema is non-strict: a stale key left in
+    // the file would be silently stripped at parse and read as "already gone".
+    const raw = (require('../data/tunables.json') as { staffOrg: Record<string, unknown> })
+      .staffOrg;
+    expect(Object.keys(raw)).not.toContain('hiringCostByTier');
+    expect(Object.keys(loadStaffOrgConfig())).not.toContain('hiringCostByTier');
   });
 });
 
@@ -768,6 +784,59 @@ describe('StaffOrg — derived grade', () => {
   });
 
   it('throws for a role the pay book does not name', () => {
+    const { clock, staffOrg } = makeSetup(STARTING_CASH, CHEAP_CONFIG, ROOMY_SLOTS, {
+      ...WAGE_TABLE,
+      dailyWageByRole: { 'lot-porter': { '1': 1, '2': 1, '3': 1, '4': 1, '5': 1 } },
+    });
+    clock.advanceDay();
+    expect(() => staffOrg.getCandidates('salesperson')).toThrow(StaffOrgError);
+  });
+});
+
+// ── The talent-scaled hire fee (#355, C1 R5) ────────────────────────────────
+
+describe('StaffOrg — hire fee', () => {
+  it('the hire fee scales with the candidate\'s wage', () => {
+    const { clock, economy, staffOrg } = wageSetup();
+    clock.advanceDay();
+    const candidate = staffOrg.getCandidates('salesperson')[0];
+
+    expect(candidate.hiringCost).toBe(WAGE_TABLE.hireFeeMultiple * candidate.dailyWage);
+
+    // ...and that is the number actually charged, not just the one listed.
+    const cashBefore = economy.cash;
+    staffOrg.hire(candidate.candidateId);
+    expect(cashBefore - economy.cash).toBe(
+      WAGE_TABLE.hireFeeMultiple * candidate.dailyWage,
+    );
+  });
+
+  it('a grade-5 candidate costs more to sign than a grade-1', () => {
+    // Grade is forced rather than fished out of the archetype pool, so the test
+    // states the claim instead of hoping the board is diverse: the SAME seeded
+    // person read through bands that put everyone at the top of the ladder
+    // versus bands that put everyone at the bottom. Under `hiringCostByTier`
+    // these two were quoted the identical price for the same job.
+    const asGrade5 = { ...WAGE_TABLE, gradeBands: [0, 0.001, 0.002, 0.003] };
+    const asGrade1 = { ...WAGE_TABLE, gradeBands: [0.96, 0.97, 0.98, 0.99] };
+
+    const top = makeSetup(STARTING_CASH, CHEAP_CONFIG, ROOMY_SLOTS, asGrade5);
+    top.clock.advanceDay();
+    const bottom = makeSetup(STARTING_CASH, CHEAP_CONFIG, ROOMY_SLOTS, asGrade1);
+    bottom.clock.advanceDay();
+
+    const strong = top.staffOrg.getCandidates('salesperson')[0];
+    const weak = bottom.staffOrg.getCandidates('salesperson')[0];
+
+    expect(strong.staff.id).toBe(weak.staff.id);
+    expect(strong.grade).toBe(5);
+    expect(weak.grade).toBe(1);
+    expect(strong.hiringCost).toBeGreaterThan(weak.hiringCost);
+  });
+
+  it('never quotes a fee for a role the pay book does not name', () => {
+    // The fee is derived from the wage, so an unnamed role can no longer sign
+    // for a per-tier default — it throws, the same as the wage read does.
     const { clock, staffOrg } = makeSetup(STARTING_CASH, CHEAP_CONFIG, ROOMY_SLOTS, {
       ...WAGE_TABLE,
       dailyWageByRole: { 'lot-porter': { '1': 1, '2': 1, '3': 1, '4': 1, '5': 1 } },

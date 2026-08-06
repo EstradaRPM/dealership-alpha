@@ -14,15 +14,15 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
 `path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **#352, #353 and #354 landed 2026-08-05 — next unit: BUILD #355** (hire fee = multiple ×
-daily wage). Work them in number order; the deps are stated in each issue's Notes.
+order**. **#352–#355 have landed — next unit: BUILD #356** (raise demands + `payVsMarketBonus`
+made real). Work them in number order; the deps are stated in each issue's Notes.
 
 | # | Slice | Phase |
 |---|---|---|
 | ~~#352~~ | ~~per-role slot table = the hiring cap; `headcountCapByTier` deleted~~ **BUILT 2026-08-05** | 7 → unblocks 6 |
 | ~~#353~~ | ~~`data/staff-pay.json`, derived grade, `paidGrade`, daily payroll drain; `weeklyPayrollStub` deleted~~ **BUILT 2026-08-05** | 6 |
 | ~~#354~~ | ~~People surface: grade + wage per card, total daily payroll~~ **BUILT 2026-08-05** (the skill-bar `flexDirection` defect was already dead — #347 deleted `PersonnelScreen`) | 6 |
-| #355 | hire fee = multiple × daily wage; `hiringCostByTier` retired | 6 |
+| ~~#355~~ | ~~hire fee = multiple × daily wage; `hiringCostByTier` retired~~ **BUILT 2026-08-06** | 6 |
 | #356 | raise demands (ask/answer) + `payVsMarketBonus` made real | 6 |
 | #357 | rival offers on the same event family (retention + poaching, one moment) | 6 |
 | #358 | `src/game/Facility/` owns built spaces + bays, one bay truth; `baysByTier` retired | 7 |
@@ -84,6 +84,13 @@ daily wage). Work them in number order; the deps are stated in each issue's Note
   hire, and is what the wage is computed from. Every wage number the player sees or the ledger
   charges comes from `paidGrade`. Reading the current grade to price someone is the rejected
   "wage auto-follows grade" and silently kills #356's raise trigger.
+- **Both staff prices now come out of `data/staff-pay.json` and nowhere else** (#355). The hire
+  fee is `hireFeeMultiple × that candidate's daily wage`; `staffOrg.hiringCostByTier` is gone from
+  the JSON and the zod schema. `CandidateListing.hiringCost` keeps its name but is per **person**,
+  not per role tier — do not re-introduce a second price table beside the wage book, and do not
+  read the name as "the role's price". Consequence for tests: the `noPay()` helper now makes hires
+  **free**, so any suite asserting that a hire costs something must pass a real wage table
+  (`wageSetup` in `tests/StaffOrg.test.ts`).
 - **The #352–#362 issues can name files 5c deleted.** #354 was filed against
   `src/ui/PersonnelScreen/PersonnelScreen.tsx:22` and a `flexDirection` defect in it; #347 had
   already deleted that whole screen and the kit `ProgressBar` that replaced it sizes fills by
@@ -116,7 +123,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance (all built 2026-08-02) | — (locked IA already ruled it) | done |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
-| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — #354 built; #355–#357 open |
+| 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | active — #355 built; #356–#357 open |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 built; #358–#362 open |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
@@ -137,6 +144,38 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-06 — **BUILT #355** (the talent-scaled hire fee). What you pay to sign someone is now
+  `hireFeeMultiple × their own daily wage`, so one number in `data/staff-pay.json` prices both
+  signing them and keeping them.
+  **`hiringCostByTier` left in the same commit that replaced it** — out of `data/tunables.json`,
+  out of `StaffOrgConfigSchema`, out of the one call site. That is the third flat per-tier table
+  deleted in this phase (`headcountCapByTier` #352, `weeklyPayrollStub` #353), and the same bug
+  each time: a price that ignores the thing it is pricing. Under it a grade-5 closer and a
+  greenpea both signed for exactly $1,000.
+  **The fee is derived, not a second table, because a second table drifts.** `hireFeeMultiple`
+  already lived in the pay book (#353 put it there for this slice); nothing new was added to
+  `data/`. `CandidateListing.hiringCost` **keeps its name** — renaming it would have churned
+  `staff:hired`'s payload, the balance harness's policy, and the People card for no gain — but it
+  now means "what this **person** costs to sign", never "what this role costs".
+  **A role the pay book does not name throws instead of falling back.** The old code ended
+  `?? 1000`, so an unnamed role silently signed for a default; the fee now inherits the wage
+  read's loud failure, which is the same grammar the slot table uses.
+  **The compiler drove the test sweep, and it exposed two assertions that the change would have
+  quietly hollowed out.** `noPay()` (the helper for suites that hire people to exercise something
+  else) makes the fee **$0**, which turned "throws when cash is insufficient" and "deducts hiring
+  cost from Economy cash" into tautologies — both now run on a real wage table. Economy's
+  "payroll pushes cash negative" test opened the store with one day's float; it now opens with the
+  two signing fees plus that float, and states the fee's size as it does so.
+  **The grade-5-vs-grade-1 criterion is asserted on a forced grade, not a hoped-for pool.** The
+  same seeded person is read through bands that put everyone at the top of the ladder and bands
+  that put everyone at the bottom — same `staff.id`, grade 5 vs grade 1, strictly different fee.
+  Fishing two grades out of the archetype board would have made the test a fact about one seed.
+  **Driven on web at T2/Day 32**: three applicants for the *same* Service Advisor desk quoted
+  **$1,300** (Grade 3 · $260/day), **$700** (Grade 1 · $140/day) and $700 — under the retired
+  table all three read $1,000. Hiring the $700 candidate moved cash $184,305 → $183,605, exactly
+  the number on the card. 215 suites / **2725** tests, typecheck clean.
+  Next: **BUILD #356** (raise demands + `payVsMarketBonus` made real).
 
 - 2026-08-05 — **BUILT #353** (the wage book + the nightly payroll drain). Payroll finally
   scales with the roster: every person burns a daily wage set by grade (1–5) × role, and that
@@ -183,43 +222,6 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   215 suites / **2711** tests, typecheck clean.
   Next: **BUILD #354** (People surface: grade + wage per card, total daily payroll, the skill-bar
   `flexDirection` fix).
-
-- 2026-08-05 — **BUILT #352** (per-role slot table). Scarcity is per **job**, not per body:
-  `data/staff-slots.json` is role → count per tier, and it is now the only headcount ceiling
-  in the game.
-  **`headcountCapByTier` left in the same commit that replaced it** — gone from
-  `data/tunables.json`, gone from the zod schema, gone from both call sites — so nothing can
-  read the old flat `{1:4, 2:8, 3:16}` and typecheck. `staffOrg.headcountCap` survives as a
-  *derived* read (the sum of the tier's slots) because the criterion asked for it, but there is
-  no second number that could disagree with the table.
-  **Three things the CSV did not say, resolved in data rather than left to the implementer.**
-  The table is **monotonic** and `StaffSlotTableSchema` refuses a file that decreases — the CSV's
-  dropped `f&i-manager` row at T4/T5 is an omission, and the schema now makes re-reading it as a
-  removal impossible. Every role states all seven tiers explicitly; a missing tier key would read
-  as "no slots", which locks the player out of a job and looks like balance instead of a broken
-  file, so `slotTotalFor` **clamps** an out-of-range tier and `getSlots` **throws** for a role the
-  table does not name. The promotion-only worker roles (`lot-porter`, `technician`) each mirror the
-  role they promote into — the bench that feeds a desk is as wide as the desk it feeds — which puts
-  `technician` at 0 at T1, where no service department exists.
-  **Slots gate promotion, not just hiring, and that is where the worker roles are enforced at all.**
-  `promote()` throws on a full target and `getPromotionOptions` filters them out, so no surface
-  renders a press the engine would refuse. Since `src/app/config.ts` keeps worker roles off the
-  hiring surface, their slot counts would otherwise have been inert data.
-  **The People tab's "N of cap" line is now the slot board**, and an empty slot IS the hire
-  affordance — pressing an open desk selects that job in the hiring pool. A candidate is blocked by
-  the **selected job's** desks, not the store total: the regression the flat cap caused was that
-  filling the sales floor shut off hiring for the whole store, service desk included.
-  **A row earns its place two ways only** — the tier opened a desk you can hire into, or somebody
-  is sitting in one. The first web drive showed "Lot Porter 0 of 2" and "Technician 0 of 1" at T2:
-  permanently empty rows for jobs nothing can reach, which is exactly the foreshadow tile the locked
-  IA bans. Both are gone.
-  **Driven on web at T2/Day 31**: the board reads Salesperson 2 of 2 · Service Advisor 0 of 1 ·
-  Used Car Manager **1 of 0**, the three salesperson applicants all say "No desk open for this job",
-  and pressing the open Service Advisor desk swapped the pool to three service advisors offering
-  "Hire — $1,000". The "1 of 0" is the stale T2 fixture (a UCM whose desk opens at T3, hireable back
-  when the cap counted bodies) displayed honestly — the same grammar A2 R2 gives the lot cap.
-  No save migration: slots are derived from tier + roster. 212 suites / **2671** tests, typecheck clean.
-  Next: **BUILD #353** (wage book + daily payroll drain).
 
 - 2026-08-05 — **BUILT #354** (the People wage surface). Grade and daily wage now sit on every
   card, and the roster's total daily drain sits under the slot board that produced it.

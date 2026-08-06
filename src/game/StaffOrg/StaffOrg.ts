@@ -321,10 +321,23 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
     economy.forceDebit(total, 'Payroll');
   });
 
-  function hiringCostFor(roleId: string): number {
-    const role = taxonomy.roles[roleId];
-    if (!role) throw new StaffOrgError(`Unknown role "${roleId}"`);
-    return config.hiringCostByTier[role.tier] ?? 1000;
+  /**
+   * The one-time signing fee (#355, C1 R5): **a multiple of what this person
+   * costs per day**, so a grade-5 costs more to sign *and* more to keep from
+   * one number. It replaced `staffOrg.hiringCostByTier`, a flat per-tier price
+   * under which a grade-5 closer signed for exactly what a greenpea signed for
+   * — the same shape of bug as the flat payroll stub #353 deleted.
+   *
+   * Derived from the wage rather than carried as its own table for the reason
+   * the C1 gate keeps applying: one number the player can reason about beats a
+   * second table that can silently disagree with the first. `hireFeeMultiple`
+   * lives in `data/staff-pay.json` beside the wages it multiplies.
+   *
+   * Rounded, because a fractional multiple against a whole-dollar wage would
+   * otherwise put cents into the ledger.
+   */
+  function hireFeeFor(dailyWage: number): number {
+    return Math.round(pay.hireFeeMultiple * dailyWage);
   }
 
   /**
@@ -366,7 +379,6 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
       throw new StaffOrgError(`No archetypes defined for role "${roleId}"`);
     }
 
-    const cost = hiringCostFor(roleId);
     const ids: string[] = [];
 
     // Slot walks past collisions rather than stopping at `candidatesPerRole`.
@@ -396,13 +408,17 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
 
       const candidateId = `candidate:${roleId}:${currentDay}:${slot}`;
       const grade = currentGrade(staff);
+      // Both prices are this person's, not this role's (#355): what they cost
+      // to sign is derived from what they cost to keep, so two applicants for
+      // the same desk are quoted different numbers.
+      const dailyWage = wageFor(roleId, grade);
       const listing: CandidateListing = {
         candidateId,
         archetypeId,
         staff,
-        hiringCost: cost,
+        hiringCost: hireFeeFor(dailyWage),
         grade,
-        dailyWage: wageFor(roleId, grade),
+        dailyWage,
       };
       candidatePool.set(candidateId, listing);
       ids.push(candidateId);

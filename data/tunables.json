@@ -249,12 +249,6 @@
     }
   },
   "staffOrg": {
-    "hiringCostByTier": {
-      "worker": 500,
-      "customer-facing": 1000,
-      "manager": 2500,
-      "gm": 5000
-    },
     "candidatesPerRole": 3,
     "conditionRead": {
       "minHalfWidthFraction": 0.10,

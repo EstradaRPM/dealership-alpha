@@ -17,10 +17,10 @@ import { parseData } from '../data';
  *
  * - `gradeBands` — the four lower edges that split the 0–1 ability ratio into
  *   grades 1–5. Four edges, five grades; see `gradeFor`.
- * - `hireFeeMultiple` — how many days of wage the one-time signing fee costs.
- *   Carried here rather than in `staffOrg.hiringCostByTier` because a grade-5
- *   must cost more to sign *and* more to keep from one number; the hire-fee
- *   slice consumes it and retires the old per-tier table.
+ * - `hireFeeMultiple` — how many days of wage the one-time signing fee costs
+ *   (#355). Carried here rather than in `staffOrg.hiringCostByTier` — now
+ *   **deleted** — because a grade-5 must cost more to sign *and* more to keep
+ *   from one number, and a second price table drifts from this one.
  * - `dailyWageByRole` — role → wage at each grade.
  *
  * Roles that do not exist in the game yet (`new-car-manager` at T4,

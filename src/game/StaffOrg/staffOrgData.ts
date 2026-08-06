@@ -20,8 +20,13 @@ const ConditionReadConfigSchema = z
   .strict();
 
 const StaffOrgConfigSchema = z.object({
-  hiringCostByTier: z.record(z.string().min(1), z.number().nonnegative()),
   candidatesPerRole: z.number().int().positive(),
+  // The hire fee is NOT here. #355 replaced the flat `hiringCostByTier`
+  // (worker 500 / customer-facing 1000 / manager 2500 / gm 5000) with
+  // `hireFeeMultiple × the candidate's daily wage`, read from
+  // `data/staff-pay.json` — one number prices both signing them and keeping
+  // them, so a grade-5 can never sign for what a greenpea signs for. The old
+  // key is gone from the JSON and the schema both.
   // The headcount ceiling is NOT here. #352 replaced the flat
   // `headcountCapByTier` with the per-role slot table in
   // `data/staff-slots.json` (see `staffSlots.ts`); the cap is the sum of the

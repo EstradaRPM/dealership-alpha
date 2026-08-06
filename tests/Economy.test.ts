@@ -268,7 +268,6 @@ describe('Economy — daily payroll drain', () => {
       slots: slotsEverywhere(9),
       pay: flatPay(WAGE),
       config: {
-        hiringCostByTier: { worker: 0, 'customer-facing': 0, manager: 0, gm: 0 },
         candidatesPerRole: 3,
         conditionRead: loadStaffOrgConfig().conditionRead,
       },
@@ -317,8 +316,12 @@ describe('Economy — daily payroll drain', () => {
   });
 
   it('pushes cash negative rather than throwing — payroll is an obligation', () => {
-    const { clock, economy, staffOrg } = makePayrollSetup(WAGE);
+    // Signing two people now costs five days of each one's wage (#355), so the
+    // store is opened with exactly that plus one day of float: the first
+    // night's drain has nowhere to come from.
+    const { clock, economy, staffOrg } = makePayrollSetup(WAGE * 11);
     hireN(staffOrg, 2);
+    expect(economy.cash).toBe(WAGE);
 
     expect(() => clock.advanceDay()).not.toThrow();
     expect(economy.cash).toBe(WAGE - 2 * WAGE);
