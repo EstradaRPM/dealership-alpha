@@ -63,8 +63,12 @@ price.
 
 ## Capacity model (#305, drain only)
 Concurrent work is bounded by `slots = min(bays, advisors on duty)`:
-- **Bays** are a structural facility-tier ceiling — `config.baysByTier[tier]`,
-  selected by the `facilityTier?` dep (snapshotted per-day; omitted ⇒ 1).
+- **Bays** are what the store has BUILT (#358) — the `bays?` dep, fed by the
+  `Facility` module through the department package and snapshotted per-day, so
+  construction finished today applies tomorrow (omitted ⇒ 1 bay). Both
+  departments read that one bay truth; `config.baysByTier` is **deleted** from
+  both schemas and from `data/tunables.json`. The tier's number became the
+  ceiling on building, not the bay count itself.
 - Per-tick throughput is the sum over the `slots` **busiest** advisors of each
   one's effectiveness-scaled per-slot rate
   (`lerp(minPerSlotThroughput, maxPerSlotThroughput, eff)`), so only `slots`
@@ -109,8 +113,8 @@ jobs miss — cadence-invariance holds across the parts gate.
   - #305: `competitivePriceMultiplier`/`premiumPriceMultiplier` (the posture
     revenue dial ends, replacing the retired `min/maxRevenueMultiplier`),
     `minPerSlotThroughput`/`maxPerSlotThroughput` (per-slot tick throughput,
-    replacing the shop-wide `min/maxDrainPerTick`), `baysByTier` (facility-tier
-    bay ceiling), `maxWaitTicks` (unserved timeout), `unservedCsiHit`.
+    replacing the shop-wide `min/maxDrainPerTick`), `maxWaitTicks` (unserved
+    timeout), `unservedCsiHit`. (`baysByTier` left in #358 — see above.)
   - #304: `rushUnlockTier` (the tier the live wiring's `isRushUnlocked` predicate
     compares against) and `missCsiHit` (the CSI-hit magnitude a missed job
     reports).

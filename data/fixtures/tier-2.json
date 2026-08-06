@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 20,
+    "version": 21,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -9,7 +9,8 @@
       "economy": {
         "schemaVersion": 1,
         "cash": 222733.55345708656,
-        "inventoryAcquisitionSpend": 307300
+        "inventoryAcquisitionSpend": 307300,
+        "ledger": []
       },
       "inventory": {
         "schemaVersion": 1,
@@ -377,7 +378,9 @@
               "experience": 0,
               "deals_closed": 0,
               "days_employed": 0
-            }
+            },
+            "paidGrade": 3,
+            "paidWage": 340
           },
           {
             "id": "staff:grinder_salesperson:1:2",
@@ -398,7 +401,9 @@
               "experience": 0,
               "deals_closed": 0,
               "days_employed": 0
-            }
+            },
+            "paidGrade": 2,
+            "paidWage": 230
           },
           {
             "id": "staff:poached_used_car_manager:1:0",
@@ -424,9 +429,13 @@
               "experience": 0,
               "deals_closed": 0,
               "days_employed": 0
-            }
+            },
+            "paidGrade": 4,
+            "paidWage": 710
           }
-        ]
+        ],
+        "raiseRequests": [],
+        "raiseCooldowns": []
       },
       "staffMorale": {
         "schemaVersion": 1,
@@ -1630,7 +1639,8 @@
       "regulatoryMeter": {
         "pressure": 0,
         "isTerminal": false,
-        "suspensionDaysRemaining": 0
+        "suspensionDaysRemaining": 0,
+        "auditFailed": false
       },
       "tierManager": {
         "schemaVersion": 2,
@@ -1959,7 +1969,8 @@
             "paymentMethod": "finance",
             "downPayment": 2095.273576131097,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 505,
@@ -1969,7 +1980,8 @@
             "paymentMethod": "finance",
             "downPayment": 376.09568744432664,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 3217.384064891783,
@@ -1979,7 +1991,8 @@
             "paymentMethod": "finance",
             "downPayment": 4599.6920324458915,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 3357.1947446084396,
@@ -1989,7 +2002,8 @@
             "paymentMethod": "cash",
             "downPayment": 9839.19474460844,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 2684.682407983175,
@@ -1999,7 +2013,8 @@
             "paymentMethod": "cash",
             "downPayment": 8984.682407983175,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 317,
@@ -2009,7 +2024,8 @@
             "paymentMethod": "finance",
             "downPayment": 541.6413032724608,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 2984,
@@ -2019,7 +2035,8 @@
             "paymentMethod": "cash",
             "downPayment": 12528,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 3281,
@@ -2029,7 +2046,8 @@
             "paymentMethod": "finance",
             "downPayment": 2179.3902402426315,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 2699,
@@ -2039,7 +2057,8 @@
             "paymentMethod": "finance",
             "downPayment": 2875.55719476441,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 1200.357505574657,
@@ -2049,7 +2068,8 @@
             "paymentMethod": "cash",
             "downPayment": 9021.357505574657,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 2862,
@@ -2059,7 +2079,8 @@
             "paymentMethod": "cash",
             "downPayment": 13323,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 2159.9179856412084,
@@ -2069,7 +2090,8 @@
             "paymentMethod": "finance",
             "downPayment": 3417.53901428956,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 1786.6357596591934,
@@ -2079,7 +2101,8 @@
             "paymentMethod": "finance",
             "downPayment": 634.2843975344708,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 2844,
@@ -2089,7 +2112,8 @@
             "paymentMethod": "finance",
             "downPayment": 4639.913428121765,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 963.9332788226466,
@@ -2099,7 +2123,8 @@
             "paymentMethod": "finance",
             "downPayment": 325.4854783320881,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 3416.7850539335013,
@@ -2109,7 +2134,8 @@
             "paymentMethod": "finance",
             "downPayment": 301.55522935730363,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 2311.3072002131303,
@@ -2119,7 +2145,8 @@
             "paymentMethod": "finance",
             "downPayment": 646.8710534765141,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 3160,
@@ -2129,7 +2156,8 @@
             "paymentMethod": "finance",
             "downPayment": 2267.289356950428,
             "term": 72,
-            "apr": 0.129
+            "apr": 0.129,
+            "day": 0
           },
           {
             "frontGross": 6004,
@@ -2139,7 +2167,8 @@
             "paymentMethod": "finance",
             "downPayment": 3609.0368856130244,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 2546.7108379419788,
@@ -2149,7 +2178,8 @@
             "paymentMethod": "finance",
             "downPayment": 482.8213060149926,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 2190.951907393135,
@@ -2159,7 +2189,8 @@
             "paymentMethod": "cash",
             "downPayment": 6055.951907393135,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 3466.015378654298,
@@ -2169,7 +2200,8 @@
             "paymentMethod": "cash",
             "downPayment": 9407.015378654298,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 2584.1317111632998,
@@ -2179,7 +2211,8 @@
             "paymentMethod": "finance",
             "downPayment": 730.2619111382808,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 2047.4611861992817,
@@ -2189,7 +2222,8 @@
             "paymentMethod": "finance",
             "downPayment": 330.9526468945877,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 3034,
@@ -2199,7 +2233,8 @@
             "paymentMethod": "cash",
             "downPayment": 15624,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 5003.713149332198,
@@ -2209,7 +2244,8 @@
             "paymentMethod": "cash",
             "downPayment": 18644.713149332198,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 736,
@@ -2219,7 +2255,8 @@
             "paymentMethod": "finance",
             "downPayment": 2262.8135770164386,
             "term": 66,
-            "apr": 0.189
+            "apr": 0.189,
+            "day": 0
           },
           {
             "frontGross": 2773.1600565481403,
@@ -2229,7 +2266,8 @@
             "paymentMethod": "finance",
             "downPayment": 620.8655507916253,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 2149.075413644445,
@@ -2239,7 +2277,8 @@
             "paymentMethod": "finance",
             "downPayment": 1902.0987851630641,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 2292.4466912003645,
@@ -2249,7 +2288,8 @@
             "paymentMethod": "finance",
             "downPayment": 465.87246972754565,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 5523.600456403565,
@@ -2259,7 +2299,8 @@
             "paymentMethod": "finance",
             "downPayment": 1221.4965254215338,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 2992.7198311281336,
@@ -2269,7 +2310,8 @@
             "paymentMethod": "finance",
             "downPayment": 531.7868872059886,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 2037.823260545967,
@@ -2279,7 +2321,8 @@
             "paymentMethod": "finance",
             "downPayment": 947.3992945270105,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 436,
@@ -2289,7 +2332,8 @@
             "paymentMethod": "cash",
             "downPayment": 3151,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 3029,
@@ -2299,7 +2343,8 @@
             "paymentMethod": "finance",
             "downPayment": 426.6565346394658,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 1702.4447637617359,
@@ -2309,7 +2354,8 @@
             "paymentMethod": "finance",
             "downPayment": 4519.937730594572,
             "term": 84,
-            "apr": 0.059
+            "apr": 0.059,
+            "day": 0
           },
           {
             "frontGross": 5060,
@@ -2319,7 +2365,8 @@
             "paymentMethod": "cash",
             "downPayment": 13305,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 1152.8511079850832,
@@ -2329,7 +2376,8 @@
             "paymentMethod": "cash",
             "downPayment": 9102.851107985083,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 2904,
@@ -2339,7 +2387,8 @@
             "paymentMethod": "finance",
             "downPayment": 4940.905119202578,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 1124.4060176863804,
@@ -2349,7 +2398,8 @@
             "paymentMethod": "cash",
             "downPayment": 10864.40601768638,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 161,
@@ -2359,7 +2409,8 @@
             "paymentMethod": "finance",
             "downPayment": 467.5333775785818,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           },
           {
             "frontGross": 3586.913867161984,
@@ -2369,7 +2420,8 @@
             "paymentMethod": "cash",
             "downPayment": 17411.913867161984,
             "term": 0,
-            "apr": 0
+            "apr": 0,
+            "day": 0
           },
           {
             "frontGross": 2114.9298190088302,
@@ -2379,13 +2431,15 @@
             "paymentMethod": "finance",
             "downPayment": 1103.3032320032132,
             "term": 75,
-            "apr": 0.089
+            "apr": 0.089,
+            "day": 0
           }
         ],
         "dailyCarryingCost": 84
       },
       "tierGate": {
         "schemaVersion": 1,
+        "monthVerdicts": [],
         "flowAccrual": {
           "units": 1,
           "gross": 2114.9298190088302
@@ -2805,6 +2859,14 @@
       "marketIntel": {
         "schemaVersion": 1,
         "activeSubscriptions": []
+      },
+      "facility": {
+        "schemaVersion": 1,
+        "built": {
+          "lotSpaces": 12,
+          "serviceBays": 4,
+          "bodyBays": 0
+        }
       }
     }
   },

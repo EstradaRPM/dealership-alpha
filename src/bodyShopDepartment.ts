@@ -37,6 +37,7 @@ import type { DepartmentQueue } from './game/DepartmentQueue';
 import type { Reputation } from './game/Reputation';
 import type { Weather } from './game/Weather';
 import type { TierManager } from './game/CareerProgression';
+import type { FacilityCapacityReader } from './game/Facility';
 import type { DeptDrain } from './game/FloorSim';
 import type { PartsInventory, PartCategory } from './game/PartsInventory';
 import { loadTunables } from './game/data';
@@ -81,6 +82,9 @@ export interface BodyShopDepartmentDeps {
   economy: Economy;
   staffOrg: StaffOrg;
   tierManager: TierManager;
+  /** #358 the SAME bay truth the Service line reads — this side takes the body
+   *  bays off it. */
+  facility: FacilityCapacityReader;
   departmentQueue: DepartmentQueue;
   reputation: Reputation;
   weather: Weather;
@@ -129,6 +133,7 @@ export function createBodyShopDepartment(
     economy,
     staffOrg,
     tierManager,
+    facility,
     departmentQueue,
     reputation,
     weather,
@@ -425,9 +430,11 @@ export function createBodyShopDepartment(
           }
           return tierManager.currentTier >= bodyShopDispatchConfig.rushUnlockTier;
         },
-        // Bays scale off the current tier (snapshotted per-day, so a tier-up
-        // applies the next day). The drain writes the read-model every tick.
-        facilityTier: tierManager.currentTier,
+        // #358 body bays are BUILT capacity, read from the one bay truth
+        // (`Facility`) rather than the tier's constant. Snapshotted per-day, so
+        // a bay finished today opens tomorrow. The drain writes the read-model
+        // every tick.
+        bays: facility.getBuilt().bodyBays,
         readModel: bodyShopReadModel,
         profile,
       }),

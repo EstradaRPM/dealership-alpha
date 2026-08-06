@@ -25,6 +25,7 @@ import type { DepartmentQueue } from './game/DepartmentQueue';
 import type { Reputation } from './game/Reputation';
 import type { Weather } from './game/Weather';
 import type { TierManager } from './game/CareerProgression';
+import type { FacilityCapacityReader } from './game/Facility';
 import type { DeptDrain } from './game/FloorSim';
 import { loadTunables } from './game/data';
 import { createDepartmentManagerAutomation } from './game/DepartmentLine';
@@ -70,6 +71,9 @@ export interface ServiceDepartmentDeps {
   economy: Economy;
   staffOrg: StaffOrg;
   tierManager: TierManager;
+  /** #358 the one bay truth. The Service line's concurrency ceiling is what the
+   *  store has BUILT, not what its tier grants. */
+  facility: FacilityCapacityReader;
   departmentQueue: DepartmentQueue;
   reputation: Reputation;
   weather: Weather;
@@ -109,6 +113,7 @@ export function createServiceDepartment(
     economy,
     staffOrg,
     tierManager,
+    facility,
     departmentQueue,
     reputation,
     weather,
@@ -331,11 +336,13 @@ export function createServiceDepartment(
           }
           return tierManager.currentTier >= serviceDispatchConfig.rushUnlockTier;
         },
-        // #305 capacity + posture + read-model. facilityTier snapshots the current
-        // tier (this seam is rebuilt per-day, so a tier-up applies the next day);
-        // bays scale off it. getPricingPosture reads the live dial. The drain
-        // writes the capacity read-model every tick.
-        facilityTier: tierManager.currentTier,
+        // #305 capacity + posture + read-model. #358: bays are no longer a
+        // per-tier constant — they are what the store has BUILT, read from the
+        // one bay truth (`Facility`). Snapshotted here because this seam is
+        // rebuilt per-day, so construction finished today applies tomorrow.
+        // getPricingPosture reads the live dial. The drain writes the capacity
+        // read-model every tick.
+        bays: facility.getBuilt().serviceBays,
         getPricingPosture: () => servicePricingPosture,
         readModel: serviceReadModel,
       }),

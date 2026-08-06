@@ -52,7 +52,6 @@ export interface DeptCapacityConfig {
   maxAutoResolveRate: number;
   minPerSlotThroughput: number;
   maxPerSlotThroughput: number;
-  baysByTier: Record<string, number>;
   maxWaitTicks: number;
   unservedCsiHit: number;
   missCsiHit: number;
@@ -143,8 +142,12 @@ export interface DeptDispatchDeps {
   partsInventory?: Pick<PartsInventory, 'consume' | 'rushOrder'>;
   /** #304 whether the rush emergency-order path is unlocked yet (read per-call). */
   isRushUnlocked?: () => boolean;
-  /** #305 structural facility-tier bay count input — selects config.baysByTier. */
-  facilityTier?: number;
+  /** #358 built bays for this department, read from the ONE bay truth (the
+   *  `Facility` module) by the department package and snapshotted per-day like
+   *  the rest of this seam, so construction finished today applies tomorrow.
+   *  Replaced the `facilityTier` + `config.baysByTier` lookup, which made
+   *  capacity a per-tier constant nobody owned. Omitted ⇒ a single bay. */
+  bays?: number;
   /** #305 live capacity read-model the per-tick drain writes each tick. */
   readModel?: DeptReadModelWriter;
   profile: DeptDispatchProfile;
@@ -165,7 +168,8 @@ export interface ServiceDispatchDeps {
   isRushUnlocked?: () => boolean;
   /** #305 service pricing posture, [0,1] on the competitive↔premium dial. */
   getPricingPosture?: () => number;
-  facilityTier?: number;
+  /** #358 built service bays, from the `Facility` module via the Service package. */
+  bays?: number;
   readModel?: ServiceReadModelWriter;
 }
 
@@ -384,9 +388,10 @@ export function createDeptDispatch(deps: DeptDispatchDeps): ServiceDispatch {
 export function createDeptFloorDrain(deps: DeptDispatchDeps): DeptDrain {
   const { bus, staffOrg, readModel, profile } = deps;
   const config = deps.config;
-  const facilityTier = deps.facilityTier ?? 1;
-  const bays =
-    config.baysByTier[String(facilityTier)] ?? config.baysByTier['1'] ?? 0;
+  // #358 one bay truth: the count arrives from the Facility module through the
+  // department package. An unwired seam (legacy/unit setups) is one bay — the
+  // smallest shop that can work at all — so a single advisor still makes a slot.
+  const bays = deps.bays ?? 1;
   const resolveItem = makeDeptResolver(deps);
 
   const pending: Array<{ item: DeptIntakeItem; day: number; arrivalTick: number }> = [];
@@ -632,7 +637,7 @@ function serviceEngineDeps(deps: ServiceDispatchDeps): DeptDispatchDeps {
     config,
     partsInventory: deps.partsInventory,
     isRushUnlocked: deps.isRushUnlocked,
-    facilityTier: deps.facilityTier,
+    bays: deps.bays,
     readModel: deps.readModel,
     profile: serviceProfile(deps, config),
   };

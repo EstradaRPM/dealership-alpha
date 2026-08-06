@@ -116,7 +116,6 @@ const SERVICE_CONFIG: ServiceDispatchConfig = {
   premiumPriceMultiplier: 1.0,
   minPerSlotThroughput: 0.15,
   maxPerSlotThroughput: 0.6,
-  baysByTier: { '1': 2, '2': 4, '3': 6 },
   maxWaitTicks: 9999,
   unservedCsiHit: 3,
   rushUnlockTier: 3,

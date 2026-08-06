@@ -18,10 +18,10 @@ const ServiceDispatchConfigSchema = z.object({
   // shop-wide rate; now per-slot so concurrency scales with bays AND staff.)
   minPerSlotThroughput: z.number().min(0),
   maxPerSlotThroughput: z.number().min(0),
-  // #305 structural bay count by facility tier — the concurrency ceiling that
-  // pairs with advisors-on-duty (slots = min(bays, advisors)). Coarse, not
-  // micromanaged. Keyed by tier string ("1"|"2"|"3").
-  baysByTier: z.record(z.string(), z.number().int().nonnegative()),
+  // (#358 deleted `baysByTier` from here and from data/tunables.json. The bay
+  // count is no longer a per-tier constant this config owns: it is built,
+  // persisted state on the `Facility` module, handed to the engine as the `bays`
+  // dep. The tier's number became the ceiling, not the answer.)
   // #305 the FloorSim-tick age at which a still-waiting job leaves UNSERVED
   // (capacity starvation, distinct from a parts miss). Placeholder pending #286.
   maxWaitTicks: z.number().int().min(1),

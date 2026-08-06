@@ -1,5 +1,6 @@
 import { createEventBus, type EventBus } from '../src/game/EventBus';
 import { createWorld, type World } from '../src/createWorld';
+import { createDefaultFacilitySnapshot } from '../src/game/Facility';
 import {
   snapshotWorld,
   restoreWorld,
@@ -71,8 +72,10 @@ function build(masterSeed: number): { bus: EventBus; world: World } {
 }
 
 /** Promote a fresh world to Tier 3 so BOTH the Service (Tier 2+) and Body Shop
- *  (Tier 3) lanes arm and their drains get bays. The tier read drives floor
- *  capacity; the career:tier_up event arms both queue gates. */
+ *  (Tier 3) lanes arm and their drains get bays. The tier read arms the gates;
+ *  #358 the BAYS are built capacity, so a store that reached Tier 3 also has to
+ *  have built out — which is what a Tier-3 save carries and what the migration
+ *  materializes. */
 function armTier3(bus: EventBus, world: World): void {
   world.tierManager.restoreState({
     currentTier: 3,
@@ -82,6 +85,7 @@ function armTier3(bus: EventBus, world: World): void {
     customersServed: 0,
   });
   bus.publish('career:tier_up', { fromTier: 1, toTier: 3, day: 0 });
+  world.facility.restore(createDefaultFacilitySnapshot(3));
 }
 
 function hireAdvisor(world: World, roleId: string): void {

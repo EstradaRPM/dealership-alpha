@@ -106,6 +106,7 @@ import {
   type CareerEndingsMonitor,
   type CharacterProfile,
 } from './game/CareerProgression';
+import { createFacility, type Facility } from './game/Facility';
 import { createEndCardManager, type EndCardManager } from './game/EndCard';
 import {
   createRegulatoryMeter,
@@ -205,6 +206,9 @@ export interface World {
   historyLog: HistoryLog;
   records: Records;
   marketIntel: MarketIntel;
+  /** #358 built physical capacity — lot spaces + service/body bays — and the
+   *  current tier's ceiling over each. */
+  facility: Facility;
   kpiDashboard: KPIDashboard;
   tierGate: TierGate;
   dayLoop: DayLoopController;
@@ -483,6 +487,14 @@ export function createWorld(deps: {
     if (typeof s === 'number') streaksByTier[Number(tierKey)] = s;
   }
   const tierManager = createTierManager({ bus, streaksByTier });
+  // Facility (#358, A2 R1): what the store has physically BUILT — lot spaces,
+  // service bays, body bays — with the tier's number as the ceiling over each
+  // rather than the answer. Built right after TierManager because the ceiling
+  // reads the live tier, and before the department packages because both take
+  // their bay count from here (the one bay truth that replaced the two
+  // `baysByTier` constants). A new world is seeded at its tier's ceilings, so
+  // nothing about today's play changes; construction (#359) is what moves it.
+  const facility = createFacility({ getTier: () => tierManager.currentTier });
   const regulatoryMeter = createRegulatoryMeter({ bus, economy, tierManager });
   // #270: BankruptcyMonitor — the sole publisher of `career:bankruptcy_terminal`
   // (consumed by EndCardManager to settle a game-over). Built earlier but never
@@ -853,6 +865,7 @@ export function createWorld(deps: {
     economy,
     staffOrg,
     tierManager,
+    facility,
     departmentQueue,
     reputation,
     weather,
@@ -880,6 +893,7 @@ export function createWorld(deps: {
     economy,
     staffOrg,
     tierManager,
+    facility,
     departmentQueue,
     reputation,
     weather,
@@ -1401,6 +1415,7 @@ export function createWorld(deps: {
     historyLog,
     records,
     marketIntel,
+    facility,
     kpiDashboard,
     tierGate,
     dayLoop,

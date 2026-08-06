@@ -2,9 +2,8 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
+import { createDefaultFacilitySnapshot } from '../src/game/Facility';
 import { PeopleTabContainer } from '../src/app/screens/PeopleTabContainer';
-import { loadServiceDispatchConfig } from '../src/game/ServiceDispatch';
-import { loadBodyShopDispatchConfig } from '../src/bodyShopDispatchConfig';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // #323 — Service (T2) and Body Shop (T3) throughput is `min(bays, advisors)`. The
@@ -34,6 +33,9 @@ function worldAtTier(tier: number, masterSeed: number): World {
   const world = createWorld({ bus, masterSeed, characterProfile: PROFILE });
   const tierState = world.tierManager.getSerializableState();
   world.tierManager.restoreState({ ...tierState, currentTier: tier });
+  // #358 bays are BUILT capacity, not a tier constant: a store standing at
+  // tier N has also built out to it. Same shape a tier-N save carries.
+  world.facility.restore(createDefaultFacilitySnapshot(tier));
   return world;
 }
 
@@ -75,7 +77,8 @@ function hireThroughUi(world: World, roleId: string): void {
 describe('#323 advisor hiring reachability', () => {
   it('hires a service advisor through the UI at T2, flipping Service capacity positive', () => {
     const world = worldAtTier(2, 3231);
-    const bays = loadServiceDispatchConfig().baysByTier['2'];
+    // #358 bays are built Facility state now, not a per-tier config constant.
+    const bays = world.facility.getBuilt().serviceBays;
     expect(bays).toBeGreaterThan(0);
 
     // Pre-hire: no advisors ⇒ zero throughput, the live-play hole.
@@ -91,7 +94,7 @@ describe('#323 advisor hiring reachability', () => {
 
   it('hires a body-shop advisor through the UI at T3, flipping Body Shop capacity positive', () => {
     const world = worldAtTier(3, 3232);
-    const bays = loadBodyShopDispatchConfig().baysByTier['3'];
+    const bays = world.facility.getBuilt().bodyBays;
     expect(bays).toBeGreaterThan(0);
 
     expect(slots(bays, world, 'body-shop-advisor')).toBe(0);

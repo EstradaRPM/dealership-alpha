@@ -76,11 +76,15 @@ import {
   createDefaultMarketIntelSnapshot,
   type MarketIntelSnapshot,
 } from './game/MarketIntel';
+import {
+  createDefaultFacilitySnapshot,
+  type FacilitySnapshot,
+} from './game/Facility';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 20;
+export const WORLD_SNAPSHOT_VERSION = 21;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -148,6 +152,9 @@ export type WorldSnapshot = {
     // #178 The wire subscriptions the player is paying for — the money half of
     // news access gating (the staff half is read off the live roster).
     readonly marketIntel: MarketIntelSnapshot;
+    // #358 Built physical capacity — lot spaces + service/body bays. Ceilings
+    // are derived from the live tier, so only what is BUILT is persisted.
+    readonly facility: FacilitySnapshot;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -401,6 +408,23 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         marketIntel: createDefaultMarketIntelSnapshot(),
       },
     }),
+    20: (snap) => ({
+      version: 21,
+      modules: {
+        ...snap.modules,
+        // #358 added Facility — built lot spaces and bays, which used to be
+        // per-tier constants nobody owned. Behavior-neutral: built capacity is
+        // materialized at the save's ACTUAL tier (read from the tierManager
+        // blob, not a hardcoded 1, same idiom as the #314 Body-Shop gate step),
+        // which is exactly the numbers the retired `baysByTier` was already
+        // giving that save. A migrated store keeps running the same bay counts;
+        // what changed is that it now owns them.
+        facility: createDefaultFacilitySnapshot(
+          (snap.modules.tierManager as { currentTier?: number } | undefined)
+            ?.currentTier ?? 1,
+        ),
+      },
+    }),
   };
 
 /**
@@ -471,6 +495,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       prepBet: world.getPrepBet(),
       records: world.records.snapshot(),
       marketIntel: world.marketIntel.snapshot(),
+      facility: world.facility.snapshot(),
     },
   };
 }
@@ -517,4 +542,5 @@ export function restoreWorld(
   world.setPrepBet(snap.modules.prepBet);
   world.marketIntel.restore(snap.modules.marketIntel);
   world.records.restore(snap.modules.records);
+  world.facility.restore(snap.modules.facility);
 }

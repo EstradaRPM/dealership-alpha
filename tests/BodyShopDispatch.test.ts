@@ -10,6 +10,10 @@ import type { PartsInventory, PartCategory } from '../src/game/PartsInventory';
 import type { Reputation } from '../src/game/Reputation';
 import type { Weather } from '../src/game/Weather';
 import type { TierManager } from '../src/game/CareerProgression';
+import {
+  createFacility,
+  type FacilityCapacityReader,
+} from '../src/game/Facility';
 
 const MASTER_SEED = 42;
 
@@ -122,14 +126,14 @@ function stubTier(currentTier: number): TierManager {
 
 // competitive baseline: insurance pass-through 1.0×, retail floor..ceil 1.0..1.4.
 // always-resolve + high maxWaitTicks so capacity-starvation never fires unless a
-// test sets it; bays at Tier 3 generous.
+// test sets it. Bays are no longer config (#358) — they come in through the
+// facility provider below.
 function bsConfig(over: Partial<BodyShopDispatchConfig> = {}): BodyShopDispatchConfig {
   return {
     minAutoResolveRate: 1.0,
     maxAutoResolveRate: 1.0,
     minPerSlotThroughput: 0.15,
     maxPerSlotThroughput: 0.6,
-    baysByTier: { '1': 0, '2': 0, '3': 6, '4': 8, '5': 10 },
     maxWaitTicks: 9999,
     unservedCsiHit: 3,
     rushUnlockTier: 4,
@@ -141,11 +145,22 @@ function bsConfig(over: Partial<BodyShopDispatchConfig> = {}): BodyShopDispatchC
   };
 }
 
+/**
+ * #358 a fixed built-bay count behind the narrow facility read — the shape the
+ * Body Shop package holds. Tests that pin capacity state the bays they mean
+ * rather than the tier that used to imply them.
+ */
+function builtBodyBays(bodyBays: number): FacilityCapacityReader {
+  const capacity = { lotSpaces: 0, serviceBays: 0, bodyBays };
+  return { getBuilt: () => capacity, getCeilings: () => capacity };
+}
+
 function makeDept(
   roster: StaffWithComposites[],
   opts: {
     config?: BodyShopDispatchConfig;
     tier?: number;
+    facility?: FacilityCapacityReader;
     parts?: ReturnType<typeof makeStubParts>;
   } = {},
 ) {
@@ -162,6 +177,10 @@ function makeDept(
     economy,
     staffOrg: makeStaffOrg(roster),
     tierManager: stubTier(opts.tier ?? 3),
+    // #358 the one bay truth. Default is the REAL module at this tier, so the
+    // suite runs on the bays the game actually ships.
+    facility:
+      opts.facility ?? createFacility({ getTier: () => opts.tier ?? 3 }),
     departmentQueue: queue,
     reputation: stubReputation,
     weather: stubWeather,
@@ -356,19 +375,23 @@ describe('BodyShopDispatch — parts gate over collision categories', () => {
 // ── Capacity bound min(bays, advisors) ───────────────────────────────────────
 
 describe('BodyShopDispatch — capacity = min(bays, advisors on duty)', () => {
-  // Flat per-slot rate isolates slot count from skill; 2 bays at Tier 3.
+  // Flat per-slot rate isolates slot count from skill; the store has built 2 bays.
   const FLAT = bsConfig({
     minPerSlotThroughput: 0.5,
     maxPerSlotThroughput: 0.5,
-    baysByTier: { '1': 0, '2': 0, '3': 2, '4': 8, '5': 10 },
   });
+  const TWO_BAYS = builtBodyBays(2);
 
   function advisors(n: number): StaffWithComposites[] {
     return Array.from({ length: n }, (_, i) => makeAdvisor(0.8, `adv-${i}`));
   }
 
   function resolvedWith(roster: StaffWithComposites[]): number {
-    const { bus, dept } = makeDept(roster, { config: FLAT, tier: 3 });
+    const { bus, dept } = makeDept(roster, {
+      config: FLAT,
+      tier: 3,
+      facility: TWO_BAYS,
+    });
     const drain = dept.createFloorDrain();
     bus.publish('bodyshop:intake_ready', intakePayload(1, 30));
     return drainTicks(drain, 20).resolved;
@@ -383,6 +406,29 @@ describe('BodyShopDispatch — capacity = min(bays, advisors on duty)', () => {
 
   it('no advisors ⇒ no throughput regardless of bays', () => {
     expect(resolvedWith([])).toBe(0);
+  });
+
+  // #358 — body bays come from the SAME Facility module the Service line reads.
+  // Driven through the real module so the seam the package uses is under test.
+  it('takes its bay count from the same facility provider', () => {
+    const bodyBaysAt = (tier: number) =>
+      createFacility({ getTier: () => tier }).getBuilt().bodyBays;
+    // Dark below Tier 3 — a T2 store has built no body bays at all, so four
+    // advisors clear nothing; at Tier 3 the same roster works.
+    expect(bodyBaysAt(2)).toBe(0);
+    expect(bodyBaysAt(3)).toBeGreaterThan(0);
+    const resolvedAtTier = (tier: number) => {
+      const { bus, dept } = makeDept(advisors(4), {
+        config: FLAT,
+        tier: 3, // keep the Tier-3 gate open; only the built bays differ
+        facility: builtBodyBays(bodyBaysAt(tier)),
+      });
+      const drain = dept.createFloorDrain();
+      bus.publish('bodyshop:intake_ready', intakePayload(1, 30));
+      return drainTicks(drain, 20).resolved;
+    };
+    expect(resolvedAtTier(2)).toBe(0);
+    expect(resolvedAtTier(3)).toBeGreaterThan(0);
   });
 
   it('throughput scales with advisor skill', () => {
@@ -449,9 +495,12 @@ describe('BodyShopDispatch — live read-model', () => {
     const config = bsConfig({
       minPerSlotThroughput: 0.5,
       maxPerSlotThroughput: 0.5,
-      baysByTier: { '1': 0, '2': 0, '3': 1, '4': 8, '5': 10 },
     });
-    const { bus, dept } = makeDept([makeAdvisor(0.8)], { config, tier: 3 });
+    const { bus, dept } = makeDept([makeAdvisor(0.8)], {
+      config,
+      tier: 3,
+      facility: builtBodyBays(1),
+    });
     const readModel = dept.bodyShopReadModel;
 
     const drain = dept.createFloorDrain();
@@ -478,10 +527,13 @@ describe('BodyShopDispatch — live read-model', () => {
     const config = bsConfig({
       minPerSlotThroughput: 0.5,
       maxPerSlotThroughput: 0.5,
-      baysByTier: { '1': 0, '2': 0, '3': 1, '4': 8, '5': 10 },
       maxWaitTicks: 5,
     });
-    const { bus, dept } = makeDept([makeAdvisor(0.8)], { config, tier: 3 });
+    const { bus, dept } = makeDept([makeAdvisor(0.8)], {
+      config,
+      tier: 3,
+      facility: builtBodyBays(1),
+    });
     const closed: Array<{ bodyShopItemId: string }> = [];
     const unserved: Array<{ bodyShopItemId: string; csiHit: number; waitTicks: number }> = [];
     bus.subscribe('bodyshop:ticket_closed', (e) => closed.push(e));
@@ -512,9 +564,6 @@ describe('BodyShopDispatch — config', () => {
     expect(cfg.minAutoResolveRate).toBeGreaterThanOrEqual(0);
     expect(cfg.maxAutoResolveRate).toBeLessThanOrEqual(1);
     expect(cfg.maxPerSlotThroughput).toBeGreaterThanOrEqual(cfg.minPerSlotThroughput);
-    // Body Shop is dark below Tier 3 — no bays until the showroom tier.
-    expect(cfg.baysByTier['1']).toBe(0);
-    expect(cfg.baysByTier['3']).toBeGreaterThan(0);
     expect(cfg.insuranceRateMultiplier).toBeGreaterThan(0);
     expect(cfg.retailCeilMultiplier).toBeGreaterThanOrEqual(cfg.retailFloorMultiplier);
   });

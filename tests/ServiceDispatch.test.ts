@@ -1,6 +1,7 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createEconomy } from '../src/game/Economy';
 import { createDepartmentQueue } from '../src/game/DepartmentQueue';
+import { createFacility } from '../src/game/Facility';
 import {
   createServiceDispatch,
   createServiceFloorDrain,
@@ -64,7 +65,8 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
 
 // competitive==premium==1.0 so per-ticket revenue == baseRevenue regardless of
 // posture; maxWaitTicks high so capacity-starvation eviction never fires in the
-// throughput/parts tests. baysByTier gives ≥1 bay so a single advisor = 1 slot,
+// throughput/parts tests. An unwired `bays` dep is one bay, so a single advisor
+// = 1 slot,
 // reproducing the pre-#305 single-rate throughput.
 const ALWAYS_RESOLVE_CONFIG: ServiceDispatchConfig = {
   minAutoResolveRate: 1.0,
@@ -73,7 +75,6 @@ const ALWAYS_RESOLVE_CONFIG: ServiceDispatchConfig = {
   premiumPriceMultiplier: 1.0,
   minPerSlotThroughput: 0.15,
   maxPerSlotThroughput: 0.60,
-  baysByTier: { '1': 2, '2': 4, '3': 6 },
   maxWaitTicks: 9999,
   unservedCsiHit: 3,
   rushUnlockTier: 3,
@@ -87,7 +88,6 @@ const NEVER_RESOLVE_CONFIG: ServiceDispatchConfig = {
   premiumPriceMultiplier: 1.0,
   minPerSlotThroughput: 0.15,
   maxPerSlotThroughput: 0.60,
-  baysByTier: { '1': 2, '2': 4, '3': 6 },
   maxWaitTicks: 9999,
   unservedCsiHit: 3,
   rushUnlockTier: 3,
@@ -101,7 +101,6 @@ const NORMAL_CONFIG: ServiceDispatchConfig = {
   premiumPriceMultiplier: 1.0,
   minPerSlotThroughput: 0.15,
   maxPerSlotThroughput: 0.60,
-  baysByTier: { '1': 2, '2': 4, '3': 6 },
   maxWaitTicks: 9999,
   unservedCsiHit: 3,
   rushUnlockTier: 3,
@@ -582,7 +581,7 @@ function makeDrainSetupX(
   roster: StaffWithComposites[],
   opts: {
     config?: ServiceDispatchConfig;
-    facilityTier?: number;
+    bays?: number;
     readModel?: ReturnType<typeof createServiceReadModel>;
     getPricingPosture?: () => number;
   } = {},
@@ -598,7 +597,7 @@ function makeDrainSetupX(
     economy,
     masterSeed: MASTER_SEED,
     config: opts.config ?? NORMAL_CONFIG,
-    facilityTier: opts.facilityTier,
+    bays: opts.bays,
     readModel: opts.readModel,
     getPricingPosture: opts.getPricingPosture,
   });
@@ -659,8 +658,8 @@ describe('ServiceDispatch — #305 capacity = min(bays, advisors on duty)', () =
   // Flat per-slot rate isolates the slot count from advisor skill.
   const FLAT = svcConfig({ minPerSlotThroughput: 0.5, maxPerSlotThroughput: 0.5 });
 
-  function resolvedWith(roster: StaffWithComposites[], facilityTier: number): number {
-    const { bus, drain } = makeDrainSetupX(roster, { config: FLAT, facilityTier });
+  function resolvedWith(roster: StaffWithComposites[], bays: number): number {
+    const { bus, drain } = makeDrainSetupX(roster, { config: FLAT, bays });
     bus.publish('service:intake_ready', makeIntakePayload(1, 30));
     return drainTicks(drain, 20).resolved;
   }
@@ -670,21 +669,40 @@ describe('ServiceDispatch — #305 capacity = min(bays, advisors on duty)', () =
   }
 
   it('adding advisors beyond bays does not raise throughput (bay-bound)', () => {
-    // Tier 1 = 2 bays. 2 advisors saturate them; 4 advisors clear no more.
-    const twoAdv = resolvedWith(advisors(2), 1);
-    const fourAdv = resolvedWith(advisors(4), 1);
+    // 2 built bays. 2 advisors saturate them; 4 advisors clear no more.
+    const twoAdv = resolvedWith(advisors(2), 2);
+    const fourAdv = resolvedWith(advisors(4), 2);
     expect(fourAdv).toBe(twoAdv);
     // And both clear strictly more than a single advisor (1 slot).
-    expect(twoAdv).toBeGreaterThan(resolvedWith(advisors(1), 1));
+    expect(twoAdv).toBeGreaterThan(resolvedWith(advisors(1), 2));
   });
 
   it('adding bays beyond advisors does not raise throughput (advisor-bound)', () => {
-    // 1 advisor = 1 slot whether the facility has 2 bays (T1) or 6 (T3).
-    expect(resolvedWith(advisors(1), 3)).toBe(resolvedWith(advisors(1), 1));
+    // 1 advisor = 1 slot whether the store has built 2 bays or 6.
+    expect(resolvedWith(advisors(1), 6)).toBe(resolvedWith(advisors(1), 2));
   });
 
   it('no advisors ⇒ no throughput regardless of bays', () => {
-    expect(resolvedWith([], 3)).toBe(0);
+    expect(resolvedWith([], 6)).toBe(0);
+  });
+
+  // #358 — the bay count comes from the Facility module (the one bay truth),
+  // not from a `baysByTier` constant this config used to carry. Driven through
+  // a real Facility so the seam the Service package uses is the seam under test.
+  it('takes its bay count from the facility provider', () => {
+    const atTier = (tier: number) =>
+      createFacility({ getTier: () => tier }).getBuilt().serviceBays;
+    // The provider is what the numbers move with: a bigger store, built out,
+    // clears strictly more with the same four advisors.
+    expect(atTier(3)).toBeGreaterThan(atTier(1));
+    expect(resolvedWith(advisors(4), atTier(3))).toBeGreaterThan(
+      resolvedWith(advisors(4), atTier(1)),
+    );
+    // And it is the SAME number the Service package hands the engine — the
+    // count is bay-bound at the provider's value, not at some tier lookup.
+    expect(resolvedWith(advisors(4), atTier(1))).toBe(
+      resolvedWith(advisors(2), atTier(1)),
+    );
   });
 });
 
@@ -692,7 +710,7 @@ describe('ServiceDispatch — #305 per-slot throughput scales with advisor skill
   function resolvedAtSkill(eff: number): number {
     const { bus, drain } = makeDrainSetupX([makeAdvisor(eff)], {
       config: svcConfig(), // min 0.15 / max 0.60 per-slot
-      facilityTier: 1,
+      bays: 2,
     });
     bus.publish('service:intake_ready', makeIntakePayload(1, 30));
     return drainTicks(drain, 30).resolved;
@@ -712,7 +730,7 @@ describe('ServiceDispatch — #305 overflow → wait → unserved + CSI', () => 
     });
     const { bus, economy, drain } = makeDrainSetupX([makeAdvisor(0.8)], {
       config,
-      facilityTier: 1,
+      bays: 2,
     });
     const closed: Array<{ serviceItemId: string }> = [];
     const unserved: Array<{ serviceItemId: string; csiHit: number; waitTicks: number }> = [];
@@ -751,7 +769,7 @@ describe('ServiceDispatch — #305 live capacity read-model', () => {
     const config = svcConfig({ minPerSlotThroughput: 0.5, maxPerSlotThroughput: 0.5 });
     const { bus, drain } = makeDrainSetupX([makeAdvisor(0.8)], {
       config,
-      facilityTier: 1, // 2 bays, 1 advisor → 1 slot
+      bays: 2, // 2 bays, 1 advisor → 1 slot
       readModel,
     });
     bus.publish('service:intake_ready', makeIntakePayload(1, 5));
@@ -777,7 +795,7 @@ describe('ServiceDispatch — #305 live capacity read-model', () => {
     const readModel = createServiceReadModel();
     const { bus, drain } = makeDrainSetupX(
       [makeAdvisor(0.8, 50, 'a'), makeAdvisor(0.8, 50, 'b'), makeAdvisor(0.8, 50, 'c'), makeAdvisor(0.8, 50, 'd')],
-      { config: svcConfig(), facilityTier: 1, readModel }, // 2 bays, 4 advisors → 2 slots
+      { config: svcConfig(), bays: 2, readModel }, // 2 bays, 4 advisors → 2 slots
     );
     bus.publish('service:intake_ready', makeIntakePayload(1, 1)); // a single job
     drain.drain({ day: 1, tick: 1 });
@@ -789,7 +807,7 @@ describe('ServiceDispatch — #305 live capacity read-model', () => {
 
   it('with no advisors slots is 0, utilization 0, and the backlog grows', () => {
     const readModel = createServiceReadModel();
-    const { bus, drain } = makeDrainSetupX([], { config: svcConfig(), facilityTier: 1, readModel });
+    const { bus, drain } = makeDrainSetupX([], { config: svcConfig(), bays: 2, readModel });
     bus.publish('service:intake_ready', makeIntakePayload(1, 3));
     drain.drain({ day: 1, tick: 1 });
     const load = readModel.read();
@@ -811,7 +829,6 @@ describe('ServiceDispatch — config', () => {
     expect(cfg.competitivePriceMultiplier).toBeGreaterThan(0);
     expect(cfg.premiumPriceMultiplier).toBeGreaterThanOrEqual(cfg.competitivePriceMultiplier);
     expect(cfg.maxPerSlotThroughput).toBeGreaterThanOrEqual(cfg.minPerSlotThroughput);
-    expect(cfg.baysByTier['1']).toBeGreaterThan(0);
     expect(cfg.maxWaitTicks).toBeGreaterThan(0);
   });
 });

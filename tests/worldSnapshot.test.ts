@@ -20,6 +20,11 @@ import {
 } from '../src/worldSnapshot';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 import { createDefaultRecordsSnapshot } from '../src/game/Records';
+import {
+  createDefaultFacilitySnapshot,
+  ceilingsAtTier,
+  loadFacilityCeilings,
+} from '../src/game/Facility';
 
 // #188 — the save/load tracer: the world-serialization seam proven end to end
 // with the two smallest stateful values (GameClock.day + Economy.cash). Locks
@@ -993,6 +998,49 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     // …and every pre-existing blob rides through untouched.
     expect(migrated.modules.gameClock).toEqual(current.modules.gameClock);
     expect(migrated.modules.records).toEqual(current.modules.records);
+  });
+
+  it('round-trips built facility capacity (#358)', () => {
+    const { world } = build(358);
+    const built = world.facility.getBuilt();
+    // A fresh Tier-1 world holds the tier's constants — the numbers the retired
+    // `baysByTier` was giving it.
+    expect(built).toEqual(world.facility.getCeilings());
+
+    const persisted = JSON.parse(
+      JSON.stringify(snapshotWorld(world)),
+    ) as PersistedWorldSnapshot;
+    const { world: rebuilt } = build(358);
+    restoreWorld(persisted, rebuilt);
+    expect(rebuilt.facility.getBuilt()).toEqual(built);
+  });
+
+  it("migrates pre-facility saves to the tier's constant capacity (#358)", () => {
+    const { world } = build(3581);
+    const current = snapshotWorld(world);
+    const { facility, ...legacyModules } = current.modules;
+    expect(facility.schemaVersion).toBe(1);
+
+    // A v20 save that had reached Tier 3: the migration must read that save's
+    // ACTUAL tier, not default to 1, or the store would silently lose the bays
+    // it had been running on.
+    const persisted: PersistedWorldSnapshot = {
+      version: 20,
+      modules: {
+        ...legacyModules,
+        tierManager: { ...current.modules.tierManager, currentTier: 3 },
+      },
+    };
+    const migrated = migrateWorldSnapshot(persisted);
+
+    expect(migrated.version).toBe(WORLD_SNAPSHOT_VERSION);
+    expect(migrated.modules.facility).toEqual(createDefaultFacilitySnapshot(3));
+    // Those ARE the numbers a Tier-3 store was already running.
+    expect(migrated.modules.facility.built.serviceBays).toBe(
+      ceilingsAtTier(loadFacilityCeilings(), 3).serviceBays,
+    );
+    // …and every pre-existing blob rides through untouched.
+    expect(migrated.modules.gameClock).toEqual(current.modules.gameClock);
   });
 
   // The AC round-trip: write a save at version N, bump the runtime to N+1 with a

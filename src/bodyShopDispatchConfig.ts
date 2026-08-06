@@ -17,7 +17,9 @@ const BodyShopDispatchConfigSchema = z.object({
   maxAutoResolveRate: z.number().min(0).max(1),
   minPerSlotThroughput: z.number().min(0),
   maxPerSlotThroughput: z.number().min(0),
-  baysByTier: z.record(z.string(), z.number().int().nonnegative()),
+  // (#358 deleted `baysByTier` from here and from data/tunables.json — body bays
+  // are built, persisted `Facility` state handed to the shared engine as `bays`,
+  // the same one bay truth the Service line reads.)
   maxWaitTicks: z.number().int().min(1),
   unservedCsiHit: z.number().min(0),
   // The tier at/above which the rush emergency-order path unlocks (mirrors
