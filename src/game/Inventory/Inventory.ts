@@ -50,10 +50,39 @@ export interface InventorySnapshot {
   readonly lotVehicles: readonly LotVehicle[];
 }
 
+/**
+ * How full the lot is (#361, A2 R2). `occupied` counts **every** owned unit —
+ * a car inside the frontline hold and a car with recon outstanding are both
+ * sitting on the lot costing money, and there is no off-lot state in the model.
+ * `built` is the Facility's built lot spaces, read live, so a finished
+ * construction job reopens buying with no further player action.
+ *
+ * `occupied` can legitimately exceed `built`: a trade always lands (it is part
+ * of a sale already made), and that is the one way over the cap. Buying stays
+ * frozen until the lot is back under it.
+ */
+export interface LotOccupancy {
+  readonly occupied: number;
+  readonly built: number;
+  /** Spaces left to buy into; 0 at or over the cap (never negative). */
+  readonly spacesOpen: number;
+  /** `true` when no buy may be made — the auction's "no spaces open". */
+  readonly atCapacity: boolean;
+}
+
 export interface Inventory {
   getAuctionListings(): readonly AuctionListing[];
   getLotVehicles(): readonly LotVehicle[];
   getLotVehicle(vehicleId: string): LotVehicle | undefined;
+  /**
+   * Lot occupancy against built spaces (#361). The one number the Lot room and
+   * the auction surface both state ("31 of 35 spaces"); neither re-derives it.
+   */
+  getLotOccupancy(): LotOccupancy;
+  /**
+   * Buy a listing outright. Throws when the lot has no space for it (#361) —
+   * the cap is checked at the bid, so units already won this pass count.
+   */
   buyFromAuction(listingId: string): void;
   /**
    * Materialize a customer's accepted trade-in as a new lot vehicle (#171).
@@ -64,6 +93,12 @@ export interface Inventory {
    * auction buy, with the staff condition-read confidence standing in for
    * source reliability, so a trade can hide a lemon. Emits
    * `inventory:vehicle_acquired_via_trade`; the unit is on the lot immediately.
+   *
+   * #361: a trade **always lands**, even at or over the lot cap — it is part of
+   * a sale you already made, and refusing it would unwind a closed deal. It may
+   * put the lot at 36 of 35; buying is then frozen until you are back under.
+   * The rule is self-correcting by construction: the deal that brings a trade
+   * in also takes a car out.
    */
   acquireFromTrade(acquisition: TradeAcquisitionInput): LotVehicle;
   /**
@@ -116,6 +151,14 @@ export interface InventoryDeps {
    * default to tier 1 (the baseline APR).
    */
   getTier?: () => number;
+  /**
+   * Built lot spaces — the cap on buying (#361, A2 R2). Read live off the
+   * Facility module's built capacity at the composition root, so a finished
+   * construction job reopens buying the moment the space is standing and no
+   * per-tier lot table lives beside it. Omit (test harnesses without a
+   * Facility) ⇒ an uncapped lot, the pre-#361 behavior.
+   */
+  getBuiltLotSpaces?: () => number;
   vehicleData?: VehicleData;
   /**
    * Live book-value provider used by the recon-abandon path (#162). Receives
@@ -186,6 +229,9 @@ export function createInventory(deps: InventoryDeps): Inventory {
     rollAuctionSourceReliability(masterSeed, loadAuctionSourcesConfig());
   const inventoryConfig = deps.inventoryConfig ?? loadInventoryConfig();
   const getTier = deps.getTier ?? (() => 1);
+  // #361: no Facility wired ⇒ no cap. Test harnesses that never build a store
+  // keep the pre-cap behavior rather than being silently frozen at zero spaces.
+  const getBuiltLotSpaces = deps.getBuiltLotSpaces ?? (() => Number.POSITIVE_INFINITY);
   const bookValueFn =
     deps.bookValueFn ?? ((v: LotVehicle) => v.purchasePrice + v.reconCost);
   const marketPriceFn = deps.marketPriceFn;
@@ -213,6 +259,23 @@ export function createInventory(deps: InventoryDeps): Inventory {
   }
 
   /**
+   * How full the lot is right now (#361). One rule: **every owned unit takes a
+   * space** — recon and the frontline hold are states of a car that is already
+   * sitting on your lot, not a place it goes instead. Built spaces are read
+   * live, so finished construction reopens buying by itself.
+   */
+  function lotOccupancy(): LotOccupancy {
+    const occupied = lotVehicles.size;
+    const built = getBuiltLotSpaces();
+    return {
+      occupied,
+      built,
+      spacesOpen: Math.max(0, built - occupied),
+      atCapacity: occupied >= built,
+    };
+  }
+
+  /**
    * UCM sourcing auto-fill (#293, M6). After the board + lot pass, the used-car
    * desk auto-buys the listings the composition root selected against the
    * player's sourcing lean (gated on `condition_reading`; off-lean drift by
@@ -221,11 +284,20 @@ export function createInventory(deps: InventoryDeps): Inventory {
    * current board, so `buyFromAuction` resolves it; bought units get
    * `arrivalDay = currentDay` and start carrying the next day (matching a manual
    * prep-window buy). No-op when no auto-fill is wired or nothing scores in.
+   *
+   * #361: the desk stops at the lot cap. Each buy occupies its space
+   * immediately, so re-reading occupancy inside the loop is what makes "you
+   * cannot win six cars into four spaces" true for the auto-buyer as well as
+   * for the player. The desk *stops* rather than throwing — a full lot is a
+   * normal morning, not a programming error.
    */
   function autoSource(): void {
     if (!autoSourceFn) return;
     const ids = autoSourceFn(auctionListings);
-    for (const id of ids) buyFromAuctionImpl(id);
+    for (const id of ids) {
+      if (lotOccupancy().atCapacity) return;
+      buyFromAuctionImpl(id);
+    }
   }
 
   function buyFromAuctionImpl(listingId: string): void {
@@ -235,6 +307,16 @@ export function createInventory(deps: InventoryDeps): Inventory {
     if (listing.inspectionStatus === 'pending') {
       throw new Error(
         `Listing "${listingId}" has a pending inspection — purchase blocked until day ${listing.inspectionAvailableDay}`,
+      );
+    }
+    // #361 (A2 R2): the lot cap governs BUYING, checked here at the bid so
+    // units already won this pass count against it. A trade is the one thing
+    // that lands regardless (`acquireFromTrade`) and is the only way over the
+    // cap; while over, this refusal keeps buying frozen until a car goes out.
+    const occupancy = lotOccupancy();
+    if (occupancy.atCapacity) {
+      throw new Error(
+        `No space on the lot for "${listingId}" — ${occupancy.occupied} of ${occupancy.built} spaces taken`,
       );
     }
 
@@ -677,6 +759,8 @@ export function createInventory(deps: InventoryDeps): Inventory {
     getLotVehicle(vehicleId) {
       return lotVehicles.get(vehicleId);
     },
+
+    getLotOccupancy: lotOccupancy,
 
     buyFromAuction(listingId) {
       buyFromAuctionImpl(listingId);

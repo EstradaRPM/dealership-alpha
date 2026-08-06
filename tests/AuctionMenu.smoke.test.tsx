@@ -1,7 +1,26 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { AuctionMenu } from '../src/ui/AuctionMenu';
-import type { AuctionListing, LotVehicle } from '../src/game/Inventory';
+import type {
+  AuctionListing,
+  LotOccupancy,
+  LotVehicle,
+} from '../src/game/Inventory';
+
+// #361: the lane spends spaces as well as cash. Room to buy is the default for
+// every pre-existing case; the cap gets its own describe below.
+const OPEN_LOT: LotOccupancy = {
+  occupied: 4,
+  built: 12,
+  spacesOpen: 8,
+  atCapacity: false,
+};
+const FULL_LOT: LotOccupancy = {
+  occupied: 12,
+  built: 12,
+  spacesOpen: 0,
+  atCapacity: true,
+};
 
 const mockListing: AuctionListing = {
   id: 'auction-day1-0-vanda_sedan',
@@ -59,6 +78,7 @@ describe('AuctionMenu — smoke', () => {
           listings={[mockListing]}
           lotVehicles={[mockLotVehicle]}
           cash={50000}
+          lotOccupancy={OPEN_LOT}
           onBuy={jest.fn()}
           onClose={jest.fn()}
         />,
@@ -72,6 +92,7 @@ describe('AuctionMenu — smoke', () => {
         listings={[mockListing]}
         lotVehicles={[]}
         cash={50000}
+        lotOccupancy={OPEN_LOT}
         onBuy={jest.fn()}
         onClose={jest.fn()}
       />,
@@ -86,6 +107,7 @@ describe('AuctionMenu — smoke', () => {
         listings={[mockListing]}
         lotVehicles={[]}
         cash={50000}
+        lotOccupancy={OPEN_LOT}
         valuationFor={() => ({ bookValue: 11000, marketPrice: 13500 })}
         sourceLabelFor={(id) => (id === 'manheim_digital' ? 'Manheim Digital' : id)}
         onBuy={jest.fn()}
@@ -102,6 +124,7 @@ describe('AuctionMenu — smoke', () => {
         listings={[]}
         lotVehicles={[mockLotVehicle]}
         cash={50000}
+        lotOccupancy={OPEN_LOT}
         onBuy={jest.fn()}
         onClose={jest.fn()}
       />,
@@ -117,6 +140,7 @@ describe('AuctionMenu — smoke', () => {
         listings={[]}
         lotVehicles={[]}
         cash={50000}
+        lotOccupancy={OPEN_LOT}
         onBuy={jest.fn()}
         onClose={jest.fn()}
       />,
@@ -130,10 +154,78 @@ describe('AuctionMenu — smoke', () => {
         listings={[]}
         lotVehicles={[]}
         cash={27500}
+        lotOccupancy={OPEN_LOT}
         onBuy={jest.fn()}
         onClose={jest.fn()}
       />,
     );
     expect(getByText('Cash: $27,500')).toBeTruthy();
+  });
+});
+
+// #361 (A2 R2): the lot cap governs BUYING. Lot size has been CSV tier truth
+// since the beginning and nothing enforced it, so "match your inventory to
+// demand" had no squeeze in it. At the cap the lane still reads — you can study
+// what you cannot buy — but bidding is closed, because the engine would refuse
+// the buy and a button that throws is not an offer.
+describe('#361 AuctionMenu — the lot cap', () => {
+  it('states occupied of built spaces', () => {
+    const { getByTestId } = render(
+      <AuctionMenu
+        listings={[mockListing]}
+        lotVehicles={[]}
+        cash={50000}
+        lotOccupancy={OPEN_LOT}
+        onBuy={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    );
+    expect(getByTestId('auction-lot-occupancy').props.children.join('')).toBe(
+      'Lot: 4 of 12 spaces',
+    );
+  });
+
+  it('closes bidding and says no spaces are open at the cap', () => {
+    const onBuy = jest.fn();
+    const { getByTestId, getByText, queryByTestId } = render(
+      <AuctionMenu
+        listings={[mockListing]}
+        lotVehicles={[]}
+        cash={50000}
+        lotOccupancy={FULL_LOT}
+        onBuy={onBuy}
+        onClose={jest.fn()}
+      />,
+    );
+
+    expect(getByTestId('auction-bidding-closed')).toBeTruthy();
+
+    // The board still reads, and the unit still opens — what is closed is the
+    // bid itself.
+    fireEvent.press(getByText('2020 Honda Civic'));
+    const buy = getByText('No Spaces Open');
+    fireEvent.press(buy);
+    expect(onBuy).not.toHaveBeenCalled();
+
+    // Not a cash refusal — the player has the money and it must not say so.
+    expect(queryByTestId('Insufficient Funds')).toBeNull();
+  });
+
+  it('reopens bidding once a space is open', () => {
+    const onBuy = jest.fn();
+    const { getByText, queryByTestId } = render(
+      <AuctionMenu
+        listings={[mockListing]}
+        lotVehicles={[]}
+        cash={50000}
+        lotOccupancy={{ occupied: 11, built: 12, spacesOpen: 1, atCapacity: false }}
+        onBuy={onBuy}
+        onClose={jest.fn()}
+      />,
+    );
+    expect(queryByTestId('auction-bidding-closed')).toBeNull();
+    fireEvent.press(getByText('2020 Honda Civic'));
+    fireEvent.press(getByText('Buy for $12,000'));
+    expect(onBuy).toHaveBeenCalledWith(mockListing.id);
   });
 });

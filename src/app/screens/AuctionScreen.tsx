@@ -35,6 +35,9 @@ export function AuctionScreen({
         listings={world.inventory.getAuctionListings()}
         lotVehicles={lotVehicles}
         cash={cash}
+        // #361: spaces are the second thing the lane spends. Read live so a
+        // construction job that landed this morning reopens bidding by itself.
+        lotOccupancy={world.inventory.getLotOccupancy()}
         valuationFor={world.marketEconomy.valuationFor}
         sourceLabelFor={world.marketEconomy.sourceLabelFor}
         conditionReadFor={(l) =>

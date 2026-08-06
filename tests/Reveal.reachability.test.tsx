@@ -40,6 +40,9 @@ describe('#319 The Reveal — reachable through the live day-close pipeline', ()
     );
     for (const listing of listings) {
       if (world.economy.cash - listing.askingPrice < CASH_BUFFER) break;
+      // #361: spaces are as finite as cash — a tier-1 lot holds six cars and
+      // the seed lot already parks three of them.
+      if (world.inventory.getLotOccupancy().atCapacity) break;
       world.inventory.buyFromAuction(listing.id);
     }
     let gross = 0;
@@ -120,6 +123,9 @@ describe('#320 starred win reactions — reachable through the live close flow',
     );
     for (const listing of listings) {
       if (world.economy.cash - listing.askingPrice < CASH_BUFFER) break;
+      // #361: spaces are as finite as cash — a tier-1 lot holds six cars and
+      // the seed lot already parks three of them.
+      if (world.inventory.getLotOccupancy().atCapacity) break;
       world.inventory.buyFromAuction(listing.id);
     }
     let gross = 0;
@@ -246,6 +252,9 @@ describe('#322 morning prep bet → verdict scoreline — reachable through the 
     );
     for (const listing of listings) {
       if (world.economy.cash - listing.askingPrice < CASH_BUFFER) break;
+      // #361: spaces are as finite as cash — a tier-1 lot holds six cars and
+      // the seed lot already parks three of them.
+      if (world.inventory.getLotOccupancy().atCapacity) break;
       world.inventory.buyFromAuction(listing.id);
     }
     let gross = 0;
@@ -324,6 +333,9 @@ describe('#330 crowned record reactions — reachable through the live records f
     );
     for (const listing of listings) {
       if (world.economy.cash - listing.askingPrice < CASH_BUFFER) break;
+      // #361: spaces are as finite as cash — a tier-1 lot holds six cars and
+      // the seed lot already parks three of them.
+      if (world.inventory.getLotOccupancy().atCapacity) break;
       world.inventory.buyFromAuction(listing.id);
     }
     let gross = 0;

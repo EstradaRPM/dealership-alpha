@@ -8,6 +8,7 @@ import {
   StyleSheet,
   type TextStyle,
 } from 'react-native';
+import type { LotOccupancy } from '../../game/Inventory';
 import { useTheme } from '../theme';
 import { Surface, SectionHeader, Badge, Button } from '../kit';
 import { ChipRow } from '../DeptControls';
@@ -47,6 +48,13 @@ export interface LotPricingStrategyOption {
 
 export interface LotRoomProps {
   vehicles: readonly LotRoomVehicle[];
+  /**
+   * How full the lot is against its built spaces (#361). Straight off
+   * `Inventory.getLotOccupancy()` — the room states the engine's numbers and
+   * never counts the list itself, because a car in prep occupies a space just
+   * like a car out front and only the engine holds that rule.
+   */
+  occupancy: LotOccupancy;
   onSetAskingPrice: (vehicleId: string, price: number) => void;
   /** Open the per-vehicle real-time pricing screen (#175). */
   onOpenPricing: (vehicleId: string) => void;
@@ -131,8 +139,25 @@ function StockRow({
  *
  * Pure view: the composition root assembles the model and owns every write.
  */
+/**
+ * The lot's own sentence about how full it is (#361). Plain language, one line:
+ * the two numbers first, then what they mean for buying. "Over by 1" is a real
+ * state — a trade always lands, even past the cap — so it says so rather than
+ * clamping to "full".
+ */
+function occupancyLine(occupancy: LotOccupancy): string {
+  const { occupied, built, spacesOpen } = occupancy;
+  const taken = `${occupied} of ${built} spaces taken`;
+  if (occupied > built) {
+    return `${taken} · over by ${occupied - built} — buying is frozen until you sell one`;
+  }
+  if (spacesOpen === 0) return `${taken} · no spaces open`;
+  return `${taken} · ${spacesOpen} open`;
+}
+
 export function LotRoom({
   vehicles,
+  occupancy,
   onSetAskingPrice,
   onOpenPricing,
   pricingStrategyOptions,
@@ -166,6 +191,9 @@ export function LotRoom({
       <ScrollView contentContainerStyle={s.body}>
         <Surface testID="lot-stock-list">
           <SectionHeader title="Stock on the Lot" />
+          <Text style={s.hint} testID="lot-occupancy">
+            {occupancyLine(occupancy)}
+          </Text>
           <Text style={s.hint}>
             {vehicles.length === 0
               ? 'Nothing in stock yet.'
@@ -224,7 +252,9 @@ export function LotRoom({
           <Surface testID="lot-sourcing">
             <SectionHeader title="Buy Inventory" />
             <Text style={s.hint}>
-              The wholesale auction — where the next unit on this lot comes from.
+              {occupancy.atCapacity
+                ? 'No spaces open — sell a unit before you buy another.'
+                : 'The wholesale auction — where the next unit on this lot comes from.'}
             </Text>
             <View style={s.actionRow}>
               <Button

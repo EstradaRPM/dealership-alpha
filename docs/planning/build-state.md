@@ -14,9 +14,9 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
 `path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **#352–#357 closed phase 6 (C1 staff-teeth); #358, #359 + #360 have landed — next
-unit: BUILD #361**, the lot cap on buying. Work them in number order; the deps are stated in
-each issue's Notes.
+order**. **#352–#357 closed phase 6 (C1 staff-teeth); #358–#361 have landed — next unit:
+BUILD #362**, wholesale this unit. Work them in number order; the deps are stated in each
+issue's Notes.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -29,7 +29,7 @@ each issue's Notes.
 | ~~#358~~ | ~~`src/game/Facility/` owns built spaces + bays, one bay truth; `baysByTier` retired~~ **BUILT 2026-08-06** | 7 |
 | ~~#359~~ | ~~construction: buy capacity with cash + days, ceiling enforced, Growth build surface~~ **BUILT 2026-08-06** | 7 |
 | ~~#360~~ | ~~facility score lights the dormant tier-gate `facility` face~~ **BUILT 2026-08-06** | 7 |
-| #361 | lot cap governs buying ("31 of 35"), trade always lands | 7 |
+| ~~#361~~ | ~~lot cap governs buying ("31 of 35"), trade always lands~~ **BUILT 2026-08-06** | 7 |
 | #362 | wholesale this unit — the aged-inventory release valve | 7 |
 
 (Phase 4 B3 closed 2026-07-22 — #176, #177, #178; #179 landed earlier in A4.)
@@ -201,6 +201,29 @@ each issue's Notes.
   only at tier 3. To see it on web, edit `slot:<id>` (NOT `snapshot:<id>` — the live save the
   app loads is the slot record) and set `modules.tierManager.currentTier` to 3.
 
+- **Buying cars is capped now, and any test that bulk-buys the board will fail** (#361). Four
+  suites did — `Composition.completeness`, `DemandShaper.reachability`, `Reveal.reachability`,
+  `MatchPayoff.reachability` — all with "buy every affordable listing" loops written when the
+  lot was unlimited. The fix is one line, `if (world.inventory.getLotOccupancy().atCapacity)
+  break;`, not a bigger lot: a **tier-1 lot holds six cars and the #296 seed already parks
+  three of them**, so a green world can buy exactly three. Do not "fix" a new failure of this
+  shape by raising a ceiling.
+- **`Inventory` gained ONE new read and ONE new dep, and neither has a second copy** (#361).
+  `getLotOccupancy()` → `{ occupied, built, spacesOpen, atCapacity }` is the only place the
+  rule lives; both surfaces state it and neither counts its own list. Built spaces arrive
+  through `getBuiltLotSpaces?: () => number`, wired to `facility.getBuilt().lotSpaces` — the
+  same closure idiom as the bay seam, read live so finished construction reopens the lane by
+  itself. **Omitted ⇒ uncapped**, which is what keeps the pre-#361 harnesses honest; a
+  0-default would have silently frozen every test world.
+- **`occupied >= built` is the freeze, so "back at the cap" is still frozen.** A trade always
+  lands and can put the lot at 7 of 6; selling one leaves 6 of 6, which still refuses a buy.
+  The rule is "back **under**", not "no longer over" — a test asserting the lane reopens after
+  one sale is asserting the wrong rule.
+- **A car in prep occupies a space.** Recon is a cost, not a place, and the #295 frontline hold
+  only governs whether walk-ins can be *shown* the car. No off-lot state was invented and none
+  should be — prep-as-its-own-capacity is one of A2 R2's five recorded rejections, along with
+  forced wholesale, the overflow lot, refusing the trade, and a soft cap with a fee.
+
 ## Phase table
 
 Status: `pending` → `active` → `done`. "Decision first" = a DECIDE unit must run before
@@ -220,7 +243,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
-| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 + #358–#360 built; #361–#362 open |
+| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 + #358–#361 built; #362 open |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
@@ -240,6 +263,45 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-06 — **BUILT #361** (the lot cap governs buying — *6 of 6 spaces taken · no spaces
+  open*). Lot size has been CSV tier truth since the beginning and nothing enforced it, so
+  "match your inventory to demand" had no squeeze in it. Now it does: a full lot at the wrong
+  end of the demand mix is a problem you have to sell your way out of.
+  **One number, and every owned car is in it — prep included.** `Inventory.getLotOccupancy()`
+  is the only place the rule lives; the Lot room and the auction lane both state it and
+  neither counts its own list. There is no off-lot state in the model and none was invented:
+  recon is a cost, not a place, and the #295 frontline hold only governs whether walk-ins can
+  be *shown* the car. A unit in prep is sitting on your lot costing you money either way, and
+  prep-as-its-own-capacity is one of A2 R2's five recorded rejections.
+  **Checked at the bid, so units already won count.** `buyFromAuction` throws; the UCM's
+  auto-source **stops** instead, because a full lot is a normal morning and not a programming
+  error. That is what makes "you cannot win six cars into four spaces" true for the desk as
+  well as the player. A refusal changes nothing — no cash moves, the listing stays on the
+  board — the same shape #359 gave a refused construction buy.
+  **A trade always lands, and may put you at 7 of 6.** It is part of a sale already made;
+  refusing it would unwind a closed deal. Buying then stays frozen until occupancy is back
+  **under** the cap — 6 of 6 is still frozen, "under" not "no longer over". Self-correcting by
+  construction: the deal that brings a trade in also takes a car out. No overflow lot, no
+  forced dump, no new vehicle state.
+  **Built spaces come from Facility and are read live**, through `getBuiltLotSpaces` — the
+  same closure idiom as the bay seam, never a module reference. So a construction job that
+  landed this morning reopens the lane with no further player action, which is #359 and #361
+  meeting: you buy the space, then you buy the car. Omitting the dep leaves the lot uncapped,
+  which is what keeps pre-#361 harnesses honest.
+  **Four suites bulk-bought the board and now stop at the cap.** A tier-1 lot holds six cars
+  and the #296 seed already parks three, so a green world can buy exactly three — the loops
+  gained one `atCapacity` break each, not a bigger lot.
+  **Driven on web at the T2 fixture, single clicks.** *5 of 12 spaces taken · 7 open* on the
+  Lot room and *Lot: 5 of 12 spaces* in the lane; bought a $7,000 Cherokee and watched both
+  tick to 6 while cash fell exactly $7,000. Then stood the store at its cap in the saved
+  `facility` blob (lotSpaces → 6) and reloaded: **6 of 6 spaces taken · no spaces open**, the
+  lane's count in red, the closed banner above the board, and the buy button reading **No
+  Spaces Open** with $215,734 in the bank — deliberately not "Insufficient Funds", because it
+  is not a money refusal. Closed day 31 with the lot full: the recap read *"Your lot was SUVs;
+  the crowd wanted sedans"* with five sedan walk-aways, and the UCM auto-source bought nothing
+  and threw nothing on the rollover. 216 suites / **2828** tests, typecheck clean.
+  Next: **BUILD #362** (wholesale this unit — the aged-inventory release valve).
 
 - 2026-08-06 — **DIRECTOR-REQUESTED, NOT A `/next` UNIT: People tab rebuilt as collapsible
   department panels.** No issue number and no phase moved — the director asked for it directly
@@ -327,58 +389,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   bars lit. **The live save is `slot:<id>`, not `snapshot:<id>`** — editing the latter changed
   nothing and cost a reload to find out. 216 suites / **2806** tests, typecheck clean.
   Next: **BUILD #361** (lot cap governs buying — "31 of 35" — trade always lands).
-
-- 2026-08-06 — **BUILT #359** (construction — capacity is bought with cash and days).
-  *Lot spaces · 8 of 12 built · $3,000 each · 2 days to build* → **Build 4 spaces —
-  $12,000** → *Building 4 spaces — opens day 33*. Physical capacity stopped being a
-  number you were handed and became a number you buy, which is what A2 R1 was for.
-  **The construction DELAY is the mechanic, not a garnish.** Instant capacity collapses
-  the decision to "do I have the cash"; a two-to-three-day build makes you buy capacity
-  *ahead* of demand, which is the actual dealership decision. Stored as an absolute
-  `completesOnDay` compared against the current day at the morning settle — the #295
-  frontline-hold idiom exactly, so nothing decrements a counter that could drift out of
-  step with the calendar across a save/load. Also answers the tier CSV's own open row 16
-  ("Time to upgrade? construction time?").
-  **A block is the size of one job, not a divisor.** `blockSize` is clamped down to the
-  room left and priced for what it actually builds — 5 against a gap of 4 builds 4 for
-  $12,000 — so the ceiling is always exactly reachable *without a second pricing rule*.
-  The alternative (a full-price partial block, or a prorated "last block") is two rules
-  where one will do.
-  **Committed capacity is built PLUS in flight, and that is what the ceiling measures.**
-  It is why the same space can never be paid for twice, and why the lot button flipped to
-  "Built out to the tier limit" the instant the job was scheduled rather than three days
-  later. In-flight units are worth nothing on the floor until they land — `getBuilt()`
-  never counts them.
-  **A refusal changes nothing at all.** `at-ceiling` and `cannot-afford` are checked
-  before the debit, so no cash moves and no job is scheduled; the container commits and
-  re-reads rather than guarding first, because the engine owns every rule the button could
-  get wrong. The two refusals get **different sentences**: "Built out to the tier limit"
-  is an achievement, "Not available at this tier" is a lock, and a body shop at T2 is the
-  second one.
-  **Prices are FLAT across the ladder** (`data/facility.json` gained a `construction`
-  block; `facilityData.ts` is now the module's catalog, `loadFacilityData`). A service bay
-  costs what a service bay costs — a per-tier price table would be a second number beside
-  the ceiling and would make the same purchase mean two things depending on where the
-  player stood. Numbers are placeholders pending C2 (#286).
-  **First `facility:*` publisher, and only one event.** `facility:capacity_built` carries
-  the kind's new TOTAL plus the delta, published from `clock:day_started` so finished
-  capacity is standing *before* the day's department drain snapshots its bay count. No
-  `construction_started` event — it would have had a publisher and no subscriber.
-  **No envelope bump.** Jobs live inside the existing `facility` blob, which is the
-  module's own `schemaVersion` 1 → 2 (`AnyFacilitySnapshot` is the union `restore` takes).
-  A #358 v1 blob restores as "nothing being built" — the state every save already was in —
-  so `data/fixtures/tier-2.json` needed no re-stamp and the v1 path stays exercised in
-  real play.
-  **The surface is in GROWTH, derived from the locked charter, not a new IA fork.** Growth
-  is "work ON the business — everything that compounds"; buying buildings compounds and
-  spends the same cash inventory wants. It sits directly above the gate board because the
-  `facility` gate face (#360) is what will grade it.
-  **Driven on web at T2, single clicks, no timeouts.** T2 fixture → a day closed (the
-  autosave wrote the v2 blob with `jobs: []` through the real path) → stood the store below
-  its ceiling in the saved blob → reloaded: *8 of 12 built* / **Build 4 spaces — $12,000**.
-  Pressed it: cash $222,734 → **$210,734** (exactly $12,000, and Home's next-day delta read
-  *-$12,000 vs yesterday*), the row held at *8 of 12 built* with *Building 4 spaces — opens
-  day 33*, and the button flipped to "Built out to the tier limit". Ran days 31→33; on the
-  morning of day 33 it read **12 of 12 built** with the pill gone, service bays untouched at
-  *2 of 4*. 216 suites / **2793** tests, typecheck clean.
-  Next: **BUILD #360** (facility score lights the dormant tier-gate `facility` face).

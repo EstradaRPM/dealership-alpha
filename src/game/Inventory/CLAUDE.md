@@ -5,7 +5,7 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 ## Public API (`index.ts`)
 - `createInventory()` → `Inventory`.
 - `loadVehicleData` — reads `data/vehicles.json`.
-- Types: `Inventory`, `InventoryDeps`, `AuctionListing`, `LotVehicle`, `VehicleCondition`, `VehicleCategory`.
+- Types: `Inventory`, `InventoryDeps`, `AuctionListing`, `LotVehicle`, `LotOccupancy`, `VehicleCondition`, `VehicleCategory`.
 
 ## Events
 - **Emits:** `inventory:vehicle_purchased`, `inventory:vehicle_sold`,
@@ -112,6 +112,38 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   clusters realized recon near the estimate; an unread trade (no UCM, confidence
   0) throws the same wide lemon tails as a fringe auction lane. So a trade can
   hide a lemon exactly like an auction buy.
+
+## The lot cap on buying (#361, A2 R2)
+
+- **One number: `getLotOccupancy()` → "31 of 35 spaces."** Every owned
+  `LotVehicle` takes one space, **prep included**. There is no off-lot state in
+  the model and none was invented: recon is a cost, not a place, and the #295
+  frontline hold only governs whether walk-ins can be *shown* the car. A car in
+  prep sits on your lot costing you money either way.
+- Built spaces come from the optional `getBuiltLotSpaces: () => number` dep,
+  wired at the composition root to `facility.getBuilt().lotSpaces` — the same
+  one-capacity-truth the department lines take their bay count from. It is read
+  **live**, so a finished construction job reopens buying by itself with no
+  further player action. Omit the dep (test harnesses without a Facility) ⇒ an
+  uncapped lot, the pre-#361 behavior.
+- **Checked at the bid**, so units already won count: `buyFromAuction` throws
+  when there is no space, and a refusal changes nothing (no cash moves, the
+  listing stays on the board). The UCM's `autoSourceFn` pass **stops** at the
+  cap instead of throwing — a full lot is a normal morning, not a programming
+  error — which is what makes "you cannot win six cars into four spaces" true
+  for the desk as well as the player.
+- **A trade always lands.** `acquireFromTrade` never checks the cap: it is part
+  of a sale already made, and refusing it would unwind a closed deal. It may put
+  the lot at 36 of 35; buying is then frozen until occupancy is back **under**
+  the cap (at 35 of 35 it is still frozen). Self-correcting by construction —
+  the deal that brings a trade in also takes a car out.
+- Five alternatives were considered and rejected in A2 R2 and must not be
+  reopened: forced wholesale on overrun, an overflow lot, refusing the trade at
+  the cap, a soft cap with an overflow fee, and prep-as-its-own-capacity.
+- Surfaces: `src/ui/LotRoom` (`lot-occupancy`) and `src/ui/AuctionMenu`
+  (`auction-lot-occupancy`, plus the `auction-bidding-closed` banner and a
+  disabled "No Spaces Open" buy button). Both take the number straight off
+  `getLotOccupancy()` and never count their own list.
 
 ## Frontline-hold on acquired units (#295)
 - Every `LotVehicle` carries `frontlineDay` — the first day it is offered to the

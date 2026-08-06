@@ -7,7 +7,11 @@ import {
   StyleSheet,
   Modal,
 } from 'react-native';
-import type { AuctionListing, LotVehicle } from '../../game/Inventory';
+import type {
+  AuctionListing,
+  LotOccupancy,
+  LotVehicle,
+} from '../../game/Inventory';
 import type { EventBus } from '../../game/EventBus';
 import type { ConditionRead } from '../../game/StaffOrg';
 import { colors } from '../theme';
@@ -45,6 +49,8 @@ function formatRange(low: number, high: number): string {
 interface DetailModalProps {
   listing: AuctionListing;
   cash: number;
+  /** #361: bidding is closed while the lot has no space for another unit. */
+  atCapacity: boolean;
   valuation: ListingValuation;
   sourceLabel: string;
   conditionRead: ConditionRead | null;
@@ -57,6 +63,7 @@ interface DetailModalProps {
 function DetailModal({
   listing,
   cash,
+  atCapacity,
   valuation,
   sourceLabel,
   conditionRead,
@@ -66,7 +73,7 @@ function DetailModal({
   onClose,
 }: DetailModalProps) {
   const pending = listing.inspectionStatus === 'pending';
-  const canAfford = cash >= listing.askingPrice && !pending;
+  const canAfford = cash >= listing.askingPrice && !pending && !atCapacity;
   const canInspect =
     listing.inspectionStatus === 'none' && cash >= inspectionCost;
   return (
@@ -158,9 +165,11 @@ function DetailModal({
             <Text style={[styles.buyBtnText, !canAfford && styles.buyBtnTextDisabled]}>
               {pending
                 ? 'Inspection Pending'
-                : canAfford
-                  ? `Buy for $${listing.askingPrice.toLocaleString()}`
-                  : 'Insufficient Funds'}
+                : atCapacity
+                  ? 'No Spaces Open'
+                  : canAfford
+                    ? `Buy for $${listing.askingPrice.toLocaleString()}`
+                    : 'Insufficient Funds'}
             </Text>
           </TouchableOpacity>
           {listing.inspectionStatus === 'none' && (
@@ -238,6 +247,14 @@ export interface AuctionMenuProps {
   lotVehicles: readonly LotVehicle[];
   cash: number;
   /**
+   * How full the lot is (#361, A2 R2). Straight off
+   * `Inventory.getLotOccupancy()`. Spaces are the second thing the lane is
+   * spending — at the cap the board still reads (you can study what you cannot
+   * buy) but bidding is closed, because the engine would refuse the buy anyway
+   * and a button that throws is not an offer.
+   */
+  lotOccupancy: LotOccupancy;
+  /**
    * Live retail-range provider (slice #161). `bookValueFn` = low end of the
    * band, `marketPriceFn` = high end. Defaults to the listing's asking price
    * for both bounds so the smoke test renders without wiring the live engine.
@@ -278,6 +295,7 @@ export function AuctionMenu({
   listings,
   lotVehicles,
   cash,
+  lotOccupancy,
   valuationFor,
   sourceLabelFor,
   conditionReadFor,
@@ -327,10 +345,26 @@ export function AuctionMenu({
         <View style={styles.headerCenter}>
           <Text style={styles.title}>Auction Lane</Text>
           <Text style={styles.cashLabel}>Cash: ${cash.toLocaleString()}</Text>
+          <Text
+            style={
+              lotOccupancy.atCapacity
+                ? [styles.spacesLabel, styles.spacesLabelFull]
+                : styles.spacesLabel
+            }
+            testID="auction-lot-occupancy"
+          >
+            Lot: {lotOccupancy.occupied} of {lotOccupancy.built} spaces
+          </Text>
         </View>
       </View>
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listInner}>
+        {lotOccupancy.atCapacity && (
+          <Text style={styles.closedBanner} testID="auction-bidding-closed">
+            No spaces open — sell a unit before you buy another. Bidding is
+            closed until you are back under {lotOccupancy.built} spaces.
+          </Text>
+        )}
         {listings.length === 0 ? (
           <Text style={styles.empty}>No vehicles available today.</Text>
         ) : (
@@ -372,6 +406,7 @@ export function AuctionMenu({
         <DetailModal
           listing={selected}
           cash={cash}
+          atCapacity={lotOccupancy.atCapacity}
           valuation={valuate(selected)}
           sourceLabel={sourceName(selected.sourceId)}
           conditionRead={readFor(selected)}
@@ -418,6 +453,23 @@ const styles = StyleSheet.create({
     color: colors.positive,
     fontSize: 13,
     marginTop: 2,
+  },
+  spacesLabel: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginTop: 2,
+  },
+  spacesLabelFull: {
+    color: colors.danger,
+  },
+  closedBanner: {
+    color: colors.danger,
+    fontSize: 13,
+    lineHeight: 19,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 14,
   },
   list: {
     flex: 1,

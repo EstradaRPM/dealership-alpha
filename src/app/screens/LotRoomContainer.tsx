@@ -50,6 +50,9 @@ export function LotRoomContainer({
           dailyCarryingCost: v.dailyCarryingCost,
           aged: v.aged,
         }))}
+        // #361: the lot's own count, straight off the engine — a unit in prep
+        // occupies a space like any other, so the room never counts the list.
+        occupancy={world.inventory.getLotOccupancy()}
         onSetAskingPrice={(vehicleId, price) => {
           world.inventory.setAskingPrice(vehicleId, price);
           setLotVehicles(world.inventory.getLotVehicles());

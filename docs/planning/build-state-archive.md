@@ -6,6 +6,61 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **BUILT #359** (construction — capacity is bought with cash and days).
+  *Lot spaces · 8 of 12 built · $3,000 each · 2 days to build* → **Build 4 spaces —
+  $12,000** → *Building 4 spaces — opens day 33*. Physical capacity stopped being a
+  number you were handed and became a number you buy, which is what A2 R1 was for.
+  **The construction DELAY is the mechanic, not a garnish.** Instant capacity collapses
+  the decision to "do I have the cash"; a two-to-three-day build makes you buy capacity
+  *ahead* of demand, which is the actual dealership decision. Stored as an absolute
+  `completesOnDay` compared against the current day at the morning settle — the #295
+  frontline-hold idiom exactly, so nothing decrements a counter that could drift out of
+  step with the calendar across a save/load. Also answers the tier CSV's own open row 16
+  ("Time to upgrade? construction time?").
+  **A block is the size of one job, not a divisor.** `blockSize` is clamped down to the
+  room left and priced for what it actually builds — 5 against a gap of 4 builds 4 for
+  $12,000 — so the ceiling is always exactly reachable *without a second pricing rule*.
+  The alternative (a full-price partial block, or a prorated "last block") is two rules
+  where one will do.
+  **Committed capacity is built PLUS in flight, and that is what the ceiling measures.**
+  It is why the same space can never be paid for twice, and why the lot button flipped to
+  "Built out to the tier limit" the instant the job was scheduled rather than three days
+  later. In-flight units are worth nothing on the floor until they land — `getBuilt()`
+  never counts them.
+  **A refusal changes nothing at all.** `at-ceiling` and `cannot-afford` are checked
+  before the debit, so no cash moves and no job is scheduled; the container commits and
+  re-reads rather than guarding first, because the engine owns every rule the button could
+  get wrong. The two refusals get **different sentences**: "Built out to the tier limit"
+  is an achievement, "Not available at this tier" is a lock, and a body shop at T2 is the
+  second one.
+  **Prices are FLAT across the ladder** (`data/facility.json` gained a `construction`
+  block; `facilityData.ts` is now the module's catalog, `loadFacilityData`). A service bay
+  costs what a service bay costs — a per-tier price table would be a second number beside
+  the ceiling and would make the same purchase mean two things depending on where the
+  player stood. Numbers are placeholders pending C2 (#286).
+  **First `facility:*` publisher, and only one event.** `facility:capacity_built` carries
+  the kind's new TOTAL plus the delta, published from `clock:day_started` so finished
+  capacity is standing *before* the day's department drain snapshots its bay count. No
+  `construction_started` event — it would have had a publisher and no subscriber.
+  **No envelope bump.** Jobs live inside the existing `facility` blob, which is the
+  module's own `schemaVersion` 1 → 2 (`AnyFacilitySnapshot` is the union `restore` takes).
+  A #358 v1 blob restores as "nothing being built" — the state every save already was in —
+  so `data/fixtures/tier-2.json` needed no re-stamp and the v1 path stays exercised in
+  real play.
+  **The surface is in GROWTH, derived from the locked charter, not a new IA fork.** Growth
+  is "work ON the business — everything that compounds"; buying buildings compounds and
+  spends the same cash inventory wants. It sits directly above the gate board because the
+  `facility` gate face (#360) is what will grade it.
+  **Driven on web at T2, single clicks, no timeouts.** T2 fixture → a day closed (the
+  autosave wrote the v2 blob with `jobs: []` through the real path) → stood the store below
+  its ceiling in the saved blob → reloaded: *8 of 12 built* / **Build 4 spaces — $12,000**.
+  Pressed it: cash $222,734 → **$210,734** (exactly $12,000, and Home's next-day delta read
+  *-$12,000 vs yesterday*), the row held at *8 of 12 built* with *Building 4 spaces — opens
+  day 33*, and the button flipped to "Built out to the tier limit". Ran days 31→33; on the
+  morning of day 33 it read **12 of 12 built** with the pill gone, service bays untouched at
+  *2 of 4*. 216 suites / **2793** tests, typecheck clean.
+  Next: **BUILD #360** (facility score lights the dormant tier-gate `facility` face).
+
 - 2026-08-06 — **BUILT #358** (the Facility module — built capacity, tier as the ceiling).
   Physical capacity stopped being a per-tier constant nobody owns: `src/game/Facility/` holds
   built lot spaces, service bays and body bays as persisted state, and the tier's number

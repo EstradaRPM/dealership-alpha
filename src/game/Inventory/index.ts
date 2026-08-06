@@ -1,6 +1,11 @@
 export { createInventory } from './Inventory';
 export { loadVehicleData } from './vehicleData';
-export type { Inventory, InventoryDeps, InventorySnapshot } from './Inventory';
+export type {
+  Inventory,
+  InventoryDeps,
+  InventorySnapshot,
+  LotOccupancy,
+} from './Inventory';
 export type {
   AuctionListing,
   LotVehicle,

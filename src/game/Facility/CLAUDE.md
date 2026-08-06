@@ -139,4 +139,7 @@ in-flight construction counts for nothing until it lands. Wired into the gate as
   business"; buying buildings compounds and spends the cash inventory wants.
 - `TierGate`, through the injected `signals.facility` closure (#360) — the gate
   grades what this module scores and knows nothing about a bay.
-- Coming: the lot cap on buying (#361).
+- `Inventory` (#361), through the injected `getBuiltLotSpaces` closure —
+  `getBuilt().lotSpaces` is the cap on buying, read live so a finished
+  construction job reopens the auction the morning the space lands. Same shape
+  as the bay seam: a closure at the composition root, never a module reference.

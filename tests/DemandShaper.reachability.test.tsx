@@ -81,12 +81,14 @@ function runRealDay() {
   const bus = createEventBus();
   const world = createWorld({ bus, masterSeed: 42, characterProfile: PROFILE });
   // Buy the cheapest listings we can afford to give the lot enough depth to
-  // draw traffic (cash is finite, so we stop when the next one is unaffordable).
+  // draw traffic. Cash is finite — and since #361 so is space: a tier-1 lot
+  // holds six cars and the seed lot already parks three of them.
   const listings = [...world.inventory.getAuctionListings()].sort(
     (a, b) => a.askingPrice - b.askingPrice,
   );
   for (const listing of listings) {
     if (world.economy.cash < listing.askingPrice) break;
+    if (world.inventory.getLotOccupancy().atCapacity) break;
     world.inventory.buyFromAuction(listing.id);
   }
   world.dayLoop.nextDay().runDay();

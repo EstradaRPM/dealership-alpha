@@ -133,6 +133,9 @@ describe('#185 — composition-completeness guard over a real createWorld', () =
       .sort((a, b) => a.askingPrice - b.askingPrice);
     for (const listing of buyable) {
       if (world.economy.cash - listing.askingPrice < RESERVE) continue;
+      // #361: spaces are as finite as cash — a tier-1 lot holds six cars and
+      // the seed lot already parks three of them.
+      if (world.inventory.getLotOccupancy().atCapacity) break;
       world.inventory.buyFromAuction(listing.id);
     }
     expect(world.inventory.getLotVehicles().length).toBeGreaterThan(0);

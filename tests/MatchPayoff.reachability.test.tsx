@@ -63,6 +63,9 @@ function runRealDays(): Resolved[] {
   );
   for (const listing of listings) {
     if (world.economy.cash - listing.askingPrice < CASH_BUFFER) break;
+    // #361: spaces are as finite as cash — a tier-1 lot holds six cars and the
+    // seed lot already parks three of them.
+    if (world.inventory.getLotOccupancy().atCapacity) break;
     world.inventory.buyFromAuction(listing.id);
   }
   for (let i = 0; i < DAYS; i++) {

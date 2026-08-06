@@ -37,6 +37,9 @@ const BASE: LotRoomProps = {
       aged: true,
     },
   ],
+  // #361: the room states the engine's occupancy, never a count of the list —
+  // a unit in prep occupies a space and the list is not where that rule lives.
+  occupancy: { occupied: 2, built: 12, spacesOpen: 10, atCapacity: false },
   onSetAskingPrice: jest.fn(),
   onOpenPricing: jest.fn(),
   pricingStrategyOptions: [
@@ -125,6 +128,45 @@ describe('#346 Lot room — one room, the whole stock pipeline', () => {
   });
 });
 
+// #361 (A2 R2): lot size has been CSV tier truth since the beginning and
+// nothing enforced it. The room is where the player reads the squeeze.
+describe('#361 Lot room — occupied of built spaces', () => {
+  const lineOf = (el: { props: { children: unknown } }) =>
+    String(el.props.children);
+
+  it('states occupied of built spaces', () => {
+    const { getByTestId } = render(<LotRoom {...BASE} />);
+    expect(lineOf(getByTestId('lot-occupancy'))).toBe(
+      '2 of 12 spaces taken · 10 open',
+    );
+  });
+
+  it('says no spaces are open at the cap, and says it again where buying starts', () => {
+    const { getByTestId, getByText } = render(
+      <LotRoom
+        {...BASE}
+        occupancy={{ occupied: 12, built: 12, spacesOpen: 0, atCapacity: true }}
+      />,
+    );
+    expect(lineOf(getByTestId('lot-occupancy'))).toBe(
+      '12 of 12 spaces taken · no spaces open',
+    );
+    expect(getByText(/No spaces open — sell a unit/)).toBeTruthy();
+  });
+
+  it('says the lot is over, not merely full — a trade always lands', () => {
+    const { getByTestId } = render(
+      <LotRoom
+        {...BASE}
+        occupancy={{ occupied: 13, built: 12, spacesOpen: 0, atCapacity: true }}
+      />,
+    );
+    expect(lineOf(getByTestId('lot-occupancy'))).toBe(
+      '13 of 12 spaces taken · over by 1 — buying is frozen until you sell one',
+    );
+  });
+});
+
 describe('#346 Lot room — mounted in the live app', () => {
   it('is a real route the Lot dock tile opens, not the generic queue screen', () => {
     const src = readAppCompositionSource();
@@ -139,6 +181,15 @@ describe('#346 Lot room — mounted in the live app', () => {
     expect(src).toContain('world.inventory.setAskingPrice(vehicleId, price)');
     expect(src).toMatch(/onOpenAuction=\{\(\) => tabs\.navigate\('auction'\)\}/);
     expect(src).toMatch(/onOpenPricing=\{\(vehicleId\) =>\s*tabs\.navigate\('pricing', \{ vehicleId \}\)\}/);
+  });
+
+  // #361: both surfaces state the ENGINE's occupancy. If either ever counted
+  // its own list instead, a unit in prep would silently stop taking a space.
+  it('takes lot occupancy from the engine on the room and the auction alike', () => {
+    const src = readAppCompositionSource();
+
+    expect(src).toContain('occupancy={world.inventory.getLotOccupancy()}');
+    expect(src).toContain('lotOccupancy={world.inventory.getLotOccupancy()}');
   });
 });
 

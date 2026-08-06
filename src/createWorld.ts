@@ -589,6 +589,12 @@ export function createWorld(deps: {
     // #173: floorplan APR follows the dealership tier — a diegetic
     // progression reward read live so a mid-game tier-up cheapens carry.
     getTier: () => tierManager.currentTier,
+    // #361 (A2 R2): the lot cap on buying. Built spaces come from Facility and
+    // nowhere else — the same one-capacity-truth the department lines take
+    // their bay count from — and are read live, so a finished construction job
+    // reopens the auction the morning the space lands, with no further player
+    // action. A trade still always lands (Inventory never checks it there).
+    getBuiltLotSpaces: () => facility.getBuilt().lotSpaces,
     // #273: stamp each acquired unit's default asking price (the close's
     // transaction anchor) at the market suggestion instead of cost basis. The
     // provider declares the narrow `PricedVehicleInput` seam but reads only the

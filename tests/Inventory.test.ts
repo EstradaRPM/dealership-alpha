@@ -2,6 +2,7 @@ import { createEventBus } from '../src/game/EventBus';
 import { createGameClock } from '../src/game/GameClock';
 import { createEconomy } from '../src/game/Economy';
 import { createInventory, loadVehicleData } from '../src/game/Inventory';
+import type { TradeAcquisitionInput } from '../src/game/Inventory';
 import { generateAuctionListings } from '../src/game/Inventory/auctionGenerator';
 
 const MASTER_SEED = 99;
@@ -227,5 +228,182 @@ describe('Inventory — pricing surface', () => {
   it('setAskingPrice on an unknown vehicleId is a no-op', () => {
     const { inventory } = makeSetup();
     expect(() => inventory.setAskingPrice('no-such-id', 1000)).not.toThrow();
+  });
+});
+
+// ── The lot cap on buying (#361, A2 R2) ──────────────────────────────────────
+//
+// Lot size is CSV tier truth and nothing enforced it, so "match your inventory
+// to demand" had no squeeze in it. R2: **the lot cap governs buying, and a
+// trade always lands.** One number, checked at the bid; no overflow lot, no
+// forced dump, no new vehicle state.
+
+const CAP_TRADE: TradeAcquisitionInput = {
+  customerId: 'cust-1',
+  currentVehicle: {
+    templateId: 'sedan-midsize',
+    brand: 'vanda',
+    make: 'Honda',
+    model: 'Accord',
+    year: 2018,
+    mileage: 62_000,
+    condition: 'average',
+    category: 'sedan',
+    loanPayoff: 9_000,
+  },
+  agreedAllowance: 12_500,
+  staffConfidence: 0.8,
+};
+
+/**
+ * A lot whose built spaces the test moves, plus an optional UCM auto-source.
+ * `builtSpaces` is a mutable box because the point of several of these cases is
+ * that the cap is read LIVE — construction landing must reopen buying with no
+ * further player action.
+ */
+function makeCappedSetup(
+  builtSpaces: { value: number },
+  autoSourceFn?: (listings: readonly { id: string }[]) => readonly string[],
+) {
+  const bus = createEventBus();
+  const clock = createGameClock({ bus, initialDay: 0 });
+  const economy = createEconomy({
+    bus,
+    startingCash: 500_000,
+    config: NO_OVERNIGHT_CONFIG,
+  });
+  const inventory = createInventory({
+    bus,
+    masterSeed: MASTER_SEED,
+    economy,
+    vehicleData,
+    getBuiltLotSpaces: () => builtSpaces.value,
+    autoSourceFn,
+  });
+  return { bus, clock, economy, inventory };
+}
+
+describe('Inventory — the lot cap on buying (#361)', () => {
+  it('a unit in prep occupies a space like any other', () => {
+    const built = { value: 4 };
+    const { clock, inventory } = makeCappedSetup(built);
+    clock.advanceDay();
+    const [listing] = inventory.getAuctionListings();
+    inventory.buyFromAuction(listing.id);
+
+    // Recon outstanding AND inside the #295 frontline hold — the two states a
+    // player might read as "not on the lot yet". There is no off-lot place in
+    // the model: the car is sitting on your lot costing you money.
+    const bought = inventory.getLotVehicle(listing.id)!;
+    expect(bought.reconStatus).toBe('in_progress');
+    expect(bought.frontlineDay).toBeGreaterThan(bought.arrivalDay);
+
+    expect(inventory.getLotOccupancy()).toEqual({
+      occupied: 1,
+      built: 4,
+      spacesOpen: 3,
+      atCapacity: false,
+    });
+  });
+
+  it('refuses an auction buy with no space for it', () => {
+    const built = { value: 2 };
+    const { clock, inventory } = makeCappedSetup(built);
+    clock.advanceDay();
+    const [a, b, c] = inventory.getAuctionListings();
+    inventory.buyFromAuction(a.id);
+    inventory.buyFromAuction(b.id);
+
+    expect(inventory.getLotOccupancy().atCapacity).toBe(true);
+    expect(() => inventory.buyFromAuction(c.id)).toThrow(/[Nn]o space/);
+    // A refusal changes nothing: the listing is still on the board and the
+    // unit never landed.
+    expect(inventory.getLotVehicles()).toHaveLength(2);
+    expect(inventory.getAuctionListings().some((l) => l.id === c.id)).toBe(true);
+  });
+
+  it("the UCM's auto-source stops at the lot cap", () => {
+    const built = { value: 3 };
+    // The desk picks six; three spaces exist. You cannot win six cars into
+    // three spaces, and a full lot is a normal morning — the desk stops rather
+    // than throwing.
+    const { clock, inventory } = makeCappedSetup(built, (listings) =>
+      listings.slice(0, 6).map((l) => l.id),
+    );
+    expect(() => clock.advanceDay()).not.toThrow();
+    expect(inventory.getLotVehicles()).toHaveLength(3);
+    expect(inventory.getLotOccupancy().atCapacity).toBe(true);
+  });
+
+  it('a trade lands at the cap and may put the lot over', () => {
+    const built = { value: 1 };
+    const { clock, inventory } = makeCappedSetup(built);
+    clock.advanceDay();
+    const [listing] = inventory.getAuctionListings();
+    inventory.buyFromAuction(listing.id);
+    expect(inventory.getLotOccupancy().atCapacity).toBe(true);
+
+    // Part of a sale already made — refusing it would unwind a closed deal.
+    expect(() => inventory.acquireFromTrade(CAP_TRADE)).not.toThrow();
+    const over = inventory.getLotOccupancy();
+    expect(over.occupied).toBe(2);
+    expect(over.built).toBe(1);
+    expect(over.spacesOpen).toBe(0);
+  });
+
+  it('buying stays frozen while the lot is over capacity', () => {
+    const built = { value: 2 };
+    const { clock, inventory } = makeCappedSetup(built);
+    clock.advanceDay();
+    const [first, second, next] = inventory.getAuctionListings();
+    inventory.buyFromAuction(first.id);
+    inventory.buyFromAuction(second.id);
+    const traded = inventory.acquireFromTrade(CAP_TRADE);
+    expect(inventory.getLotOccupancy().occupied).toBe(3);
+
+    expect(() => inventory.buyFromAuction(next.id)).toThrow(/[Nn]o space/);
+    // Back at the cap is still frozen — "under" is the rule, not "not over".
+    inventory.sellVehicle(traded.id);
+    expect(inventory.getLotOccupancy()).toMatchObject({
+      occupied: 2,
+      built: 2,
+      atCapacity: true,
+    });
+    expect(() => inventory.buyFromAuction(next.id)).toThrow(/[Nn]o space/);
+
+    // One more out and the lane opens.
+    inventory.sellVehicle(first.id);
+    expect(inventory.getLotOccupancy().atCapacity).toBe(false);
+    expect(() => inventory.buyFromAuction(next.id)).not.toThrow();
+  });
+
+  it('new spaces reopen the auction', () => {
+    const built = { value: 1 };
+    const { clock, inventory } = makeCappedSetup(built);
+    clock.advanceDay();
+    const [first, next] = inventory.getAuctionListings();
+    inventory.buyFromAuction(first.id);
+    expect(() => inventory.buyFromAuction(next.id)).toThrow(/[Nn]o space/);
+
+    // A construction job landed — the cap is read live, so nothing else has to
+    // happen for the lane to open.
+    built.value = 2;
+    expect(inventory.getLotOccupancy()).toEqual({
+      occupied: 1,
+      built: 2,
+      spacesOpen: 1,
+      atCapacity: false,
+    });
+    expect(() => inventory.buyFromAuction(next.id)).not.toThrow();
+  });
+
+  it('no Facility wired means no cap — the pre-#361 harness is unchanged', () => {
+    const { clock, inventory } = makeSetup(0, 500_000);
+    clock.advanceDay();
+    for (const listing of inventory.getAuctionListings().slice(0, 5)) {
+      inventory.buyFromAuction(listing.id);
+    }
+    expect(inventory.getLotVehicles()).toHaveLength(5);
+    expect(inventory.getLotOccupancy().atCapacity).toBe(false);
   });
 });
