@@ -6,6 +6,38 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **BUILT #355** (the talent-scaled hire fee). What you pay to sign someone is now
+  `hireFeeMultiple × their own daily wage`, so one number in `data/staff-pay.json` prices both
+  signing them and keeping them.
+  **`hiringCostByTier` left in the same commit that replaced it** — out of `data/tunables.json`,
+  out of `StaffOrgConfigSchema`, out of the one call site. That is the third flat per-tier table
+  deleted in this phase (`headcountCapByTier` #352, `weeklyPayrollStub` #353), and the same bug
+  each time: a price that ignores the thing it is pricing. Under it a grade-5 closer and a
+  greenpea both signed for exactly $1,000.
+  **The fee is derived, not a second table, because a second table drifts.** `hireFeeMultiple`
+  already lived in the pay book (#353 put it there for this slice); nothing new was added to
+  `data/`. `CandidateListing.hiringCost` **keeps its name** — renaming it would have churned
+  `staff:hired`'s payload, the balance harness's policy, and the People card for no gain — but it
+  now means "what this **person** costs to sign", never "what this role costs".
+  **A role the pay book does not name throws instead of falling back.** The old code ended
+  `?? 1000`, so an unnamed role silently signed for a default; the fee now inherits the wage
+  read's loud failure, which is the same grammar the slot table uses.
+  **The compiler drove the test sweep, and it exposed two assertions that the change would have
+  quietly hollowed out.** `noPay()` (the helper for suites that hire people to exercise something
+  else) makes the fee **$0**, which turned "throws when cash is insufficient" and "deducts hiring
+  cost from Economy cash" into tautologies — both now run on a real wage table. Economy's
+  "payroll pushes cash negative" test opened the store with one day's float; it now opens with the
+  two signing fees plus that float, and states the fee's size as it does so.
+  **The grade-5-vs-grade-1 criterion is asserted on a forced grade, not a hoped-for pool.** The
+  same seeded person is read through bands that put everyone at the top of the ladder and bands
+  that put everyone at the bottom — same `staff.id`, grade 5 vs grade 1, strictly different fee.
+  Fishing two grades out of the archetype board would have made the test a fact about one seed.
+  **Driven on web at T2/Day 32**: three applicants for the *same* Service Advisor desk quoted
+  **$1,300** (Grade 3 · $260/day), **$700** (Grade 1 · $140/day) and $700 — under the retired
+  table all three read $1,000. Hiring the $700 candidate moved cash $184,305 → $183,605, exactly
+  the number on the card. 215 suites / **2725** tests, typecheck clean.
+  Next: **BUILD #356** (raise demands + `payVsMarketBonus` made real).
+
 - 2026-08-05 — **BUILT #353** (the wage book + the nightly payroll drain). Payroll finally
   scales with the roster: every person burns a daily wage set by grade (1–5) × role, and that
   is the entire pay model.

@@ -14,9 +14,8 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
 `path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **#352–#357 have landed, which closes phase 6 (C1 staff-teeth) — next unit: BUILD
-#358**, the first of the phase-7 facility slices. Work them in number order; the deps are
-stated in each issue's Notes.
+order**. **#352–#357 closed phase 6 (C1 staff-teeth) and #358 has landed — next unit: BUILD
+#359**, construction. Work them in number order; the deps are stated in each issue's Notes.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -26,7 +25,7 @@ stated in each issue's Notes.
 | ~~#355~~ | ~~hire fee = multiple × daily wage; `hiringCostByTier` retired~~ **BUILT 2026-08-06** | 6 |
 | ~~#356~~ | ~~raise demands (ask/answer) + `payVsMarketBonus` made real~~ **BUILT 2026-08-06** | 6 |
 | ~~#357~~ | ~~rival offers on the same event family (retention + poaching, one moment)~~ **BUILT 2026-08-06 — phase 6 COMPLETE** | 6 |
-| #358 | `src/game/Facility/` owns built spaces + bays, one bay truth; `baysByTier` retired | 7 |
+| ~~#358~~ | ~~`src/game/Facility/` owns built spaces + bays, one bay truth; `baysByTier` retired~~ **BUILT 2026-08-06** | 7 |
 | #359 | construction: buy capacity with cash + days, ceiling enforced, Growth build surface | 7 |
 | #360 | facility score lights the dormant tier-gate `facility` face | 7 |
 | #361 | lot cap governs buying ("31 of 35"), trade always lands | 7 |
@@ -140,6 +139,22 @@ stated in each issue's Notes.
   a re-run. Timing, not a regression — re-run before investigating, and do not "fix" them by
   loosening what they assert.
 
+- **Built capacity CARRIES OVER on tier-up, and that is a real behavior change** (#358). A
+  fresh world seeds at its tier's ceilings, so nothing about a new game moved; but a store
+  that tier-ups keeps the bays it had, and the ceiling is all that rises. That is A2 R1
+  ("buildings are bought") and it is what makes #360's `facility` gate face measurable at all
+  — do not "fix" a Tier-3 world showing 0 body bays by granting capacity at tier-up. **A test
+  that fakes a tier by forcing `tierManager` must also call
+  `world.facility.restore(createDefaultFacilitySnapshot(tier))`** — the same shape a tier-N
+  save carries. Two suites already do (`AdvisorHiring.reachability`, `CrossDepartmentPersistence`).
+- **`baysByTier` is GONE from both dispatch configs and from `data/tunables.json`** (#358). The
+  engines take a `bays` **count** (`DeptDispatchDeps`), fed per-day by each department package
+  from `facility.getBuilt()`. Omitted ⇒ 1 bay. Do not re-introduce a per-tier bay table beside
+  the Facility module, and do not read the tier for a bay count anywhere.
+- **The Facility module deliberately has no `bus` and emits nothing yet** (#358). Nothing in
+  that slice changes a built number, so an event would have no publisher. #359's construction
+  is the first `facility:*`.
+
 ## Phase table
 
 Status: `pending` → `active` → `done`. "Decision first" = a DECIDE unit must run before
@@ -159,7 +174,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
-| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 built; #358–#362 open |
+| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 + #358 built; #359–#362 open |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
@@ -179,6 +194,48 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-06 — **BUILT #358** (the Facility module — built capacity, tier as the ceiling).
+  Physical capacity stopped being a per-tier constant nobody owns: `src/game/Facility/` holds
+  built lot spaces, service bays and body bays as persisted state, and the tier's number
+  became the **ceiling** over each. That is A2 R1 — *desks come with the tier, buildings are
+  bought* — made structural before #359 lets anyone spend money on it.
+  **`baysByTier` left in the same commit that replaced it**, out of `data/tunables.json` *and*
+  both zod schemas (`serviceDispatchData.ts`, `bodyShopDispatchConfig.ts`). Fifth placeholder
+  deleted across 6+7 (`headcountCapByTier` #352, `weeklyPayrollStub` #353, `hiringCostByTier`
+  #355, `payVsMarketBonus` #356), and the same bug each time: a number the player could never
+  own. The dispatch engines now take `bays` — a count, the narrowest possible dep — replacing
+  `facilityTier` + a config lookup. `min(bays, advisors)` is untouched.
+  **The ceiling is derived from the live tier and never stored**, so a tier-up cannot leave a
+  stale ceiling behind and there is nothing in it to migrate. Only what is BUILT persists.
+  **Carry-over is the behavior change, and it is the ruling, not an oversight.** A fresh world
+  seeds at its tier's ceilings, so nothing about today's play moves — but a store that
+  tier-ups keeps the bays it had. That is exactly what makes the dormant `facility` gate face
+  (#360) measurable as built ÷ ceiling; "tier grants everything" would peg it at 100 forever.
+  The consequence surfaced immediately in two suites that fake a tier by forcing
+  `tierManager` on a fresh T1 world: they now also have to say the store built out, which they
+  do through `createDefaultFacilitySnapshot(tier)` — the same shape a tier-N save carries.
+  **No `facility:*` event, and the module takes no bus.** Nothing in this slice *changes* a
+  built number; construction (#359) is the first publisher. An event with no publisher is dead
+  code, and this repo's rule is to delete those, not to pre-add them.
+  **`data/facility.json` follows the slot table's precedent exactly** (#352): monotonic by
+  schema (a file that decreases is refused — a tier never takes capacity away), all seven
+  tiers stated per row so a missing key can never read as "no capacity" and silently shut a
+  department, and an out-of-range tier clamped into the ladder. Where the CSV stops (service
+  bays at T3, lot/body at T5) the last value repeats, flagged as C2 calibration, not design.
+  **Envelope v20 → v21, and the migration reads the save's ACTUAL tier** out of the
+  `tierManager` blob rather than defaulting to 1 — the #314 Body-Shop-gate idiom. A migrated
+  Tier-3 store keeps running the bays it was already running; defaulting to 1 would have taken
+  a franchise store's shop away on load. `data/fixtures/tier-2.json` re-stamped **in place**
+  through the real migrate + restoreWorld + snapshotWorld path (not `gen:fixtures` — the
+  harness bot never reaches T2), and it now carries `{lotSpaces:12, serviceBays:4, bodyBays:0}`,
+  which is precisely what the retired constant gave it.
+  **Driven on web at T2, single clicks, no timeouts.** The re-stamped fixture restored through
+  the new `facility` key (Day 31, $222,734, Tier 2), Operations → Service rendered, and a full
+  day opened, ran and closed on the Reveal recap — so the drain built against the Facility-fed
+  bay count end to end. 216 suites / **2776** tests, typecheck clean.
+  Next: **BUILD #359** (construction — buy capacity with cash + days, ceiling enforced, Growth
+  build surface).
 
 - 2026-08-06 — **BUILT #357** (rival offers — retention and poaching as one moment).
   *Northside Vyndai offered $610/day. On $340/day now. They leave on day 34 unless you match.*
@@ -234,6 +291,7 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   → **$940**. 215 suites / **2762** tests, typecheck clean.
   Next: **BUILD #358** (phase 7 — `src/game/Facility/` owns built spaces + bays, one bay truth).
 
+
 - 2026-08-06 — **BUILT #356** (raise demands, and `payVsMarketBonus` made real). Growth stops
   being a drift and becomes a moment: *Asking for $340/day. On $150/day now.* → **Pay it** /
   **Refuse**.
@@ -276,34 +334,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   Next: **BUILD #357** (rival offers on the same event family — retention and poaching as one
   moment).
 
-- 2026-08-06 — **BUILT #355** (the talent-scaled hire fee). What you pay to sign someone is now
-  `hireFeeMultiple × their own daily wage`, so one number in `data/staff-pay.json` prices both
-  signing them and keeping them.
-  **`hiringCostByTier` left in the same commit that replaced it** — out of `data/tunables.json`,
-  out of `StaffOrgConfigSchema`, out of the one call site. That is the third flat per-tier table
-  deleted in this phase (`headcountCapByTier` #352, `weeklyPayrollStub` #353), and the same bug
-  each time: a price that ignores the thing it is pricing. Under it a grade-5 closer and a
-  greenpea both signed for exactly $1,000.
-  **The fee is derived, not a second table, because a second table drifts.** `hireFeeMultiple`
-  already lived in the pay book (#353 put it there for this slice); nothing new was added to
-  `data/`. `CandidateListing.hiringCost` **keeps its name** — renaming it would have churned
-  `staff:hired`'s payload, the balance harness's policy, and the People card for no gain — but it
-  now means "what this **person** costs to sign", never "what this role costs".
-  **A role the pay book does not name throws instead of falling back.** The old code ended
-  `?? 1000`, so an unnamed role silently signed for a default; the fee now inherits the wage
-  read's loud failure, which is the same grammar the slot table uses.
-  **The compiler drove the test sweep, and it exposed two assertions that the change would have
-  quietly hollowed out.** `noPay()` (the helper for suites that hire people to exercise something
-  else) makes the fee **$0**, which turned "throws when cash is insufficient" and "deducts hiring
-  cost from Economy cash" into tautologies — both now run on a real wage table. Economy's
-  "payroll pushes cash negative" test opened the store with one day's float; it now opens with the
-  two signing fees plus that float, and states the fee's size as it does so.
-  **The grade-5-vs-grade-1 criterion is asserted on a forced grade, not a hoped-for pool.** The
-  same seeded person is read through bands that put everyone at the top of the ladder and bands
-  that put everyone at the bottom — same `staff.id`, grade 5 vs grade 1, strictly different fee.
-  Fishing two grades out of the archetype board would have made the test a fact about one seed.
-  **Driven on web at T2/Day 32**: three applicants for the *same* Service Advisor desk quoted
-  **$1,300** (Grade 3 · $260/day), **$700** (Grade 1 · $140/day) and $700 — under the retired
-  table all three read $1,000. Hiring the $700 candidate moved cash $184,305 → $183,605, exactly
-  the number on the card. 215 suites / **2725** tests, typecheck clean.
-  Next: **BUILD #356** (raise demands + `payVsMarketBonus` made real).
