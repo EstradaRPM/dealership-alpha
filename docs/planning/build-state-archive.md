@@ -6,6 +6,49 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **BUILT #360** (the facility gate face — the dormant fifth face gets a
+  producer). *Facility Build-Out · 23% built vs 50%*. The face has been declared in
+  `data/tier-gate.json` since #232 and skipped defensively by the engine ever since,
+  because nothing produced a number for it. A2 R1's whole reason for making buildings
+  purchasable was to give it one.
+  **One rule: built ÷ ceiling, per kind, averaged.** Not a combined total. A combined
+  built÷ceiling would let the lot buy the entire score — 35 spaces against 6 service bays at
+  T3 — while the store ran a one-bay shop; averaging the per-kind ratios makes every
+  department's room count the same. Each ratio caps at 1, so a save standing over a ceiling
+  reads as done rather than as extra credit.
+  **A kind the tier has no ceiling for is EXCLUDED, not counted as unbuilt.** Body bays are 0
+  below T3, and "0 of 0 built" would peg a fully built-out Tier-1 store at 67 for a building
+  the tier forbids. The flip side is the teeth: **arriving at T3 drops the score**, because
+  the body shop just became something you are allowed — and therefore expected — to build.
+  That is the only reason the exclusion is worth a rule at all; under a combined total a
+  zero ceiling cancels out of both sides and the choice would be invisible.
+  **Stepped means read LIVE, never sampled.** No `levelSamples`, no rolling window, nothing
+  in the snapshot: the face stands exactly where it stands until the player builds, then it
+  steps. A monthly average would report a bar the store has already cleared as still short,
+  and would make the same construction worth more early in the month than late. It is also
+  why the strip renders it as the cash gauge **minus the trend arrow** — an arrow here would
+  read "flat" every day the player did not build and mean nothing.
+  **In-flight construction is worth zero to the score**, which is the same rule the ceiling
+  measures the other way (committed = built + in flight). Confirmed on screen: buying a body
+  bay left the face at 23% with *Building 1 bay — opens day 38* on the row above it.
+  **Both "skip the stepped face" filters are deleted, in the verdict and in
+  `getTierRequirements`.** They now filter only on "is a configured face", which is what
+  keeps #250's `streak` control tunable out. The requirements filter had to move with the
+  verdict: it exists so the Growth climb can never foreshadow a bar the gate does not grade,
+  and after this it must equally not hide one it does. `GrowthTab.reachability`'s assertion
+  flipped from `not.toContain('facility')` to `toContain`.
+  **Renamed the label to "Facility Build-Out".** "Facility / Image" promised an image
+  standard that goals-targets decision 4 re-homed onto the T4+ OEM stream; the stale name
+  only survived because the face was invisible. Making it visible made it a plain-language
+  defect, not a design question.
+  **Driven on web at a T3 store holding T2's buildings** — the carry-over state #358 created.
+  Lot 12 of 35, service 2 of 6, body 0 of 3 ⇒ **23% built vs 50%** on the Home strip
+  (arithmetic: (12/35 + 2/6 + 0)/3), the same figure spelled out on the Growth board directly
+  under the build surface that produced it, and "% on track" fell 100% → **41%** as the T3
+  bars lit. **The live save is `slot:<id>`, not `snapshot:<id>`** — editing the latter changed
+  nothing and cost a reload to find out. 216 suites / **2806** tests, typecheck clean.
+  Next: **BUILD #361** (lot cap governs buying — "31 of 35" — trade always lands).
+
 - 2026-08-06 — **BUILT #359** (construction — capacity is bought with cash and days).
   *Lot spaces · 8 of 12 built · $3,000 each · 2 days to build* → **Build 4 spaces —
   $12,000** → *Building 4 spaces — opens day 33*. Physical capacity stopped being a

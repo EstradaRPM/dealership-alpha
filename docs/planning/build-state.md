@@ -10,13 +10,17 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Current phase
 
-**Phases 6 + 7 — staff teeth & staff slots / facility scale — SLICED 2026-08-04, now BUILD.**
+**Phase 8 — C2 calibration campaign (#286 + #180/#181).**
 
-Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
-`path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **#352–#357 closed phase 6 (C1 staff-teeth); #358–#361 have landed — next unit:
-BUILD #362**, wholesale this unit. Work them in number order; the deps are stated in each
-issue's Notes.
+**Phases 6 and 7 are COMPLETE as of 2026-08-06** — the whole #352–#362 slice landed. Both
+gates were closed before a line was written (C1 2026-08-02 `staff-teeth-design.md`, A2
+2026-08-03 `path-to-finished-product.md` §3 A2) and nothing in the slice reopened them.
+
+Phase 5 (#74, the round-1 playtest) sits ahead of phase 8 in the commit sequence and is
+**pending, not blocked** — the doors are fixed and the script is
+`docs/planning/playtest-round-1.md`, presented in-game (#332/#333). It is an HITL unit: the
+next `/next` that picks it prepares and hands over the script, and the artifact is the filed
+calibration notes.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -30,7 +34,7 @@ issue's Notes.
 | ~~#359~~ | ~~construction: buy capacity with cash + days, ceiling enforced, Growth build surface~~ **BUILT 2026-08-06** | 7 |
 | ~~#360~~ | ~~facility score lights the dormant tier-gate `facility` face~~ **BUILT 2026-08-06** | 7 |
 | ~~#361~~ | ~~lot cap governs buying ("31 of 35"), trade always lands~~ **BUILT 2026-08-06** | 7 |
-| #362 | wholesale this unit — the aged-inventory release valve | 7 |
+| ~~#362~~ | ~~wholesale this unit — the aged-inventory release valve~~ **BUILT 2026-08-06 — phases 6 + 7 COMPLETE** | 7 |
 
 (Phase 4 B3 closed 2026-07-22 — #176, #177, #178; #179 landed earlier in A4.)
 
@@ -224,6 +228,26 @@ issue's Notes.
   should be — prep-as-its-own-capacity is one of A2 R2's five recorded rejections, along with
   forced wholesale, the overflow lot, refusing the trade, and a soft cap with a fee.
 
+- **`inventory:vehicle_sold` now means A PERSON BOUGHT THIS CAR, and only that** (#362). A
+  wholesale-out publishes `inventory:vehicle_wholesaled` instead — **including the #162
+  recon-abandon path**, which used to publish `vehicle_sold` and was therefore feeding
+  MarketEconomy a wholesale dump as a *retail comp* (dragging the segment's price index down)
+  and staging the wholesaler in InstalledBase as a future owner. The abandon path keeps its
+  own price rule (`book − reconSpentToDate`); only which event it is changed. A suite
+  asserting `vehicle_sold` on an abandon is asserting the old lie —
+  `tests/Inventory.recon.test.ts` was updated and now asserts **zero** `vehicle_sold` there.
+- **Wholesale proceeds come off BOOK, never off `askingPrice`** (#362), and there is exactly
+  one place the rule lives: `Inventory.getWholesaleQuote()`. The Lot room states that quote
+  and never re-derives a price or subtracts its own cost basis. The quote is a **pure read** —
+  nothing leaves the lot and no money moves until `wholesaleVehicle()` — which is what lets
+  the confirmation sheet show proceeds and the realized loss *before* it commits.
+- **There is deliberately no gate on recon status or the frontline hold for wholesaling**
+  (#362). Both describe a car already sitting on the lot burning money, and the units the
+  player most wants to dump are exactly the ones they regret. Do not add "you can't dump a
+  car mid-recon" — that is a second ceiling for a mechanic whose whole point is one rule.
+  This is also **not** the rejected "forced wholesale on overrun" (A2 R2): the player picks
+  the unit and sees the number.
+
 ## Phase table
 
 Status: `pending` → `active` → `done`. "Decision first" = a DECIDE unit must run before
@@ -243,8 +267,8 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
-| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 + #358–#361 built; #362 open |
-| 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
+| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
+| 8 | C2 calibration campaign (#286 + #180/#181) | — | active |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
@@ -263,6 +287,47 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-06 — **BUILT #362** (wholesale this unit — the release valve). **Phases 6 and 7 are
+  COMPLETE.** The only path that turned a unit back into cash was abandoning recon after a
+  surprise, so with the lot cap live (#361) sitting at 35 of 35 holding three units nobody
+  wants was a dead end with no move in it. Now there is one, and it costs you something.
+  **One rule for the price: book value with a `data/` haircut.** Off **book**, never off the
+  asking price — the ask is what you hope a retail customer pays, and a wholesale buyer is
+  buying to resell. That is exactly why the valve realizes a loss rather than being a free
+  undo. `getWholesaleQuote()` is the only place the rule lives; the room states it and never
+  re-derives a price or subtracts its own cost basis.
+  **Any owned unit, no second ceiling.** No gate on recon status and none on the #295
+  frontline hold: both describe a car already sitting on your lot burning money, and the
+  units you most want to dump are the ones you regret. This is also *not* the rejected
+  "forced wholesale on overrun" — the player picks the unit and sees the number.
+  **The quote is a pure read, which is what makes the confirmation possible.** This is the
+  one action that realizes a loss on purpose, so it never fires off a single tap: the sheet
+  says what the buyer pays, what you have in it, and *$2,598 loss* in red. A valve whose
+  price you cannot read is not a decision.
+  **Both wholesale-outs now leave by the same door, and that fixed a real defect.**
+  `inventory:vehicle_wholesaled` is published by this valve *and* by the #162 recon abandon.
+  It is deliberately not `inventory:vehicle_sold` — that event means a person bought this
+  car, and MarketEconomy was recording the abandon-path dump as a **retail comp**, feeding a
+  wholesale price into the segment's price index; InstalledBase was staging the wholesaler as
+  a future owner. The abandon path keeps #162's price rule; only which event it is stopped
+  being a lie.
+  **HistoryLog records it with its own `inventory` kind and a plain badge** — *"Wholesaled the
+  2022 Chevrolet Silverado 1500 — $14,724, a $2,598 loss."* Naming the car matters: this is
+  what you look back at when the month closes short. It must never wear the reward badge a
+  closed retail deal wears.
+  **Driven on web at a T3 store, single clicks.** Wholesaled a Silverado for $14,724 against a
+  $17,322 basis; cash moved $190,925 → **$205,649** exactly, the lot 8 of 12 → 7 of 12, and
+  the entry landed in Deal History under a grey INVENTORY badge between two gold SALEs. Then
+  stood the store at its cap (`built.lotSpaces` → 7 in the slot, restored after) and reloaded:
+  *7 of 7 spaces taken · no spaces open*, *"No spaces open — sell a unit before you buy
+  another"*, auction lane closed. **Keep It** changed nothing. **Wholesale It** took the unit
+  and the same card flipped to *"The wholesale auction — where the next unit on this lot comes
+  from"*; the lane read *Lot: 6 of 7 spaces* and was buyable again — #359, #361 and #362
+  meeting with no extra wiring, because occupancy is read live. 217 suites / **2841** tests,
+  typecheck clean.
+  Next: **phase 8, C2 calibration** — but #74 (the round-1 playtest, HITL) sits ahead of it in
+  the commit sequence and is pending, not blocked.
 
 - 2026-08-06 — **BUILT #361** (the lot cap governs buying — *6 of 6 spaces taken · no spaces
   open*). Lot size has been CSV tier truth since the beginning and nothing enforced it, so
@@ -345,47 +410,4 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   The Tier-2 fixture's *Used Car Manager 1 of 0* row is visible again under the Sales panel —
   that is the stale-fixture state already recorded in Blockers, displayed plainly on purpose.
   Not a defect; do not "fix" it.
-  Next: **BUILD #361** (lot cap governs buying — "31 of 35" — trade always lands).
-
-- 2026-08-06 — **BUILT #360** (the facility gate face — the dormant fifth face gets a
-  producer). *Facility Build-Out · 23% built vs 50%*. The face has been declared in
-  `data/tier-gate.json` since #232 and skipped defensively by the engine ever since,
-  because nothing produced a number for it. A2 R1's whole reason for making buildings
-  purchasable was to give it one.
-  **One rule: built ÷ ceiling, per kind, averaged.** Not a combined total. A combined
-  built÷ceiling would let the lot buy the entire score — 35 spaces against 6 service bays at
-  T3 — while the store ran a one-bay shop; averaging the per-kind ratios makes every
-  department's room count the same. Each ratio caps at 1, so a save standing over a ceiling
-  reads as done rather than as extra credit.
-  **A kind the tier has no ceiling for is EXCLUDED, not counted as unbuilt.** Body bays are 0
-  below T3, and "0 of 0 built" would peg a fully built-out Tier-1 store at 67 for a building
-  the tier forbids. The flip side is the teeth: **arriving at T3 drops the score**, because
-  the body shop just became something you are allowed — and therefore expected — to build.
-  That is the only reason the exclusion is worth a rule at all; under a combined total a
-  zero ceiling cancels out of both sides and the choice would be invisible.
-  **Stepped means read LIVE, never sampled.** No `levelSamples`, no rolling window, nothing
-  in the snapshot: the face stands exactly where it stands until the player builds, then it
-  steps. A monthly average would report a bar the store has already cleared as still short,
-  and would make the same construction worth more early in the month than late. It is also
-  why the strip renders it as the cash gauge **minus the trend arrow** — an arrow here would
-  read "flat" every day the player did not build and mean nothing.
-  **In-flight construction is worth zero to the score**, which is the same rule the ceiling
-  measures the other way (committed = built + in flight). Confirmed on screen: buying a body
-  bay left the face at 23% with *Building 1 bay — opens day 38* on the row above it.
-  **Both "skip the stepped face" filters are deleted, in the verdict and in
-  `getTierRequirements`.** They now filter only on "is a configured face", which is what
-  keeps #250's `streak` control tunable out. The requirements filter had to move with the
-  verdict: it exists so the Growth climb can never foreshadow a bar the gate does not grade,
-  and after this it must equally not hide one it does. `GrowthTab.reachability`'s assertion
-  flipped from `not.toContain('facility')` to `toContain`.
-  **Renamed the label to "Facility Build-Out".** "Facility / Image" promised an image
-  standard that goals-targets decision 4 re-homed onto the T4+ OEM stream; the stale name
-  only survived because the face was invisible. Making it visible made it a plain-language
-  defect, not a design question.
-  **Driven on web at a T3 store holding T2's buildings** — the carry-over state #358 created.
-  Lot 12 of 35, service 2 of 6, body 0 of 3 ⇒ **23% built vs 50%** on the Home strip
-  (arithmetic: (12/35 + 2/6 + 0)/3), the same figure spelled out on the Growth board directly
-  under the build surface that produced it, and "% on track" fell 100% → **41%** as the T3
-  bars lit. **The live save is `slot:<id>`, not `snapshot:<id>`** — editing the latter changed
-  nothing and cost a reload to find out. 216 suites / **2806** tests, typecheck clean.
   Next: **BUILD #361** (lot cap governs buying — "31 of 35" — trade always lands).
