@@ -389,6 +389,35 @@ export interface EventMap {
     powertrain: 'ice' | 'hybrid' | 'ev';
   };
 
+  // Inventory — a unit left the lot to a WHOLESALE buyer, not to a retail
+  // customer (#362). Deliberately not `inventory:vehicle_sold`: that event means
+  // "a person bought this car", and MarketEconomy records it as a retail comp
+  // while InstalledBase stages it as a future owner's vehicle. A wholesale-out
+  // is neither — dumping a unit at a haircut is not evidence that retail prices
+  // fell, and the wholesaler never comes back for service.
+  //
+  // Both wholesale-outs publish it, so the event means one thing regardless of
+  // which door the unit left by: the voluntary release valve (`released`, #362)
+  // and abandoning a recon bill (`recon_abandoned`, #162). They price
+  // differently — a car with its guts on the floor is worth less than a
+  // finished one — but a wholesale is a wholesale.
+  'inventory:vehicle_wholesaled': {
+    day: number;
+    vehicleId: string;
+    /** What the wholesale buyer paid; already posted to Economy as revenue. */
+    proceeds: number;
+    /** `purchasePrice + reconCost` — what the unit has cost you so far. */
+    costBasis: number;
+    /** `proceeds − costBasis`. Negative is the loss the player chose to take. */
+    gain: number;
+    /** Named so the history feed can say WHICH car went, not "a unit". */
+    year: number;
+    make: string;
+    model: string;
+    category: string;
+    reason: 'released' | 'recon_abandoned';
+  };
+
   // FollowUpPool — a walked customer's heat decayed to zero; no longer actionable
   'followup:customer_archived': { customerId: string; day: number };
 

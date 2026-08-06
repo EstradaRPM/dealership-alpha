@@ -70,6 +70,26 @@ export interface LotOccupancy {
   readonly atCapacity: boolean;
 }
 
+/**
+ * What wholesaling a given unit would do (#362, A2 R2). The whole quote — the
+ * offer AND what it costs you — because this is the one action that realizes a
+ * loss on purpose, and the player must see the number before committing.
+ *
+ * The rule lives here and only here: no surface re-derives proceeds from book,
+ * and none subtracts its own cost basis.
+ */
+export interface WholesaleQuote {
+  readonly vehicleId: string;
+  /** The unit's live book value — what the offer comes off. */
+  readonly bookValue: number;
+  /** `bookValue × (1 − haircutPct)`, rounded, never below 0. */
+  readonly proceeds: number;
+  /** `purchasePrice + reconCost` — what the unit has cost you so far. */
+  readonly costBasis: number;
+  /** `proceeds − costBasis`. Negative is the loss you are choosing to take. */
+  readonly gain: number;
+}
+
 export interface Inventory {
   getAuctionListings(): readonly AuctionListing[];
   getLotVehicles(): readonly LotVehicle[];
@@ -108,6 +128,22 @@ export interface Inventory {
    * the vehicle's `askingPrice` so the comp record stays meaningful.
    */
   sellVehicle(vehicleId: string, salePrice?: number): LotVehicle;
+  /**
+   * What wholesaling this unit would pay and cost (#362). Returns `undefined`
+   * for an unknown id. Read-only — nothing moves until `wholesaleVehicle`.
+   */
+  getWholesaleQuote(vehicleId: string): WholesaleQuote | undefined;
+  /**
+   * Wholesale a unit out (#362, A2 R2) — the release valve on owned inventory.
+   * Pays `getWholesaleQuote(id).proceeds` through Economy, takes the unit off
+   * the lot, and emits `inventory:vehicle_wholesaled`.
+   *
+   * Available for **any** owned unit: recon state and the #295 frontline hold
+   * are states of a car already sitting on your lot, not conditions on selling
+   * it. One rule, no second ceiling. Throws on an unknown id (the surface only
+   * ever passes ids it just read off `getLotVehicles`).
+   */
+  wholesaleVehicle(vehicleId: string): WholesaleQuote;
   /**
    * Player-set asking price for a lot vehicle (MANAGERIAL Pricing lever,
    * #120). Negative inputs are clamped to 0; an unknown vehicleId is a no-op
@@ -273,6 +309,56 @@ export function createInventory(deps: InventoryDeps): Inventory {
       spacesOpen: Math.max(0, built - occupied),
       atCapacity: occupied >= built,
     };
+  }
+
+  /** What a unit has cost you so far: what you paid plus the recon you sank. */
+  function costBasisOf(v: LotVehicle): number {
+    return v.purchasePrice + v.reconCost;
+  }
+
+  /**
+   * What wholesaling this unit would pay and cost (#362). Book value with the
+   * `data/`-configured haircut — **not** the asking price. The ask is what you
+   * hope a retail customer pays; a wholesale buyer is buying to resell and
+   * prices off book, which is exactly why the valve realizes a loss.
+   */
+  function wholesaleQuote(v: LotVehicle): WholesaleQuote {
+    const bookValue = bookValueFn(v);
+    const proceeds = Math.max(
+      0,
+      Math.round(bookValue * (1 - inventoryConfig.wholesale.haircutPct)),
+    );
+    const costBasis = costBasisOf(v);
+    return { vehicleId: v.id, bookValue, proceeds, costBasis, gain: proceeds - costBasis };
+  }
+
+  /**
+   * The one way a unit leaves the lot to a wholesale buyer (#362). Both doors
+   * come through here — the voluntary release valve and the #162 recon abandon
+   * — so the money, the removal and the event happen in one order and the event
+   * means the same thing whichever door was used. They differ only in what the
+   * buyer pays, which is the quote the caller brings.
+   */
+  function wholesaleOut(
+    v: LotVehicle,
+    quote: WholesaleQuote,
+    reason: 'released' | 'recon_abandoned',
+    label: string,
+  ): void {
+    economy.postRevenue(quote.proceeds, label);
+    lotVehicles.delete(v.id);
+    bus.publish('inventory:vehicle_wholesaled', {
+      day: currentDay,
+      vehicleId: v.id,
+      proceeds: quote.proceeds,
+      costBasis: quote.costBasis,
+      gain: quote.gain,
+      year: v.year,
+      make: v.make,
+      model: v.model,
+      category: v.category,
+      reason,
+    });
   }
 
   /**
@@ -762,6 +848,27 @@ export function createInventory(deps: InventoryDeps): Inventory {
 
     getLotOccupancy: lotOccupancy,
 
+    getWholesaleQuote(vehicleId) {
+      const v = lotVehicles.get(vehicleId);
+      return v ? wholesaleQuote(v) : undefined;
+    },
+
+    wholesaleVehicle(vehicleId) {
+      const v = lotVehicles.get(vehicleId);
+      if (!v) throw new Error(`No lot vehicle "${vehicleId}"`);
+      // No gate on recon status or the frontline hold: those describe a car
+      // that is already on your lot burning money, and the valve exists
+      // precisely for the units you regret. One rule.
+      const quote = wholesaleQuote(v);
+      wholesaleOut(
+        v,
+        quote,
+        'released',
+        `Wholesaled: ${v.year} ${v.make} ${v.model}`,
+      );
+      return quote;
+    },
+
     buyFromAuction(listingId) {
       buyFromAuctionImpl(listingId);
     },
@@ -876,27 +983,20 @@ export function createInventory(deps: InventoryDeps): Inventory {
       // that the abandon path means the unit is unretailable as-is and the
       // wholesale buyer prices in the unfinished recon.
       const book = bookValueFn(v);
-      const wholesale = Math.max(0, Math.round(book - v.reconCost));
-      economy.postRevenue(
-        wholesale,
+      const proceeds = Math.max(0, Math.round(book - v.reconCost));
+      // #362: the abandon path publishes `inventory:vehicle_wholesaled` like
+      // the voluntary valve does, NOT `inventory:vehicle_sold`. It never was a
+      // retail sale — MarketEconomy was recording a wholesale dump as a retail
+      // comp and dragging the segment's price index down with it. The price
+      // rule below stays #162's (a car with its guts on the floor is worth less
+      // than a finished one); only which event it is stops being a lie.
+      const costBasis = costBasisOf(v);
+      wholesaleOut(
+        v,
+        { vehicleId: v.id, bookValue: book, proceeds, costBasis, gain: proceeds - costBasis },
+        'recon_abandoned',
         `Wholesale dump (recon abandoned): ${v.year} ${v.make} ${v.model}`,
       );
-      lotVehicles.delete(vehicleId);
-      bus.publish('inventory:vehicle_sold', {
-        day: currentDay,
-        vehicleId: v.id,
-        salePrice: wholesale,
-        templateId: v.templateId,
-        brand: v.brand,
-        make: v.make,
-        year: v.year,
-        mileage: v.mileage,
-        condition: v.condition,
-        category: v.category,
-        purchasePrice: v.purchasePrice,
-        reconCost: v.reconCost,
-        powertrain: DEFAULT_POWERTRAIN,
-      });
     },
   };
 }

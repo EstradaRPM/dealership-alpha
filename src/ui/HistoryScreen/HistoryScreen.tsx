@@ -11,6 +11,7 @@ const KIND_LABEL: Record<HistoryEntryKind, string> = {
   market: 'Market',
   tier: 'Milestone',
   staff: 'Staff',
+  inventory: 'Inventory',
 };
 
 const KIND_TONE: Record<HistoryEntryKind, BadgeTone> = {
@@ -20,6 +21,9 @@ const KIND_TONE: Record<HistoryEntryKind, BadgeTone> = {
   tier: 'positive',
   // A departure is a loss, and the badge should not congratulate you for it.
   staff: 'danger',
+  // Wholesaling out is a decision, not a win — usually a loss taken on purpose
+  // to free a space. It gets the plain badge, never the sale's reward badge.
+  inventory: 'neutral',
 };
 
 export interface HistoryScreenProps {

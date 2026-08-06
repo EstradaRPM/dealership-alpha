@@ -1,7 +1,11 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createGameClock } from '../src/game/GameClock';
 import { createEconomy } from '../src/game/Economy';
-import { createInventory, loadVehicleData } from '../src/game/Inventory';
+import {
+  createInventory,
+  loadVehicleData,
+  loadInventoryConfig,
+} from '../src/game/Inventory';
 import type { TradeAcquisitionInput } from '../src/game/Inventory';
 import { generateAuctionListings } from '../src/game/Inventory/auctionGenerator';
 
@@ -405,5 +409,140 @@ describe('Inventory — the lot cap on buying (#361)', () => {
     }
     expect(inventory.getLotVehicles()).toHaveLength(5);
     expect(inventory.getLotOccupancy().atCapacity).toBe(false);
+  });
+});
+
+// ── The wholesale release valve (#362, A2 R2) ────────────────────────────────
+//
+// The only path that turned a unit back into cash was abandoning recon after a
+// surprise, so being lot-locked with three units nobody wants was a dead end.
+// This is the valve on its own merits — the player picks the unit and sees the
+// number before committing, because it is the one action that realizes a loss
+// on purpose.
+
+const HAIRCUT = loadInventoryConfig().wholesale.haircutPct;
+
+/** A lot whose book value the test controls, so "off book" is provable. */
+function makeWholesaleSetup(book: number, builtSpaces?: { value: number }) {
+  const bus = createEventBus();
+  const clock = createGameClock({ bus, initialDay: 0 });
+  const economy = createEconomy({
+    bus,
+    startingCash: 500_000,
+    config: NO_OVERNIGHT_CONFIG,
+  });
+  const inventory = createInventory({
+    bus,
+    masterSeed: MASTER_SEED,
+    economy,
+    vehicleData,
+    bookValueFn: () => book,
+    ...(builtSpaces ? { getBuiltLotSpaces: () => builtSpaces.value } : {}),
+  });
+  return { bus, clock, economy, inventory };
+}
+
+describe('Inventory — the wholesale release valve (#362)', () => {
+  it('wholesaling a unit takes it off the lot and pays cash', () => {
+    const { bus, clock, economy, inventory } = makeWholesaleSetup(12_000);
+    clock.advanceDay();
+    const [listing] = inventory.getAuctionListings();
+    inventory.buyFromAuction(listing.id);
+    const before = economy.cash;
+
+    const wholesaled: Array<{ vehicleId: string; proceeds: number; make: string }> = [];
+    bus.subscribe('inventory:vehicle_wholesaled', (e) => wholesaled.push(e));
+
+    const quote = inventory.wholesaleVehicle(listing.id);
+
+    expect(inventory.getLotVehicle(listing.id)).toBeUndefined();
+    expect(economy.cash).toBe(before + quote.proceeds);
+    // A wholesale is NOT a retail sale: it names the unit on its own event so
+    // the history feed can say which car went and what it cost to let it go.
+    expect(wholesaled).toHaveLength(1);
+    expect(wholesaled[0].vehicleId).toBe(listing.id);
+    expect(wholesaled[0].proceeds).toBe(quote.proceeds);
+    expect(wholesaled[0].make).toBe(listing.make);
+  });
+
+  it('proceeds come off book value, not the asking price', () => {
+    const { clock, inventory } = makeWholesaleSetup(12_000);
+    clock.advanceDay();
+    const [listing] = inventory.getAuctionListings();
+    inventory.buyFromAuction(listing.id);
+
+    // The ask is what you HOPE a retail customer pays. A wholesale buyer is
+    // buying to resell and prices off book — so moving the ask to the moon
+    // must not move the offer by a dollar.
+    const atMarket = inventory.getWholesaleQuote(listing.id)!;
+    inventory.setAskingPrice(listing.id, 999_999);
+    const dreaming = inventory.getWholesaleQuote(listing.id)!;
+
+    expect(dreaming.proceeds).toBe(atMarket.proceeds);
+    expect(dreaming.proceeds).toBe(Math.round(12_000 * (1 - HAIRCUT)));
+    expect(dreaming.bookValue).toBe(12_000);
+  });
+
+  it('states the loss against cost basis before anything commits', () => {
+    const { clock, economy, inventory } = makeWholesaleSetup(12_000);
+    clock.advanceDay();
+    const [listing] = inventory.getAuctionListings();
+    inventory.buyFromAuction(listing.id);
+    const parked = inventory.getLotVehicle(listing.id)!;
+    const cashBefore = economy.cash;
+
+    const quote = inventory.getWholesaleQuote(listing.id)!;
+    expect(quote.costBasis).toBe(parked.purchasePrice + parked.reconCost);
+    expect(quote.gain).toBe(quote.proceeds - quote.costBasis);
+
+    // Quoting is a read. Nothing left the lot and no money moved.
+    expect(inventory.getLotVehicle(listing.id)).toBeDefined();
+    expect(economy.cash).toBe(cashBefore);
+    expect(inventory.getWholesaleQuote('nobody')).toBeUndefined();
+  });
+
+  it('a unit still in prep can be wholesaled', () => {
+    const { clock, inventory } = makeWholesaleSetup(12_000);
+    clock.advanceDay();
+    const [listing] = inventory.getAuctionListings();
+    inventory.buyFromAuction(listing.id);
+
+    // Recon outstanding AND inside the #295 frontline hold — the two states a
+    // second ceiling would have been written against. There is no second
+    // ceiling: recon is a cost and the hold is about who may be SHOWN the car,
+    // and the units you most want to dump are exactly the ones you regret.
+    const parked = inventory.getLotVehicle(listing.id)!;
+    expect(parked.reconStatus).toBe('in_progress');
+    expect(parked.frontlineDay).toBeGreaterThan(parked.arrivalDay);
+
+    expect(() => inventory.wholesaleVehicle(listing.id)).not.toThrow();
+    expect(inventory.getLotVehicles()).toHaveLength(0);
+  });
+
+  it('wholesaling out of an overrun reopens the auction', () => {
+    const built = { value: 2 };
+    const { clock, inventory } = makeWholesaleSetup(12_000, built);
+    clock.advanceDay();
+    const [first, second, next] = inventory.getAuctionListings();
+    inventory.buyFromAuction(first.id);
+    inventory.buyFromAuction(second.id);
+    // A trade always lands, and is the one way over the cap (#361).
+    const traded = inventory.acquireFromTrade(CAP_TRADE);
+    expect(() => inventory.buyFromAuction(next.id)).toThrow(/[Nn]o space/);
+
+    // Back AT the cap is still frozen — "under" is the rule, not "not over".
+    inventory.wholesaleVehicle(traded.id);
+    expect(inventory.getLotOccupancy()).toMatchObject({ occupied: 2, atCapacity: true });
+    expect(() => inventory.buyFromAuction(next.id)).toThrow(/[Nn]o space/);
+
+    // One more out and the lane opens with no further player action.
+    inventory.wholesaleVehicle(first.id);
+    expect(inventory.getLotOccupancy().atCapacity).toBe(false);
+    expect(() => inventory.buyFromAuction(next.id)).not.toThrow();
+  });
+
+  it('refuses an id that is not on the lot', () => {
+    const { inventory } = makeWholesaleSetup(12_000);
+    expect(() => inventory.wholesaleVehicle('nobody')).toThrow(/No lot vehicle/);
   });
 });

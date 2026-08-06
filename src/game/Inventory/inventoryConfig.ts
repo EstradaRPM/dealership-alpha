@@ -27,9 +27,21 @@ const CarryingConfigSchema = z.object({
   agedThresholdDays: z.number().int().positive(),
 });
 
+// The release valve on owned inventory (#362, A2 R2). Wholesale proceeds are
+// `currentBook × (1 − haircutPct)` — the haircut is what a wholesale buyer takes
+// for buying sight-unseen to resell, and it is the whole reason dumping a unit
+// realizes a loss instead of being a free undo. Bounded 0..1 because a haircut
+// outside that range is not a haircut: 0 would make the valve free, above 1
+// would have the player paying to give a car away.
+// Not `.strict()`: the JSON carries a `_doc` annotation that Zod strips.
+const WholesaleConfigSchema = z.object({
+  haircutPct: z.number().min(0).max(1),
+});
+
 const InventoryConfigSchema = z.object({
   inspection: InspectionConfigSchema,
   carrying: CarryingConfigSchema,
+  wholesale: WholesaleConfigSchema,
   // Frontline-prep hold (#295). Days an acquired unit (auction buy or customer
   // trade) is held off the walk-in sellable pool after arrival, so the player
   // gets an interaction window before a simmed customer can buy it. Auction and
@@ -39,6 +51,7 @@ const InventoryConfigSchema = z.object({
 
 export type InspectionConfig = z.infer<typeof InspectionConfigSchema>;
 export type CarryingConfig = z.infer<typeof CarryingConfigSchema>;
+export type WholesaleConfig = z.infer<typeof WholesaleConfigSchema>;
 export type InventoryConfig = z.infer<typeof InventoryConfigSchema>;
 
 export function loadInventoryConfig(): InventoryConfig {

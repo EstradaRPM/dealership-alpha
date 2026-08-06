@@ -6,9 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Modal,
   type TextStyle,
 } from 'react-native';
-import type { LotOccupancy } from '../../game/Inventory';
+import type { LotOccupancy, WholesaleQuote } from '../../game/Inventory';
 import { useTheme } from '../theme';
 import { Surface, SectionHeader, Badge, Button } from '../kit';
 import { ChipRow } from '../DeptControls';
@@ -37,6 +38,12 @@ export interface LotRoomVehicle {
   readonly dailyCarryingCost: number;
   /** `true` once days-on-lot crosses the aged threshold (#173). */
   readonly aged: boolean;
+  /**
+   * What wholesaling this unit would pay and cost (#362), straight off
+   * `Inventory.getWholesaleQuote()`. The room never derives proceeds from book
+   * or subtracts its own cost basis — the haircut is an engine rule.
+   */
+  readonly wholesale: WholesaleQuote;
 }
 
 /** One selectable list-price strategy (#154). */
@@ -69,17 +76,106 @@ export interface LotRoomProps {
   autoPricingActive: boolean;
   /** Sourcing: the auction lives in this room, not in Prep (locked IA §4). */
   onOpenAuction: () => void;
+  /**
+   * Wholesale the unit out (#362) — the release valve. Fired only after the
+   * player confirms against the stated proceeds and loss.
+   */
+  onWholesale: (vehicleId: string) => void;
   onClose: () => void;
+}
+
+/** "$3,100 loss" / "$400 gain" / "break-even" — never a bare signed number. */
+function resultLine(gain: number): string {
+  if (gain < 0) return `$${Math.abs(gain).toLocaleString()} loss`;
+  if (gain > 0) return `$${gain.toLocaleString()} gain`;
+  return 'break-even';
+}
+
+/**
+ * The confirmation (#362). This is the one action that realizes a loss on
+ * purpose, so it never fires off a single tap: the player sees what the
+ * wholesale buyer pays, what the unit has cost, and the resulting hit before
+ * committing. Same modal grammar the auction's buy confirmation uses.
+ */
+function WholesaleConfirm({
+  vehicle,
+  onConfirm,
+  onCancel,
+}: {
+  vehicle: LotRoomVehicle;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const t = useTheme();
+  const s = makeStyles(t);
+  const { proceeds, costBasis, gain } = vehicle.wholesale;
+  return (
+    <Modal transparent animationType="slide" onRequestClose={onCancel}>
+      <View style={s.modalBackdrop}>
+        <View style={s.modalCard} testID="lot-wholesale-confirm">
+          <Text style={s.modalTitle}>Wholesale this unit?</Text>
+          <Text style={s.modalUnit}>
+            {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.trim}
+          </Text>
+
+          <View style={s.modalLine}>
+            <Text style={s.modalLabel}>A wholesale buyer pays</Text>
+            <Text style={s.modalValue} testID="lot-wholesale-proceeds">
+              {`$${proceeds.toLocaleString()}`}
+            </Text>
+          </View>
+          <View style={s.modalLine}>
+            <Text style={s.modalLabel}>You have in it</Text>
+            <Text style={s.modalValue}>{`$${costBasis.toLocaleString()}`}</Text>
+          </View>
+          <View style={s.modalLine}>
+            <Text style={s.modalLabel}>You take</Text>
+            <Text
+              style={
+                gain < 0
+                  ? { ...s.modalValue, color: t.colors.danger }
+                  : { ...s.modalValue, color: t.colors.positive }
+              }
+              testID="lot-wholesale-result"
+            >
+              {resultLine(gain)}
+            </Text>
+          </View>
+
+          <Text style={s.modalNote}>
+            The unit leaves today and its space opens up. Wholesale is what a
+            buyer pays to resell it — always under what you could retail it for.
+          </Text>
+
+          <View style={s.modalActions}>
+            <Button
+              label="Keep It"
+              variant="ghost"
+              onPress={onCancel}
+              testID="lot-wholesale-cancel"
+            />
+            <Button
+              label="Wholesale It"
+              onPress={onConfirm}
+              testID="lot-wholesale-commit"
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 function StockRow({
   vehicle,
   onCommit,
   onOpen,
+  onWholesale,
 }: {
   vehicle: LotRoomVehicle;
   onCommit: (price: number) => void;
   onOpen: () => void;
+  onWholesale: () => void;
 }) {
   const t = useTheme();
   const s = makeStyles(t);
@@ -117,15 +213,27 @@ function StockRow({
           {vehicle.dailyCarryingCost.toLocaleString()}/day
         </Text>
       </TouchableOpacity>
-      <TextInput
-        style={s.priceInput}
-        value={text}
-        keyboardType="number-pad"
-        onChangeText={setText}
-        onEndEditing={commit}
-        onBlur={commit}
-        accessibilityLabel={`Asking price for ${vehicle.id}`}
-      />
+      <View style={s.rowRight}>
+        <TextInput
+          style={s.priceInput}
+          value={text}
+          keyboardType="number-pad"
+          onChangeText={setText}
+          onEndEditing={commit}
+          onBlur={commit}
+          accessibilityLabel={`Asking price for ${vehicle.id}`}
+        />
+        {/* #362: the release valve sits on the unit's own card, because the
+            decision is about THIS car — what it is costing you and what a
+            wholesale buyer would pay for it. The proceeds are on the button so
+            the offer is readable before you ever open the confirmation. */}
+        <Button
+          label={`Wholesale $${vehicle.wholesale.proceeds.toLocaleString()}`}
+          variant="ghost"
+          onPress={onWholesale}
+          testID={`lot-wholesale-button-${vehicle.id}`}
+        />
+      </View>
     </View>
   );
 }
@@ -165,10 +273,16 @@ export function LotRoom({
   onSelectPricingStrategy,
   autoPricingActive,
   onOpenAuction,
+  onWholesale,
   onClose,
 }: LotRoomProps) {
   const t = useTheme();
   const s = makeStyles(t);
+  // The unit the player is being asked about (#362). Held by id, not by value,
+  // so the confirmation always shows the CURRENT quote — book moves with the
+  // market and with the recon still being spent.
+  const [wholesaling, setWholesaling] = useState<string | null>(null);
+  const pending = vehicles.find((v) => v.id === wholesaling) ?? null;
   const selectedStrategy =
     pricingStrategyOptions.find((o) => o.id === pricingStrategyId) ??
     pricingStrategyOptions[0];
@@ -211,6 +325,7 @@ export function LotRoom({
                 vehicle={v}
                 onCommit={(price) => onSetAskingPrice(v.id, price)}
                 onOpen={() => onOpenPricing(v.id)}
+                onWholesale={() => setWholesaling(v.id)}
               />
             ))
           )}
@@ -267,6 +382,17 @@ export function LotRoom({
           </Surface>
         </View>
       </ScrollView>
+
+      {pending && (
+        <WholesaleConfirm
+          vehicle={pending}
+          onCancel={() => setWholesaling(null)}
+          onConfirm={() => {
+            setWholesaling(null);
+            onWholesale(pending.id);
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -312,6 +438,43 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
       paddingVertical: t.spacing.sm,
     },
     stockInfo: { flex: 1, paddingRight: t.spacing.md },
+    rowRight: { alignItems: 'flex-end', gap: t.spacing.xs },
+    // #362 confirmation sheet — the same bottom-sheet grammar the auction's buy
+    // confirmation uses, so the two ends of the pipeline read alike.
+    modalBackdrop: { flex: 1, backgroundColor: t.colors.scrim, justifyContent: 'flex-end' },
+    modalCard: {
+      backgroundColor: t.colors.surface,
+      borderTopLeftRadius: t.radius.lg,
+      borderTopRightRadius: t.radius.lg,
+      padding: t.spacing.lg,
+      paddingBottom: t.spacing.xl,
+    },
+    modalTitle: { ...t.typography.title, color: t.colors.textPrimary },
+    modalUnit: {
+      ...t.typography.body,
+      color: t.colors.textMuted,
+      marginTop: t.spacing.xxs,
+      marginBottom: t.spacing.md,
+    },
+    modalLine: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: t.spacing.xs,
+    },
+    modalLabel: { ...t.typography.body, color: t.colors.textMuted },
+    modalValue: { ...t.typography.body, color: t.colors.textPrimary },
+    modalNote: {
+      ...t.typography.caption,
+      color: t.colors.textMuted,
+      marginTop: t.spacing.sm,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: t.spacing.sm,
+      marginTop: t.spacing.lg,
+    },
     rowTitleLine: {
       flexDirection: 'row',
       alignItems: 'center',

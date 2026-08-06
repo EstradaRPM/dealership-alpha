@@ -22,6 +22,13 @@ const BASE: LotRoomProps = {
       carryingCostToDate: 240,
       dailyCarryingCost: 20,
       aged: false,
+      wholesale: {
+        vehicleId: 'v1',
+        bookValue: 12_000,
+        proceeds: 10_200,
+        costBasis: 11_400,
+        gain: -1_200,
+      },
     },
     {
       id: 'v2',
@@ -35,6 +42,13 @@ const BASE: LotRoomProps = {
       carryingCostToDate: 1480,
       dailyCarryingCost: 20,
       aged: true,
+      wholesale: {
+        vehicleId: 'v2',
+        bookValue: 18_000,
+        proceeds: 15_300,
+        costBasis: 18_400,
+        gain: -3_100,
+      },
     },
   ],
   // #361: the room states the engine's occupancy, never a count of the list —
@@ -51,6 +65,7 @@ const BASE: LotRoomProps = {
   onSelectPricingStrategy: jest.fn(),
   autoPricingActive: false,
   onOpenAuction: jest.fn(),
+  onWholesale: jest.fn(),
   onClose: jest.fn(),
 };
 
@@ -190,6 +205,17 @@ describe('#346 Lot room — mounted in the live app', () => {
 
     expect(src).toContain('occupancy={world.inventory.getLotOccupancy()}');
     expect(src).toContain('lotOccupancy={world.inventory.getLotOccupancy()}');
+  });
+
+  // #362: the valve is only a valve if it is on the live card. Both halves are
+  // asserted — the quote the room states and the write the confirm fires —
+  // because a surface that shows a wholesale price but cannot take it is
+  // exactly the "built but never surfaced" failure this file exists to catch.
+  it('quotes the wholesale off the engine and wholesales the confirmed unit', () => {
+    const src = readAppCompositionSource();
+
+    expect(src).toContain('world.inventory.getWholesaleQuote(v.id)');
+    expect(src).toContain('world.inventory.wholesaleVehicle(vehicleId)');
   });
 });
 

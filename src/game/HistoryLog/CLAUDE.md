@@ -30,6 +30,14 @@ day-stamped entry:
 | `competitor:price_changed` | `market` | "Rival … raised/cut prices." |
 | `career:tier_up` | `tier` | "Promoted to Tier N." |
 | `staff:quit` | `staff` | "X left for <rival>." / "X quit." (#357) |
+| `inventory:vehicle_wholesaled` | `inventory` | "Wholesaled the 2016 Ford F-150 — $15,300, a $3,100 loss." (#362) |
+
+Wholesaling out is recorded because it is a deliberate, usually money-losing decision to free
+a space — the kind of thing you look back at when the month closes short and ask what you
+dumped. The car is **named** and the entry says plainly what letting it go cost; a valve whose
+price you can't read back isn't a decision. It gets its own `inventory` kind (plain badge) so
+it never wears the reward badge a closed retail deal wears. Both wholesale-outs land here: the
+#362 release valve and the #162 recon abandon, the latter with "after abandoning the recon".
 
 A departure is logged because this is the only surface a player can go back and read one on:
 the floor buffer is wiped every morning. The rival is named when there is one, so the loss
@@ -57,5 +65,5 @@ continuous ambient state is a KPI/market-visibility surface, not a discrete entr
   ("History"). The screen renders `getEntries()` directly.
 
 ## Notes
-- Subscribes only to existing events — adds no new event types.
+- Subscribes only to events other modules publish — adds no new event types.
 - Entries are immutable plain data; no functions, no class instances.

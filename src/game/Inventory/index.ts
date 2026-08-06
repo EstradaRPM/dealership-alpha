@@ -5,6 +5,7 @@ export type {
   InventoryDeps,
   InventorySnapshot,
   LotOccupancy,
+  WholesaleQuote,
 } from './Inventory';
 export type {
   AuctionListing,
@@ -20,6 +21,7 @@ export type {
   InventoryConfig,
   InspectionConfig,
   CarryingConfig,
+  WholesaleConfig,
 } from './inventoryConfig';
 export { computeDailyCarryingCost, floorplanAprForTier } from './carryingCost';
 export {

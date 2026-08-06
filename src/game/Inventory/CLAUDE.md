@@ -5,12 +5,18 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 ## Public API (`index.ts`)
 - `createInventory()` → `Inventory`.
 - `loadVehicleData` — reads `data/vehicles.json`.
-- Types: `Inventory`, `InventoryDeps`, `AuctionListing`, `LotVehicle`, `LotOccupancy`, `VehicleCondition`, `VehicleCategory`.
+- Types: `Inventory`, `InventoryDeps`, `AuctionListing`, `LotVehicle`, `LotOccupancy`, `WholesaleQuote`, `VehicleCondition`, `VehicleCategory`.
 
 ## Events
 - **Emits:** `inventory:vehicle_purchased`, `inventory:vehicle_sold`,
+  `inventory:vehicle_wholesaled` (#362),
   `inventory:vehicle_acquired_via_trade` (#171),
   `economy:carrying_cost_posted` (#173).
+  - `inventory:vehicle_sold` means **a person bought this car**. A wholesale-out
+    is not that and does not use it: MarketEconomy records `vehicle_sold` as a
+    retail comp and InstalledBase stages it as a future owner's vehicle, and a
+    dump at a haircut is neither evidence that retail prices fell nor a customer
+    who comes back for service.
   - `inventory:vehicle_sold` carries `powertrain` (#298) — the join seam
     InstalledBase reads. The catalog is ICE-only today, so the sell + recon-
     abandon emits stamp the `DEFAULT_POWERTRAIN` (`'ice'`) constant; EV/hybrid
@@ -145,6 +151,37 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   disabled "No Spaces Open" buy button). Both take the number straight off
   `getLotOccupancy()` and never count their own list.
 
+## The wholesale release valve (#362, A2 R2)
+
+- **`getWholesaleQuote(id)` → `{ bookValue, proceeds, costBasis, gain }`, and
+  `wholesaleVehicle(id)` commits it.** One rule for the price:
+  `proceeds = bookValueFn(v) × (1 − wholesale.haircutPct)`, rounded, floored at
+  0. Off **book**, never off `askingPrice` — the ask is what you hope a retail
+  customer pays; a wholesale buyer is buying to resell and prices off book,
+  which is exactly why the valve realizes a loss instead of being a free undo.
+- **Available for ANY owned unit.** No gate on `reconStatus` and none on the
+  #295 frontline hold: those describe a car that is already sitting on your lot
+  burning money, and the units you most want to dump are the ones you regret.
+  One rule, no second ceiling to learn.
+- **`getWholesaleQuote` is a pure read** — nothing leaves the lot and no money
+  moves until `wholesaleVehicle`. That is what lets the Lot room state the
+  proceeds and the loss *before* the player commits. Unknown id: `undefined`
+  from the quote, throws from the commit (the surface only passes ids it just
+  read off `getLotVehicles`).
+- **Both wholesale-outs leave by the same door.** The private `wholesaleOut`
+  helper posts the revenue, removes the unit and publishes
+  `inventory:vehicle_wholesaled` — for this valve (`reason: 'released'`) and for
+  the #162 recon abandon (`reason: 'recon_abandoned'`) alike, so the event means
+  one thing regardless of which function called it. They differ only in what the
+  buyer pays: the abandon path keeps #162's `book − reconSpentToDate` (a car
+  with its guts on the floor is worth less than a finished one).
+- The freed space reopens buying by itself — `buyFromAuction` reads occupancy
+  live, so nothing else has to happen.
+- Config: `data/tunables.json#inventory.wholesale.haircutPct` (magnitude is a
+  C2/#286 calibration placeholder). Surface: `src/ui/LotRoom` — the per-unit
+  `Wholesale $N` button and the `lot-wholesale-confirm` sheet. Read side:
+  `HistoryLog` records the dump, naming the car and the loss.
+
 ## Frontline-hold on acquired units (#295)
 - Every `LotVehicle` carries `frontlineDay` — the first day it is offered to the
   auto-sim walk-in pool. `buildAcquiredVehicle` (shared by `buyFromAuction` and
@@ -217,7 +254,10 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 - Player API: `authorizeReconSpend(vehicleId)` resumes recon;
   `abandonRecon(vehicleId)` wholesale-dumps the unit at
   `bookValueFn(v) − reconCost` (the AC's "current book − reconCostToDate"),
-  posts revenue, and emits `inventory:vehicle_sold`.
+  posts revenue, and emits **`inventory:vehicle_wholesaled`** with
+  `reason: 'recon_abandoned'` (#362 — it publishes `vehicle_sold` no longer; it
+  never was a retail sale, and MarketEconomy was booking the dump as a retail
+  comp).
 - `bookValueFn` is an optional dep; the default mirror is
   `purchasePrice + reconCost` (the static stub shape).
 

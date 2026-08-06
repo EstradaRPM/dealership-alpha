@@ -325,7 +325,7 @@
     "competitivePriceMultiplier": 0.85,
     "premiumPriceMultiplier": 1.35,
     "minPerSlotThroughput": 0.15,
-    "maxPerSlotThroughput": 0.60,
+    "maxPerSlotThroughput": 0.60,
     "maxWaitTicks": 60,
     "unservedCsiHit": 3,
     "rushUnlockTier": 3,
@@ -336,7 +336,7 @@
     "minAutoResolveRate": 0.40,
     "maxAutoResolveRate": 0.90,
     "minPerSlotThroughput": 0.10,
-    "maxPerSlotThroughput": 0.45,
+    "maxPerSlotThroughput": 0.45,
     "maxWaitTicks": 90,
     "unservedCsiHit": 3,
     "rushUnlockTier": 4,
@@ -438,7 +438,11 @@
       "reconFadePerDay": 3,
       "agedThresholdDays": 45
     },
-    "frontlineHoldDays": 2
+    "frontlineHoldDays": 2,
+    "wholesale": {
+      "_doc": "The release valve on owned inventory (#362, A2 R2). Wholesaling a unit pays `currentBook × (1 − haircutPct)`, rounded, floored at 0 — the haircut is what a wholesale buyer takes for buying a car sight-unseen to resell, and it is why dumping a unit realizes a loss rather than being a free undo. Available for ANY owned unit regardless of recon progress or frontline hold: one rule, no second ceiling to learn. Magnitude is a placeholder pending the C2 calibration campaign (#286).",
+      "haircutPct": 0.15
+    }
   },
   "installedBase": {
     "_doc": "InstalledBase owner registry + return cadence (#298/#300, parent #297). `loyaltySeedScale` maps a deal's satisfaction-at-sale retentionSeed ∈ [0,1] onto an owner's initial loyalty. `returnCadence` is the service-due interval in game days per powertrain (EVs cycle least often). `jobCategoryDrift` walks early→late job categories as the car ages: each band applies while ageDays < untilAgeDays, the last (no untilAgeDays) is the catch-all. `returnRoll` carries the convenience/price-sensitivity terms of P(return) = clamp01(loyalty × reputation × convenience − priceSensitivity). All numbers are S14 (#286) calibration placeholders.",

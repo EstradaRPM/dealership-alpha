@@ -22,7 +22,16 @@ export interface HistoryLogConfig {
 }
 
 /** The category of a logged event — drives UI grouping/iconography. */
-export type HistoryEntryKind = 'sale' | 'escalation' | 'market' | 'tier' | 'staff';
+export type HistoryEntryKind =
+  | 'sale'
+  | 'escalation'
+  | 'market'
+  | 'tier'
+  | 'staff'
+  // A unit leaving the lot to a wholesale buyer (#362). Its own kind rather
+  // than `sale`, because a wholesale-out is usually a loss and must not wear
+  // the badge a closed retail deal wears.
+  | 'inventory';
 
 export interface HistoryEntry {
   /** Monotonic id, stable across a session and persisted. */
@@ -137,6 +146,26 @@ export function createHistoryLog(deps: { bus: EventBus }): HistoryLog {
       p.day,
       'staff',
       p.toRival ? `${p.name} left for ${p.toRival}.` : `${p.name} quit.`,
+    );
+  });
+
+  // Wholesaling a unit out (#362). Recorded because it is a deliberate,
+  // money-losing decision the player makes to free a space — the kind of thing
+  // you want to look back at when the month closes short and ask what you
+  // dumped. The car is named, and the entry says plainly whether the dump cost
+  // you money: a valve you can't see the price of isn't a decision.
+  bus.subscribe('inventory:vehicle_wholesaled', (p: EventMap['inventory:vehicle_wholesaled']) => {
+    const outcome =
+      p.gain < 0
+        ? `a ${formatMoney(-p.gain)} loss`
+        : p.gain > 0
+          ? `a ${formatMoney(p.gain)} gain`
+          : 'breaking even';
+    const why = p.reason === 'recon_abandoned' ? ' after abandoning the recon' : '';
+    append(
+      p.day,
+      'inventory',
+      `Wholesaled the ${p.year} ${p.make} ${p.model}${why} — ${formatMoney(p.proceeds)}, ${outcome}.`,
     );
   });
 

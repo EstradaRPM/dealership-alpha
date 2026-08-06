@@ -121,6 +121,7 @@ const TRACKED_EVENTS: ReadonlyArray<EventName> = [
   'economy:expense_posted',
   'inventory:vehicle_purchased',
   'inventory:vehicle_sold',
+  'inventory:vehicle_wholesaled',
   'staff:hired',
   'staff:fired',
   'staff:quit',

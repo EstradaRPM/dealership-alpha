@@ -39,6 +39,56 @@ describe('HistoryLog (#208)', () => {
     expect(entries[1].text).toContain('$2,300');
   });
 
+  it('names the car it dumped and what letting it go cost (#362)', () => {
+    // The valve is a deliberate, money-losing decision to free a space. It gets
+    // its own kind rather than `sale`, because the badge a closed retail deal
+    // wears must not sit next to a $3,100 loss.
+    const bus = createEventBus();
+    const log = createHistoryLog({ bus });
+
+    bus.publish('inventory:vehicle_wholesaled', {
+      day: 31,
+      vehicleId: 'v9',
+      proceeds: 15_300,
+      costBasis: 18_400,
+      gain: -3_100,
+      year: 2016,
+      make: 'Ford',
+      model: 'F-150',
+      category: 'truck',
+      reason: 'released',
+    } as never);
+    bus.publish('inventory:vehicle_wholesaled', {
+      day: 32,
+      vehicleId: 'v4',
+      proceeds: 6_000,
+      costBasis: 6_000,
+      gain: 0,
+      year: 2014,
+      make: 'Honda',
+      model: 'Civic',
+      category: 'sedan',
+      reason: 'recon_abandoned',
+    } as never);
+
+    const entries = log.getEntries();
+    expect(entries[1]).toEqual(
+      expect.objectContaining({
+        day: 31,
+        kind: 'inventory',
+        text: 'Wholesaled the 2016 Ford F-150 — $15,300, a $3,100 loss.',
+      }),
+    );
+    // The abandon path lands in the same feed and says why it went.
+    expect(entries[0]).toEqual(
+      expect.objectContaining({
+        day: 32,
+        kind: 'inventory',
+        text: 'Wholesaled the 2014 Honda Civic after abandoning the recon — $6,000, breaking even.',
+      }),
+    );
+  });
+
   it('names the rival when someone is poached, and does not when they quit', () => {
     // #357 — the log is the only place a departure can be read back days later;
     // the floor buffer is wiped every morning. A loss to a named store is a

@@ -49,6 +49,10 @@ export function LotRoomContainer({
           carryingCostToDate: v.carryingCostToDate,
           dailyCarryingCost: v.dailyCarryingCost,
           aged: v.aged,
+          // #362: the quote is the ENGINE's — book value with the configured
+          // haircut, and the cost basis it is measured against. The room states
+          // it; it never re-derives a price from book.
+          wholesale: world.inventory.getWholesaleQuote(v.id)!,
         }))}
         // #361: the lot's own count, straight off the engine — a unit in prep
         // occupies a space like any other, so the room never counts the list.
@@ -68,6 +72,15 @@ export function LotRoomContainer({
           (s) => s.role_id === 'used-car-manager',
         )}
         onOpenAuction={() => tabs.navigate('auction')}
+        // #362: the release valve. Cash lands via Economy (the shell's revenue
+        // subscription picks it up), the unit comes off the lot here, and the
+        // freed space reopens buying with no further player action because the
+        // auction reads occupancy live.
+        onWholesale={(vehicleId) => {
+          world.inventory.wholesaleVehicle(vehicleId);
+          setLotVehicles(world.inventory.getLotVehicles());
+          persistCurrentSave();
+        }}
         onClose={() => tabs.back()}
       />
     </>

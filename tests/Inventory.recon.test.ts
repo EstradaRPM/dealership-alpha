@@ -197,8 +197,14 @@ describe('Inventory — recon surprise events fire mid-recon (#162)', () => {
 
     const revenues: Array<{ amount: number; label: string }> = [];
     setup.bus.subscribe('economy:revenue_posted', (e) => revenues.push(e));
+    // #362: the abandon path publishes `inventory:vehicle_wholesaled`, not
+    // `inventory:vehicle_sold`. It never was a retail sale — MarketEconomy was
+    // recording this dump as a retail comp and dragging the segment's price
+    // index down with it. A wholesale is a wholesale whichever door it left by.
     const sold: Array<{ vehicleId: string; salePrice: number }> = [];
     setup.bus.subscribe('inventory:vehicle_sold', (e) => sold.push(e));
+    const dumped: Array<{ vehicleId: string; proceeds: number; reason: string }> = [];
+    setup.bus.subscribe('inventory:vehicle_wholesaled', (e) => dumped.push(e));
 
     setup.inventory.abandonRecon(vehicle.id);
 
@@ -214,9 +220,12 @@ describe('Inventory — recon surprise events fire mid-recon (#162)', () => {
     );
     expect(dump!.amount).toBe(expectedDump);
 
-    // vehicle_sold event fired
-    expect(sold).toHaveLength(1);
-    expect(sold[0].vehicleId).toBe(vehicle.id);
+    // The wholesale event fired, and no retail-sale event did.
+    expect(sold).toHaveLength(0);
+    expect(dumped).toHaveLength(1);
+    expect(dumped[0].vehicleId).toBe(vehicle.id);
+    expect(dumped[0].proceeds).toBe(expectedDump);
+    expect(dumped[0].reason).toBe('recon_abandoned');
   });
 
   it('abandonRecon is a no-op when vehicle is not paused', () => {
