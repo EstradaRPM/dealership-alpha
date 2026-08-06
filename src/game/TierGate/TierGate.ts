@@ -38,8 +38,9 @@ import type {
  *   gauge vs threshold + trend arrow. No catch-up (a balance isn't a flow).
  * - **Trend** (`csi`): a `signals[id]` closure sampled nightly into a rolling
  *   window → climbing/flat/sliding. Not a daily pace.
- * - **Stepped** (`facility`): dormant for now — its teeth re-home onto the T4+ OEM
- *   stream (decision 4); the schema is present, no current tier activates it.
+ * - **Stepped** (`facility`): a `signals[id]` closure read **live**, not sampled —
+ *   built capacity ÷ the tier's ceiling (#360). It stands where it stands until
+ *   the player builds, so there is no average, no window and nothing to persist.
  *
  * The active faces per tier come from `config.tiers[tier]` (progressive unlock —
  * fewer faces lit early, decision 2). Accumulators run every month regardless;
@@ -286,10 +287,21 @@ export function createTierGate(deps: TierGateDeps): TierGate {
           recentSamples: [...w],
         };
       }
-      case 'stepped':
-        // Facility/image is dormant for now (decision 4 re-homes its teeth onto
-        // the T4+ OEM stream). No current tier activates it; skip defensively.
-        return null;
+      case 'stepped': {
+        // Read LIVE, never sampled (#360). A stepped face stands where it
+        // stands until the player builds — averaging it over the month would
+        // report a bar the store has already cleared as still short, and would
+        // make the same construction worth more early in the month than late.
+        const score = signals[id]?.() ?? 0;
+        return {
+          id,
+          label: def.label,
+          kind: 'stepped',
+          score,
+          threshold: target,
+          meetsThreshold: score >= target,
+        };
+      }
     }
   }
 
@@ -309,15 +321,16 @@ export function createTierGate(deps: TierGateDeps): TierGate {
 
   /**
    * The standing spec for a tier (#349). Same source and same filter the
-   * month-end verdict uses — only real, non-stepped faces — so the board can
-   * never foreshadow a bar the gate does not actually grade. Non-face control
-   * tunables in the tier entry (`streak`) are lifted out rather than dropped.
+   * month-end verdict uses — every configured face, and only those — so the
+   * board can never foreshadow a bar the gate does not actually grade, nor hide
+   * one it does. Non-face control tunables in the tier entry (`streak`) have no
+   * `config.faces` def and are lifted out rather than dropped.
    */
   function getTierRequirements(tier: number): TierRequirements | null {
     const entry = config.tiers[String(tier)];
     if (!entry) return null;
     const faces: TierFaceRequirement[] = Object.entries(entry)
-      .filter(([id]) => config.faces[id] && config.faces[id].kind !== 'stepped')
+      .filter(([id]) => config.faces[id])
       .map(([id, target]) => ({
         id,
         label: config.faces[id].label,
@@ -344,6 +357,10 @@ export function createTierGate(deps: TierGateDeps): TierGate {
         const avg = w.length > 0 ? mean(w) : (signals[id]?.() ?? 0);
         return avg / target;
       }
+      case 'stepped':
+        // The score standing on the last day of the month is the grade — a
+        // stepped face has no month-to-date history to average (#360).
+        return (signals[id]?.() ?? 0) / target;
       default:
         return 1;
     }
@@ -354,10 +371,11 @@ export function createTierGate(deps: TierGateDeps): TierGate {
     const month = Math.floor((day - 1) / daysPerMonth) + 1;
     const targets = targetsFor(tier);
     const faces: FaceVerdict[] = Object.entries(targets)
-      // Only real, non-stepped faces grade the month. A tier entry may carry
-      // non-face control tunables (e.g. #250's per-tier `streak`); those have no
-      // `config.faces` def and must never leak into the verdict.
-      .filter(([id]) => config.faces[id] && config.faces[id].kind !== 'stepped')
+      // Every configured face the tier lights grades the month, the facility
+      // (stepped) face included since #360 gave it a producer. A tier entry may
+      // also carry non-face control tunables (e.g. #250's per-tier `streak`);
+      // those have no `config.faces` def and must never leak into the verdict.
+      .filter(([id]) => config.faces[id])
       .map(([id, target]) => {
         const ratio = faceRatio(id, target);
         return { id, ratio, band: bandFor(ratio, config) };

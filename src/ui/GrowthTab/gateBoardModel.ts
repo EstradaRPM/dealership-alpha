@@ -33,7 +33,7 @@ export interface GateBoardDetail {
 
 export interface GateBoardFace {
   id: string;
-  kind: 'flow' | 'level' | 'trend';
+  kind: 'flow' | 'level' | 'trend' | 'stepped';
   label: string;
   /** The headline read — "5 / 8", "Avg $52,400", "72". */
   valueLabel: string;
@@ -178,6 +178,24 @@ function buildFace(f: FaceProgress): GateBoardFace {
         ],
       };
     }
+    case 'stepped':
+      // Two facts and no arrow. The per-kind breakdown ("Lot spaces 12 of 35")
+      // is the build surface's job on this same tab (#359's `FacilityBuild`) —
+      // repeating it here would give the same numbers two homes that could
+      // disagree.
+      return {
+        id: f.id,
+        kind: 'stepped',
+        label: f.label,
+        valueLabel: `${Math.round(f.score)}% built`,
+        statusLabel: f.meetsThreshold ? 'Clearing the bar' : 'Under the bar',
+        tone: f.meetsThreshold ? 'positive' : 'danger',
+        fill: f.threshold > 0 ? clamp01(f.score / f.threshold) : 0,
+        details: [
+          { label: 'Bar to clear', value: `${Math.round(f.threshold)}% built` },
+          { label: 'Built out now', value: `${Math.round(f.score)}%` },
+        ],
+      };
   }
 }
 
@@ -205,7 +223,9 @@ function buildClimb(
       value:
         r.kind === 'flow'
           ? `${fmtValue(r.id, r.target)} a month`
-          : fmtValue(r.id, r.target),
+          : r.kind === 'stepped'
+            ? `${Math.round(r.target)}% built`
+            : fmtValue(r.id, r.target),
     })),
     ruleLabel: months
       ? `Clear every bar below for ${months} to move up.`

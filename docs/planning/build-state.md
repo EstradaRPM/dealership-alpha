@@ -14,9 +14,9 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 Both gates are closed (C1 2026-08-02 `staff-teeth-design.md`, A2 2026-08-03
 `path-to-finished-product.md` §3 A2) and the combined slice is filed as **#352–#362, in build
-order**. **#352–#357 closed phase 6 (C1 staff-teeth); #358 + #359 have landed — next unit:
-BUILD #360**, the facility gate face. Work them in number order; the deps are stated in each
-issue's Notes.
+order**. **#352–#357 closed phase 6 (C1 staff-teeth); #358, #359 + #360 have landed — next
+unit: BUILD #361**, the lot cap on buying. Work them in number order; the deps are stated in
+each issue's Notes.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -28,7 +28,7 @@ issue's Notes.
 | ~~#357~~ | ~~rival offers on the same event family (retention + poaching, one moment)~~ **BUILT 2026-08-06 — phase 6 COMPLETE** | 6 |
 | ~~#358~~ | ~~`src/game/Facility/` owns built spaces + bays, one bay truth; `baysByTier` retired~~ **BUILT 2026-08-06** | 7 |
 | ~~#359~~ | ~~construction: buy capacity with cash + days, ceiling enforced, Growth build surface~~ **BUILT 2026-08-06** | 7 |
-| #360 | facility score lights the dormant tier-gate `facility` face | 7 |
+| ~~#360~~ | ~~facility score lights the dormant tier-gate `facility` face~~ **BUILT 2026-08-06** | 7 |
 | #361 | lot cap governs buying ("31 of 35"), trade always lands | 7 |
 | #362 | wholesale this unit — the aged-inventory release valve | 7 |
 
@@ -179,6 +179,28 @@ issue's Notes.
   `built` and the delta in `units`. There is deliberately no `construction_started` event —
   it would have a publisher and no subscriber, which is the dead code this repo deletes.
 
+- **The `facility` gate face is NO LONGER DORMANT, and every "skip stepped" filter is gone**
+  (#360). `TierGate`'s `computeVerdict` and `getTierRequirements` used to filter
+  `kind !== 'stepped'`; both now filter only on "is a configured face" (which is what keeps
+  the `streak` control tunable out). A stepped face is read **live** off `signals[id]`, never
+  sampled — there is no `levelSamples.facility`/`trendSamples.facility` and nothing about it
+  in the snapshot. Do not add nightly sampling to make it "consistent" with cash/CSI: a
+  monthly average would report a bar the store has already cleared as still short, and would
+  make the same construction worth more early in the month than late.
+- **The facility score is a MEAN OF PER-KIND RATIOS, not a combined total** (#360,
+  `Facility.getFacilityScore`). Built ÷ ceiling per kind, averaged over the kinds the tier has
+  a ceiling for, each capped at 1. A combined built÷ceiling would let the lot (35 spaces at T3
+  against 6 service bays) buy the whole score while the shop ran on one bay. A kind with a 0
+  ceiling is **excluded**, not scored 0 — that is why a fully built-out T1/T2 store reads 100
+  despite having no body bays, and why arriving at T3 *drops* the score.
+- **The face label is "Facility Build-Out", not the old "Facility / Image"** (#360,
+  `data/tier-gate.json`). The image half was re-homed onto the T4+ OEM stream by
+  goals-targets decision 4 and is not what this face measures; the old label only survived
+  because the face was invisible. Renaming it is the plain-language rule, not a design change.
+- **A T3 world is where this face exists at all** — `data/tier-gate.json` lights `facility`
+  only at tier 3. To see it on web, edit `slot:<id>` (NOT `snapshot:<id>` — the live save the
+  app loads is the slot record) and set `modules.tierManager.currentTier` to 3.
+
 ## Phase table
 
 Status: `pending` → `active` → `done`. "Decision first" = a DECIDE unit must run before
@@ -198,7 +220,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
-| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 + #358 + #359 built; #360–#362 open |
+| 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | active — #352 + #358–#360 built; #361–#362 open |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | pending |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
@@ -218,6 +240,49 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-06 — **BUILT #360** (the facility gate face — the dormant fifth face gets a
+  producer). *Facility Build-Out · 23% built vs 50%*. The face has been declared in
+  `data/tier-gate.json` since #232 and skipped defensively by the engine ever since,
+  because nothing produced a number for it. A2 R1's whole reason for making buildings
+  purchasable was to give it one.
+  **One rule: built ÷ ceiling, per kind, averaged.** Not a combined total. A combined
+  built÷ceiling would let the lot buy the entire score — 35 spaces against 6 service bays at
+  T3 — while the store ran a one-bay shop; averaging the per-kind ratios makes every
+  department's room count the same. Each ratio caps at 1, so a save standing over a ceiling
+  reads as done rather than as extra credit.
+  **A kind the tier has no ceiling for is EXCLUDED, not counted as unbuilt.** Body bays are 0
+  below T3, and "0 of 0 built" would peg a fully built-out Tier-1 store at 67 for a building
+  the tier forbids. The flip side is the teeth: **arriving at T3 drops the score**, because
+  the body shop just became something you are allowed — and therefore expected — to build.
+  That is the only reason the exclusion is worth a rule at all; under a combined total a
+  zero ceiling cancels out of both sides and the choice would be invisible.
+  **Stepped means read LIVE, never sampled.** No `levelSamples`, no rolling window, nothing
+  in the snapshot: the face stands exactly where it stands until the player builds, then it
+  steps. A monthly average would report a bar the store has already cleared as still short,
+  and would make the same construction worth more early in the month than late. It is also
+  why the strip renders it as the cash gauge **minus the trend arrow** — an arrow here would
+  read "flat" every day the player did not build and mean nothing.
+  **In-flight construction is worth zero to the score**, which is the same rule the ceiling
+  measures the other way (committed = built + in flight). Confirmed on screen: buying a body
+  bay left the face at 23% with *Building 1 bay — opens day 38* on the row above it.
+  **Both "skip the stepped face" filters are deleted, in the verdict and in
+  `getTierRequirements`.** They now filter only on "is a configured face", which is what
+  keeps #250's `streak` control tunable out. The requirements filter had to move with the
+  verdict: it exists so the Growth climb can never foreshadow a bar the gate does not grade,
+  and after this it must equally not hide one it does. `GrowthTab.reachability`'s assertion
+  flipped from `not.toContain('facility')` to `toContain`.
+  **Renamed the label to "Facility Build-Out".** "Facility / Image" promised an image
+  standard that goals-targets decision 4 re-homed onto the T4+ OEM stream; the stale name
+  only survived because the face was invisible. Making it visible made it a plain-language
+  defect, not a design question.
+  **Driven on web at a T3 store holding T2's buildings** — the carry-over state #358 created.
+  Lot 12 of 35, service 2 of 6, body 0 of 3 ⇒ **23% built vs 50%** on the Home strip
+  (arithmetic: (12/35 + 2/6 + 0)/3), the same figure spelled out on the Growth board directly
+  under the build surface that produced it, and "% on track" fell 100% → **41%** as the T3
+  bars lit. **The live save is `slot:<id>`, not `snapshot:<id>`** — editing the latter changed
+  nothing and cost a reload to find out. 216 suites / **2806** tests, typecheck clean.
+  Next: **BUILD #361** (lot cap governs buying — "31 of 35" — trade always lands).
 
 - 2026-08-06 — **BUILT #359** (construction — capacity is bought with cash and days).
   *Lot spaces · 8 of 12 built · $3,000 each · 2 days to build* → **Build 4 spaces —
@@ -315,57 +380,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   bay count end to end. 216 suites / **2776** tests, typecheck clean.
   Next: **BUILD #359** (construction — buy capacity with cash + days, ceiling enforced, Growth
   build surface).
-
-- 2026-08-06 — **BUILT #357** (rival offers — retention and poaching as one moment).
-  *Northside Vyndai offered $610/day. On $340/day now. They leave on day 34 unless you match.*
-  → **Match** / **Let them go**. That completes phase 6 (C1 staff-teeth).
-  **It is the raise object with two more fields, and that was the ruling, not a shortcut.**
-  No `staff:poached`, no second prompt component, no second list: `getRaiseRequests()` returns
-  both kinds and the absence of `rivalName` is what makes one a plain raise. R2's closing
-  paragraph asked for exactly one thing for the player to learn, and a `kind` field that could
-  disagree with the fields describing it would have been the way to get two.
-  **`Staff.paidWage` is the one new field, and the premium is why it had to exist.** A rival
-  bids `wagePremium ×` what the grade asks for, so the agreed number sits *above* the grade's
-  book wage and stopped being derivable from `paidGrade`. `paidGrade` keeps its own job — it
-  records the grade the wage was agreed at, so `currentGrade > paidGrade` is still the whole
-  raise trigger. Restore materializes a missing `paidWage` from `paidGrade`, so a pre-#357 save
-  loads paying exactly what #353 charged; a promotion reprices by role and clears the premium.
-  **Who gets courted is one rule: the chance scales with grade** (`dailyChanceAtTopGrade ×
-  grade/5`). A minimum-grade floor was written and then deleted — it is a second rule the
-  player could only ever infer from an absence, and it would make the top of the roster feel
-  arbitrary instead of valuable.
-  **Two suppressions, both the absence of a decision**: something is already on that person's
-  prompt, and an offer that does not beat what they are already paid. The second is what stops
-  a member you just matched at a premium being “poached” back down to book the next morning —
-  no “recently poached” flag needed. The refusal **cooldown deliberately does not** suppress an
-  offer: it exists so the member does not nag you, and a rival calling them is not their doing.
-  **Ordering inside `clock:day_started` is the mechanic** — expire → offer → ask. Nobody is
-  poached, or asks for a raise, on the morning they leave, and “one open ask per member” falls
-  out of the ordering rather than out of a rule.
-  **`staff:quit` now has two publishers and still one departure path.** StaffOrg publishes it
-  for a declined or expired offer; StaffMorale still publishes the low-morale one; StaffOrg’s
-  own subscriber removes them either way. Payload gained `name` (the feed records a person, not
-  an id) and `toRival`; `morale` went optional, because a rival hiring someone says nothing
-  about how they felt and a 0 there would read as a miserable employee. StaffMorale gained a
-  `staff:quit` cleanup subscription — it used to clear its own entry inline, which was only
-  correct while it was the sole publisher.
-  **The loss is written where it can be read back: HistoryLog** gains a `staff` kind —
-  *“Marcus Delgado left for Northside Kaivo.”* / *“Dana Whitfield quit.”* The floor buffer is
-  wiped every morning, so without this a person walking out left no record at all.
-  **Rivals are the live competitors**, injected as `deps.rivalNames: () => readonly string[]`
-  and wired in `createWorld` to `competitorMarket.getCompetitors()`. A function, not a module
-  reference — StaffOrg needs one string per rival and must not grow a dependency on whoever
-  holds them. Empty list ⇒ no offer ever fires, which is what every suite that hires people
-  for other reasons runs under (`flatPay`/`noPay` carry a zero chance; `POACHING` turns it on).
-  **The reachability test walks the real calendar rather than crafting an offer**, which is the
-  only thing that exercises the `rivalNames` seam end to end: hire, advance days on a real
-  `createWorld` world answering any plain raise as it arrives (an unanswered prompt is exactly
-  what suppresses the rival), and the offer that lands names a store from that world’s own
-  competitor list.
-  **Driven on web at T2, through the save.** An offer written into the slot’s staffOrg blob
-  restored and rendered on Fatima Fairbanks’ card — *“Northside Vyndai offered $610/day. On
-  $340/day now.”* / *“They leave on day 34 unless you match.”* **Match** moved her line to
-  *Grade 3 · $610/day* and daily payroll $1,280 → **$1,550**; reloaded and pressed **Let them
-  go** instead, and the roster went 3 of 3 → **2 of 3**, Salesperson 2 of 2 → 1 of 2, payroll
-  → **$940**. 215 suites / **2762** tests, typecheck clean.
-  Next: **BUILD #358** (phase 7 — `src/game/Facility/` owns built spaces + bays, one bay truth).

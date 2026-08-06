@@ -16,6 +16,7 @@ import type {
   GateStripModel,
   FlowFaceView,
   LevelFaceView,
+  SteppedFaceView,
   TrendFaceView,
 } from './gateStripModel';
 
@@ -72,6 +73,8 @@ export function GateStrip({
                 <FlowFace face={face} />
               ) : face.kind === 'level' ? (
                 <LevelFace face={face} />
+              ) : face.kind === 'stepped' ? (
+                <SteppedFace face={face} />
               ) : (
                 <TrendFace face={face} />
               )}
@@ -197,6 +200,29 @@ function LevelFace({ face }: { face: LevelFaceView }) {
           </Text>
           <TrendArrow trend={face.trend} />
         </View>
+      </View>
+      <View style={{ marginTop: t.spacing.xs }}>
+        <ProgressBar value={face.fill} tone={face.meets ? 'positive' : 'primary'} />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The facility build-out face (#360). The level gauge without the arrow: a
+ * stepped score holds still until the player builds, so a trend indicator here
+ * would read "flat" every day and mean nothing.
+ */
+function SteppedFace({ face }: { face: SteppedFaceView }) {
+  const t = useTheme();
+  const h = faceHeader(t);
+  return (
+    <View testID={`gate-face-${face.id}`}>
+      <View style={h.row}>
+        <FaceLabel id={face.id} label={face.label} />
+        <Text style={h.value}>
+          {face.valueLabel} {face.thresholdLabel}
+        </Text>
       </View>
       <View style={{ marginTop: t.spacing.xs }}>
         <ProgressBar value={face.fill} tone={face.meets ? 'positive' : 'primary'} />

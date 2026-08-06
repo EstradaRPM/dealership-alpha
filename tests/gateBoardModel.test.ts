@@ -137,6 +137,55 @@ describe('buildGateBoard — the faces, spelled out', () => {
   });
 });
 
+describe('buildGateBoard — the facility face (#360)', () => {
+  const withFacility: GateProgress = {
+    ...PROGRESS,
+    faces: [
+      ...PROGRESS.faces,
+      {
+        id: 'facility',
+        label: 'Facility Build-Out',
+        kind: 'stepped',
+        score: 34,
+        threshold: 50,
+        meetsThreshold: false,
+      },
+    ],
+  };
+
+  it('spells the build-out score out against its bar, with no trend arrow', () => {
+    const face = buildGateBoard(withFacility, null).faces.find((f) => f.id === 'facility')!;
+    expect(face.kind).toBe('stepped');
+    expect(face.valueLabel).toBe('34% built');
+    expect(face.statusLabel).toBe('Under the bar');
+    expect(face.tone).toBe('danger');
+    expect(face.fill).toBeCloseTo(34 / 50);
+    // A stepped score holds still until the player builds — an arrow here
+    // would read "flat" every day and mean nothing.
+    expect(face.trend).toBeUndefined();
+    expect(face.sparkline).toBeUndefined();
+    const byLabel = Object.fromEntries(face.details.map((d) => [d.label, d.value]));
+    expect(byLabel['Bar to clear']).toBe('50% built');
+    expect(byLabel['Built out now']).toBe('34%');
+    // The per-kind breakdown belongs to the build surface on this same tab.
+    expect(face.details.some((d) => /bay|lot/i.test(d.label))).toBe(false);
+  });
+
+  it('foreshadows the facility bar in the climb', () => {
+    const climb = buildGateBoard(PROGRESS, {
+      ...NEXT,
+      faces: [
+        ...NEXT.faces,
+        { id: 'facility', label: 'Facility Build-Out', kind: 'stepped', target: 50 },
+      ],
+    }).climb!;
+    expect(climb.requirements).toContainEqual({
+      label: 'Facility Build-Out',
+      value: '50% built',
+    });
+  });
+});
+
 describe('buildGateBoard — the climb', () => {
   it('foreshadows the next rung with its bars and its streak rule', () => {
     const climb = buildGateBoard(PROGRESS, NEXT, {

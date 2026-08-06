@@ -6,6 +6,61 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **BUILT #357** (rival offers — retention and poaching as one moment).
+  *Northside Vyndai offered $610/day. On $340/day now. They leave on day 34 unless you match.*
+  → **Match** / **Let them go**. That completes phase 6 (C1 staff-teeth).
+  **It is the raise object with two more fields, and that was the ruling, not a shortcut.**
+  No `staff:poached`, no second prompt component, no second list: `getRaiseRequests()` returns
+  both kinds and the absence of `rivalName` is what makes one a plain raise. R2's closing
+  paragraph asked for exactly one thing for the player to learn, and a `kind` field that could
+  disagree with the fields describing it would have been the way to get two.
+  **`Staff.paidWage` is the one new field, and the premium is why it had to exist.** A rival
+  bids `wagePremium ×` what the grade asks for, so the agreed number sits *above* the grade's
+  book wage and stopped being derivable from `paidGrade`. `paidGrade` keeps its own job — it
+  records the grade the wage was agreed at, so `currentGrade > paidGrade` is still the whole
+  raise trigger. Restore materializes a missing `paidWage` from `paidGrade`, so a pre-#357 save
+  loads paying exactly what #353 charged; a promotion reprices by role and clears the premium.
+  **Who gets courted is one rule: the chance scales with grade** (`dailyChanceAtTopGrade ×
+  grade/5`). A minimum-grade floor was written and then deleted — it is a second rule the
+  player could only ever infer from an absence, and it would make the top of the roster feel
+  arbitrary instead of valuable.
+  **Two suppressions, both the absence of a decision**: something is already on that person's
+  prompt, and an offer that does not beat what they are already paid. The second is what stops
+  a member you just matched at a premium being “poached” back down to book the next morning —
+  no “recently poached” flag needed. The refusal **cooldown deliberately does not** suppress an
+  offer: it exists so the member does not nag you, and a rival calling them is not their doing.
+  **Ordering inside `clock:day_started` is the mechanic** — expire → offer → ask. Nobody is
+  poached, or asks for a raise, on the morning they leave, and “one open ask per member” falls
+  out of the ordering rather than out of a rule.
+  **`staff:quit` now has two publishers and still one departure path.** StaffOrg publishes it
+  for a declined or expired offer; StaffMorale still publishes the low-morale one; StaffOrg’s
+  own subscriber removes them either way. Payload gained `name` (the feed records a person, not
+  an id) and `toRival`; `morale` went optional, because a rival hiring someone says nothing
+  about how they felt and a 0 there would read as a miserable employee. StaffMorale gained a
+  `staff:quit` cleanup subscription — it used to clear its own entry inline, which was only
+  correct while it was the sole publisher.
+  **The loss is written where it can be read back: HistoryLog** gains a `staff` kind —
+  *“Marcus Delgado left for Northside Kaivo.”* / *“Dana Whitfield quit.”* The floor buffer is
+  wiped every morning, so without this a person walking out left no record at all.
+  **Rivals are the live competitors**, injected as `deps.rivalNames: () => readonly string[]`
+  and wired in `createWorld` to `competitorMarket.getCompetitors()`. A function, not a module
+  reference — StaffOrg needs one string per rival and must not grow a dependency on whoever
+  holds them. Empty list ⇒ no offer ever fires, which is what every suite that hires people
+  for other reasons runs under (`flatPay`/`noPay` carry a zero chance; `POACHING` turns it on).
+  **The reachability test walks the real calendar rather than crafting an offer**, which is the
+  only thing that exercises the `rivalNames` seam end to end: hire, advance days on a real
+  `createWorld` world answering any plain raise as it arrives (an unanswered prompt is exactly
+  what suppresses the rival), and the offer that lands names a store from that world’s own
+  competitor list.
+  **Driven on web at T2, through the save.** An offer written into the slot’s staffOrg blob
+  restored and rendered on Fatima Fairbanks’ card — *“Northside Vyndai offered $610/day. On
+  $340/day now.”* / *“They leave on day 34 unless you match.”* **Match** moved her line to
+  *Grade 3 · $610/day* and daily payroll $1,280 → **$1,550**; reloaded and pressed **Let them
+  go** instead, and the roster went 3 of 3 → **2 of 3**, Salesperson 2 of 2 → 1 of 2, payroll
+  → **$940**. 215 suites / **2762** tests, typecheck clean.
+  Next: **BUILD #358** (phase 7 — `src/game/Facility/` owns built spaces + bays, one bay truth).
+
+
 - 2026-08-06 — **BUILT #356** (raise demands, and `payVsMarketBonus` made real). Growth stops
   being a drift and becomes a moment: *Asking for $340/day. On $150/day now.* → **Pay it** /
   **Refuse**.

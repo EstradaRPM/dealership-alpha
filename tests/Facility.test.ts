@@ -309,6 +309,50 @@ describe('Facility — construction buys the gap with cash and days (#359)', () 
   });
 });
 
+describe('Facility — the facility score the tier gate grades (#360)', () => {
+  it("scores built capacity against the tier's ceiling", () => {
+    // A store standing at T3 holding what it built at T2: lot 12 of 35,
+    // service 4 of 6, body 0 of 3. Each kind counts once — one third of the
+    // score apiece — so a big lot cannot cover for a one-bay shop.
+    const site = siteAt({ builtAtTier: 2, tier: 3 });
+    const expected = ((12 / 35 + 4 / 6 + 0 / 3) / 3) * 100;
+    expect(site.facility.getFacilityScore()).toBeCloseTo(expected, 6);
+    // ~34: under T3's bar of 50, which is the whole point of A2 R1.
+    expect(Math.round(site.facility.getFacilityScore())).toBe(34);
+  });
+
+  it('scores a fully built-out store at 100 and an empty ceiling at 0', () => {
+    // A fresh world seeds built = ceiling at every tier, so it starts clear.
+    for (let tier = 1; tier <= MAX_TIER; tier++) {
+      expect(facilityAt({ current: tier }).getFacilityScore()).toBeCloseTo(100, 6);
+    }
+  });
+
+  it('a tier with no body bays is not penalised for having none', () => {
+    // T2 has no body-bay ceiling at all. Counting it as "0 of 0 built" would
+    // cap a fully built-out T2 store at two-thirds for a building the tier
+    // forbids it from putting up.
+    const site = siteAt({ builtAtTier: 2, tier: 2 });
+    expect(site.built().bodyBays).toBe(0);
+    expect(site.facility.getCeilings().bodyBays).toBe(0);
+    expect(site.facility.getFacilityScore()).toBeCloseTo(100, 6);
+  });
+
+  it('steps up when construction lands, not when it is paid for', () => {
+    const site = siteAt({ builtAtTier: 2, tier: 3 });
+    const before = site.facility.getFacilityScore();
+    expect(site.facility.build('bodyBays').ok).toBe(true);
+    // Cash is gone; the score has not moved, because nothing is standing yet.
+    expect(site.facility.getFacilityScore()).toBeCloseTo(before, 6);
+    site.morning(10 + DATA.construction.bodyBays.days);
+    // 1 of 3 body bays now built ⇒ that kind's third goes 0 → 1/3.
+    expect(site.facility.getFacilityScore()).toBeCloseTo(
+      before + ((1 / 3) * 100) / 3,
+      6,
+    );
+  });
+});
+
 describe('Facility — the shipped catalog (#358, #359)', () => {
   it('states all seven tiers for every capacity kind', () => {
     const table = loadFacilityData();

@@ -12,7 +12,7 @@
     "gross": { "kind": "flow", "label": "Gross Profit" },
     "cash": { "kind": "level", "label": "Cash on Hand" },
     "csi": { "kind": "trend", "label": "CSI" },
-    "facility": { "kind": "stepped", "label": "Facility / Image" }
+    "facility": { "kind": "stepped", "label": "Facility Build-Out" }
   },
   "tiers": {
     "1": { "units": 8, "cash": 60000, "streak": 1 },

@@ -1,8 +1,8 @@
 # TierGate
 
 The **monthly tier-gate engine** (#232). The headline goal object is the
-multi-dimensional monthly tier GATE — units + gross + cash + CSI (+ facility,
-dormant) — whose binding constraint shifts as you climb (`macro-loop-spine.md`
+multi-dimensional monthly tier GATE — units + gross + cash + CSI + facility
+build-out — whose binding constraint shifts as you climb (`macro-loop-spine.md`
 §10). Locked design: `docs/planning/goals-targets-design.md`. Surfaced by the
 Home gate-progress strip (S3b, #232's downstream presentation slice); this
 module is the engine, with a minimal live tracer on the Home dashboard.
@@ -15,8 +15,10 @@ coach); each face renders in its **native idiom** (decision 3).
 ## Public API (`index.ts`)
 - `createTierGate({ bus, getCurrentDay, getCurrentTier, signals, config?, daysPerMonth? })` → `TierGate`.
   - `signals` — provider closures for the non-flow faces, keyed by face id
-    (`{ cash: () => economy.cash, csi: () => reputation.reviewScore }`). Sampled
-    nightly; the engine never imports Economy/Reputation.
+    (`{ cash: () => economy.cash, csi: () => reputation.reviewScore,
+    facility: () => facility.getFacilityScore() }`). The level/trend faces are
+    sampled nightly; the stepped face is read live at the moment it is graded.
+    The engine never imports Economy/Reputation/Facility.
   - `config?` — test seam; defaults to `loadTierGateConfig()`.
   - `daysPerMonth?` — defaults to `tunables.clock.daysPerMonth` (30).
 - `TierGate`:
@@ -32,12 +34,17 @@ coach); each face renders in its **native idiom** (decision 3).
       (climbing/flat/sliding), `meetsThreshold`, `recentSamples` (the rolling
       window's raw points, oldest→newest — the S3b CSI sparkline; deterministic,
       so still replay-safe).
+    - **stepped** (`facility`): `score` (0–100), `threshold`, `meetsThreshold`.
+      Read **live** off the provider, never sampled — a stepped face stands
+      where it stands until the player builds, so there is no average, no
+      window, no trend arrow and nothing to persist (#360).
   - `getTierRequirements(tier) → TierRequirements | null` (#349) — the STANDING
     spec for any tier: `{ tier, streak, faces: [{ id, label, kind, target }] }`,
     with no month-to-date state in it. `null` past the top of the built ladder.
-    Filtered exactly like the month-end verdict (real, non-stepped faces only),
-    so the Growth gate board's climb foreshadow can never show a bar the gate
-    does not actually grade.
+    Filtered exactly like the month-end verdict (every configured face, and
+    only those — non-face control tunables such as `streak` are lifted out), so
+    the Growth gate board's climb foreshadow can never show a bar the gate does
+    not grade, nor hide one it does.
   - `getMonthVerdicts() → readonly GateMonthVerdict[]` (#351) — every month that
     has CLOSED, oldest→newest. The verdict event fires once and `resetMonth`
     erases the accruals that produced it, so this is the only record that a past
@@ -58,10 +65,13 @@ coach); each face renders in its **native idiom** (decision 3).
 Five semantic face ids; their kinds/labels/targets/active-per-tier are all data
 (`data/tier-gate.json`). The **active faces for a tier** = the keys of
 `tiers[tier]` (progressive unlock — fewer lit early, decision 2: T1 units+cash,
-T2 adds gross, T3 adds csi). Accumulators run every month regardless; activeness
-only selects what `getProgress`/the verdict surface. **Facility** (stepped) is
-dormant for now — its image-standard teeth re-home onto the T4+ OEM stream
-(decision 4); schema present, no current tier activates it.
+T2 adds gross, T3 adds csi **and facility**). Accumulators run every month
+regardless; activeness only selects what `getProgress`/the verdict surface.
+**Facility** (stepped) was dormant until #360 — the face is graded now that
+`Facility` produces a score the player controls (built capacity ÷ the tier's
+ceiling, wired as `signals.facility`). What it does *not* carry is the image
+standard: decision 4 re-homed those teeth onto the T4+ OEM stream, which is why
+the face's label is "Facility Build-Out" and not the stale "Facility / Image".
 
 ## Events
 - **Emits:** `tierGate:month_verdict` — the single 4-band verdict
@@ -92,6 +102,6 @@ the verdict, then the month resets.
   def, so `streak` never grades or lights as a gate face.
 
 ## Scope notes
-- Current frontier = T1–T3 (units/gross/cash/csi progressively). OEM stair-step second stream
+- Current frontier = T1–T3 (units/gross/cash/csi/facility progressively). OEM stair-step second stream
   (T4) + multi-store digest (T6) are not-yet-built (decisions 4/5). The 4-band
   visual celebration polish lands with S3b.

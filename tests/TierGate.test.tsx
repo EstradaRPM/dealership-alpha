@@ -25,13 +25,14 @@ const CONFIG: TierGateConfig = {
     gross: { kind: 'flow', label: 'Gross Profit' },
     cash: { kind: 'level', label: 'Cash on Hand' },
     csi: { kind: 'trend', label: 'CSI' },
-    facility: { kind: 'stepped', label: 'Facility / Image' },
+    facility: { kind: 'stepped', label: 'Facility Build-Out' },
   },
-  // 10-day month for compact tests. T1 lights units+cash; T2 adds gross; T3 csi.
+  // 10-day month for compact tests. T1 lights units+cash; T2 adds gross; T3
+  // adds csi + facility (the shipped ladder's shape — #360 lit the last face).
   tiers: {
     '1': { units: 10, cash: 50000 },
     '2': { units: 20, gross: 40000, cash: 100000 },
-    '3': { units: 30, gross: 80000, cash: 400000, csi: 75 },
+    '3': { units: 30, gross: 80000, cash: 400000, csi: 75, facility: 50 },
   },
 };
 
@@ -43,25 +44,34 @@ interface Harness {
   day: number;
   cash: number;
   csi: number;
+  /** The #360 facility build-out score, 0–100 — a live read, never sampled. */
+  facility: number;
   setDay: (d: number) => void;
   closeDeal: (front: number, back: number) => void;
   /** Fire the nightly day_ended sample + (when on a month boundary) the verdict. */
   endDay: () => void;
 }
 
-function makeHarness(opts: { tier?: number; startCash?: number; startCsi?: number } = {}): Harness {
+function makeHarness(
+  opts: { tier?: number; startCash?: number; startCsi?: number; startFacility?: number } = {},
+): Harness {
   const bus = createEventBus();
   const state = {
     day: 1,
     tier: opts.tier ?? 1,
     cash: opts.startCash ?? 50000,
     csi: opts.startCsi ?? 70,
+    facility: opts.startFacility ?? 34,
   };
   const gate = createTierGate({
     bus,
     getCurrentDay: () => state.day,
     getCurrentTier: () => state.tier,
-    signals: { cash: () => state.cash, csi: () => state.csi },
+    signals: {
+      cash: () => state.cash,
+      csi: () => state.csi,
+      facility: () => state.facility,
+    },
     config: CONFIG,
     daysPerMonth: DAYS_PER_MONTH,
   });
@@ -95,6 +105,8 @@ function makeHarness(opts: { tier?: number; startCash?: number; startCsi?: numbe
     set cash(v: number) { state.cash = v; },
     get csi() { return state.csi; },
     set csi(v: number) { state.csi = v; },
+    get facility() { return state.facility; },
+    set facility(v: number) { state.facility = v; },
     setDay: (d: number) => { state.day = d; },
     closeDeal,
     endDay,
@@ -150,12 +162,81 @@ describe('#232 TierGate — progressive face unlock (decision 2: fewer lit early
     expect(t1.faces.map((f) => f.id).sort()).toEqual(['cash', 'units']);
 
     const t3 = makeHarness({ tier: 3 }).gate.getProgress();
-    expect(t3.faces.map((f) => f.id).sort()).toEqual(['cash', 'csi', 'gross', 'units']);
+    expect(t3.faces.map((f) => f.id).sort()).toEqual([
+      'cash',
+      'csi',
+      'facility',
+      'gross',
+      'units',
+    ]);
   });
 
-  it('never lights the dormant stepped facility face', () => {
-    const p = makeHarness({ tier: 3 }).gate.getProgress();
-    expect(p.faces.some((f) => f.id === 'facility')).toBe(false);
+  it('tiers without a facility target show no facility face', () => {
+    // #360 lit the stepped face, and the unlock rule is unchanged: a face
+    // appears only where its tier states a target for it. T1/T2 state none.
+    for (const tier of [1, 2]) {
+      const p = makeHarness({ tier }).gate.getProgress();
+      expect(p.faces.some((f) => f.id === 'facility')).toBe(false);
+    }
+  });
+});
+
+describe('#360 TierGate — the facility face grades off the live score', () => {
+  it('grades the facility face from the live facility score', () => {
+    const h = makeHarness({ tier: 3, startFacility: 34 });
+    const face = h.gate.getProgress().faces.find((f) => f.id === 'facility');
+    if (face?.kind !== 'stepped') throw new Error('expected stepped');
+    expect(face.label).toBe('Facility Build-Out');
+    expect(face.score).toBe(34);
+    expect(face.threshold).toBe(50);
+    expect(face.meetsThreshold).toBe(false);
+
+    // Build something: the face steps, with no sampling in between.
+    h.facility = 60;
+    const cleared = h.gate.getProgress().faces.find((f) => f.id === 'facility');
+    if (cleared?.kind !== 'stepped') throw new Error('expected stepped');
+    expect(cleared.score).toBe(60);
+    expect(cleared.meetsThreshold).toBe(true);
+  });
+
+  it('bands the month on the facility score standing at month-end', () => {
+    // A month where every other face clears and the facility face does not:
+    // the gate is multi-dimensional, so the building is what grades the month.
+    const verdicts: GateMonthVerdict[] = [];
+    const h = makeHarness({ tier: 3, startCash: 500000, startCsi: 80, startFacility: 20 });
+    h.bus.subscribe('tierGate:month_verdict', (v) => verdicts.push(v));
+    for (let i = 0; i < 30; i++) h.closeDeal(2000, 1000);
+    for (let d = 0; d < DAYS_PER_MONTH; d++) h.endDay();
+
+    const verdict = verdicts[0];
+    const facility = verdict.faces.find((f) => f.id === 'facility');
+    expect(facility).toBeDefined();
+    // 20 against a bar of 50 ⇒ ratio 0.4 ⇒ miss, and the worst face grades.
+    expect(facility?.ratio).toBeCloseTo(20 / 50);
+    expect(facility?.band).toBe('miss');
+    expect(verdict.overall).toBe('miss');
+  });
+
+  it("shows the facility bar in the tier's standing requirements", () => {
+    // The Growth board foreshadows off this. Now that the gate grades the
+    // face, hiding it here would understate what the climb actually costs.
+    const reqs = makeHarness().gate.getTierRequirements(3);
+    const facility = reqs?.faces.find((f) => f.id === 'facility');
+    expect(facility).toEqual({
+      id: 'facility',
+      label: 'Facility Build-Out',
+      kind: 'stepped',
+      target: 50,
+    });
+  });
+
+  it('keeps the stepped face out of the persisted month state', () => {
+    // Nothing to sample and nothing to average: the score stands where the
+    // buildings stand, so a restore reads it live off the provider.
+    const h = makeHarness({ tier: 3, startFacility: 34 });
+    h.endDay();
+    expect(h.gate.snapshot().levelSamples.facility).toBeUndefined();
+    expect(h.gate.snapshot().trendSamples.facility).toBeUndefined();
   });
 });
 
@@ -383,6 +464,50 @@ describe('#233 S3b — gate strip reachable on the live Home dashboard', () => {
     const src = readAppCompositionSource();
     expect(src).toMatch(/buildGateStrip\(\s*world\.tierGate\.getProgress\(\)/);
     expect(src).toMatch(/gate: gateModel\.faces\.length > 0/);
+  });
+});
+
+describe('#360 S3b — the facility face on the gate strip', () => {
+  function stepped() {
+    const strip = buildGateStrip(
+      makeHarness({ tier: 3, startFacility: 34 }).gate.getProgress(),
+    );
+    const face = strip.faces.find((f) => f.id === 'facility');
+    if (face?.kind !== 'stepped') throw new Error('expected stepped');
+    return face;
+  }
+
+  it('renders the facility face with value and threshold', () => {
+    const face = stepped();
+    expect(face.label).toBe('Facility Build-Out');
+    expect(face.valueLabel).toBe('34% built');
+    expect(face.thresholdLabel).toBe('vs 50%');
+    // Distance to the bar, the same reading the cash gauge gives.
+    expect(face.fill).toBeCloseTo(34 / 50);
+    expect(face.meets).toBe(false);
+
+    const model = buildHomeDashboard({
+      ...INPUTS,
+      gate: buildGateStrip(
+        makeHarness({ tier: 3, startFacility: 34 }).gate.getProgress(),
+      ),
+    });
+    const { getByText, getByTestId } = render(
+      <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
+    );
+    expect(getByTestId('gate-face-facility')).toBeTruthy();
+    expect(getByText('Facility Build-Out')).toBeTruthy();
+    expect(getByText('34% built vs 50%')).toBeTruthy();
+  });
+
+  it('counts the facility face in the binding "% on track" figure', () => {
+    // The gate is multi-dimensional and the worst face is the status. With
+    // units, gross, cash and CSI all projecting over their bars, a store
+    // sitting on 34 of a 50 facility bar cannot read as on track.
+    const h = makeHarness({ tier: 3, startFacility: 34, startCash: 900000, startCsi: 90 });
+    for (let i = 0; i < 3; i++) h.closeDeal(2700, 0); // day 1 ⇒ proj 30 units / $81k
+    const strip = buildGateStrip(h.gate.getProgress());
+    expect(strip.percentOnTrack).toBe(Math.round((34 / 50) * 100));
   });
 });
 

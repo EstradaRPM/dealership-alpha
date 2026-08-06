@@ -122,6 +122,15 @@ export interface Facility {
   getBuilt(): FacilityCapacity;
   /** The most the CURRENT tier allows. Re-read per call — the tier moves. */
   getCeilings(): FacilityCapacity;
+  /**
+   * How built-out the store is, 0–100 (#360) — the number the tier gate's
+   * `facility` face grades. Built ÷ ceiling per capacity kind, averaged over the
+   * kinds the current tier actually has a ceiling for; a kind the tier does not
+   * offer at all (body bays below T3) is excluded rather than counted as
+   * unbuilt, because you cannot be penalised for not building what you are not
+   * allowed to build.
+   */
+  getFacilityScore(): number;
   /** One row per capacity kind, in `FACILITY_CAPACITY_KINDS` order. */
   getBuildOptions(): readonly FacilityBuildOption[];
   /** Every job in flight, soonest landing first. */

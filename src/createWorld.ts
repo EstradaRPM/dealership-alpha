@@ -961,6 +961,10 @@ export function createWorld(deps: {
     signals: {
       cash: () => economy.cash,
       csi: () => reputation.reviewScore,
+      // #360: the facility face's producer. Built capacity ÷ the tier's ceiling
+      // — the number A2 R1 made purchasable so this gate face could grade
+      // something the player controls.
+      facility: () => facility.getFacilityScore(),
     },
   });
 

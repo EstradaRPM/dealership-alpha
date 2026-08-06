@@ -84,14 +84,32 @@ export interface TrendFaceProgress {
 }
 
 /**
- * The live progress for one active gate face. Facility (stepped) is dormant
- * for now (its image-standard teeth re-home onto the T4+ OEM stream, decision 4), so
- * it is absent from the union until that slice lands.
+ * Stepped face (facility). A standing score against a bar — it does not drift
+ * day to day and it is not paced: it sits exactly where it sits until the player
+ * *builds*, then it steps. That is why there is no average, no rolling window
+ * and no trend arrow here; the face is read live rather than sampled nightly,
+ * and there is nothing about it to persist.
+ */
+export interface SteppedFaceProgress {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: 'stepped';
+  /** The live standing score, 0–100. */
+  readonly score: number;
+  readonly threshold: number;
+  readonly meetsThreshold: boolean;
+}
+
+/**
+ * The live progress for one active gate face. The facility (stepped) face was
+ * dormant until #360 gave it a producer — built capacity ÷ the tier's ceiling —
+ * and it now grades like any other.
  */
 export type FaceProgress =
   | FlowFaceProgress
   | LevelFaceProgress
-  | TrendFaceProgress;
+  | TrendFaceProgress
+  | SteppedFaceProgress;
 
 /** The full live multi-face gate readout the Home strip (S3b) renders. */
 export interface GateProgress {

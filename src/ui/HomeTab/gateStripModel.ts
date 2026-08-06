@@ -4,6 +4,7 @@ import type {
   GateProgress,
   GateTrend,
   LevelFaceProgress,
+  SteppedFaceProgress,
   TrendFaceProgress,
 } from '../../game/TierGate';
 import type { ProgressTone, TrendDirection } from '../kit';
@@ -73,7 +74,33 @@ export interface TrendFaceView {
   meets: boolean;
 }
 
-export type GateFaceView = FlowFaceView | LevelFaceView | TrendFaceView;
+/**
+ * The facility face (#360) — a standing build-out score against a bar.
+ *
+ * Deliberately the level face MINUS the trend arrow: a stepped score does not
+ * drift, so an arrow would be pointing at nothing on every day the player did
+ * not build. The bar reads against the threshold, exactly as the level gauge
+ * does, so "how close am I to clearing it" means the same thing on both.
+ */
+export interface SteppedFaceView {
+  id: string;
+  kind: 'stepped';
+  label: string;
+  /** Score ÷ threshold, clamped [0,1] — distance to the bar, not to 100%. */
+  fill: number;
+  /** "34% built". */
+  valueLabel: string;
+  /** "vs 50%". */
+  thresholdLabel: string;
+  tone: ProgressTone;
+  meets: boolean;
+}
+
+export type GateFaceView =
+  | FlowFaceView
+  | LevelFaceView
+  | TrendFaceView
+  | SteppedFaceView;
 
 export interface GateStripModel {
   faces: GateFaceView[];
@@ -192,6 +219,19 @@ function buildTrendView(f: TrendFaceProgress): TrendFaceView {
   };
 }
 
+function buildSteppedView(f: SteppedFaceProgress): SteppedFaceView {
+  return {
+    id: f.id,
+    kind: 'stepped',
+    label: f.label,
+    fill: f.threshold > 0 ? clamp01(f.score / f.threshold) : 0,
+    valueLabel: `${Math.round(f.score)}% built`,
+    thresholdLabel: `vs ${Math.round(f.threshold)}%`,
+    tone: f.meetsThreshold ? 'positive' : 'danger',
+    meets: f.meetsThreshold,
+  };
+}
+
 /** Projected attainment ratio of one face vs its target — the on-track input. */
 function faceTrackRatio(f: FaceProgress): number {
   switch (f.kind) {
@@ -201,6 +241,10 @@ function faceTrackRatio(f: FaceProgress): number {
       return f.threshold > 0 ? f.avgLevel / f.threshold : 1;
     case 'trend':
       return f.threshold > 0 ? f.rollingAvg / f.threshold : 1;
+    case 'stepped':
+      // No projection: a stepped face lands exactly where it stands unless the
+      // player buys a building, and the strip must not pretend to forecast that.
+      return f.threshold > 0 ? f.score / f.threshold : 1;
   }
 }
 
@@ -227,6 +271,8 @@ export function buildGateStrip(
         return buildLevelView(f);
       case 'trend':
         return buildTrendView(f);
+      case 'stepped':
+        return buildSteppedView(f);
     }
   });
 

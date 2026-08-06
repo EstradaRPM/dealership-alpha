@@ -14,6 +14,7 @@ export type {
   FlowFaceProgress,
   LevelFaceProgress,
   TrendFaceProgress,
+  SteppedFaceProgress,
   GateProgress,
   TierFaceRequirement,
   TierRequirements,

@@ -116,6 +116,39 @@ export function createFacility(deps: FacilityDeps): Facility {
   }
 
   /**
+   * How built-out the store is, 0–100 (#360) — the number the tier gate's
+   * `facility` face grades.
+   *
+   * **One rule: built ÷ ceiling, per kind, averaged.** Each capacity kind counts
+   * once, so a store cannot buy its way to a facility score on lot spaces alone
+   * while running a service department out of one bay — which is exactly what a
+   * combined built÷ceiling total would let it do, since the lot dwarfs both bay
+   * rows at every tier.
+   *
+   * **A kind the tier has no ceiling for is excluded, not counted as unbuilt.**
+   * Body bays are 0 below T3; scoring them as "0 of 0 built" would peg a Tier-1
+   * store's facility at two-thirds for a building the tier forbids it from
+   * putting up. A kind is only ever graded once the tier allows it — which is
+   * also why arriving at T3 *drops* the score: the body shop just became
+   * something you are allowed, and therefore expected, to build.
+   *
+   * Each kind's ratio is capped at 1 — you cannot be more than fully built out —
+   * so a save standing over a ceiling reads as done rather than as extra credit.
+   */
+  function facilityScore(): number {
+    const ceilings = ceilingsAtTier(data, deps.getTier());
+    const graded = FACILITY_CAPACITY_KINDS.filter((kind) => ceilings[kind] > 0);
+    // Nothing the tier allows ⇒ nothing outstanding. Unreachable with the
+    // shipped table (every tier holds lot spaces), stated so the score is total.
+    if (graded.length === 0) return 100;
+    const sum = graded.reduce(
+      (acc, kind) => acc + Math.min(1, built[kind] / ceilings[kind]),
+      0,
+    );
+    return (sum / graded.length) * 100;
+  }
+
+  /**
    * Land every job whose day has come. Settled on `clock:day_started` so newly
    * finished capacity is standing before the day's drain snapshots its bay
    * count — construction finishes overnight, the way a real one does.
@@ -140,6 +173,7 @@ export function createFacility(deps: FacilityDeps): Facility {
     // Derived from the LIVE tier, never stored: tier-up must not be able to
     // leave a stale ceiling behind, and there is nothing to migrate.
     getCeilings: () => ceilingsAtTier(data, deps.getTier()),
+    getFacilityScore: () => facilityScore(),
     getBuildOptions: () => FACILITY_CAPACITY_KINDS.map(optionFor),
     getJobs: () => [...jobs].sort(byLandingDay),
 

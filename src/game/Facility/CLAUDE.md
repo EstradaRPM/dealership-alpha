@@ -21,9 +21,10 @@ that can disagree is the bug this build order exists to avoid.
 - `createFacility({ bus, getTier, economy, getCurrentDay, data? })` → `Facility`.
 - Reads: `getBuilt()` and `getCeilings()`, both returning the same
   `FacilityCapacity` shape (`lotSpaces` / `serviceBays` / `bodyBays`) — the
-  facility score (#360) is one divided by the other, so the shapes must match.
+  facility score is one divided by the other, so the shapes must match.
   `getCeilings()` re-reads the live tier every call; a stored ceiling could go
   stale on tier-up.
+- `getFacilityScore()` (#360) — how built-out the store is, 0–100. See below.
 - `FacilityCapacityReader` (`Pick<Facility, 'getBuilt' | 'getCeilings'>`) is the
   narrow read consumers hold — nothing outside this module can change what is
   built.
@@ -66,6 +67,28 @@ Three rules, and they are all in `optionFor`:
   measures against. The same space can never be paid for twice.
 - **A refusal changes nothing at all.** `at-ceiling` and `cannot-afford` are
   checked before the debit; neither moves cash or schedules anything.
+
+## The facility score (#360)
+
+`getFacilityScore()` is the number the monthly tier gate's `facility` face
+grades — the face that sat dormant from #232 until construction gave it
+something the player controls.
+
+**One rule: built ÷ ceiling, per kind, averaged.** Each capacity kind counts
+once. A combined built÷ceiling total would let a store buy its facility score
+on lot spaces alone (35 of them against 6 service bays at T3) while running a
+one-bay shop; averaging the per-kind ratios makes every department's room
+count the same.
+
+**A kind the tier has no ceiling for is excluded, not counted as unbuilt.** Body
+bays are 0 below T3, and scoring them as "0 of 0" would peg a fully built-out
+Tier-1 store at 67 for a building the tier forbids. The flip side is the teeth:
+**arriving at T3 drops the score**, because the body shop just became something
+you are allowed — and therefore expected — to build.
+
+Each kind's ratio is capped at 1 (you cannot be more than fully built out), and
+in-flight construction counts for nothing until it lands. Wired into the gate as
+`signals.facility` in `createWorld`; the engine never imports this module.
 
 ## Events
 
@@ -114,4 +137,6 @@ Three rules, and they are all in `optionFor`:
 - `src/ui/GrowthTab/FacilityBuild.tsx` + `facilityBuildModel.ts` — the build
   surface, mounted through `GrowthTabContainer`. Growth's charter is "work ON the
   business"; buying buildings compounds and spends the cash inventory wants.
-- Coming: the `facility` tier-gate face (#360), the lot cap on buying (#361).
+- `TierGate`, through the injected `signals.facility` closure (#360) — the gate
+  grades what this module scores and knows nothing about a bay.
+- Coming: the lot cap on buying (#361).

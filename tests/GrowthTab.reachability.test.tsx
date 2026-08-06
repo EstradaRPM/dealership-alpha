@@ -7,6 +7,7 @@ import { buildHeatConsole, resolvePricingIntel, SEGMENT_LABELS } from '../src/ap
 import { buildMarketGlance } from '../src/ui/HomeTab';
 import type { DemandReadoutModel } from '../src/ui/DemandReadout';
 import type { CharacterProfile } from '../src/game/CareerProgression';
+import { createDefaultFacilitySnapshot } from '../src/game/Facility';
 import { readAppCompositionSource } from './helpers/appComposition';
 
 // Anti-orphan (#349): Growth was a placeholder card while the demand console
@@ -117,13 +118,42 @@ describe('#349 the Growth tab is mounted on the live world', () => {
     const next = world.tierGate.getTierRequirements(2);
     expect(next).toBeTruthy();
     expect(next!.faces.map((f) => f.id)).toContain('units');
-    // Facility is declared in data but dormant in the engine — the board must
-    // never foreshadow a bar the month-end verdict does not grade.
-    expect(world.tierGate.getTierRequirements(3)!.faces.map((f) => f.id)).not.toContain(
-      'facility',
-    );
+    // The board shows exactly the bars the month-end verdict grades — no more,
+    // and since #360 gave the facility face a producer, no fewer. `streak` is a
+    // control tunable in the same tier entry and is not a bar.
+    const t3 = world.tierGate.getTierRequirements(3)!.faces.map((f) => f.id);
+    expect(t3).toContain('facility');
+    expect(t3).not.toContain('streak');
     // Past the top of the built ladder there is nothing to show.
     expect(world.tierGate.getTierRequirements(99)).toBeNull();
+  });
+
+  it('grades the facility face off the live Facility module (#360)', () => {
+    // The face was dormant because nothing produced a score. Stand a real world
+    // at T3 holding what it built at T2 — the carry-over state A2 R1 creates —
+    // and the gate must read that store's actual build-out, not a constant.
+    const world = freshWorld();
+    world.tierManager.restoreState({
+      currentTier: 3,
+      businessName: 'Estrada Motors',
+      accentColor: '#38bdf8',
+      fontId: 'prestige',
+      customersServed: 0,
+    });
+    world.facility.restore(createDefaultFacilitySnapshot(2));
+
+    const face = world.tierGate.getProgress().faces.find((f) => f.id === 'facility');
+    if (face?.kind !== 'stepped') throw new Error('expected the stepped facility face');
+    expect(face.score).toBeCloseTo(world.facility.getFacilityScore());
+    expect(face.score).toBeGreaterThan(0);
+    expect(face.meetsThreshold).toBe(false);
+
+    // Build the lot out and the face steps with it — same world, same read.
+    world.facility.restore(createDefaultFacilitySnapshot(3));
+    const built = world.tierGate.getProgress().faces.find((f) => f.id === 'facility');
+    if (built?.kind !== 'stepped') throw new Error('expected the stepped facility face');
+    expect(built.score).toBeCloseTo(100);
+    expect(built.meetsThreshold).toBe(true);
   });
 
   it('the Home glance summarizes the same model it routes into', () => {
