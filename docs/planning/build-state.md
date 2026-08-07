@@ -19,16 +19,17 @@ gates were closed before a line was written (C1 2026-08-02 `staff-teeth-design.m
 
 **The next `/next` does NOT wait on the playtest.** If the director's round-1 notes have
 landed (as a comment on #74 or a pasted export), the unit is triaging them per §7's Class
-A/B protocol. If they have not, the unit continues **phase 8 — C2 calibration campaign**. A
-human gate is never a reason for a session to end with nothing built.
+A/B protocol. If they have not, the unit continues the phase pointer below. A human gate is
+never a reason for a session to end with nothing built.
 
-**Phase 8 is UNDER WAY: #180 landed 2026-08-06, #181 landed 2026-08-07** — the live engine has
-a calibration harness (it closes **2.2%** of worked ups against #94's 85%) and now a measured
-**floor** underneath it. Remaining in the phase: **#286**, the retune that closes the gap.
-Read the #286 comment before touching any pricing tunable — the mechanism is measured, and the
-obvious lever was already tried and reverted. **#286 now has two commitments to satisfy, not
-one:** raise `live` toward `reference`, *and* keep `earlyGame` below it by its stated margin —
-the schema refuses a `data/market-calibration.json` where the floor is not a floor.
+**Phase 8 is COMPLETE as of 2026-08-07** — #180, #181 and **#286** have all landed. The live
+engine now closes **28.5%** of worked ups against the 2.2% #180 measured, the early-game floor
+held its shape (0.5% positive for a green operator, so the progression still has a bottom), and
+the balance harness went from "bankrupts before Tier 2" to **90 of 100 seeds reaching T2** with
+a median survival of the full 360 days.
+
+**The next `/next` opens phase 9 (B2, F&I plug-in #2) with a DECIDE unit** — the parked F&I
+grill in `docs/planning/fni-mechanics-grill-state.md` resumes before anything is sliced.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -266,19 +267,44 @@ the schema refuses a `data/market-calibration.json` where the floor is not a flo
   This is also **not** the rejected "forced wholesale on overrun" (A2 R2): the player picks
   the unit and sees the number.
 
-- **The live engine closes ~2% of worked ups against #94's 85%, and #180 measured why.**
-  The rejecting mechanism is the **price floor, not the quadrant**: 415 of ~486 walks are
-  below-floor `no_close`, against 37 patience-drain and 17 trust-collapse. #94 demos every
-  customer a *perfect* SPACED match (Value ≈ 0.85); a six-space tier-1 lot yields best-of-six
-  (Value ≈ 0.4), and `reservationPrice` scales with Value, so willingness-to-pay lands under
-  `vehicleCost + minGross` before the quadrant is consulted. Full numbers + the knob list are
-  in the #286 comment. **Closing that gap is #286, not a stray tuning edit** — and
-  `data/market-calibration.json` carries `reference` (the #94 commitment) *and* `live` (the
-  measured state) precisely so nobody can rename the measurement the target. A test asserts
-  the gap is still recorded.
-- **Centering the auction below book was TRIED and REVERTED** (#180). `motivatedSeller`
-  `meanMultiplier` 1.0 → 0.85 with ceiling 1.2 → 1.0 moved the close rate ~0.4pp. It is not
-  the dominant term; the Value/price-sensitivity drag is. Do not re-propose it as the fix.
+- **#286 closed the #180 gap: `live` positive is now 28.5%, not 2.2%** — and the cause was
+  NOT what #180 suspected. Willingness-to-pay already sat ~6% *above* the ask and the quadrant
+  was accepting 58% of worked ups. The store's **cost basis sat above its own asking price**
+  (`floor/ask` = 1.32), so the deal was dead on price before the customer formed an opinion.
+  Four terms, each a mis-model rather than a number needing a nudge: recon was a flat dollar
+  figure per condition (half the value of a cheap rough unit) → now `conditionTiers[*].reconPct`;
+  the auction lane centred at book with a 1.20 ceiling (you could pay 20% OVER book at a
+  wholesale auction) → now 0.85, matching the wholesale haircut the same module already pays
+  out; the retail markup was thinner than the basis → +0.10; and a wholesale comp was measured
+  against the bare anchor, so once the lane moved below book every purchase drifted the segment
+  down. Full write-up: `docs/planning/pricing-demand-spine.md` §6.
+- **The residual gap to `reference` (85%) is the Value meter, not price.** A six-space lot
+  yields a best-of-six match (Value ≈ 0.60) against #94's perfect one (≈ 0.85), and Value
+  dominates `objectiveDeal`. Closing it is a stocking-capacity question — the tier ladder —
+  **not another pricing knob**. Do not re-open the price model chasing the last 55 points.
+- **Centering the auction below book alone was tried and reverted in #180 and that finding
+  still stands** — `meanMultiplier` 0.85 on its own moved the close rate ~0.4pp, because recon
+  was eating the spread. It is one of three terms, never the fix by itself.
+- **Both calibration bots now run the #362 release valve, and that is load-bearing** (#286).
+  Without it the harness measures a store that *cannot restock*: a unit nobody will buy holds
+  one of six spaces forever, mean lot age climbed to 123 days and the close rate halved twice
+  over (62% → 22%). Same class of correction as the standing float top-up — the bot has to make
+  the standing decisions an operator makes. Do not read a future age-driven collapse as an
+  economy regression before checking the bot still disposes.
+- **`no_fit` is 71% and that is recorded as real tier-1 scarcity, not a stocking bug** (#286).
+  The lot is measurably FULL (6.01 of 6 spaces, 5.0 past the frontline hold) and still cannot
+  match 7 of 10 walk-ins — six cars is a thin draw against six SPACED axes plus an affordability
+  gate. It rose from 51% because cars now actually sell (composition churns instead of
+  presenting the same frozen six) and the ask is 10 points higher. **`pickVehicleForMatch`
+  filters on affordability BEFORE fit, so a customer priced out reads as `no_fit` rather than
+  as a price walk** — worth surfacing separately one day, and the reason markup was not raised
+  further (+0.10 is the measured peak of total cars sold; past it the close band keeps improving
+  while the store sells fewer cars).
+- **The balance harness no longer bankrupts before Tier 2** (#286, supersedes the standing
+  "expected, don't investigate" note). `npm run balance -- pacing`: 90 of 100 seeds advance to
+  T2, median survival 360 days, bankruptcy 19%. The new pacing miss is the opposite one — **T1
+  now clears in a median 1.0 month against a 2.0-month target** (status OUT). That is a
+  tier-gate calibration question, not a pricing one.
 - **`staff:auto_resolved` is the live outcome truth, and `customer:resolved` is not** (#180).
   The live floor publishes `customer:resolved` **only on a close** — a walk never publishes
   it at all, so `FollowUpPool`, `Reputation`'s walk penalty, `RegulatoryMeter`'s walk pressure
@@ -297,19 +323,20 @@ the schema refuses a `data/market-calibration.json` where the floor is not a flo
   happy. `data/market-calibration.json#earlyGame` states its two margins as **distances** from
   `live`/`reference`, and a schema refine enforces the whole band sits under
   `live.positiveMin − marginBelowLive` — so #286 cannot raise `live` without moving the floor.
-- **Acquisitions are gated by sales, and that starves any per-acquisition band** (#181). A
-  six-space lot only reopens when a unit leaves, so a green store turns **9 units in 110 days
-  and 13 in 400**. The recon-tail *rate* band is therefore a documented ceiling guard, not a
-  measurement; the band with power is `reconOverrunMin/Max` (mean realized ÷ estimated recon,
-  every unit contributes — 1.087× measured against the 1.061 `data/recon-variance.json`
-  implies). Do not tighten the tail rate to look precise, and do not extend the run to chase
-  the denominator: 400 days buys 4 more units for 4× the runtime.
+- **#286 gave the recon bands a real denominator** (superseding #181's "acquisitions are
+  starved" note). A green six-space lot turned 9 units in the window before and turns **43**
+  now, with 29 completed recons and the tail actually firing (1 hit, 2.3%). The tail *rate*
+  stays a documented ceiling guard; `reconOverrunMin/Max` (mean realized ÷ estimated recon) is
+  still the band with power — 1.072× measured against the ~1.061 `data/recon-variance.json`
+  implies. Do not tighten the tail rate to look precise.
 - **Two customers can be held on the SAME unit, and resolving both throws** (#181 → **#364**).
   Nothing reserves a vehicle while a `trade:escalated` / `discount:escalated` review is
   pending; the first resolution drives it off the lot and the second dies on `No lot vehicle`
   inside `DealEngine.closeDeal`. Ordinary on a six-space lot, reachable in the app. The #181
   harness `try/catch`es it and tallies `escalationsLostToSoldUnit`; **that guard is the
-  workaround, not the fix** — #364 owns what the second customer actually sees.
+  workaround, not the fix** — #364 owns what the second customer actually sees. **#180 now
+  carries the same guard** (#286): once closes became common the collision reached that harness
+  too, and it crashed the suite outright until the guard went in.
 - **The #180 harness deliberately capitalizes its bot** (`BOT.floatFloor`/`floatTopUp`). At a
   2% close rate the store goes insolvent long before 600 worked ups, which would silently
   shrink N and make the bands move whenever calibration changed. Solvency + pacing are the
@@ -337,8 +364,8 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
-| 8 | C2 calibration campaign (#286 + #180/#181) | — | active |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | pending |
+| 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **RESUME parked grill** (fni-mechanics-grill-state.md) | active |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -356,6 +383,109 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-07 — **BUILT #286** (the C2 retune — **phase 8 COMPLETE**). #180 measured that the
+  live engine closes 2.2% of worked ups against #94's 85% and named the price floor as the
+  rejecting mechanism. #286 had to find out *why the floor was where it was*, and the answer
+  was not the one #180 filed.
+  **The diagnosis contradicted the hypothesis, and measuring beat theorising.** #180's write-up
+  blamed the reservation model — a best-of-six lot yielding Value ≈ 0.4 against #94's perfect
+  0.85, dragging willingness-to-pay under cost. I instrumented `closeAndPrice` on the live floor
+  before touching a tunable, and the customers were fine: Value measured **0.599** (not 0.4),
+  price sensitivity **0.41** (not the 0.6–0.85 the issue assumed), the reservation price sat
+  **6.5% ABOVE our ask**, and the quadrant was accepting **58%** of worked ups. What was broken
+  was the store: **`floor/ask` = 1.32**. Our cost basis was a third higher than our own asking
+  price, so `closeable` was false 91% of the time and nothing downstream ever got a say.
+  **Four terms produced that, and every one was a mis-model rather than a number wanting a
+  nudge.** (1) Recon was a **flat dollar figure per condition** ($500/$1,200/$2,800) applied to
+  a catalog spanning a $3.5k beater and a $40k luxury car — on the tier-1 lot a rough unit's
+  recon ran to *half its value* while the anchor's condition discount takes only 12% off, so
+  buying rough was never a decision, it was a trap. It is now
+  `conditionTiers[*].reconPct` (0.04/0.09/0.16), one rule in `Inventory.reconEstimateFor`, read
+  by all three acquisition lanes. (2) The **auction lane centred at book with a 1.20 ceiling** —
+  you could pay 20% *over* book at a wholesale auction, while `inventory.wholesale.haircutPct`
+  pays you out at book × 0.85 on the way out. Centring the buy side at 0.85 makes the two sides
+  of one market symmetric. (3) The **retail markup (1.20–1.28) was thinner than the basis it
+  had to cover**; +0.10. (4) A **modelling bug the retune exposed**: a wholesale comp was
+  measured against the bare anchor, so the moment the lane moved below book *every purchase*
+  recorded a negative comp and drifted the segment down — buying well would have quietly
+  devalued the player's own inventory. Wholesale comps now reference `anchor ×
+  motivatedSeller.meanMultiplier`, symmetric with retail's `anchor × markup`.
+  **The result: `live` positive 2.2% → 28.5%**, apathetic 97.7% → 64.5%, negative-deal 0.2% →
+  7.0%, 213 closes against 88. The early-game floor **held its shape** — a green operator still
+  closes at a rate a competent one would recognise while almost none of those customers leave
+  happy (0.5% positive against 28.5%) and `trust_collapse` is still its signature walk (106 vs
+  11). Skill buys happy customers here, not volume, and that is still true after the retune.
+  **The balance harness is the business-level proof:** it went from the standing "bankrupts
+  before Tier 2" to **90 of 100 seeds reaching T2**, median survival the full 360 days.
+  **Two things I did not tune away.** `no_fit` rose 51% → 71%, and it is real: the lot is
+  measurably FULL (6.01 of 6 spaces) and still cannot match 7 of 10 walk-ins, because six cars
+  is a thin draw against six SPACED axes plus an affordability gate. It rose because cars now
+  *sell*, so composition churns. That is the pressure that makes lot spaces worth building —
+  A2 R1's whole point. And the residual gap to `reference` is now the **Value meter, not
+  price**: a six-space lot yields best-of-six, Value dominates `objectiveDeal`, and closing
+  that is a stocking-capacity question for the tier ladder rather than another pricing knob.
+  Both are written into `data/market-calibration.json`'s docs so the next reader inherits the
+  reasoning, not just the numbers.
+  **Harness correction, both bots: they now run the #362 release valve.** Without it the test
+  measured a store that cannot restock — a unit nobody will buy holds one of six spaces
+  forever, mean lot age climbed to 123 days and the close rate halved twice over (62% → 22%).
+  That is the harness failing to make a decision every operator makes, exactly like the
+  standing float top-up. `MAX_DAYS` rose 400 → 600 to keep the 600-worked-up sample, because
+  the live floor works ~1.2 customers a day.
+  219 suites / **2863** tests, typecheck clean, and driven on web (T2 fixture → Operations →
+  Lot): live asks, carrying, aging and wholesale quotes all render, the RAV4's $11,922 quote
+  being exactly 0.85 × its $14,026 book.
+  Next: **phase 9 — B2 F&I plug-in #2**, which opens with a DECIDE (the parked grill).
+
+- 2026-08-07 — **BUILT #181** (the early-game floor — the progression has a proven bottom).
+  #180 proved the #94 calibration does not survive contact with the game for a **competent**
+  operator. #181 asks the complementary question: is there anywhere to climb *from*? A career
+  whose day-1 state performs like its end state has no progression in it, and every skill
+  gate, promotion and hire in `StaffOrg` would be decoration. Now there is a test that says
+  otherwise.
+  **The instrument is #180's, with one variable changed.** Same `createWorld`, same master
+  seed, same stocking bot, same six-space lot, same capital floor — only the operator differs.
+  `tests/MarketEconomy.earlyGameFloor.test.ts` runs the green solo operator the career starts
+  you as (0.35/0.40 raw composites) instead of 0.75/0.75, hires **no UCM**, never pays for a
+  pre-buy inspection, and leaves the trade policy at its `data/` default. Those are the four
+  things a green player has not bought yet. 200 worked ups over 110 days, deterministic, ~5s.
+  **Pinning an off-diagonal profile needed a real derivation.** #180 could fill every skill to
+  the same fraction, which lands on the diagonal (`E === T`). A green operator is deliberately
+  *off* it — better at being trusted than at closing — so the fill is parameterized by how
+  each skill leans (`fᵢ = α + β·leanᵢ`) and the two composites are solved as a 2×2 against the
+  live catalog. Hardcoding the three fractions would have let a retuned
+  `data/staff-skills.json` silently move the green profile; instead the realized profile is
+  asserted and a catalog change fails loudly.
+  **The finding is the SHAPE of the floor, not its height.** A green operator closes about as
+  often as a competent one — 3.0% of worked ups against #180's 2.4% — but **every single one
+  of those closes is a low-trust forced close**: 0.0% positive against `live`'s 2.2%, and
+  `trust_collapse` goes from 17 walks to 115, becoming the dominant non-fit reason. Skill does
+  not buy you volume in this economy; it buys you customers who are *happy*. That is a
+  cleaner, more interesting floor than "green sells less", and it is what the bands now
+  record.
+  **Margins are distances, not a second set of bands.** `data/market-calibration.json`
+  `earlyGame` states `marginBelowLive` / `marginBelowReference` as gaps from `live` and
+  `reference`, and a schema refine enforces that the whole early-game band sits under
+  `live.positiveMin − marginBelowLive`. When #286 raises `live`, the floor must move with it
+  or the assertion fails. A floor that stops being below the ceiling is not a floor.
+  **The recon-tail band is honestly labelled as a ceiling guard.** Acquisitions are gated by
+  sales — a six-space lot only reopens when a unit leaves — so a green store turns **9 units
+  in 110 days, and only 13 if ground out to 400**. Zero surprises fired against an expectation
+  of ~0.45. Banding a rare event over that denominator would be banding luck, so the rate gets
+  a documented ceiling and the load-bearing band is the **mean recon overrun** (realized ÷
+  estimate, every unit contributes): measured 1.087× against the 1.061 the
+  `data/recon-variance.json` bucket mix implies. Its min sits just under 1 on purpose — that
+  is the assertion that buying blind is a cost, not a coin flip. Both tighten on their own
+  once #286 makes the lot turn. Carrying burn came in at **$18.63/unit/day**.
+  **Filed #364 in passing.** Two customers can be held on the *same* unit — a six-space lot
+  makes it ordinary — and whoever is resolved first drives it away; resolving the second
+  throws `No lot vehicle` straight out of `resolvePlayerDiscountDecision`. Reachable in the
+  app, not a harness artifact. The test guards and tallies it rather than asserting around it;
+  what the second customer should *see* is a design call about the prompt, not a calibration
+  change. 219 suites / **2863** tests, typecheck clean.
+  Next: **#286** — the retune that closes the #180 gap. It now has a floor to preserve as well
+  as a ceiling to reach.
 
 - 2026-08-06 — **BUILT #180** (live-engine calibration verification — phase 8 opens). The
   #94 test proves the sales-process balance *in a vacuum*: a perfect inventory match every
@@ -406,89 +536,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   verification. 218 suites / **2851** tests, typecheck clean.
   Next: **#181** (early-game floor verification), which #180 unblocks — then #286.
 
-- 2026-08-06 — **HANDED OVER: the #74 round-1 playtest script (phase 5, HITL).** The unit
-  was preparing the script and giving it to the director. Preparing it turned out to be real
-  work: the script was written before the 5c layout rebuild and before phases 6 and 7, and
-  **every navigation path in it had gone stale.**
-  **What had drifted.** Hiring is on **People → Hiring**, not Operations. The auction is
-  entered from **Operations → Lot → Go to the Auction** — the Lot owns sourcing (locked IA
-  §4). The demand readout, the weekly market report and the industry wire all moved off Home
-  into **Growth**; Home keeps a Market *glance* whose whole job is to route there, so "read
-  Home top-to-bottom" would have had the director staring at a two-line card. The wire's paid
-  lanes are named "auction data feed" and "competitor price tracking" on screen, not
-  `auction_data`/`competitor_tracking`. And the known-dark list still told them Finance and
-  Growth were placeholder tabs — 5c built both. A stale script is worse than no script: it
-  spends the one resource this gate is short of, which is the director's patience.
-  **What it now measures that it couldn't before.** Day 0's hire reads the signing fee and
-  the daily wage and then the payroll line (hiring costs money twice now); Day 2's buy happens
-  against a six-space lot the seed already fills half of; Day 3's second hire is a capacity
-  question *with a price on it*; Day 4 reads the wholesale quote without taking it and sweeps
-  the roster for raise asks and rival offers; Day 5 takes the valve if the unit still hasn't
-  sold, and reads the Growth console including Build Out and the gate board. Session B gained
-  payroll-at-T2, a roster sweep, and "do you know what would get you to Tier 3".
-  **Both halves were rewritten together.** `docs/planning/playtest-round-1.md` is the human
-  doc; `data/playtest-script.json` is what the phone actually presents (#333) and is the one
-  the director will read at 11pm on day 4. Editing only the doc would have shipped the drift.
-  **Deliberately NOT fixed, because it is a round-1 question.** A raise ask and a rival's
-  offer wait on a person's card and never interrupt — so a player who doesn't open People can
-  lose someone to a rival and only learn it from Deal History. Whether that reads as tension
-  or as a missed beat is exactly what the round is for; pre-emptively adding an interrupt
-  would answer it for them. It is a script step and a probe instead.
-  **Two stale claims corrected in passing:** §5 said nothing in the UI showed the finance mix
-  — Finance now splits gross into Cash vs Financed and Deal History names the method per
-  deal, so the gap narrowed to down payment / credit tier / the credit-blocked walk reason.
-  And `data/nav-tabs.json`'s `_doc` still called three tabs placeholders.
-  **Verified in the running app**, not just typechecked: reloaded the web target and reopened
-  the guide — the Day 0 card renders all seven new steps, both probes and the new known-dark
-  list, and the button reads **▤ 1/9 · 0/7**. 217 suites / **2841** tests, typecheck clean.
-  Next: **phase 8, C2 calibration (#286 + #180/#181)** unless the director's round-1 notes
-  land first, in which case triage those. The gate does not block the queue.
-
-- 2026-08-07 — **BUILT #181** (the early-game floor — the progression has a proven bottom).
-  #180 proved the #94 calibration does not survive contact with the game for a **competent**
-  operator. #181 asks the complementary question: is there anywhere to climb *from*? A career
-  whose day-1 state performs like its end state has no progression in it, and every skill
-  gate, promotion and hire in `StaffOrg` would be decoration. Now there is a test that says
-  otherwise.
-  **The instrument is #180's, with one variable changed.** Same `createWorld`, same master
-  seed, same stocking bot, same six-space lot, same capital floor — only the operator differs.
-  `tests/MarketEconomy.earlyGameFloor.test.ts` runs the green solo operator the career starts
-  you as (0.35/0.40 raw composites) instead of 0.75/0.75, hires **no UCM**, never pays for a
-  pre-buy inspection, and leaves the trade policy at its `data/` default. Those are the four
-  things a green player has not bought yet. 200 worked ups over 110 days, deterministic, ~5s.
-  **Pinning an off-diagonal profile needed a real derivation.** #180 could fill every skill to
-  the same fraction, which lands on the diagonal (`E === T`). A green operator is deliberately
-  *off* it — better at being trusted than at closing — so the fill is parameterized by how
-  each skill leans (`fᵢ = α + β·leanᵢ`) and the two composites are solved as a 2×2 against the
-  live catalog. Hardcoding the three fractions would have let a retuned
-  `data/staff-skills.json` silently move the green profile; instead the realized profile is
-  asserted and a catalog change fails loudly.
-  **The finding is the SHAPE of the floor, not its height.** A green operator closes about as
-  often as a competent one — 3.0% of worked ups against #180's 2.4% — but **every single one
-  of those closes is a low-trust forced close**: 0.0% positive against `live`'s 2.2%, and
-  `trust_collapse` goes from 17 walks to 115, becoming the dominant non-fit reason. Skill does
-  not buy you volume in this economy; it buys you customers who are *happy*. That is a
-  cleaner, more interesting floor than "green sells less", and it is what the bands now
-  record.
-  **Margins are distances, not a second set of bands.** `data/market-calibration.json`
-  `earlyGame` states `marginBelowLive` / `marginBelowReference` as gaps from `live` and
-  `reference`, and a schema refine enforces that the whole early-game band sits under
-  `live.positiveMin − marginBelowLive`. When #286 raises `live`, the floor must move with it
-  or the assertion fails. A floor that stops being below the ceiling is not a floor.
-  **The recon-tail band is honestly labelled as a ceiling guard.** Acquisitions are gated by
-  sales — a six-space lot only reopens when a unit leaves — so a green store turns **9 units
-  in 110 days, and only 13 if ground out to 400**. Zero surprises fired against an expectation
-  of ~0.45. Banding a rare event over that denominator would be banding luck, so the rate gets
-  a documented ceiling and the load-bearing band is the **mean recon overrun** (realized ÷
-  estimate, every unit contributes): measured 1.087× against the 1.061 the
-  `data/recon-variance.json` bucket mix implies. Its min sits just under 1 on purpose — that
-  is the assertion that buying blind is a cost, not a coin flip. Both tighten on their own
-  once #286 makes the lot turn. Carrying burn came in at **$18.63/unit/day**.
-  **Filed #364 in passing.** Two customers can be held on the *same* unit — a six-space lot
-  makes it ordinary — and whoever is resolved first drives it away; resolving the second
-  throws `No lot vehicle` straight out of `resolvePlayerDiscountDecision`. Reachable in the
-  app, not a harness artifact. The test guards and tallies it rather than asserting around it;
-  what the second customer should *see* is a design call about the prompt, not a calibration
-  change. 219 suites / **2863** tests, typecheck clean.
-  Next: **#286** — the retune that closes the #180 gap. It now has a floor to preserve as well
-  as a ceiling to reach.

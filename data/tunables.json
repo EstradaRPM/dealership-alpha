@@ -11,7 +11,7 @@
     "reputationArrivalCoeff": 0.8,
     "marketShareArrivalCoeff": 1.5,
     "seasonArrivalMultiplier": {
-      "spring": 1.0,
+      "spring": 1,
       "summer": 1.15,
       "fall": 1.05,
       "winter": 0.85
@@ -20,13 +20,13 @@
   "demandModel": {
     "inventoryHalfSat": 12,
     "conditionWeight": {
-      "clean": 1.0,
+      "clean": 1,
       "average": 0.7,
       "rough": 0.4
     },
     "qualityMultMin": 0.6,
     "qualityMultMax": 1.3,
-    "demandFactorMax": 3.0,
+    "demandFactorMax": 3,
     "pricingTrafficWeight": 1
   },
   "demandShaper": {
@@ -38,7 +38,11 @@
       "veryHot": 1.35,
       "veryCold": 0.65
     },
-    "segments": ["sedan", "truck", "suv"],
+    "segments": [
+      "sedan",
+      "truck",
+      "suv"
+    ],
     "locationProfiles": [
       {
         "id": "north-industrial",
@@ -53,7 +57,7 @@
         "id": "suburban-schoolbelt",
         "label": "Suburban schoolbelt",
         "weights": {
-          "sedan": 1.0,
+          "sedan": 1,
           "truck": 0.85,
           "suv": 1.25
         }
@@ -74,7 +78,7 @@
         "enthusiast": 0.4
       },
       "truck": {
-        "tradesperson": 1.0
+        "tradesperson": 1
       },
       "suv": {
         "young_family": 0.6,
@@ -140,57 +144,119 @@
       "spring": {
         "tempMinF": 48,
         "tempMaxF": 72,
-        "conditionWeights": { "clear": 4, "cloudy": 3, "rain": 3, "snow": 0, "storm": 1 }
+        "conditionWeights": {
+          "clear": 4,
+          "cloudy": 3,
+          "rain": 3,
+          "snow": 0,
+          "storm": 1
+        }
       },
       "summer": {
         "tempMinF": 70,
         "tempMaxF": 95,
-        "conditionWeights": { "clear": 6, "cloudy": 2, "rain": 1, "snow": 0, "storm": 1 }
+        "conditionWeights": {
+          "clear": 6,
+          "cloudy": 2,
+          "rain": 1,
+          "snow": 0,
+          "storm": 1
+        }
       },
       "fall": {
         "tempMinF": 42,
         "tempMaxF": 68,
-        "conditionWeights": { "clear": 4, "cloudy": 4, "rain": 3, "snow": 0.5, "storm": 0.5 }
+        "conditionWeights": {
+          "clear": 4,
+          "cloudy": 4,
+          "rain": 3,
+          "snow": 0.5,
+          "storm": 0.5
+        }
       },
       "winter": {
         "tempMinF": 18,
         "tempMaxF": 42,
-        "conditionWeights": { "clear": 3, "cloudy": 3, "rain": 1, "snow": 4, "storm": 0 }
+        "conditionWeights": {
+          "clear": 3,
+          "cloudy": 3,
+          "rain": 1,
+          "snow": 4,
+          "storm": 0
+        }
       }
     },
     "attributeLeans": {
       "bySeason": {
-        "spring": { "economy": 0.08, "appearance": 0.03 },
-        "summer": { "performance": 0.08, "appearance": 0.07, "economy": -0.04 },
-        "fall": { "dependability": 0.05, "economy": 0.03 },
-        "winter": { "dependability": 0.1, "safety": 0.07, "performance": -0.06, "appearance": -0.04 }
+        "spring": {
+          "economy": 0.08,
+          "appearance": 0.03
+        },
+        "summer": {
+          "performance": 0.08,
+          "appearance": 0.07,
+          "economy": -0.04
+        },
+        "fall": {
+          "dependability": 0.05,
+          "economy": 0.03
+        },
+        "winter": {
+          "dependability": 0.1,
+          "safety": 0.07,
+          "performance": -0.06,
+          "appearance": -0.04
+        }
       }
     },
     "conditionVolume": {
       "clear": 1.12,
-      "cloudy": 1.0,
+      "cloudy": 1,
       "rain": 0.85,
       "snow": 0.7,
       "storm": 0.55
     },
-    "volumeOutlook": { "busyMin": 1.05, "slowMax": 0.9 },
+    "volumeOutlook": {
+      "busyMin": 1.05,
+      "slowMax": 0.9
+    },
     "attributeAxisLeans": {
       "bySeason": {
-        "spring": { "fuelEfficiency": 0.12 },
-        "summer": { "openAir": 0.3, "fuelEfficiency": 0.05 },
-        "fall": { "winterCapability": 0.05 },
-        "winter": { "winterCapability": 0.15, "openAir": -0.15 }
+        "spring": {
+          "fuelEfficiency": 0.12
+        },
+        "summer": {
+          "openAir": 0.3,
+          "fuelEfficiency": 0.05
+        },
+        "fall": {
+          "winterCapability": 0.05
+        },
+        "winter": {
+          "winterCapability": 0.15,
+          "openAir": -0.15
+        }
       },
       "byCondition": {
-        "snow": { "winterCapability": 0.2 },
-        "storm": { "winterCapability": 0.15 },
-        "rain": { "winterCapability": 0.1 }
+        "snow": {
+          "winterCapability": 0.2
+        },
+        "storm": {
+          "winterCapability": 0.15
+        },
+        "rain": {
+          "winterCapability": 0.1
+        }
       }
     }
   },
   "renderLoop": {
     "baseTickIntervalMs": 400,
-    "speedMultipliers": [1, 2, 4],
+    "speedMultipliers": [
+      1,
+      2,
+      4
+    ],
     "openHour": 9,
     "closeHour": 19
   },
@@ -199,9 +265,24 @@
     "defaultCustomerDifficulty": 0.5,
     "walkQualityFloor": 0.25,
     "approachChoices": [
-      { "id": "rapport", "label": "Build rapport", "fitModifier": 0.1, "difficultyModifier": -0.05 },
-      { "id": "direct", "label": "Direct pitch", "fitModifier": 0.0, "difficultyModifier": 0.0 },
-      { "id": "pressure", "label": "Apply pressure", "fitModifier": -0.05, "difficultyModifier": 0.1 }
+      {
+        "id": "rapport",
+        "label": "Build rapport",
+        "fitModifier": 0.1,
+        "difficultyModifier": -0.05
+      },
+      {
+        "id": "direct",
+        "label": "Direct pitch",
+        "fitModifier": 0,
+        "difficultyModifier": 0
+      },
+      {
+        "id": "pressure",
+        "label": "Apply pressure",
+        "fitModifier": -0.05,
+        "difficultyModifier": 0.1
+      }
     ]
   },
   "matchPayoff": {
@@ -215,14 +296,14 @@
       "grossSurpriseScale": 1500,
       "basePain": 0.5,
       "weights": {
-        "matchStrength": 1.0,
-        "grossSurprise": 1.0,
+        "matchStrength": 1,
+        "grossSurprise": 1,
         "walkOffPain": 1.2,
-        "recordBroken": 2.0,
+        "recordBroken": 2,
         "recordMargin": 0.5
       },
       "painByReason": {
-        "no_fit": 1.0,
+        "no_fit": 1,
         "trade_negative_equity": 0.9,
         "discount_below_cost": 0.8,
         "demo_nonnegotiable_miss": 0.75,
@@ -232,9 +313,21 @@
     "prepBet": {
       "weatherWeight": 2,
       "categoryAttributeProfiles": {
-        "sedan": { "winterCapability": 0.3, "openAir": 0.2, "fuelEfficiency": 0.8 },
-        "truck": { "winterCapability": 0.85, "openAir": 0.3, "fuelEfficiency": 0.2 },
-        "suv": { "winterCapability": 0.7, "openAir": 0.4, "fuelEfficiency": 0.45 }
+        "sedan": {
+          "winterCapability": 0.3,
+          "openAir": 0.2,
+          "fuelEfficiency": 0.8
+        },
+        "truck": {
+          "winterCapability": 0.85,
+          "openAir": 0.3,
+          "fuelEfficiency": 0.2
+        },
+        "suv": {
+          "winterCapability": 0.7,
+          "openAir": 0.4,
+          "fuelEfficiency": 0.45
+        }
       }
     }
   },
@@ -251,9 +344,9 @@
   "staffOrg": {
     "candidatesPerRole": 3,
     "conditionRead": {
-      "minHalfWidthFraction": 0.10,
-      "maxHalfWidthFraction": 0.80,
-      "maxBiasFraction": 0.50,
+      "minHalfWidthFraction": 0.1,
+      "maxHalfWidthFraction": 0.8,
+      "maxBiasFraction": 0.5,
       "widthSkillExponent": 0.7
     }
   },
@@ -296,7 +389,7 @@
     "closedDealSatisfactionBonus": 3,
     "closedDealReviewBonus": 1,
     "walkSatisfactionPenalty": -1,
-    "reviewDriftRate": 0.10,
+    "reviewDriftRate": 0.1,
     "satisfactionEquilibrium": 50,
     "satisfactionDriftRate": 0.02,
     "baseDailyDemand": 2,
@@ -304,15 +397,15 @@
     "marketingSaturation": 1000,
     "marketingMaxBoost": 0.6,
     "seasonDemandMultiplier": {
-      "spring": 1.0,
+      "spring": 1,
       "summer": 1.15,
       "fall": 1.05,
       "winter": 0.85
     },
     "dayOfWeekDemandMultiplier": {
       "0": 0.9,
-      "1": 1.0,
-      "2": 1.0,
+      "1": 1,
+      "2": 1,
       "3": 1.05,
       "4": 1.15,
       "5": 1.4,
@@ -320,12 +413,12 @@
     }
   },
   "serviceDispatch": {
-    "minAutoResolveRate": 0.40,
+    "minAutoResolveRate": 0.4,
     "maxAutoResolveRate": 0.92,
     "competitivePriceMultiplier": 0.85,
     "premiumPriceMultiplier": 1.35,
     "minPerSlotThroughput": 0.15,
-    "maxPerSlotThroughput": 0.60,
+    "maxPerSlotThroughput": 0.6,
     "maxWaitTicks": 60,
     "unservedCsiHit": 3,
     "rushUnlockTier": 3,
@@ -333,32 +426,35 @@
   },
   "bodyShopDispatch": {
     "_doc": "Body-Shop dispatch tunables (#314, parent #297). The Tier-3 mirror of serviceDispatch, fed into the SAME shared department-dispatch engine (advisor pick, parts gate, min(bays,advisors) capacity, read-model). Differs from Service in PRICING: there is no competitive↔premium dial — revenue is governed by the insurance/retail CHANNEL posture. Insurance (DRP) jobs are rate-capped (insuranceRateMultiplier ~1.0 — the insurer sets the rate; CollisionStream already capped the baseRevenue below book), retail (customer-pay) jobs are player-priced (lerp(retailFloorMultiplier, retailCeilMultiplier, posture)). bays start at Tier 3 (the Body Shop is dark below the showroom tier); collision jobs are slower + tolerate longer waits than Service tickets. All magnitudes placeholders pending the S14 calibration pass (#286).",
-    "minAutoResolveRate": 0.40,
-    "maxAutoResolveRate": 0.90,
-    "minPerSlotThroughput": 0.10,
+    "minAutoResolveRate": 0.4,
+    "maxAutoResolveRate": 0.9,
+    "minPerSlotThroughput": 0.1,
     "maxPerSlotThroughput": 0.45,
     "maxWaitTicks": 90,
     "unservedCsiHit": 3,
     "rushUnlockTier": 4,
     "missCsiHit": 4,
-    "insuranceRateMultiplier": 1.0,
-    "retailFloorMultiplier": 1.0,
-    "retailCeilMultiplier": 1.40
+    "insuranceRateMultiplier": 1,
+    "retailFloorMultiplier": 1,
+    "retailCeilMultiplier": 1.4
   },
   "fniAutoAttach": {
     "baseAttachRates": {
       "vsc": 0.55,
       "gap": 0.45,
-      "tireWheel": 0.30,
+      "tireWheel": 0.3,
       "etch": 0.25,
       "prepaidMaintenance": 0.35,
-      "keyReplacement": 0.40
+      "keyReplacement": 0.4
     },
-    "skillMultiplierRange": [0.4, 1.1]
+    "skillMultiplierRange": [
+      0.4,
+      1.1
+    ]
   },
   "staffDispatch": {
     "minDrainPerTick": 0.15,
-    "maxDrainPerTick": 0.60,
+    "maxDrainPerTick": 0.6,
     "discountEvent": {
       "escalationRate": 0.2,
       "minCounterAttempts": 1,
@@ -368,16 +464,31 @@
   },
   "discountAcceptanceHeat": {
     "bands": [
-      { "id": "flexible", "minProb": 0.6, "colorKey": "positive", "label": "FLEXIBLE" },
-      { "id": "mixed", "minProb": 0.35, "colorKey": "reward", "label": "MIXED" },
-      { "id": "rigid", "minProb": 0, "colorKey": "danger", "label": "RIGID" }
+      {
+        "id": "flexible",
+        "minProb": 0.6,
+        "colorKey": "positive",
+        "label": "FLEXIBLE"
+      },
+      {
+        "id": "mixed",
+        "minProb": 0.35,
+        "colorKey": "reward",
+        "label": "MIXED"
+      },
+      {
+        "id": "rigid",
+        "minProb": 0,
+        "colorKey": "danger",
+        "label": "RIGID"
+      }
     ]
   },
   "marketEconomy": {
     "compWindow": {
       "sizePerSegment": 40,
       "ageCutoffDays": 90,
-      "retailWeight": 1.0,
+      "retailWeight": 1,
       "wholesaleWeight": 0.5,
       "competitorWeight": 0.3,
       "driftDamping": 0.5
@@ -388,16 +499,17 @@
       "maxConcurrent": 3
     },
     "motivatedSeller": {
-      "meanMultiplier": 1.0,
+      "_doc": "The per-listing multiplier on the engine's anchor that sets an auction asking price (#160). Retuned in the #286 calibration pass. The auction is the WHOLESALE market, and this module already states where wholesale sits relative to book: `inventory.wholesale.haircutPct` pays out book x 0.85 when you dump a unit. Centering the buy side at 1.0 contradicted that — you bought at book and could only sell back at 0.85, and a 1.20 ceiling let you pay 20% OVER book at a dealer auction. Centering at 0.85 makes the two sides of the same market symmetric: buy a unit and immediately dump it and you are roughly flat (less whatever recon you spent), which is the honest invariant. The dealer's margin now comes from buying right and retailing, not from a markup the customer pays.",
+      "meanMultiplier": 0.85,
       "stdevHonest": 0.05,
       "stdevUnreliable": 0.18,
-      "floor": 0.70,
-      "ceiling": 1.20
+      "floor": 0.55,
+      "ceiling": 0.95
     },
     "valueHeatBands": {
       "_doc": "Display bands for the KPI dashboard used-value pressure readout (#179). segmentHeat is a signed fractional bookValue modifier; |heat| < mild reads AT BASELINE, mild..strong reads mildly above/below, >= strong reads strongly above/below. Presentation-only; calibration-neutral placeholders.",
       "mild": 0.03,
-      "strong": 0.10
+      "strong": 0.1
     },
     "heatMonitor": {
       "deltaThreshold": 0.02
@@ -432,7 +544,11 @@
     "carrying": {
       "_doc": "Daily per-vehicle floorplan + carrying cost accrual (#173). Floorplan interest = currentBook × apr / 365; apr is the floorplan rate for the dealership's CareerProgression tier (better tier → cheaper money, a diegetic progression reward) and falls back to `baselineApr` for any tier without an explicit entry. `insurancePerDay`/`overheadPerDay` are flat per-unit-per-day allocations; `reconFadePerDay` is a small additive that only applies once recon is complete (a detailed car depreciating while it sits). A unit is visually flagged `aged` once `daysInInventory` exceeds `agedThresholdDays`. Retune the burn here without touching code.",
       "baselineApr": 0.09,
-      "aprByTier": { "1": 0.09, "2": 0.075, "3": 0.06 },
+      "aprByTier": {
+        "1": 0.09,
+        "2": 0.075,
+        "3": 0.06
+      },
       "insurancePerDay": 5,
       "overheadPerDay": 8,
       "reconFadePerDay": 3,
@@ -446,17 +562,28 @@
   },
   "installedBase": {
     "_doc": "InstalledBase owner registry + return cadence (#298/#300, parent #297). `loyaltySeedScale` maps a deal's satisfaction-at-sale retentionSeed ∈ [0,1] onto an owner's initial loyalty. `returnCadence` is the service-due interval in game days per powertrain (EVs cycle least often). `jobCategoryDrift` walks early→late job categories as the car ages: each band applies while ageDays < untilAgeDays, the last (no untilAgeDays) is the catch-all. `returnRoll` carries the convenience/price-sensitivity terms of P(return) = clamp01(loyalty × reputation × convenience − priceSensitivity). All numbers are S14 (#286) calibration placeholders.",
-    "loyaltySeedScale": 1.0,
+    "loyaltySeedScale": 1,
     "returnCadence": {
       "ice": 120,
       "hybrid": 150,
       "ev": 240
     },
     "jobCategoryDrift": [
-      { "category": "oil_filters", "untilAgeDays": 365 },
-      { "category": "tires_brakes", "untilAgeDays": 1095 },
-      { "category": "drivetrain", "untilAgeDays": 2190 },
-      { "category": "electronics" }
+      {
+        "category": "oil_filters",
+        "untilAgeDays": 365
+      },
+      {
+        "category": "tires_brakes",
+        "untilAgeDays": 1095
+      },
+      {
+        "category": "drivetrain",
+        "untilAgeDays": 2190
+      },
+      {
+        "category": "electronics"
+      }
     ],
     "returnRoll": {
       "convenience": 0.9,
@@ -488,7 +615,10 @@
   "serviceInsights": {
     "_doc": "ServiceInsights read-model (#308, parent #297) — the trailing-window accumulator that backs the Service page demand-heat + base-health readouts. `demandWindowSize` is how many recent intake tickets the per-category heat is computed over; `heatThresholds` band a category's share×4 (1.0 = even split): at/above `hot` reads HOT, at/below `cold` reads COLD, else WARM. `demandTrendEpsilon` is the newer-vs-older-half share delta below which a category's demand trend reads steady. `baseHealthWindowDays` is the trailing day count the return/defection rates + trends average over; `baseTrendEpsilon` is the per-day count delta below which those trends read steady. All numbers are S14 (#286) calibration placeholders.",
     "demandWindowSize": 40,
-    "heatThresholds": { "hot": 1.15, "cold": 0.85 },
+    "heatThresholds": {
+      "hot": 1.15,
+      "cold": 0.85
+    },
     "demandTrendEpsilon": 0.05,
     "baseHealthWindowDays": 14,
     "baseTrendEpsilon": 0.15
@@ -496,7 +626,10 @@
   "bodyShopInsights": {
     "_doc": "BodyShopInsights read-model (#315, parent #297) — the Tier-3 mirror of serviceInsights backing the Body Shop page demand-heat + conquest-health readouts. `demandWindowSize`/`heatThresholds`/`demandTrendEpsilon` band per-collision-category demand exactly like serviceInsights (share×4: at/above `hot` HOT, at/below `cold` COLD, else WARM; the newer-vs-older-half share delta below which a category trend reads steady). The conquest readout (Body Shop is conquest-dominant, no installed base): `conquestWindowDays` is the trailing day count the collision-flow volume rate + trend average over; `volumeTrendEpsilon` is the per-day intake-count delta below which the volume trend reads steady; `channelTrendEpsilon` is the newer-vs-older-half retail-share delta below which the channel-mix trend reads steady. All numbers are S14 (#286) calibration placeholders.",
     "demandWindowSize": 40,
-    "heatThresholds": { "hot": 1.15, "cold": 0.85 },
+    "heatThresholds": {
+      "hot": 1.15,
+      "cold": 0.85
+    },
     "demandTrendEpsilon": 0.05,
     "conquestWindowDays": 14,
     "volumeTrendEpsilon": 0.3,
@@ -506,28 +639,92 @@
     "_doc": "PartsInventory par-level procurement (#301/#312, parent #297). `categories` carries each part category's `baseUnitCost` (the standard-tier unit price) plus its default `reorderPoint`/`target` par levels. The four Body-Shop categories (windows_glass / doors_panels / interior_trim / paint, #312) ship at 0 par — they are keyed so stock/consume/coverage work, but stay INACTIVE (no auto-order) until the Body-Shop package activates them with non-zero par at Tier 3, so a single shared parts room never auto-stocks collision parts before the body shop opens. `supplierTiers` trade unit cost against lead time and reliability: `costMultiplier` scales baseUnitCost, `leadTimeDays` is the scheduled arrival delay, `reliability` ∈ [0,1] is the per-order on-time probability (a failed seeded roll adds `delayPenaltyDays`). `defaultTier` is the tier a category procures at until the player picks another. All numbers are S14 (#286) calibration placeholders.",
     "defaultTier": "standard",
     "categories": {
-      "oil_filters": { "baseUnitCost": 20, "reorderPoint": 6, "target": 18 },
-      "tires_brakes": { "baseUnitCost": 250, "reorderPoint": 4, "target": 10 },
-      "drivetrain": { "baseUnitCost": 900, "reorderPoint": 1, "target": 3 },
-      "electronics": { "baseUnitCost": 600, "reorderPoint": 1, "target": 3 },
-      "windows_glass": { "baseUnitCost": 300, "reorderPoint": 0, "target": 0 },
-      "doors_panels": { "baseUnitCost": 700, "reorderPoint": 0, "target": 0 },
-      "interior_trim": { "baseUnitCost": 200, "reorderPoint": 0, "target": 0 },
-      "paint": { "baseUnitCost": 150, "reorderPoint": 0, "target": 0 }
+      "oil_filters": {
+        "baseUnitCost": 20,
+        "reorderPoint": 6,
+        "target": 18
+      },
+      "tires_brakes": {
+        "baseUnitCost": 250,
+        "reorderPoint": 4,
+        "target": 10
+      },
+      "drivetrain": {
+        "baseUnitCost": 900,
+        "reorderPoint": 1,
+        "target": 3
+      },
+      "electronics": {
+        "baseUnitCost": 600,
+        "reorderPoint": 1,
+        "target": 3
+      },
+      "windows_glass": {
+        "baseUnitCost": 300,
+        "reorderPoint": 0,
+        "target": 0
+      },
+      "doors_panels": {
+        "baseUnitCost": 700,
+        "reorderPoint": 0,
+        "target": 0
+      },
+      "interior_trim": {
+        "baseUnitCost": 200,
+        "reorderPoint": 0,
+        "target": 0
+      },
+      "paint": {
+        "baseUnitCost": 150,
+        "reorderPoint": 0,
+        "target": 0
+      }
     },
     "supplierTiers": {
-      "economy": { "costMultiplier": 0.85, "leadTimeDays": 7, "reliability": 0.8, "delayPenaltyDays": 4 },
-      "standard": { "costMultiplier": 1.0, "leadTimeDays": 4, "reliability": 0.92, "delayPenaltyDays": 2 },
-      "oem_direct": { "costMultiplier": 1.25, "leadTimeDays": 2, "reliability": 0.98, "delayPenaltyDays": 1 },
-      "rush": { "costMultiplier": 1.6, "leadTimeDays": 1, "reliability": 0.99, "delayPenaltyDays": 1 }
+      "economy": {
+        "costMultiplier": 0.85,
+        "leadTimeDays": 7,
+        "reliability": 0.8,
+        "delayPenaltyDays": 4
+      },
+      "standard": {
+        "costMultiplier": 1,
+        "leadTimeDays": 4,
+        "reliability": 0.92,
+        "delayPenaltyDays": 2
+      },
+      "oem_direct": {
+        "costMultiplier": 1.25,
+        "leadTimeDays": 2,
+        "reliability": 0.98,
+        "delayPenaltyDays": 1
+      },
+      "rush": {
+        "costMultiplier": 1.6,
+        "leadTimeDays": 1,
+        "reliability": 0.99,
+        "delayPenaltyDays": 1
+      }
     }
   },
   "ownership": {
     "hoursOfOp": {
       "options": [
-        { "id": "short", "label": "8 hrs (9–5)", "ticksPerDay": 120 },
-        { "id": "standard", "label": "10 hrs (9–7)", "ticksPerDay": 180 },
-        { "id": "extended", "label": "12 hrs (9–9)", "ticksPerDay": 240 }
+        {
+          "id": "short",
+          "label": "8 hrs (9–5)",
+          "ticksPerDay": 120
+        },
+        {
+          "id": "standard",
+          "label": "10 hrs (9–7)",
+          "ticksPerDay": 180
+        },
+        {
+          "id": "extended",
+          "label": "12 hrs (9–9)",
+          "ticksPerDay": 240
+        }
       ],
       "defaultId": "standard"
     }
@@ -541,9 +738,18 @@
     },
     "executionDrift": {
       "_doc": "Execution-fidelity drift (M5 #292, docs/planning/manager-roles-channel-desk.md §4). Above an act gate the UCM aims at the player's setpoint; skill governs the gap (skill = fidelity + success). deficit = clamp01(1 - skill/skillReference); the drift fraction fills [0, deficit*maxDriftFraction) (signed two-sided for pricing mis-pricing, one-sided-worse for desking/trade), scaled by NPC.skillDriftFraction/signedSkillDrift and deterministic in (skill, seed). A green-but-gated UCM (~60) drifts noticeably; a seasoned one (skillReference ~90) holds tight. Placeholder magnitudes — calibrated in the S14 pass (#286).",
-      "pricing": { "maxDriftFraction": 0.08, "skillReference": 90 },
-      "t_o_closing": { "maxDriftFraction": 0.25, "skillReference": 90 },
-      "condition_reading": { "maxDriftFraction": 0.1, "skillReference": 90 }
+      "pricing": {
+        "maxDriftFraction": 0.08,
+        "skillReference": 90
+      },
+      "t_o_closing": {
+        "maxDriftFraction": 0.25,
+        "skillReference": 90
+      },
+      "condition_reading": {
+        "maxDriftFraction": 0.1,
+        "skillReference": 90
+      }
     },
     "serviceManager": {
       "_doc": "Service-manager automation gates (#310, parent #297). The Service-side mirror of the channel-desk gates: a later-tier service manager whose top `shop_throughput` skill clears a function's threshold takes over that standing Service decision. A LADDER (par lowest → capacity highest) so automation engages one function at a time as the SM grows; below a gate (or no SM) the player keeps manual control. Function tuning lives in data/service-manager.json. Placeholders pending the S14 calibration pass (#286).",
@@ -578,7 +784,7 @@
       {
         "id": "market",
         "label": "Market",
-        "multiplier": 1.0,
+        "multiplier": 1,
         "blurb": "Appraise trades at honest book value — balanced acquisition rate and gross."
       },
       {

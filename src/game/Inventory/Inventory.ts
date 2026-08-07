@@ -14,7 +14,7 @@ import {
   type AuctionSourceReliability,
 } from '../MarketEconomy';
 import { generateAuctionListings } from './auctionGenerator';
-import { loadVehicleData } from './vehicleData';
+import { loadVehicleData, reconEstimateFor } from './vehicleData';
 import { loadInventoryConfig, type InventoryConfig } from './inventoryConfig';
 import { computeDailyCarryingCost, floorplanAprForTier } from './carryingCost';
 import type { VehicleData } from './vehicleData';
@@ -666,7 +666,11 @@ export function createInventory(deps: InventoryDeps): Inventory {
       conditionReport: tier.report,
       purchasePrice: agreedAllowance,
       category: currentVehicle.category,
-      reconEstimate: tier.reconCost,
+      // #286: the condition tier's fraction of the unit's value, like any other
+      // acquisition. The value the trade lane holds at this point is the
+      // allowance we just agreed to — the appraised worth of the car, arrived at
+      // by the same appraisal that set the condition.
+      reconEstimate: reconEstimateFor(agreedAllowance, tier.reconPct),
       sourceReliability: staffConfidence,
     });
     lotVehicles.set(lotVehicle.id, lotVehicle);

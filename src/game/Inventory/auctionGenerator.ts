@@ -13,7 +13,12 @@ import {
   type MotivatedSellerConfig,
   type AnchorDeps,
 } from '../MarketEconomy';
-import type { VehicleData, VehicleTemplate, ConditionTier } from './vehicleData';
+import {
+  reconEstimateFor,
+  type VehicleData,
+  type VehicleTemplate,
+  type ConditionTier,
+} from './vehicleData';
 import type { AuctionListing, VehicleCondition } from './types';
 
 const CONDITIONS: VehicleCondition[] = ['clean', 'average', 'rough'];
@@ -135,7 +140,10 @@ function buildListing(args: BuildListingArgs): AuctionListing {
     condition,
     conditionReport: tier.report,
     askingPrice,
-    reconCost: tier.reconCost,
+    // #286: the recon budget is the condition tier's fraction of the unit's
+    // own value. The anchor is already in hand here — it is what priced the
+    // listing — so the auction lane states the rule off the same number.
+    reconCost: reconEstimateFor(anchorValue, tier.reconPct),
     category: template.category,
     sourceId: sourcePick.id,
     inspectionStatus: 'none',

@@ -208,6 +208,19 @@ function hireOneGreenSalesperson(world: World): void {
  * measurements. **`requestInspection` is never called**: a green operator buys
  * blind, which is what puts the full recon tail on the board.
  */
+/**
+ * Run the #362 release valve on anything that has aged out — the same standing
+ * decision #180's bot makes, and for the same reason: six spaces occupied by
+ * units nobody will buy means the store cannot restock, which measures a
+ * harness that never disposes rather than an operator who cannot sell. Being
+ * green does not make you keep a dud forever; it makes you buy more of them.
+ */
+function releaseAgedUnits(world: World): void {
+  for (const v of world.inventory.getLotVehicles()) {
+    if (v.aged) world.inventory.wholesaleVehicle(v.id);
+  }
+}
+
 function stockLot(world: World): void {
   const priority: Record<string, number> = {};
   for (const entry of world.demandShaper.getObservedMix()) {
@@ -378,6 +391,7 @@ function runEarlyGameFloor(): RunOutcome {
   while (reached() < TARGET_RESOLUTIONS && days < MAX_DAYS) {
     capitalize(world);
     hireOneGreenSalesperson(world);
+    releaseAgedUnits(world);
     stockLot(world);
 
     const floor = world.dayLoop.nextDay();

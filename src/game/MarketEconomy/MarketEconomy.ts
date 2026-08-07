@@ -291,8 +291,13 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
   });
 
   // Wholesale/retail comps both reduce to `(price / reference) - 1`. The
-  // reference is the engine's own anchor for wholesale and `anchor × markup`
-  // for retail — keeping the two sources commensurable in the same window.
+  // reference is the level that lane is EXPECTED to transact at — `anchor ×
+  // wholesaleBaseline` for wholesale and `anchor × markup` for retail — so a
+  // comp only moves the window when the lane prints away from its own norm,
+  // and the two sources stay commensurable in the same window.
+  const wholesaleBaseline = (deps.tunables ?? loadTunables()).marketEconomy
+    .motivatedSeller.meanMultiplier;
+
   function markupFor(v: AnchorVehicleInput): number {
     const tier = brandTiers.brands[v.brand] ?? 'mainstream';
     const segmentTable = markup.markups[v.category];
@@ -321,7 +326,17 @@ export function createMarketEconomy(deps: MarketEconomyDeps = {}): MarketEconomy
     }): void => {
       const anchor = computeAnchor(e, anchorDeps);
       if (anchor <= 0) return;
-      const delta = e.cost / anchor - 1;
+      // A wholesale comp is measured against the WHOLESALE baseline, exactly as
+      // the retail comp below is measured against anchor × markup (#286). The
+      // auction lane transacts around `motivatedSeller.meanMultiplier` of the
+      // anchor by construction, so comparing a buy to the bare anchor reports
+      // "the wholesale market is below retail book" — a tautology, not news,
+      // and one that drifts the whole segment down a little on every purchase.
+      // It was invisible while the lane centered at 1.0 and would have made
+      // every unit the player bought well quietly devalue their own inventory.
+      const reference = anchor * wholesaleBaseline;
+      if (reference <= 0) return;
+      const delta = e.cost / reference - 1;
       compHistory.recordWholesale({ segment: e.category, delta, day: e.day });
       // The wire's block report reuses the delta computed here rather than
       // subscribing to inventory itself — re-deriving it would duplicate the

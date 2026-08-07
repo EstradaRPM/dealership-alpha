@@ -98,12 +98,77 @@ Sequencing respects dependencies; each slice lands verifiable.
 6. **Discount event rework** on `askingPrice` (clean buy/walk). ✓ shipped S9 (#281) — the `discount:escalated` review reframed to the list-price axis: our ask (`priceFormation.askingPrice`), the customer's target (`reservationPrice`), and the salesperson's **failed counter** (`lerp(target, ask, NEGOTIATE-skill)` — tighter to the ask the higher the skill). `accept_ask` meets the customer at their target (guaranteed close); `accept_counter`/`propose_counter` roll on gap × price-sensitivity (some come down, some hold); `decline` walks. Each customer also tolerates a **bounded number of counter-offers** before walking — `counterAttempts` scales by agreeableness across `[minCounterAttempts, maxCounterAttempts]` with seeded jitter, and every rejected counter burns one attempt *and* cools the next roll by `missPenalty` (a disagreeable buyer walks after one swing-and-a-miss; an agreeable one haggles back and forth). The held-review result carries a buy/walk recap (`soldPrice`/`frontGross`) the modal shows with a Done button. New `staffDispatch.discountEvent` tunable block — `escalationRate` (rare default 0.2) gates the *unstaffed* event (a hired sales-manager still auto-adjudicates ungated), plus the haggle-tolerance + miss-penalty knobs.
 7. **Trade event** negative-equity distribution + honest presentation.
 8. **Intel/automation tiering** (Pillar 5): coarse T1 → UCM-sharp + auto-pricing policy at T3. ✓ intel-precision half shipped S12 (#284) — `MarketEconomy.resolveIntelPrecision(read)` maps the top UCM's `pricing` skill (null = no UCM) to one profile feeding three surfaces: the Demand Heat console (coarse 3-band vs fine 5-band + numeric heat index), the pricing screen's days-to-sell range + confidence cap, and the suggested-price band tightness. No UCM ⇒ flat coarse; UCM ⇒ fine granularity with the numeric knobs lerping coarse→sharp by skill (green ≈ gut, seasoned ≈ pinpoint). Magnitudes (`data/intel-precision.json`) deferred to S14. ✓ auto-pricing standing policy shipped S13 (#285) — the strategy toggle graduates into a standing policy that auto-stamps each incoming unit's default `askingPrice` (the close anchor) to its book↔market target via the pure `MarketEconomy.resolveIntakeAsk`. **Gate = a UCM on staff** (the used-car desk that prices the book — the same roster signal S12's intel-precision reads; UCM is itself tier-gated at `hireTier` in `data/staff-roles.json`, so the tier floor is data-driven, not hardcoded). Below the gate it's suggestion-only: the default ask sits at the honest market suggestion (pre-S13 behavior) and the toggle only drives the per-vehicle pricing screen. The player keeps the per-unit override (`Inventory.setAskingPrice`) — permission, not amputation. Seam: Inventory gains an optional `pricingPolicyFn`; the composition root wires the gate + live strategy getter (`createWorld.getPricingStrategy` ← `useLevers`). The `OwnershipLevers` Pricing card states the mode (auto-pricing on vs. suggestion-only).
-9. **Calibration pass** (frequency, elasticity, heat drift).
+9. **Calibration pass** (frequency, elasticity, heat drift). ✓ shipped S14 (#286) — see §6.
 
 ---
 
-## 6. Open calibration knobs (deferred to balance, not design)
-Elasticity steepness, heat volatility/drift rate, event frequency, negative-equity tail weight, intel-precision deltas per staff level, auto-pricing policy aggressiveness.
+## 6. Calibration pass — S14 (#286), landed 2026-08-07
+
+The pass was measured, not authored blind: `tests/MarketEconomy.calibration.test.ts`
+(#180) and `tests/MarketEconomy.earlyGameFloor.test.ts` (#181) drive the real
+`createWorld` end-to-end, and every number below was chosen against what they
+printed. **`live` positive moved 2.2% → 28.5%**; the early-game floor held its
+shape (0.5% positive for a green operator) so the progression still has a bottom.
+
+**The binding constraint was not the reservation model.** #180's write-up
+suspected the Value/price-sensitivity drag. It was not: over worked ups the
+customer's willingness-to-pay already sat ~6% *above* the ask, and the quadrant
+was accepting 58% of them. What killed the deal was that **the store's cost basis
+sat above its own asking price** — `floor/ask` measured **1.32**. Four terms
+produced that, and each was a mis-model rather than a number that needed nudging:
+
+1. **Recon was a flat dollar figure per condition tier** (`clean/average/rough` =
+   $500/$1,200/$2,800) applied to a catalog spanning a $3.5k beater and a $40k
+   luxury car. On the tier-1 lot a rough unit's recon ran to **half its value**,
+   while the anchor's condition discount only takes 12% off it — so buying rough
+   was never a decision, it was a trap. Now `conditionTiers[*].reconPct`
+   (0.04 / 0.09 / 0.16), a fraction of the unit's value, stated in one place
+   (`Inventory.reconEstimateFor`) and read by all three acquisition lanes.
+2. **The auction lane centred at book with a 1.20 ceiling** — you could pay 20%
+   *over* book at a wholesale auction. The module already says where wholesale
+   sits: `inventory.wholesale.haircutPct` pays out book × 0.85 on the way out.
+   `motivatedSeller` now centres at **0.85** (floor 0.55, ceiling 0.95), so the
+   two sides of the same market are symmetric — buy a unit and immediately dump
+   it and you are roughly flat, less whatever recon you spent.
+3. **Retail markup was thinner than the basis it had to cover** — 1.20–1.28
+   against a cost of ~book + recon. Raised 10 points. Deliberately no further:
+   `pickVehicleForMatch` filters on affordability *before* fit, so every extra
+   point of markup shows up as a customer walking on `no_fit` instead of on
+   price. +0.10 is the measured peak of total cars sold.
+4. **A modelling bug the retune exposed:** a wholesale comp was measured against
+   the bare anchor, so once the auction centred below book *every purchase*
+   recorded a negative comp and drifted the segment down — buying well quietly
+   devalued your own inventory. Wholesale comps now reference `anchor ×
+   motivatedSeller.meanMultiplier`, symmetric with retail's `anchor × markup`: a
+   lane only moves the window when it prints away from its own norm.
+
+**Two findings recorded rather than tuned away:**
+
+- **`no_fit` rose 51% → 71%, and it is real tier-1 scarcity, not a stocking bug.**
+  The lot is measurably full (6.01 of 6 spaces, 5.0 past the frontline hold) and
+  still cannot match 7 of 10 walk-ins: six cars is a thin draw against six SPACED
+  axes plus an affordability gate. It rose because cars now actually *sell*, so
+  composition churns instead of presenting the same frozen six. This is the
+  pressure that makes lot spaces worth building — which A2 R1 made purchasable.
+- **The residual gap to `reference` (85%) is the Value meter, not price.** A
+  six-space lot yields a best-of-six match (Value ≈ 0.60) where the #94 harness
+  demos a perfect one (≈ 0.85), and Value is the dominant term in
+  `objectiveDeal`. Closing it is a stocking-capacity question, which is what the
+  tier ladder is for — not another pricing knob.
+
+**Harness change, both bots:** they now run the #362 release valve on aged units.
+Without it the measurement was of a store that *cannot restock* — a unit nobody
+will buy occupies one of six spaces forever, mean lot age climbed to 123 days and
+the close rate halved twice over. Same class of correction as the standing float
+top-up: the bot has to make the standing decisions an operator makes.
+
+### Knobs still open after S14
+Elasticity steepness and the heat-volume coupling (`data/demand-elasticity.json`),
+heat volatility/drift rate, adverse-event frequency, negative-equity tail weight,
+intel-precision deltas per staff level (`data/intel-precision.json`), auto-pricing
+policy aggressiveness, and the sourcing-lean weights (`data/sourcing.json`). None
+of them were the binding constraint on the close, so moving them would have been
+tuning noise; they need their own measurement before they need numbers.
 
 ## 7. Reopened locked-record boundaries (the §0 "pricing never touched arrivals" reversal)
 

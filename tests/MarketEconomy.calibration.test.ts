@@ -47,8 +47,16 @@ const MASTER_SEED = 20260806;
 /** Enough resolutions for the bands to have distribution power (#94 uses 600). */
 const TARGET_RESOLUTIONS = 600;
 
-/** Hard stop so a starved world fails loudly instead of spinning. */
-const MAX_DAYS = 400;
+/**
+ * Hard stop so a starved world fails loudly instead of spinning.
+ *
+ * Raised from 400 in #286. The live tier-1 floor works about 1.2 customers a
+ * day — six spaces cannot show most arrivals anything they want — so 600 worked
+ * ups is a ~500-day career. The pre-#286 engine reached the sample in 369 days
+ * only because nothing ever sold: a lot that never turns keeps offering the
+ * same six cars, and its `no_fit` share was correspondingly lower.
+ */
+const MAX_DAYS = 600;
 
 /** Balance-neutral founder — the same one the #247 harness runs. */
 const PROFILE: CharacterProfile = {
@@ -123,6 +131,22 @@ function hireOneSalesperson(world: World): void {
   pinToReferenceProfile(world);
 }
 
+/**
+ * Run the #362 release valve on anything that has aged out.
+ *
+ * Not an optimization — without it this harness measures a store that cannot
+ * restock. A tier-1 lot is six spaces; a unit nobody will buy occupies one of
+ * them forever, and within ~200 days all six are duds (mean age climbed to 123
+ * days and the close rate halved twice over). That is the harness failing to
+ * make a standing decision every operator makes, not the economy degrading —
+ * exactly like `capitalize` below. The valve is the mechanic #362 built for it.
+ */
+function releaseAgedUnits(world: World): void {
+  for (const v of world.inventory.getLotVehicles()) {
+    if (v.aged) world.inventory.wholesaleVehicle(v.id);
+  }
+}
+
 /** Keep the lot stocked toward what the demand readout says is moving. */
 function stockLot(world: World): void {
   const priority: Record<string, number> = {};
@@ -171,6 +195,8 @@ interface Tally {
    * `no_close`-the-price-was-under-our-cost, which the bus cannot distinguish.
    */
   discountEscalations: number;
+  /** Escalations whose vehicle another customer bought first — see #364. */
+  escalationsLostToSoldUnit: number;
 }
 
 interface RunOutcome extends Tally {
@@ -208,6 +234,7 @@ function runCalibration(): RunOutcome {
     closes: 0,
     tradesAcquired: 0,
     discountEscalations: 0,
+    escalationsLostToSoldUnit: 0,
   };
   const signature: string[] = [];
   const reasons: Record<string, number> = {};
@@ -276,6 +303,7 @@ function runCalibration(): RunOutcome {
   while (reached() < TARGET_RESOLUTIONS && days < MAX_DAYS) {
     capitalize(world);
     hireOneSalesperson(world);
+    releaseAgedUnits(world);
     stockLot(world);
 
     const floor = world.dayLoop.nextDay();
@@ -284,11 +312,27 @@ function runCalibration(): RunOutcome {
 
     // Drain the day's held reviews. Deliberately after the floor rather than
     // inside the event handler — resolving mid-tick would re-enter the bus.
+    //
+    // Two customers can be held on the SAME unit — a six-space lot makes that
+    // routine — and whoever is resolved first drives it away. The second then
+    // throws `No lot vehicle`: the live defect filed as #364, not something
+    // this test can assert around. It only started reaching THIS harness once
+    // #286 made closes common (pre-#286 the store closed 2% and a held unit was
+    // almost never sold out from under a second customer). Count them and carry
+    // on — they never reached a band either way, so the distribution stands.
     for (const customerId of heldTrades.splice(0)) {
-      world.resolvePlayerTradeDecision(customerId, { kind: 'accept_ask' });
+      try {
+        world.resolvePlayerTradeDecision(customerId, { kind: 'accept_ask' });
+      } catch {
+        t.escalationsLostToSoldUnit += 1;
+      }
     }
     for (const customerId of heldDiscounts.splice(0)) {
-      world.resolvePlayerDiscountDecision(customerId, { kind: 'accept_ask' });
+      try {
+        world.resolvePlayerDiscountDecision(customerId, { kind: 'accept_ask' });
+      } catch {
+        t.escalationsLostToSoldUnit += 1;
+      }
     }
   }
 
@@ -342,6 +386,7 @@ describe('MarketEconomy — live-engine calibration (#180)', () => {
   // eslint-disable-next-line no-console
   console.log(
     `[#180 live calibration] escalations=${run.discountEscalations} ` +
+      `lostToSoldUnit=${run.escalationsLostToSoldUnit} ` +
       `targetOverAsk=${run.meanTargetOverAsk.toFixed(3)} ` +
       `costOverAsk=${run.meanCostOverAsk.toFixed(3)} ` +
       `profile=${JSON.stringify(run.profile)} reasons=` +

@@ -183,6 +183,14 @@ fallback path per slice #155 AC.
   `inventory:vehicle_sold` → retail comp. Both events carry a vehicle
   snapshot (templateId/make/year/mileage/condition/category) so MarketEconomy
   re-computes the anchor without depending on Inventory internals.
+  **Each comp is measured against the level its own lane is expected to
+  transact at** (#286): `anchor × motivatedSeller.meanMultiplier` for wholesale,
+  `anchor × markup` for retail. Wholesale used to reference the bare anchor,
+  which reported "the wholesale market is below retail book" — a tautology, not
+  news. It was invisible while the auction centred at 1.0 and became a real
+  defect the moment #286 moved it: every purchase would have recorded a negative
+  comp, so buying well quietly devalued the player's own inventory. Do not
+  "simplify" the wholesale reference back to the anchor.
 - **Consumes** (slice #158): `competitor:price_changed` → one synthetic comp
   per segment with non-zero brand affinity. Delta = `(newPricing − oldPricing)
   × marketEconomy.competitorInfluence`; entry weight scales by affinity
@@ -343,14 +351,20 @@ fallback path per slice #155 AC.
   `reference` is still *recorded*, so the measured state can never quietly be
   renamed the target. Also holds the warm-walk floor, the trade-acquisition band
   and the inventory-fit-walk ceiling.
-  **The measured gap is real and is #286's to close:** the live engine closes
-  ~2% of worked ups against #94's 85%, and the rejecting mechanism is the price
-  floor, not the quadrant — 415 of 486 walks are below-floor `no_close`, against
-  37 patience-drain and 17 trust-collapse. Cause: #94 demos a perfect SPACED
-  match (Value ≈ 0.85) while a six-space tier-1 lot yields best-of-six
-  (Value ≈ 0.4), and `reservationPrice` scales with Value, so willingness-to-pay
-  lands under `vehicleCost + minGross`. Do not "fix" this by widening `live` —
-  that is the number the campaign has to move.
+  **#286 closed most of the gap: `live` positive moved 2.2% → 28.5%.** The
+  rejecting mechanism was the price floor, not the quadrant — but not for the
+  reason #180 suspected. Willingness-to-pay already sat ~6% *above* the ask and
+  the quadrant was accepting 58% of worked ups; the store's **cost basis sat
+  above its own asking price** (`floor/ask` = 1.32). Three data terms fixed it —
+  recon became a fraction of the unit's value (`conditionTiers[*].reconPct`),
+  the auction lane recentred on the wholesale level the module already states
+  via `inventory.wholesale.haircutPct` (`motivatedSeller.meanMultiplier` 1.0 →
+  0.85), and `data/market-markup.json` rose 10 points — plus the wholesale-comp
+  reference fix above. **The residual gap to `reference` is the Value meter, not
+  price:** a six-space lot yields a best-of-six match (Value ≈ 0.60) against the
+  #94 harness's perfect one (≈ 0.85), and Value dominates `objectiveDeal`.
+  Closing that is a stocking-capacity question — the tier ladder — not another
+  pricing knob. Do not "fix" a future miss by widening `live`.
   **`earlyGame` is a third band set (#181), read by
   `tests/MarketEconomy.earlyGameFloor.test.ts`** — the same live engine run with the
   green solo operator the career starts you as (0.35/0.40 raw composites, no UCM,
@@ -361,17 +375,24 @@ fallback path per slice #155 AC.
   schema refine enforces that the whole early-game band sits under
   `live.positiveMin − marginBelowLive`. So when #286 raises `live`, the floor has
   to move with it or the assertion fails — which is the point.
-  **The shape of the floor is the finding**, not just its height: a green operator
-  closes about as often as a competent one (3.0% vs 2.4%) but **every one of those
-  closes is a low-trust forced close** — 0% positive against `live`'s 2.2% — and
-  `trust_collapse` becomes the dominant walk reason (115 against 17). Skill buys
-  you happy customers here, not volume.
-  The recon-tail *rate* band is a deliberate ceiling guard rather than a tight
-  measurement: acquisitions are gated by sales, so a green six-space lot turns ~9
-  units in the window. `reconOverrunMin/Max` (mean realized ÷ estimated recon) is
-  the band with power. Both tighten on their own once #286 makes the lot turn.
+  **The shape of the floor is the finding**, not just its height, and it survived
+  #286: a green operator closes at a rate a competent one would recognise but
+  almost none of those customers leave happy — **0.5% positive against `live`'s
+  28.5%** — and `trust_collapse` is still the dominant non-fit walk reason (106
+  against `live`'s 11). Skill buys you happy customers here, not volume.
+  The recon-tail *rate* stays a ceiling guard rather than a tight measurement, but
+  #286 gave both recon bands a real denominator: a green six-space lot turned 9
+  units in the window before and turns **43** now (29 completed recons, the tail
+  actually firing). `reconOverrunMin/Max` (mean realized ÷ estimated recon) is
+  still the band with power — 1.072× measured against the ~1.061 the bucket mix
+  implies.
 
-Tuning of all five is deliberately neutral so the static-stub midpoint
-(`(purchase + recon) × 1.25`) and the live providers produce comparable
-outputs at the population midpoint — the slice #155 AC is the `#94`
-calibration test passing unchanged. Hard calibration is slice #180.
+Tuning of the five anchor files started deliberately neutral so the static-stub
+midpoint (`(purchase + recon) × 1.25`) and the live providers produced
+comparable outputs at the population midpoint — the slice #155 AC was the `#94`
+calibration test passing unchanged, and it still does (`#94` runs on the static
+stubs, which #286 did not touch). **`data/market-markup.json` is no longer
+neutral**: #286 raised it 10 points because the live cost basis it has to cover
+is `auction buy + recon`, which the 1.20–1.28 table did not clear. The live
+providers and the static stubs therefore no longer agree at the midpoint, and
+that is deliberate — the stub is a fixture, the live spread is the economy.

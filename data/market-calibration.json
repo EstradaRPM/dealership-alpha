@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "_doc": "Slice #180 — the calibration bands for the LIVE engine (tests/MarketEconomy.calibration.test.ts), as distinct from the pure-SalesProcess bands in data/sales-process.json (#94). Two band sets on purpose. `reference` is the DESIGN COMMITMENT — what a competent operation should realize once the economy is calibrated; it is the #94 band set, because a 0.75/0.75 operator should not close worse just because the rest of the game showed up. `live` is the MEASURED state of the game today: the test asserts `live` as a regression guard and reports the gap to `reference`, so the harness is green and honest rather than green and lying. Closing that gap is #286 (Pricing/Demand spine S14 calibration pass) — when it lands, `live` moves toward `reference` and this doc says so.",
+  "_doc": "Slice #180 — the calibration bands for the LIVE engine (tests/MarketEconomy.calibration.test.ts), as distinct from the pure-SalesProcess bands in data/sales-process.json (#94). Two band sets on purpose. `reference` is the DESIGN COMMITMENT — what a competent operation should realize once the economy is calibrated; it is the #94 band set, because a 0.75/0.75 operator should not close worse just because the rest of the game showed up. `live` is the MEASURED state of the game today: the test asserts `live` as a regression guard and reports the gap to `reference`, so the harness is green and honest rather than green and lying. #286 (Pricing/Demand spine S14 calibration pass) closed most of that gap — `live` moved from 2.2% positive to 28.5% — and the remainder is recorded below rather than wished away.",
   "reference": {
     "_doc": "The #94 design commitment. Not asserted yet — see `live`.",
     "positiveMin": 0.85,
@@ -10,31 +10,32 @@
     "negativeDealMax": 0.05
   },
   "live": {
-    "_doc": "Measured at seed 20260806 pre-#286 over 601 worked ups in 369 days: 2.2% positive, 97.7% apathetic, 0.2% negative-deal, 96.8% warm walks, 51.0% of all arrivals lost to no_fit, 57.1% trade-acquisition rate. The gap to `reference` is not noise and not a harness artifact: the #94 harness demos every customer a PERFECT SPACED match (Value meter ~0.85), while a real tier-1 six-space lot yields the best-of-six (Value ~0.4). Reservation price is market x (reservationBase + Value*valueLift - sensitivity*sensitivityDrag), so the lower Value — combined with a price sensitivity of 1 - wealth/120000 that sits at 0.6-0.85 for most archetypes — drags willingness-to-pay under vehicleCost + minGross on most worked ups. They then walk as `no_close` off the below-floor branch (415 of them, against 37 patience-drain and 17 trust-collapse: the quadrant close is NOT what is rejecting these deals, the price floor is). Bands sit around the measured values with enough room that an unrelated tweak doesn't trip them and a real regression does.",
-    "positiveMin": 0.015,
-    "apatheticMin": 0.9,
-    "apatheticMax": 0.99,
-    "negativeDealMin": 0.0,
-    "negativeDealMax": 0.02
+    "_doc": "Measured at seed 20260806 POST-#286 over 600 worked ups in 523 days: 28.5% positive, 64.5% apathetic, 7.0% negative-deal, 97.2% warm walks, 71.1% of all arrivals lost to no_fit, 37.1% trade-acquisition rate, 213 closes. Pre-#286 the same run read 2.2% / 97.7% / 0.2%. What moved it was not the reservation model — that was never the binding constraint. The store's COST BASIS sat above its own asking price: it bought at roughly book at auction (a lane that could price 20% OVER book), spent a flat per-condition recon budget that ran to half the value of a cheap rough unit, and listed at a 25% markup. Floor price (cost + minGross) came out at 1.32x the ask, so the deal was dead on price before the customer formed an opinion — 415 of 486 walks were below-floor `no_close`, not quadrant rejections. #286 fixed the three terms that produced that: recon became a FRACTION of the unit's value (data/vehicles.json conditionTiers.reconPct), the auction lane recentred on the wholesale level this module already states elsewhere (marketEconomy.motivatedSeller, matching inventory.wholesale.haircutPct), and the retail markup rose 10 points to a spread that covers the basis (data/market-markup.json). A fourth was a modelling bug the retune exposed: a wholesale comp was measured against the bare anchor rather than the wholesale baseline, so every purchase drifted the segment down. The residual gap to `reference` is now the Value meter, not price — a six-space tier-1 lot yields a best-of-six match (Value ~0.60) where the #94 harness demos a perfect one (~0.85), and Value is the dominant term in objectiveDeal. Closing THAT is a stocking-capacity question (more spaces, better sourcing), which is what the tier ladder is for. Bands sit around the measured values with enough room that an unrelated tweak doesn't trip them and a real regression does.",
+    "positiveMin": 0.24,
+    "apatheticMin": 0.58,
+    "apatheticMax": 0.72,
+    "negativeDealMin": 0.04,
+    "negativeDealMax": 0.11
   },
   "earlyGame": {
-    "_doc": "Slice #181 — the early-game FLOOR (tests/MarketEconomy.earlyGameFloor.test.ts). The same live engine `live` measures, run with the green solo operator the career starts you as (0.35/0.40 raw composites) instead of the competent 0.75/0.75: cold start, day 1, no comp history, one salesperson, NO used-car manager, no paid pre-buy inspections, default trade policy. It exists so the progression has a proven bottom — a career whose day-1 state performs like its end state has no progression in it. Measured at seed 20260806 over 200 worked ups in 110 days: 0.0% positive, 97.0% apathetic, 3.0% negative-but-deal (6 closes, EVERY ONE of them a low-trust forced close), 43.3% warm walks, 46.5% no_fit, 9 acquisitions / 8 completed recons, mean recon overrun 1.087x, $18.63/unit/day carrying. The shape of the floor is the finding: a green operator closes about as often as a competent one but cannot make ANY of those customers happy, and `trust_collapse` becomes the dominant walk reason (115 against #180's 17). The margins are distances from `live`/`reference` rather than a second pair of bands, so when #286 raises `live` the floor must move with it or the assertion fails.",
+    "_doc": "Slice #181 — the early-game FLOOR (tests/MarketEconomy.earlyGameFloor.test.ts). The same live engine `live` measures, run with the green solo operator the career starts you as (0.35/0.40 raw composites) instead of the competent 0.75/0.75: cold start, day 1, no comp history, one salesperson, NO used-car manager, no paid pre-buy inspections, default trade policy. It exists so the progression has a proven bottom — a career whose day-1 state performs like its end state has no progression in it. Measured at seed 20260806 POST-#286 over 200 worked ups in 168 days: 0.5% positive, 85.5% apathetic, 14.0% negative-but-deal (29 closes, all but one of them a low-trust forced close), 42.7% warm walks, 68.6% no_fit, 43 acquisitions / 29 completed recons, mean recon overrun 1.072x, $18.13/unit/day carrying. The shape of the floor SURVIVED the retune and sharpened: a green operator now closes at a rate a competent one would recognise, but almost none of those customers leave happy — 0.5% positive against `live`'s 28.5% — and `trust_collapse` is still the dominant non-fit walk reason (106 against `live`'s 11). Skill buys you happy customers in this economy, not volume. The margins are distances from `live`/`reference` rather than a second pair of bands, so a future retune that raises `live` has to move the floor with it or the assertion fails.",
     "positiveMin": 0.0,
-    "positiveMax": 0.008,
-    "apatheticMin": 0.93,
-    "apatheticMax": 1.0,
-    "marginBelowLive": 0.005,
+    "positiveMax": 0.05,
+    "apatheticMin": 0.78,
+    "apatheticMax": 0.92,
+    "marginBelowLive": 0.15,
     "marginBelowReference": 0.6,
-    "_reconDoc": "The tail RATE is a ceiling guard, not a tight measurement: acquisitions are gated by sales, so a green six-space lot turns ~9 units in the whole window (13 even if ground out to 400 days) and 0 surprises fired against an expectation of ~0.45. A band that pretended to precision there would be banding luck. `reconOverrun` is the one with power — every completed recon contributes, and data/recon-variance.json's bucket mix implies a population mean of ~1.061 against the 1.087 measured. Both tighten on their own once #286 makes the lot turn. reconOverrunMin sits just under 1 on purpose: it asserts recon does not on average come in UNDER its estimate, which is what makes buying blind a cost rather than a coin flip.",
+    "_reconDoc": "#286 gave both recon bands a real denominator. Acquisitions were gated by sales, and pre-#286 a green six-space lot turned 9 units in the whole window with 0 tail events fired — a band over that would have been banding luck. It now turns 43, 29 recons complete, and the tail actually fires (1 hit, 2.3%). The tail RATE stays a ceiling guard rather than a tight measurement; `reconOverrun` (mean realized / estimated, every completed recon contributes) is the band with power: 1.072x measured against the ~1.061 data/recon-variance.json's bucket mix implies. reconOverrunMin sits just under 1 on purpose — it asserts recon does not on average come in UNDER its estimate, which is what makes buying blind a cost rather than a coin flip.",
     "reconTailRateMin": 0.0,
-    "reconTailRateMax": 0.4,
+    "reconTailRateMax": 0.2,
     "reconOverrunMin": 0.95,
-    "reconOverrunMax": 1.45,
+    "reconOverrunMax": 1.35,
     "carryingCostPerUnitDayMin": 12.0,
     "carryingCostPerUnitDayMax": 30.0
   },
   "warmWalkMin": 0.5,
   "tradeAcquisitionMin": 0.2,
   "tradeAcquisitionMax": 0.9,
-  "inventoryFitWalkMax": 0.6
+  "_inventoryFitDoc": "The share of ALL arrivals that leave because nothing on the lot matched their want-vector AND their budget. #286 had to answer the question #180 raised, and the answer is that this is real tier-1 scarcity, not a stocking bug: the lot is measurably FULL (mean occupancy 6.01 of 6 spaces, 5.0 of them past the frontline hold) and it still cannot match 7 of 10 walk-ins, because six cars is a thin draw against six SPACED axes plus an affordability gate. It rose from 51% to 71% across the retune for two compounding reasons, both intended: cars now actually sell, so the lot's composition churns instead of presenting the same frozen six, and the retail ask is 10 points higher, which prices some arrivals out (`pickVehicleForMatch` filters on affordability before fit, so a customer priced out reads as `no_fit` rather than as a price walk — worth surfacing separately one day). This is the pressure that makes lot spaces worth building, which is exactly what A2 R1 made purchasable.",
+  "inventoryFitWalkMax": 0.78
 }

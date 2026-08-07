@@ -6,6 +6,44 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **HANDED OVER: the #74 round-1 playtest script (phase 5, HITL).** The unit
+  was preparing the script and giving it to the director. Preparing it turned out to be real
+  work: the script was written before the 5c layout rebuild and before phases 6 and 7, and
+  **every navigation path in it had gone stale.**
+  **What had drifted.** Hiring is on **People → Hiring**, not Operations. The auction is
+  entered from **Operations → Lot → Go to the Auction** — the Lot owns sourcing (locked IA
+  §4). The demand readout, the weekly market report and the industry wire all moved off Home
+  into **Growth**; Home keeps a Market *glance* whose whole job is to route there, so "read
+  Home top-to-bottom" would have had the director staring at a two-line card. The wire's paid
+  lanes are named "auction data feed" and "competitor price tracking" on screen, not
+  `auction_data`/`competitor_tracking`. And the known-dark list still told them Finance and
+  Growth were placeholder tabs — 5c built both. A stale script is worse than no script: it
+  spends the one resource this gate is short of, which is the director's patience.
+  **What it now measures that it couldn't before.** Day 0's hire reads the signing fee and
+  the daily wage and then the payroll line (hiring costs money twice now); Day 2's buy happens
+  against a six-space lot the seed already fills half of; Day 3's second hire is a capacity
+  question *with a price on it*; Day 4 reads the wholesale quote without taking it and sweeps
+  the roster for raise asks and rival offers; Day 5 takes the valve if the unit still hasn't
+  sold, and reads the Growth console including Build Out and the gate board. Session B gained
+  payroll-at-T2, a roster sweep, and "do you know what would get you to Tier 3".
+  **Both halves were rewritten together.** `docs/planning/playtest-round-1.md` is the human
+  doc; `data/playtest-script.json` is what the phone actually presents (#333) and is the one
+  the director will read at 11pm on day 4. Editing only the doc would have shipped the drift.
+  **Deliberately NOT fixed, because it is a round-1 question.** A raise ask and a rival's
+  offer wait on a person's card and never interrupt — so a player who doesn't open People can
+  lose someone to a rival and only learn it from Deal History. Whether that reads as tension
+  or as a missed beat is exactly what the round is for; pre-emptively adding an interrupt
+  would answer it for them. It is a script step and a probe instead.
+  **Two stale claims corrected in passing:** §5 said nothing in the UI showed the finance mix
+  — Finance now splits gross into Cash vs Financed and Deal History names the method per
+  deal, so the gap narrowed to down payment / credit tier / the credit-blocked walk reason.
+  And `data/nav-tabs.json`'s `_doc` still called three tabs placeholders.
+  **Verified in the running app**, not just typechecked: reloaded the web target and reopened
+  the guide — the Day 0 card renders all seven new steps, both probes and the new known-dark
+  list, and the button reads **▤ 1/9 · 0/7**. 217 suites / **2841** tests, typecheck clean.
+  Next: **phase 8, C2 calibration (#286 + #180/#181)** unless the director's round-1 notes
+  land first, in which case triage those. The gate does not block the queue.
+
 - 2026-08-06 — **BUILT #362** (wholesale this unit — the release valve). **Phases 6 and 7 are
   COMPLETE.** The only path that turned a unit back into cash was abandoning recon after a
   surprise, so with the lot cap live (#361) sitting at 35 of 35 holding three units nobody

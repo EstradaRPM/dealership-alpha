@@ -362,6 +362,7 @@ export type ReconSurpriseTemplate = z.infer<typeof ReconSurpriseTemplateSchema>;
 export const MarketMarkupConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
     markups: z.record(z.string().min(1), z.record(BrandTierEnum, positive)),
   })
   .strict();
@@ -470,6 +471,8 @@ export const MarketCalibrationConfigSchema = z
     warmWalkMin: unit,
     tradeAcquisitionMin: unit,
     tradeAcquisitionMax: unit,
+    /** Why the `no_fit` ceiling sits where it does — see the file (#286). */
+    _inventoryFitDoc: z.string().optional(),
     inventoryFitWalkMax: unit,
   })
   .strict()

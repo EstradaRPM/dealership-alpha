@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { parseData } from '../data';
 import { createRng, deriveSeed } from '../Rng';
-import { loadVehicleData, type VehicleData } from './vehicleData';
+import {
+  loadVehicleData,
+  reconEstimateFor,
+  type VehicleData,
+} from './vehicleData';
 import type { VehicleCategory, VehicleCondition } from './types';
 
 /**
@@ -193,7 +197,7 @@ export function generateStartingInventory(
       condition: chosen.cand.condition,
       conditionReport: tier.report,
       purchasePrice: chosen.book,
-      reconEstimate: tier.reconCost,
+      reconEstimate: reconEstimateFor(chosen.book, tier.reconPct),
       suggestedRetail: chosen.retail,
     });
   });

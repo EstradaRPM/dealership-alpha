@@ -115,19 +115,19 @@
   "conditionTiers": {
     "clean": {
       "priceMultiplier": 1.15,
-      "reconCost": 500,
+      "reconPct": 0.04,
       "label": "Clean",
       "report": "No major defects. Passes safety inspection. Recent oil change."
     },
     "average": {
       "priceMultiplier": 1.0,
-      "reconCost": 1200,
+      "reconPct": 0.09,
       "label": "Average",
       "report": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon."
     },
     "rough": {
       "priceMultiplier": 0.82,
-      "reconCost": 2800,
+      "reconPct": 0.16,
       "label": "Rough",
       "report": "Visible wear. Paint chips and interior wear. Needs mechanical inspection."
     }

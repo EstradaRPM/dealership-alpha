@@ -66,12 +66,14 @@ describe('Inventory — trade vehicle enters inventory (#171)', () => {
     expect(v.model).toBe('Accord');
     expect(v.condition).toBe('average');
     expect(v.reconStatus).toBe('in_progress');
-    // Estimate is the condition-tier baseline (same budget an auction unit of
-    // this condition shows); suggestedRetail = cost basis + estimate.
+    // Estimate is the condition tier's fraction of the unit's value (#286) —
+    // the trade lane's value is the allowance just agreed to. suggestedRetail =
+    // cost basis + estimate.
     const tier = VEHICLE_DATA.conditionTiers.average;
-    expect(v.reconEstimate).toBe(tier.reconCost);
+    const estimate = Math.round(12_500 * tier.reconPct);
+    expect(v.reconEstimate).toBe(estimate);
     expect(v.conditionReport).toBe(tier.report);
-    expect(v.suggestedRetail).toBe(12_500 + tier.reconCost);
+    expect(v.suggestedRetail).toBe(12_500 + estimate);
     expect(v.askingPrice).toBe(v.suggestedRetail);
   });
 
@@ -110,7 +112,9 @@ describe('Inventory — trade vehicle enters inventory (#171)', () => {
       make: 'Honda',
       condition: 'average',
       category: 'sedan',
-      reconCost: VEHICLE_DATA.conditionTiers.average.reconCost,
+      reconCost: Math.round(
+        12_500 * VEHICLE_DATA.conditionTiers.average.reconPct,
+      ),
     });
   });
 

@@ -19,10 +19,31 @@ const VehicleTemplateSchema = z.object({
 
 const ConditionTierSchema = z.object({
   priceMultiplier: z.number(),
-  reconCost: z.number(),
+  /**
+   * Recon budget as a FRACTION of the unit's value (#286), not a dollar figure.
+   * A flat dollar recon cannot be right across a catalog that spans a $3.5k
+   * beater and a $40k luxury car: at tier 1 a flat $2,800 rough-unit budget ate
+   * half the car's value, so a rough unit was always value-destroying — while
+   * the anchor's condition discount only takes 12% off it. Proportional makes
+   * the condition *discount* and the condition *recon* two halves of one
+   * statement, which is what turns "buy the cheap rough one" into a decision
+   * (a little cheaper, a little more work, a fatter lemon tail) instead of a
+   * trap.
+   */
+  reconPct: z.number().min(0).max(1),
   label: z.string(),
   report: z.string(),
 });
+
+/**
+ * The ONE rule for a recon budget: the condition tier's fraction of the unit's
+ * value. Every acquisition path (auction listing, customer trade, opening-stock
+ * seed) states it through here so the three cannot drift — they differ only in
+ * which value they naturally hold at the point of acquisition.
+ */
+export function reconEstimateFor(value: number, reconPct: number): number {
+  return Math.max(0, Math.round(value * reconPct));
+}
 
 export const VehicleDataSchema = z.object({
   schemaVersion: z.literal(1),

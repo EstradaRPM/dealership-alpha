@@ -237,6 +237,20 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   consequence of the spec's `arrivalDay=0`, not an acquisition debit.
 
 ## Recon process (#162)
+- **The recon BUDGET is a fraction of the unit's value, not a dollar figure**
+  (#286). `data/vehicles.json` `conditionTiers[*].reconPct` (0.04 clean / 0.09
+  average / 0.16 rough); the one rule lives in `reconEstimateFor(value,
+  reconPct)` and all three acquisition lanes state it through that helper,
+  differing only in which value they hold at the point of acquisition — the
+  auction has the anchor that priced the listing, the seed has the chosen unit's
+  book, and a trade has the allowance just agreed to. A flat dollar budget
+  cannot be right across a catalog spanning a $3.5k beater and a $40k luxury
+  car: at tier 1 the old flat $2,800 rough budget ate half the car's value while
+  the anchor's condition discount only takes 12% off it, so a rough unit was
+  always value-destroying. Proportional makes the condition *discount* and the
+  condition *recon* two halves of one statement, which turns "buy the cheap
+  rough one" into a decision (a little cheaper, a little more work, a fatter
+  lemon tail) instead of a trap.
 - Vehicles enter `reconStatus='in_progress'` on purchase. The auction-listed
   recon estimate is preserved as `reconEstimate`; the realized cost is rolled
   via `MarketEconomy.rollRecon` at acquisition (deterministic from
