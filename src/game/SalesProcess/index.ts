@@ -87,6 +87,9 @@ export type {
   ResolveDeps,
 } from './resolve';
 
+export { residualHeat } from './heat';
+export type { ResidualHeatInput, ResidualHeatDeps } from './heat';
+
 export { closeAndPrice } from './close';
 export type {
   CloseInput,

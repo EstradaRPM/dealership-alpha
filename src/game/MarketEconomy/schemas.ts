@@ -385,6 +385,48 @@ export const DemandElasticityConfigSchema = z
   .strict();
 export type DemandElasticityConfig = z.infer<typeof DemandElasticityConfigSchema>;
 
+/**
+ * Slice #180 — the live-engine calibration bands. Two band sets by design:
+ * `reference` is the design commitment (the #94 numbers), `live` is the
+ * measured state the harness asserts as a regression guard. See the file's
+ * `_doc` for why both exist and what closes the gap (#286).
+ */
+const CalibrationBandsSchema = z
+  .object({
+    _doc: z.string().optional(),
+    positiveMin: unit,
+    apatheticMin: unit,
+    apatheticMax: unit,
+    negativeDealMin: unit,
+    negativeDealMax: unit,
+  })
+  .strict()
+  .refine((b) => b.apatheticMin <= b.apatheticMax, {
+    message: 'apathetic band min must not exceed max',
+  })
+  .refine((b) => b.negativeDealMin <= b.negativeDealMax, {
+    message: 'negative-deal band min must not exceed max',
+  });
+
+export const MarketCalibrationConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    _doc: z.string().optional(),
+    reference: CalibrationBandsSchema,
+    live: CalibrationBandsSchema,
+    warmWalkMin: unit,
+    tradeAcquisitionMin: unit,
+    tradeAcquisitionMax: unit,
+    inventoryFitWalkMax: unit,
+  })
+  .strict()
+  .refine((c) => c.tradeAcquisitionMin <= c.tradeAcquisitionMax, {
+    message: 'trade-acquisition band min must not exceed max',
+  });
+export type MarketCalibrationConfig = z.infer<
+  typeof MarketCalibrationConfigSchema
+>;
+
 export const DaysToSellCurvesConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -595,6 +637,16 @@ export function loadDaysToSellCurvesConfig(): DaysToSellCurvesConfig {
     raw,
     DaysToSellCurvesConfigSchema,
     'data/days-to-sell-curves.json',
+  );
+}
+
+export function loadMarketCalibrationConfig(): MarketCalibrationConfig {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const raw: unknown = require('../../../data/market-calibration.json');
+  return parseData(
+    raw,
+    MarketCalibrationConfigSchema,
+    'data/market-calibration.json',
   );
 }
 

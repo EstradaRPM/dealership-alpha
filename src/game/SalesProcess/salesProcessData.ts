@@ -112,6 +112,22 @@ export const SalesProcessConfigSchema = z
         framingWeight: z.number().nonnegative(),
       })
       .strict(),
+    // Residual interest a non-buying customer leaves with (#180): how far they
+    // got through the gates, blended with how the two meters ended. FollowUpPool
+    // reads it as "who is worth calling back"; the live-engine calibration reads
+    // it as the warm-walk band. Weights are a blend — they sum to 1.
+    heat: z
+      .object({
+        stageWeight: unit,
+        valueWeight: unit,
+        trustWeight: unit,
+      })
+      .strict()
+      .refine(
+        (h) =>
+          Math.abs(h.stageWeight + h.valueWeight + h.trustWeight - 1) < 1e-9,
+        { message: 'heat weights must sum to 1' },
+      ),
     calibration: z
       .object({
         positiveMin: unit,

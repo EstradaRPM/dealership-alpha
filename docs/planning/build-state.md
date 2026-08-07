@@ -19,9 +19,14 @@ gates were closed before a line was written (C1 2026-08-02 `staff-teeth-design.m
 
 **The next `/next` does NOT wait on the playtest.** If the director's round-1 notes have
 landed (as a comment on #74 or a pasted export), the unit is triaging them per §7's Class
-A/B protocol. If they have not, the unit is **phase 8 — C2 calibration campaign (#286 +
-#180/#181)**, which is where the pointer goes on its own. A human gate is never a reason for
-a session to end with nothing built.
+A/B protocol. If they have not, the unit continues **phase 8 — C2 calibration campaign**. A
+human gate is never a reason for a session to end with nothing built.
+
+**Phase 8 is UNDER WAY: #180 landed 2026-08-06** — the live engine now has a calibration
+harness, and it found the game closes **2.2%** of worked ups against #94's 85%. Remaining in
+the phase: **#181** (early-game floor verification, which #180 unblocked) then **#286** (the
+retune that closes the gap). Read the #286 comment before touching any pricing tunable — the
+mechanism is measured, and the obvious lever was already tried and reverted.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -259,6 +264,36 @@ a session to end with nothing built.
   This is also **not** the rejected "forced wholesale on overrun" (A2 R2): the player picks
   the unit and sees the number.
 
+- **The live engine closes ~2% of worked ups against #94's 85%, and #180 measured why.**
+  The rejecting mechanism is the **price floor, not the quadrant**: 415 of ~486 walks are
+  below-floor `no_close`, against 37 patience-drain and 17 trust-collapse. #94 demos every
+  customer a *perfect* SPACED match (Value ≈ 0.85); a six-space tier-1 lot yields best-of-six
+  (Value ≈ 0.4), and `reservationPrice` scales with Value, so willingness-to-pay lands under
+  `vehicleCost + minGross` before the quadrant is consulted. Full numbers + the knob list are
+  in the #286 comment. **Closing that gap is #286, not a stray tuning edit** — and
+  `data/market-calibration.json` carries `reference` (the #94 commitment) *and* `live` (the
+  measured state) precisely so nobody can rename the measurement the target. A test asserts
+  the gap is still recorded.
+- **Centering the auction below book was TRIED and REVERTED** (#180). `motivatedSeller`
+  `meanMultiplier` 1.0 → 0.85 with ceiling 1.2 → 1.0 moved the close rate ~0.4pp. It is not
+  the dominant term; the Value/price-sensitivity drag is. Do not re-propose it as the fix.
+- **`staff:auto_resolved` is the live outcome truth, and `customer:resolved` is not** (#180).
+  The live floor publishes `customer:resolved` **only on a close** — a walk never publishes
+  it at all, so `FollowUpPool`, `Reputation`'s walk penalty, `RegulatoryMeter`'s walk pressure
+  and `TierManager.customersServed` are all starved in real play. Filed as **#363**;
+  deliberately not folded into #180 because publishing walks changes live balance. When
+  reading outcomes, subscribe `staff:auto_resolved`.
+- **`SalesProcess.residualHeat` is the ONE definition of walk warmth** (#180). It was
+  hand-copied between `CustomerPool` and the #94 harness; the weights now live in
+  `data/sales-process.json` `heat` and must sum to 1 (schema-refused otherwise). Do not
+  re-derive the formula at a call site — that duplication is what let the two drift.
+- **The #180 harness deliberately capitalizes its bot** (`BOT.floatFloor`/`floatTopUp`). At a
+  2% close rate the store goes insolvent long before 600 worked ups, which would silently
+  shrink N and make the bands move whenever calibration changed. Solvency + pacing are the
+  balance harness's job (`scripts/balance-harness/`), not this test's. It also pins the
+  salesperson's **base** skills to 0.75/0.75 (derived from the catalog's caps, not hardcoded)
+  while leaving morale free to drift — the drift is the emergent variance under test.
+
 ## Phase table
 
 Status: `pending` → `active` → `done`. "Decision first" = a DECIDE unit must run before
@@ -298,6 +333,55 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-06 — **BUILT #180** (live-engine calibration verification — phase 8 opens). The
+  #94 test proves the sales-process balance *in a vacuum*: a perfect inventory match every
+  time, static price stubs, no market, no trades, no morale. #180 asks the question it
+  cannot — does that calibration survive contact with the actual game? It does not, and the
+  test now says so precisely.
+  **The instrument.** `tests/MarketEconomy.calibration.test.ts` drives the real
+  `createWorld`: live MarketEconomy providers, the real lot bought off the real auction
+  board, seeded weather, demand shaping, competitor drift, trades with negative equity,
+  morale drifting under the salesperson's feet, carrying cost eating the cash that buys the
+  next unit. 601 worked ups over 369 days, deterministic across runs, ~12s alone / ~39s under
+  full-suite load.
+  **Two things had to become observable first, because the live close threw them away.**
+  `staff:auto_resolved` now carries `badReview` on a close (the low-trust forced close — the
+  negative-but-deal band) and `heat` on a walk. Before this the only satisfaction signal on
+  the bus came from `customer:resolved`, which re-derives it by re-running the process
+  against a **stub vehicle nobody was shown**. Both new fields are read off the close that
+  actually happened.
+  **`residualHeat` got one home.** The walk-warmth formula was hand-copied between
+  `CustomerPool` and the #94 harness with hardcoded 0.5/0.3/0.2 weights, and the live path
+  needed a third copy. It is now `SalesProcess.residualHeat` with the weights in
+  `data/sales-process.json` `heat`, schema-refused unless they sum to 1.
+  **The finding: the live engine closes 2.2% of worked ups against #94's 85%.** And the
+  rejecting mechanism is *not* the quadrant close — 415 of ~486 walks are below-floor
+  `no_close`, against 37 patience-drain and 17 trust-collapse. Over that population customers
+  land at **0.992 of our ask** while our cost sits at **1.237 of it**. Cause: #94 demos a
+  perfect SPACED match (Value ≈ 0.85), a six-space tier-1 lot yields best-of-six (Value ≈
+  0.4), and `reservationPrice` scales with Value — so willingness-to-pay falls under
+  `vehicleCost + minGross` before the quadrant is consulted. Separately, **51% of all
+  arrivals leave on `no_fit`**: half the floor walks because six cars couldn't match their
+  want-vector.
+  **What I did NOT do, deliberately.** The issue's AC authorizes retuning `data/` until the
+  bands pass. I tried the most defensible single lever — centering auction buys below book
+  (`meanMultiplier` 1.0 → 0.85, ceiling 1.2 → 1.0, since a dealer buys wholesale) — and it
+  moved the close rate ~0.4pp. **Reverted**, because it is not the dominant term and leaving
+  an unjustified balance edit in the tree is worse than none. The real retune is a whole-
+  economy judgment about gross per deal and how scarce a tier-1 lot should feel, which is
+  exactly **#286** (same phase, literally "calibration pass"). Full numbers + the knob list
+  are filed as a comment there.
+  **So the bands are two sets, not one.** `data/market-calibration.json` carries `reference`
+  (the #94 design commitment) and `live` (measured). The test asserts `live` as a regression
+  guard *and* asserts the gap to `reference` is still recorded — green and honest, rather
+  than green by asserting today's brokenness is correct.
+  **Filed #363 in passing:** a live-floor walk never publishes `customer:resolved` at all, so
+  `FollowUpPool`, `Reputation`'s walk penalty, `RegulatoryMeter`'s walk pressure and
+  `TierManager.customersServed` are starved in real play — ~587 walks a run reaching none of
+  them. Not folded in here: publishing walks changes live balance and needs its own
+  verification. 218 suites / **2851** tests, typecheck clean.
+  Next: **#181** (early-game floor verification), which #180 unblocks — then #286.
 
 - 2026-08-06 — **HANDED OVER: the #74 round-1 playtest script (phase 5, HITL).** The unit
   was preparing the script and giving it to the director. Preparing it turned out to be real
@@ -377,43 +461,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   typecheck clean.
   Next: **phase 8, C2 calibration** — but #74 (the round-1 playtest, HITL) sits ahead of it in
   the commit sequence and is pending, not blocked.
-
-- 2026-08-06 — **BUILT #361** (the lot cap governs buying — *6 of 6 spaces taken · no spaces
-  open*). Lot size has been CSV tier truth since the beginning and nothing enforced it, so
-  "match your inventory to demand" had no squeeze in it. Now it does: a full lot at the wrong
-  end of the demand mix is a problem you have to sell your way out of.
-  **One number, and every owned car is in it — prep included.** `Inventory.getLotOccupancy()`
-  is the only place the rule lives; the Lot room and the auction lane both state it and
-  neither counts its own list. There is no off-lot state in the model and none was invented:
-  recon is a cost, not a place, and the #295 frontline hold only governs whether walk-ins can
-  be *shown* the car. A unit in prep is sitting on your lot costing you money either way, and
-  prep-as-its-own-capacity is one of A2 R2's five recorded rejections.
-  **Checked at the bid, so units already won count.** `buyFromAuction` throws; the UCM's
-  auto-source **stops** instead, because a full lot is a normal morning and not a programming
-  error. That is what makes "you cannot win six cars into four spaces" true for the desk as
-  well as the player. A refusal changes nothing — no cash moves, the listing stays on the
-  board — the same shape #359 gave a refused construction buy.
-  **A trade always lands, and may put you at 7 of 6.** It is part of a sale already made;
-  refusing it would unwind a closed deal. Buying then stays frozen until occupancy is back
-  **under** the cap — 6 of 6 is still frozen, "under" not "no longer over". Self-correcting by
-  construction: the deal that brings a trade in also takes a car out. No overflow lot, no
-  forced dump, no new vehicle state.
-  **Built spaces come from Facility and are read live**, through `getBuiltLotSpaces` — the
-  same closure idiom as the bay seam, never a module reference. So a construction job that
-  landed this morning reopens the lane with no further player action, which is #359 and #361
-  meeting: you buy the space, then you buy the car. Omitting the dep leaves the lot uncapped,
-  which is what keeps pre-#361 harnesses honest.
-  **Four suites bulk-bought the board and now stop at the cap.** A tier-1 lot holds six cars
-  and the #296 seed already parks three, so a green world can buy exactly three — the loops
-  gained one `atCapacity` break each, not a bigger lot.
-  **Driven on web at the T2 fixture, single clicks.** *5 of 12 spaces taken · 7 open* on the
-  Lot room and *Lot: 5 of 12 spaces* in the lane; bought a $7,000 Cherokee and watched both
-  tick to 6 while cash fell exactly $7,000. Then stood the store at its cap in the saved
-  `facility` blob (lotSpaces → 6) and reloaded: **6 of 6 spaces taken · no spaces open**, the
-  lane's count in red, the closed banner above the board, and the buy button reading **No
-  Spaces Open** with $215,734 in the bank — deliberately not "Insufficient Funds", because it
-  is not a money refusal. Closed day 31 with the lot full: the recap read *"Your lot was SUVs;
-  the crowd wanted sedans"* with five sedan walk-aways, and the UCM auto-source bought nothing
-  and threw nothing on the rollover. 216 suites / **2828** tests, typecheck clean.
-  Next: **BUILD #362** (wholesale this unit — the aged-inventory release valve).
-

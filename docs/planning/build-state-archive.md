@@ -6,6 +6,45 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **BUILT #361** (the lot cap governs buying — *6 of 6 spaces taken · no spaces
+  open*). Lot size has been CSV tier truth since the beginning and nothing enforced it, so
+  "match your inventory to demand" had no squeeze in it. Now it does: a full lot at the wrong
+  end of the demand mix is a problem you have to sell your way out of.
+  **One number, and every owned car is in it — prep included.** `Inventory.getLotOccupancy()`
+  is the only place the rule lives; the Lot room and the auction lane both state it and
+  neither counts its own list. There is no off-lot state in the model and none was invented:
+  recon is a cost, not a place, and the #295 frontline hold only governs whether walk-ins can
+  be *shown* the car. A unit in prep is sitting on your lot costing you money either way, and
+  prep-as-its-own-capacity is one of A2 R2's five recorded rejections.
+  **Checked at the bid, so units already won count.** `buyFromAuction` throws; the UCM's
+  auto-source **stops** instead, because a full lot is a normal morning and not a programming
+  error. That is what makes "you cannot win six cars into four spaces" true for the desk as
+  well as the player. A refusal changes nothing — no cash moves, the listing stays on the
+  board — the same shape #359 gave a refused construction buy.
+  **A trade always lands, and may put you at 7 of 6.** It is part of a sale already made;
+  refusing it would unwind a closed deal. Buying then stays frozen until occupancy is back
+  **under** the cap — 6 of 6 is still frozen, "under" not "no longer over". Self-correcting by
+  construction: the deal that brings a trade in also takes a car out. No overflow lot, no
+  forced dump, no new vehicle state.
+  **Built spaces come from Facility and are read live**, through `getBuiltLotSpaces` — the
+  same closure idiom as the bay seam, never a module reference. So a construction job that
+  landed this morning reopens the lane with no further player action, which is #359 and #361
+  meeting: you buy the space, then you buy the car. Omitting the dep leaves the lot uncapped,
+  which is what keeps pre-#361 harnesses honest.
+  **Four suites bulk-bought the board and now stop at the cap.** A tier-1 lot holds six cars
+  and the #296 seed already parks three, so a green world can buy exactly three — the loops
+  gained one `atCapacity` break each, not a bigger lot.
+  **Driven on web at the T2 fixture, single clicks.** *5 of 12 spaces taken · 7 open* on the
+  Lot room and *Lot: 5 of 12 spaces* in the lane; bought a $7,000 Cherokee and watched both
+  tick to 6 while cash fell exactly $7,000. Then stood the store at its cap in the saved
+  `facility` blob (lotSpaces → 6) and reloaded: **6 of 6 spaces taken · no spaces open**, the
+  lane's count in red, the closed banner above the board, and the buy button reading **No
+  Spaces Open** with $215,734 in the bank — deliberately not "Insufficient Funds", because it
+  is not a money refusal. Closed day 31 with the lot full: the recap read *"Your lot was SUVs;
+  the crowd wanted sedans"* with five sedan walk-aways, and the UCM auto-source bought nothing
+  and threw nothing on the rollover. 216 suites / **2828** tests, typecheck clean.
+  Next: **BUILD #362** (wholesale this unit — the aged-inventory release valve).
+
 - 2026-08-06 — **DIRECTOR-REQUESTED, NOT A `/next` UNIT: People tab rebuilt as collapsible
   department panels.** No issue number and no phase moved — the director asked for it directly
   mid-session, between #360 and #361. **#361 is still the next unit.**

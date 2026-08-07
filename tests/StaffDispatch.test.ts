@@ -115,6 +115,7 @@ const DISCOUNT_EXCEPTION_CONFIG: SalesProcessConfig = {
     overageAllowed: 1500,
     framingWeight: 0,
   },
+  heat: { stageWeight: 0.5, valueWeight: 0.3, trustWeight: 0.2 },
   calibration: {
     positiveMin: 0,
     apatheticMin: 0,

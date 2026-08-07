@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Slice #180 — the calibration bands for the LIVE engine (tests/MarketEconomy.calibration.test.ts), as distinct from the pure-SalesProcess bands in data/sales-process.json (#94). Two band sets on purpose. `reference` is the DESIGN COMMITMENT — what a competent operation should realize once the economy is calibrated; it is the #94 band set, because a 0.75/0.75 operator should not close worse just because the rest of the game showed up. `live` is the MEASURED state of the game today: the test asserts `live` as a regression guard and reports the gap to `reference`, so the harness is green and honest rather than green and lying. Closing that gap is #286 (Pricing/Demand spine S14 calibration pass) — when it lands, `live` moves toward `reference` and this doc says so.",
+  "reference": {
+    "_doc": "The #94 design commitment. Not asserted yet — see `live`.",
+    "positiveMin": 0.85,
+    "apatheticMin": 0.1,
+    "apatheticMax": 0.12,
+    "negativeDealMin": 0.03,
+    "negativeDealMax": 0.05
+  },
+  "live": {
+    "_doc": "Measured at seed 20260806 pre-#286 over 601 worked ups in 369 days: 2.2% positive, 97.7% apathetic, 0.2% negative-deal, 96.8% warm walks, 51.0% of all arrivals lost to no_fit, 57.1% trade-acquisition rate. The gap to `reference` is not noise and not a harness artifact: the #94 harness demos every customer a PERFECT SPACED match (Value meter ~0.85), while a real tier-1 six-space lot yields the best-of-six (Value ~0.4). Reservation price is market x (reservationBase + Value*valueLift - sensitivity*sensitivityDrag), so the lower Value — combined with a price sensitivity of 1 - wealth/120000 that sits at 0.6-0.85 for most archetypes — drags willingness-to-pay under vehicleCost + minGross on most worked ups. They then walk as `no_close` off the below-floor branch (415 of them, against 37 patience-drain and 17 trust-collapse: the quadrant close is NOT what is rejecting these deals, the price floor is). Bands sit around the measured values with enough room that an unrelated tweak doesn't trip them and a real regression does.",
+    "positiveMin": 0.015,
+    "apatheticMin": 0.9,
+    "apatheticMax": 0.99,
+    "negativeDealMin": 0.0,
+    "negativeDealMax": 0.02
+  },
+  "warmWalkMin": 0.5,
+  "tradeAcquisitionMin": 0.2,
+  "tradeAcquisitionMax": 0.9,
+  "inventoryFitWalkMax": 0.6
+}

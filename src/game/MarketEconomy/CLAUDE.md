@@ -334,6 +334,24 @@ fallback path per slice #155 AC.
   the position-indicator ratio bands, and the competitor-comparable spread for
   the #154/#175 pricing screen.
 
+- `data/market-calibration.json` — the LIVE-engine calibration bands (#180,
+  `loadMarketCalibrationConfig`), read by `tests/MarketEconomy.calibration.test.ts`.
+  **Two band sets on purpose.** `reference` is the design commitment (the #94
+  numbers — a 0.75/0.75 operator should not close worse just because the rest of
+  the game showed up); `live` is the measured state, asserted as a regression
+  guard. The test asserts `live` and separately asserts that the gap to
+  `reference` is still *recorded*, so the measured state can never quietly be
+  renamed the target. Also holds the warm-walk floor, the trade-acquisition band
+  and the inventory-fit-walk ceiling.
+  **The measured gap is real and is #286's to close:** the live engine closes
+  ~2% of worked ups against #94's 85%, and the rejecting mechanism is the price
+  floor, not the quadrant — 415 of 486 walks are below-floor `no_close`, against
+  37 patience-drain and 17 trust-collapse. Cause: #94 demos a perfect SPACED
+  match (Value ≈ 0.85) while a six-space tier-1 lot yields best-of-six
+  (Value ≈ 0.4), and `reservationPrice` scales with Value, so willingness-to-pay
+  lands under `vehicleCost + minGross`. Do not "fix" this by widening `live` —
+  that is the number the campaign has to move.
+
 Tuning of all five is deliberately neutral so the static-stub midpoint
 (`(purchase + recon) × 1.25`) and the live providers produce comparable
 outputs at the population midpoint — the slice #155 AC is the `#94`

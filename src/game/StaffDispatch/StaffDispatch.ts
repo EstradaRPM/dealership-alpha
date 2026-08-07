@@ -21,6 +21,7 @@ import {
   closeAndPrice,
   makeSalespersonProfile,
   pickVehicleForMatch,
+  residualHeat,
   resolveSalesProcess,
   vehicleSpaced,
   wantedVehicleCategory,
@@ -363,7 +364,11 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
     staffId: string,
     day: number,
     reason: string,
-    context?: { archetypeLabel?: string; wantedCategory?: VehicleCategory },
+    context?: {
+      archetypeLabel?: string;
+      wantedCategory?: VehicleCategory;
+      heat?: number;
+    },
   ): void {
     bus.publish('staff:auto_resolved', {
       customerId,
@@ -374,6 +379,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       reason,
       archetypeLabel: context?.archetypeLabel,
       wantedCategory: context?.wantedCategory,
+      heat: context?.heat,
     });
   }
 
@@ -498,9 +504,21 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       deps.salesProcessDeps,
     );
     if (resolution.outcome === 'walk') {
-      emitNoSale(customerId, salesperson.id, day, resolution.cause, walkOffContext);
+      emitNoSale(customerId, salesperson.id, day, resolution.cause, {
+        ...walkOffContext,
+        heat: residualHeat({ resolution }, deps.salesProcessDeps),
+      });
       return 'resolved';
     }
+
+    // Every no_sale from here down happened *after* the customer went through
+    // the process, so it carries the warmth they left with (#180). The three
+    // pre-process bail-outs above deliberately don't — a customer the lot had
+    // nothing for never got far enough to have a temperature.
+    const processContext = {
+      ...walkOffContext,
+      heat: residualHeat({ resolution }, deps.salesProcessDeps),
+    };
 
     const close = closeAndPrice(
       {
@@ -562,6 +580,9 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         matchQuality: match.matchQuality,
         vehicleCategory: vehicle.category,
         archetypeLabel: session.archetypeLabel,
+        // The low-trust forced close (#180) — they bought, and they'll say
+        // something about it. Read off the close that actually happened.
+        badReview: close.badReview,
       });
       return 'resolved';
     };
@@ -633,7 +654,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                     salesperson.id,
                     day,
                     'trade_negative_equity',
-                    walkOffContext,
+                    processContext,
                   );
                   return { status: 'abandoned' };
                 }
@@ -656,7 +677,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                   salesperson.id,
                   day,
                   'trade_player_declined',
-                  walkOffContext,
+                  processContext,
                 );
                 return { status: 'abandoned' };
               }
@@ -708,7 +729,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             tradeRes.reason === 'negative_equity'
               ? 'trade_negative_equity'
               : 'trade_manager_declined',
-            walkOffContext,
+            processContext,
           );
           return 'resolved';
         }
@@ -844,7 +865,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             deriveSeed(masterSeed, 'discount_escalation_roll', { customerId, day }),
           )() < ev.escalationRate;
         if (!escalates) {
-          emitNoSale(customerId, salesperson.id, day, 'no_close', walkOffContext);
+          emitNoSale(customerId, salesperson.id, day, 'no_close', processContext);
           return 'resolved';
         }
 
@@ -868,7 +889,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                   salesperson.id,
                   day,
                   'discount_below_cost',
-                  walkOffContext,
+                  processContext,
                 );
                 return { status: 'abandoned' };
               }
@@ -922,7 +943,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                   salesperson.id,
                   day,
                   'discount_haggle_exhausted',
-                  walkOffContext,
+                  processContext,
                 );
                 return { status: 'abandoned' };
               }
@@ -941,7 +962,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                 salesperson.id,
                 day,
                 'discount_player_declined',
-                walkOffContext,
+                processContext,
               );
               return { status: 'abandoned' };
             }
@@ -959,7 +980,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         return 'escalated';
       }
 
-      emitNoSale(customerId, salesperson.id, day, 'no_close', walkOffContext);
+      emitNoSale(customerId, salesperson.id, day, 'no_close', processContext);
       return 'resolved';
     }
 

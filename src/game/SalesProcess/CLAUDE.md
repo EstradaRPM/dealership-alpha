@@ -65,6 +65,18 @@ Quadrant close + price formation (#90):
   - **Low-trust forced close:** `outcome=buy AND unconditional AND trust < trustFloor` → `badReview=true + highFiResistance=true` (signals downstream).
   - `closingComposite` = `skill.skillFor('NEGOTIATE')` — the NEGOTIATE gate skill drives price hold.
 
+Residual heat (#180) — `residualHeat({ resolution, bought? }, deps?) → number` ∈ [0,1].
+How warm a customer left: how far through the gates they got (a walk stops at its
+gate; a customer who reached the close scores a full 1), blended with the two
+meters. Weights live in `data/sales-process.json` `heat` and must sum to 1. A
+`bought: true` returns 0 — not because the visit went badly, but because there is
+nothing left to follow up on. Pure, no RNG.
+**This is the ONE definition of the quantity.** It was hand-copied between
+`CustomerPool` and the #94 calibration harness before #180 needed a third copy for
+the live path; `FollowUpPool` consumes it as "who is worth calling back" and the
+live-engine calibration reads it as the warm-walk band. Do not re-derive it at a
+call site.
+
 Wanted-category classifier (#321, engagement-spine walk-off reactions) —
 `wantedVehicleCategory(customerSpaced, deps?) → 'sedan' | 'truck' | 'suv'`.
 Pure/deterministic: nearest `data/vehicle-spaced.json` `categoryBase` vector to

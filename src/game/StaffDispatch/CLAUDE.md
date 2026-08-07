@@ -105,6 +105,18 @@ discount_below_cost | discount_haggle_exhausted | <WalkCause>`). A pending
 player declines or accepts a decision through the held-review closure. The
 sole `declined` path is an unstaffed floor.
 
+`staff:auto_resolved` also carries the live close's own quadrant (#180). On
+`closed` it carries **`badReview`** — `CloseResult.badReview`, the low-trust
+forced close that is the "negative-but-deal" calibration band. Before #180 the
+live close computed this and threw it away, so the only satisfaction signal on
+the bus came from `customer:resolved`, which re-derives it against a STUB
+vehicle; this one is the close that actually happened. On `no_sale` it carries
+**`heat`** (`SalesProcess.residualHeat` over the resolution that ran) — but
+**only once the customer went through the process**, so `no_session`,
+`not_sales` and `no_fit` omit it: a customer the lot had nothing for never got
+far enough to leave a temperature. Both fields are observability only — nothing
+in the engine branches on them.
+
 Every `no_sale` past the initial session lookup also carries `archetypeLabel`
 (the customer's archetype label) and `wantedCategory` (#321 — the nearest
 SPACED category to the customer's want-vector, `wantedVehicleCategory`,

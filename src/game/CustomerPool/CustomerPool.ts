@@ -10,9 +10,9 @@ import {
   resolveSalesProcess,
   closeAndPrice,
   accumulateMeters,
+  residualHeat,
   GREEN_SALESPERSON,
   vehicleSpaced,
-  GATES,
   type SalesProcessResolution,
   type CloseResult,
   type SalespersonSkill,
@@ -162,23 +162,13 @@ export function createCustomerPool(deps: {
 
     const receptivity = resolution.meters.trustIntegrity;
 
-    // heat = f(stage reached, Value meter) + trust warmth boost. 0 for successful closes.
-    function computeHeat(closeResult?: CloseResult): number {
-      if (closeResult?.outcome === 'buy') return 0;
-      const stageProgress =
-        resolution.outcome === 'walk'
-          ? GATES.indexOf(resolution.gate) / Math.max(1, GATES.length - 1)
-          : 1.0;
-      return clampUnit(stageProgress * 0.5 + resolution.meters.value * 0.3 + resolution.meters.trustIntegrity * 0.2);
-    }
-
     if (resolution.outcome === 'walk') {
       return {
         outcome: 'walk',
         receptivity,
         satisfaction: 0,
         retentionSeed: clampUnit(resolution.meters.trustIntegrity * 0.6),
-        heat: computeHeat(),
+        heat: residualHeat({ resolution }),
         agreedPrice: 0,
         frontGross: 0,
       };
@@ -199,7 +189,7 @@ export function createCustomerPool(deps: {
       receptivity,
       satisfaction: closeResult.badReview ? -1 : closed ? 1 : 0,
       retentionSeed: clampUnit(resolution.meters.trustIntegrity * 0.6 + closeResult.objectiveDeal * 0.4),
-      heat: computeHeat(closeResult),
+      heat: residualHeat({ resolution, bought: closed }),
       agreedPrice: closed ? closeResult.realizedPrice : 0,
       frontGross: closed ? closeResult.frontGross : 0,
     };

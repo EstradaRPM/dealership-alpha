@@ -673,6 +673,28 @@ export interface EventMap {
      * instead (#170/#222).
      */
     reason?: string;
+    /**
+     * The low-trust forced close (#180): the customer bought on a strong
+     * objective deal *despite* not trusting the store, and will say so. This is
+     * `CloseResult.badReview` — the "negative-but-deal" band of the calibration
+     * quadrant. Present only on `outcome: 'closed'`.
+     *
+     * Before #180 the live close computed this and threw it away, so the only
+     * observable satisfaction in the game came from `customer:resolved`, which
+     * re-derives it against a stub vehicle. This is the honest one — it is the
+     * close that actually happened.
+     */
+    badReview?: boolean;
+    /**
+     * How warm the customer left (#180), ∈ [0,1] — `SalesProcess.residualHeat`
+     * over the resolution that actually ran. Present on `outcome: 'no_sale'`
+     * **only once the customer went through the sales process**, so the three
+     * pre-process reasons (`'no_session'`, `'not_sales'`, `'no_fit'`) omit it:
+     * a customer the lot had nothing for never got far enough to leave a
+     * temperature. Omitted on `outcome: 'closed'` (a buyer has nothing left to
+     * follow up on).
+     */
+    heat?: number;
   };
 
   // A staff member left. TWO publishers, one event: StaffMorale when morale
