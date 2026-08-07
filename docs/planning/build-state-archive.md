@@ -6,6 +6,55 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-07 — **BUILT #181** (the early-game floor — the progression has a proven bottom).
+  #180 proved the #94 calibration does not survive contact with the game for a **competent**
+  operator. #181 asks the complementary question: is there anywhere to climb *from*? A career
+  whose day-1 state performs like its end state has no progression in it, and every skill
+  gate, promotion and hire in `StaffOrg` would be decoration. Now there is a test that says
+  otherwise.
+  **The instrument is #180's, with one variable changed.** Same `createWorld`, same master
+  seed, same stocking bot, same six-space lot, same capital floor — only the operator differs.
+  `tests/MarketEconomy.earlyGameFloor.test.ts` runs the green solo operator the career starts
+  you as (0.35/0.40 raw composites) instead of 0.75/0.75, hires **no UCM**, never pays for a
+  pre-buy inspection, and leaves the trade policy at its `data/` default. Those are the four
+  things a green player has not bought yet. 200 worked ups over 110 days, deterministic, ~5s.
+  **Pinning an off-diagonal profile needed a real derivation.** #180 could fill every skill to
+  the same fraction, which lands on the diagonal (`E === T`). A green operator is deliberately
+  *off* it — better at being trusted than at closing — so the fill is parameterized by how
+  each skill leans (`fᵢ = α + β·leanᵢ`) and the two composites are solved as a 2×2 against the
+  live catalog. Hardcoding the three fractions would have let a retuned
+  `data/staff-skills.json` silently move the green profile; instead the realized profile is
+  asserted and a catalog change fails loudly.
+  **The finding is the SHAPE of the floor, not its height.** A green operator closes about as
+  often as a competent one — 3.0% of worked ups against #180's 2.4% — but **every single one
+  of those closes is a low-trust forced close**: 0.0% positive against `live`'s 2.2%, and
+  `trust_collapse` goes from 17 walks to 115, becoming the dominant non-fit reason. Skill does
+  not buy you volume in this economy; it buys you customers who are *happy*. That is a
+  cleaner, more interesting floor than "green sells less", and it is what the bands now
+  record.
+  **Margins are distances, not a second set of bands.** `data/market-calibration.json`
+  `earlyGame` states `marginBelowLive` / `marginBelowReference` as gaps from `live` and
+  `reference`, and a schema refine enforces that the whole early-game band sits under
+  `live.positiveMin − marginBelowLive`. When #286 raises `live`, the floor must move with it
+  or the assertion fails. A floor that stops being below the ceiling is not a floor.
+  **The recon-tail band is honestly labelled as a ceiling guard.** Acquisitions are gated by
+  sales — a six-space lot only reopens when a unit leaves — so a green store turns **9 units
+  in 110 days, and only 13 if ground out to 400**. Zero surprises fired against an expectation
+  of ~0.45. Banding a rare event over that denominator would be banding luck, so the rate gets
+  a documented ceiling and the load-bearing band is the **mean recon overrun** (realized ÷
+  estimate, every unit contributes): measured 1.087× against the 1.061 the
+  `data/recon-variance.json` bucket mix implies. Its min sits just under 1 on purpose — that
+  is the assertion that buying blind is a cost, not a coin flip. Both tighten on their own
+  once #286 makes the lot turn. Carrying burn came in at **$18.63/unit/day**.
+  **Filed #364 in passing.** Two customers can be held on the *same* unit — a six-space lot
+  makes it ordinary — and whoever is resolved first drives it away; resolving the second
+  throws `No lot vehicle` straight out of `resolvePlayerDiscountDecision`. Reachable in the
+  app, not a harness artifact. The test guards and tallies it rather than asserting around it;
+  what the second customer should *see* is a design call about the prompt, not a calibration
+  change. 219 suites / **2863** tests, typecheck clean.
+  Next: **#286** — the retune that closes the #180 gap. It now has a floor to preserve as well
+  as a ceiling to reach.
+
 - 2026-08-06 — **BUILT #180** (live-engine calibration verification — phase 8 opens). The
   #94 test proves the sales-process balance *in a vacuum*: a perfect inventory match every
   time, static price stubs, no market, no trades, no morale. #180 asks the question it

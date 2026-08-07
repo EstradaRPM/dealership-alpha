@@ -28,9 +28,29 @@ held its shape (0.5% positive for a green operator, so the progression still has
 the balance harness went from "bankrupts before Tier 2" to **90 of 100 seeds reaching T2** with
 a median survival of the full 360 days.
 
-**Phase 9's gate is CLOSED as of 2026-08-07.** The parked F&I grill was resumed and finished —
-`docs/planning/fni-mechanics-grill-state.md` is no longer a parked tree, it is a locked design.
-The next `/next` on phase 9 is a **SLICE**.
+**Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
+`docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
+issues. The next `/next` on phase 9 is a **BUILD**.
+
+### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
+
+| # | Slice | Deps |
+|---|---|---|
+| #151 | per-brand `Reputation.repFor(make)` replaces the `pickVehicle` stub — ambient, no screen (I6) | — |
+| #152 | attach scales with amount financed — one per-product `loanSensitivity` (I4) | #365 |
+| #153 | cash-buyer / must-finance traits through `resolveEffects` (I5) | — |
+| #365 | **tracer** — `apr`→`buyRate` + `markupCapPts`, `computeReserve`, back gross splits into `productGross`/`reserveGross` (Q1/Q2, I1–I3) | — |
+| #366 | the posture dial — three positions, slot-persisted like `tradePolicy`, **no snapshot bump** (Q5/Q6/Q9, I7) | #365 |
+| #367 | deal-kill — one curve in `data/`, an over-marked deal falls through (Q3 primary, I8) | #366 |
+| #368 | CSI drag — an over-marked customer publishes `reputation:satisfaction_hit` (Q3 secondary) | #365 |
+| #369 | the F&I manager works the deal — `finance_structuring` frontier, `product_presentation` attach (Q2/Q5/Q10) | #367 |
+| #370 | the peak meter — twin opposed bars, the crest is not the max (Q4) | #366, #367, #369 |
+| #371 | the crowd's finance mix read ahead on the wire — MarketIntel lane, F&I manager is a third opener (Q7) | — |
+| #372 | advertising buys a different crowd — person-archetype weights on campaigns (Q8) | — |
+| #373 | the monthly F&I verdict — Reveal reactions + the PVR record (engagement spine plug-in #2) | #365, #366, #371 |
+
+(#151–#153 were **absorbed as filed** rather than re-filed — their bodies now carry the locked
+B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 | # | Slice | Phase |
 |---|---|---|
@@ -50,6 +70,14 @@ The next `/next` on phase 9 is a **SLICE**.
 
 ## Blockers
 
+- **#363 and #364 are open live defects with NO phase assignment.** Both were filed out of
+  phase 8 and both are reachable in real play: #363 — the live floor never publishes
+  `customer:resolved` on a walk, starving `FollowUpPool`, Reputation's walk penalty,
+  RegulatoryMeter and `TierManager.customersServed`; #364 — two customers held on the same unit,
+  the second resolution throwing `No lot vehicle`. Phase 9's own queue starts at #151, so the
+  chronological rule will not pick them up on its own. They want placing — and on the merits
+  they belong **before** the F&I feature work, since one starves four systems and the other is
+  a crash.
 - **Phase 5c is DONE — the whole UI-layout rebuild landed 2026-08-02** (#346 Operations, #347
   People, #348 nav stacks, #349 Growth, #350 chart kit, #351 Finance). Every defect in
   `docs/audits/ui-layout-audit.md` is closed out: no placeholder tabs, no dead Operations
@@ -380,7 +408,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — next unit is SLICE |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — **SLICED 2026-08-07** into #151–#153 + #365–#373; next unit is BUILD |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -398,6 +426,42 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-07 — **SLICED phase 9 (B2, F&I as plug-in #2) into twelve issues** — #365–#373 filed,
+  #151–#153 absorbed in place. The design was closed the same day, so this session did nothing
+  but turn the ruling into build order.
+  **The tracer is the reserve, and it had to be, because the honest naming and the missing half
+  of back gross are the same change.** #365 renames `credit-tiers.json`'s `apr` to `buyRate`
+  (the field has always been the customer's rate wearing the lender's name), adds
+  `markupCapPts`, computes the reserve off the existing amortization, and splits `backGross`
+  into `productGross` + `reserveGross` on both `ClosedDealResult` and `deal:closed`. Everything
+  else in the phase reads one of those two halves.
+  **The slicing call worth recording: the three teeth are separate issues on purpose.** #367
+  (contractual deal-kill — the lender won't buy an over-marked deal), #368 (CSI drag) and #365's
+  free structural kill (a marked-up payment breaching `ptiCap`/`maxTerm`/`ltvCeiling` — I3, no
+  new machinery) fail in three different ways and are calibrated against three different
+  signals. Merging them would have produced one slice where a miscalibrated curve is
+  indistinguishable from a mis-wired gate. The director was offered the merge and declined it.
+  **#151–#153 were absorbed as filed, not re-filed.** The grill doc says "absorbed as filed",
+  and re-filing them would have left three older duplicates that the chronological rule picks
+  up first. Their bodies now carry the locked scope (I4/I5/I6), EARS criteria and corrected
+  deps — and #151 shrank in the process: the original body floated a per-*segment* reputation
+  surface beside the per-brand one, which I6 rules out entirely. Per-brand reputation is ambient
+  depth feeding Reveal text; there is no brand-reputation screen, and a criterion now says so.
+  **Two things the slice deliberately does not build**, both because a closed grill already said
+  no: a per-product on/off control (Q10 — #369 carries a criterion asserting the surface does not
+  exist) and a continuous markup slider (Q9 — three named positions, and #370's peak meter is
+  what makes them legible). A future session proposing either is re-opening the grill.
+  **Q8 lands inside B2 rather than in a later demand slice** (#372), which is the one place the
+  phase reaches outside F&I: advertising campaigns gain person-archetype weights beside the
+  vehicle-type weights they already carry. Read-without-move is half a mechanic — #371 tells you
+  the crowd leans cash, #372 is how you answer.
+  **Flagged, not decided: #363 and #364 have no phase.** Both are live defects out of phase 8 —
+  walks never publishing `customer:resolved` (starving four systems) and two customers held on
+  one unit throwing `No lot vehicle`. Phase 9's queue starts at #151, so the chronological rule
+  will never reach them on its own. Recorded in Blockers with the recommendation that they go
+  first; placing them is the director's call, not a slice's.
+  Next: **BUILD #151** — the lowest-numbered open, deps-met issue in the phase.
 
 - 2026-08-07 — **DECIDED phase 9's gate: the parked F&I grill is CLOSED** (`/decide`). It had sat
   paused since 2026-07-08, and it was paused for a good reason — it had surfaced the game-wide
@@ -495,52 +559,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   Lot): live asks, carrying, aging and wholesale quotes all render, the RAV4's $11,922 quote
   being exactly 0.85 × its $14,026 book.
   Next: **phase 9 — B2 F&I plug-in #2**, which opens with a DECIDE (the parked grill).
-
-- 2026-08-07 — **BUILT #181** (the early-game floor — the progression has a proven bottom).
-  #180 proved the #94 calibration does not survive contact with the game for a **competent**
-  operator. #181 asks the complementary question: is there anywhere to climb *from*? A career
-  whose day-1 state performs like its end state has no progression in it, and every skill
-  gate, promotion and hire in `StaffOrg` would be decoration. Now there is a test that says
-  otherwise.
-  **The instrument is #180's, with one variable changed.** Same `createWorld`, same master
-  seed, same stocking bot, same six-space lot, same capital floor — only the operator differs.
-  `tests/MarketEconomy.earlyGameFloor.test.ts` runs the green solo operator the career starts
-  you as (0.35/0.40 raw composites) instead of 0.75/0.75, hires **no UCM**, never pays for a
-  pre-buy inspection, and leaves the trade policy at its `data/` default. Those are the four
-  things a green player has not bought yet. 200 worked ups over 110 days, deterministic, ~5s.
-  **Pinning an off-diagonal profile needed a real derivation.** #180 could fill every skill to
-  the same fraction, which lands on the diagonal (`E === T`). A green operator is deliberately
-  *off* it — better at being trusted than at closing — so the fill is parameterized by how
-  each skill leans (`fᵢ = α + β·leanᵢ`) and the two composites are solved as a 2×2 against the
-  live catalog. Hardcoding the three fractions would have let a retuned
-  `data/staff-skills.json` silently move the green profile; instead the realized profile is
-  asserted and a catalog change fails loudly.
-  **The finding is the SHAPE of the floor, not its height.** A green operator closes about as
-  often as a competent one — 3.0% of worked ups against #180's 2.4% — but **every single one
-  of those closes is a low-trust forced close**: 0.0% positive against `live`'s 2.2%, and
-  `trust_collapse` goes from 17 walks to 115, becoming the dominant non-fit reason. Skill does
-  not buy you volume in this economy; it buys you customers who are *happy*. That is a
-  cleaner, more interesting floor than "green sells less", and it is what the bands now
-  record.
-  **Margins are distances, not a second set of bands.** `data/market-calibration.json`
-  `earlyGame` states `marginBelowLive` / `marginBelowReference` as gaps from `live` and
-  `reference`, and a schema refine enforces that the whole early-game band sits under
-  `live.positiveMin − marginBelowLive`. When #286 raises `live`, the floor must move with it
-  or the assertion fails. A floor that stops being below the ceiling is not a floor.
-  **The recon-tail band is honestly labelled as a ceiling guard.** Acquisitions are gated by
-  sales — a six-space lot only reopens when a unit leaves — so a green store turns **9 units
-  in 110 days, and only 13 if ground out to 400**. Zero surprises fired against an expectation
-  of ~0.45. Banding a rare event over that denominator would be banding luck, so the rate gets
-  a documented ceiling and the load-bearing band is the **mean recon overrun** (realized ÷
-  estimate, every unit contributes): measured 1.087× against the 1.061 the
-  `data/recon-variance.json` bucket mix implies. Its min sits just under 1 on purpose — that
-  is the assertion that buying blind is a cost, not a coin flip. Both tighten on their own
-  once #286 makes the lot turn. Carrying burn came in at **$18.63/unit/day**.
-  **Filed #364 in passing.** Two customers can be held on the *same* unit — a six-space lot
-  makes it ordinary — and whoever is resolved first drives it away; resolving the second
-  throws `No lot vehicle` straight out of `resolvePlayerDiscountDecision`. Reachable in the
-  app, not a harness artifact. The test guards and tallies it rather than asserting around it;
-  what the second customer should *see* is a design call about the prompt, not a calibration
-  change. 219 suites / **2863** tests, typecheck clean.
-  Next: **#286** — the retune that closes the #180 gap. It now has a floor to preserve as well
-  as a ceiling to reach.
