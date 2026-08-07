@@ -6,6 +6,55 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **BUILT #180** (live-engine calibration verification — phase 8 opens). The
+  #94 test proves the sales-process balance *in a vacuum*: a perfect inventory match every
+  time, static price stubs, no market, no trades, no morale. #180 asks the question it
+  cannot — does that calibration survive contact with the actual game? It does not, and the
+  test now says so precisely.
+  **The instrument.** `tests/MarketEconomy.calibration.test.ts` drives the real
+  `createWorld`: live MarketEconomy providers, the real lot bought off the real auction
+  board, seeded weather, demand shaping, competitor drift, trades with negative equity,
+  morale drifting under the salesperson's feet, carrying cost eating the cash that buys the
+  next unit. 601 worked ups over 369 days, deterministic across runs, ~12s alone / ~39s under
+  full-suite load.
+  **Two things had to become observable first, because the live close threw them away.**
+  `staff:auto_resolved` now carries `badReview` on a close (the low-trust forced close — the
+  negative-but-deal band) and `heat` on a walk. Before this the only satisfaction signal on
+  the bus came from `customer:resolved`, which re-derives it by re-running the process
+  against a **stub vehicle nobody was shown**. Both new fields are read off the close that
+  actually happened.
+  **`residualHeat` got one home.** The walk-warmth formula was hand-copied between
+  `CustomerPool` and the #94 harness with hardcoded 0.5/0.3/0.2 weights, and the live path
+  needed a third copy. It is now `SalesProcess.residualHeat` with the weights in
+  `data/sales-process.json` `heat`, schema-refused unless they sum to 1.
+  **The finding: the live engine closes 2.2% of worked ups against #94's 85%.** And the
+  rejecting mechanism is *not* the quadrant close — 415 of ~486 walks are below-floor
+  `no_close`, against 37 patience-drain and 17 trust-collapse. Over that population customers
+  land at **0.992 of our ask** while our cost sits at **1.237 of it**. Cause: #94 demos a
+  perfect SPACED match (Value ≈ 0.85), a six-space tier-1 lot yields best-of-six (Value ≈
+  0.4), and `reservationPrice` scales with Value — so willingness-to-pay falls under
+  `vehicleCost + minGross` before the quadrant is consulted. Separately, **51% of all
+  arrivals leave on `no_fit`**: half the floor walks because six cars couldn't match their
+  want-vector.
+  **What I did NOT do, deliberately.** The issue's AC authorizes retuning `data/` until the
+  bands pass. I tried the most defensible single lever — centering auction buys below book
+  (`meanMultiplier` 1.0 → 0.85, ceiling 1.2 → 1.0, since a dealer buys wholesale) — and it
+  moved the close rate ~0.4pp. **Reverted**, because it is not the dominant term and leaving
+  an unjustified balance edit in the tree is worse than none. The real retune is a whole-
+  economy judgment about gross per deal and how scarce a tier-1 lot should feel, which is
+  exactly **#286** (same phase, literally "calibration pass"). Full numbers + the knob list
+  are filed as a comment there.
+  **So the bands are two sets, not one.** `data/market-calibration.json` carries `reference`
+  (the #94 design commitment) and `live` (measured). The test asserts `live` as a regression
+  guard *and* asserts the gap to `reference` is still recorded — green and honest, rather
+  than green by asserting today's brokenness is correct.
+  **Filed #363 in passing:** a live-floor walk never publishes `customer:resolved` at all, so
+  `FollowUpPool`, `Reputation`'s walk penalty, `RegulatoryMeter`'s walk pressure and
+  `TierManager.customersServed` are starved in real play — ~587 walks a run reaching none of
+  them. Not folded in here: publishing walks changes live balance and needs its own
+  verification. 218 suites / **2851** tests, typecheck clean.
+  Next: **#181** (early-game floor verification), which #180 unblocks — then #286.
+
 - 2026-08-06 — **HANDED OVER: the #74 round-1 playtest script (phase 5, HITL).** The unit
   was preparing the script and giving it to the director. Preparing it turned out to be real
   work: the script was written before the 5c layout rebuild and before phases 6 and 7, and

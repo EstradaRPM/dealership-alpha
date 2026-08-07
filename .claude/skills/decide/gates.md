@@ -12,16 +12,6 @@ the row in the same commit as the ruling.
 
 ---
 
-## Phase 9 — B2 F&I plug-in #2 · **RESUME a parked grill**
-
-- **Scope:** §4 B2 (`path-to-finished-product.md:126`). Absorbs #151–#153.
-- **Load:** `docs/planning/fni-mechanics-grill-state.md` — resume at its **STILL-OPEN branches**
-  (`:87`), following its own re-entry instruction (`:114`), starting with #153.
-- **Locked:** `docs/planning/engagement-spine.md` (F&I is plug-in #2, not the tracer); F&I
-  auto-resolves — there is no manual deal screen (`felt-loop-dope-wars-lemonade` memory).
-- **Record:** `fni-mechanics-grill-state.md` itself (it *is* the grill record) — mark resolved
-  branches, keep the STILL-OPEN list honest.
-
 ## Phase 11 — B4 bite-unlock schedule · **decide while building**
 
 - **Scope:** §4 B4 (`path-to-finished-product.md:139`). Which tier/delegation state unlocks
@@ -79,6 +69,16 @@ the row in the same commit as the ruling.
 ## Settled
 
 (Ruled gates move here: gate · date · doc holding the ruling.)
+
+- **Phase 9 — B2 F&I plug-in #2** · 2026-08-07 · `docs/planning/fni-mechanics-grill-state.md`
+  (the grill record itself, now CLOSED). Four rulings on top of the original Q1–Q6: **Q7** the
+  crowd's finance mix is read *ahead* on the wire, gated by the data subscription or the F&I
+  manager on the desk; **Q8** advertising gains person-archetype weights so the player can BUY a
+  different crowd credit-wise, built in B2 rather than deferred to a demand slice; **Q9** the
+  posture dial is three positions — "More per deal" / "Balanced" / "More deals" — persisted as a
+  slot id like every sibling lever; **Q10** no product-level control, the manager owns the menu.
+  Nine internal calls are recorded alongside them, including the correction that the posture is
+  slot state, so there is **no snapshot-envelope bump**. Next unit: SLICE phase 9.
 
 - **Phase 6 — C1 staff-teeth** · 2026-08-02 · `docs/planning/staff-teeth-design.md`.
   Daily wage by grade × role (commission rejected); raises are a played moment that also

@@ -210,11 +210,17 @@ The Reveal tracer is live. The locked design's remaining steps, in its own build
 - **Records catalog** — best day, best month, PVR record, streaks — records are crowned reactions on
   the same feed, not a separate system.
 
-### B2. F&I as plug-in #2 `[LOCKED + parked grill state]`
-Resume `docs/planning/fni-mechanics-grill-state.md` mid-tree. F&I proves the grammar spans from a
+### B2. F&I as plug-in #2 `[LOCKED — grill COMPLETE 2026-08-07]`
+`docs/planning/fni-mechanics-grill-state.md` is closed: Q1–Q6 from the original tree plus Q7–Q10
+from the `/decide` resume, and nine internal engineering calls. F&I proves the grammar spans from a
 daily beat up to a monthly strategic verdict ("cash-heavy crowd — the finance office sat empty").
 Absorbs the filed F&I follow-ons `[#151–#153]` (cash/must-finance traits, attach-rate scaling,
-per-segment reputation surface) as reaction sources.
+per-segment reputation surface) as reaction sources. The shape: back-gross splits into **product
+attach + an honestly-modeled finance reserve**; the player's one input is a **three-position store
+posture** ("More per deal" / "Balanced" / "More deals") that the F&I manager executes optimally
+within; the crowd's finance mix is **readable ahead on the wire** and **movable** by advertising
+that now weights person archetypes as well as vehicle types. Do not re-grill — the next unit is a
+SLICE.
 
 ### B3. News / adverse-events engine — the loudest reactions `[FILED #176–#179]`
 The last unbuilt loop pillar. MarketNews inside MarketEconomy: three reliability tiers (factual /
