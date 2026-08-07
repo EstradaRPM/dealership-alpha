@@ -17,6 +17,22 @@
     "negativeDealMin": 0.0,
     "negativeDealMax": 0.02
   },
+  "earlyGame": {
+    "_doc": "Slice #181 — the early-game FLOOR (tests/MarketEconomy.earlyGameFloor.test.ts). The same live engine `live` measures, run with the green solo operator the career starts you as (0.35/0.40 raw composites) instead of the competent 0.75/0.75: cold start, day 1, no comp history, one salesperson, NO used-car manager, no paid pre-buy inspections, default trade policy. It exists so the progression has a proven bottom — a career whose day-1 state performs like its end state has no progression in it. Measured at seed 20260806 over 200 worked ups in 110 days: 0.0% positive, 97.0% apathetic, 3.0% negative-but-deal (6 closes, EVERY ONE of them a low-trust forced close), 43.3% warm walks, 46.5% no_fit, 9 acquisitions / 8 completed recons, mean recon overrun 1.087x, $18.63/unit/day carrying. The shape of the floor is the finding: a green operator closes about as often as a competent one but cannot make ANY of those customers happy, and `trust_collapse` becomes the dominant walk reason (115 against #180's 17). The margins are distances from `live`/`reference` rather than a second pair of bands, so when #286 raises `live` the floor must move with it or the assertion fails.",
+    "positiveMin": 0.0,
+    "positiveMax": 0.008,
+    "apatheticMin": 0.93,
+    "apatheticMax": 1.0,
+    "marginBelowLive": 0.005,
+    "marginBelowReference": 0.6,
+    "_reconDoc": "The tail RATE is a ceiling guard, not a tight measurement: acquisitions are gated by sales, so a green six-space lot turns ~9 units in the whole window (13 even if ground out to 400 days) and 0 surprises fired against an expectation of ~0.45. A band that pretended to precision there would be banding luck. `reconOverrun` is the one with power — every completed recon contributes, and data/recon-variance.json's bucket mix implies a population mean of ~1.061 against the 1.087 measured. Both tighten on their own once #286 makes the lot turn. reconOverrunMin sits just under 1 on purpose: it asserts recon does not on average come in UNDER its estimate, which is what makes buying blind a cost rather than a coin flip.",
+    "reconTailRateMin": 0.0,
+    "reconTailRateMax": 0.4,
+    "reconOverrunMin": 0.95,
+    "reconOverrunMax": 1.45,
+    "carryingCostPerUnitDayMin": 12.0,
+    "carryingCostPerUnitDayMax": 30.0
+  },
   "warmWalkMin": 0.5,
   "tradeAcquisitionMin": 0.2,
   "tradeAcquisitionMax": 0.9,

@@ -351,6 +351,25 @@ fallback path per slice #155 AC.
   (Value ≈ 0.4), and `reservationPrice` scales with Value, so willingness-to-pay
   lands under `vehicleCost + minGross`. Do not "fix" this by widening `live` —
   that is the number the campaign has to move.
+  **`earlyGame` is a third band set (#181), read by
+  `tests/MarketEconomy.earlyGameFloor.test.ts`** — the same live engine run with the
+  green solo operator the career starts you as (0.35/0.40 raw composites, no UCM,
+  no paid inspections, cold start) rather than `live`'s competent 0.75/0.75. It
+  pins the progression *floor*: a career whose day-1 state performs like its end
+  state has no progression in it. Its two margins are **distances** from
+  `live.positiveMin` / `reference.positiveMin`, not a fourth pair of bands, and a
+  schema refine enforces that the whole early-game band sits under
+  `live.positiveMin − marginBelowLive`. So when #286 raises `live`, the floor has
+  to move with it or the assertion fails — which is the point.
+  **The shape of the floor is the finding**, not just its height: a green operator
+  closes about as often as a competent one (3.0% vs 2.4%) but **every one of those
+  closes is a low-trust forced close** — 0% positive against `live`'s 2.2% — and
+  `trust_collapse` becomes the dominant walk reason (115 against 17). Skill buys
+  you happy customers here, not volume.
+  The recon-tail *rate* band is a deliberate ceiling guard rather than a tight
+  measurement: acquisitions are gated by sales, so a green six-space lot turns ~9
+  units in the window. `reconOverrunMin/Max` (mean realized ÷ estimated recon) is
+  the band with power. Both tighten on their own once #286 makes the lot turn.
 
 Tuning of all five is deliberately neutral so the static-stub midpoint
 (`(purchase + recon) × 1.25`) and the live providers produce comparable

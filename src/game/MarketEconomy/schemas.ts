@@ -408,12 +408,65 @@ const CalibrationBandsSchema = z
     message: 'negative-deal band min must not exceed max',
   });
 
+/**
+ * Slice #181 — the early-game FLOOR: what the same live engine produces for the
+ * green solo operator the career starts you as (0.35/0.40), against `live`'s
+ * competent 0.75/0.75. Its own band set rather than a third `CalibrationBands`
+ * because it measures different things — the two margins that pin the floor,
+ * plus the two early-game costs a green player pays for buying blind (recon
+ * tail) and for holding stock (carrying burn).
+ *
+ * The margins are stated as *distances*, not as a second pair of bands, so the
+ * floor stays pinned to whatever `live`/`reference` currently say. When #286
+ * moves `live` toward `reference`, the floor has to move with it or the margin
+ * assertion fails — which is the point: a progression floor that stops being
+ * below the ceiling is not a floor.
+ */
+const EarlyGameFloorSchema = z
+  .object({
+    _doc: z.string().optional(),
+    _reconDoc: z.string().optional(),
+    positiveMin: unit,
+    positiveMax: unit,
+    apatheticMin: unit,
+    apatheticMax: unit,
+    /** How far under `live.positiveMin` a green operator must land. */
+    marginBelowLive: unit,
+    /** How far under `reference.positiveMin` — the weaker outer bound. */
+    marginBelowReference: unit,
+    reconTailRateMin: unit,
+    reconTailRateMax: unit,
+    /** Mean realized ÷ estimated recon cost. 1 = the estimate held exactly. */
+    reconOverrunMin: z.number().nonnegative(),
+    reconOverrunMax: z.number().nonnegative(),
+    carryingCostPerUnitDayMin: z.number().nonnegative(),
+    carryingCostPerUnitDayMax: z.number().nonnegative(),
+  })
+  .strict()
+  .refine((b) => b.positiveMin <= b.positiveMax, {
+    message: 'early-game positive band min must not exceed max',
+  })
+  .refine((b) => b.apatheticMin <= b.apatheticMax, {
+    message: 'early-game apathetic band min must not exceed max',
+  })
+  .refine((b) => b.reconTailRateMin <= b.reconTailRateMax, {
+    message: 'early-game recon-tail band min must not exceed max',
+  })
+  .refine((b) => b.reconOverrunMin <= b.reconOverrunMax, {
+    message: 'early-game recon-overrun band min must not exceed max',
+  })
+  .refine(
+    (b) => b.carryingCostPerUnitDayMin <= b.carryingCostPerUnitDayMax,
+    { message: 'early-game carrying-cost band min must not exceed max' },
+  );
+
 export const MarketCalibrationConfigSchema = z
   .object({
     schemaVersion: z.literal(1),
     _doc: z.string().optional(),
     reference: CalibrationBandsSchema,
     live: CalibrationBandsSchema,
+    earlyGame: EarlyGameFloorSchema,
     warmWalkMin: unit,
     tradeAcquisitionMin: unit,
     tradeAcquisitionMax: unit,
@@ -422,7 +475,21 @@ export const MarketCalibrationConfigSchema = z
   .strict()
   .refine((c) => c.tradeAcquisitionMin <= c.tradeAcquisitionMax, {
     message: 'trade-acquisition band min must not exceed max',
-  });
+  })
+  /**
+   * The floor must actually be a floor. A green operator's whole allowed band
+   * has to sit under what a competent one is measured at — otherwise the margin
+   * assertions in `tests/MarketEconomy.earlyGameFloor.test.ts` could pass while
+   * the data quietly said green and competent perform the same.
+   */
+  .refine(
+    (c) =>
+      c.earlyGame.positiveMax <= c.live.positiveMin - c.earlyGame.marginBelowLive,
+    {
+      message:
+        'early-game positive band must sit below live.positiveMin by marginBelowLive',
+    },
+  );
 export type MarketCalibrationConfig = z.infer<
   typeof MarketCalibrationConfigSchema
 >;

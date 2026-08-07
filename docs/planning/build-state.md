@@ -22,11 +22,13 @@ landed (as a comment on #74 or a pasted export), the unit is triaging them per �
 A/B protocol. If they have not, the unit continues **phase 8 — C2 calibration campaign**. A
 human gate is never a reason for a session to end with nothing built.
 
-**Phase 8 is UNDER WAY: #180 landed 2026-08-06** — the live engine now has a calibration
-harness, and it found the game closes **2.2%** of worked ups against #94's 85%. Remaining in
-the phase: **#181** (early-game floor verification, which #180 unblocked) then **#286** (the
-retune that closes the gap). Read the #286 comment before touching any pricing tunable — the
-mechanism is measured, and the obvious lever was already tried and reverted.
+**Phase 8 is UNDER WAY: #180 landed 2026-08-06, #181 landed 2026-08-07** — the live engine has
+a calibration harness (it closes **2.2%** of worked ups against #94's 85%) and now a measured
+**floor** underneath it. Remaining in the phase: **#286**, the retune that closes the gap.
+Read the #286 comment before touching any pricing tunable — the mechanism is measured, and the
+obvious lever was already tried and reverted. **#286 now has two commitments to satisfy, not
+one:** raise `live` toward `reference`, *and* keep `earlyGame` below it by its stated margin —
+the schema refuses a `data/market-calibration.json` where the floor is not a floor.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -287,6 +289,27 @@ mechanism is measured, and the obvious lever was already tried and reverted.
   hand-copied between `CustomerPool` and the #94 harness; the weights now live in
   `data/sales-process.json` `heat` and must sum to 1 (schema-refused otherwise). Do not
   re-derive the formula at a call site — that duplication is what let the two drift.
+- **A green operator's floor is a QUALITY floor, not a volume floor** (#181). The green solo
+  profile (0.35/0.40) closes 3.0% of worked ups against the competent 0.75/0.75 operator's
+  2.4% — but **every one of those closes is a low-trust forced close** (0.0% positive against
+  `live`'s 2.2%), and `trust_collapse` walks go 17 → 115. Do not "fix" a future #181 failure
+  by expecting green to sell *less*; the axis skill moves here is whether the customer leaves
+  happy. `data/market-calibration.json#earlyGame` states its two margins as **distances** from
+  `live`/`reference`, and a schema refine enforces the whole band sits under
+  `live.positiveMin − marginBelowLive` — so #286 cannot raise `live` without moving the floor.
+- **Acquisitions are gated by sales, and that starves any per-acquisition band** (#181). A
+  six-space lot only reopens when a unit leaves, so a green store turns **9 units in 110 days
+  and 13 in 400**. The recon-tail *rate* band is therefore a documented ceiling guard, not a
+  measurement; the band with power is `reconOverrunMin/Max` (mean realized ÷ estimated recon,
+  every unit contributes — 1.087× measured against the 1.061 `data/recon-variance.json`
+  implies). Do not tighten the tail rate to look precise, and do not extend the run to chase
+  the denominator: 400 days buys 4 more units for 4× the runtime.
+- **Two customers can be held on the SAME unit, and resolving both throws** (#181 → **#364**).
+  Nothing reserves a vehicle while a `trade:escalated` / `discount:escalated` review is
+  pending; the first resolution drives it off the lot and the second dies on `No lot vehicle`
+  inside `DealEngine.closeDeal`. Ordinary on a six-space lot, reachable in the app. The #181
+  harness `try/catch`es it and tallies `escalationsLostToSoldUnit`; **that guard is the
+  workaround, not the fix** — #364 owns what the second customer actually sees.
 - **The #180 harness deliberately capitalizes its bot** (`BOT.floatFloor`/`floatTopUp`). At a
   2% close rate the store goes insolvent long before 600 worked ups, which would silently
   shrink N and make the bands move whenever calibration changed. Solvency + pacing are the
@@ -421,43 +444,51 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   Next: **phase 8, C2 calibration (#286 + #180/#181)** unless the director's round-1 notes
   land first, in which case triage those. The gate does not block the queue.
 
-- 2026-08-06 — **BUILT #362** (wholesale this unit — the release valve). **Phases 6 and 7 are
-  COMPLETE.** The only path that turned a unit back into cash was abandoning recon after a
-  surprise, so with the lot cap live (#361) sitting at 35 of 35 holding three units nobody
-  wants was a dead end with no move in it. Now there is one, and it costs you something.
-  **One rule for the price: book value with a `data/` haircut.** Off **book**, never off the
-  asking price — the ask is what you hope a retail customer pays, and a wholesale buyer is
-  buying to resell. That is exactly why the valve realizes a loss rather than being a free
-  undo. `getWholesaleQuote()` is the only place the rule lives; the room states it and never
-  re-derives a price or subtracts its own cost basis.
-  **Any owned unit, no second ceiling.** No gate on recon status and none on the #295
-  frontline hold: both describe a car already sitting on your lot burning money, and the
-  units you most want to dump are the ones you regret. This is also *not* the rejected
-  "forced wholesale on overrun" — the player picks the unit and sees the number.
-  **The quote is a pure read, which is what makes the confirmation possible.** This is the
-  one action that realizes a loss on purpose, so it never fires off a single tap: the sheet
-  says what the buyer pays, what you have in it, and *$2,598 loss* in red. A valve whose
-  price you cannot read is not a decision.
-  **Both wholesale-outs now leave by the same door, and that fixed a real defect.**
-  `inventory:vehicle_wholesaled` is published by this valve *and* by the #162 recon abandon.
-  It is deliberately not `inventory:vehicle_sold` — that event means a person bought this
-  car, and MarketEconomy was recording the abandon-path dump as a **retail comp**, feeding a
-  wholesale price into the segment's price index; InstalledBase was staging the wholesaler as
-  a future owner. The abandon path keeps #162's price rule; only which event it is stopped
-  being a lie.
-  **HistoryLog records it with its own `inventory` kind and a plain badge** — *"Wholesaled the
-  2022 Chevrolet Silverado 1500 — $14,724, a $2,598 loss."* Naming the car matters: this is
-  what you look back at when the month closes short. It must never wear the reward badge a
-  closed retail deal wears.
-  **Driven on web at a T3 store, single clicks.** Wholesaled a Silverado for $14,724 against a
-  $17,322 basis; cash moved $190,925 → **$205,649** exactly, the lot 8 of 12 → 7 of 12, and
-  the entry landed in Deal History under a grey INVENTORY badge between two gold SALEs. Then
-  stood the store at its cap (`built.lotSpaces` → 7 in the slot, restored after) and reloaded:
-  *7 of 7 spaces taken · no spaces open*, *"No spaces open — sell a unit before you buy
-  another"*, auction lane closed. **Keep It** changed nothing. **Wholesale It** took the unit
-  and the same card flipped to *"The wholesale auction — where the next unit on this lot comes
-  from"*; the lane read *Lot: 6 of 7 spaces* and was buyable again — #359, #361 and #362
-  meeting with no extra wiring, because occupancy is read live. 217 suites / **2841** tests,
-  typecheck clean.
-  Next: **phase 8, C2 calibration** — but #74 (the round-1 playtest, HITL) sits ahead of it in
-  the commit sequence and is pending, not blocked.
+- 2026-08-07 — **BUILT #181** (the early-game floor — the progression has a proven bottom).
+  #180 proved the #94 calibration does not survive contact with the game for a **competent**
+  operator. #181 asks the complementary question: is there anywhere to climb *from*? A career
+  whose day-1 state performs like its end state has no progression in it, and every skill
+  gate, promotion and hire in `StaffOrg` would be decoration. Now there is a test that says
+  otherwise.
+  **The instrument is #180's, with one variable changed.** Same `createWorld`, same master
+  seed, same stocking bot, same six-space lot, same capital floor — only the operator differs.
+  `tests/MarketEconomy.earlyGameFloor.test.ts` runs the green solo operator the career starts
+  you as (0.35/0.40 raw composites) instead of 0.75/0.75, hires **no UCM**, never pays for a
+  pre-buy inspection, and leaves the trade policy at its `data/` default. Those are the four
+  things a green player has not bought yet. 200 worked ups over 110 days, deterministic, ~5s.
+  **Pinning an off-diagonal profile needed a real derivation.** #180 could fill every skill to
+  the same fraction, which lands on the diagonal (`E === T`). A green operator is deliberately
+  *off* it — better at being trusted than at closing — so the fill is parameterized by how
+  each skill leans (`fᵢ = α + β·leanᵢ`) and the two composites are solved as a 2×2 against the
+  live catalog. Hardcoding the three fractions would have let a retuned
+  `data/staff-skills.json` silently move the green profile; instead the realized profile is
+  asserted and a catalog change fails loudly.
+  **The finding is the SHAPE of the floor, not its height.** A green operator closes about as
+  often as a competent one — 3.0% of worked ups against #180's 2.4% — but **every single one
+  of those closes is a low-trust forced close**: 0.0% positive against `live`'s 2.2%, and
+  `trust_collapse` goes from 17 walks to 115, becoming the dominant non-fit reason. Skill does
+  not buy you volume in this economy; it buys you customers who are *happy*. That is a
+  cleaner, more interesting floor than "green sells less", and it is what the bands now
+  record.
+  **Margins are distances, not a second set of bands.** `data/market-calibration.json`
+  `earlyGame` states `marginBelowLive` / `marginBelowReference` as gaps from `live` and
+  `reference`, and a schema refine enforces that the whole early-game band sits under
+  `live.positiveMin − marginBelowLive`. When #286 raises `live`, the floor must move with it
+  or the assertion fails. A floor that stops being below the ceiling is not a floor.
+  **The recon-tail band is honestly labelled as a ceiling guard.** Acquisitions are gated by
+  sales — a six-space lot only reopens when a unit leaves — so a green store turns **9 units
+  in 110 days, and only 13 if ground out to 400**. Zero surprises fired against an expectation
+  of ~0.45. Banding a rare event over that denominator would be banding luck, so the rate gets
+  a documented ceiling and the load-bearing band is the **mean recon overrun** (realized ÷
+  estimate, every unit contributes): measured 1.087× against the 1.061 the
+  `data/recon-variance.json` bucket mix implies. Its min sits just under 1 on purpose — that
+  is the assertion that buying blind is a cost, not a coin flip. Both tighten on their own
+  once #286 makes the lot turn. Carrying burn came in at **$18.63/unit/day**.
+  **Filed #364 in passing.** Two customers can be held on the *same* unit — a six-space lot
+  makes it ordinary — and whoever is resolved first drives it away; resolving the second
+  throws `No lot vehicle` straight out of `resolvePlayerDiscountDecision`. Reachable in the
+  app, not a harness artifact. The test guards and tallies it rather than asserting around it;
+  what the second customer should *see* is a design call about the prompt, not a calibration
+  change. 219 suites / **2863** tests, typecheck clean.
+  Next: **#286** — the retune that closes the #180 gap. It now has a floor to preserve as well
+  as a ceiling to reach.

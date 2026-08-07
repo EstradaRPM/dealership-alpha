@@ -6,6 +6,47 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **BUILT #362** (wholesale this unit — the release valve). **Phases 6 and 7 are
+  COMPLETE.** The only path that turned a unit back into cash was abandoning recon after a
+  surprise, so with the lot cap live (#361) sitting at 35 of 35 holding three units nobody
+  wants was a dead end with no move in it. Now there is one, and it costs you something.
+  **One rule for the price: book value with a `data/` haircut.** Off **book**, never off the
+  asking price — the ask is what you hope a retail customer pays, and a wholesale buyer is
+  buying to resell. That is exactly why the valve realizes a loss rather than being a free
+  undo. `getWholesaleQuote()` is the only place the rule lives; the room states it and never
+  re-derives a price or subtracts its own cost basis.
+  **Any owned unit, no second ceiling.** No gate on recon status and none on the #295
+  frontline hold: both describe a car already sitting on your lot burning money, and the
+  units you most want to dump are the ones you regret. This is also *not* the rejected
+  "forced wholesale on overrun" — the player picks the unit and sees the number.
+  **The quote is a pure read, which is what makes the confirmation possible.** This is the
+  one action that realizes a loss on purpose, so it never fires off a single tap: the sheet
+  says what the buyer pays, what you have in it, and *$2,598 loss* in red. A valve whose
+  price you cannot read is not a decision.
+  **Both wholesale-outs now leave by the same door, and that fixed a real defect.**
+  `inventory:vehicle_wholesaled` is published by this valve *and* by the #162 recon abandon.
+  It is deliberately not `inventory:vehicle_sold` — that event means a person bought this
+  car, and MarketEconomy was recording the abandon-path dump as a **retail comp**, feeding a
+  wholesale price into the segment's price index; InstalledBase was staging the wholesaler as
+  a future owner. The abandon path keeps #162's price rule; only which event it is stopped
+  being a lie.
+  **HistoryLog records it with its own `inventory` kind and a plain badge** — *"Wholesaled the
+  2022 Chevrolet Silverado 1500 — $14,724, a $2,598 loss."* Naming the car matters: this is
+  what you look back at when the month closes short. It must never wear the reward badge a
+  closed retail deal wears.
+  **Driven on web at a T3 store, single clicks.** Wholesaled a Silverado for $14,724 against a
+  $17,322 basis; cash moved $190,925 → **$205,649** exactly, the lot 8 of 12 → 7 of 12, and
+  the entry landed in Deal History under a grey INVENTORY badge between two gold SALEs. Then
+  stood the store at its cap (`built.lotSpaces` → 7 in the slot, restored after) and reloaded:
+  *7 of 7 spaces taken · no spaces open*, *"No spaces open — sell a unit before you buy
+  another"*, auction lane closed. **Keep It** changed nothing. **Wholesale It** took the unit
+  and the same card flipped to *"The wholesale auction — where the next unit on this lot comes
+  from"*; the lane read *Lot: 6 of 7 spaces* and was buyable again — #359, #361 and #362
+  meeting with no extra wiring, because occupancy is read live. 217 suites / **2841** tests,
+  typecheck clean.
+  Next: **phase 8, C2 calibration** — but #74 (the round-1 playtest, HITL) sits ahead of it in
+  the commit sequence and is pending, not blocked.
+
 - 2026-08-06 — **BUILT #361** (the lot cap governs buying — *6 of 6 spaces taken · no spaces
   open*). Lot size has been CSV tier truth since the beginning and nothing enforced it, so
   "match your inventory to demand" had no squeeze in it. Now it does: a full lot at the wrong
