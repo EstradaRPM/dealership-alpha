@@ -76,8 +76,8 @@ export interface PlaytestStepEntry extends EntryBase {
 }
 
 /** An answer to a scripted watch-probe (#333) — the short in-the-moment
- *  question, asked on the phone at the moment it's answerable. The 12-question
- *  observation sheet stays a keyboard exercise; these are not it. */
+ *  question, asked on the phone at the moment it's answerable. The observation
+ *  sheet stays a keyboard exercise; these are not it. */
 export interface PlaytestAnswerEntry extends EntryBase {
   kind: 'answer';
   ctx: PlaytestContext;

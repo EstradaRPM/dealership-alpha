@@ -6,6 +6,50 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-06 — **DIRECTOR-REQUESTED, NOT A `/next` UNIT: People tab rebuilt as collapsible
+  department panels.** No issue number and no phase moved — the director asked for it directly
+  mid-session, between #360 and #361. **#361 is still the next unit.**
+  **The tab is now organised the way the store is**: three regions (who works here, who you
+  could hire, what your managers run), and inside the first two, **one collapsible panel per
+  department** — Sales, Service, Body Shop, Store-Wide — each with the glyph and accent the
+  Operations dock already gives it, its own desk count in the header (*3 of 2 desks filled*),
+  an `N open` / `Full` badge, its own slot board and its own people. Before this, a service
+  advisor and a salesperson were the same undifferentiated row in one flat column.
+  **Department is read off `data/staff-roles.json`, never a second list.** `departmentOfRole()`
+  in `src/app/config.ts` resolves it from the same catalog the promotion DAG and the capability
+  gates are written against, so a promotion moves someone between panels for free. Roles the
+  catalog leaves null (lot porter, GM) land in a named **Store-Wide** group rather than a
+  nameless bucket.
+  **`Collapsible` is a KIT primitive, not a per-surface `useState`** (`src/ui/kit/`,
+  documented in `kit/CLAUDE.md`). Three rules it exists to hold: the header is the whole
+  affordance (`title`/`summary`/`accessory`, so a *shut* panel still says what is in it and
+  whether it needs attention); a shut body **unmounts**, because a hidden-but-mounted subtree
+  keeps doing work nobody asked for; and `pinned` is the one narrow exception — content that
+  shows open or shut.
+  **People are folded too, and `pinned` is why that is safe.** A roster card shuts to name ·
+  job · *Grade 3 · $340/day* and opens onto the composites, every skill axis and Promote /
+  Let go. A raise or rival offer opens the card **and pins its prompt**, so folding someone
+  away can never fold away a question waiting on an answer. Applicant cards shut to name ·
+  wage · signing fee **with the Hire button on the shut card** — hiring is the action the pool
+  exists for and must never be a second tap behind a fold.
+  **Consequence for tests, stated because it will look like a regression otherwise:** the
+  promote/fire buttons and the skill meters are now one tap behind a card header, so
+  `PeopleTab.smoke` and `StaffPromotion.reachability` press `<card>-header` first — that IS
+  the player's tap path. `people-slot-board` became `people-slot-board-<dept>`. The read
+  models grew a required `department` field (`PeopleRosterMember`, `PeopleCandidate`,
+  `PeopleRoleOption`, `PeopleSlotRow`), and `PeopleTab.tsx` was split into `peopleModel.ts` /
+  `peopleCards.tsx` / `departments.ts` behind the same barrel.
+  **Driven on web at the T2 fixture, single clicks.** Folded and unfolded the Sales panel;
+  opened a person and got their meters with the pay line still pinned; selected *Service
+  Advisor* and watched the applicant pool move into the **Service** hiring panel; hired Tessa
+  Nakamura and the Service team panel flipped *1 open · 0 of 1* → **Full · 1 of 1** with her
+  under it, in place, no route change. Console clean of anything from this surface. 216 suites
+  / **2814** tests, typecheck clean.
+  The Tier-2 fixture's *Used Car Manager 1 of 0* row is visible again under the Sales panel —
+  that is the stale-fixture state already recorded in Blockers, displayed plainly on purpose.
+  Not a defect; do not "fix" it.
+  Next: **BUILD #361** (lot cap governs buying — "31 of 35" — trade always lands).
+
 - 2026-08-06 — **BUILT #360** (the facility gate face — the dormant fifth face gets a
   producer). *Facility Build-Out · 23% built vs 50%*. The face has been declared in
   `data/tier-gate.json` since #232 and skipped defensively by the engine ever since,

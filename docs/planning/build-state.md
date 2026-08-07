@@ -10,17 +10,18 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Current phase
 
-**Phase 8 — C2 calibration campaign (#286 + #180/#181).**
+**Phase 5 — #74 round-1 playtest (HITL). The script is prepared, verified and HANDED OVER
+as of 2026-08-06.** It now sits with the director; nothing in the repo blocks it.
 
 **Phases 6 and 7 are COMPLETE as of 2026-08-06** — the whole #352–#362 slice landed. Both
 gates were closed before a line was written (C1 2026-08-02 `staff-teeth-design.md`, A2
 2026-08-03 `path-to-finished-product.md` §3 A2) and nothing in the slice reopened them.
 
-Phase 5 (#74, the round-1 playtest) sits ahead of phase 8 in the commit sequence and is
-**pending, not blocked** — the doors are fixed and the script is
-`docs/planning/playtest-round-1.md`, presented in-game (#332/#333). It is an HITL unit: the
-next `/next` that picks it prepares and hands over the script, and the artifact is the filed
-calibration notes.
+**The next `/next` does NOT wait on the playtest.** If the director's round-1 notes have
+landed (as a comment on #74 or a pasted export), the unit is triaging them per §7's Class
+A/B protocol. If they have not, the unit is **phase 8 — C2 calibration campaign (#286 +
+#180/#181)**, which is where the pointer goes on its own. A human gate is never a reason for
+a session to end with nothing built.
 
 | # | Slice | Phase |
 |---|---|---|
@@ -46,10 +47,20 @@ calibration notes.
   destinations, and walking into a room no longer unmounts the console. **Do not re-grill the
   IA** — `docs/planning/second-level-ia.md` (locked 2026-06-12) stays authoritative; where
   shipped and locked disagree, locked wins.
-- **Phase 5 (#74) is no longer blocked on the doors.** The script is still
-  `docs/planning/playtest-round-1.md`, presented in-game (#332/#333); its §1 "no web path" line
-  is stale as of #338. It sits behind the 6+7 slice in the commit sequence, not behind any
-  defect.
+- **The round-1 script was REFRESHED against the shipped app on 2026-08-06 and is now
+  accurate — do not re-walk it from the pre-5c version.** Every navigation path in the old
+  script had drifted: hiring moved to **People → Hiring**, the auction is entered from
+  **Operations → Lot → Go to the Auction**, and the demand readout / market report / wire all
+  moved off Home into **Growth** (Home keeps a Market *glance* that routes there). The known-
+  dark list still claimed Finance and Growth were placeholder tabs. Both halves were rewritten
+  together — `docs/planning/playtest-round-1.md` and `data/playtest-script.json`, which is what
+  the phone actually renders — and the card was re-read in the running app.
+- **The script now also measures phases 6 + 7, which did not exist when it was written**:
+  wages and the signing fee on the Day 0 hire, payroll on the Day 3 second hire, the six-space
+  lot cap on the Day 2 buy, the wholesale quote on Day 4 and the valve on Day 5, and a roster
+  sweep for raise asks / rival offers (which sit on a person's card and never interrupt — that
+  is deliberate, and whether the player *finds* them is a round-1 question, not a defect to
+  pre-emptively fix). The observation sheet is 14 questions, not 12.
 - **Both staff gates are ruled — no decision stands in front of the next build.** `/decide C1`
   2026-08-02, `/decide A2` 2026-08-03. A2's rejected alternatives (overflow lot, forced
   wholesale, refused trades, soft cap, prep-as-its-own-capacity) are recorded **with reasons**
@@ -262,7 +273,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 2 | A4 silent-system surfacing: #267, #187, #179, manager status card, recovery states, indictment producers | — | done |
 | 3 | B1 Reveal ranking + records | — | done |
 | 4 | B3 news/adverse-events engine (#176–#179) | — | done |
-| 5 | C3 playtest gate (#74), round 1 — HITL | — | pending (doors fixed; sequenced after the 6+7 slice) |
+| 5 | C3 playtest gate (#74), round 1 — HITL | — | **handed over 2026-08-06** — script refreshed + verified in-app; with the director. Closes on their verdict |
 | 5c | UI layout rebuild — #346 Operations · #347 People · #348 nav stacks · #349 Growth · #350 chart kit · #351 Finance (all built 2026-08-02) | — (locked IA already ruled it) | done |
 | 5a | Agent-harness hardening (#334→#340→#335→#336→#337→#338; #339 sliced into #343→#344→#345, all built; see `docs/agent-workflow-notes.md`) | — | done |
 | 5b | Module-boundary debt clearance (#341, #342), surfaced by #335's scan | — | done |
@@ -287,6 +298,44 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-06 — **HANDED OVER: the #74 round-1 playtest script (phase 5, HITL).** The unit
+  was preparing the script and giving it to the director. Preparing it turned out to be real
+  work: the script was written before the 5c layout rebuild and before phases 6 and 7, and
+  **every navigation path in it had gone stale.**
+  **What had drifted.** Hiring is on **People → Hiring**, not Operations. The auction is
+  entered from **Operations → Lot → Go to the Auction** — the Lot owns sourcing (locked IA
+  §4). The demand readout, the weekly market report and the industry wire all moved off Home
+  into **Growth**; Home keeps a Market *glance* whose whole job is to route there, so "read
+  Home top-to-bottom" would have had the director staring at a two-line card. The wire's paid
+  lanes are named "auction data feed" and "competitor price tracking" on screen, not
+  `auction_data`/`competitor_tracking`. And the known-dark list still told them Finance and
+  Growth were placeholder tabs — 5c built both. A stale script is worse than no script: it
+  spends the one resource this gate is short of, which is the director's patience.
+  **What it now measures that it couldn't before.** Day 0's hire reads the signing fee and
+  the daily wage and then the payroll line (hiring costs money twice now); Day 2's buy happens
+  against a six-space lot the seed already fills half of; Day 3's second hire is a capacity
+  question *with a price on it*; Day 4 reads the wholesale quote without taking it and sweeps
+  the roster for raise asks and rival offers; Day 5 takes the valve if the unit still hasn't
+  sold, and reads the Growth console including Build Out and the gate board. Session B gained
+  payroll-at-T2, a roster sweep, and "do you know what would get you to Tier 3".
+  **Both halves were rewritten together.** `docs/planning/playtest-round-1.md` is the human
+  doc; `data/playtest-script.json` is what the phone actually presents (#333) and is the one
+  the director will read at 11pm on day 4. Editing only the doc would have shipped the drift.
+  **Deliberately NOT fixed, because it is a round-1 question.** A raise ask and a rival's
+  offer wait on a person's card and never interrupt — so a player who doesn't open People can
+  lose someone to a rival and only learn it from Deal History. Whether that reads as tension
+  or as a missed beat is exactly what the round is for; pre-emptively adding an interrupt
+  would answer it for them. It is a script step and a probe instead.
+  **Two stale claims corrected in passing:** §5 said nothing in the UI showed the finance mix
+  — Finance now splits gross into Cash vs Financed and Deal History names the method per
+  deal, so the gap narrowed to down payment / credit tier / the credit-blocked walk reason.
+  And `data/nav-tabs.json`'s `_doc` still called three tabs placeholders.
+  **Verified in the running app**, not just typechecked: reloaded the web target and reopened
+  the guide — the Day 0 card renders all seven new steps, both probes and the new known-dark
+  list, and the button reads **▤ 1/9 · 0/7**. 217 suites / **2841** tests, typecheck clean.
+  Next: **phase 8, C2 calibration (#286 + #180/#181)** unless the director's round-1 notes
+  land first, in which case triage those. The gate does not block the queue.
 
 - 2026-08-06 — **BUILT #362** (wholesale this unit — the release valve). **Phases 6 and 7 are
   COMPLETE.** The only path that turned a unit back into cash was abandoning recon after a
@@ -368,46 +417,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   and threw nothing on the rollover. 216 suites / **2828** tests, typecheck clean.
   Next: **BUILD #362** (wholesale this unit — the aged-inventory release valve).
 
-- 2026-08-06 — **DIRECTOR-REQUESTED, NOT A `/next` UNIT: People tab rebuilt as collapsible
-  department panels.** No issue number and no phase moved — the director asked for it directly
-  mid-session, between #360 and #361. **#361 is still the next unit.**
-  **The tab is now organised the way the store is**: three regions (who works here, who you
-  could hire, what your managers run), and inside the first two, **one collapsible panel per
-  department** — Sales, Service, Body Shop, Store-Wide — each with the glyph and accent the
-  Operations dock already gives it, its own desk count in the header (*3 of 2 desks filled*),
-  an `N open` / `Full` badge, its own slot board and its own people. Before this, a service
-  advisor and a salesperson were the same undifferentiated row in one flat column.
-  **Department is read off `data/staff-roles.json`, never a second list.** `departmentOfRole()`
-  in `src/app/config.ts` resolves it from the same catalog the promotion DAG and the capability
-  gates are written against, so a promotion moves someone between panels for free. Roles the
-  catalog leaves null (lot porter, GM) land in a named **Store-Wide** group rather than a
-  nameless bucket.
-  **`Collapsible` is a KIT primitive, not a per-surface `useState`** (`src/ui/kit/`,
-  documented in `kit/CLAUDE.md`). Three rules it exists to hold: the header is the whole
-  affordance (`title`/`summary`/`accessory`, so a *shut* panel still says what is in it and
-  whether it needs attention); a shut body **unmounts**, because a hidden-but-mounted subtree
-  keeps doing work nobody asked for; and `pinned` is the one narrow exception — content that
-  shows open or shut.
-  **People are folded too, and `pinned` is why that is safe.** A roster card shuts to name ·
-  job · *Grade 3 · $340/day* and opens onto the composites, every skill axis and Promote /
-  Let go. A raise or rival offer opens the card **and pins its prompt**, so folding someone
-  away can never fold away a question waiting on an answer. Applicant cards shut to name ·
-  wage · signing fee **with the Hire button on the shut card** — hiring is the action the pool
-  exists for and must never be a second tap behind a fold.
-  **Consequence for tests, stated because it will look like a regression otherwise:** the
-  promote/fire buttons and the skill meters are now one tap behind a card header, so
-  `PeopleTab.smoke` and `StaffPromotion.reachability` press `<card>-header` first — that IS
-  the player's tap path. `people-slot-board` became `people-slot-board-<dept>`. The read
-  models grew a required `department` field (`PeopleRosterMember`, `PeopleCandidate`,
-  `PeopleRoleOption`, `PeopleSlotRow`), and `PeopleTab.tsx` was split into `peopleModel.ts` /
-  `peopleCards.tsx` / `departments.ts` behind the same barrel.
-  **Driven on web at the T2 fixture, single clicks.** Folded and unfolded the Sales panel;
-  opened a person and got their meters with the pay line still pinned; selected *Service
-  Advisor* and watched the applicant pool move into the **Service** hiring panel; hired Tessa
-  Nakamura and the Service team panel flipped *1 open · 0 of 1* → **Full · 1 of 1** with her
-  under it, in place, no route change. Console clean of anything from this surface. 216 suites
-  / **2814** tests, typecheck clean.
-  The Tier-2 fixture's *Used Car Manager 1 of 0* row is visible again under the Sales panel —
-  that is the stale-fixture state already recorded in Blockers, displayed plainly on purpose.
-  Not a defect; do not "fix" it.
-  Next: **BUILD #361** (lot cap governs buying — "31 of 35" — trade always lands).

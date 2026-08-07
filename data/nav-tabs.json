@@ -1,5 +1,5 @@
 {
-  "_doc": "The canonical, fixed 5-tab IA (fork 1, re-validated 2026-06-10). Always present — navigation is NOT gated by tier; progression is altitude rising INSIDE each surface (spine §2), never tabs appearing/disappearing. Home + Operations back live surfaces today; People/Finance/Growth are placeholders until their per-surface rebrand slice (via /map-mockup) lands. tagline = the one-line description of what each strategic surface becomes.",
+  "_doc": "The canonical, fixed 5-tab IA (fork 1, re-validated 2026-06-10). Always present — navigation is NOT gated by tier; progression is altitude rising INSIDE each surface (spine §2), never tabs appearing/disappearing. All five back live surfaces as of the 5c layout rebuild (#346-#351) — no tab is a placeholder. tagline = the one-line description of what each strategic surface is for.",
   "tabs": [
     { "key": "home", "label": "Home" },
     { "key": "operations", "label": "Operations" },

@@ -65,9 +65,9 @@ An unticked step is signal — it usually means the instruction couldn't be
 followed — so the export renders the full script with its checkboxes rather than
 only the entries that exist.
 
-The 12-question observation sheet stays a keyboard exercise (see the note at the
+The observation sheet stays a keyboard exercise (see the note at the
 bottom). Probes are the short, in-the-moment half; the sheet is the reflective
-half, and typing twelve paragraphs on a phone is its own friction.
+half, and typing that many paragraphs on a phone is its own friction.
 
 ## Events
 
@@ -119,7 +119,7 @@ All three are `__DEV__`-gated at the `AppOverlays` composition site.
 
 ## Note
 
-The 12-question observation sheet stays in
+The observation sheet stays in
 `docs/planning/playtest-round-1.md` — it is post-session reflection answered at
 a keyboard. This log is the *evidence* that makes answering it recall rather
 than reconstruction.

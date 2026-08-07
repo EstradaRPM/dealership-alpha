@@ -189,7 +189,7 @@ function RoundComplete({ onClose }: { onClose: () => void }) {
         1. DEV → PLAYTEST LOG → Export, and send that markdown.
       </Text>
       <Text style={styles.stepText}>
-        2. Answer the 12-question observation sheet in
+        2. Answer the 14-question observation sheet in
         docs/planning/playtest-round-1.md §6.
       </Text>
       <TouchableOpacity style={[styles.btn, styles.doneBtn]} onPress={onClose}>
