@@ -579,6 +579,10 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         grossImpact: result.frontGross + result.backGross,
         matchQuality: match.matchQuality,
         vehicleCategory: vehicle.category,
+        // #151: which make the store just delivered — the canonical brand id,
+        // the same join key the match scored the unit by. Reputation carries
+        // per-brand standing off this paired with `badReview` below.
+        brand: vehicle.brand,
         archetypeLabel: session.archetypeLabel,
         // The low-trust forced close (#180) — they bought, and they'll say
         // something about it. Read off the close that actually happened.

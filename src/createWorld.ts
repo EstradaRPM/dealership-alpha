@@ -111,6 +111,7 @@ import { createEndCardManager, type EndCardManager } from './game/EndCard';
 import {
   createRegulatoryMeter,
   createReputation,
+  loadReputationConfig,
   type RegulatoryMeter,
   type Reputation,
 } from './game/Reputation';
@@ -476,7 +477,10 @@ export function createWorld(deps: {
   // floorplan APR scales with it (better tier → cheaper money). Reputation
   // drifts overnight and takes deal/walk hits via the bus; TierManager advances
   // off the monthly tier-gate verdict streak (#250), not an instantaneous check.
-  const reputation = createReputation({ bus, economy });
+  // Loaded here rather than left to the module default because the match seam
+  // below needs the same file's `brandReputation.matchWeight` (#151).
+  const reputationConfig = loadReputationConfig();
+  const reputation = createReputation({ bus, economy, config: reputationConfig });
   // #250 — the per-tier advancement streak lengths live in tier-gate.json's
   // `streak` field (composition root reads the shared tunable and injects it, so
   // TierManager stays decoupled from the TierGate module).
@@ -1201,6 +1205,13 @@ export function createWorld(deps: {
           marketPriceFn: marketEconomy.marketPriceFn,
           vehicleCostFn: marketEconomy.vehicleCostFn,
           bookValueFn: marketEconomy.bookValueFn,
+          // #151 (B2 I6): the store's standing selling that make tilts the
+          // argmax. `repFor` is the honest state ∈ [-1,1]; the weight that turns
+          // it into a score term is the matcher's business, so it is applied
+          // here at the boundary rather than baked into the module's read. Read
+          // live, so a brand's record moves the next customer's match.
+          reputationBonusFn: (brand) =>
+            reputation.repFor(brand) * reputationConfig.brandReputation.matchWeight,
         },
         // #231 S2: season demand lean. Biases the customer want-vector for the
         // resolution day before the match, so the seasonal effect is emergent

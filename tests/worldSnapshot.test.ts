@@ -487,7 +487,9 @@ describe('Reputation snapshot/restore (#192)', () => {
     const reviewBefore = reputation.reviewScore;
 
     const snap = reputation.snapshot();
-    expect(snap.schemaVersion).toBe(1);
+    // v2 since #151 folded per-brand standings into the blob — the module's own
+    // schemaVersion, not an envelope bump (the `modules` key set is unchanged).
+    expect(snap.schemaVersion).toBe(2);
     expect(snap.marketingBudget).toBe(750);
 
     const fresh = createReputation({ bus: createEventBus() });

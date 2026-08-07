@@ -105,6 +105,13 @@ discount_below_cost | discount_haggle_exhausted | <WalkCause>`). A pending
 player declines or accepts a decision through the held-review closure. The
 sole `declined` path is an unstaffed floor.
 
+On `closed` it also carries **`brand`** (#151) — the matched unit's canonical
+brand id, the same join key the match scored it by. Reputation is the sole
+consumer: paired with `badReview` below it is "which make we just delivered, and
+how the delivery went", the whole input to per-brand standing. Never a display
+make string (#224), and never present on a `no_sale` — a customer who did not
+buy the car says nothing about it.
+
 `staff:auto_resolved` also carries the live close's own quadrant (#180). On
 `closed` it carries **`badReview`** — `CloseResult.badReview`, the low-trust
 forced close that is the "negative-but-deal" calibration band. Before #180 the

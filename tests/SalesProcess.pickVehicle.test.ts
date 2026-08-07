@@ -143,6 +143,53 @@ describe('SalesProcess pickVehicleFor', () => {
   });
 });
 
+// #151: brand standing is the third term of the argmax, beside want-axis fit
+// and the price penalty. Wired at the composition root to `Reputation.repFor`
+// scaled by the matcher weight; omitted here ⇒ every make scores alike.
+describe('SalesProcess pickVehicleFor — brand reputation', () => {
+  // Price-insensitive so the price term cannot explain a flip: with no wants
+  // and no reputation, both units tie and V-001 takes it on the stable
+  // id tie-break. Reputation is then the only thing that can move the winner.
+  const insensitive: MatchCustomer = { ...baseCustomer, priceSensitivity: 0 };
+
+  it('brand reputation moves the match score', () => {
+    expect(pickVehicleFor(insensitive, [vehicleA, vehicleB])).toBe('V-001');
+
+    // Standing on B's make (toraya) outweighs the tie-break.
+    const trustsToraya = pickVehicleFor(insensitive, [vehicleA, vehicleB], {
+      reputationBonusFn: (brand) => (brand === 'toraya' ? 0.15 : 0),
+    });
+    expect(trustsToraya).toBe('V-002');
+  });
+
+  it('a distrusted brand loses the match to its twin', () => {
+    // Same car twice, differing only in make — so nothing but standing can
+    // decide it. B's id sorts later, so it only wins by being preferred.
+    const twinVanda: MatchableVehicle = { ...vehicleA, id: 'V-100', brand: 'vanda' };
+    const twinToraya: MatchableVehicle = { ...vehicleA, id: 'V-200', brand: 'toraya' };
+    const lot = [twinVanda, twinToraya];
+
+    // Neutral on both: the tie-break picks the lower id.
+    expect(pickVehicleFor(insensitive, lot)).toBe('V-100');
+
+    // Below-neutral standing on vanda suppresses engagement with its unit,
+    // handing the identical toraya the match.
+    const distrustsVanda = pickVehicleFor(insensitive, lot, {
+      reputationBonusFn: (brand) => (brand === 'vanda' ? -0.15 : 0),
+    });
+    expect(distrustsVanda).toBe('V-200');
+  });
+
+  it('an unseen make scores exactly as it did before any brand had a record', () => {
+    // The neutral default is not a special case: a 0 standing must leave the
+    // pre-#151 argmax untouched.
+    const withNeutralRep = pickVehicleForMatch(baseCustomer, [vehicleA, vehicleB], {
+      reputationBonusFn: () => 0,
+    });
+    expect(withNeutralRep).toEqual(pickVehicleForMatch(baseCustomer, [vehicleA, vehicleB]));
+  });
+});
+
 // #199: the match-quality variant carries the want-axis fit of the winner —
 // the signal the floor toast + recap "strong match" tally threshold against.
 describe('SalesProcess pickVehicleForMatch', () => {

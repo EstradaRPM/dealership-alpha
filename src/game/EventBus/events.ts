@@ -640,6 +640,15 @@ export interface EventMap {
      */
     vehicleCategory?: 'sedan' | 'truck' | 'suv';
     /**
+     * The matched vehicle's **canonical brand id** (#151 — never a display
+     * make string, #224). Present only on `outcome: 'closed'`, the same
+     * coverage as `vehicleCategory`. Reputation carries per-brand standing off
+     * this: which make the store just delivered, paired with `badReview` for
+     * how the delivery went. A walk carries no brand — a customer who never
+     * owned the car says nothing about it.
+     */
+    brand?: string;
+    /**
      * The customer's archetype label, e.g. `'Young Family'` — the same label
      * `customer:arrived` carries. Present on `outcome: 'closed'` (#320, the
      * "who" half of the starred win reaction) and on `outcome: 'no_sale'`

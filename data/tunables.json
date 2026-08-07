@@ -396,6 +396,12 @@
     "demandReviewSlope": 0.015,
     "marketingSaturation": 1000,
     "marketingMaxBoost": 0.6,
+    "brandReputation": {
+      "closedDealBonus": 0.05,
+      "badReviewPenalty": -0.2,
+      "driftRate": 0.02,
+      "matchWeight": 0.15
+    },
     "seasonDemandMultiplier": {
       "spring": 1,
       "summer": 1.15,

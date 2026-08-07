@@ -6,6 +6,60 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-07 — **BUILT #286** (the C2 retune — **phase 8 COMPLETE**). #180 measured that the
+  live engine closes 2.2% of worked ups against #94's 85% and named the price floor as the
+  rejecting mechanism. #286 had to find out *why the floor was where it was*, and the answer
+  was not the one #180 filed.
+  **The diagnosis contradicted the hypothesis, and measuring beat theorising.** #180's write-up
+  blamed the reservation model — a best-of-six lot yielding Value ≈ 0.4 against #94's perfect
+  0.85, dragging willingness-to-pay under cost. I instrumented `closeAndPrice` on the live floor
+  before touching a tunable, and the customers were fine: Value measured **0.599** (not 0.4),
+  price sensitivity **0.41** (not the 0.6–0.85 the issue assumed), the reservation price sat
+  **6.5% ABOVE our ask**, and the quadrant was accepting **58%** of worked ups. What was broken
+  was the store: **`floor/ask` = 1.32**. Our cost basis was a third higher than our own asking
+  price, so `closeable` was false 91% of the time and nothing downstream ever got a say.
+  **Four terms produced that, and every one was a mis-model rather than a number wanting a
+  nudge.** (1) Recon was a **flat dollar figure per condition** ($500/$1,200/$2,800) applied to
+  a catalog spanning a $3.5k beater and a $40k luxury car — on the tier-1 lot a rough unit's
+  recon ran to *half its value* while the anchor's condition discount takes only 12% off, so
+  buying rough was never a decision, it was a trap. It is now
+  `conditionTiers[*].reconPct` (0.04/0.09/0.16), one rule in `Inventory.reconEstimateFor`, read
+  by all three acquisition lanes. (2) The **auction lane centred at book with a 1.20 ceiling** —
+  you could pay 20% *over* book at a wholesale auction, while `inventory.wholesale.haircutPct`
+  pays you out at book × 0.85 on the way out. Centring the buy side at 0.85 makes the two sides
+  of one market symmetric. (3) The **retail markup (1.20–1.28) was thinner than the basis it
+  had to cover**; +0.10. (4) A **modelling bug the retune exposed**: a wholesale comp was
+  measured against the bare anchor, so the moment the lane moved below book *every purchase*
+  recorded a negative comp and drifted the segment down — buying well would have quietly
+  devalued the player's own inventory. Wholesale comps now reference `anchor ×
+  motivatedSeller.meanMultiplier`, symmetric with retail's `anchor × markup`.
+  **The result: `live` positive 2.2% → 28.5%**, apathetic 97.7% → 64.5%, negative-deal 0.2% →
+  7.0%, 213 closes against 88. The early-game floor **held its shape** — a green operator still
+  closes at a rate a competent one would recognise while almost none of those customers leave
+  happy (0.5% positive against 28.5%) and `trust_collapse` is still its signature walk (106 vs
+  11). Skill buys happy customers here, not volume, and that is still true after the retune.
+  **The balance harness is the business-level proof:** it went from the standing "bankrupts
+  before Tier 2" to **90 of 100 seeds reaching T2**, median survival the full 360 days.
+  **Two things I did not tune away.** `no_fit` rose 51% → 71%, and it is real: the lot is
+  measurably FULL (6.01 of 6 spaces) and still cannot match 7 of 10 walk-ins, because six cars
+  is a thin draw against six SPACED axes plus an affordability gate. It rose because cars now
+  *sell*, so composition churns. That is the pressure that makes lot spaces worth building —
+  A2 R1's whole point. And the residual gap to `reference` is now the **Value meter, not
+  price**: a six-space lot yields best-of-six, Value dominates `objectiveDeal`, and closing
+  that is a stocking-capacity question for the tier ladder rather than another pricing knob.
+  Both are written into `data/market-calibration.json`'s docs so the next reader inherits the
+  reasoning, not just the numbers.
+  **Harness correction, both bots: they now run the #362 release valve.** Without it the test
+  measured a store that cannot restock — a unit nobody will buy holds one of six spaces
+  forever, mean lot age climbed to 123 days and the close rate halved twice over (62% → 22%).
+  That is the harness failing to make a decision every operator makes, exactly like the
+  standing float top-up. `MAX_DAYS` rose 400 → 600 to keep the 600-worked-up sample, because
+  the live floor works ~1.2 customers a day.
+  219 suites / **2863** tests, typecheck clean, and driven on web (T2 fixture → Operations →
+  Lot): live asks, carrying, aging and wholesale quotes all render, the RAV4's $11,922 quote
+  being exactly 0.85 × its $14,026 book.
+  Next: **phase 9 — B2 F&I plug-in #2**, which opens with a DECIDE (the parked grill).
+
 - 2026-08-07 — **BUILT #181** (the early-game floor — the progression has a proven bottom).
   #180 proved the #94 calibration does not survive contact with the game for a **competent**
   operator. #181 asks the complementary question: is there anywhere to climb *from*? A career

@@ -46,8 +46,13 @@ export interface MatchCustomer extends AffordabilityCustomer {
   readonly axisProfile?: CustomerAxisProfile;
 }
 
-/** Stubbed reputation hook — real surface is a follow-on. */
-export type ReputationBonusFn = (make: string) => number;
+/**
+ * Signed score bonus for a vehicle's make, keyed by its **canonical brand id**
+ * (#224 — never a display string). Wired at the composition root to the store's
+ * per-brand standing (`Reputation.repFor`, #151) scaled by the matcher weight;
+ * omitted ⇒ every make scores alike.
+ */
+export type ReputationBonusFn = (brand: string) => number;
 
 const noReputationBonus: ReputationBonusFn = () => 0;
 

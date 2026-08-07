@@ -30,13 +30,13 @@ a median survival of the full 360 days.
 
 **Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
 `docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
-issues. The next `/next` on phase 9 is a **BUILD**.
+issues. The next `/next` on phase 9 is a **BUILD**. **#151 landed 2026-08-07** — eleven left.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
 | # | Slice | Deps |
 |---|---|---|
-| #151 | per-brand `Reputation.repFor(make)` replaces the `pickVehicle` stub — ambient, no screen (I6) | — |
+| ~~#151~~ | ~~per-brand `Reputation.repFor(make)` replaces the `pickVehicle` stub — ambient, no screen (I6)~~ **BUILT 2026-08-07** | — |
 | #152 | attach scales with amount financed — one per-product `loanSensitivity` (I4) | #365 |
 | #153 | cash-buyer / must-finance traits through `resolveEffects` (I5) | — |
 | #365 | **tracer** — `apr`→`buyRate` + `markupCapPts`, `computeReserve`, back gross splits into `productGross`/`reserveGross` (Q1/Q2, I1–I3) | — |
@@ -373,6 +373,27 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
   salesperson's **base** skills to 0.75/0.75 (derived from the catalog's caps, not hardcoded)
   while leaving morale free to drift — the drift is the emergent variance under test.
 
+- **ANY new term in the `pickVehicleFor` argmax re-routes the whole #180 seeded run, and its
+  size is not what does it** (#151). Adding per-brand reputation moved the live band 28.5% →
+  39.0% positive / 64.5% → 51.7% apathetic / 213 → 290 closes — and `matchWeight` **0.05 and
+  0.15 shift it by the same amount in the same direction** while **0.001 reproduces the
+  pre-#151 run exactly**, because at that size the term never flips a near-tie. So a moved
+  band here is evidence of trajectory divergence, not of a strength or balance regression, and
+  **this harness cannot be used to choose a match weight** — a C2-class pass owns those
+  magnitudes. The apathetic band was re-centred on the new measurement at its old width
+  (0.58–0.72 → 0.45–0.59); `positiveMin` was left at #286's 0.24 because a floor that is still
+  cleared is not evidence for a new floor. Business-level pacing did **not** move (91/100 to
+  T2, 18% bankrupt, median survival 360, T1 still 1.0mo vs the 2.0 target). Full reasoning:
+  `data/market-calibration.json#live._doc`.
+- **Per-brand reputation feeds off `staff:auto_resolved`, never `deal:closed`** (#151), and it
+  is the only consumer of that event's new `brand` field. The pairing it needs — which make,
+  and how the delivery went (`badReview`) — exists on exactly one event; `deal:closed` carries
+  no satisfaction signal, so sourcing it there would mean re-deriving one at a second call
+  site. **A walk moves no brand.** `ReputationSnapshot` went v1 → v2 (module-owned; the
+  `modules` key set is unchanged, so there is **no envelope bump and no migration to look
+  for** — a v1 blob restores as "no make has a record yet"). And there is deliberately **no
+  brand-reputation screen**: `tests/Reputation.perBrand.test.ts` fails if any UI file reads
+  `repFor`/`brandReputation`.
 - **The F&I posture is SLOT state, not world state** (phase 9 gate, I7). The parked grill's own
   note said the standing volume↔gross posture needed a `WORLD_SNAPSHOT_VERSION` bump and a
   migration. It does not — every sibling lever (`tradePolicy`, `pricingStrategy`, `sourcingLean`)
@@ -408,7 +429,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — **SLICED 2026-08-07** into #151–#153 + #365–#373; next unit is BUILD |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 BUILT 2026-08-07**, eleven left |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -426,6 +447,51 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-07 — **BUILT #151** (per-brand reputation — the first of phase 9's twelve). The
+  `pickVehicleFor` matcher has carried a `reputationBonusFn` stub returning 0 since #145;
+  `Reputation.repFor(brand)` is now the real thing, and the store's record selling a make is
+  a live term in every walk-in's match.
+  **The input is `staff:auto_resolved`, not `deal:closed`, and that was the load-bearing
+  call.** Per-brand standing needs two facts about the same event — *which make* and *how the
+  delivery went* — and only the live outcome truth (#180) carries both: it gained a `brand`
+  field beside the `vehicleCategory` it already published, and it already carried `badReview`
+  (the low-trust forced close). `deal:closed` has no satisfaction signal at all, so feeding
+  off it would have meant re-deriving one at a second call site — the exact duplication
+  `residualHeat` was consolidated to kill. A walk moves no brand: a customer who never owned
+  the car says nothing about it.
+  **Three rules, and the third one is a trap-remover.** Standing is keyed by the canonical
+  brand id (#224, the same join key the match scores by), carried from sold deals only, and
+  **mean-reverts overnight on the same night and by the same rule as the store-wide
+  scalars**. Without the drift one rough early run would stain a make for the whole career,
+  which is a trap rather than depth. An unseen make reads 0 — no record is neutral, not bad.
+  **`repFor` stays the honest state and the weight lives at the boundary.** The composition
+  root wires `reputationBonusFn: repFor(brand) × brandReputation.matchWeight`; how much a
+  shopper *cares* is the matcher's business, so it is applied in `createWorld` rather than
+  baked into the module's read. Read live, so a brand's record moves the very next customer.
+  **The calibration finding is the part worth keeping.** Adding the term moved the #180 live
+  band: same seed, 28.5% → 39.0% positive, 64.5% → 51.7% apathetic, 213 → 290 closes. I
+  measured three weights before touching the band, and the shift is **the same direction and
+  the same size at 0.05 and at 0.15**, while 0.001 reproduces the pre-#151 run *exactly* —
+  the term either flips a near-tie or it does not, and flipping one re-routes the whole
+  600-up seeded trajectory. So this is trajectory divergence from a new score term, **not a
+  strength effect, and the harness cannot be used to pick the weight** (a C2-class pass owns
+  that magnitude). The apathetic band is re-centred on the new measurement at its old width
+  (0.58–0.72 → 0.45–0.59); `positiveMin` is deliberately left where #286 put it, because a
+  floor that is still cleared is not evidence for a new floor. All of it is written into
+  `data/market-calibration.json#live._doc` so the next reader inherits the reasoning.
+  **The business-level pacing did NOT move**: `npm run balance -- pacing` reads 91 of 100
+  seeds to T2 (was 90), bankruptcy 18% (was 19%), median survival the full 360 days, and T1
+  still clearing in a median 1.0 month against the 2.0 target — the same open miss, no worse.
+  **Anti-orphan, because this mechanic has no screen by design** (I6 — ambient depth). A
+  number that moves in a module nobody reads is indistinguishable from one that never moves,
+  so `tests/BrandReputation.reachability.test.ts` pins both ends in the *assembled* world,
+  and `tests/Reputation.perBrand.test.ts` asserts no UI file reads the surface at all.
+  Snapshot went v1 → v2 (module-owned; the `modules` key set is unchanged, so **no envelope
+  bump and no migration** — a v1 blob restores as "no make has a record yet", which is what
+  every pre-#151 save actually was).
+  221 suites / **2875** tests, typecheck clean.
+  Next: **BUILD #152** — unless the director places #363/#364 first (see Blockers).
 
 - 2026-08-07 — **SLICED phase 9 (B2, F&I as plug-in #2) into twelve issues** — #365–#373 filed,
   #151–#153 absorbed in place. The design was closed the same day, so this session did nothing
@@ -505,57 +571,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   with the ruling summarised into `path-to-finished-product.md` §4 B2 and the gate row moved to
   `.claude/skills/decide/gates.md`'s Settled section.
   Next: **SLICE phase 9** — the design is closed, so the next unit files the issues.
-
-- 2026-08-07 — **BUILT #286** (the C2 retune — **phase 8 COMPLETE**). #180 measured that the
-  live engine closes 2.2% of worked ups against #94's 85% and named the price floor as the
-  rejecting mechanism. #286 had to find out *why the floor was where it was*, and the answer
-  was not the one #180 filed.
-  **The diagnosis contradicted the hypothesis, and measuring beat theorising.** #180's write-up
-  blamed the reservation model — a best-of-six lot yielding Value ≈ 0.4 against #94's perfect
-  0.85, dragging willingness-to-pay under cost. I instrumented `closeAndPrice` on the live floor
-  before touching a tunable, and the customers were fine: Value measured **0.599** (not 0.4),
-  price sensitivity **0.41** (not the 0.6–0.85 the issue assumed), the reservation price sat
-  **6.5% ABOVE our ask**, and the quadrant was accepting **58%** of worked ups. What was broken
-  was the store: **`floor/ask` = 1.32**. Our cost basis was a third higher than our own asking
-  price, so `closeable` was false 91% of the time and nothing downstream ever got a say.
-  **Four terms produced that, and every one was a mis-model rather than a number wanting a
-  nudge.** (1) Recon was a **flat dollar figure per condition** ($500/$1,200/$2,800) applied to
-  a catalog spanning a $3.5k beater and a $40k luxury car — on the tier-1 lot a rough unit's
-  recon ran to *half its value* while the anchor's condition discount takes only 12% off, so
-  buying rough was never a decision, it was a trap. It is now
-  `conditionTiers[*].reconPct` (0.04/0.09/0.16), one rule in `Inventory.reconEstimateFor`, read
-  by all three acquisition lanes. (2) The **auction lane centred at book with a 1.20 ceiling** —
-  you could pay 20% *over* book at a wholesale auction, while `inventory.wholesale.haircutPct`
-  pays you out at book × 0.85 on the way out. Centring the buy side at 0.85 makes the two sides
-  of one market symmetric. (3) The **retail markup (1.20–1.28) was thinner than the basis it
-  had to cover**; +0.10. (4) A **modelling bug the retune exposed**: a wholesale comp was
-  measured against the bare anchor, so the moment the lane moved below book *every purchase*
-  recorded a negative comp and drifted the segment down — buying well would have quietly
-  devalued the player's own inventory. Wholesale comps now reference `anchor ×
-  motivatedSeller.meanMultiplier`, symmetric with retail's `anchor × markup`.
-  **The result: `live` positive 2.2% → 28.5%**, apathetic 97.7% → 64.5%, negative-deal 0.2% →
-  7.0%, 213 closes against 88. The early-game floor **held its shape** — a green operator still
-  closes at a rate a competent one would recognise while almost none of those customers leave
-  happy (0.5% positive against 28.5%) and `trust_collapse` is still its signature walk (106 vs
-  11). Skill buys happy customers here, not volume, and that is still true after the retune.
-  **The balance harness is the business-level proof:** it went from the standing "bankrupts
-  before Tier 2" to **90 of 100 seeds reaching T2**, median survival the full 360 days.
-  **Two things I did not tune away.** `no_fit` rose 51% → 71%, and it is real: the lot is
-  measurably FULL (6.01 of 6 spaces) and still cannot match 7 of 10 walk-ins, because six cars
-  is a thin draw against six SPACED axes plus an affordability gate. It rose because cars now
-  *sell*, so composition churns. That is the pressure that makes lot spaces worth building —
-  A2 R1's whole point. And the residual gap to `reference` is now the **Value meter, not
-  price**: a six-space lot yields best-of-six, Value dominates `objectiveDeal`, and closing
-  that is a stocking-capacity question for the tier ladder rather than another pricing knob.
-  Both are written into `data/market-calibration.json`'s docs so the next reader inherits the
-  reasoning, not just the numbers.
-  **Harness correction, both bots: they now run the #362 release valve.** Without it the test
-  measured a store that cannot restock — a unit nobody will buy holds one of six spaces
-  forever, mean lot age climbed to 123 days and the close rate halved twice over (62% → 22%).
-  That is the harness failing to make a decision every operator makes, exactly like the
-  standing float top-up. `MAX_DAYS` rose 400 → 600 to keep the 600-worked-up sample, because
-  the live floor works ~1.2 customers a day.
-  219 suites / **2863** tests, typecheck clean, and driven on web (T2 fixture → Operations →
-  Lot): live asks, carrying, aging and wholesale quotes all render, the RAV4's $11,922 quote
-  being exactly 0.85 × its $14,026 book.
-  Next: **phase 9 — B2 F&I plug-in #2**, which opens with a DECIDE (the parked grill).

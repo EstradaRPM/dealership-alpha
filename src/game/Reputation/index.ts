@@ -1,5 +1,11 @@
 export { createReputation } from './Reputation';
-export type { Reputation, ReputationDeps, ReputationSnapshot } from './Reputation';
+export type {
+  AnyReputationSnapshot,
+  Reputation,
+  ReputationDeps,
+  ReputationSnapshot,
+  ReputationSnapshotV1,
+} from './Reputation';
 export { loadReputationConfig } from './reputationData';
 export type { ReputationConfig } from './reputationData';
 export { createRegulatoryMeter } from './RegulatoryMeter';

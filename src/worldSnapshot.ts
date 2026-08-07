@@ -38,7 +38,7 @@ import {
   type MarketEconomySnapshot,
 } from './game/MarketEconomy';
 import type { CompetitorMarketSnapshot } from './game/CompetitorMarket';
-import type { RegulatoryMeterState, ReputationSnapshot } from './game/Reputation';
+import type { AnyReputationSnapshot, RegulatoryMeterState } from './game/Reputation';
 import type {
   TierManagerSnapshot,
   BankruptcyMonitorState,
@@ -103,7 +103,7 @@ export type WorldSnapshot = {
     readonly staffMorale: StaffMoraleSnapshot;
     readonly marketEconomy: MarketEconomySnapshot;
     readonly competitorMarket: CompetitorMarketSnapshot;
-    readonly reputation: ReputationSnapshot;
+    readonly reputation: AnyReputationSnapshot;
     readonly regulatoryMeter: RegulatoryMeterState;
     // CareerProgression module: tier + business identity AND career progress
     // (customersServed) ride in one TierManager blob.

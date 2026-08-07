@@ -4,21 +4,59 @@ Dealership reputation score + marketing → demand feedback loop. Drifts overnig
 
 ## Public API (`index.ts`)
 - `createReputation()` → `Reputation`.
+- `repFor(brand)` → the store's standing selling one make ∈ `[-1, 1]` (#151).
 - `loadReputationConfig` — reads reputation tunables.
-- Types: `Reputation`, `ReputationDeps`, `ReputationConfig`, `ReputationSnapshot`.
+- Types: `Reputation`, `ReputationDeps`, `ReputationConfig`, `ReputationSnapshot`,
+  `ReputationSnapshotV1`, `AnyReputationSnapshot`.
 
-## Persistence (#192, parent #186)
+## Per-brand standing (#151, B2 I6)
+
+**Ambient depth, not a dashboard.** The store's record selling a make is modeled
+honestly and never rendered as a number: it reaches the player through the
+customer→vehicle match (a distrusted make loses ground to an otherwise identical
+unit) and, later, as Reveal reaction text. There is no brand-reputation screen,
+and `tests/Reputation.perBrand.test.ts` asserts no UI file reads the surface —
+that is the standing "model honest under the hood, promote only what is a fun
+decision" rule, not an unfinished half.
+
+Three rules and no more:
+
+- **Keyed by the canonical brand id** (#224), never a display make string — the
+  same join key `pickVehicleFor` scores a lot vehicle by.
+- **Carried from SOLD deals only**, off `staff:auto_resolved` — the live outcome
+  truth (#180), which is the one event carrying both the make (`brand`) and how
+  the delivery went (`badReview`, the low-trust forced close). A walk moves
+  nothing: a customer who never owned the car says nothing about it. `deal:closed`
+  is deliberately *not* the input — it has no satisfaction signal, and re-deriving
+  one there would be a second definition of a fact #180 already settled.
+- **Mean-reverts on the same night and by the same rule as the store-wide
+  scalars.** Without the drift one rough early run would stain a make for the
+  whole career — a trap, not depth. An unseen make reads 0: no record is neutral,
+  not bad.
+
+The consuming end is one closure at the composition root:
+`salesProcessDeps.reputationBonusFn = repFor(brand) × brandReputation.matchWeight`.
+`repFor` stays the honest state; how much a shopper *cares* is the matcher's
+business, so the weight is applied at the boundary rather than baked into the
+read. Read live, so a brand's record moves the very next customer's match.
+
+## Persistence (#192, parent #186; per-brand #151)
 - `snapshot()/restore()` — module-owned `schemaVersion`, captures the three live
-  scalars (`customerSatisfaction`, `reviewScore`, `marketingBudget`). The demand
-  curve + config are data-derived and not persisted. Wired into the world seam
-  under the `reputation` key.
+  scalars (`customerSatisfaction`, `reviewScore`, `marketingBudget`) plus the
+  per-brand standings. The demand curve + config are data-derived and not
+  persisted. Wired into the world seam under the `reputation` key.
+- Per-brand standings joining the blob is the module's own `schemaVersion`
+  **1 → 2** and is **not** an envelope bump — the `modules` key set did not
+  change. A `ReputationSnapshotV1` blob restores as "no make has a record yet",
+  which is the state every pre-#151 save was actually in; `AnyReputationSnapshot`
+  is the union `restore` accepts (same idiom as `AnyFacilitySnapshot`, #359).
 
 ## Events
 - **Emits:** Reputation itself emits none directly (state read by `CustomerPool` / `CapacityManager` for arrival rates). `RegulatoryMeter` (same module barrel) emits the AG-complaint family + `regulatory:suspension_lifted`, and (#327) `regulatory:audit_failure` when pressure sits in the audit band `[auditThreshold, pressureThreshold)` at an overnight tick — a latched IndictmentMonitor producer (one crossing = one failure; the escalating warning below the AG complaint). `auditThreshold` lives in `data/failure-tunables.json` `regulatory` section.
-- **Consumes:** `clock:overnight_reputation_drift` (mean-reversion drift), `reputation:satisfaction_hit` (negative outcomes), `deal:closed` (positive bump), `customer:resolved` with outcome=walk (small hit).
+- **Consumes:** `clock:overnight_reputation_drift` (mean-reversion drift, store-wide *and* per-brand), `reputation:satisfaction_hit` (negative outcomes), `deal:closed` (positive bump), `customer:resolved` with outcome=walk (small hit), `staff:auto_resolved` with outcome=closed (#151 — per-brand standing, the only consumer of its `brand` field).
 
 ## Data
-- `data/tunables.json` — reputation section (drift rate, hit magnitudes, marketing curve).
+- `data/tunables.json` — reputation section (drift rate, hit magnitudes, marketing curve, and the `brandReputation` block: `closedDealBonus` / `badReviewPenalty` / `driftRate` / `matchWeight`). The bonus and penalty are **sign-checked by schema** — a positive penalty would mean a bad delivery helps the brand, and would read as balance rather than a dropped minus sign.
 
 ## Current simplification
 The marketing → demand curve is a static lookup for now. The interface allows a richer replacement (dynamic marketing campaigns) later without changing consumers.

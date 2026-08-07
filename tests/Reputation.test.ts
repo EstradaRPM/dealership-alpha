@@ -18,6 +18,12 @@ const CONFIG: ReputationConfig = {
   demandReviewSlope: 0.015,
   marketingSaturation: 1000,
   marketingMaxBoost: 0.6,
+  brandReputation: {
+    closedDealBonus: 0.05,
+    badReviewPenalty: -0.2,
+    driftRate: 0.02,
+    matchWeight: 0.15,
+  },
   seasonDemandMultiplier: { spring: 1, summer: 1.15, fall: 1.05, winter: 0.85 },
   dayOfWeekDemandMultiplier: {
     '0': 0.9, '1': 1.0, '2': 1.0, '3': 1.05, '4': 1.15, '5': 1.4, '6': 0.7,
