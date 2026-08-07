@@ -22,6 +22,15 @@ import {
  */
 export interface TradeReview {
   readonly customerId: string;
+  /** The unit on the lot this customer is buying (#364) — not the trade. */
+  readonly vehicle: {
+    readonly id: string;
+    readonly make: string;
+    readonly model: string;
+    readonly year: number;
+    readonly mileage: number;
+    readonly category: string;
+  };
   readonly currentVehicle: {
     readonly make: string;
     readonly model: string;
@@ -71,6 +80,12 @@ interface Props {
   outcome?: TradeOutcome | null;
   /** Dismiss the resolved recap. */
   onDismiss?: () => void;
+  /**
+   * The car this deal is on was bought by another customer while the review sat
+   * open (#364). Every decision below has the same answer now, so the prompt
+   * says so plainly and offers nothing that cannot complete.
+   */
+  vehicleSold?: boolean;
 }
 
 const dollars = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
@@ -82,6 +97,7 @@ export function TradeEscalationModal({
   counterResult,
   outcome,
   onDismiss,
+  vehicleSold,
 }: Props) {
   const [counterText, setCounterText] = React.useState('');
 
@@ -97,6 +113,13 @@ export function TradeEscalationModal({
   const cv = review?.currentVehicle;
   const vehicleSummary = cv
     ? `${cv.year} ${cv.make} ${cv.model} · ${cv.mileage.toLocaleString('en-US')} mi · ${cv.condition}`
+    : '—';
+
+  // The unit off our lot the deal is on (#364) — named on every state, because
+  // once it sells to someone else the prompt still has to say which car it was.
+  const dv = review?.vehicle;
+  const dealUnitSummary = dv
+    ? `${dv.year} ${dv.make} ${dv.model} · ${dv.mileage.toLocaleString('en-US')} mi`
     : '—';
 
   // The honest "why the ask is high" signal (#283): how far the lien exceeds
@@ -118,11 +141,30 @@ export function TradeEscalationModal({
           <Text style={styles.kicker}>MANAGER ATTENTION — TRADE</Text>
           <Text style={styles.customer}>{review?.customerId ?? '—'}</Text>
           <Text style={styles.banner}>
-            Unusual trade — your call. The day is paused.
+            {vehicleSold
+              ? 'The car this deal was on is gone.'
+              : 'Unusual trade — your call. The day is paused.'}
           </Text>
 
           {review == null ? (
             <Text style={styles.muted}>No trade in review.</Text>
+          ) : vehicleSold ? (
+            // #364: another customer bought this car while the review sat open.
+            // No accept, no counter — the only honest move left is to send them
+            // home, and pressing it resolves the customer as the walk it is.
+            <View style={styles.body}>
+              <Text style={styles.vehicle}>{dealUnitSummary}</Text>
+              <Text style={[styles.recap, styles.rejected]}>
+                Another customer bought it while you were deciding. There is no
+                deal left to make on this one.
+              </Text>
+              <View style={styles.actions}>
+                <Action
+                  label="Done"
+                  onPress={() => onDecide({ kind: 'decline' })}
+                />
+              </View>
+            </View>
           ) : outcome != null ? (
             <View style={styles.body}>
               <Text style={styles.vehicle}>{vehicleSummary}</Text>
@@ -145,6 +187,7 @@ export function TradeEscalationModal({
               contentContainerStyle={styles.bodyContent}
             >
               <Text style={styles.vehicle}>{vehicleSummary}</Text>
+              <Text style={styles.dealUnit}>{`Buying: ${dealUnitSummary}`}</Text>
 
               <Row label="Honest book" value={dollars(review.book)} />
               <Row label="Customer asks" value={dollars(review.allowanceAsk)} emphasize />
@@ -325,6 +368,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  dealUnit: {
+    fontFamily: 'monospace',
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: -6,
     marginBottom: 12,
   },
   row: {

@@ -115,10 +115,30 @@ the magnitudes of the last three had been calibrated against a producer that
 never fired (retuned in #363 — see `data/tunables.json` `walkSatisfactionPenalty`
 and `data/failure-tunables.json` `walkPressure`/`angerPressure`).
 
+### A held review outlives the lot (#364)
+Two customers can be held on the **same unit** — a tier-1 lot holds six cars and
+the #296 seed parks three, so it is ordinary, not a corner case. Whichever review
+the player resolves first closes the deal and the car leaves; the second then has
+nothing to sell. Two things follow, and both live at the hold:
+
+- Every held-review `decide` re-checks `inventory.getLotVehicles()` **before**
+  reading the decision. Gone ⇒ `staff:auto_resolved`/`no_sale` with
+  `vehicle_sold_to_other` (carrying `processContext`, so it is an ordinary
+  post-process walk with residual heat, follow-up eligibility and a reputation
+  hit like any other) and the terminal result `{ status: 'vehicle_sold' }`. The
+  check is at the *decision*, not the settle, because with the car gone
+  `accept`, `counter` and `decline` all have the same answer.
+- Both held reviews carry an `EscalationVehicle` snapshot of the unit
+  (`trade:escalated` gained a `vehicle` field; `DiscountReviewPayload.vehicle`
+  is now that same type). The prompt names the car off the snapshot — a lot
+  lookup would come back empty exactly when the player most needs to be told
+  which car it was.
+
 `staff:auto_resolved` now carries an optional `reason` field on `no_sale`
 outcomes (`no_session | not_sales | no_fit | no_close | trade_negative_equity |
 trade_manager_declined | trade_player_declined | discount_player_declined |
-discount_below_cost | discount_haggle_exhausted | <WalkCause>`). A pending
+discount_below_cost | discount_haggle_exhausted | vehicle_sold_to_other |
+<WalkCause>`). A pending
 `player_review` trade or discount emits no `staff:auto_resolved` until the
 player declines or accepts a decision through the held-review closure. The
 sole `declined` path is an unstaffed floor.
@@ -223,7 +243,8 @@ with #147.
   supplies the top UCM `t_o_closing` skill (roster) + threshold
   (`tunables.managerGates.actThresholds.t_o_closing`).
 - Types: `StaffDispatch`, `StaffDispatchDeps`, `StaffDispatchConfig`,
-  `StaffDispatchCustomerSession`.
+  `StaffDispatchCustomerSession`, `EscalationVehicle` (#364 — the lot unit a
+  held review is about, snapshotted so it survives the car being sold).
 
 ## Events
 - **Emits:** `staff:auto_resolved` (outcome `closed` or `no_sale`, with

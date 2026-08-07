@@ -147,6 +147,13 @@ const WALK_OFF_COPY: Record<
     starworthy: true,
     text: (who) => `${who} wanted a price that would've lost you money. Walked.`,
   },
+  vehicle_sold_to_other: {
+    // Two customers, one car (#364). Instructive: it is the lot telling you it
+    // was one unit deep on something two people wanted.
+    starworthy: true,
+    text: (who) =>
+      `${who} wanted a car another customer bought first. Walked.`,
+  },
   demo_nonnegotiable_miss: {
     starworthy: true,
     text: (who) => `${who} needed something the vehicle didn't have. Walked.`,

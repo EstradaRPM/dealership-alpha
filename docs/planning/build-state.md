@@ -70,11 +70,8 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
-- **#363 is BUILT (2026-08-07). #364 is still open and still has no phase assignment** — two
-  customers held on the same unit, the second resolution throwing `No lot vehicle`. It is
-  reachable in real play and phase 9's queue starts at #152, so the chronological rule will
-  not pick it up on its own. On the merits it belongs before the remaining F&I feature work,
-  since it is a crash.
+- **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed;
+  phase 9's queue resumes at **#152** under the chronological rule with nothing ahead of it.
 - **Three walk-driven magnitudes were retuned by #363 and the small numbers are deliberate.**
   `walkSatisfactionPenalty` −1 → **−0.12**, `walkPressure` 0.5 → **0.05**, `angerPressure`
   2.0 → **0.4**. All three had been set against a producer that never fired; the live floor
@@ -364,14 +361,12 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
   stays a documented ceiling guard; `reconOverrunMin/Max` (mean realized ÷ estimated recon) is
   still the band with power — 1.072× measured against the ~1.061 `data/recon-variance.json`
   implies. Do not tighten the tail rate to look precise.
-- **Two customers can be held on the SAME unit, and resolving both throws** (#181 → **#364**).
-  Nothing reserves a vehicle while a `trade:escalated` / `discount:escalated` review is
-  pending; the first resolution drives it off the lot and the second dies on `No lot vehicle`
-  inside `DealEngine.closeDeal`. Ordinary on a six-space lot, reachable in the app. The #181
-  harness `try/catch`es it and tallies `escalationsLostToSoldUnit`; **that guard is the
-  workaround, not the fix** — #364 owns what the second customer actually sees. **#180 now
-  carries the same guard** (#286): once closes became common the collision reached that harness
-  too, and it crashed the suite outright until the guard went in.
+- **Two customers can be held on the SAME unit** (#181 → **#364**, FIXED 2026-08-07). Nothing
+  reserves a vehicle while a `trade:escalated` / `discount:escalated` review is pending, and
+  nothing should — the first resolution drives the car off the lot and the second customer now
+  **walks** (`vehicle_sold_to_other`) instead of dying on `No lot vehicle` inside
+  `DealEngine.closeDeal`. Both harnesses have dropped the `try/catch` +
+  `escalationsLostToSoldUnit` tally they carried as the workaround.
 - **The #180 harness deliberately capitalizes its bot** (`BOT.floatFloor`/`floatTopUp`). At a
   2% close rate the store goes insolvent long before 600 worked ups, which would silently
   shrink N and make the bands move whenever calibration changed. Solvency + pacing are the
@@ -453,6 +448,35 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-07 — **BUILT #364** (the car that sold out from under the second customer). Two
+  customers can be held on the **same unit** — one on a `trade:escalated` review, one on a
+  `discount:escalated` one, or two of either. Whichever the player resolved first drove the
+  car off the lot, and the second resolution died on `No lot vehicle` inside
+  `DealEngine.closeDeal`, throwing out of `resolvePlayerDiscountDecision` and into the app.
+  **The fix is a walk, not a reservation.** Holding a unit for a pending review was the
+  tempting shape and it is the wrong one: it would quietly take cars off the floor for
+  everyone else, which is a balance change smuggled in as a crash fix. The car being gone is
+  a real dealership moment, so the second customer resolves as an ordinary no-sale with its
+  own reason (`vehicle_sold_to_other`) carrying the same residual heat, follow-up eligibility
+  and reputation hit every other post-process walk carries — asserted end-to-end against the
+  assembled world with the payload the resolver actually emits, not a hand-written one.
+  **The guard sits at the decision, not at the settle.** With the car gone, `accept`,
+  `counter` and `decline` all have the same answer, so every held-review `decide` re-checks
+  the lot before it reads the decision. One check, one `no_sale`, four decision kinds.
+  **A held review outlives the lot, so it carries its own vehicle.** `trade:escalated` gained
+  a `vehicle` field and the discount payload's became the shared `EscalationVehicle` type;
+  the prompt names the car off that snapshot, because a lot lookup comes back empty exactly
+  when the player most needs telling which car it was. The live prompt now watches
+  `inventory:vehicle_sold`, states in plain language that another customer bought it, and
+  drops every accept/counter control — pressing its one button resolves the customer as the
+  walk it is, rather than leaving a held review to rot in the composition root.
+  Both live-engine harnesses dropped the `try/catch` + `escalationsLostToSoldUnit` tally they
+  were carrying as a workaround (#181 and, since #286 made closes common, #180). Test
+  scaffolding the two StaffDispatch suites share moved to `tests/helpers/staffDispatchHarness.ts`
+  rather than being copied.
+  225 suites / **2905** tests, typecheck clean.
+  Next: **BUILD #152** — the lowest-numbered open, deps-met issue in phase 9.
 
 - 2026-08-07 — **BUILT #363** (the live floor's walks reach the rest of the game). A walk on
   the live sales floor published only `staff:auto_resolved`, so `customer:resolved` never
@@ -557,39 +581,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   every pre-#151 save actually was).
   221 suites / **2875** tests, typecheck clean.
   Next: **BUILD #152** — unless the director places #363/#364 first (see Blockers).
-
-- 2026-08-07 — **SLICED phase 9 (B2, F&I as plug-in #2) into twelve issues** — #365–#373 filed,
-  #151–#153 absorbed in place. The design was closed the same day, so this session did nothing
-  but turn the ruling into build order.
-  **The tracer is the reserve, and it had to be, because the honest naming and the missing half
-  of back gross are the same change.** #365 renames `credit-tiers.json`'s `apr` to `buyRate`
-  (the field has always been the customer's rate wearing the lender's name), adds
-  `markupCapPts`, computes the reserve off the existing amortization, and splits `backGross`
-  into `productGross` + `reserveGross` on both `ClosedDealResult` and `deal:closed`. Everything
-  else in the phase reads one of those two halves.
-  **The slicing call worth recording: the three teeth are separate issues on purpose.** #367
-  (contractual deal-kill — the lender won't buy an over-marked deal), #368 (CSI drag) and #365's
-  free structural kill (a marked-up payment breaching `ptiCap`/`maxTerm`/`ltvCeiling` — I3, no
-  new machinery) fail in three different ways and are calibrated against three different
-  signals. Merging them would have produced one slice where a miscalibrated curve is
-  indistinguishable from a mis-wired gate. The director was offered the merge and declined it.
-  **#151–#153 were absorbed as filed, not re-filed.** The grill doc says "absorbed as filed",
-  and re-filing them would have left three older duplicates that the chronological rule picks
-  up first. Their bodies now carry the locked scope (I4/I5/I6), EARS criteria and corrected
-  deps — and #151 shrank in the process: the original body floated a per-*segment* reputation
-  surface beside the per-brand one, which I6 rules out entirely. Per-brand reputation is ambient
-  depth feeding Reveal text; there is no brand-reputation screen, and a criterion now says so.
-  **Two things the slice deliberately does not build**, both because a closed grill already said
-  no: a per-product on/off control (Q10 — #369 carries a criterion asserting the surface does not
-  exist) and a continuous markup slider (Q9 — three named positions, and #370's peak meter is
-  what makes them legible). A future session proposing either is re-opening the grill.
-  **Q8 lands inside B2 rather than in a later demand slice** (#372), which is the one place the
-  phase reaches outside F&I: advertising campaigns gain person-archetype weights beside the
-  vehicle-type weights they already carry. Read-without-move is half a mechanic — #371 tells you
-  the crowd leans cash, #372 is how you answer.
-  **Flagged, not decided: #363 and #364 have no phase.** Both are live defects out of phase 8 —
-  walks never publishing `customer:resolved` (starving four systems) and two customers held on
-  one unit throwing `No lot vehicle`. Phase 9's queue starts at #151, so the chronological rule
-  will never reach them on its own. Recorded in Blockers with the recommendation that they go
-  first; placing them is the director's call, not a slice's.
-  Next: **BUILD #151** — the lowest-numbered open, deps-met issue in the phase.

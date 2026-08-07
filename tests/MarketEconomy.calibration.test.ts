@@ -195,8 +195,6 @@ interface Tally {
    * `no_close`-the-price-was-under-our-cost, which the bus cannot distinguish.
    */
   discountEscalations: number;
-  /** Escalations whose vehicle another customer bought first — see #364. */
-  escalationsLostToSoldUnit: number;
 }
 
 interface RunOutcome extends Tally {
@@ -250,7 +248,6 @@ function runCalibration(): RunOutcome {
     closes: 0,
     tradesAcquired: 0,
     discountEscalations: 0,
-    escalationsLostToSoldUnit: 0,
   };
   const signature: string[] = [];
   const reasons: Record<string, number> = {};
@@ -330,25 +327,14 @@ function runCalibration(): RunOutcome {
     // inside the event handler — resolving mid-tick would re-enter the bus.
     //
     // Two customers can be held on the SAME unit — a six-space lot makes that
-    // routine — and whoever is resolved first drives it away. The second then
-    // throws `No lot vehicle`: the live defect filed as #364, not something
-    // this test can assert around. It only started reaching THIS harness once
-    // #286 made closes common (pre-#286 the store closed 2% and a held unit was
-    // almost never sold out from under a second customer). Count them and carry
-    // on — they never reached a band either way, so the distribution stands.
+    // routine — and whoever is resolved first drives it away. Since #364 the
+    // second one resolves as a no-sale (`vehicle_sold_to_other`) instead of
+    // throwing, so every held review is simply played straight.
     for (const customerId of heldTrades.splice(0)) {
-      try {
-        world.resolvePlayerTradeDecision(customerId, { kind: 'accept_ask' });
-      } catch {
-        t.escalationsLostToSoldUnit += 1;
-      }
+      world.resolvePlayerTradeDecision(customerId, { kind: 'accept_ask' });
     }
     for (const customerId of heldDiscounts.splice(0)) {
-      try {
-        world.resolvePlayerDiscountDecision(customerId, { kind: 'accept_ask' });
-      } catch {
-        t.escalationsLostToSoldUnit += 1;
-      }
+      world.resolvePlayerDiscountDecision(customerId, { kind: 'accept_ask' });
     }
   }
 
@@ -410,7 +396,6 @@ describe('MarketEconomy — live-engine calibration (#180)', () => {
   // eslint-disable-next-line no-console
   console.log(
     `[#180 live calibration] escalations=${run.discountEscalations} ` +
-      `lostToSoldUnit=${run.escalationsLostToSoldUnit} ` +
       `targetOverAsk=${run.meanTargetOverAsk.toFixed(3)} ` +
       `costOverAsk=${run.meanCostOverAsk.toFixed(3)} ` +
       `profile=${JSON.stringify(run.profile)} reasons=` +

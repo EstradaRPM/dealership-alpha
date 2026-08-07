@@ -61,9 +61,11 @@ export function AppOverlays({
     tradeReview,
     tradeCounterResult,
     tradeOutcome,
+    tradeVehicleSold,
     discountReview,
     discountCounterResult,
     discountOutcome,
+    discountVehicleSold,
     decideTrade,
     decideDiscount,
     dismissTrade,
@@ -238,6 +240,7 @@ export function AppOverlays({
         counterResult={tradeCounterResult}
         outcome={tradeOutcome}
         onDismiss={dismissTrade}
+        vehicleSold={tradeVehicleSold}
       />
       <DiscountEscalationModal
         visible={discountReview != null}
@@ -246,6 +249,7 @@ export function AppOverlays({
         counterResult={discountCounterResult}
         outcome={discountOutcome}
         onDismiss={dismissDiscount}
+        vehicleSold={discountVehicleSold}
       />
       {/* Day-close reward beat (#253): pops over Home on day close,
           dismissable, and reopenable from the Today-region chip. Rendered

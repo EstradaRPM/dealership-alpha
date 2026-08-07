@@ -143,6 +143,14 @@ describe('#348 in-tab navigation — the shell survives walking into a room', ()
       services!.bus.publish('trade:escalated', {
         customerId: 'cust:trade-review',
         day: 1,
+        vehicle: {
+          id: 'veh:trade-deal',
+          make: 'Toyota',
+          model: 'Camry',
+          year: 2018,
+          mileage: 62_000,
+          category: 'sedan',
+        },
         currentVehicle: {
           templateId: 'cv:civic',
           brand: 'vanda',

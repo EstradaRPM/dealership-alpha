@@ -6,6 +6,42 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-07 — **SLICED phase 9 (B2, F&I as plug-in #2) into twelve issues** — #365–#373 filed,
+  #151–#153 absorbed in place. The design was closed the same day, so this session did nothing
+  but turn the ruling into build order.
+  **The tracer is the reserve, and it had to be, because the honest naming and the missing half
+  of back gross are the same change.** #365 renames `credit-tiers.json`'s `apr` to `buyRate`
+  (the field has always been the customer's rate wearing the lender's name), adds
+  `markupCapPts`, computes the reserve off the existing amortization, and splits `backGross`
+  into `productGross` + `reserveGross` on both `ClosedDealResult` and `deal:closed`. Everything
+  else in the phase reads one of those two halves.
+  **The slicing call worth recording: the three teeth are separate issues on purpose.** #367
+  (contractual deal-kill — the lender won't buy an over-marked deal), #368 (CSI drag) and #365's
+  free structural kill (a marked-up payment breaching `ptiCap`/`maxTerm`/`ltvCeiling` — I3, no
+  new machinery) fail in three different ways and are calibrated against three different
+  signals. Merging them would have produced one slice where a miscalibrated curve is
+  indistinguishable from a mis-wired gate. The director was offered the merge and declined it.
+  **#151–#153 were absorbed as filed, not re-filed.** The grill doc says "absorbed as filed",
+  and re-filing them would have left three older duplicates that the chronological rule picks
+  up first. Their bodies now carry the locked scope (I4/I5/I6), EARS criteria and corrected
+  deps — and #151 shrank in the process: the original body floated a per-*segment* reputation
+  surface beside the per-brand one, which I6 rules out entirely. Per-brand reputation is ambient
+  depth feeding Reveal text; there is no brand-reputation screen, and a criterion now says so.
+  **Two things the slice deliberately does not build**, both because a closed grill already said
+  no: a per-product on/off control (Q10 — #369 carries a criterion asserting the surface does not
+  exist) and a continuous markup slider (Q9 — three named positions, and #370's peak meter is
+  what makes them legible). A future session proposing either is re-opening the grill.
+  **Q8 lands inside B2 rather than in a later demand slice** (#372), which is the one place the
+  phase reaches outside F&I: advertising campaigns gain person-archetype weights beside the
+  vehicle-type weights they already carry. Read-without-move is half a mechanic — #371 tells you
+  the crowd leans cash, #372 is how you answer.
+  **Flagged, not decided: #363 and #364 have no phase.** Both are live defects out of phase 8 —
+  walks never publishing `customer:resolved` (starving four systems) and two customers held on
+  one unit throwing `No lot vehicle`. Phase 9's queue starts at #151, so the chronological rule
+  will never reach them on its own. Recorded in Blockers with the recommendation that they go
+  first; placing them is the director's call, not a slice's.
+  Next: **BUILD #151** — the lowest-numbered open, deps-met issue in the phase.
+
 - 2026-08-07 — **DECIDED phase 9's gate: the parked F&I grill is CLOSED** (`/decide`). It had sat
   paused since 2026-07-08, and it was paused for a good reason — it had surfaced the game-wide
   engagement problem, which had to be answered first. That answer (`engagement-spine.md`) landed

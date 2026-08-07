@@ -71,6 +71,12 @@ interface Props {
   /** When set, the negotiation has resolved — show the recap + a Done button. */
   outcome?: DiscountOutcome | null;
   onDismiss?: () => void;
+  /**
+   * The car this deal is on was bought by another customer while the review sat
+   * open (#364). Every decision below has the same answer now, so the prompt
+   * says so plainly and offers nothing that cannot complete.
+   */
+  vehicleSold?: boolean;
 }
 
 const dollars = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
@@ -83,6 +89,7 @@ export function DiscountEscalationModal({
   counterResult,
   outcome,
   onDismiss,
+  vehicleSold,
 }: Props) {
   const [counterText, setCounterText] = React.useState('');
   const bands = React.useMemo(() => acceptanceHeatBands(), []);
@@ -157,11 +164,30 @@ export function DiscountEscalationModal({
           <Text style={styles.kicker}>MANAGER ATTENTION - DISCOUNT</Text>
           <Text style={styles.customer}>{review?.customerId ?? '-'}</Text>
           <Text style={styles.banner}>
-            Customer wants to pay less than the salesperson can authorize.
+            {vehicleSold
+              ? 'The car this deal was on is gone.'
+              : 'Customer wants to pay less than the salesperson can authorize.'}
           </Text>
 
           {review == null ? (
             <Text style={styles.muted}>No discount in review.</Text>
+          ) : vehicleSold ? (
+            // #364: another customer bought this car while the review sat open.
+            // No accept, no counter — the only honest move left is to send them
+            // home, and pressing it resolves the customer as the walk it is.
+            <View style={styles.body}>
+              <Text style={styles.vehicle}>{vehicleSummary}</Text>
+              <Text style={[styles.recap, styles.rejected]}>
+                Another customer bought it while you were deciding. There is no
+                deal left to make on this one.
+              </Text>
+              <View style={styles.actions}>
+                <Action
+                  label="Done"
+                  onPress={() => onDecide({ kind: 'decline' })}
+                />
+              </View>
+            </View>
           ) : outcome != null ? (
             <View style={styles.body}>
               <Text style={styles.vehicle}>{vehicleSummary}</Text>

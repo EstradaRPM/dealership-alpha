@@ -183,11 +183,33 @@ export type PlayerTradeDecision =
   | { readonly kind: 'propose_counter'; readonly amount: number }
   | { readonly kind: 'decline' };
 
+/**
+ * The lot unit a held review is about, snapshotted at hold time (#364).
+ *
+ * A held review outlives the lot. Two customers can be held on the same car —
+ * a six-space tier-1 lot makes that ordinary — and whoever the player resolves
+ * first drives it away. The prompt for the second one still has to name the
+ * unit it was about, so it reads this snapshot rather than a lot lookup that
+ * would come back empty.
+ */
+export interface EscalationVehicle {
+  readonly id: string;
+  readonly make: string;
+  readonly model: string;
+  readonly year: number;
+  readonly mileage: number;
+  readonly category: string;
+}
+
 export type PlayerTradeDecisionResult =
   // `agreedAllowance` = the settled trade allowance, surfaced to the modal's
   // buy/walk recap line (#283) so a booked trade reads as an honest figure.
   | { readonly status: 'closed'; readonly agreedAllowance: number }
   | { readonly status: 'abandoned' }
+  // The car sold to another customer while this review was pending (#364).
+  // Terminal, and not the player's decision at all — whatever they picked, the
+  // deal has nothing left to sell, so the customer walks.
+  | { readonly status: 'vehicle_sold' }
   | {
       readonly status: 'counter_rejected';
       readonly amount: number;
@@ -198,20 +220,15 @@ export interface HeldTradeReview {
   readonly customerId: string;
   readonly day: number;
   readonly review: TradeReviewPayload;
+  /** The lot unit the deal is on — snapshotted, so it survives the sale (#364). */
+  readonly vehicle: EscalationVehicle;
   decide(decision: PlayerTradeDecision): PlayerTradeDecisionResult;
 }
 
 export interface DiscountReviewPayload {
   readonly customerId: string;
   readonly day: number;
-  readonly vehicle: {
-    readonly id: string;
-    readonly make: string;
-    readonly model: string;
-    readonly year: number;
-    readonly mileage: number;
-    readonly category: string;
-  };
+  readonly vehicle: EscalationVehicle;
   /** Competitor benchmark (book × markup) — for above/below-market labeling only. */
   readonly marketPrice: number;
   /** Our list price (the player-set askingPrice) — the top of the negotiation range. */
@@ -255,6 +272,10 @@ export type PlayerDiscountDecision =
 export type PlayerDiscountDecisionResult =
   | { readonly status: 'closed'; readonly soldPrice: number; readonly frontGross: number }
   | { readonly status: 'abandoned' }
+  // The car sold to another customer while this review was pending (#364).
+  // Terminal, and not the player's decision at all — whatever they picked, the
+  // deal has nothing left to sell, so the customer walks.
+  | { readonly status: 'vehicle_sold' }
   | {
       readonly status: 'counter_rejected';
       readonly amount: number;
@@ -521,6 +542,36 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       heat: residualHeat({ resolution }, deps.salesProcessDeps),
     };
 
+    // #364: the unit this customer is buying, captured now so a held review can
+    // still name it after the car leaves the lot.
+    const escalationVehicle: EscalationVehicle = {
+      id: vehicle.id,
+      make: vehicle.make,
+      model: vehicle.model,
+      year: vehicle.year,
+      mileage: vehicle.mileage,
+      category: vehicle.category,
+    };
+
+    // #364: two customers can be held on the same car, and whoever the player
+    // resolves first drives it away. Every held-review decision re-checks the
+    // lot first: with the car gone, `accept`, `counter` and `decline` all have
+    // the same answer, so the check belongs at the decision, not the settle.
+    const vehicleStillOnLot = (): boolean =>
+      deps.inventory.getLotVehicles().some(v => v.id === vehicle.id);
+
+    // The car sold out from under this customer. A real dealership moment, not
+    // an error state — they walk, with the same bookkeeping any other walk gets.
+    const walkLostToOtherBuyer = (): void => {
+      emitNoSale(
+        customerId,
+        salesperson.id,
+        day,
+        'vehicle_sold_to_other',
+        processContext,
+      );
+    };
+
     const close = closeAndPrice(
       {
         meters: resolution.meters,
@@ -655,7 +706,14 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             customerId,
             day,
             review,
+            vehicle: escalationVehicle,
             decide(decision) {
+              // #364: the car may have sold to another customer while this
+              // review sat open. Nothing left to sell — they walk.
+              if (!vehicleStillOnLot()) {
+                walkLostToOtherBuyer();
+                return { status: 'vehicle_sold' };
+              }
               const settlePlayerTrade = (
                 agreedAllowance: number,
                 action: 'accept' | 'counter',
@@ -724,6 +782,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
           bus.publish('trade:escalated', {
             customerId,
             day,
+            vehicle: escalationVehicle,
             currentVehicle: person.currentVehicle,
             book: tradeRes.review.book,
             allowanceAsk: tradeRes.review.allowanceAsk,
@@ -817,14 +876,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         const review: DiscountReviewPayload = {
           customerId,
           day,
-          vehicle: {
-            id: vehicle.id,
-            make: vehicle.make,
-            model: vehicle.model,
-            year: vehicle.year,
-            mileage: vehicle.mileage,
-            category: vehicle.category,
-          },
+          vehicle: escalationVehicle,
           marketPrice: Math.round(close.priceFormation.marketPrice),
           askingPrice,
           customerTargetPrice,
@@ -893,6 +945,12 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
           day,
           review,
           decide(decision) {
+            // #364: the car may have sold to another customer while this
+            // review sat open. Nothing left to sell — they walk.
+            if (!vehicleStillOnLot()) {
+              walkLostToOtherBuyer();
+              return { status: 'vehicle_sold' };
+            }
             const settleDiscount = (
               agreedPrice: number,
             ): PlayerDiscountDecisionResult => {

@@ -7,6 +7,14 @@ import {
 
 const REVIEW: TradeReview = {
   customerId: 'cust:42',
+  vehicle: {
+    id: 'veh:1',
+    make: 'Toyota',
+    model: 'Camry',
+    year: 2018,
+    mileage: 62_000,
+    category: 'sedan',
+  },
   currentVehicle: {
     make: 'Honda',
     model: 'Civic',

@@ -267,8 +267,6 @@ interface Tally {
   carryingCostTotal: number;
   /** Unit-days that burn covered, so the burn can be read per unit per day. */
   carryingUnitDays: number;
-  /** Escalations whose vehicle another customer bought first — see #364. */
-  escalationsLostToSoldUnit: number;
 }
 
 interface RunOutcome extends Tally {
@@ -304,7 +302,6 @@ function runEarlyGameFloor(): RunOutcome {
     reconOverrunTotal: 0,
     carryingCostTotal: 0,
     carryingUnitDays: 0,
-    escalationsLostToSoldUnit: 0,
   };
   const signature: string[] = [];
   const reasons: Record<string, number> = {};
@@ -399,23 +396,14 @@ function runEarlyGameFloor(): RunOutcome {
     days += 1;
 
     // Two customers can be held on the SAME unit — a six-space lot makes that
-    // routine — and whoever is resolved first drives it away. The second then
-    // throws `No lot vehicle`, which is a live defect filed as #364, not
-    // something this test can assert around. Count those and carry on: they
-    // never reached a band either way, so the distribution is unaffected.
+    // routine — and whoever is resolved first drives it away. Since #364 the
+    // second one resolves as a no-sale (`vehicle_sold_to_other`) instead of
+    // throwing, so the bot just plays every held review straight.
     for (const customerId of heldTrades.splice(0)) {
-      try {
-        world.resolvePlayerTradeDecision(customerId, { kind: 'accept_ask' });
-      } catch {
-        t.escalationsLostToSoldUnit += 1;
-      }
+      world.resolvePlayerTradeDecision(customerId, { kind: 'accept_ask' });
     }
     for (const customerId of heldDiscounts.splice(0)) {
-      try {
-        world.resolvePlayerDiscountDecision(customerId, { kind: 'accept_ask' });
-      } catch {
-        t.escalationsLostToSoldUnit += 1;
-      }
+      world.resolvePlayerDiscountDecision(customerId, { kind: 'accept_ask' });
     }
     for (const vehicleId of heldRecons.splice(0)) {
       try {
@@ -477,7 +465,6 @@ describe('MarketEconomy — early-game floor (#181)', () => {
       `tail-rate=${(reconTailRate * 100).toFixed(1)}% ` +
       `recons-completed=${run.reconsCompleted} ` +
       `mean-overrun=${reconOverrun.toFixed(3)}× ` +
-      `lost-to-sold-unit=${run.escalationsLostToSoldUnit} ` +
       `carrying=$${Math.round(run.carryingCostTotal)} over ` +
       `${run.carryingUnitDays} unit-days = $${carryingPerUnitDay.toFixed(2)}/unit/day ` +
       `profile=${JSON.stringify(run.profile)} reasons=` +

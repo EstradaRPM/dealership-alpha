@@ -528,6 +528,20 @@ export interface EventMap {
   'trade:escalated': {
     customerId: string;
     day: number;
+    /**
+     * The lot unit the customer is buying, snapshotted at hold time (#364) —
+     * not the trade. A held review outlives the lot: another customer can be
+     * held on the same car and drive it away first, so the prompt names the
+     * unit off this snapshot rather than a lookup that would come back empty.
+     */
+    vehicle: {
+      id: string;
+      make: string;
+      model: string;
+      year: number;
+      mileage: number;
+      category: string;
+    };
     currentVehicle: {
       templateId: string;
       /** Opaque canonical brand id (join key); never a display string. */
@@ -706,7 +720,10 @@ export interface EventMap {
      * `'trade_player_declined'` — player refused a held trade (#201)), the
      * discount-review walks (`'discount_player_declined'` — player refused a
      * held discount; `'discount_below_cost'` — accepted price below cost;
-     * `'discount_haggle_exhausted'` — counters ran out), or a SalesProcess
+     * `'discount_haggle_exhausted'` — counters ran out), the sold-out-from-
+     * under-them walk (`'vehicle_sold_to_other'` — #364: another customer,
+     * held on the same unit, was resolved first and drove it away, so this
+     * held review had nothing left to sell), or a SalesProcess
      * `WalkCause` (`'patience_drain' | 'trust_collapse' |
      * 'demo_nonnegotiable_miss'`). Omitted on `outcome: 'closed'`. An *unusual*
      * trade or discount escalated to the player emits its escalation event

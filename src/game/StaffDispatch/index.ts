@@ -15,6 +15,7 @@ export type {
   PlayerDiscountDecision,
   PlayerDiscountDecisionResult,
   DiscountReviewPayload,
+  EscalationVehicle,
 } from './StaffDispatch';
 export { loadStaffDispatchConfig } from './staffDispatchData';
 export type { StaffDispatchConfig } from './staffDispatchData';
