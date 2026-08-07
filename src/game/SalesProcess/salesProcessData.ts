@@ -128,6 +128,21 @@ export const SalesProcessConfigSchema = z
           Math.abs(h.stageWeight + h.valueWeight + h.trustWeight - 1) < 1e-9,
         { message: 'heat weights must sum to 1' },
       ),
+    // How much of themselves a customer leaves behind after the visit (#363):
+    // the loyalty seed InstalledBase turns into an owner's starting loyalty.
+    // Trust is what they think of the store, `objectiveDeal` is what they think
+    // of the deal — a blend, so they sum to 1. A walk contributes no deal term
+    // (there was no deal), which is why a walk seeds lower than a close at the
+    // same trust.
+    retention: z
+      .object({
+        trustWeight: unit,
+        dealWeight: unit,
+      })
+      .strict()
+      .refine((r) => Math.abs(r.trustWeight + r.dealWeight - 1) < 1e-9, {
+        message: 'retention weights must sum to 1',
+      }),
     calibration: z
       .object({
         positiveMin: unit,

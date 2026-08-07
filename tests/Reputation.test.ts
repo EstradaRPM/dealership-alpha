@@ -2,6 +2,19 @@ import { createEventBus } from '../src/game/EventBus';
 import { createGameClock } from '../src/game/GameClock';
 import { createReputation, type ReputationConfig } from '../src/game/Reputation';
 import { createEconomy } from '../src/game/Economy';
+import { createCustomerPool } from '../src/game/CustomerPool';
+import {
+  loadPersonArchetypes,
+  loadVisitArchetypes,
+  loadTraitTaxonomy,
+} from '../src/game/NPC';
+
+const npcDeps = {
+  masterSeed: 42,
+  personArchetypes: loadPersonArchetypes(),
+  visitArchetypes: loadVisitArchetypes(),
+  traits: loadTraitTaxonomy(),
+};
 
 const CONFIG: ReputationConfig = {
   startingSatisfaction: 70,
@@ -91,6 +104,28 @@ describe('Reputation — event responses', () => {
   it('walks lower satisfaction', () => {
     const { bus, reputation } = makeSetup({ startingSatisfaction: 50 });
     publishWalk(bus);
+    expect(reputation.customerSatisfaction).toBe(49);
+  });
+
+  // #363 — the live floor is where walks actually come from, and until the
+  // bridge existed none of them reached this module. Driven through the real
+  // CustomerPool so the test asserts the wiring, not a hand-built payload.
+  it('a live-floor walk costs reputation once', () => {
+    const { bus, reputation } = makeSetup({ startingSatisfaction: 50 });
+    const pool = createCustomerPool({ bus, npcDeps });
+    bus.publish('clock:day_started', { day: 1 });
+    const [session] = pool.getSessions();
+
+    bus.publish('staff:auto_resolved', {
+      customerId: session.customerId,
+      staffId: 'sp-1',
+      day: 1,
+      outcome: 'no_sale',
+      grossImpact: 0,
+      reason: 'patience_drain',
+      heat: 0.5,
+    });
+
     expect(reputation.customerSatisfaction).toBe(49);
   });
 

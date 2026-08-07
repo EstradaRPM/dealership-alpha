@@ -388,7 +388,7 @@
     "satisfactionMax": 100,
     "closedDealSatisfactionBonus": 3,
     "closedDealReviewBonus": 1,
-    "walkSatisfactionPenalty": -1,
+    "walkSatisfactionPenalty": -0.12,
     "reviewDriftRate": 0.1,
     "satisfactionEquilibrium": 50,
     "satisfactionDriftRate": 0.02,

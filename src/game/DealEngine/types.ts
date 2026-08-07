@@ -69,6 +69,22 @@ export interface CloseDealParams {
   term?: number;
   /** Annualized rate as a decimal; 0 for cash. */
   apr?: number;
+  /**
+   * How the buyer read the visit that produced this close (#363) — round-tripped
+   * to `deal:closed` so `CustomerPool` can publish the honest scalars on
+   * `customer:resolved` instead of re-running the sales process against a stub
+   * vehicle. DealEngine does not read it; the close flow that ran the process
+   * (StaffDispatch) is the only caller that can know it. Omit when no sales
+   * process ran.
+   */
+  salesQuality?: DealSalesQuality;
+}
+
+/** @see CloseDealParams.salesQuality */
+export interface DealSalesQuality {
+  receptivity: number;
+  satisfaction: number;
+  retentionSeed: number;
 }
 
 export interface ClosedDealResult {

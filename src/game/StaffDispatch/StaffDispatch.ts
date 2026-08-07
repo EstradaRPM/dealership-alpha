@@ -22,6 +22,7 @@ import {
   makeSalespersonProfile,
   pickVehicleForMatch,
   residualHeat,
+  resolutionQuality,
   resolveSalesProcess,
   vehicleSpaced,
   wantedVehicleCategory,
@@ -569,6 +570,14 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         loanAmount,
         term,
         apr,
+        // #363: the buyer's read on the visit, off the resolution and close
+        // that actually ran against the unit they were shown. CustomerPool
+        // publishes this straight onto `customer:resolved`; without it, it
+        // re-runs the whole process against a stub vehicle nobody saw.
+        salesQuality: resolutionQuality(
+          { resolution, close },
+          deps.salesProcessDeps,
+        ),
       });
 
       bus.publish('staff:auto_resolved', {

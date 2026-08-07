@@ -70,14 +70,19 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
-- **#363 and #364 are open live defects with NO phase assignment.** Both were filed out of
-  phase 8 and both are reachable in real play: #363 — the live floor never publishes
-  `customer:resolved` on a walk, starving `FollowUpPool`, Reputation's walk penalty,
-  RegulatoryMeter and `TierManager.customersServed`; #364 — two customers held on the same unit,
-  the second resolution throwing `No lot vehicle`. Phase 9's own queue starts at #151, so the
-  chronological rule will not pick them up on its own. They want placing — and on the merits
-  they belong **before** the F&I feature work, since one starves four systems and the other is
-  a crash.
+- **#363 is BUILT (2026-08-07). #364 is still open and still has no phase assignment** — two
+  customers held on the same unit, the second resolution throwing `No lot vehicle`. It is
+  reachable in real play and phase 9's queue starts at #152, so the chronological rule will
+  not pick it up on its own. On the merits it belongs before the remaining F&I feature work,
+  since it is a crash.
+- **Three walk-driven magnitudes were retuned by #363 and the small numbers are deliberate.**
+  `walkSatisfactionPenalty` −1 → **−0.12**, `walkPressure` 0.5 → **0.05**, `angerPressure`
+  2.0 → **0.4**. All three had been set against a producer that never fired; the live floor
+  walks ~88% of its ups, so at the old values one career drove a competently-run store's
+  satisfaction 70 → 12.5 and **pinned regulatory pressure at 80 — the AG threshold, terminal
+  at Tier 1**. Do not read the magnitudes as timidity: `walkSatisfactionPenalty` is charged
+  ~2.6 times a day, every day. Full reasoning + measurements in the log entry below and in
+  `src/game/Reputation/CLAUDE.md`.
 - **Phase 5c is DONE — the whole UI-layout rebuild landed 2026-08-02** (#346 Operations, #347
   People, #348 nav stacks, #349 Growth, #350 chart kit, #351 Finance). Every defect in
   `docs/audits/ui-layout-audit.md` is closed out: no placeholder tabs, no dead Operations
@@ -334,12 +339,13 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
   T2, median survival 360 days, bankruptcy 19%. The new pacing miss is the opposite one — **T1
   now clears in a median 1.0 month against a 2.0-month target** (status OUT). That is a
   tier-gate calibration question, not a pricing one.
-- **`staff:auto_resolved` is the live outcome truth, and `customer:resolved` is not** (#180).
-  The live floor publishes `customer:resolved` **only on a close** — a walk never publishes
-  it at all, so `FollowUpPool`, `Reputation`'s walk penalty, `RegulatoryMeter`'s walk pressure
-  and `TierManager.customersServed` are all starved in real play. Filed as **#363**;
-  deliberately not folded into #180 because publishing walks changes live balance. When
-  reading outcomes, subscribe `staff:auto_resolved`.
+- **`customer:resolved` now covers walks too, and CustomerPool is still its only publisher**
+  (#363, superseding #180's "subscribe `staff:auto_resolved` when reading outcomes" note for
+  the *resolution* question). Three drivers reach it — `deal:closed`, `staff:auto_resolved`
+  with `outcome: 'no_sale'`, and `dispatch`. Do not add a fourth publisher in another module:
+  the session lifecycle and the terminal-stage guard that stops one customer resolving twice
+  both live in `CustomerPool`. `staff:auto_resolved` remains the right subscription for the
+  *close-quality* fields it uniquely carries (`brand`, `badReview`, `matchQuality`).
 - **`SalesProcess.residualHeat` is the ONE definition of walk warmth** (#180). It was
   hand-copied between `CustomerPool` and the #94 harness; the weights now live in
   `data/sales-process.json` `heat` and must sum to 1 (schema-refused otherwise). Do not
@@ -448,6 +454,65 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-07 — **BUILT #363** (the live floor's walks reach the rest of the game). A walk on
+  the live sales floor published only `staff:auto_resolved`, so `customer:resolved` never
+  fired for one — and four systems were dead in real play while looking healthy in isolation:
+  the whole BDC follow-up pool never filled, walks cost no reputation, regulatory walk
+  pressure never accrued, and `TierManager.customersServed` counted closes only (~3% of the
+  floor). `CustomerPool` now bridges `staff:auto_resolved`/`no_sale` onto `customer:resolved`.
+  **The bridge belongs in CustomerPool, not in StaffDispatch, and that is the load-bearing
+  call.** `customer:resolved` is the customer *lifecycle* event: the session, the
+  `customer:state_changed` transition, and the guard that stops one customer resolving twice
+  all live in the pool. So the pool gained a second live-floor subscription beside its
+  `deal:closed` one and stayed the sole publisher — three drivers, one owner.
+  **A pre-process walk resolves at `heat: 0` rather than not resolving.** `no_fit` is 71% of
+  the floor and carries no warmth by design (a customer the lot had nothing for never got far
+  enough to leave a temperature). They are still an up who was on the floor and left, so they
+  count as served and cost what a walk costs; they simply are not worth a callback, which
+  `FollowUpPool`'s existing `heat <= 0` guard already expresses. No new carve-out.
+  **The close half was a lie worth fixing in the same slice.** `CustomerPool` re-ran the
+  entire sales process against `STUB_VEHICLE_SPACED` to produce the close's satisfaction —
+  scoring the visit against a car nobody was shown, and emitting a phantom
+  `customer:gate_evaluated` stream for gates that never ran. The live floor already measures
+  this honestly, so the trio now travels with the close: `closeDeal` takes an optional
+  `salesQuality`, `deal:closed` round-trips it, `CustomerPool` publishes it. **DealEngine never
+  reads it** — only the flow that ran the process can know it. Absent (legacy harnesses,
+  direct `closeDeal` callers) the local evaluation still speaks, so the no-DealEngine path is
+  byte-for-byte unchanged. The formula itself moved to `SalesProcess.resolutionQuality`, the
+  sibling of `residualHeat` and for the same reason — the 0.6/0.4 retention blend was two
+  hardcoded magic numbers in `CustomerPool` and is now `data/sales-process.json` `retention`,
+  schema-refused unless the weights sum to 1.
+  **Turning the producer on was a live-balance event, and it revealed three magnitudes that
+  had been calibrated against something that never fired.** First measurement: satisfaction
+  70 → **12.5**, review → 15.9, arrivals collapsed with it (the #180 harness could only
+  collect 457 of its 600 sample in 600 days), and **regulatory pressure pinned at 80.0 — the
+  AG-complaint threshold, terminal at Tier 1**. The store was being shut down for walking the
+  same share of its ups every real dealership walks. Retuned: `walkSatisfactionPenalty`
+  −1 → **−0.12** (against `closedDealSatisfactionBonus` +3), `walkPressure` 0.5 → **0.05**,
+  `angerPressure` 2.0 → **0.4**. The small numbers are not timidity — the walk penalty is
+  charged ~2.6 times a day, every day.
+  **−0.12 was chosen on the pacing targets, not on feel.** −0.08 sends T1→T2 to a median 2.0
+  months (status OUT, too fast); −0.12 holds it at 3.0 against the 3.5 target (WITHIN), which
+  is the same read the pre-#363 baseline gave. Measured against a stashed baseline on the same
+  100 seeds: survival median 360 = 360, bankruptcy 19% vs 18%, T2 reached 87 vs 91, T1 still
+  1.0mo vs the 2.0 target (the standing, unrelated miss). **Better** than baseline: FAILED
+  92% → 88%, median failure day 98 → 117, insolvency *throws* 3 → 0. **Worse**: seeds reaching
+  T3 18 → 9 — reputation now costs arrivals, which slows the ladder, and that is the mechanic
+  working rather than a defect. A 12-seed probe isolates the rest: audit failures 1 → 0,
+  indictment contractions 11 → 8, so the indictment deaths in the pacing report are
+  **pre-existing and slightly improved**, not something this slice introduced.
+  Final live-engine read: 600 reached in 555 days, positive 38.7%, apathetic 53.0%, warm-walk
+  share 95.9%, satisfaction **48.5**, review 60.0, regulatory pressure **0.3**, 313 follow-ups
+  worked through the pool, `customersServed` 2083 against the ~280 closes it used to count.
+  **The four consumers are pinned in the ASSEMBLED world** by
+  `tests/LiveFloorWalk.reachability.test.ts` — a module unit test cannot tell "wired" from
+  "wired to nothing", which is exactly how this went dark for so long. The #180 harness also
+  permanently reports all four now (`[#363 walk consumers]`), so the next retune can see what
+  the walk volume does to them.
+  223 suites / **2896** tests, typecheck clean.
+  Next: **#364** (the `No lot vehicle` crash) — or **BUILD #152** if the director places phase
+  9's queue first.
+
 - 2026-08-07 — **BUILT #151** (per-brand reputation — the first of phase 9's twelve). The
   `pickVehicleFor` matcher has carried a `reputationBonusFn` stub returning 0 since #145;
   `Reputation.repFor(brand)` is now the real thing, and the store's record selling a make is
@@ -528,46 +593,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   will never reach them on its own. Recorded in Blockers with the recommendation that they go
   first; placing them is the director's call, not a slice's.
   Next: **BUILD #151** — the lowest-numbered open, deps-met issue in the phase.
-
-- 2026-08-07 — **DECIDED phase 9's gate: the parked F&I grill is CLOSED** (`/decide`). It had sat
-  paused since 2026-07-08, and it was paused for a good reason — it had surfaced the game-wide
-  engagement problem, which had to be answered first. That answer (`engagement-spine.md`) landed
-  and repositioned F&I from the spine's tracer to its **second plug-in**, so the tree could be
-  resumed knowing what F&I is *for*: proving the Reveal grammar spans from a daily beat up to a
-  monthly strategic verdict.
-  **Four rulings, taken in the order the doc's own re-entry note prescribed** (start at the
-  demand-mix→F&I-ceiling coupling, since it is both an open mechanic and the emergence hook).
-  **Q7 — the finance mix is read AHEAD, on the wire.** It becomes a MarketIntel lane behind the
-  same door model every other lane has (`src/game/MarketIntel/types.ts:43-57`), opened by the paid
-  data subscription or by the F&I manager on the desk. The reasoning is the spine's: a posture set
-  blind is a coin flip, and the whole grammar is "a bet you place, the Reveal resolves." It also
-  gives the T3 hire a second reason to exist beyond attach rates. **Q8 — the player can BUY a
-  different crowd, credit-wise, and it is built in B2.** Advertising campaigns gain
-  person-archetype weights beside the vehicle-type weights they already carry (today only
-  `suv 0.85 / sedan 0.55 / truck -0.2`, `data/tunables.json:117-133`) — a "we finance anyone" push
-  pulls a lower-credit, must-finance crowd, a certified-preowned push pulls high-credit cash. This
-  is the standing demand-influence requirement and the F&I ceiling seen from two ends; a ceiling
-  you can read but not move is half a mechanic, so it does not get sorted into a later demand
-  slice. **Q9 — the posture dial is three positions**, "More per deal" / "Balanced" / "More
-  deals", persisted as a slot id exactly like `tradePolicy` (`data/tunables.json:774` is the shape
-  to copy). Q5 had already killed slider-hunting; three stops let the Q4 peak meter read as "the
-  peak is at Balanced this month," which is a legible bet, where a 0–100 number would read as
-  something to optimize. **Q10 — no product-level control.** All six unlock at T3 and the manager
-  owns the menu. A per-product switch is a second control surface with nothing in it: turning off
-  `etch` is strictly worse unless CSI drag is priced per product, which is a fourth rule on a
-  mechanic whose point is one dial.
-  **Nine internal calls were made rather than asked**, and one of them is a correction to the
-  grill doc itself: the posture is **slot state, not world state**, so there is no snapshot
-  envelope bump and no migration to write — the doc's own parked note was wrong
-  (`src/app/useLevers.ts:105`). The others: reserve lives inside `DealEngine` with `backGross`
-  splitting into `productGross`/`reserveGross`; `credit-tiers.json`'s `apr` becomes `buyRate` with
-  the customer's rate being `buyRate + markup` and **no lender flats**; structural deal-kill falls
-  out of the `ptiCap`/`maxTerm`/`ltvCeiling` already in the tier table, so half of Q3's tension
-  needs no new machinery; #152 is one per-product `loanSensitivity`; #153 rides the existing
-  `resolveEffects` machinery; #151's per-brand reputation is ambient depth feeding Reveal text,
-  not a dashboard; one deal-kill curve in `data/`; and every magnitude is owed to a #286-class
-  calibration pass, not to this design.
-  Recorded in `fni-mechanics-grill-state.md` (rewritten from "PARKED (resumable)" to "COMPLETE"),
-  with the ruling summarised into `path-to-finished-product.md` §4 B2 and the gate row moved to
-  `.claude/skills/decide/gates.md`'s Settled section.
-  Next: **SLICE phase 9** — the design is closed, so the next unit files the issues.

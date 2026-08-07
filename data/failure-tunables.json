@@ -28,9 +28,9 @@
     "pressureThreshold": 80,
     "auditThreshold": 60,
     "dailyDecay": 1.5,
-    "walkPressure": 0.5,
+    "walkPressure": 0.05,
     "missedOppPressure": 1.0,
-    "angerPressure": 2.0,
+    "angerPressure": 0.4,
     "tier2": {
       "suspensionDays": 14
     },

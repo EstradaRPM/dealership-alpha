@@ -116,6 +116,7 @@ const DISCOUNT_EXCEPTION_CONFIG: SalesProcessConfig = {
     framingWeight: 0,
   },
   heat: { stageWeight: 0.5, valueWeight: 0.3, trustWeight: 0.2 },
+  retention: { trustWeight: 0.6, dealWeight: 0.4 },
   calibration: {
     positiveMin: 0,
     apatheticMin: 0,

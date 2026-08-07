@@ -303,3 +303,176 @@ describe('CustomerPool — extended customer:resolved payload (#91)', () => {
     expect(p.heat).toBeLessThanOrEqual(1);
   });
 });
+
+// ── The live-floor bridges (#363) ─────────────────────────────────────────────
+
+describe('CustomerPool — a close reports the close that actually happened (#363)', () => {
+  it('close scalars come from the live close', () => {
+    const { clock, pool, bus } = makeSetup();
+    clock.advanceDay();
+    const [session] = pool.getSessions();
+    type Payload = {
+      outcome: string;
+      receptivity: number;
+      satisfaction: number;
+      retentionSeed: number;
+      agreedPrice: number;
+    };
+    const payloads: Payload[] = [];
+    bus.subscribe('customer:resolved', (e) => payloads.push(e as Payload));
+    // The stub re-run this replaces publishes one gate event per gate; the live
+    // close ran its gates elsewhere, so none should be synthesized here.
+    let gateEvents = 0;
+    bus.subscribe('customer:gate_evaluated', () => {
+      gateEvents += 1;
+    });
+
+    // A DealEngine-driven close carrying the closing flow's own measurement —
+    // the shape StaffDispatch publishes off the unit the customer was shown.
+    bus.publish('deal:closed', {
+      customerId: session.customerId,
+      vehicleId: 'v1',
+      agreedPrice: 19_500,
+      frontGross: 2_200,
+      backGross: 900,
+      daysInInventory: 12,
+      paymentMethod: 'finance',
+      downPayment: 2_000,
+      loanAmount: 17_500,
+      term: 60,
+      apr: 0.09,
+      salesQuality: {
+        receptivity: 0.81,
+        satisfaction: -1,
+        retentionSeed: 0.42,
+      },
+    });
+
+    expect(payloads).toHaveLength(1);
+    const p = payloads[0];
+    expect(p.outcome).toBe('closed');
+    expect(p.receptivity).toBe(0.81);
+    expect(p.satisfaction).toBe(-1);
+    expect(p.retentionSeed).toBe(0.42);
+    expect(p.agreedPrice).toBe(19_500);
+    expect(gateEvents).toBe(0);
+  });
+
+  it('a close with no measurement still falls back to the local evaluation', () => {
+    const { clock, pool, bus } = makeSetup(0, PERFECT_SKILL);
+    clock.advanceDay();
+    const [session] = pool.getSessions();
+    type Payload = { outcome: string; satisfaction: number; retentionSeed: number };
+    const payloads: Payload[] = [];
+    bus.subscribe('customer:resolved', (e) => payloads.push(e as Payload));
+    let gateEvents = 0;
+    bus.subscribe('customer:gate_evaluated', () => {
+      gateEvents += 1;
+    });
+
+    bus.publish('deal:closed', {
+      customerId: session.customerId,
+      vehicleId: 'v1',
+      agreedPrice: 19_500,
+      frontGross: 2_200,
+      backGross: 0,
+      daysInInventory: 12,
+      paymentMethod: 'cash',
+      downPayment: 19_500,
+      loanAmount: 0,
+      term: 0,
+      apr: 0,
+    });
+
+    expect(payloads).toHaveLength(1);
+    // Perfect skill closes happily: the local evaluation is still what speaks.
+    expect(payloads[0].satisfaction).toBe(1);
+    expect(payloads[0].retentionSeed).toBeGreaterThan(0);
+    expect(gateEvents).toBeGreaterThan(0);
+  });
+});
+
+describe('CustomerPool — the live floor publishes its walks (#363)', () => {
+  function liveWalk(
+    bus: ReturnType<typeof makeSetup>['bus'],
+    customerId: string,
+    reason: string,
+    heat?: number,
+  ): void {
+    bus.publish('staff:auto_resolved', {
+      customerId,
+      staffId: 'sp-1',
+      day: 1,
+      outcome: 'no_sale',
+      grossImpact: 0,
+      reason,
+      heat,
+    });
+  }
+
+  it('a worked walk resolves the customer with the heat the floor measured', () => {
+    const { clock, pool, bus } = makeSetup();
+    clock.advanceDay();
+    const [session] = pool.getSessions();
+    type Payload = { outcome: string; heat: number; agreedPrice: number };
+    const payloads: Payload[] = [];
+    bus.subscribe('customer:resolved', (e) => payloads.push(e as Payload));
+
+    liveWalk(bus, session.customerId, 'patience_drain', 0.62);
+
+    expect(payloads).toHaveLength(1);
+    expect(payloads[0].outcome).toBe('walk');
+    expect(payloads[0].heat).toBe(0.62);
+    expect(payloads[0].agreedPrice).toBe(0);
+    expect(pool.getSession(session.customerId)?.stage).toBe('WALK');
+  });
+
+  it('a close does not also publish a walk', () => {
+    const { clock, pool, bus } = makeSetup();
+    clock.advanceDay();
+    const [session] = pool.getSessions();
+    const outcomes: string[] = [];
+    bus.subscribe('customer:resolved', (e) => outcomes.push(e.outcome));
+
+    bus.publish('staff:auto_resolved', {
+      customerId: session.customerId,
+      staffId: 'sp-1',
+      day: 1,
+      outcome: 'closed',
+      grossImpact: 3_100,
+    });
+
+    expect(outcomes).toEqual([]);
+  });
+
+  it('an already-resolved customer is not charged twice', () => {
+    const { clock, pool, bus } = makeSetup();
+    clock.advanceDay();
+    const [session] = pool.getSessions();
+    const outcomes: string[] = [];
+    bus.subscribe('customer:resolved', (e) => outcomes.push(e.outcome));
+
+    liveWalk(bus, session.customerId, 'patience_drain', 0.62);
+    liveWalk(bus, session.customerId, 'patience_drain', 0.62);
+
+    expect(outcomes).toEqual(['walk']);
+  });
+
+  it('a customer BDC brought back can resolve again', () => {
+    const { clock, pool, bus } = makeSetup();
+    clock.advanceDay();
+    const [session] = pool.getSessions();
+    const outcomes: string[] = [];
+    bus.subscribe('customer:resolved', (e) => outcomes.push(e.outcome));
+
+    liveWalk(bus, session.customerId, 'patience_drain', 0.62);
+    bus.publish('bdc:callback_succeeded', {
+      customerId: session.customerId,
+      day: 2,
+      archetypeLabel: session.archetypeLabel,
+    });
+    liveWalk(bus, session.customerId, 'trust_collapse', 0.2);
+
+    expect(outcomes).toEqual(['walk', 'walk']);
+  });
+});

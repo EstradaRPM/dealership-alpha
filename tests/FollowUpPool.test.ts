@@ -52,7 +52,53 @@ function resolveWalk(
   return session.customerId;
 }
 
+/**
+ * The live sales floor's own walk (#363): StaffDispatch posts `no_sale` with the
+ * warmth it measured, and CustomerPool bridges it onto `customer:resolved`. This
+ * is the path a real game takes — before the bridge existed, this pool was
+ * starved because the only publishers were the admin walk and the legacy
+ * no-DealEngine emit, neither of which runs in a composed world.
+ */
+function liveFloorWalk(
+  setup: ReturnType<typeof makeSetup>,
+  reason: string,
+  heat?: number,
+) {
+  const { clock, pool, bus } = setup;
+  clock.advanceDay();
+  const session = pool.getSessions().find(s => !setup.followUp.getFollowUp(s.customerId))!;
+  bus.publish('staff:auto_resolved', {
+    customerId: session.customerId,
+    staffId: 'sp-1',
+    day: 1,
+    outcome: 'no_sale',
+    grossImpact: 0,
+    reason,
+    heat,
+  });
+  return session.customerId;
+}
+
 // ── Enqueue on walk ───────────────────────────────────────────────────────────
+
+describe('FollowUpPool — the live floor drain (#363)', () => {
+  it('enrols a customer walked by the live floor drain', () => {
+    const setup = makeSetup();
+    const id = liveFloorWalk(setup, 'patience_drain', 0.6);
+    const entry = setup.followUp.getFollowUp(id);
+    expect(entry).toBeDefined();
+    expect(entry!.heat).toBe(0.6);
+  });
+
+  it('does not enrol a walk that never reached the sales process', () => {
+    const setup = makeSetup();
+    // `no_fit` carries no heat — the lot had nothing for them, so they never got
+    // far enough to leave a temperature. They still resolve; they are just not
+    // worth a callback.
+    const id = liveFloorWalk(setup, 'no_fit');
+    expect(setup.followUp.getFollowUp(id)).toBeUndefined();
+  });
+});
 
 describe('FollowUpPool — enqueue on walk', () => {
   it('empty before any customer walks', () => {

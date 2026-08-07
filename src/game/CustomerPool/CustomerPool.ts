@@ -11,6 +11,7 @@ import {
   closeAndPrice,
   accumulateMeters,
   residualHeat,
+  resolutionQuality,
   GREEN_SALESPERSON,
   vehicleSpaced,
   type SalesProcessResolution,
@@ -160,14 +161,10 @@ export function createCustomerPool(deps: {
       prevValue = running.value;
     });
 
-    const receptivity = resolution.meters.trustIntegrity;
-
     if (resolution.outcome === 'walk') {
       return {
         outcome: 'walk',
-        receptivity,
-        satisfaction: 0,
-        retentionSeed: clampUnit(resolution.meters.trustIntegrity * 0.6),
+        ...resolutionQuality({ resolution }),
         heat: residualHeat({ resolution }),
         agreedPrice: 0,
         frontGross: 0,
@@ -186,9 +183,7 @@ export function createCustomerPool(deps: {
     const closed = closeResult.outcome === 'buy';
     return {
       outcome: closed ? 'closed' : 'walk',
-      receptivity,
-      satisfaction: closeResult.badReview ? -1 : closed ? 1 : 0,
-      retentionSeed: clampUnit(resolution.meters.trustIntegrity * 0.6 + closeResult.objectiveDeal * 0.4),
+      ...resolutionQuality({ resolution, close: closeResult }),
       heat: residualHeat({ resolution, bought: closed }),
       agreedPrice: closed ? closeResult.realizedPrice : 0,
       frontGross: closed ? closeResult.frontGross : 0,
@@ -312,25 +307,70 @@ export function createCustomerPool(deps: {
     }
   });
 
-  bus.subscribe('deal:closed', ({ customerId, agreedPrice, frontGross }) => {
-    // DealEngine is the authoritative source for deal closes; bypass SalesProcess outcome
-    // determination. Still run SalesProcess for quality scalars (receptivity, satisfaction,
-    // retentionSeed) which are independent of who determined the close.
+  bus.subscribe(
+    'deal:closed',
+    ({ customerId, agreedPrice, frontGross, salesQuality }) => {
+      // DealEngine is the authoritative source for deal closes; bypass SalesProcess
+      // outcome determination.
+      const session = sessions.get(customerId);
+      if (!session) return;
+      const from = session.stage;
+      session.stage = 'CLOSED';
+      bus.publish('customer:state_changed', { customerId, from, to: 'CLOSED' });
+      // #363: prefer the quality the closing flow actually measured. The live
+      // floor ran the whole process against the unit the customer was shown and
+      // carries the result on the close; re-running it here would score the
+      // visit against STUB_VEHICLE_SPACED — a car nobody saw — and emit a
+      // phantom `customer:gate_evaluated` stream for gates that never ran.
+      // Absent (legacy harnesses, direct closeDeal callers), fall back to the
+      // local evaluation so those paths publish exactly as they always did.
+      const scalars = salesQuality ?? resolveViaProcess(session);
+      bus.publish('customer:resolved', {
+        customerId,
+        outcome: 'closed',
+        receptivity: scalars.receptivity,
+        satisfaction: scalars.satisfaction,
+        retentionSeed: scalars.retentionSeed,
+        heat: 0,
+        agreedPrice,
+        frontGross,
+      });
+    },
+  );
+
+  // The live sales floor's walk (#363). StaffDispatch owns the outcome truth for
+  // a customer a salesperson actually worked, and a `no_sale` there is a
+  // resolution just as much as a close is — but before this bridge existed it
+  // published only `staff:auto_resolved`, so FollowUpPool, Reputation's walk
+  // penalty, RegulatoryMeter's walk pressure and TierManager's `customersServed`
+  // never saw the ~97% of live ups that walk.
+  //
+  // `heat` comes straight off the event: it is `SalesProcess.residualHeat` over
+  // the resolution that ran, computed for exactly the population FollowUpPool
+  // wants. The three pre-process reasons (`no_session`, `not_sales`, `no_fit`)
+  // carry none — a customer the lot had nothing for never got far enough to
+  // leave a temperature — and resolve at 0 rather than not resolving at all.
+  bus.subscribe('staff:auto_resolved', ({ customerId, outcome, heat }) => {
+    if (outcome !== 'no_sale') return;
     const session = sessions.get(customerId);
-    if (!session) return;
-    const from = session.stage;
-    session.stage = 'CLOSED';
-    bus.publish('customer:state_changed', { customerId, from, to: 'CLOSED' });
-    const scalars = resolveViaProcess(session);
+    // An already-terminal session has been resolved once; publishing again would
+    // charge Reputation and RegulatoryMeter twice for one customer. A customer
+    // BDC brought back sits at UNGREETED again and may legitimately re-resolve.
+    if (session && (session.stage === 'WALK' || session.stage === 'CLOSED')) return;
+    if (session) {
+      const from = session.stage;
+      session.stage = 'WALK';
+      bus.publish('customer:state_changed', { customerId, from, to: 'WALK' });
+    }
     bus.publish('customer:resolved', {
       customerId,
-      outcome: 'closed',
-      receptivity: scalars.receptivity,
-      satisfaction: scalars.satisfaction,
-      retentionSeed: scalars.retentionSeed,
-      heat: 0,
-      agreedPrice,
-      frontGross,
+      outcome: 'walk',
+      receptivity: 0,
+      satisfaction: 0,
+      retentionSeed: 0,
+      heat: heat ?? 0,
+      agreedPrice: 0,
+      frontGross: 0,
     });
   });
 

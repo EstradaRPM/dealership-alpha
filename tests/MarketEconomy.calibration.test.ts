@@ -214,6 +214,22 @@ interface RunOutcome extends Tally {
   meanTargetOverAsk: number;
   /** Mean vehicle cost ÷ our ask, over the same population. */
   meanCostOverAsk: number;
+  /**
+   * The four consumers #363 reconnected to the live floor, read at the end of
+   * the run. Before that bridge existed a walk never published
+   * `customer:resolved`, so every one of these sat at its starting value no
+   * matter how the floor went — which is exactly why their magnitudes were
+   * calibrated against a producer that never fired. They are read here so a
+   * future retune can see what the walk volume actually does to them.
+   */
+  consumers: {
+    satisfaction: number;
+    reviewScore: number;
+    regulatoryPressure: number;
+    followUpsActive: number;
+    followUpsArchived: number;
+    customersServed: number;
+  };
 }
 
 function runCalibration(): RunOutcome {
@@ -350,6 +366,14 @@ function runCalibration(): RunOutcome {
     reasons,
     meanTargetOverAsk: mean(targetOverAsk),
     meanCostOverAsk: mean(costOverAsk),
+    consumers: {
+      satisfaction: world.reputation.customerSatisfaction,
+      reviewScore: world.reputation.reviewScore,
+      regulatoryPressure: world.regulatoryMeter.pressure,
+      followUpsActive: world.followUpPool.getFollowUps().length,
+      followUpsArchived: world.followUpPool.getArchived().length,
+      customersServed: world.tierManager.customersServed,
+    },
     profile: salesperson
       ? {
           effectiveness: salesperson.effectiveness,
@@ -394,6 +418,15 @@ describe('MarketEconomy — live-engine calibration (#180)', () => {
         .sort((a, b) => b[1] - a[1])
         .map(([r, n]) => `${r}:${n}`)
         .join(' '),
+  );
+  // #363 — the four consumers the live-floor walk bridge reconnected.
+  // eslint-disable-next-line no-console
+  console.log(
+    `[#363 walk consumers] satisfaction=${run.consumers.satisfaction.toFixed(1)} ` +
+      `review=${run.consumers.reviewScore.toFixed(1)} ` +
+      `regPressure=${run.consumers.regulatoryPressure.toFixed(1)} ` +
+      `followUps=${run.consumers.followUpsActive}/${run.consumers.followUpsArchived} ` +
+      `customersServed=${run.consumers.customersServed}`,
   );
 
   const cal = loadMarketCalibrationConfig();

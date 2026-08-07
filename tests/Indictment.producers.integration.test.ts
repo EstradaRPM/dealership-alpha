@@ -1,7 +1,10 @@
 import { createEventBus } from '../src/game/EventBus';
 import { createEconomy } from '../src/game/Economy';
 import { createDealEngine } from '../src/game/DealEngine';
-import { createRegulatoryMeter } from '../src/game/Reputation';
+import {
+  createRegulatoryMeter,
+  loadRegulatoryTunables,
+} from '../src/game/Reputation';
 import { createIndictmentMonitor } from '../src/game/CareerProgression';
 import type { TierManager } from '../src/game/CareerProgression';
 import type { LotVehicle } from '../src/game/Inventory';
@@ -114,8 +117,15 @@ it('audit_failure + fraud_flag + lemon-law from the real producers cross the ind
   expect(indictment.pressure).toBeGreaterThan(0);
 
   // (2) Drive regulatory pressure into the audit band, then an overnight tick
-  // fails the audit → regulatory:audit_failure (+20).
-  for (let i = 0; i < 30; i++) {
+  // fails the audit → regulatory:audit_failure (+20). The number of archived
+  // walks it takes is DERIVED from the live tunables, not a literal: #363 made
+  // `followup:customer_archived` a producer that actually fires in real play and
+  // retuned `angerPressure` accordingly, and a hardcoded loop count silently
+  // stops reaching the band the next time that number moves.
+  const regulatory = loadRegulatoryTunables();
+  const archivesToAuditBand =
+    Math.ceil(regulatory.auditThreshold / regulatory.angerPressure) + 1;
+  for (let i = 0; i < archivesToAuditBand; i++) {
     bus.publish('followup:customer_archived', { customerId: `a${i}`, day: 1 });
   }
   bus.publish('clock:overnight_payroll', { day: 1 });

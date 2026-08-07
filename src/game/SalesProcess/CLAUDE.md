@@ -77,6 +77,19 @@ the live path; `FollowUpPool` consumes it as "who is worth calling back" and the
 live-engine calibration reads it as the warm-walk band. Do not re-derive it at a
 call site.
 
+Resolution quality (#363) — `resolutionQuality({ resolution, close? }, deps?) →
+{ receptivity, satisfaction, retentionSeed }`. The customer's read on the visit:
+the Trust/Integrity meter as `receptivity`, the `CloseResult` quadrant as
+`satisfaction` (`badReview` → -1, any other buy → 1, a walk → 0 — an absent
+review, not a bad one), and a trust×deal blend as `retentionSeed`, whose weights
+live in `data/sales-process.json` `retention` and must sum to 1 (schema-refused
+otherwise). The deal term is present iff an offer was actually formed — someone
+who walked at GREET never saw a number. Pure, no RNG.
+**This is the ONE definition of the trio** — the sibling of `residualHeat`, and
+for the same reason. `CustomerPool` held the only copy and computed it against a
+STUB vehicle, so the live floor's honest close scalars were thrown away and
+replaced by a re-run against a car nobody was shown; both paths call this now.
+
 Wanted-category classifier (#321, engagement-spine walk-off reactions) —
 `wantedVehicleCategory(customerSpaced, deps?) → 'sedan' | 'truck' | 'suv'`.
 Pure/deterministic: nearest `data/vehicle-spaced.json` `categoryBase` vector to

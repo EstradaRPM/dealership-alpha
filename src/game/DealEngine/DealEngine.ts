@@ -93,6 +93,7 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       loanAmount = 0,
       term = 0,
       apr = 0,
+      salesQuality,
     }) {
       // Default to a full-down cash structure when the caller omits the deal-
       // structuring fields. downPayment defaults to agreedPrice for cash so the
@@ -192,6 +193,9 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
         loanAmount,
         term,
         apr,
+        // Carried, never read here (#363): only the caller that ran the sales
+        // process knows how the buyer read it, and `customer:resolved` needs it.
+        salesQuality,
       });
       return result;
     },

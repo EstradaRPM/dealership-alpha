@@ -6,6 +6,49 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-07 — **DECIDED phase 9's gate: the parked F&I grill is CLOSED** (`/decide`). It had sat
+  paused since 2026-07-08, and it was paused for a good reason — it had surfaced the game-wide
+  engagement problem, which had to be answered first. That answer (`engagement-spine.md`) landed
+  and repositioned F&I from the spine's tracer to its **second plug-in**, so the tree could be
+  resumed knowing what F&I is *for*: proving the Reveal grammar spans from a daily beat up to a
+  monthly strategic verdict.
+  **Four rulings, taken in the order the doc's own re-entry note prescribed** (start at the
+  demand-mix→F&I-ceiling coupling, since it is both an open mechanic and the emergence hook).
+  **Q7 — the finance mix is read AHEAD, on the wire.** It becomes a MarketIntel lane behind the
+  same door model every other lane has (`src/game/MarketIntel/types.ts:43-57`), opened by the paid
+  data subscription or by the F&I manager on the desk. The reasoning is the spine's: a posture set
+  blind is a coin flip, and the whole grammar is "a bet you place, the Reveal resolves." It also
+  gives the T3 hire a second reason to exist beyond attach rates. **Q8 — the player can BUY a
+  different crowd, credit-wise, and it is built in B2.** Advertising campaigns gain
+  person-archetype weights beside the vehicle-type weights they already carry (today only
+  `suv 0.85 / sedan 0.55 / truck -0.2`, `data/tunables.json:117-133`) — a "we finance anyone" push
+  pulls a lower-credit, must-finance crowd, a certified-preowned push pulls high-credit cash. This
+  is the standing demand-influence requirement and the F&I ceiling seen from two ends; a ceiling
+  you can read but not move is half a mechanic, so it does not get sorted into a later demand
+  slice. **Q9 — the posture dial is three positions**, "More per deal" / "Balanced" / "More
+  deals", persisted as a slot id exactly like `tradePolicy` (`data/tunables.json:774` is the shape
+  to copy). Q5 had already killed slider-hunting; three stops let the Q4 peak meter read as "the
+  peak is at Balanced this month," which is a legible bet, where a 0–100 number would read as
+  something to optimize. **Q10 — no product-level control.** All six unlock at T3 and the manager
+  owns the menu. A per-product switch is a second control surface with nothing in it: turning off
+  `etch` is strictly worse unless CSI drag is priced per product, which is a fourth rule on a
+  mechanic whose point is one dial.
+  **Nine internal calls were made rather than asked**, and one of them is a correction to the
+  grill doc itself: the posture is **slot state, not world state**, so there is no snapshot
+  envelope bump and no migration to write — the doc's own parked note was wrong
+  (`src/app/useLevers.ts:105`). The others: reserve lives inside `DealEngine` with `backGross`
+  splitting into `productGross`/`reserveGross`; `credit-tiers.json`'s `apr` becomes `buyRate` with
+  the customer's rate being `buyRate + markup` and **no lender flats**; structural deal-kill falls
+  out of the `ptiCap`/`maxTerm`/`ltvCeiling` already in the tier table, so half of Q3's tension
+  needs no new machinery; #152 is one per-product `loanSensitivity`; #153 rides the existing
+  `resolveEffects` machinery; #151's per-brand reputation is ambient depth feeding Reveal text,
+  not a dashboard; one deal-kill curve in `data/`; and every magnitude is owed to a #286-class
+  calibration pass, not to this design.
+  Recorded in `fni-mechanics-grill-state.md` (rewritten from "PARKED (resumable)" to "COMPLETE"),
+  with the ruling summarised into `path-to-finished-product.md` §4 B2 and the gate row moved to
+  `.claude/skills/decide/gates.md`'s Settled section.
+  Next: **SLICE phase 9** — the design is closed, so the next unit files the issues.
+
 - 2026-08-07 — **BUILT #286** (the C2 retune — **phase 8 COMPLETE**). #180 measured that the
   live engine closes 2.2% of worked ups against #94's 85% and named the price floor as the
   rejecting mechanism. #286 had to find out *why the floor was where it was*, and the answer

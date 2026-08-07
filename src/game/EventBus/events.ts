@@ -182,6 +182,16 @@ export interface EventMap {
       | 'demo_nonnegotiable_miss'
       | null;
   };
+  // Published by CustomerPool for EVERY resolution, however it was driven
+  // (#363). Three drivers reach it:
+  //   - `deal:closed`      → a close (live floor or CustomerPool's own dispatch)
+  //   - `staff:auto_resolved` with `outcome: 'no_sale'` → a live-floor walk
+  //   - `dispatch(...)`    → the forced admin walk + the legacy no-DealEngine
+  //                          direct emit
+  // Before #363 the middle one did not exist, so a walk on the live sales floor
+  // never published at all and every consumer keyed off a walked customer
+  // (FollowUpPool, Reputation's walk penalty, RegulatoryMeter's walk pressure,
+  // TierManager's `customersServed`) was starved in real play.
   'customer:resolved': {
     customerId: string;
     outcome: 'closed' | 'walk';
@@ -451,6 +461,27 @@ export interface EventMap {
     term: number;
     /** Annualized rate as a decimal (e.g. 0.07); 0 for cash. */
     apr: number;
+    /**
+     * How the buyer read the visit that produced this close (#363), computed
+     * once by whoever ran the sales process and carried here rather than
+     * re-derived. `CustomerPool` publishes it straight onto `customer:resolved`.
+     *
+     * Present whenever the caller ran a real close (the live floor does).
+     * Omitted by callers that never ran a sales process — legacy harnesses and
+     * direct `closeDeal` tests — and `CustomerPool` then falls back to its own
+     * evaluation, which is what keeps the pre-#363 paths publishing exactly as
+     * before.
+     *
+     * This is transport, not a second definition: the values come from
+     * `SalesProcess.resolutionQuality` over the resolution and close that
+     * actually happened. `staff:auto_resolved`'s `badReview` is the same fact in
+     * Reputation's per-brand encoding (#151) — one computation, two readers.
+     */
+    salesQuality?: {
+      receptivity: number;
+      satisfaction: number;
+      retentionSeed: number;
+    };
   };
 
   // DealEngine — a customer's trade-in resolved during a closing deal (#169).

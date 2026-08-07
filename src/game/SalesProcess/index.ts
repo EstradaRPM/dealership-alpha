@@ -90,6 +90,13 @@ export type {
 export { residualHeat } from './heat';
 export type { ResidualHeatInput, ResidualHeatDeps } from './heat';
 
+export { resolutionQuality } from './quality';
+export type {
+  ResolutionQuality,
+  ResolutionQualityInput,
+  ResolutionQualityDeps,
+} from './quality';
+
 export { closeAndPrice } from './close';
 export type {
   CloseInput,

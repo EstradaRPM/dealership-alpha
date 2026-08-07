@@ -85,6 +85,13 @@ to the real machinery. Per customer (after exception roll + hold-floor):
    five deal-structuring fields (paymentMethod / downPayment / loanAmount /
    term / apr) derived from the customer's Visit + classified credit tier, with
    net trade equity subtracted from the financed amount (or cash down).
+   `closeDeal` also carries **`salesQuality`** (#363) —
+   `SalesProcess.resolutionQuality` over the resolution and close that actually
+   ran against the matched unit. DealEngine never reads it; it round-trips onto
+   `deal:closed` so `CustomerPool` publishes the honest scalars on
+   `customer:resolved` instead of re-running the whole process against a stub
+   vehicle. Only the flow that ran the process can know these, which is why they
+   travel with the close rather than being derived at the far end.
 6. Emit `staff:auto_resolved` with `outcome='closed'`,
    `grossImpact = frontGross + backGross` from the DealEngine result, and
    `matchQuality` from step 1 (#199).
@@ -96,6 +103,17 @@ consumes it (#171) to materialize the acquired trade onto the lot
 (`acquireFromTrade`) as a non-cash unit — the allowance is offset against deal
 cash here, never posted as a separate expense; #169 nets the equity into the
 deal structure.
+
+**A `no_sale` is a customer resolution, and `CustomerPool` bridges it** (#363).
+It subscribes to this event and publishes `customer:resolved` with
+`outcome: 'walk'`, carrying the `heat` below straight through. Nothing here
+publishes `customer:resolved` directly — the session lifecycle and the
+resolve-once guard belong to the pool. Before that bridge a live-floor walk
+published nothing, so `FollowUpPool`, `Reputation`'s walk penalty,
+`RegulatoryMeter` and `TierManager.customersServed` were dead in real play, and
+the magnitudes of the last three had been calibrated against a producer that
+never fired (retuned in #363 — see `data/tunables.json` `walkSatisfactionPenalty`
+and `data/failure-tunables.json` `walkPressure`/`angerPressure`).
 
 `staff:auto_resolved` now carries an optional `reason` field on `no_sale`
 outcomes (`no_session | not_sales | no_fit | no_close | trade_negative_equity |
