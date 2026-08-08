@@ -2,6 +2,7 @@ import { loadCreditTiers, classifyCredit } from './creditTier';
 import { computeMonthlyPayment } from './loanMath';
 import { loadFniProducts, getFniProductById, loadFniAutoAttachConfig } from './fniProducts';
 import { loadDealFraudConfig, type DealFraudConfig } from './dealFraudConfig';
+import { loadFniCsiDragConfig, markupSatisfactionHit, type FniCsiDragConfig } from './csiDrag';
 import {
   computeReserve,
   loadFniPostureConfig,
@@ -59,6 +60,7 @@ export interface DealEngineDeps {
   fniAutoAttachConfig?: FniAutoAttachConfig;
   fraudConfig?: DealFraudConfig;
   reserveConfig?: FniReserveConfig;
+  csiDragConfig?: FniCsiDragConfig;
   /**
    * Is an `f&i-manager` working the desk right now (#365)? A closure rather
    * than a roster reference so DealEngine never depends on StaffOrg, read live
@@ -94,6 +96,7 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
   const autoAttachConfig = deps.fniAutoAttachConfig ?? loadFniAutoAttachConfig();
   const fraudConfig = deps.fraudConfig ?? loadDealFraudConfig();
   const reserveConfig = deps.reserveConfig ?? loadFniReserveConfig();
+  const csiDragConfig = deps.csiDragConfig ?? loadFniCsiDragConfig();
   const { bus, inventory, economy, getCurrentDay } = deps;
   const deskStaffed = deps.getFniDeskStaffed ?? (() => false);
   // #366: the posture the desk works to. Resolved once as a fallback so an
@@ -275,6 +278,27 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
           day: getCurrentDay?.() ?? 0,
           customerId,
           vehicleId,
+        });
+      }
+
+      // CSI drag (#368, grill Q3 secondary) — the slower of the two teeth on the
+      // F&I posture. The contractual deal-kill costs the store the deal it was
+      // working; this costs it the *next* customer: a buyer marked up past the
+      // fair line scores the store lower, and satisfaction already feeds arrival
+      // rates, so gouging thins the crowd. It rides the EXISTING
+      // `reputation:satisfaction_hit` channel — Reputation is already its only
+      // consumer — rather than opening a second path into the same variable.
+      //
+      // Keyed on the rate markup and nothing else: attaching a menu is the F&I
+      // desk's job, over-marking the rate is the gouge. A cash deal quotes no
+      // rate, so there is no markup to resent at any attach.
+      const markupPts = paymentMethod === 'finance' ? apr - resolvedBuyRate : 0;
+      const satisfactionHit = markupSatisfactionHit(markupPts, csiDragConfig);
+      if (satisfactionHit < 0) {
+        bus.publish('reputation:satisfaction_hit', {
+          day: getCurrentDay?.() ?? 0,
+          amount: satisfactionHit,
+          reason: 'fni_rate_markup',
         });
       }
 

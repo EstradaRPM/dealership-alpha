@@ -21,6 +21,8 @@ export {
   rollFinanceFallThrough,
 } from './dealKill';
 export type { FniDealKillConfig } from './dealKill';
+export { loadFniCsiDragConfig, markupSatisfactionHit } from './csiDrag';
+export type { FniCsiDragConfig } from './csiDrag';
 export { loadFniProducts, loadFniAutoAttachConfig } from './fniProducts';
 export { loadDealFraudConfig } from './dealFraudConfig';
 export type { DealFraudConfig } from './dealFraudConfig';

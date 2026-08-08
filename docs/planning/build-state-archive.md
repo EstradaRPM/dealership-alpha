@@ -6,6 +6,63 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **BUILT #152** (the menu is presented against the deal, not just the customer).
+  Attach scaled with the salesperson's skill and nothing else, so a cash buyer was being sold
+  **GAP** — coverage for the gap between a loan balance and the car's value, on a deal with no
+  loan. Attach is now `baseRate × skillMultiplier × loanFactor`, where
+  `loanFactor = 1 − loanSensitivity × (1 − financedShare)` and
+  `financedShare = loanAmount / agreedPrice`.
+  **Two product keys, and it is the same call #153 made.** `loanSensitivity` is the scalar (VSC
+  0.35, GAP 0.8, prepaid maintenance 0.25; etch / key / tire & wheel declare none and are flat,
+  because they protect the car and not the note). `requiresFinancing` is **categorical**, checked
+  ahead of the roll. Collapsing the gate into "sensitivity 1.0" reproduces today's numbers
+  exactly and is wrong for tomorrow's: **C2 owns these magnitudes (I9)**, and a calibration pass
+  must not be able to tune loan-gap coverage back onto a cash sale. Same shape as #153's
+  leaning-vs-category split, for the same reason.
+  **The roll is drawn for every available product, including a gated one.** The `continue` sits
+  *after* `rng()`, so gating GAP does not shift the stream for the products behind it. That is
+  what lets `tests/DealEngine.attach.test.ts` assert the flat products' attach counts are
+  **exactly** equal across cash / standard / heavy-down over 4,000 presentations rather than
+  merely close — the same measurement is also the proof that the flat products are untouched.
+  **`computeAutoFni` now takes one named input, and StaffDispatch resolves the structure first.**
+  It used to attach *before* computing the down payment, which is the #365 lesson again: a menu
+  presented against no structure is a silent default, so `deal` is required and every call site
+  states it. Consequence beyond the letter of the issue — **trade equity now thins the menu**,
+  because it shrinks the note the products are protecting.
+  Surfaced on Finance as **"Back End per Deal"**: F&I gross **per car** for cash / little down /
+  large down. Per unit, not window totals — a total only reports which structure was commonest,
+  while the actionable fact is that the same store earns a different back end on a big note. The
+  three `KPISnapshot.backEndByStructure` buckets are **disjoint** (heavy-down carved out of
+  standard finance, unlike the older `financeUnits` which counts both), so they sum to total back
+  gross; all of it derives from `DealRecord` fields already persisted, so **no envelope bump**.
+  **The web drive earned its keep again, and on the same class of defect as #365.** The unit
+  counts started life in the bar's `valueLabel` — `"$2,100 · 3 cars"` — and the horizontal
+  `BarChart` reserves 56px for its value column and draws it as SVG text past the plot edge, so
+  it clips. The counts moved into the caption, which also let them disappear on an empty window
+  ("averaged over 0 cash" reads as a broken sentence). Confirmed in the running app: the region
+  mounts on the live Finance tab with the right copy. The chart *body* was not visually
+  verifiable — the Browser pane was hidden, so `ResizeObserver` never fired and every measuring
+  chart collapses to an empty div (the documented probe returned `false`). Not reported as
+  working or broken.
+  **`ZERO_KPI_SNAPSHOT` is now on the KPIDashboard barrel.** Four test fixtures were each
+  hand-writing the full snapshot shape, so this one new field broke all four the same way. They
+  spread the constant now.
+  **The store measurably earns less, and that is the point rather than a regression to tune
+  away.** `npm run balance -- pacing`, 100 seeds against #365's baseline: bankruptcy **21% →
+  28%** (modeled 27, throw 1), blend 0.4294 → **0.4320**, T2 reached 89 → **91**, T3 **16**
+  unchanged, verdict pass 21%, median survival 360, T1 still the standing 1.0mo-vs-2.0 miss.
+  The ladder reaches marginally further while the floor gets harder — the income the store loses
+  is the income it was booking on a product that cannot exist on a cash deal. **The answer to a
+  28% bankruptcy rate is not re-attaching GAP to cash**; it is C2's, alongside the markup
+  magnitudes #365 left it (I9). #180's live bands moved (positive 35.8% → 39.3%, apathetic 54.3%
+  → 51.7%) and **no calibration number was touched** — less back gross is a different cash
+  trajectory, which is the documented #151 sensitivity of that seeded run. Both bands still hold.
+  228 suites / **2948** tests, typecheck clean. Two RN-Testing-Library suites
+  (`InTabNavigation.reachability`, `App.recapPersistence`) failed on later full-suite runs and
+  pass in isolation; the first full run of the session, with every change in place, was green —
+  the documented CPU-load flake, not a regression.
+  Next: **BUILD #366** — the three-position F&I posture dial, the phase's one live path.
+
 - 2026-08-08 — **BUILT #365** (the F&I tracer: the store finally earns money on the rate).
   `data/credit-tiers.json`'s `apr` was never the customer's rate — it was the **lender's**, and
   the store was quoting its own cost of money at retail. It is now `buyRate`, with a per-tier

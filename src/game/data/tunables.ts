@@ -623,6 +623,16 @@ export const TunablesSchema = z.object({
     fullKillRangePts: z.number().positive(),
     maxFallThroughRate: z.number().min(0).max(1),
   }),
+  // CSI drag (#368) — the slower tooth, same points-of-APR unit and same curve
+  // shape as `fniDealKill`. `maxSatisfactionHit` is a delta on the 0–100 store
+  // satisfaction scale and is refused unless NEGATIVE: a positive number would
+  // mean gouging a customer cheers the store up, which reads as balance rather
+  // than as a dropped minus sign (the `paidBelowMarketPenalty` lesson).
+  fniCsiDrag: z.object({
+    fairMarkupPts: z.number().min(0),
+    fullDragRangePts: z.number().positive(),
+    maxSatisfactionHit: z.number().negative(),
+  }),
   // Finance reserve (#365). Markup targets are in POINTS OF APR as decimals
   // (0.0175 = 1.75 points), the same unit as `markupCapPts` in
   // data/credit-tiers.json, which clamps them per tier. The DESKED target is not

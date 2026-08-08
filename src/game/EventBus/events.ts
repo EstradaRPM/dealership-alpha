@@ -797,7 +797,13 @@ export interface EventMap {
   // CapacityManager — customer turned away (demand exceeded capacity)
   'capacity:missed_opportunity': { day: number; customerId: string; label: string };
 
-  // Reputation — customer satisfaction penalty (stub; Reputation module will consume this later)
+  // Reputation — a negative store-satisfaction delta, from whatever caused it.
+  // `Reputation` is the sole consumer and applies `amount` (negative) directly;
+  // `reason` is diagnostic and nothing branches on it. The one channel into
+  // store satisfaction: CapacityManager (turned away), InstalledBase (a bad
+  // service visit), RegulatoryMeter/Bankruptcy/Indictment, and DealEngine's
+  // over-marked F&I close (#368) all publish here rather than opening a second
+  // path into the same variable.
   'reputation:satisfaction_hit': { day: number; amount: number; reason: string };
 
   // CareerProgression — player's dealership advanced to the next tier
