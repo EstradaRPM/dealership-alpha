@@ -332,6 +332,11 @@ export function setup(
     getFniPostureMarkupPts?: () => number;
     /** The #367 deal-kill curve. Omitted ⇒ the shipped `fniDealKill` tunables. */
     fniDealKillConfig?: StaffDispatchDeps['fniDealKillConfig'];
+    /**
+     * The F&I desk (#369). Omitted ⇒ no finance office ⇒ the salesperson works
+     * the menu on the two ungated products and the lender's frontier stays flat.
+     */
+    getFniDesk?: StaffDispatchDeps['getFniDesk'];
   } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
@@ -398,6 +403,8 @@ export function setup(
     fniRng: opts.fniRng ?? (() => 1.0),
     // #367: the contractual deal-kill curve.
     fniDealKillConfig: opts.fniDealKillConfig,
+    // #369: the F&I desk that works the menu + the lender's frontier.
+    getFniDesk: opts.getFniDesk,
     // #169: constant book seam + optional UCM condition read.
     tradeBookValueFn: () => TRADE_BOOK,
     getTradeConditionRead: opts.tradeConditionRead,

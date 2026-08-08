@@ -17,6 +17,7 @@ export type {
 } from './reserve';
 export {
   loadFniDealKillConfig,
+  resolveSafeFrontierPts,
   fallThroughProbability,
   rollFinanceFallThrough,
 } from './dealKill';

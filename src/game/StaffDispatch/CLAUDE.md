@@ -80,7 +80,7 @@ to the real machinery. Per customer (after exception roll + hold-floor):
      counters leave the review open. A `closed` decision returns the settled
      `{ agreedAllowance }` for the modal's honest buy/walk recap (#283).
    No trade / no book seam → closes without a trade.
-5. `dealEngine.computeAutoFni(effectiveness×100, unlockedRoles, fniRng)` →
+5. `dealEngine.computeAutoFni({ skill: presenterSkill, unlockedRoles, deal, rng })` →
    `dealEngine.closeDeal(...)` with the realized price, F&I attaches, and the
    five deal-structuring fields (paymentMethod / downPayment / loanAmount /
    term / apr) derived from the customer's Visit + classified credit tier, with
@@ -115,6 +115,36 @@ the magnitudes of the last three had been calibrated against a producer that
 never fired (retuned in #363 — see `data/tunables.json` `walkSatisfactionPenalty`
 and `data/failure-tunables.json` `walkPressure`/`angerPressure`).
 
+### The finance office turns on when it is hired (#369)
+Until a store hires an `f&i-manager` the back end runs on the **salesperson** —
+which is what a store with no finance office looks like. Once one is on the desk
+their two composites are what it runs on, resolved once per up beside the
+salesperson's and then simply handed to the two things they govern:
+
+- **`product_presentation` → the menu.** `computeAutoFni`'s `skill` is the
+  manager's composite instead of `effectiveness × 100`. The same hire also puts
+  `f&i-manager` into `unlockedRoles`, so the four `requiredRole`-gated premium
+  products come off the shelf **with the person who sells them** — all six
+  unlock together (grill Q10; there is no per-product control anywhere, asserted
+  by `tests/FniManagerDesk.test.ts`).
+- **`finance_structuring` → the lender's frontier.** Passed to
+  `rollFinanceFallThrough` as the trailing skill argument, where
+  `DealEngine.resolveSafeFrontierPts` extends #367's safe markup with it. It
+  moves the **lender's** line only — #368's CSI drag keeps its own fair-markup
+  line, so a sharp desk makes the aggressive posture *survivable*, never free.
+
+The desk arrives as **one narrow closure**, `getFniDesk?: () => FniDeskSkills |
+null` (`{ staffId, productPresentation, financeStructuring }`) — the same idiom
+as `getTradeApprover`, so this module never learns a role id. The composition
+root picks **one person**, the strongest `f&i-manager` by the role's own
+composite, exactly as the resolver picks which salesperson takes an up; a
+per-skill maximum across the roster would staff the desk with a manager nobody
+hired. **The desk's own morale multiplies both composites** — the finance
+manager is not the one employee whose mood doesn't matter. Omitted ⇒ `null` ⇒
+the salesperson presents the two ungated products and the frontier stays flat,
+which is what leaves every pre-#369 harness byte-identical (no calibration bot
+hires an F&I manager).
+
 ### The lender is asked before anything settles (#367)
 The **contractual** deal-kill. A financed customer's fall-through is rolled once,
 right beside the quote that sets the markup
@@ -143,7 +173,8 @@ other. There is no unwind path and there must not be one: nothing settles off a
 contract nobody bought, so the check sits ahead of the settle rather than
 reversing it afterwards.
 
-Deps: `fniDealKillConfig?` (omitted ⇒ the shipped `fniDealKill` tunables;
+Deps: `getFniDesk?` (#369 — see above; omitted ⇒ no finance office),
+`fniDealKillConfig?` (omitted ⇒ the shipped `fniDealKill` tunables;
 injectable so a suite can dial the teeth without editing the file every other
 calibration reads). **At the default posture nothing falls through** — Balanced
 sits on the frontier and the unstaffed ambient markup under it — which is why
@@ -278,7 +309,8 @@ with #147.
   (`tunables.managerGates.actThresholds.t_o_closing`).
 - Types: `StaffDispatch`, `StaffDispatchDeps`, `StaffDispatchConfig`,
   `StaffDispatchCustomerSession`, `EscalationVehicle` (#364 — the lot unit a
-  held review is about, snapshotted so it survives the car being sold).
+  held review is about, snapshotted so it survives the car being sold),
+  `FniDeskSkills` (#369 — the finance office working today's deals, or `null`).
 
 ## Events
 - **Emits:** `staff:auto_resolved` (outcome `closed` or `no_sale`, with

@@ -614,14 +614,21 @@ export const TunablesSchema = z.object({
       .nonempty(),
   }),
   // Contractual deal-kill (#367) — one curve, in the same POINTS OF APR unit as
-  // `fniPosture.markupPts`. Fall-through rises linearly from zero at
-  // `safeFrontierPts` to `maxFallThroughRate` once markup is `fullKillRangePts`
-  // past it. At or under the frontier nothing falls through, which is what keeps
-  // the Balanced posture and the unstaffed ambient markup clean.
+  // `fniPosture.markupPts`. Fall-through rises linearly from zero at the safe
+  // frontier to `maxFallThroughRate` once markup is `fullKillRangePts` past it.
+  // At or under the frontier nothing falls through, which is what keeps the
+  // Balanced posture and the unstaffed ambient markup clean.
+  // #369: the frontier is not flat — an F&I manager on the desk extends it by
+  // `structuringFrontierMaxPts × clamp01(finance_structuring / reference)`. No
+  // desk ⇒ no extension, so every pre-#369 run is byte-identical.
+  // `structuringSkillReference` is on the 0–100 skill scale and must be positive
+  // (a zero would make every desk a perfect structurer by division).
   fniDealKill: z.object({
     safeFrontierPts: z.number().min(0),
     fullKillRangePts: z.number().positive(),
     maxFallThroughRate: z.number().min(0).max(1),
+    structuringFrontierMaxPts: z.number().min(0),
+    structuringSkillReference: z.number().positive(),
   }),
   // CSI drag (#368) — the slower tooth, same points-of-APR unit and same curve
   // shape as `fniDealKill`. `maxSatisfactionHit` is a delta on the 0–100 store

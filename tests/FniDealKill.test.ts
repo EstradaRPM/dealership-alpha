@@ -36,6 +36,10 @@ const ALWAYS_KILLS: FniDealKillConfig = {
   safeFrontierPts: 0,
   fullKillRangePts: 0.001,
   maxFallThroughRate: 1,
+  // #369: no structuring extension, so these suites keep measuring the flat
+  // frontier they were written against whatever desk the flow has.
+  structuringFrontierMaxPts: 0,
+  structuringSkillReference: 100,
 };
 
 // A coin flip on every financed contract — enough for the seeding test to see
@@ -44,6 +48,8 @@ const COIN_FLIP: FniDealKillConfig = {
   safeFrontierPts: 0,
   fullKillRangePts: 0.001,
   maxFallThroughRate: 0.5,
+  structuringFrontierMaxPts: 0,
+  structuringSkillReference: 100,
 };
 
 const MARKUP = 0.02;

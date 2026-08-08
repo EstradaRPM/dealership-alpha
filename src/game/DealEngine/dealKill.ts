@@ -18,17 +18,50 @@ import { loadTunables } from '../data';
  * afford that the lender still won't buy.
  */
 export interface FniDealKillConfig {
-  /** Markup at or under which nothing falls through, in points of APR. */
+  /** Markup at or under which nothing falls through, with no F&I desk. */
   readonly safeFrontierPts: number;
   /** How far past the frontier markup must go to reach the full rate. */
   readonly fullKillRangePts: number;
   /** Fall-through rate at (and past) the end of that range. */
   readonly maxFallThroughRate: number;
+  /** How far a reference-grade structurer pushes the frontier out (#369). */
+  readonly structuringFrontierMaxPts: number;
+  /** The `finance_structuring` skill (0–100) that earns the full extension. */
+  readonly structuringSkillReference: number;
 }
 
 /** Reads the deal-kill curve from the `fniDealKill` section of tunables. */
 export function loadFniDealKillConfig(): FniDealKillConfig {
   return loadTunables().fniDealKill;
+}
+
+/**
+ * The markup this store can write before the lender starts passing (#369).
+ *
+ * The one monotonic relation Q5 asked for: a better structurer packages the
+ * same aggressive rate into paper a lender will actually buy, so the frontier
+ * slides out with `finance_structuring` and the peak of the posture dial slides
+ * with it. Linear from the bare `safeFrontierPts` at skill 0 to a full
+ * `structuringFrontierMaxPts` past it at the reference skill, then flat — a
+ * manager cannot out-structure the lender indefinitely.
+ *
+ * `null` (no F&I manager on the desk) is NOT skill 0 dressed up: it is the
+ * store with no finance office, and it gets the bare frontier. Both answers
+ * coincide numerically today, and they are written separately anyway because a
+ * future extension that is nonzero at skill 0 must not silently grant itself to
+ * a store that never hired anyone.
+ *
+ * Pure, so #370's peak meter can read where this store's frontier sits without
+ * closing a deal.
+ */
+export function resolveSafeFrontierPts(
+  financeStructuringSkill: number | null,
+  config: FniDealKillConfig = loadFniDealKillConfig(),
+): number {
+  if (financeStructuringSkill === null) return config.safeFrontierPts;
+  const reach = financeStructuringSkill / config.structuringSkillReference;
+  const clamped = reach < 0 ? 0 : reach > 1 ? 1 : reach;
+  return config.safeFrontierPts + config.structuringFrontierMaxPts * clamped;
 }
 
 /**
@@ -47,14 +80,18 @@ export function loadFniDealKillConfig(): FniDealKillConfig {
  * all — their lender caps markup below the frontier — so the most desperate
  * customer is not the one you can gouge.
  *
- * The frontier is flat today; #369 lets `finance_structuring` extend it, which
- * is how a better F&I manager makes the aggressive posture safer (grill Q5).
+ * `financeStructuringSkill` is the F&I manager's composite on the desk, or
+ * `null` when the store has no finance office (#369) — it moves the frontier
+ * this is measured against, and nothing else. Defaulting it to `null` is the
+ * honest default rather than a convenience: a caller that names no desk has no
+ * desk, which is the answer every pre-#369 harness was measured with.
  */
 export function fallThroughProbability(
   markupPts: number,
   config: FniDealKillConfig = loadFniDealKillConfig(),
+  financeStructuringSkill: number | null = null,
 ): number {
-  const over = markupPts - config.safeFrontierPts;
+  const over = markupPts - resolveSafeFrontierPts(financeStructuringSkill, config);
   if (over <= 0) return 0;
   const ramp = Math.min(1, over / config.fullKillRangePts);
   return config.maxFallThroughRate * ramp;
@@ -71,8 +108,9 @@ export function rollFinanceFallThrough(
   markupPts: number,
   seed: number,
   config: FniDealKillConfig = loadFniDealKillConfig(),
+  financeStructuringSkill: number | null = null,
 ): boolean {
-  const probability = fallThroughProbability(markupPts, config);
+  const probability = fallThroughProbability(markupPts, config, financeStructuringSkill);
   if (probability <= 0) return false;
   return createRng(seed)() < probability;
 }

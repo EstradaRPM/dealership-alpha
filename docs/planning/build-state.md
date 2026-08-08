@@ -30,10 +30,9 @@ a median survival of the full 360 days.
 
 **Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
 `docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
-issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, #365, #152, #366, #367 and
-#368 have all landed** — five left. **#369** (the F&I manager works the deal) is now the
-lowest-numbered open, deps-met slice; #370 sits behind it. #371 and #372 are deps-met
-independently, and #373 waits only on #371.
+issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, #365, #152, #366, #367, #368
+and #369 have all landed** — four left. **#370** (the peak meter) is now the lowest-numbered
+open, deps-met slice. #371 and #372 are deps-met independently, and #373 waits only on #371.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
@@ -46,7 +45,7 @@ independently, and #373 waits only on #371.
 | ~~#366~~ | ~~the posture dial — three positions, slot-persisted like `tradePolicy`, **no snapshot bump** (Q5/Q6/Q9, I7)~~ **BUILT 2026-08-08** | #365 |
 | ~~#367~~ | ~~deal-kill — one curve in `data/`, an over-marked deal falls through (Q3 primary, I8)~~ **BUILT 2026-08-08** | #366 |
 | ~~#368~~ | ~~CSI drag — an over-marked customer publishes `reputation:satisfaction_hit` (Q3 secondary)~~ **BUILT 2026-08-08** | #365 |
-| #369 | the F&I manager works the deal — `finance_structuring` frontier, `product_presentation` attach (Q2/Q5/Q10) | #367 |
+| ~~#369~~ | ~~the F&I manager works the deal — `finance_structuring` frontier, `product_presentation` attach (Q2/Q5/Q10)~~ **BUILT 2026-08-08** | #367 |
 | #370 | the peak meter — twin opposed bars, the crest is not the max (Q4) | #366, #367, #369 |
 | #371 | the crowd's finance mix read ahead on the wire — MarketIntel lane, F&I manager is a third opener (Q7) | — |
 | #372 | advertising buys a different crowd — person-archetype weights on campaigns (Q8) | — |
@@ -74,10 +73,41 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 ## Blockers
 
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
-- **Phase 9's queue now runs through #369.** #365, #152, #366, #367 and #368 all landed
-  2026-08-08. #369 is deps-met (it extends #367's frontier) and #370 sits behind it; #373's deps
-  (#365/#366/#371) are all but #371. #371 and #372 are deps-met independently. Keep reading the
-  deps column, not just the number.
+- **Phase 9's queue now runs through #370.** #365, #152, #366, #367, #368 and #369 all landed
+  2026-08-08. #370 is deps-met (#366/#367/#369 are all built); #373's deps (#365/#366/#371) are
+  all but #371. #371 and #372 are deps-met independently. Keep reading the deps column, not just
+  the number.
+- **The two F&I frontiers have DIVERGED, and that is #369's design ruling** (the decision #368
+  left open). `finance_structuring` extends the **lender's** `fniDealKill` frontier
+  (`resolveSafeFrontierPts`); it deliberately does **not** move `fniCsiDrag.fairMarkupPts`,
+  because a slicker structurer changes what the bank will buy, not how gouged the customer feels.
+  Consequence: a sharp desk makes "More per deal" *survivable*, never *free* — the deals stop
+  falling through and the satisfaction hit keeps landing. The shipped-file test still pins the two
+  base numbers equal (that is the unstaffed store, where the player learns ONE line); do not read
+  the divergence at a staffed desk as a drift bug, and do not couple the two "for consistency".
+- **The max frontier extension is not a free number** (#369). `structuringFrontierMaxPts` 0.0075
+  is exactly the reach from Balanced (0.0175) to "More per deal" (0.0250), so a reference-grade
+  structurer clears the aggressive posture with zero fall-through and everything short of it pays
+  a real rate. Moving `fniPosture.more-per-deal.markupPts` or `safeFrontierPts` without moving
+  this changes what the top of the skill ladder buys — move them together or say which.
+- **The back end runs on the F&I MANAGER once one is hired, not on the salesperson** (#369), and
+  the desk arrives as ONE closure (`StaffDispatchDeps.getFniDesk`) carrying `staffId` +
+  both composites. The composition root picks **one person** — the strongest `f&i-manager` by the
+  role's composite, the same rule the resolver uses for salespeople — because a deal is worked by
+  somebody; a per-skill maximum across the roster would staff a manager nobody hired. **The desk's
+  own morale multiplies both composites.** Omitted ⇒ `null` ⇒ the salesperson presents the two
+  ungated products on the flat #367 frontier. **`null` is "no finance office", not "skill 0"** —
+  they coincide numerically today and are written separately so a future nonzero-at-zero extension
+  cannot grant itself to a store that never hired anyone.
+- **No calibration moved and none could** (#369). Nothing in `tests/` or `scripts/` hires an
+  `f&i-manager`, so every harness runs with `getFniDesk` ⇒ `null`. A future calibration bot that
+  *does* hire one is opting into both effects at once (attach off a different skill, and a moved
+  frontier) — expect the bands to move and say so rather than reading it as a regression.
+- **The premium shelf needed no gate of its own** (#369). `unlockedRoles` is already derived from
+  the roster, so the four `requiredRole` products unlock with the hire that presents them. All six
+  unlock together (grill Q10) and `tests/FniManagerDesk.test.ts` scans `src/ui/**` for any product
+  id or menu call — a session adding a per-product switch is re-opening a closed grill and will
+  fail that test.
 - **A markup derived by subtraction needs `RATE_EPSILON`, and the reason is not cosmetic**
   (#368). `customerRate − buyRate` does not round-trip in binary floating point — Tier C's
   0.129 + 0.0175 comes back 1.6e-17 *over* 0.0175 — so a naive `over <= 0` test would have had
@@ -607,7 +637,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 + #152 + #366 + #367 + #368 BUILT 2026-08-08**, five left, next is **#369** |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 + #152 + #366 + #367 + #368 + #369 BUILT 2026-08-08**, four left, next is **#370** |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -625,6 +655,53 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-08 — **BUILT #369** (the F&I manager finally works the deal instead of the salesperson).
+  The back end had been rolling off the **selling salesperson's** effectiveness, which is exactly
+  what a store with no finance office looks like — and it kept looking like that after the hire.
+  Hiring an `f&i-manager` now turns the office on: `product_presentation` works the menu and
+  `finance_structuring` decides how much markup the lender will still buy.
+  **One closure, one person, two composites.** The desk reaches the flow as
+  `StaffDispatchDeps.getFniDesk?: () => FniDeskSkills | null` (`{ staffId, productPresentation,
+  financeStructuring }`) — the `getTradeApprover` idiom, so StaffDispatch never learns a role id.
+  The composition root picks **the strongest `f&i-manager` by the role's own composite**, exactly
+  how the resolver picks which salesperson takes an up; a per-skill maximum across the roster
+  would have staffed the desk with a manager nobody hired. **The desk's morale multiplies both
+  composites** — the finance manager is not the one employee whose mood doesn't matter.
+  **The premium shelf needed no gate of its own.** `unlockedRoles` is already derived from the
+  roster, so the four `requiredRole`-gated products come off the shelf with the person who sells
+  them. All six unlock together and there is no per-product control anywhere (grill Q10) — the
+  test scans every `src/ui/**` file for a product id or a menu call and asserts the engine's only
+  product-shaped surface is the read `getFniProducts`.
+  **The frontier extension is ONE monotonic relation in `data/`** (`fniDealKill`
+  `structuringFrontierMaxPts` 0.0075 / `structuringSkillReference` 100, via the new pure
+  `resolveSafeFrontierPts`): linear from the bare `safeFrontierPts` at skill 0 to a full extension
+  at the reference, then **flat** — a manager cannot out-structure the lender forever. The max
+  extension is deliberately the reach **from Balanced to "More per deal"** (0.0175 → 0.0250), so a
+  reference-grade desk can run the aggressive posture with nothing falling through and every desk
+  short of it pays a real rate. That is grill Q5's "the peak slides toward aggressive", and it
+  slides rather than disappearing.
+  **The design call this slice owed (build-state, #368): the CSI drag's `fairMarkupPts` does NOT
+  follow the lender's frontier.** A slicker structurer changes what the **bank** will buy, not how
+  gouged the **customer** feels. So a sharp desk makes the aggressive posture *survivable*, never
+  *free* — it changes which tooth bites, and the two teeth stop being one line the moment the
+  store hires someone good. Recorded in the `fniDealKill` `_doc`, both module CLAUDE.mds and the
+  blockers below; do not "restore consistency" by coupling them.
+  **`null` is "no finance office", not "skill 0", and they are written separately on purpose.**
+  They coincide numerically today; keeping them distinct means a future extension that is nonzero
+  at skill 0 cannot silently grant itself to a store that never hired anyone.
+  Byte-identity holds by construction: nothing in `tests/` or `scripts/` hires an `f&i-manager`,
+  and with none on the roster `getFniDesk` returns `null` ⇒ the salesperson presents ⇒ the flat
+  #367 frontier. No calibration number was touched and no harness moved.
+  No web drive: this slice adds **no** surface. The posture dial (#366) is already on Operations →
+  Prep and the effect of the hire is engine-side, so there was nothing new to look at; the
+  player-facing read of what a desk buys is #370's peak meter. Five flow/pure tests in
+  `tests/FniManagerDesk.test.ts`, one per EARS criterion.
+  233 suites / **2982** tests, typecheck clean. The one full-suite failure was `App.saveFlow`
+  timing out on a `waitFor`; it passes in isolation — the documented RN-Testing-Library CPU-load
+  flake, now seen on a fourth suite.
+  Next: **BUILD #370** — the peak meter (twin opposed bars, the crest is not the max), which is
+  now deps-met. #371 and #372 stay deps-met independently.
 
 - 2026-08-08 — **BUILT #368** (the second tooth: gouging a customer thins the crowd).
   Deal-kill costs the store the deal it was working; this costs it the **next** customer. A
@@ -727,57 +804,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   green — the documented RN-Testing-Library CPU-load flake.
   Next: **BUILD #368** — CSI drag, the over-marked customer who publishes
   `reputation:satisfaction_hit` (Q3 secondary). #369 is now deps-met too.
-
-- 2026-08-08 — **BUILT #366** (the player finally gets to tell the finance office what to do).
-  A three-position standing posture — **"More per deal" / "Balanced" / "More deals"** — in the
-  `fniPosture` catalog in `data/tunables.json`, the exact shape of `tradePolicy`. It is the
-  store's ONE F&I input and it is standing, not per-deal (grill Q5/Q9/Q10): no slider, no
-  per-product switch, no manual deal screen. A session proposing any of those is re-opening a
-  closed grill.
-  **`fniReserve.balancedMarkupPts` is GONE, and deleting it is the load-bearing call.** The
-  desked target now lives in the posture catalog and nowhere else — keeping both would have
-  left the same number in two files, free to drift, which is precisely the duplication #180
-  found in `residualHeat`. `ambientMarkupPts` stays where it is because it is not a posture:
-  it is what the store earns with nobody on the desk (grill Q2), and the dial cannot move it.
-  **The dial persists as one id on the save slot and there is NO envelope bump** (grill I7 —
-  an explicit correction to the parked grill doc's own note, which claimed a
-  `WORLD_SNAPSHOT_VERSION` bump and a migration were needed). It joins `tradePolicy` /
-  `pricingStrategy` / `sourcingLean` through `persistCurrentSave`, restores in
-  `loadActiveSlotIntoGame`, resets on New Game. `tests/worldSnapshot.test.ts` now asserts two
-  same-seed worlds at opposite postures snapshot identically, so a future session cannot
-  "helpfully" add the migration. **Do not go looking for one to write.**
-  **"More deals" is a real trade rather than a smaller number, and it cost nothing to make
-  one.** The payment is already built at the marked-up rate (#365), so PTI — the affordability
-  gate that has always been there — prices more buyers out at the aggressive posture and fewer
-  at the thin one. That is grill I3 paying off a second time: **no new check was added**, and
-  `tests/FniPosture.test.ts` pins the payment difference on identical structures.
-  `resolveFinanceQuote` now takes a named `{ deskStaffed, postureMarkupPts }` (the #365/#152
-  pattern — a quote resolved against no posture is a silent default), and the posture arrives
-  as `DealEngineDeps.getFniPostureMarkupPts?: () => number`, a closure wired in `createWorld`
-  and read live so a change on the lever moves the very next deal. Omitted ⇒ the catalog
-  default ⇒ **the old `balancedMarkupPts` number exactly**, which is why every pre-#366 harness
-  is byte-identical: the #180 live bands read **39.3% / 51.7%**, the same figures #152 left.
-  `resolveFniPostureMarkupPts` mirrors `resolveTradePolicyMultiplier` — unknown id ⇒
-  `defaultId`, retired default ⇒ first posture, so it always returns a real markup and the
-  composition root never null-checks it.
-  Surfaced in **Operations → Prep as "Finance Office"**, the third block under Trade Policy
-  (grill Q6 — parallel to the desk levers, not a store-wide screen). With no `f&i-manager` on
-  staff it renders the plain-language reason it does nothing yet and **stays selectable**: a
-  store can set its standing posture before it has anyone to carry it out, and greying a
-  control without saying why is the thing the copy rule exists to prevent.
-  **The #346 "Prep holds exactly two levers" test now asserts three.** That assertion was
-  written to keep *navigation* out of Prep, and the locked IA says Prep is "pure pre-open
-  policy" — a third policy lever is what that admits. The button-count check moves with the
-  levers rather than being deleted.
-  Web drive (T2 dev slot, Operations → Prep): the block renders under Trade Policy, defaults
-  to **Balanced** off a slot carrying no posture id (the fallback path), pressing "More per
-  deal" reselects the chip and swaps the blurb, and the unstaffed sentence shows — a T2 store
-  cannot hire an F&I manager until T3, so that is the honest live state. What the drive did
-  **not** prove is the markup moving on a real quote (no desk to work it at T2); that is
-  `tests/FniPosture.test.ts`, which hires an `f&i-manager` on a real `createWorld` at T3 and
-  asserts `quoteFinance` moves with the dial. **Note for the next web session: the dev-save
-  IndexedDB has a queued `deleteDatabase` left pending from this one** (the "max of 3 slots
-  reached" workaround) — the next reload of that tab will likely clear the three dev slots.
-  They are regenerable from DEV · START AT TIER.
-  230 suites / **2960** tests, typecheck clean, full suite green on the first run.
-  Next: **BUILD #367** — deal-kill, the curve where an over-marked deal falls through.

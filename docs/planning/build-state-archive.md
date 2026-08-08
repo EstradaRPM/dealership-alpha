@@ -6,6 +6,60 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **BUILT #366** (the player finally gets to tell the finance office what to do).
+  A three-position standing posture — **"More per deal" / "Balanced" / "More deals"** — in the
+  `fniPosture` catalog in `data/tunables.json`, the exact shape of `tradePolicy`. It is the
+  store's ONE F&I input and it is standing, not per-deal (grill Q5/Q9/Q10): no slider, no
+  per-product switch, no manual deal screen. A session proposing any of those is re-opening a
+  closed grill.
+  **`fniReserve.balancedMarkupPts` is GONE, and deleting it is the load-bearing call.** The
+  desked target now lives in the posture catalog and nowhere else — keeping both would have
+  left the same number in two files, free to drift, which is precisely the duplication #180
+  found in `residualHeat`. `ambientMarkupPts` stays where it is because it is not a posture:
+  it is what the store earns with nobody on the desk (grill Q2), and the dial cannot move it.
+  **The dial persists as one id on the save slot and there is NO envelope bump** (grill I7 —
+  an explicit correction to the parked grill doc's own note, which claimed a
+  `WORLD_SNAPSHOT_VERSION` bump and a migration were needed). It joins `tradePolicy` /
+  `pricingStrategy` / `sourcingLean` through `persistCurrentSave`, restores in
+  `loadActiveSlotIntoGame`, resets on New Game. `tests/worldSnapshot.test.ts` now asserts two
+  same-seed worlds at opposite postures snapshot identically, so a future session cannot
+  "helpfully" add the migration. **Do not go looking for one to write.**
+  **"More deals" is a real trade rather than a smaller number, and it cost nothing to make
+  one.** The payment is already built at the marked-up rate (#365), so PTI — the affordability
+  gate that has always been there — prices more buyers out at the aggressive posture and fewer
+  at the thin one. That is grill I3 paying off a second time: **no new check was added**, and
+  `tests/FniPosture.test.ts` pins the payment difference on identical structures.
+  `resolveFinanceQuote` now takes a named `{ deskStaffed, postureMarkupPts }` (the #365/#152
+  pattern — a quote resolved against no posture is a silent default), and the posture arrives
+  as `DealEngineDeps.getFniPostureMarkupPts?: () => number`, a closure wired in `createWorld`
+  and read live so a change on the lever moves the very next deal. Omitted ⇒ the catalog
+  default ⇒ **the old `balancedMarkupPts` number exactly**, which is why every pre-#366 harness
+  is byte-identical: the #180 live bands read **39.3% / 51.7%**, the same figures #152 left.
+  `resolveFniPostureMarkupPts` mirrors `resolveTradePolicyMultiplier` — unknown id ⇒
+  `defaultId`, retired default ⇒ first posture, so it always returns a real markup and the
+  composition root never null-checks it.
+  Surfaced in **Operations → Prep as "Finance Office"**, the third block under Trade Policy
+  (grill Q6 — parallel to the desk levers, not a store-wide screen). With no `f&i-manager` on
+  staff it renders the plain-language reason it does nothing yet and **stays selectable**: a
+  store can set its standing posture before it has anyone to carry it out, and greying a
+  control without saying why is the thing the copy rule exists to prevent.
+  **The #346 "Prep holds exactly two levers" test now asserts three.** That assertion was
+  written to keep *navigation* out of Prep, and the locked IA says Prep is "pure pre-open
+  policy" — a third policy lever is what that admits. The button-count check moves with the
+  levers rather than being deleted.
+  Web drive (T2 dev slot, Operations → Prep): the block renders under Trade Policy, defaults
+  to **Balanced** off a slot carrying no posture id (the fallback path), pressing "More per
+  deal" reselects the chip and swaps the blurb, and the unstaffed sentence shows — a T2 store
+  cannot hire an F&I manager until T3, so that is the honest live state. What the drive did
+  **not** prove is the markup moving on a real quote (no desk to work it at T2); that is
+  `tests/FniPosture.test.ts`, which hires an `f&i-manager` on a real `createWorld` at T3 and
+  asserts `quoteFinance` moves with the dial. **Note for the next web session: the dev-save
+  IndexedDB has a queued `deleteDatabase` left pending from this one** (the "max of 3 slots
+  reached" workaround) — the next reload of that tab will likely clear the three dev slots.
+  They are regenerable from DEV · START AT TIER.
+  230 suites / **2960** tests, typecheck clean, full suite green on the first run.
+  Next: **BUILD #367** — deal-kill, the curve where an over-marked deal falls through.
+
 - 2026-08-08 — **BUILT #152** (the menu is presented against the deal, not just the customer).
   Attach scaled with the salesperson's skill and nothing else, so a cash buyer was being sold
   **GAP** — coverage for the gap between a loan balance and the car's value, on a deal with no

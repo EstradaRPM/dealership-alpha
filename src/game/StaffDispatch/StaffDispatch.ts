@@ -49,6 +49,25 @@ export interface StaffDispatchCustomerSession {
   readonly archetypeLabel: string;
 }
 
+/**
+ * The F&I desk working today's deals (#369) — the finance office, or `null`
+ * when the store hasn't hired one.
+ *
+ * ONE person, not a blend: the composition root picks the strongest `f&i-manager`
+ * on the roster the same way this module picks the salesperson who works an up,
+ * because a deal is worked by somebody. Both composites are on the 0–100 skill
+ * scale, and the desk's own morale is applied here, so the finance manager is
+ * not the one employee whose mood doesn't matter.
+ */
+export interface FniDeskSkills {
+  /** Whose desk it is — the id morale is looked up by. */
+  readonly staffId: string;
+  /** `product_presentation` — how much of the menu gets signed. */
+  readonly productPresentation: number;
+  /** `finance_structuring` — how much markup the lender will still buy. */
+  readonly financeStructuring: number;
+}
+
 export interface StaffDispatchDeps {
   bus: EventBus;
   staffOrg: StaffOrg;
@@ -67,6 +86,15 @@ export interface StaffDispatchDeps {
    * editing the file every other calibration reads.
    */
   fniDealKillConfig?: FniDealKillConfig;
+  /**
+   * The F&I desk on the roster (#369), or `null` when nobody works it. Wired at
+   * the composition root off the live roster — the same narrow-closure idiom as
+   * the trade approver — so this module never learns about StaffOrg roles.
+   * Omitted ⇒ `null` ⇒ the salesperson works the menu on the two ungated
+   * products and the lender's frontier stays where #367 put it, which is the
+   * honest Tier-1/2 answer and what leaves every pre-#369 run byte-identical.
+   */
+  getFniDesk?: () => FniDeskSkills | null;
   /** RNG for F&I auto-attach (defaults to Math.random). */
   fniRng?: () => number;
   /** Optional unlocked F&I roles override. Defaults to deriving from staffOrg roster. */
@@ -465,6 +493,27 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
     const trustworthiness = clampUnit(salesperson.trustworthiness ?? 0);
     const skill = makeSalespersonProfile({}, { effectiveness, trustworthiness });
 
+    // #369: once an f&i-manager is on the desk the finance office turns on and
+    // the back end stops running on the salesperson. Their two composites are
+    // read here, morale-adjusted like every other worker's, and then simply
+    // handed to the two things they govern — who works the menu, and how much
+    // markup the lender will still buy. With no desk both fall back to the
+    // store that has no finance office: the salesperson presents, and the
+    // frontier is the flat #367 one.
+    const fniDesk = deps.getFniDesk?.() ?? null;
+    const fniDeskMorale = fniDesk
+      ? staffMorale?.getMoraleMultiplier(fniDesk.staffId) ?? 1.0
+      : 1.0;
+    const deskSkill = (composite: number): number =>
+      Math.min(100, Math.max(0, composite * fniDeskMorale));
+    // Who actually presents the menu, on the 0–100 scale `computeAutoFni` takes.
+    const presenterSkill = fniDesk
+      ? deskSkill(fniDesk.productPresentation)
+      : effectiveness * 100;
+    // Null is "no finance office", not "a structurer who is terrible" — the
+    // deal-kill curve distinguishes them by design.
+    const structuringSkill = fniDesk ? deskSkill(fniDesk.financeStructuring) : null;
+
     // Tier policy used by both finance affordability and deal-structuring.
     // #365: the affordability gate is measured against the CUSTOMER's rate
     // (buy rate + the store's markup), resolved once here and handed unchanged
@@ -498,6 +547,12 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         quote.markupPts,
         deriveSeed(masterSeed, 'fni.deal_fallthrough', { customerId, day }),
         dealKillConfig,
+        // #369: a stronger structurer moves the line the lender buys to, which
+        // is what slides the peak of the posture dial toward aggressive. It
+        // moves the LENDER's frontier only — the customer's fairness line
+        // (#368's CSI drag) does not follow it, so gouging still costs the
+        // store its next customer however good the desk is.
+        structuringSkill,
       );
 
     // Season/weather demand lean (#231 S2): nudge the want-vector before the
@@ -677,7 +732,11 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       // rolling a big trade equity into it — is borrowing less, and the
       // products that cover the note attach less often.
       const fni = deps.dealEngine.computeAutoFni({
-        skill: effectiveness * 100,
+        // #369: the F&I manager's `product_presentation` once the desk is
+        // staffed, the salesperson's effectiveness while it isn't. The same
+        // hire also puts `f&i-manager` into `unlockedRoles` below, so the four
+        // premium products come off the shelf with the person who sells them.
+        skill: presenterSkill,
         unlockedRoles,
         deal: { paymentMethod: visit.paymentMethod, loanAmount, agreedPrice },
         rng: deps.fniRng,

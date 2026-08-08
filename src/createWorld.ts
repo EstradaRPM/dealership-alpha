@@ -1337,6 +1337,28 @@ export function createWorld(deps: {
             config: executionDrift.condition_reading,
           };
         },
+        // #369: the F&I desk. Read live off the roster so the first finance hire
+        // works the very next deal — the same closure idiom as the approver and
+        // the drift getters, so StaffDispatch never learns a role id.
+        //
+        // ONE person works the deal, so ONE person is chosen: the strongest
+        // f&i-manager by the role's own composite, exactly how the resolver
+        // picks which salesperson takes an up. Taking a per-skill maximum across
+        // the roster would staff the desk with a manager nobody hired.
+        getFniDesk: () => {
+          const desks = staffOrg.currentRoster.filter(
+            (s) => s.role_id === 'f&i-manager',
+          );
+          if (desks.length === 0) return null;
+          const desk = desks.reduce((best, s) =>
+            s.effectiveness > best.effectiveness ? s : best,
+          );
+          return {
+            staffId: desk.id,
+            productPresentation: desk.effectiveSkills['product_presentation'] ?? 0,
+            financeStructuring: desk.effectiveSkills['finance_structuring'] ?? 0,
+          };
+        },
       }),
       // #311: the per-day Service floor drain is built by the Service package
       // (the parts gate + #310 rush/capacity automation + #305 capacity/posture/
