@@ -6,6 +6,56 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **BUILT #368** (the second tooth: gouging a customer thins the crowd).
+  Deal-kill costs the store the deal it was working; this costs it the **next** customer. A
+  financed deal closed past a fairness line publishes `reputation:satisfaction_hit` scaled by the
+  excess, and store satisfaction already feeds `CustomerPool` arrival rates — so an aggressive
+  posture that survives the lender still shrinks tomorrow's traffic.
+  **The producer was added, not a path.** Reputation is already the sole consumer of that event
+  and there is exactly one channel into store satisfaction; CapacityManager, InstalledBase and
+  the regulatory/bankruptcy monitors all publish onto it. DealEngine's `closeDeal` now joins them
+  beside the lemon-law and payment-packing producers, with `reason: 'fni_rate_markup'`. No new
+  event name, no new coupling, and nothing branches on `reason` — it is diagnostic.
+  **The hit is on the MARKUP, never on the products** (grill Q3). Attaching a menu is the F&I
+  desk's job; over-marking the rate is the gouge. A cash deal quotes no rate, so it cannot be
+  gouged at any attach — the test hands a cash close a fully-marked spread *and* a GAP policy and
+  asserts silence. **Chargebacks are explicitly a later refinement layer on this same variable**
+  and are not built here.
+  **One frontier, two teeth.** `fniCsiDrag.fairMarkupPts` deliberately equals
+  `fniDealKill.safeFrontierPts` (0.0175) and the curve is the same shape — linear ramp, flat past
+  the end, exactly zero at or under the line. The player learns ONE line to read the dial rather
+  than two. It is a separate key because the two are separately *measured* (a probability against
+  a satisfaction delta) and because **#369 moves the lender's frontier with `finance_structuring`
+  — moving the customer's fairness line with it is a design decision, not a calibration nudge.**
+  A shipped-file test pins them equal so the coupling is visible if either moves.
+  **A float subtraction nearly broke the whole calibration corpus, and the guard is the real
+  content of this slice.** The markup being judged has to be the one the contract was written at,
+  and the only honest source is `customerRate − buyRate` — a subtraction that does **not**
+  round-trip in binary floating point. Tier C's buy rate (0.129) plus the Balanced posture's
+  0.0175 comes back as **0.017500000000000016**, i.e. 1.6e-17 *over* the line. With a naive
+  `over <= 0` test, Balanced would have published a ~1e-15 satisfaction hit on **every** financed
+  close: invisible as a number and fatal as a fact, because satisfaction feeds arrival rates and
+  every pre-#368 seeded run would have quietly stopped reproducing. `csiDrag.ts` carries a named
+  `RATE_EPSILON = 1e-9` — a representation guard, not a balance number, which is why it is in code
+  and not in `data/` — and a test walks all four shipped tiers at both the ambient and Balanced
+  markups asserting zero. #367's `fallThroughProbability` does **not** have this bug and was left
+  alone: it judges `quote.markupPts` directly, which is exact.
+  Magnitudes are placeholders owed to C2 (grill I9): `maxSatisfactionHit −1.5` over a 0.0100
+  range, so the aggressive posture costs ~1.13 satisfaction per gouged close — on the order of the
+  walk drag (−0.12 charged ~2.6×/day) rather than swamping it. The schema **refuses a
+  non-negative hit**, the `paidBelowMarketPenalty` lesson: a positive number would mean gouging
+  cheers the store up and would read as balance rather than as a dropped minus sign.
+  Byte-identity holds by construction — Balanced sits on the line and ambient under it, so no
+  existing harness takes this hit and no calibration number was touched.
+  No web drive, and nothing new renders: #368 is ambient depth, the same call #151 made. The
+  player-facing surface for the posture's cost is #370's peak meter, which reads
+  `markupSatisfactionHit` (exported pure for exactly that) without closing a deal to find out.
+  232 suites / **2977** tests, typecheck clean. The one full-suite failure was
+  `App.recapPersistence` timing out on a `waitFor`; it passes in isolation — the documented
+  RN-Testing-Library CPU-load flake, now seen on a third suite.
+  Next: **BUILD #369** — the F&I manager works the deal (`finance_structuring` extends the
+  frontier, `product_presentation` drives attach). #371 and #372 stay deps-met independently.
+
 - 2026-08-08 — **BUILT #367** (the teeth: an over-marked deal falls through instead of closing).
   Without them "More per deal" was strictly better than the other two positions and #366's dial
   was not a decision. A financed contract written past a safe markup frontier now doesn't get

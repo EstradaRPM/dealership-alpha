@@ -31,9 +31,9 @@ a median survival of the full 360 days.
 **Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
 `docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
 issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, #365, #152, #366, #367, #368,
-#369 and #370 have all landed** — three left. **#371** (the crowd's finance mix on the wire) is
-now the lowest-numbered open, deps-met slice. #372 is deps-met independently, and #373 waits
-only on #371.
+#369, #370 and #371 have all landed** — two left. **#372** (advertising buys a different crowd)
+is now the lowest-numbered open, deps-met slice. **#373's deps are now ALL met** (#365/#366/#371
+all landed), so it is buildable independently of #372.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
@@ -48,7 +48,7 @@ only on #371.
 | ~~#368~~ | ~~CSI drag — an over-marked customer publishes `reputation:satisfaction_hit` (Q3 secondary)~~ **BUILT 2026-08-08** | #365 |
 | ~~#369~~ | ~~the F&I manager works the deal — `finance_structuring` frontier, `product_presentation` attach (Q2/Q5/Q10)~~ **BUILT 2026-08-08** | #367 |
 | ~~#370~~ | ~~the peak meter — twin opposed bars, the crest is not the max (Q4)~~ **BUILT 2026-08-08** | #366, #367, #369 |
-| #371 | the crowd's finance mix read ahead on the wire — MarketIntel lane, F&I manager is a third opener (Q7) | — |
+| ~~#371~~ | ~~the crowd's finance mix read ahead on the wire — MarketIntel lane, F&I manager is a third opener (Q7)~~ **BUILT 2026-08-08** | — |
 | #372 | advertising buys a different crowd — person-archetype weights on campaigns (Q8) | — |
 | #373 | the monthly F&I verdict — Reveal reactions + the PVR record (engagement spine plug-in #2) | #365, #366, #371 |
 
@@ -74,9 +74,52 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 ## Blockers
 
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
-- **Phase 9's queue now runs through #371.** #365, #152, #366, #367, #368, #369 and #370 all
-  landed 2026-08-08. #371 and #372 are deps-met independently; #373's deps (#365/#366/#371) are
-  all but #371. Keep reading the deps column, not just the number.
+- **Phase 9's queue now runs through #372 and #373, and BOTH are deps-met.** #365, #152, #366,
+  #367, #368, #369, #370 and #371 all landed 2026-08-08. #373's deps (#365/#366/#371) are now
+  all satisfied, so it does not wait on #372. Keep reading the deps column, not just the number.
+- **`NewsAccessRead.hasDeskManager` IS GONE — a staff door names the role that opens it**
+  (#371). The read carries `staffedDesks`, the roster's role ids, and
+  `data/news-progression-gating.json` says which role each `kind: 'staff'` unlock needs
+  (`role`, schema-required there and schema-refused on a subscription unlock). The old boolean
+  satisfied *every* staff door, so the moment a second desk existed the finance-mix lane would
+  have opened free for any store with a used car manager. `resolveWireAccess` hands over the
+  whole roster's roles rather than an allowlist — half the rule in code and half in data is how
+  the two drift. Do not re-introduce a per-desk boolean.
+- **A lane's `requires` can be a LIST, and ANY one of them opens it** (#371). `lockFor` still
+  returns the first shut door (all a headline row has space for); `NewsAccess.locksFor` returns
+  every shut door, which is what lets the finance-mix row state both ways in. The lane is bought
+  (`finance_mix_feed`) **or** hired into (`fni_desk`) — a locked row naming only the
+  subscription sells a store what the hire already gives them free.
+- **`finance_desk` is a wire lane with NO headlines behind it, deliberately** (#371). The
+  Growth finance-mix panel reads it. What the player is allowed to *know* is one door model
+  whether the answer arrives as a story or as a number; a second gate for the panel would be
+  the same rule written twice. A future test that asserts every lane maps to a publishable
+  `(source, reliability)` pair is asserting the wrong rule.
+- **The crowd's finance mix is DERIVED in closed form, never sampled** (#371,
+  `NPC/factories/CrowdMixProjection.ts`). It draws no randomness — `tests/FinanceMixRead.test.ts`
+  hands it a counting `Math.random` and asserts zero calls — because a *gated* read that
+  consumed a seeded stream would make a fixed seed replay differently depending on what the
+  player bought (#122). `tests/NewsGating.reachability.test.tsx` runs two same-seed worlds 20
+  floor days apart, one subscribed and one cold, and pins the arrival stream identical.
+- **The payment traits are integrated by ENUMERATING SUBSETS, not by averaging effects**
+  (#371). They are independent Bernoullis, and the two keys are different kinds of fact:
+  averaging would let a partial `must-finance` chance *partly* forbid cash (it is categorical)
+  and would smear the [0,1] clamp on `payment.cash_probability` (it is additive). The #153
+  split has to survive the integration. Each subset goes through the same `resolveEffects`
+  machinery the roll uses, so a third payment trait needs no change to the projection.
+- **`creditMix` describes the FINANCED crowd, weighted by `P(finance | archetype)`** (#371).
+  Credit and payment leaning correlate through the archetype — the best-credit retiree is also
+  the likeliest cash buyer — so an all-comers credit mix would systematically flatter the book
+  the F&I office actually writes. Do not "simplify" it to the whole crowd. The bands arrive as
+  data (`{tier, minScore}` off `data/credit-tiers.json`), **not** as a classifier function: a
+  classifier answers "which tier is this score", never "how much of a distribution lands here",
+  and the second question is the whole read.
+- **`resolveSegmentArchetypes` is on the CustomerPool barrel and is the ONE reading of
+  `demandShaper.segmentArchetypes`** (#371). `createWorld`'s private map-building is gone; the
+  spawn draw and the finance-mix projection both go through it. Two copies of that filter +
+  normalization is how a forward read starts describing a crowd that never walks in.
+- **Nothing calibrated moved and nothing could** (#371). The projection is a pure read, no
+  harness opens the lane, and the only engine change outside MarketIntel is a `World` getter.
 - **The peak meter measures the WHOLE DEAL against the fall-through, not the back end**
   (#370), and that correction is what makes the crest exist. Weighed on reserve alone, the
   aggressive posture is the maximum at every credit mix under the shipped numbers (+3–6% over
@@ -691,6 +734,57 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-08 — **BUILT #371** (the crowd tells you how it pays before you set the dial).
+  #370 gave the posture a meter that reads the store's **own book**; this is what puts the
+  *coming crowd* on the wire, so next month's posture is a bet placed on information rather
+  than a coin flip. Growth gains a **How the Crowd Pays** panel behind the wire's door model:
+  cash-vs-financed over every up, and the credit mix of the ones who would finance.
+  **The read is DERIVED, never sampled, and that is the load-bearing decision.**
+  `projectCrowdFinanceMix` (NPC, `factories/CrowdMixProjection.ts`) answers in closed form the
+  question `createCustomer` answers by rolling. It draws no randomness at all — a test hands it
+  a counting `Math.random` and asserts zero calls — because a **gated** read that consumed a
+  seeded stream would make a fixed seed replay differently depending on what the player bought
+  (#122). The reachability test runs two same-seed worlds 20 floor days apart, one subscribed
+  and one cold, and pins the arrival stream identical.
+  **The payment traits are integrated by enumerating subsets, not by averaging effects.** They
+  are independent Bernoullis, so the exact expectation walks the 2^n subsets and runs each
+  through the same `resolveEffects` machinery the roll uses. Averaging would let a partial
+  `must-finance` chance *partly* forbid cash (it is categorical) and would smear the [0,1]
+  clamp on `payment.cash_probability` (it is additive) — the #153 split has to survive the
+  integration, not be flattened by it. Credit falls out as normal-CDF mass between the
+  `data/credit-tiers.json` thresholds, so the bands arrive as **data** (`{tier, minScore}`),
+  not as a classifier function: a classifier can say which tier one score is in but not how
+  much of a distribution lands in each, and the second question is the whole read.
+  **`creditMix` describes the FINANCED crowd, weighted by P(finance | archetype).** Credit and
+  payment leaning correlate through the archetype — the best-credit retiree is also the
+  likeliest cash buyer — so an all-comers credit mix would systematically flatter the book the
+  F&I office actually writes. Do not "simplify" it to the whole crowd.
+  **`resolveSegmentArchetypes` moved onto the CustomerPool barrel** so the spawn draw and the
+  projection read the segment→archetype table exactly once (`createWorld`'s private map
+  building is gone). Two copies of that filter + normalization is how a forward read starts
+  describing a crowd that never walks in.
+  **MarketIntel's door model grew two ways, both forced by there being a SECOND desk.**
+  (1) A staff unlock now **names the role** that opens it (`role`, schema-required on a staff
+  door and refused on a subscription one), and `NewsAccessRead` carries `staffedDesks` — the
+  roster's role ids, read exactly the way `activeSubscriptions` is read — instead of one
+  `hasDeskManager` boolean. That boolean opened *every* staff door, so an `fni_desk` unlock
+  would have been handed free to any store with a used car manager: a live bug, not a
+  refactor. `resolveWireAccess` passes the whole roster's roles rather than an allowlist, so
+  which role opens which door stays entirely in data.
+  (2) A lane's `requires` may name **several** unlocks and **any** of them opens it, with
+  `NewsAccess.locksFor` reporting every shut door. `lockFor` still returns the first — all a
+  headline row has space for — so nothing about the existing wire moved. The finance-mix lane
+  is bought (`finance_mix_feed`, $25/day, T2) **or** hired into (`fni_desk`, T3, free on hire
+  like every other desk read), and a locked row naming only the subscription would have sold a
+  store exactly what the hire already gives them.
+  **`finance_desk` is a lane with no headlines behind it, deliberately.** What the player is
+  allowed to *know* is one door model whether the answer arrives as a story or as a number;
+  growing a second gate for the panel would have been the same rule written twice.
+  Verified on web at T2: locked panel names both doors in plain language, the wire footer's
+  Subscribe opens it in place, and the read comes out **84% financed** with an A/B/C/D book of
+  **23/24/36/18**. No console errors. Nothing calibrated moved — the projection is a pure read
+  and no harness opens the lane.
+
 - 2026-08-08 — **BUILT #370** (the peak meter — the dial finally shows what it costs).
   The posture had two teeth on it (#367's fall-through, #368's CSI drag) and both were
   invisible until they had already bitten. Prep's Finance Office block now carries twin opposed
@@ -787,53 +881,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   flake, now seen on a fourth suite.
   Next: **BUILD #370** — the peak meter (twin opposed bars, the crest is not the max), which is
   now deps-met. #371 and #372 stay deps-met independently.
-
-- 2026-08-08 — **BUILT #368** (the second tooth: gouging a customer thins the crowd).
-  Deal-kill costs the store the deal it was working; this costs it the **next** customer. A
-  financed deal closed past a fairness line publishes `reputation:satisfaction_hit` scaled by the
-  excess, and store satisfaction already feeds `CustomerPool` arrival rates — so an aggressive
-  posture that survives the lender still shrinks tomorrow's traffic.
-  **The producer was added, not a path.** Reputation is already the sole consumer of that event
-  and there is exactly one channel into store satisfaction; CapacityManager, InstalledBase and
-  the regulatory/bankruptcy monitors all publish onto it. DealEngine's `closeDeal` now joins them
-  beside the lemon-law and payment-packing producers, with `reason: 'fni_rate_markup'`. No new
-  event name, no new coupling, and nothing branches on `reason` — it is diagnostic.
-  **The hit is on the MARKUP, never on the products** (grill Q3). Attaching a menu is the F&I
-  desk's job; over-marking the rate is the gouge. A cash deal quotes no rate, so it cannot be
-  gouged at any attach — the test hands a cash close a fully-marked spread *and* a GAP policy and
-  asserts silence. **Chargebacks are explicitly a later refinement layer on this same variable**
-  and are not built here.
-  **One frontier, two teeth.** `fniCsiDrag.fairMarkupPts` deliberately equals
-  `fniDealKill.safeFrontierPts` (0.0175) and the curve is the same shape — linear ramp, flat past
-  the end, exactly zero at or under the line. The player learns ONE line to read the dial rather
-  than two. It is a separate key because the two are separately *measured* (a probability against
-  a satisfaction delta) and because **#369 moves the lender's frontier with `finance_structuring`
-  — moving the customer's fairness line with it is a design decision, not a calibration nudge.**
-  A shipped-file test pins them equal so the coupling is visible if either moves.
-  **A float subtraction nearly broke the whole calibration corpus, and the guard is the real
-  content of this slice.** The markup being judged has to be the one the contract was written at,
-  and the only honest source is `customerRate − buyRate` — a subtraction that does **not**
-  round-trip in binary floating point. Tier C's buy rate (0.129) plus the Balanced posture's
-  0.0175 comes back as **0.017500000000000016**, i.e. 1.6e-17 *over* the line. With a naive
-  `over <= 0` test, Balanced would have published a ~1e-15 satisfaction hit on **every** financed
-  close: invisible as a number and fatal as a fact, because satisfaction feeds arrival rates and
-  every pre-#368 seeded run would have quietly stopped reproducing. `csiDrag.ts` carries a named
-  `RATE_EPSILON = 1e-9` — a representation guard, not a balance number, which is why it is in code
-  and not in `data/` — and a test walks all four shipped tiers at both the ambient and Balanced
-  markups asserting zero. #367's `fallThroughProbability` does **not** have this bug and was left
-  alone: it judges `quote.markupPts` directly, which is exact.
-  Magnitudes are placeholders owed to C2 (grill I9): `maxSatisfactionHit −1.5` over a 0.0100
-  range, so the aggressive posture costs ~1.13 satisfaction per gouged close — on the order of the
-  walk drag (−0.12 charged ~2.6×/day) rather than swamping it. The schema **refuses a
-  non-negative hit**, the `paidBelowMarketPenalty` lesson: a positive number would mean gouging
-  cheers the store up and would read as balance rather than as a dropped minus sign.
-  Byte-identity holds by construction — Balanced sits on the line and ambient under it, so no
-  existing harness takes this hit and no calibration number was touched.
-  No web drive, and nothing new renders: #368 is ambient depth, the same call #151 made. The
-  player-facing surface for the posture's cost is #370's peak meter, which reads
-  `markupSatisfactionHit` (exported pure for exactly that) without closing a deal to find out.
-  232 suites / **2977** tests, typecheck clean. The one full-suite failure was
-  `App.recapPersistence` timing out on a `waitFor`; it passes in isolation — the documented
-  RN-Testing-Library CPU-load flake, now seen on a third suite.
-  Next: **BUILD #369** — the F&I manager works the deal (`finance_structuring` extends the
-  frontier, `product_presentation` drives attach). #371 and #372 stay deps-met independently.
