@@ -41,12 +41,15 @@ const RESERVE: FniReserveConfig = {
 // The desked target lives in the posture catalog (#366), not beside the ambient
 // one — a staffed desk works to whichever posture the store is set to.
 const BALANCED_MARKUP_PTS = 0.0175;
+// #373's month-verdict band. Nothing in this suite reads it — reserve is priced
+// off `markupPts` alone — so one shared value keeps the fixtures on the rate.
+const BAND = { blurb: 'b', financedShareBand: { min: 0, max: 1 } };
 const POSTURE: FniPostureConfig = {
   defaultId: 'balanced',
   postures: [
-    { id: 'more-per-deal', label: 'More per deal', markupPts: 0.025, blurb: 'b' },
-    { id: 'balanced', label: 'Balanced', markupPts: BALANCED_MARKUP_PTS, blurb: 'b' },
-    { id: 'more-deals', label: 'More deals', markupPts: 0.01, blurb: 'b' },
+    { ...BAND, id: 'more-per-deal', label: 'More per deal', markupPts: 0.025 },
+    { ...BAND, id: 'balanced', label: 'Balanced', markupPts: BALANCED_MARKUP_PTS },
+    { ...BAND, id: 'more-deals', label: 'More deals', markupPts: 0.01 },
   ],
 };
 

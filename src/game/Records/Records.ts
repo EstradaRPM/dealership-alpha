@@ -30,7 +30,7 @@ import { loadTunables } from '../data';
  * which fires later in the overnight sequence, after the day has settled.
  */
 
-/** The six tracked high-water marks. */
+/** The seven tracked high-water marks. */
 export type RecordKind =
   /** Highest single-day total gross (front + back). */
   | 'bestDayGross'
@@ -38,6 +38,14 @@ export type RecordKind =
   | 'bestMonthGross'
   /** Best per-vehicle-retail — day gross ÷ units — over a day. */
   | 'bestPvr'
+  /**
+   * Best BACK gross per retail unit over a month (#373) — what the finance
+   * office made on the average car it sold. The mark the F&I posture is chased
+   * on, and a month mark rather than a day one because the dial is a standing
+   * bet resolved at the month grain: a single day's back end is noise against
+   * which two or three customers happened to walk in.
+   */
+  | 'bestFniPvr'
   /** Longest run of consecutive selling days. */
   | 'bestStreak'
   /** Fattest individual deal, measured on front gross. */
@@ -49,6 +57,7 @@ export const RECORD_KINDS: readonly RecordKind[] = [
   'bestDayGross',
   'bestMonthGross',
   'bestPvr',
+  'bestFniPvr',
   'bestStreak',
   'bestSingleDeal',
   'mostUnitsInDay',
@@ -74,7 +83,7 @@ export interface RecordsConfig {
 
 /** Save/load blob. Self-versioned per the #188 snapshot contract. */
 export interface RecordsSnapshot {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly marks: RecordMarks;
   /** Day cursor for `deal:closed`, which carries no day of its own. */
   readonly currentDay: number;
@@ -84,9 +93,40 @@ export interface RecordsSnapshot {
   /** In-progress month accumulator + the running 1-based month index. */
   readonly monthGross: number;
   readonly monthIndex: number;
+  /**
+   * In-progress month back-end accumulators (#373) — the two numbers behind
+   * `bestFniPvr`. Separate from `monthGross`/`dayUnits` because the F&I mark is
+   * measured on the back end over a MONTH and neither of those is that.
+   */
+  readonly monthBackGross: number;
+  readonly monthUnits: number;
   /** Live selling-day streak (not the best one — that's a mark). */
   readonly currentStreak: number;
 }
+
+/**
+ * The pre-#373 blob: six marks and no month back-end accumulators. Kept as a
+ * type so a v1 save still types as itself; `restore` takes the union and
+ * materializes the F&I mark as unset. Per `docs/save-migration-recipe.md` this
+ * is the module's own `schemaVersion` problem — the envelope's `modules` key set
+ * did not change, so `WORLD_SNAPSHOT_VERSION` does not move (the #359 Facility
+ * call, same shape).
+ */
+export interface RecordsSnapshotV1 {
+  readonly schemaVersion: 1;
+  readonly marks: {
+    readonly [K in Exclude<RecordKind, 'bestFniPvr'>]: RecordMark | null;
+  };
+  readonly currentDay: number;
+  readonly dayGross: number;
+  readonly dayUnits: number;
+  readonly monthGross: number;
+  readonly monthIndex: number;
+  readonly currentStreak: number;
+}
+
+/** A persisted Records blob of either vintage — what `restore` accepts. */
+export type AnyRecordsSnapshot = RecordsSnapshotV1 | RecordsSnapshot;
 
 export interface RecordsDeps {
   bus: EventBus;
@@ -107,7 +147,7 @@ export interface Records {
    */
   getDayTotals(): { gross: number; units: number };
   snapshot(): RecordsSnapshot;
-  restore(snap: RecordsSnapshot): void;
+  restore(snap: AnyRecordsSnapshot): void;
 }
 
 function emptyMarks(): { [K in RecordKind]: RecordMark | null } {
@@ -115,6 +155,7 @@ function emptyMarks(): { [K in RecordKind]: RecordMark | null } {
     bestDayGross: null,
     bestMonthGross: null,
     bestPvr: null,
+    bestFniPvr: null,
     bestStreak: null,
     bestSingleDeal: null,
     mostUnitsInDay: null,
@@ -131,6 +172,8 @@ export function createRecords(deps: RecordsDeps): Records {
   let dayUnits = 0;
   let monthGross = 0;
   let monthIndex = 1;
+  let monthBackGross = 0;
+  let monthUnits = 0;
   let currentStreak = 0;
 
   /**
@@ -181,6 +224,13 @@ export function createRecords(deps: RecordsDeps): Records {
     dayGross += gross;
     dayUnits += 1;
     monthGross += gross;
+    // The month's back end and the units that carried it (#373) — the F&I
+    // mark's two halves. `backGross` is the whole back end (products + reserve),
+    // the same total `bestMonthGross` folds into its gross, counted here on its
+    // own because what the finance office made per car is a different question
+    // from what the store made per day.
+    monthBackGross += p.backGross;
+    monthUnits += 1;
     // The fattest-deal mark is a FRONT-gross mark: it's the desk's win on the
     // car itself, not the F&I box that rode along behind it.
     tryBreak('bestSingleDeal', p.frontGross, currentDay, {
@@ -209,7 +259,18 @@ export function createRecords(deps: RecordsDeps): Records {
 
   bus.subscribe('clock:month_ended', (p: EventMap['clock:month_ended']) => {
     tryBreak('bestMonthGross', monthGross, p.day, { month: monthIndex });
+    // The F&I mark (#373). A month that retailed nothing has no per-car number
+    // to stand on — there was no crowd, so nothing was proved about the finance
+    // office — and `tryBreak` would refuse a zero anyway; the guard is here so
+    // the division is never attempted rather than as a second rule.
+    if (monthUnits > 0) {
+      tryBreak('bestFniPvr', monthBackGross / monthUnits, p.day, {
+        month: monthIndex,
+      });
+    }
     monthGross = 0;
+    monthBackGross = 0;
+    monthUnits = 0;
     monthIndex += 1;
   });
 
@@ -228,19 +289,26 @@ export function createRecords(deps: RecordsDeps): Records {
     },
     snapshot() {
       return {
-        schemaVersion: 1,
+        schemaVersion: 2,
         marks: { ...marks },
         currentDay,
         dayGross,
         dayUnits,
         monthGross,
         monthIndex,
+        monthBackGross,
+        monthUnits,
         currentStreak,
       };
     },
     restore(snap) {
+      // A v1 blob carries six marks; the seventh reads back unset and is set the
+      // first time a month closes with units on it (#373). Nothing in the sim
+      // branches on a mark, so an old career simply starts chasing the F&I mark
+      // from its next month.
+      const persisted: Partial<RecordMarks> = snap.marks;
       for (const kind of RECORD_KINDS) {
-        const mark = snap.marks[kind];
+        const mark = persisted[kind] ?? null;
         marks[kind] = mark === null ? null : { ...mark };
       }
       currentDay = snap.currentDay;
@@ -248,6 +316,12 @@ export function createRecords(deps: RecordsDeps): Records {
       dayUnits = snap.dayUnits;
       monthGross = snap.monthGross;
       monthIndex = snap.monthIndex;
+      // A v1 save was mid-month with no back-end tally kept, and there is no
+      // honest way to reconstruct one from the marks. The month restarts its F&I
+      // accumulation from the reload rather than guessing a figure the player
+      // would then see crowned.
+      monthBackGross = snap.schemaVersion === 2 ? snap.monthBackGross : 0;
+      monthUnits = snap.schemaVersion === 2 ? snap.monthUnits : 0;
       currentStreak = snap.currentStreak;
     },
   };
@@ -256,13 +330,15 @@ export function createRecords(deps: RecordsDeps): Records {
 /** Behavior-neutral default for migrating pre-#329 saves (no marks set). */
 export function createDefaultRecordsSnapshot(): RecordsSnapshot {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     marks: emptyMarks(),
     currentDay: 1,
     dayGross: 0,
     dayUnits: 0,
     monthGross: 0,
     monthIndex: 1,
+    monthBackGross: 0,
+    monthUnits: 0,
     currentStreak: 0,
   };
 }

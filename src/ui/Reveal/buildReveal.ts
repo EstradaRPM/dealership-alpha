@@ -2,6 +2,7 @@ import { loadTunables } from '../../game/data';
 import type { DayFunnel } from '../../game/CapacityManager';
 import type { PrepBet, PrepCategory } from '../../game/PrepBet';
 import type { RecordKind } from '../../game/Records';
+import type { FniMonthVerdict } from '../../game/DealEngine';
 
 /**
  * Pure read-model builder for **The Reveal** (#319, design record
@@ -25,7 +26,15 @@ import type { RecordKind } from '../../game/Records';
  * the Records module) joins the same pool as a **crowned** reaction, weighted
  * above the ordinary win/loss axes so beating a personal best reliably takes a
  * star slot. Records are crowned reactions on this one feed — never a separate
- * screen. F&I (plug-in #2) is a later plug-in onto the same `reactions[]` shape.
+ * screen.
+ *
+ * B2 S12 (#373) takes the F&I slot and is the plug-in that proves the grammar
+ * spans grains: the monthly F&I verdict is one more `reactions[]` entry scored
+ * in the same pool by one more weight, but it resolves a bet placed at the MONTH
+ * grain (the standing posture, #366) rather than a day's. The feed did not need
+ * a month mode to carry it — a beat is a starred entity with a fate whatever
+ * clock it came off, which is what "self-similar" was claiming and this is the
+ * test of it.
  *
  * S4 (#322) closes the loop: the morning prep is captured as a bet (`PrepBet` —
  * the lot's stocking lean vs. the demand-heat read) and the scoreline resolves
@@ -256,6 +265,12 @@ const RECORD_COPY: Record<RecordKind, (record: CrownedRecord) => string> = {
     `Best month yet — ${money(r.value)} gross, beating ${money(r.previousValue)}.`,
   bestPvr: (r) =>
     `Best per-car average yet — ${money(r.value)} a car, beating ${money(r.previousValue)}.`,
+  // Plain-language, and deliberately the same vocabulary the Finance tab's
+  // breakdown already uses ("F&I Products" / "Rate Reserve"): one month's mark
+  // and one tab's chart naming the same money two ways is how a player stops
+  // believing they are two numbers.
+  bestFniPvr: (r) =>
+    `Best finance-office month yet — ${money(r.value)} a car from products and the rate, beating ${money(r.previousValue)}.`,
   bestStreak: (r) =>
     `Longest selling streak — ${plural(r.value, 'day', 'days')} running, beating ${r.previousValue}.`,
   bestSingleDeal: (r) =>
@@ -270,6 +285,41 @@ export function crownReactionText(record: CrownedRecord): string {
 }
 
 /**
+ * The monthly F&I verdict's plain-language narrative (#373) — the Reveal beat
+ * that resolves the standing posture at the grain the bet was actually placed
+ * at, and the plug-in that proves the feed's grammar spans from a daily beat to
+ * a monthly strategic one.
+ *
+ * Two sentences, always in this order. The first **stars an entity with a fate**
+ * — the F&I manager who worked the month, or the finance office that sat empty
+ * when nobody was hired — never the number, because a bare metric is the thing
+ * this feed exists not to be. The second is the mix read: whether the crowd that
+ * walked in was the crowd the standing posture was a bet on, in the same
+ * plain-language axis the dial itself is labelled on (paid cash ↔ financed).
+ *
+ * That second sentence is what teaches the #371 wire read and the #372
+ * advertising lever without a tutorial: the player is told, in the month they
+ * lived, that the crowd's payment mix is a thing that can be read ahead and a
+ * thing that can be bought.
+ */
+export function fniVerdictReactionText(verdict: FniMonthVerdict): string {
+  const who = verdict.deskName
+    ? `${verdict.deskName} worked the desk on "${verdict.postureLabel}"`
+    : `No finance office — "${verdict.postureLabel}" had nobody to carry it out`;
+  const earned =
+    `${money(verdict.backGross)} on ${plural(verdict.unitsRetailed, 'car', 'cars')} ` +
+    `(${money(verdict.productGross)} products, ${money(verdict.reserveGross)} rate).`;
+  const financed = `${verdict.financedUnits} of ${verdict.unitsRetailed} financed`;
+  const mix =
+    verdict.mix === 'too_few_financed'
+      ? ` Only ${financed} — a cash-paying crowd, and a rate you mark up earns nothing on the ones who pay cash.`
+      : verdict.mix === 'too_many_financed'
+        ? ` ${financed} — that crowd was going to borrow anyway, and you held the rate down for them.`
+        : ` ${financed} — that was the crowd this posture is a bet on.`;
+  return `Month ${verdict.month}: ${who} — ${earned}${mix}`;
+}
+
+/**
  * One candidate on the unified drama feed — a win, a starworthy loss (#328), or
  * a crowned record (#330). All three are scored on ONE drama axis and ranked in
  * a single pool, so a dramatic loss can outrank a mild win and a crown outranks
@@ -278,7 +328,8 @@ export function crownReactionText(record: CrownedRecord): string {
 export type DramaCandidate =
   | { kind: 'win'; sale: ClosedSale }
   | { kind: 'loss'; walkOff: WalkOff }
-  | { kind: 'record'; record: CrownedRecord };
+  | { kind: 'record'; record: CrownedRecord }
+  | { kind: 'fni'; verdict: FniMonthVerdict };
 
 /** Per-day context the drama scorer measures a candidate against. */
 interface DramaContext {
@@ -315,6 +366,15 @@ export function scoreDrama(candidate: DramaCandidate, ctx: DramaContext): number
       drama.weights.matchStrength * clamp01(sale.matchQuality) +
       drama.weights.grossSurprise * grossSurprise
     );
+  }
+  if (candidate.kind === 'fni') {
+    // A flat term, deliberately with no margin half (#373). The month verdict is
+    // not a competition against a previous month — it is the resolution of the
+    // bet the player left standing, and it fires on exactly one bite a month, so
+    // scaling it by how much money it made would let a quiet month's verdict get
+    // pushed off the feed by an ordinary Tuesday's walk-off. The record it may
+    // arrive beside (`bestFniPvr`) is where "how good was it" gets scored.
+    return drama.weights.fniVerdict;
   }
   if (candidate.kind === 'record') {
     const { value, previousValue } = candidate.record;
@@ -356,6 +416,7 @@ export function rankDrama(
   walkOffs: readonly WalkOff[],
   records: readonly BrokenRecord[],
   limit: number,
+  fniVerdict: FniMonthVerdict | null = null,
 ): readonly DramaCandidate[] {
   const meanGross = closes.length
     ? closes.reduce((sum, c) => sum + c.gross, 0) / closes.length
@@ -370,6 +431,10 @@ export function rankDrama(
   );
   return topByDrama(
     [
+      // The month verdict leads the arrival order ahead of the crowns (#373):
+      // on the one bite a month where it exists, it is the headline, and a tie
+      // with a crown it arrived beside should read verdict-then-crown.
+      ...(fniVerdict ? [{ kind: 'fni', verdict: fniVerdict } as DramaCandidate] : []),
       // Crowns lead the arrival order: the day's headline wins an exact tie.
       ...crowns,
       ...closes.map((sale): DramaCandidate => ({ kind: 'win', sale })),
@@ -406,6 +471,19 @@ function crownReaction(record: CrownedRecord): RevealReaction {
   };
 }
 
+/**
+ * The month verdict's reaction (#373). Tone follows the MIX read, not the money:
+ * a month can earn well and still have been the wrong standing bet, and the
+ * lesson the beat exists to teach is which crowd the dial was pointed at.
+ */
+function fniVerdictReaction(verdict: FniMonthVerdict): RevealReaction {
+  return {
+    id: `fni-month-${verdict.month}`,
+    tone: verdict.mix === 'matched' ? 'positive' : 'negative',
+    text: fniVerdictReactionText(verdict),
+  };
+}
+
 /** The reaction for one drama candidate — win, loss or crown, by kind. */
 function dramaReaction(candidate: DramaCandidate): RevealReaction {
   switch (candidate.kind) {
@@ -415,6 +493,8 @@ function dramaReaction(candidate: DramaCandidate): RevealReaction {
       return walkOffReaction(candidate.walkOff);
     case 'record':
       return crownReaction(candidate.record);
+    case 'fni':
+      return fniVerdictReaction(candidate.verdict);
   }
 }
 
@@ -536,6 +616,7 @@ export function buildReveal(
   walkOffs: readonly WalkOff[] = [],
   prepBet: PrepBet | null = null,
   records: readonly BrokenRecord[] = [],
+  fniVerdict: FniMonthVerdict | null = null,
 ): RevealModel {
   const tunables = loadTunables().reveal;
   // S4 (#322): lead with the resolved morning bet when one was captured; else
@@ -546,7 +627,15 @@ export function buildReveal(
   const scoreline = verdict ?? `${activityLabel(funnel)} — ${matchClause(matchTally)}.`;
   // #328/#330: wins, losses and crowned records ranked in one drama pool, top N
   // surfaced — no separate win/loss tracks and no separate records screen.
-  const topDrama = rankDrama(closes, walkOffs, records, tunables.drama.starBudget);
+  // #373: on the first bite after a month closes, the F&I verdict rides the same
+  // pool at the month grain — one feed, one grammar, two clocks.
+  const topDrama = rankDrama(
+    closes,
+    walkOffs,
+    records,
+    tunables.drama.starBudget,
+    fniVerdict,
+  );
   return {
     scoreline,
     reactions: [matchReaction(matchTally, gross), ...topDrama.map(dramaReaction)],

@@ -251,6 +251,82 @@ describe('Records — high-water marks (#329)', () => {
     });
   });
 
+  // #373: the F&I mark — the month's BACK gross per retail unit, the number the
+  // posture dial is chased on.
+  describe('bestFniPvr', () => {
+    it('crowns a new PVR high-water mark', () => {
+      const { bus, records, broken } = setup();
+      // Month 1: two cars, $1,200 of back end between them.
+      bus.publish('clock:day_started', { day: 1 });
+      closeDeal(bus, 2_000, 500);
+      closeDeal(bus, 2_000, 700);
+      bus.publish('floor:day_complete', { day: 1, ticks: 10, totalArrivals: 5 });
+      bus.publish('clock:month_ended', { day: 1 });
+
+      expect(records.getMark('bestFniPvr')).toEqual({ value: 600, day: 1 });
+      expect(broken.find((b) => b.kind === 'bestFniPvr')).toMatchObject({
+        value: 600,
+        previousValue: null,
+        month: 1,
+      });
+
+      // Month 2: one car with a fatter back end — the average improved.
+      bus.publish('clock:day_started', { day: 2 });
+      closeDeal(bus, 1_000, 900);
+      bus.publish('floor:day_complete', { day: 2, ticks: 10, totalArrivals: 5 });
+      bus.publish('clock:month_ended', { day: 2 });
+
+      expect(records.getMark('bestFniPvr')).toEqual({ value: 900, day: 2 });
+      expect(broken.filter((b) => b.kind === 'bestFniPvr').at(-1)).toMatchObject({
+        value: 900,
+        previousValue: 600,
+        month: 2,
+      });
+    });
+
+    it('an empty month crowns nothing', () => {
+      const { bus, records, broken } = setup();
+      // A month that opened and closed without retailing a unit: no per-car
+      // number exists, so there is nothing to crown — and the F&I verdict beat
+      // that reads the same month does not fire either (#373).
+      bus.publish('clock:day_started', { day: 1 });
+      bus.publish('floor:day_complete', { day: 1, ticks: 10, totalArrivals: 5 });
+      bus.publish('clock:month_ended', { day: 1 });
+
+      expect(records.getMark('bestFniPvr')).toBeNull();
+      expect(broken.filter((b) => b.kind === 'bestFniPvr')).toHaveLength(0);
+    });
+
+    it('a month of cash deals sets the mark to nothing, not to zero', () => {
+      const { bus, records } = setup();
+      // Every car sold with no back end at all. The mark is a high-water mark,
+      // and `tryBreak` refuses a non-positive value — a month that made nothing
+      // in the finance office is not an achievement to stand on.
+      bus.publish('clock:day_started', { day: 1 });
+      closeDeal(bus, 3_000, 0);
+      closeDeal(bus, 3_000, 0);
+      bus.publish('floor:day_complete', { day: 1, ticks: 10, totalArrivals: 5 });
+      bus.publish('clock:month_ended', { day: 1 });
+
+      expect(records.getMark('bestFniPvr')).toBeNull();
+    });
+
+    it('rolls its accumulators at the boundary so months do not bleed together', () => {
+      const { bus, records } = setup();
+      bus.publish('clock:day_started', { day: 1 });
+      closeDeal(bus, 1_000, 800);
+      bus.publish('floor:day_complete', { day: 1, ticks: 10, totalArrivals: 5 });
+      bus.publish('clock:month_ended', { day: 1 });
+      // A weaker second month must not read as "$800 + $200 over 2 cars".
+      bus.publish('clock:day_started', { day: 2 });
+      closeDeal(bus, 1_000, 200);
+      bus.publish('floor:day_complete', { day: 2, ticks: 10, totalArrivals: 5 });
+      bus.publish('clock:month_ended', { day: 2 });
+
+      expect(records.getMark('bestFniPvr')).toEqual({ value: 800, day: 1 });
+    });
+  });
+
   describe('ordering', () => {
     // #330 assembles the Reveal feed inside a floor:day_complete handler; every
     // mark for the just-closed day must already have fired by then. Records is
@@ -326,6 +402,7 @@ describe('Records — high-water marks (#329)', () => {
         bestDayGross: null,
         bestMonthGross: null,
         bestPvr: null,
+        bestFniPvr: null,
         bestStreak: null,
         bestSingleDeal: null,
         mostUnitsInDay: null,

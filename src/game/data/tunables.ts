@@ -326,6 +326,11 @@ export const TunablesSchema = z.object({
         // relative improvement over the old mark. Separates crowns from each
         // other when several break on one day.
         recordMargin: z.number().nonnegative(),
+        // #373: flat term the monthly F&I verdict scores. Above `recordBroken`
+        // because it fires on exactly one bite a month and is the resolution of
+        // a standing bet the player placed — it takes the headline slot on the
+        // morning after a month closes or it may as well not exist.
+        fniVerdict: z.number().nonnegative(),
       }),
       // Relative pain among starworthy walk-off reasons (a wanted-category-in-
       // stock walk hurts more than a rich-trade decline). Non-starworthy reasons
@@ -630,6 +635,21 @@ export const TunablesSchema = z.object({
           label: z.string().min(1),
           markupPts: z.number().min(0),
           blurb: z.string().min(1),
+          // #373: the share of a month's retail units that has to finance for
+          // this posture to have been the right standing bet. Reserve is earned
+          // on financed contracts only, so a markup posture in a cash month is a
+          // bet with nothing to bite on, and a thin-rate posture in a month that
+          // financed nearly everything gave away gross the crowd would have paid.
+          // ONE comparison — "was the month's financed share inside this band?" —
+          // and it judges the month that closed; nothing prices off it.
+          financedShareBand: z
+            .object({
+              min: z.number().min(0).max(1),
+              max: z.number().min(0).max(1),
+            })
+            .refine((b) => b.min <= b.max, {
+              message: 'financedShareBand.min must not exceed max',
+            }),
         }),
       )
       .nonempty(),

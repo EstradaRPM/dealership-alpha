@@ -28,11 +28,16 @@ held its shape (0.5% positive for a green operator, so the progression still has
 the balance harness went from "bankrupts before Tier 2" to **90 of 100 seeds reaching T2** with
 a median survival of the full 360 days.
 
-**Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
-`docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
-issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, #365, #152, #366, #367, #368,
-#369, #370, #371 and #372 have all landed** — **one left**. **#373** (the monthly F&I verdict)
-is the last slice in the phase and its deps (#365/#366/#371) were already met.
+**Phase 9 is COMPLETE as of 2026-08-08** — all twelve B2 slices have landed (#151, #153, #365,
+#152, #366, #367, #368, #369, #370, #371, #372, #373). `docs/planning/fni-mechanics-grill-state.md`
+stays a locked design; do not re-grill it.
+
+**The pointer now sits on phase 10 — D1 People + Finance + Growth dashboards.** Its row says
+*"largely absorbed by 5c (#349/#350/#351); re-scope when reached"*, and it is now reached: the
+next `/next` on it opens `docs/planning/path-to-finished-product.md` §D1, subtracts what 5c
+already shipped, and either **SLICES** the remainder into filed issues or advances past the
+phase if nothing survives the subtraction. That re-scope is the unit — do not start it by
+re-reading the three landed 5c slices' source.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
@@ -49,7 +54,7 @@ is the last slice in the phase and its deps (#365/#366/#371) were already met.
 | ~~#370~~ | ~~the peak meter — twin opposed bars, the crest is not the max (Q4)~~ **BUILT 2026-08-08** | #366, #367, #369 |
 | ~~#371~~ | ~~the crowd's finance mix read ahead on the wire — MarketIntel lane, F&I manager is a third opener (Q7)~~ **BUILT 2026-08-08** | — |
 | ~~#372~~ | ~~advertising buys a different crowd — person-archetype weights on campaigns (Q8)~~ **BUILT 2026-08-08** | — |
-| #373 | the monthly F&I verdict — Reveal reactions + the PVR record (engagement spine plug-in #2) | #365, #366, #371 |
+| ~~#373~~ | ~~the monthly F&I verdict — Reveal reactions + the PVR record (engagement spine plug-in #2)~~ **BUILT 2026-08-08 — phase 9 COMPLETE** | #365, #366, #371 |
 
 (#151–#153 were **absorbed as filed** rather than re-filed — their bodies now carry the locked
 B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
@@ -73,9 +78,47 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 ## Blockers
 
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
-- **Phase 9 has ONE slice left: #373.** #365, #152, #366, #367, #368, #369, #370, #371 and #372
-  all landed 2026-08-08. #373's deps (#365/#366/#371) were satisfied before #372 landed — keep
-  reading the deps column, not just the number.
+- **Phase 9 is DONE — all twelve B2 slices landed.** Nothing in it is outstanding.
+- **`bestFniPvr` is a MONTH mark with no volume floor, and that is not an oversight** (#373).
+  `bestPvr`'s `pvrMinUnits` exists because a one-unit day's PVR is just that deal's gross, which
+  `bestSingleDeal` already crowns. Nothing else in the game measures the **back end**, so a thin
+  month's F&I average is the only reading of it there is. Do not add a symmetric floor "for
+  consistency". An all-cash month sets it to nothing rather than to zero — `tryBreak` refuses a
+  non-positive — and a month with no units crowns nothing at all.
+- **The month verdict's mix read is ONE comparison and Balanced can never fail it** (#373).
+  `fniPosture[].financedShareBand` asks whether the month's financed share was inside the band
+  that posture is a bet on; the two failures (`too_few_financed` / `too_many_financed`) are the
+  same rule from opposite ends, because reserve is earned on financed contracts and nowhere else.
+  Balanced spans [0,1] deliberately — it is the posture that makes no bet on the mix. Do not
+  "fix" that by giving it a band, and do not add a second situation table beside the one number.
+- **The verdict's tone follows the MIX, not the money** (#373). A month can earn well and still
+  have been the wrong standing bet; which crowd the dial was pointed at is the lesson the beat
+  exists to teach. A future session reading a fat-but-mismatched month as a bug is reading it
+  backwards.
+- **#373 did NOT bump the envelope — it was `RecordsSnapshot` schemaVersion 1 → 2** (the seventh
+  mark plus `monthBackGross`/`monthUnits`). Per `docs/save-migration-recipe.md` the `modules` key
+  set did not change, so `WORLD_SNAPSHOT_VERSION` stays **21**, `data/fixtures/tier-2.json` was
+  deliberately not re-stamped, and there is no v21→v22 migration to look for. `restore` takes the
+  `AnyRecordsSnapshot` union and a v1 blob's missing mark materializes as `null` — **not** as
+  `{...undefined}`, which is what the old unconditional spread would have produced and what the
+  feed would then have tried to crown.
+- **`resolveFniDeskPerson` is the ONE F&I desk pick and #370's rule now has three readers**
+  (#373). The month verdict names the person, `resolveFniDesk` maps them to skills for the close,
+  and `getFniStructuringSkill` composes their morale for the peak meter. A verdict that named a
+  different manager than the one the deals ran on is exactly the drift the single pick prevents.
+- **The posture reaches the composition root through TWO getters over one piece of slot state**
+  (#373): `getFniPostureMarkupPts` (prices a deal) and `getFniPostureId` (names the month). Two
+  rather than one that returns both, so the pricing path cannot read a label and the reporting
+  path cannot read a rate. Both are read off `fniPostureIdRef`, not React state, so a month
+  closing in the same tick as a dial change reports what was actually standing.
+- **The month verdict is told the MORNING AFTER, by construction** (#373). `clock:month_ended`
+  fires during the Next Day transition, so the verdict lands in the following day's ref — the
+  same window `bestMonthGross`'s crown has always arrived in, which is why the two ride the same
+  bite for free. The refs are cleared **before** `nextDay()` runs; a session that "tidies" that
+  ordering silently deletes the beat.
+- **Nothing calibrated moved and nothing could** (#373). The verdict is a pure read, `bestFniPvr`
+  is a scoreboard entry nothing branches on, and no harness assembles a Reveal at a month close.
+  `#180` still reads 39.3% / 51.7%, closes=290.
 - **An advertising campaign has TWO lanes and they ride ONE clock** (#372).
   `DemandInfluenceInput.personWeights` (optional ⇒ every segment-only producer byte-identical)
   ramps on the same lag/decay as `weights`, because a campaign's two halves are one lever;
@@ -742,7 +785,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 + #152 + #366 + #367 + #368 + #369 + #370 BUILT 2026-08-08**, three left, next is **#371** |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | **COMPLETE 2026-08-08** — all twelve slices built (#151, #153, #365, #152, #366–#373) |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -760,6 +803,74 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-08 — **BUILT #373** (the monthly F&I verdict — phase 9 COMPLETE). The posture (#366)
+  is a bet the player places once and leaves standing; every tooth on it bites one deal at a
+  time, which is a grain the bet was never placed at. This is the Reveal resolving it at the
+  grain it *was* — and it is the plug-in that proves the spine's "self-similar" claim, because
+  carrying a month-grain beat needed **one more weight and one more term**, not a month mode.
+  **The verdict is a `reactions[]` entry like any other.** `DramaCandidate` gained a fourth kind
+  (`fni`), `scoreDrama` a flat `weights.fniVerdict` (2.5, above `recordBroken`), and the verdict
+  leads the arrival order so it wins an exact tie with the crown it may arrive beside. There is
+  deliberately **no margin half** on its score: it fires on exactly one bite a month, and scaling
+  it by how much money it made would let a quiet month's verdict get pushed off the feed by an
+  ordinary Tuesday's walk-off. How good the month *was* is what `bestFniPvr` scores.
+  **It stars an entity with a fate, never the number** — *"Dana Reyes worked the desk on
+  'Balanced' — $8,400 on 12 cars ($4,800 products, $3,600 rate)"*, or *"No finance office —
+  'More per deal' had nobody to carry it out"* when nobody was hired, which is a fate and not a
+  missing value. The two halves are named separately because #365 split them: one undifferentiated
+  "back gross" cannot tell the player which lever moved.
+  **The mix read is ONE comparison, and it is what teaches #371 and #372 without a tutorial.**
+  Each posture in `data/tunables.json` now carries a `financedShareBand` — the share of a month's
+  retail that has to finance for that posture to have been the right standing bet. Reserve is
+  earned on financed contracts and nowhere else, so *"Only 2 of 12 financed — a cash-paying crowd,
+  and a rate you mark up earns nothing on the ones who pay cash"* and *"12 of 12 financed — that
+  crowd was going to borrow anyway, and you held the rate down for them"* are the same rule read
+  from opposite ends. **Balanced spans [0,1] on purpose**: it is the posture that makes no bet on
+  the mix, so it can be beaten on money and never mismatched. **Tone follows the mix, not the
+  money** — a month can earn well and still have been the wrong bet, and which crowd the dial was
+  pointed at is the whole lesson.
+  **`bestFniPvr` is the seventh mark and a MONTH mark** (`monthBackGross ÷ monthUnits`, settled on
+  `clock:month_ended` beside `bestMonthGross`). Not a day mark: a single day's back end is noise
+  against which two or three customers happened to walk in. It has **no `pvrMinUnits`-style volume
+  floor** — that floor exists on `bestPvr` because a one-unit day duplicates `bestSingleDeal`, and
+  nothing else measures the back end at all. An all-cash month leaves the mark standing rather
+  than setting it to zero (`tryBreak` refuses a non-positive), and a month with no units crowns
+  nothing — which is the same month the verdict refuses to fire on, for the same reason: no crowd,
+  no bet to resolve, and "$0 a car" would blame the dial for a floor problem.
+  **No envelope bump — this was the module's own `schemaVersion` 1 → 2.** Per
+  `docs/save-migration-recipe.md` the `modules` key set did not change, so `WORLD_SNAPSHOT_VERSION`
+  stays **21** and there is no migration to look for (the #359 Facility call, same shape).
+  `Records.restore` takes an `AnyRecordsSnapshot` union: a v1 blob's missing seventh mark
+  materializes as `null` — **not** as a `{}` mark the feed would then try to crown — and the month
+  back-end tally restarts from the reload rather than being reconstructed from a figure the save
+  never kept. `data/fixtures/tier-2.json` was deliberately **not** re-stamped.
+  **The verdict is composed in `createWorld`, not at the surface** (`World.getFniMonthVerdict`),
+  because it is three reads that have to agree and each has exactly one right source: the month's
+  retail flow off the KPI window (the same log the peak meter reads), the person off the ONE desk
+  pick the close runs on (`resolveFniDeskPerson`, lifted out of #369's `resolveFniDesk` so the
+  name and the skills come from one pick), and the posture off the slot state that priced the
+  deals — reaching it through a new `getFniPostureId` getter beside the existing markup one, two
+  getters over one piece of state so the pricing path cannot read a label and the reporting path
+  cannot read a rate.
+  **It is told the morning after, by construction.** `clock:month_ended` fires during the Next Day
+  transition, so — exactly like the `bestMonthGross` crown — the verdict lands in the following
+  day's ref and is read on that day's Reveal. Its crown rides the same bite for free.
+  **Nothing calibrated moved and nothing could**: the verdict is a pure read, `bestFniPvr` is a
+  scoreboard entry nothing branches on, and no harness closes a month with the Reveal assembled.
+  `#180` still reads 39.3% / 51.7%, closes=290.
+  10 tests in `tests/Reveal.fni.test.ts` (including an anti-orphan case that queries
+  `World.getFniMonthVerdict` off real `deal:closed` traffic on a real bus), 4 in
+  `tests/Records.test.ts`, the pre-#373 restore in `tests/worldSnapshot.test.ts`, and a #373
+  composition guard in `tests/Reveal.reachability.test.tsx` asserting **both** halves of the
+  wiring — the capture at month close and the parameter it fills — because either alone is wired
+  to nothing. **238 suites / 3027 tests, typecheck clean.**
+  Web: the T2 dev fixture and the day-35 `Harness Bot's Lot` slot both carry a **schemaVersion-1
+  records blob**, so loading that save through the real load path is the live proof of the union
+  restore — it came up clean (cash, tier strip, month bars, recap chip all rendering, no console
+  errors). The month beat itself was **not** driven on web: reaching it needs a 30-day window,
+  and standing the store on one would have meant editing the user's own save. It is covered by
+  the reachability test + the composition guard, which run in CI where a drive does not.
 
 - 2026-08-08 — **BUILT #372** (advertising buys a different crowd). #371 gave the player a read
   on how the coming crowd pays; this is the answer they get to give back. An advertising
@@ -863,53 +974,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   Subscribe opens it in place, and the read comes out **84% financed** with an A/B/C/D book of
   **23/24/36/18**. No console errors. Nothing calibrated moved — the projection is a pure read
   and no harness opens the lane.
-
-- 2026-08-08 — **BUILT #370** (the peak meter — the dial finally shows what it costs).
-  The posture had two teeth on it (#367's fall-through, #368's CSI drag) and both were
-  invisible until they had already bitten. Prep's Finance Office block now carries twin opposed
-  bars — **finance profit per contract** filling as the posture gets aggressive, **contracts the
-  bank buys** draining as it does — and a third bar for the resulting total, which **crests**.
-  **The correction that made the crest real: a fall-through costs the WHOLE DEAL.** The issue
-  asked for expected back gross, and back gross alone does not crest — under the shipped numbers
-  the aggressive posture beats Balanced by 3–6% at every credit mix with A/B paper in it, and
-  the meter would have shipped teaching the player to gouge. But #367's guard fires before
-  `trade:resolved` and the customer **walks**: the front and product gross die with the
-  contract, not just the spread. So each book sample carries `dealGross = frontGross +
-  productGross` and the curve is `(dealGross + reserve) × stick`. With that, the shipped
-  placeholder config reads exactly as grill Q4/Q5 designed — peak at **Balanced** with a green
-  or absent desk, sliding to **More per deal** at `finance_structuring` ≈ 70, and back to
-  Balanced for a subprime-heavy book whose lender caps clamp the markup away. No tunable was
-  touched to get there.
-  **The satisfaction cost is stated beside the money and never folded into it.** A satisfaction
-  point is not a dollar, and inventing an exchange rate to bend the curve would be a second
-  pricing rule the player can neither see nor move. `markupSatisfactionHit` rides the projection
-  and the surface says it in its own sentence.
-  **The credit mix is the store's OWN BOOK, not a modeled crowd.** #371 is what puts the
-  *crowd's* finance mix on the wire; this reads the contracts already written, which is where
-  the mix that matters already lives. `deal:closed` gained `creditTier` and `DealRecord` gained
-  `creditTier` + `loanAmount` — both optional, both carried by the existing `...d` restore
-  spread, inside the module's blob, so `WORLD_SNAPSHOT_VERSION` did not move and there is no
-  migration. A record missing either sits outside `getFinancedBook()` rather than being patched
-  with a guess. **The tier is carried, never decoded from `apr`**: the shipped bands are
-  disjoint so arithmetic would work today, and would break silently on the next edit to
-  `data/credit-tiers.json` while the meter went on reporting a peak.
-  **One rule, two callers, again.** `resolveDeskSkill` came out of StaffDispatch onto its barrel
-  and `World.getFniStructuringSkill()` composes it with the same person-pick `getFniDesk` uses
-  (extracted as the named `resolveFniDesk` in `createWorld`) — a meter projecting the raw roster
-  composite would drift from the close exactly when the desk's morale was down, which is when
-  the player is looking.
-  Verified on web against a real Tier-2 store: the empty state on load ("You haven't financed a
-  car yet"), then one day skipped to close, then the populated read — *Finance profit per
-  contract $186 · Contracts the bank buys 100% · Total gross per financed customer $470 ·
-  "Balanced earns the most right now."* Switching the chip with the recap modal up was not
-  reachable (the documented hidden-pane modal artifact), and that branch is covered by the
-  component test. Nine tests across `tests/FniPeakModel.test.ts` +
-  `tests/FniPeakMeter.test.tsx`, plus the #370 anti-orphan assertions folded into
-  `tests/FniPosture.reachability.test.tsx`.
-  235 suites / **2992** tests, typecheck clean, `#180` live bands byte-identical (39.3% /
-  51.7%, closes=290 — the slice is a read plus two recorded fields, and no harness reads the
-  book). The two full-suite failures were `App.saveFlow` and `InTabNavigation.reachability`
-  timing out on `waitFor`; both pass in isolation — the documented RN-Testing-Library CPU-load
-  flake.
-  Next: **BUILD #371** — the crowd's finance mix read ahead on the wire (MarketIntel lane, the
-  F&I manager as a third opener). #372 stays deps-met independently.

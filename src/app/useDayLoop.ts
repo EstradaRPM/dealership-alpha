@@ -14,6 +14,7 @@ import {
   type WalkOff,
   type BrokenRecord,
 } from '../ui/Reveal';
+import type { FniMonthVerdict } from '../game/DealEngine';
 import type { CashDeltaSplit } from '../ui/HomeTab';
 import { buildRecoveryBeat, type RecoveryBeat } from '../ui/NarrativeBeat';
 import type { SaveState } from '../game/SaveStore';
@@ -125,6 +126,14 @@ export function useDayLoop({
   // month's result is news you get the morning after it closes. Reset each day
   // the same way closesRef/walkOffsRef are.
   const recordsRef = useRef<BrokenRecord[]>([]);
+  // The month verdict waiting to be told (#373). `clock:month_ended` fires
+  // during the Next Day transition, so — exactly like `bestMonthGross` above —
+  // the month that just closed is resolved on the FOLLOWING day's Reveal: the
+  // month's result is news you get the morning after it closes, and its crown
+  // (`bestFniPvr`) rides the same bite by construction. Cleared with the other
+  // per-bite refs, which happens BEFORE `nextDay()` runs, so the verdict that
+  // transition produces survives into the day it will be read on.
+  const fniVerdictRef = useRef<FniMonthVerdict | null>(null);
   // Cash "vs yesterday" delta for the Home dashboard (#230, split #255). The
   // refs hold the prior day's closing cash and the lifetime stock-acquisition
   // spend at that close; the day-complete handler diffs both against the live
@@ -171,6 +180,7 @@ export function useDayLoop({
     closesRef.current = [];
     walkOffsRef.current = [];
     recordsRef.current = [];
+    fniVerdictRef.current = null;
     // Leaving MANAGERIAL → the day-close recap modal is done; the chip keeps
     // the prior recap reachable until the next day closes over it (#253).
     setRecapModalOpen(false);
@@ -190,6 +200,7 @@ export function useDayLoop({
     closesRef.current = [];
     walkOffsRef.current = [];
     recordsRef.current = [];
+    fniVerdictRef.current = null;
     setLastRecap(null);
     setRecapModalOpen(false);
     setMonthClose(null);
@@ -254,6 +265,7 @@ export function useDayLoop({
             walkOffsRef.current,
             w.getPrepBet(),
             recordsRef.current,
+            fniVerdictRef.current,
           ),
         };
         setLastRecap(recapModel);
@@ -378,8 +390,15 @@ export function useDayLoop({
     // the interstitial here interrupts at MANAGERIAL — the render loop holds
     // (see useFloorRenderLoop hold) so the new month's floor stays paused
     // behind the screen until the player dismisses it.
-    const onMonthEnded = ({ day }: { day: number }) =>
+    const onMonthEnded = ({ day }: { day: number }) => {
       setMonthClose(Math.ceil(day / DAYS_PER_MONTH));
+      // #373: capture the closing month's F&I verdict while the KPI window still
+      // ends on the month's last day, and hold it for the next day's Reveal. The
+      // engine composes it (posture + desk + the month's retail flow); this hook
+      // only decides WHEN it is told, which is the same "morning after" the month
+      // gross crown already arrives on.
+      fniVerdictRef.current = worldRef.current?.getFniMonthVerdict(day) ?? null;
+    };
 
     // Non-terminal interrupt (#127 decision 1): a tier-up / chapter beat.
     // Enqueued here regardless of phase; it surfaces only when the queue

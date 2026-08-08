@@ -70,7 +70,7 @@ import {
 import type { PrepBet } from './game/PrepBet';
 import {
   createDefaultRecordsSnapshot,
-  type RecordsSnapshot,
+  type AnyRecordsSnapshot,
 } from './game/Records';
 import {
   createDefaultMarketIntelSnapshot,
@@ -148,7 +148,12 @@ export type WorldSnapshot = {
     readonly prepBet: PrepBet | null;
     // #329 Career high-water marks + the in-progress day/month accumulators
     // that feed them.
-    readonly records: RecordsSnapshot;
+    // #373 added the F&I mark and the month back-end accumulators inside the
+    // same blob, which is the module's own `schemaVersion` 1 → 2 and needs no
+    // envelope bump (`docs/save-migration-recipe.md`: the `modules` key set did
+    // not change). The union is what lets a save written before the F&I record
+    // still type as itself; `Records.restore` materializes the mark as unset.
+    readonly records: AnyRecordsSnapshot;
     // #178 The wire subscriptions the player is paying for — the money half of
     // news access gating (the staff half is read off the live roster).
     readonly marketIntel: MarketIntelSnapshot;

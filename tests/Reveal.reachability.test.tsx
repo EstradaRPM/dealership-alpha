@@ -98,12 +98,29 @@ describe('#319 The Reveal — reachable through the live day-close pipeline', ()
   it('App composition wires the funnel/gross/match tally/closes/walk-offs into buildReveal at day close', () => {
     const src = readAppCompositionSource();
     expect(src).toMatch(
-      /buildReveal\(\s*funnel,\s*dayGross,\s*matchTallyRef\.current,\s*closesRef\.current,\s*walkOffsRef\.current,\s*w\.getPrepBet\(\),\s*recordsRef\.current,?\s*\)/,
+      /buildReveal\(\s*funnel,\s*dayGross,\s*matchTallyRef\.current,\s*closesRef\.current,\s*walkOffsRef\.current,\s*w\.getPrepBet\(\),\s*recordsRef\.current,\s*fniVerdictRef\.current,?\s*\)/,
     );
     expect(src).toMatch(/reveal: buildReveal\(/);
     // #331: the day gross is the engine's, never a tally kept in the hook.
     expect(src).toMatch(/const dayGross = w\.records\.getDayTotals\(\)\.gross;/);
     expect(src).not.toMatch(/grossTodayRef/);
+  });
+
+  // #373 anti-orphan: the month verdict only exists if something captures it at
+  // the month boundary and hands it to the next day's feed. Both halves are
+  // asserted because either one alone is "wired to nothing" — a capture nobody
+  // reads, or a parameter nothing ever fills.
+  it('App composition captures the F&I month verdict at month close and clears it per bite', () => {
+    const src = readAppCompositionSource();
+    expect(src).toMatch(
+      /fniVerdictRef\.current = worldRef\.current\?\.getFniMonthVerdict\(day\) \?\? null;/,
+    );
+    // Cleared alongside the crown accumulator — i.e. BEFORE nextDay() runs, so
+    // the verdict that transition produces survives into the day it is told on.
+    expect(
+      src.match(/recordsRef\.current = \[\];\s*\n\s*fniVerdictRef\.current = null;/g)
+        ?.length,
+    ).toBe(2);
   });
 });
 

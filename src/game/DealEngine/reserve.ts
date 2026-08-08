@@ -21,6 +21,15 @@ export interface FniPostureOption {
   readonly label: string;
   readonly markupPts: number;
   readonly blurb: string;
+  /**
+   * The share of a month's retail units that has to finance for this posture to
+   * have been the right standing bet (#373). Reserve is only earned on financed
+   * contracts, so the mix the crowd actually paid with is what decides whether
+   * the dial was pointed the right way — and that is the one comparison behind
+   * the monthly F&I verdict on the Reveal feed. It judges a month that already
+   * closed; nothing prices off it.
+   */
+  readonly financedShareBand: { readonly min: number; readonly max: number };
 }
 
 export interface FniPostureConfig {
@@ -47,11 +56,24 @@ export function resolveFniPostureMarkupPts(
   postureId: string | undefined,
   config: FniPostureConfig = loadFniPostureConfig(),
 ): number {
-  const chosen =
+  return resolveFniPosture(postureId, config).markupPts;
+}
+
+/**
+ * Resolve a persisted posture id to the posture itself (#373) — the same
+ * fallback chain `resolveFniPostureMarkupPts` has always used, lifted out so the
+ * month verdict names the posture the deals were actually written at rather than
+ * repeating the chain and drifting from it on the next unknown id.
+ */
+export function resolveFniPosture(
+  postureId: string | undefined,
+  config: FniPostureConfig = loadFniPostureConfig(),
+): FniPostureOption {
+  return (
     config.postures.find((p) => p.id === postureId) ??
     config.postures.find((p) => p.id === config.defaultId) ??
-    config.postures[0];
-  return chosen.markupPts;
+    config.postures[0]
+  );
 }
 
 /** Whose markup the store is working to on this deal (#365, posture #366). */

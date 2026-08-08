@@ -198,6 +198,7 @@ export function DealershipApp({
       getPricingStrategy: levers.getPricingStrategy,
       getSourcingLean: levers.getSourcingLean,
       getFniPostureMarkupPts: levers.getFniPostureMarkupPts,
+      getFniPostureId: levers.getFniPostureId,
     });
     // World-state restore (#188 tracer): rehydrate the persisted world
     // snapshot (day + cash) onto the freshly-built World instead of leaving it
@@ -270,6 +271,7 @@ export function DealershipApp({
       getPricingStrategy: levers.getPricingStrategy,
       getSourcingLean: levers.getSourcingLean,
       getFniPostureMarkupPts: levers.getFniPostureMarkupPts,
+      getFniPostureId: levers.getFniPostureId,
     });
     setWorld(w);
     setCash(w.economy.cash);

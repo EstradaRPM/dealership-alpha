@@ -340,7 +340,8 @@
         "grossSurprise": 1,
         "walkOffPain": 1.2,
         "recordBroken": 2,
-        "recordMargin": 0.5
+        "recordMargin": 0.5,
+        "fniVerdict": 2.5
       },
       "painByReason": {
         "no_fit": 1,
@@ -842,26 +843,29 @@
     ]
   },
   "fniPosture": {
-    "_doc": "Per-slot F&I posture (#366) — the player's ONE finance-office input, and it is standing rather than per-deal (grill Q5/Q9/Q10: no slider, no per-product switch, no manual deal screen). `markupPts` is the rate markup in points of APR the desk works to, clamped down per deal to the credit tier's `markupCapPts`. Marking up harder earns more reserve on each contract AND raises the payment, so more buyers fail the PTI affordability gate that already exists — which is why 'More deals' is a real trade and not just a smaller number. The posture only bites once an f&i-manager is on the desk; with the desk empty the store earns `fniReserve.ambientMarkupPts` whatever is selected (grill Q2). The composition root resolves the selected id to its markup and hands DealEngine a live getter; the id persists on the save slot alongside tradePolicy/pricingStrategy/sourcingLean — no world-snapshot state (grill I7). Placeholder magnitudes owed to a #286-class calibration pass (grill I9).",
+    "_doc": "Per-slot F&I posture (#366) — the player's ONE finance-office input, and it is standing rather than per-deal (grill Q5/Q9/Q10: no slider, no per-product switch, no manual deal screen). `markupPts` is the rate markup in points of APR the desk works to, clamped down per deal to the credit tier's `markupCapPts`. Marking up harder earns more reserve on each contract AND raises the payment, so more buyers fail the PTI affordability gate that already exists — which is why 'More deals' is a real trade and not just a smaller number. The posture only bites once an f&i-manager is on the desk; with the desk empty the store earns `fniReserve.ambientMarkupPts` whatever is selected (grill Q2). The composition root resolves the selected id to its markup and hands DealEngine a live getter; the id persists on the save slot alongside tradePolicy/pricingStrategy/sourcingLean — no world-snapshot state (grill I7). Placeholder magnitudes owed to a #286-class calibration pass (grill I9). #373 adds `financedShareBand` — the share of a month's retail units that has to finance for THIS posture to have been the right standing bet, and the ONE rule behind the monthly F&I verdict on the Reveal. Reserve is earned on financed contracts only, so reaching for markup ('More per deal', floor 0.5) in a cash-paying month is a bet with nothing to bite on, and holding the rate down ('More deals', ceiling 0.8) in a month that financed nearly everything gives away gross the crowd would have paid. 'Balanced' spans the whole range because it is the posture that makes no bet on the mix — it can be beaten, never mismatched. The band judges the month that happened; it never feeds pricing.",
     "defaultId": "balanced",
     "postures": [
       {
         "id": "more-per-deal",
         "label": "More per deal",
         "markupPts": 0.025,
-        "blurb": "Mark the rate up as far as the lender allows — the most finance profit per contract, and the highest payment, so more buyers can't qualify."
+        "blurb": "Mark the rate up as far as the lender allows — the most finance profit per contract, and the highest payment, so more buyers can't qualify.",
+        "financedShareBand": { "min": 0.5, "max": 1 }
       },
       {
         "id": "balanced",
         "label": "Balanced",
         "markupPts": 0.0175,
-        "blurb": "A normal market markup — solid finance profit without pricing many buyers out of their payment."
+        "blurb": "A normal market markup — solid finance profit without pricing many buyers out of their payment.",
+        "financedShareBand": { "min": 0, "max": 1 }
       },
       {
         "id": "more-deals",
         "label": "More deals",
         "markupPts": 0.01,
-        "blurb": "Keep the rate close to what the bank charges you — thin finance profit, but the lowest payment, so more buyers qualify."
+        "blurb": "Keep the rate close to what the bank charges you — thin finance profit, but the lowest payment, so more buyers qualify.",
+        "financedShareBand": { "min": 0, "max": 0.8 }
       }
     ]
   },

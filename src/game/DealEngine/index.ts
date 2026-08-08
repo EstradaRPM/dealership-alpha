@@ -8,8 +8,15 @@ export {
   loadFniReserveConfig,
   resolveFinanceQuote,
   loadFniPostureConfig,
+  resolveFniPosture,
   resolveFniPostureMarkupPts,
 } from './reserve';
+export { buildFniMonthVerdict } from './monthVerdict';
+export type {
+  FniMonthInput,
+  FniMonthVerdict,
+  FniMixVerdict,
+} from './monthVerdict';
 export type {
   FinanceQuoteInput,
   FniPostureOption,

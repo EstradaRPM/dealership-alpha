@@ -47,6 +47,8 @@ export interface Levers {
   getHoursOfOpTicksPerDay: () => number;
   getTradePolicyMultiplier: () => number;
   getFniPostureMarkupPts: () => number;
+  /** The standing posture's id (#373) — what the month verdict names it by. */
+  getFniPostureId: () => string;
   handleSelectTradePolicy: (id: string) => void;
   handleSelectFniPosture: (id: string) => void;
   handleSelectAdvertisingCampaign: (id: string) => void;
@@ -90,6 +92,10 @@ export function useLevers({
   fniPostureIdRef.current = fniPostureId;
   const getFniPostureMarkupPts = () =>
     resolveFniPostureMarkupPts(fniPostureIdRef.current, FNI_POSTURE);
+  // #373: the same ref read as an id, for the month verdict that names the
+  // posture the month was written at. Off the ref, not the state, so a month
+  // closing inside the same tick as a dial change reports what was standing.
+  const getFniPostureId = () => fniPostureIdRef.current;
   // Per-slot list-price strategy (#154). Drives the pricing screen suggestion
   // and — once a UCM is on staff (#285) — the standing auto-pricing policy. The
   // ref feeds the live getter handed to createWorld so a mid-game toggle change
@@ -188,6 +194,7 @@ export function useLevers({
     getHoursOfOpTicksPerDay,
     getTradePolicyMultiplier,
     getFniPostureMarkupPts,
+    getFniPostureId,
     handleSelectTradePolicy,
     handleSelectFniPosture,
     handleSelectAdvertisingCampaign,

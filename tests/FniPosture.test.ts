@@ -82,7 +82,13 @@ describe('#366 the F&I posture catalog', () => {
     const orphaned: FniPostureConfig = {
       defaultId: 'gone',
       postures: [
-        { id: 'only', label: 'Only', markupPts: 0.02, blurb: 'b' },
+        {
+          id: 'only',
+          label: 'Only',
+          markupPts: 0.02,
+          blurb: 'b',
+          financedShareBand: { min: 0, max: 1 },
+        },
       ],
     };
     expect(resolveFniPostureMarkupPts('also-gone', orphaned)).toBe(0.02);

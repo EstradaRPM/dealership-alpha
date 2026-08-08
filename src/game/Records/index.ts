@@ -8,6 +8,8 @@ export type {
   RecordsDeps,
   RecordsConfig,
   RecordsSnapshot,
+  RecordsSnapshotV1,
+  AnyRecordsSnapshot,
   RecordKind,
   RecordMark,
   RecordMarks,

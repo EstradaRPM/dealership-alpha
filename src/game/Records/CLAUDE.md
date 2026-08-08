@@ -1,7 +1,7 @@
 # Records
 
 The game's durable **high-water marks** (#329, B1 slice 2 of the Reveal spine).
-Six personal bests that survive the whole career, plus a `records:broken`
+Seven personal bests that survive the whole career, plus a `records:broken`
 announcement the moment one is beaten. Slice 3 (#330) crowns those on the
 Reveal feed and folds `recordBroken` into the drama ranking — see
 `src/ui/Reveal/buildReveal.ts` (`isCrownworthyRecord` / `crownReactionText`).
@@ -12,9 +12,10 @@ Records is a **scoreboard, not a rule** — nothing in the sim branches on a mar
 - `createRecords({ bus, config? })` → `Records`
 - `createDefaultRecordsSnapshot()` — behavior-neutral empty marks, used by the
   world-snapshot migration that materializes the key for pre-#329 saves.
-- `RECORD_KINDS` — the six kinds, iteration order.
+- `RECORD_KINDS` — the seven kinds, iteration order.
 - Types: `Records`, `RecordsDeps`, `RecordsConfig`, `RecordsSnapshot`,
-  `RecordKind`, `RecordMark`, `RecordMarks`.
+  `RecordsSnapshotV1`, `AnyRecordsSnapshot`, `RecordKind`, `RecordMark`,
+  `RecordMarks`.
 
 ### `Records`
 - `getMark(kind)` / `getMarks()` — standing marks (`null` = never set).
@@ -30,13 +31,14 @@ Records is a **scoreboard, not a rule** — nothing in the sim branches on a mar
   figure is still standing when the day-close consumers read it.
 - `snapshot()/restore()` — persistence (see below).
 
-## The six marks
+## The seven marks
 
 | Kind | Measures | Settles on |
 | --- | --- | --- |
 | `bestDayGross` | highest single-day total gross | `floor:day_complete` |
 | `bestMonthGross` | highest month total gross | `clock:month_ended` |
 | `bestPvr` | best day gross ÷ units | `floor:day_complete` |
+| `bestFniPvr` | best month **back** gross ÷ retail units | `clock:month_ended` |
 | `bestStreak` | longest run of consecutive selling days | `floor:day_complete` |
 | `bestSingleDeal` | fattest individual deal, on **front** gross | `deal:closed` |
 | `mostUnitsInDay` | highest unit count closed in a day | `floor:day_complete` |
@@ -47,6 +49,19 @@ Definitions held deliberately:
   graded that month.
 - **`bestSingleDeal` is front-only** — the desk's win on the car itself, not the
   F&I box that rode behind it.
+- **`bestFniPvr` is a MONTH mark, not a day one** (#373). It is the mark the F&I
+  posture dial is chased on, and the dial is a *standing* bet (#366) — a single
+  day's back end is noise against which two or three customers happened to walk
+  in. It is `backGross ÷ units` over the month, the whole back end (products +
+  reserve), counted on its own accumulators rather than derived from
+  `bestMonthGross`: what the finance office made per car is a different question
+  from what the store made per day. A month that retailed nothing crowns
+  nothing, and neither does a month that made no back end at all — `tryBreak`
+  refuses a non-positive value, so an all-cash month leaves the mark standing
+  where it was rather than setting it to zero. There is deliberately **no
+  `pvrMinUnits`-style volume floor on it**: unlike `bestPvr` (which a one-unit
+  day would make a duplicate of `bestSingleDeal`), nothing else measures the
+  back end, so a thin month's F&I average is still the only reading of it.
 - **A selling day = ≥ 1 unit closed.** The streak tracks floor momentum;
   whether the day was profitable is the separate `bestDayGross` axis, so
   neither mark shadows the other.
@@ -67,7 +82,7 @@ best-quarter/year (T7 group altitude, lands with B5), reputation/CSI marks
 ## Events
 - **Emits:** `records:broken` — `{ day, kind, value, previousValue, vehicleId?,
   customerId?, month? }`. `vehicleId`/`customerId` ride `bestSingleDeal` only;
-  `month` rides `bestMonthGross` only.
+  `month` rides the two month marks (`bestMonthGross`, `bestFniPvr`).
 - **Consumes:** `deal:closed` (per-deal front gross + day/month accumulation),
   `floor:day_complete` (day settle), `clock:month_ended` (month settle),
   `clock:day_started` (day cursor — `deal:closed` carries no day of its own,
@@ -96,3 +111,14 @@ reload keeps the day's haul and a mid-month reload keeps the month's. World seam
 key `records`; envelope bumped to v17 with a migration that materializes
 `createDefaultRecordsSnapshot()` for older saves (an old save simply crowns its
 first marks on the next qualifying day).
+
+**#373 took the blob's own `schemaVersion` 1 → 2** (the `bestFniPvr` mark plus
+`monthBackGross`/`monthUnits`) and **did not move the envelope** — the `modules`
+key set is unchanged, which per `docs/save-migration-recipe.md` makes it this
+module's problem, not the envelope's (the #359 Facility call, same shape).
+`restore` takes the `AnyRecordsSnapshot` union: a v1 blob's missing seventh mark
+materializes as `null` (**not** as a `{}` mark the feed would then try to crown)
+and the month back-end tally restarts from the reload rather than being
+reconstructed from a figure the save never kept. `data/fixtures/tier-2.json` was
+deliberately **not** re-stamped and still carries a v1 records blob — it loads
+through the real path, which is what the web drive on #373 confirmed.

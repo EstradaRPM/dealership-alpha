@@ -6,6 +6,56 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **BUILT #370** (the peak meter — the dial finally shows what it costs).
+  The posture had two teeth on it (#367's fall-through, #368's CSI drag) and both were
+  invisible until they had already bitten. Prep's Finance Office block now carries twin opposed
+  bars — **finance profit per contract** filling as the posture gets aggressive, **contracts the
+  bank buys** draining as it does — and a third bar for the resulting total, which **crests**.
+  **The correction that made the crest real: a fall-through costs the WHOLE DEAL.** The issue
+  asked for expected back gross, and back gross alone does not crest — under the shipped numbers
+  the aggressive posture beats Balanced by 3–6% at every credit mix with A/B paper in it, and
+  the meter would have shipped teaching the player to gouge. But #367's guard fires before
+  `trade:resolved` and the customer **walks**: the front and product gross die with the
+  contract, not just the spread. So each book sample carries `dealGross = frontGross +
+  productGross` and the curve is `(dealGross + reserve) × stick`. With that, the shipped
+  placeholder config reads exactly as grill Q4/Q5 designed — peak at **Balanced** with a green
+  or absent desk, sliding to **More per deal** at `finance_structuring` ≈ 70, and back to
+  Balanced for a subprime-heavy book whose lender caps clamp the markup away. No tunable was
+  touched to get there.
+  **The satisfaction cost is stated beside the money and never folded into it.** A satisfaction
+  point is not a dollar, and inventing an exchange rate to bend the curve would be a second
+  pricing rule the player can neither see nor move. `markupSatisfactionHit` rides the projection
+  and the surface says it in its own sentence.
+  **The credit mix is the store's OWN BOOK, not a modeled crowd.** #371 is what puts the
+  *crowd's* finance mix on the wire; this reads the contracts already written, which is where
+  the mix that matters already lives. `deal:closed` gained `creditTier` and `DealRecord` gained
+  `creditTier` + `loanAmount` — both optional, both carried by the existing `...d` restore
+  spread, inside the module's blob, so `WORLD_SNAPSHOT_VERSION` did not move and there is no
+  migration. A record missing either sits outside `getFinancedBook()` rather than being patched
+  with a guess. **The tier is carried, never decoded from `apr`**: the shipped bands are
+  disjoint so arithmetic would work today, and would break silently on the next edit to
+  `data/credit-tiers.json` while the meter went on reporting a peak.
+  **One rule, two callers, again.** `resolveDeskSkill` came out of StaffDispatch onto its barrel
+  and `World.getFniStructuringSkill()` composes it with the same person-pick `getFniDesk` uses
+  (extracted as the named `resolveFniDesk` in `createWorld`) — a meter projecting the raw roster
+  composite would drift from the close exactly when the desk's morale was down, which is when
+  the player is looking.
+  Verified on web against a real Tier-2 store: the empty state on load ("You haven't financed a
+  car yet"), then one day skipped to close, then the populated read — *Finance profit per
+  contract $186 · Contracts the bank buys 100% · Total gross per financed customer $470 ·
+  "Balanced earns the most right now."* Switching the chip with the recap modal up was not
+  reachable (the documented hidden-pane modal artifact), and that branch is covered by the
+  component test. Nine tests across `tests/FniPeakModel.test.ts` +
+  `tests/FniPeakMeter.test.tsx`, plus the #370 anti-orphan assertions folded into
+  `tests/FniPosture.reachability.test.tsx`.
+  235 suites / **2992** tests, typecheck clean, `#180` live bands byte-identical (39.3% /
+  51.7%, closes=290 — the slice is a read plus two recorded fields, and no harness reads the
+  book). The two full-suite failures were `App.saveFlow` and `InTabNavigation.reachability`
+  timing out on `waitFor`; both pass in isolation — the documented RN-Testing-Library CPU-load
+  flake.
+  Next: **BUILD #371** — the crowd's finance mix read ahead on the wire (MarketIntel lane, the
+  F&I manager as a third opener). #372 stays deps-met independently.
+
 - 2026-08-08 — **BUILT #369** (the F&I manager finally works the deal instead of the salesperson).
   The back end had been rolling off the **selling salesperson's** effectiveness, which is exactly
   what a store with no finance office looks like — and it kept looking like that after the hire.

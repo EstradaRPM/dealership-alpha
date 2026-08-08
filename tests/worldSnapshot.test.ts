@@ -1308,6 +1308,71 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     expect(migrated.modules.records.marks.bestDayGross).toBeNull();
   });
 
+  // #373 added the F&I mark and the month back-end accumulators INSIDE the
+  // Records blob (its own schemaVersion 1 → 2). Per
+  // `docs/save-migration-recipe.md` that is not an envelope bump — the `modules`
+  // key set did not change — so the compatibility lives in `Records.restore`,
+  // and this is the test that a real pre-#373 save loads through the whole
+  // restore path with the new mark simply unset.
+  it('migrates saves without a PVR record', () => {
+    const { bus, world } = build(1373);
+    bus.publish('clock:day_started', { day: world.clock.currentDay });
+    bus.publish('deal:closed', {
+      customerId: 'c1',
+      vehicleId: 'v1',
+      agreedPrice: 21_000,
+      frontGross: 1_900,
+      backGross: 800,
+      productGross: 500,
+      reserveGross: 300,
+      daysInInventory: 9,
+      paymentMethod: 'finance',
+      downPayment: 3_000,
+      loanAmount: 18_000,
+      term: 60,
+      apr: 0.089,
+    });
+    bus.publish('floor:day_complete', {
+      day: world.clock.currentDay,
+      ticks: 1,
+      totalArrivals: 1,
+    });
+
+    // Age the blob back to what a pre-#373 save actually held: six marks, no
+    // month back-end tally, schemaVersion 1.
+    const persisted = JSON.parse(
+      JSON.stringify(snapshotWorld(world)),
+    ) as PersistedWorldSnapshot;
+    const records = persisted.modules.records as Record<string, unknown>;
+    const marks = { ...(records.marks as Record<string, unknown>) };
+    delete marks.bestFniPvr;
+    const legacy: Record<string, unknown> = { ...records, schemaVersion: 1, marks };
+    delete legacy.monthBackGross;
+    delete legacy.monthUnits;
+    const aged: PersistedWorldSnapshot = {
+      ...persisted,
+      modules: { ...persisted.modules, records: legacy },
+    };
+
+    const { world: target } = build(1373);
+    restoreWorld(aged, target);
+
+    // The new mark materializes as unset — never as a `{}` mark the feed would
+    // then try to crown — and every mark the save DID hold survives intact.
+    expect(target.records.getMark('bestFniPvr')).toBeNull();
+    expect(target.records.getMark('bestDayGross')).toEqual(
+      world.records.getMark('bestDayGross'),
+    );
+    expect(target.records.getMark('bestSingleDeal')).toEqual(
+      world.records.getMark('bestSingleDeal'),
+    );
+
+    // And the restored career starts chasing the F&I mark from its next month
+    // rather than crowning a figure reconstructed from a tally it never kept.
+    bus.publish('clock:month_ended', { day: world.clock.currentDay });
+    expect(target.records.getMark('bestFniPvr')).toBeNull();
+  });
+
   it('migrates pre-#177 snapshots to no standing weekly column', () => {
     const { world } = build(4242);
     const current = snapshotWorld(world);

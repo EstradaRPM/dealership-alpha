@@ -65,7 +65,7 @@ export interface EventMap {
   // Records module the moment a mark falls — `bestSingleDeal` within
   // `deal:closed`, the day marks within `floor:day_complete` (so they are all
   // in before the day-close Reveal is assembled), `bestMonthGross` within
-  // `clock:month_ended`.
+  // `clock:month_ended` — and, since #373, `bestFniPvr` alongside it.
   //
   // `previousValue` is null the FIRST time a mark is ever set — there was
   // nothing to beat. The engine still reports it (it genuinely is the best
@@ -77,6 +77,9 @@ export interface EventMap {
       | 'bestDayGross'
       | 'bestMonthGross'
       | 'bestPvr'
+      // #373: best BACK gross per retail unit over a month — the mark the F&I
+      // posture is chased on.
+      | 'bestFniPvr'
       | 'bestStreak'
       | 'bestSingleDeal'
       | 'mostUnitsInDay';
@@ -86,7 +89,7 @@ export interface EventMap {
     /** Deal that set the mark — `bestSingleDeal` only. */
     vehicleId?: string;
     customerId?: string;
-    /** Running 1-based month index — `bestMonthGross` only. */
+    /** Running 1-based month index — the two month marks only. */
     month?: number;
   };
 

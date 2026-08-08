@@ -9,6 +9,7 @@ export {
   winReactionText,
   walkOffReactionText,
   crownReactionText,
+  fniVerdictReactionText,
 } from './buildReveal';
 export type {
   RevealModel,

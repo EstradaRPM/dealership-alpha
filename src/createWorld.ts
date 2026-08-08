@@ -96,7 +96,9 @@ import {
   generateTradeAsk,
   resolveTradeApprover,
   loadTradeAllowanceNoiseConfig,
+  buildFniMonthVerdict,
   type TradeBookValueFn,
+  type FniMonthVerdict,
 } from './game/DealEngine';
 import type { PricedVehicleInput } from './game/SalesProcess';
 import { createFollowUpPool, type FollowUpPool } from './game/FollowUpPool';
@@ -235,6 +237,20 @@ export interface World {
    * not the player has opened the lane that shows it.
    */
   getCrowdFinanceMix(): CrowdFinanceMix;
+  /**
+   * What the finance office did with the month that just closed (#373) — the
+   * standing posture, who worked it, the two halves of what it earned, and
+   * whether the crowd's payment mix was the one that posture is a bet on.
+   * `null` for a month that retailed nothing: there was no crowd, so there is
+   * no bet to resolve.
+   *
+   * Composed here rather than at the surface because it is three engine reads
+   * that have to agree — the month's KPI window, the person the close would run
+   * on, and the posture the deals were actually written at. `endingDay` is the
+   * day `clock:month_ended` fired on, which is the last day of the month it
+   * reports.
+   */
+  getFniMonthVerdict(endingDay: number): FniMonthVerdict | null;
   tierGate: TierGate;
   dayLoop: DayLoopController;
   staffTaxonomy: StaffTaxonomy;
@@ -475,6 +491,15 @@ export function createWorld(deps: {
    * posture (Balanced).
    */
   getFniPostureMarkupPts?: () => number;
+  /**
+   * The same per-slot F&I posture, as its **id** (#373). The markup getter above
+   * is what prices a deal; this is what lets the month verdict name the posture
+   * the month was written at in the player's own words. Two getters over one
+   * piece of slot state rather than one that returns both, because the pricing
+   * path must not be able to read a label and the reporting path must not be
+   * able to read a rate. Omitted ⇒ the catalog's default posture.
+   */
+  getFniPostureId?: () => string;
 }): World {
   const {
     bus,
@@ -486,6 +511,7 @@ export function createWorld(deps: {
     getPricingStrategy,
     getSourcingLean,
     getFniPostureMarkupPts,
+    getFniPostureId,
   } = deps;
 
   // Default initialDay = 1: the clock sits on "night before Day 1" so the
@@ -913,14 +939,22 @@ export function createWorld(deps: {
   //
   // Named (#370) rather than inlined into `getFniDesk` because the posture peak
   // meter has to read the same desk the close will run on.
-  const resolveFniDesk = (): FniDeskSkills | null => {
+  // #373 lifted the person out of the skills: the month verdict stars whoever
+  // worked the desk BY NAME, and it has to be the same person the deals ran on.
+  // One pick, two readers.
+  const resolveFniDeskPerson = () => {
     const desks = staffOrg.currentRoster.filter(
       (s) => s.role_id === 'f&i-manager',
     );
     if (desks.length === 0) return null;
-    const desk = desks.reduce((best, s) =>
+    return desks.reduce((best, s) =>
       s.effectiveness > best.effectiveness ? s : best,
     );
+  };
+
+  const resolveFniDesk = (): FniDeskSkills | null => {
+    const desk = resolveFniDeskPerson();
+    if (!desk) return null;
     return {
       staffId: desk.id,
       productPresentation: desk.effectiveSkills['product_presentation'] ?? 0,
@@ -1056,6 +1090,38 @@ export function createWorld(deps: {
   // Same clock provider as Economy (#351): `deal:closed` carries no day, so the
   // module asks the clock rather than keeping a cursor that a restore can't set.
   const kpiDashboard = createKPIDashboard({ bus, getCurrentDay: () => clock.currentDay });
+  /**
+   * The monthly F&I verdict (#373) — the Reveal beat that resolves the standing
+   * posture at the grain the bet was placed at.
+   *
+   * Composed here because it is three reads that have to agree, and each has
+   * exactly one right source: the month's retail flow comes off the KPI log (the
+   * same window the Finance tab reports and the same `deal:closed` records the
+   * peak meter reads), the person comes off the ONE desk pick the close runs on,
+   * and the posture comes off the slot state that priced the deals. A surface
+   * assembling those three itself would be free to disagree with all three.
+   *
+   * The window is the closing month by arithmetic rather than by a stored month
+   * boundary: `clock:month_ended` fires when `endingDay % daysPerMonth === 0`,
+   * so the month is the `daysPerMonth` days ending on it. Floored at day 1 so a
+   * world that started mid-month never queries a negative day.
+   */
+  const getFniMonthVerdict = (endingDay: number): FniMonthVerdict | null => {
+    const daysPerMonth = loadTunables().clock.daysPerMonth;
+    const kpi = kpiDashboard.getSnapshot({
+      fromDay: Math.max(1, endingDay - daysPerMonth + 1),
+      toDay: endingDay,
+    });
+    return buildFniMonthVerdict({
+      month: Math.ceil(endingDay / daysPerMonth),
+      postureId: getFniPostureId?.(),
+      deskName: resolveFniDeskPerson()?.name ?? null,
+      unitsRetailed: kpi.unitsRetailed,
+      financedUnits: kpi.financeUnits,
+      productGross: kpi.productGross,
+      reserveGross: kpi.reserveGross,
+    });
+  };
   // TierGate (#232): the monthly tier-GATE engine. Accrues each day's haul onto
   // the multi-dimensional monthly bars (units/gross from deal:closed; cash/csi
   // sampled nightly off the live providers below), computes honest per-face
@@ -1603,6 +1669,7 @@ export function createWorld(deps: {
     kpiDashboard,
     getFniStructuringSkill,
     getCrowdFinanceMix,
+    getFniMonthVerdict,
     tierGate,
     dayLoop,
     staffTaxonomy,
