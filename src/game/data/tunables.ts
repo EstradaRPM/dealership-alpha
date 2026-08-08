@@ -613,6 +613,16 @@ export const TunablesSchema = z.object({
       )
       .nonempty(),
   }),
+  // Contractual deal-kill (#367) — one curve, in the same POINTS OF APR unit as
+  // `fniPosture.markupPts`. Fall-through rises linearly from zero at
+  // `safeFrontierPts` to `maxFallThroughRate` once markup is `fullKillRangePts`
+  // past it. At or under the frontier nothing falls through, which is what keeps
+  // the Balanced posture and the unstaffed ambient markup clean.
+  fniDealKill: z.object({
+    safeFrontierPts: z.number().min(0),
+    fullKillRangePts: z.number().positive(),
+    maxFallThroughRate: z.number().min(0).max(1),
+  }),
   // Finance reserve (#365). Markup targets are in POINTS OF APR as decimals
   // (0.0175 = 1.75 points), the same unit as `markupCapPts` in
   // data/credit-tiers.json, which clamps them per tier. The DESKED target is not

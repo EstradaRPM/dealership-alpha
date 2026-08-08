@@ -55,7 +55,11 @@ export type DiscountDecision =
 /** Terminal buy/walk recap shown after the deal resolves. */
 export type DiscountOutcome =
   | { readonly kind: 'sold'; readonly soldPrice: number; readonly frontGross: number }
-  | { readonly kind: 'walked' };
+  | { readonly kind: 'walked' }
+  // The price was agreed and no lender would buy the paper (#367). A separate
+  // recap from a plain walk because the player did close the customer — what
+  // lost the deal was the store's standing rate markup, not this negotiation.
+  | { readonly kind: 'finance_declined' };
 
 interface Props {
   visible: boolean;
@@ -194,6 +198,11 @@ export function DiscountEscalationModal({
               {outcome.kind === 'sold' ? (
                 <Text style={[styles.recap, styles.accepted]}>
                   {`SOLD at ${dollars(outcome.soldPrice)} — ${dollars(outcome.frontGross)} front gross.`}
+                </Text>
+              ) : outcome.kind === 'finance_declined' ? (
+                <Text style={[styles.recap, styles.rejected]}>
+                  They took the price, but no bank would take the loan at the
+                  rate your finance office marks up to. No deal.
                 </Text>
               ) : (
                 <Text style={[styles.recap, styles.rejected]}>

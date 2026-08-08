@@ -6,6 +6,63 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **BUILT #365** (the F&I tracer: the store finally earns money on the rate).
+  `data/credit-tiers.json`'s `apr` was never the customer's rate — it was the **lender's**, and
+  the store was quoting its own cost of money at retail. It is now `buyRate`, with a per-tier
+  `markupCapPts` beside it, and the customer pays `buyRate + markup`. Back gross splits: a deal
+  earns `productGross` on what attached and `reserveGross` on the spread, `backGross` stays the
+  sum, and `deal:closed` carries all three so a Reveal reaction can later name which half moved.
+  **The reserve is honest amortization, not a percentage of amount financed.** The payment is
+  built at the marked-up rate; the lender advances the present value of that payment stream
+  discounted at its buy rate; the dealer keeps `dealerSharePct` of the difference. It falls out
+  of the two loan-math primitives already in the module (PMT and its inverse), so it moves
+  correctly with term and principal without a second rate model to keep in step. A test pins it
+  **below** the flat `markup × balance × years × share` shortcut, which is exactly the assertion
+  a fudge would fail: real paper amortizes down.
+  **The structural deal-kill (I3) arrived free, and the way it did is the load-bearing call.**
+  `computeMonthlyPayment` now takes the **rate** instead of a `TierDef`, so quoting the wrong one
+  is a visible choice at every call site rather than an invisible default. StaffDispatch and
+  CustomerPool resolve `quoteFinance(tier)` **once** and hand the same
+  `{ buyRate, markupPts, customerRate }` to the affordability gate and to `closeDeal` — the rate
+  a buyer is qualified at is the rate they sign, by construction. Because PTI already measures
+  the payment, an over-marked structure fails the gate that has always been there. **No new
+  check was added**, and `tests/SalesProcess.affordability.test.ts` pins the borderline buyer who
+  clears at the buy rate and fails at +2.5 points.
+  **Reserve posts revenue, and the first cut of this slice wrongly did not.** I recognized it as
+  gross without banking it, reasoning that the lender pays at funding. That was wrong twice over:
+  the Finance tab would report back gross the books never saw, unable to reconcile with its own
+  Net Income — and `npm run balance -- pacing` came back **byte-identical to the #153 baseline**
+  (blend 0.4273, bankruptcy 24%, T2 89, T3 16), which is not a "small effect", it is the tell
+  that the money went nowhere. With `postRevenue`: bankruptcy **24% → 21%**, blend **0.4273 →
+  0.4294**, everything else unmoved (T1 still the standing 1.0mo-vs-2.0 miss, T2 WITHIN, median
+  survival 360). The receivable lag is not modeled anywhere in this project; inventing one for
+  this line alone would be a second accounting rule.
+  **Markup resolution has exactly one home and no player lever yet** (grill Q2). `ambientMarkupPts`
+  with no `f&i-manager` on the desk, `balancedMarkupPts` once there is one, both clamped down to
+  the tier's `markupCapPts` — so the subprime program allows the least markup and the most
+  desperate customer is not the most profitable one. The desk read is a closure
+  (`getFniDeskStaffed`), wired in `createWorld` off the roster and read live, so the first F&I
+  hire moves the next deal; DealEngine never imports StaffOrg. #366 turns that one target into
+  the three-position posture dial.
+  `TierDefSchema` is now `.strict()`. That is not tidiness: a stale `apr` key would have been
+  silently stripped by zod, leaving a file that looks right while reserve reads zero.
+  **The live bands did not move**: #180 reads positive **35.8%**, apathetic **54.3%** — the same
+  numbers #153 left — because ambient markup is 0.75 points and the reserve on a $16k/60mo note
+  is ~$212. Every magnitude here is a placeholder owed to a #286-class pass (grill I9).
+  Surfaced on the Finance tab as "What the Gross Was Made Of" — Vehicle / F&I Products / Rate
+  Reserve, summed off the exact day series rather than an average multiplied back out.
+  **The web drive earned its keep**: the label read "inance Reserve" on screen, because the kit's
+  horizontal `BarChart` clips its name column at ~13 characters. The model test could not see
+  that. Shortened to "Rate Reserve"; the caption carries the full sentence.
+  The KPI split is inside the module's own blob (`DealRecord`, optional, restored as zeroes), so
+  per `docs/save-migration-recipe.md` **no envelope bump and no migration** — a pre-split deal's
+  `backGross` stays whole and simply claims no reserve.
+  Anti-orphan: `tests/DealEngine.reserve.test.ts` closes a financed deal on a real `createWorld`
+  lot and asserts the reserve reaches `ClosedDealResult`, the KPI snapshot **and the cash
+  balance** — a module unit test cannot tell "wired" from "wired to nothing" (#363's lesson).
+  227 suites / **2937** tests, typecheck clean.
+  Next: **BUILD #152** — attach scales with amount financed (I4), now deps-met.
+
 - 2026-08-07 — **BUILT #153** (the two customers who already know how they're paying).
   `cash-buyer` and `must-finance` — the payment axis the visit archetype's single
   `cashProbability` constant could not express. Both resolve through the ordinary

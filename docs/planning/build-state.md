@@ -30,9 +30,10 @@ a median survival of the full 360 days.
 
 **Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
 `docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
-issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, #365, #152 and #366 have all
-landed** — seven left. **#367** (deal-kill) is now the lowest-numbered open, deps-met slice;
-#369 sits behind it and #370 behind both. #368, #371 and #372 are deps-met independently.
+issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, #365, #152, #366 and #367
+have all landed** — six left. **#368** (CSI drag) is now the lowest-numbered open, deps-met
+slice; #369 is deps-met too (#367 landed), and #370 sits behind #369. #371 and #372 are
+deps-met independently.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
@@ -43,7 +44,7 @@ landed** — seven left. **#367** (deal-kill) is now the lowest-numbered open, d
 | ~~#153~~ | ~~cash-buyer / must-finance traits through `resolveEffects` (I5)~~ **BUILT 2026-08-07** | — |
 | ~~#365~~ | ~~**tracer** — `apr`→`buyRate` + `markupCapPts`, `computeReserve`, back gross splits into `productGross`/`reserveGross` (Q1/Q2, I1–I3)~~ **BUILT 2026-08-08** | — |
 | ~~#366~~ | ~~the posture dial — three positions, slot-persisted like `tradePolicy`, **no snapshot bump** (Q5/Q6/Q9, I7)~~ **BUILT 2026-08-08** | #365 |
-| #367 | deal-kill — one curve in `data/`, an over-marked deal falls through (Q3 primary, I8) | #366 |
+| ~~#367~~ | ~~deal-kill — one curve in `data/`, an over-marked deal falls through (Q3 primary, I8)~~ **BUILT 2026-08-08** | #366 |
 | #368 | CSI drag — an over-marked customer publishes `reputation:satisfaction_hit` (Q3 secondary) | #365 |
 | #369 | the F&I manager works the deal — `finance_structuring` frontier, `product_presentation` attach (Q2/Q5/Q10) | #367 |
 | #370 | the peak meter — twin opposed bars, the crest is not the max (Q4) | #366, #367, #369 |
@@ -73,10 +74,35 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 ## Blockers
 
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
-- **Phase 9's queue now runs through #367.** #365, #152 and #366 all landed 2026-08-08. #369
-  sits behind **#367** and #370 behind both; #373's deps (#365/#366/#371) are all but #371.
-  #368, #371 and #372 are deps-met independently. Keep reading the deps column, not just the
-  number.
+- **Phase 9's queue now runs through #368.** #365, #152, #366 and #367 all landed 2026-08-08.
+  #369 is deps-met (it extends #367's frontier) and #370 sits behind it; #373's deps
+  (#365/#366/#371) are all but #371. #368, #371 and #372 are deps-met independently. Keep
+  reading the deps column, not just the number.
+- **The deal-kill frontier is a flat `data/` constant and #369 is the slice that moves it**
+  (#367). `fallThroughProbability(markupPts, config)` reads `fniDealKill.safeFrontierPts`
+  directly; extending it with the F&I manager's `finance_structuring` is grill Q5's "the peak
+  slides toward aggressive" and belongs to #369, not to a helpful second parameter added early.
+- **Nothing falls through at or under the frontier, and that is why no calibration moved**
+  (#367). Balanced sits ON `safeFrontierPts` (0.0175) and the unstaffed `ambientMarkupPts`
+  (0.0075) under it, so the whole pre-#367 harness corpus is byte-identical. A future session
+  that raises `fniPosture.balanced.markupPts` past the frontier — or lowers the frontier — is
+  charging every existing calibration run a fall-through rate it was never measured with. Move
+  them together or not at all.
+- **A subprime buyer cannot be over-marked at all, and it is emergent** (#367). Tier D's
+  `markupCapPts` is 0.0100, below the frontier, so the aggressive posture clamps down to a safe
+  markup on exactly the customers who have no alternative. That falls out of the existing cap
+  table; do not "fix" it as an oversight.
+- **The fall-through is read BEFORE `trade:resolved`, not at `closeDeal`** (#367). The guard sits
+  at the head of `resolveTradeThenClose` because a trade resolving in between would materialize a
+  trade unit onto the lot for a sale that never happened. There is deliberately **no unwind
+  path** — nothing settles off a contract nobody bought. Consequence: a doomed deal never
+  escalates a trade review, which is why `PlayerTradeDecisionResult` has no fall-through case
+  while `PlayerDiscountDecisionResult` does (`{ status: 'finance_fell_through' }`, its own modal
+  recap — the player closed that customer, so "customer walked" would point them at the wrong
+  lever).
+- **`walkOffContext`/`processContext` carry the fall-through like any late walk** (#367). It is
+  a post-process walk: residual heat, follow-up eligibility, reputation hit. Do not special-case
+  it out of the walk bookkeeping because the customer "agreed to buy" — they left without a car.
 - **`fniReserve.balancedMarkupPts` is GONE and the desked markup lives in the `fniPosture`
   catalog** (#366). `resolveFinanceQuote` takes a named `{ deskStaffed, postureMarkupPts }`,
   and the posture reaches DealEngine as `getFniPostureMarkupPts?: () => number` — a closure
@@ -562,7 +588,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 + #152 + #366 BUILT 2026-08-08**, seven left, next is **#367** |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 + #152 + #366 + #367 BUILT 2026-08-08**, six left, next is **#368** |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -580,6 +606,58 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-08 — **BUILT #367** (the teeth: an over-marked deal falls through instead of closing).
+  Without them "More per deal" was strictly better than the other two positions and #366's dial
+  was not a decision. A financed contract written past a safe markup frontier now doesn't get
+  bought — the lender passes on the paper, or the customer rate-shops it and leaves — so
+  aggressive markup means fewer financed deals actually stick.
+  **One curve, three numbers, all in the same unit** (`data/tunables.json` `fniDealKill`, grill
+  I8): `maxFallThroughRate × clamp01((markupPts − safeFrontierPts) / fullKillRangePts)`, **flat**
+  past the end of the ramp. A curve that kept climbing would eventually refuse every deal, which
+  is a wall rather than a trade-off. No per-lender branching, and no second knob.
+  **At or under the frontier the answer is exactly ZERO, and that is load-bearing rather than
+  incidental.** Balanced (0.0175) sits ON the frontier and the unstaffed `ambientMarkupPts`
+  (0.0075) sits under it, so **every pre-#367 harness is byte-identical** — the whole calibration
+  corpus measures a store that never loses a deal to this. It is the reach past Balanced that
+  costs something. It also falls out that a **subprime buyer cannot be over-marked at all**: tier
+  D's lender caps markup at 0.0100, below the frontier, so the most desperate customer is not the
+  one you can gouge. That emerged from the existing `markupCapPts` table; it was not designed in.
+  Measured on the shipped curve, 40 financed ups per posture: **more-per-deal 12 fell through /
+  28 closed** (modeled rate 0.2625), **balanced 0 / 40**, **more-deals 0 / 40**.
+  **The lender is asked BEFORE anything settles, and the placement is the whole correctness
+  argument.** The roll happens once, beside the quote that sets the markup (`rollFinanceFallThrough`,
+  seeded `deriveSeed(masterSeed, 'fni.deal_fallthrough', { customerId, day })` ⇒ replay-safe): it
+  turns on the rate and nothing else, so price, trade and player deliberation cannot move it. The
+  answer is then read at the head of `resolveTradeThenClose` — **not** at `closeDealAtPrice`,
+  because `trade:resolved` fires in between and would materialize a trade unit onto the lot for a
+  sale that never happened. There is deliberately **no unwind path**: nothing settles off a
+  contract nobody bought, so the check sits ahead of the settle rather than reversing it after.
+  **A doomed deal therefore never escalates a trade review** — there is no decision left to make
+  on it — which is why `PlayerTradeDecisionResult` has no fall-through case by construction.
+  **The held discount review is the one place the player is present for it**, and it needed its
+  own terminal status. `settleDiscount` used to return `{ status: 'closed', soldPrice, frontGross }`
+  unconditionally; on a fallen-through deal that would have been a recap reporting a sale the
+  ledger never saw. It returns `{ status: 'finance_fell_through' }`, and the modal says so in its
+  own words — the player DID close this customer, and pointing them at "customer walked" would
+  point them at the wrong lever. Same shape as #364's `vehicle_sold`.
+  Walk reason **`finance_fell_through`**, carrying `processContext` — an ordinary post-process
+  walk with residual heat, follow-up eligibility and a reputation hit like any other — plus a
+  starred Reveal walk-off line naming the rate. A cash buyer has no lender to refuse them.
+  This is the **contractual** kill only. The structural one — a marked-up payment breaching
+  `ptiCap`/`maxTerm`/`ltvCeiling` — is not re-implemented here because it never needed
+  implementing: the payment is built at the marked-up rate, so it falls out of the affordability
+  gate that has always existed (grill I3, paying off a third time).
+  No web drive. Nothing new renders unconditionally — the two new surfaces (the Reveal line and
+  the modal recap) need a T3 store with an F&I manager at "More per deal" *and* a below-floor
+  discount escalation *and* a losing roll to appear at once. They are covered by the flow tests,
+  the copy anti-orphan assertion and a modal smoke case instead, and that is stated rather than
+  reported as verified.
+  231 suites / **2971** tests, typecheck clean. The one full-suite failure was
+  `App.recapPersistence` timing out on a `waitFor`; it passes in isolation and the re-run was
+  green — the documented RN-Testing-Library CPU-load flake.
+  Next: **BUILD #368** — CSI drag, the over-marked customer who publishes
+  `reputation:satisfaction_hit` (Q3 secondary). #369 is now deps-met too.
 
 - 2026-08-08 — **BUILT #366** (the player finally gets to tell the finance office what to do).
   A three-position standing posture — **"More per deal" / "Balanced" / "More deals"** — in the
@@ -691,61 +769,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   pass in isolation; the first full run of the session, with every change in place, was green —
   the documented CPU-load flake, not a regression.
   Next: **BUILD #366** — the three-position F&I posture dial, the phase's one live path.
-
-- 2026-08-08 — **BUILT #365** (the F&I tracer: the store finally earns money on the rate).
-  `data/credit-tiers.json`'s `apr` was never the customer's rate — it was the **lender's**, and
-  the store was quoting its own cost of money at retail. It is now `buyRate`, with a per-tier
-  `markupCapPts` beside it, and the customer pays `buyRate + markup`. Back gross splits: a deal
-  earns `productGross` on what attached and `reserveGross` on the spread, `backGross` stays the
-  sum, and `deal:closed` carries all three so a Reveal reaction can later name which half moved.
-  **The reserve is honest amortization, not a percentage of amount financed.** The payment is
-  built at the marked-up rate; the lender advances the present value of that payment stream
-  discounted at its buy rate; the dealer keeps `dealerSharePct` of the difference. It falls out
-  of the two loan-math primitives already in the module (PMT and its inverse), so it moves
-  correctly with term and principal without a second rate model to keep in step. A test pins it
-  **below** the flat `markup × balance × years × share` shortcut, which is exactly the assertion
-  a fudge would fail: real paper amortizes down.
-  **The structural deal-kill (I3) arrived free, and the way it did is the load-bearing call.**
-  `computeMonthlyPayment` now takes the **rate** instead of a `TierDef`, so quoting the wrong one
-  is a visible choice at every call site rather than an invisible default. StaffDispatch and
-  CustomerPool resolve `quoteFinance(tier)` **once** and hand the same
-  `{ buyRate, markupPts, customerRate }` to the affordability gate and to `closeDeal` — the rate
-  a buyer is qualified at is the rate they sign, by construction. Because PTI already measures
-  the payment, an over-marked structure fails the gate that has always been there. **No new
-  check was added**, and `tests/SalesProcess.affordability.test.ts` pins the borderline buyer who
-  clears at the buy rate and fails at +2.5 points.
-  **Reserve posts revenue, and the first cut of this slice wrongly did not.** I recognized it as
-  gross without banking it, reasoning that the lender pays at funding. That was wrong twice over:
-  the Finance tab would report back gross the books never saw, unable to reconcile with its own
-  Net Income — and `npm run balance -- pacing` came back **byte-identical to the #153 baseline**
-  (blend 0.4273, bankruptcy 24%, T2 89, T3 16), which is not a "small effect", it is the tell
-  that the money went nowhere. With `postRevenue`: bankruptcy **24% → 21%**, blend **0.4273 →
-  0.4294**, everything else unmoved (T1 still the standing 1.0mo-vs-2.0 miss, T2 WITHIN, median
-  survival 360). The receivable lag is not modeled anywhere in this project; inventing one for
-  this line alone would be a second accounting rule.
-  **Markup resolution has exactly one home and no player lever yet** (grill Q2). `ambientMarkupPts`
-  with no `f&i-manager` on the desk, `balancedMarkupPts` once there is one, both clamped down to
-  the tier's `markupCapPts` — so the subprime program allows the least markup and the most
-  desperate customer is not the most profitable one. The desk read is a closure
-  (`getFniDeskStaffed`), wired in `createWorld` off the roster and read live, so the first F&I
-  hire moves the next deal; DealEngine never imports StaffOrg. #366 turns that one target into
-  the three-position posture dial.
-  `TierDefSchema` is now `.strict()`. That is not tidiness: a stale `apr` key would have been
-  silently stripped by zod, leaving a file that looks right while reserve reads zero.
-  **The live bands did not move**: #180 reads positive **35.8%**, apathetic **54.3%** — the same
-  numbers #153 left — because ambient markup is 0.75 points and the reserve on a $16k/60mo note
-  is ~$212. Every magnitude here is a placeholder owed to a #286-class pass (grill I9).
-  Surfaced on the Finance tab as "What the Gross Was Made Of" — Vehicle / F&I Products / Rate
-  Reserve, summed off the exact day series rather than an average multiplied back out.
-  **The web drive earned its keep**: the label read "inance Reserve" on screen, because the kit's
-  horizontal `BarChart` clips its name column at ~13 characters. The model test could not see
-  that. Shortened to "Rate Reserve"; the caption carries the full sentence.
-  The KPI split is inside the module's own blob (`DealRecord`, optional, restored as zeroes), so
-  per `docs/save-migration-recipe.md` **no envelope bump and no migration** — a pre-split deal's
-  `backGross` stays whole and simply claims no reserve.
-  Anti-orphan: `tests/DealEngine.reserve.test.ts` closes a financed deal on a real `createWorld`
-  lot and asserts the reserve reaches `ClosedDealResult`, the KPI snapshot **and the cash
-  balance** — a module unit test cannot tell "wired" from "wired to nothing" (#363's lesson).
-  227 suites / **2937** tests, typecheck clean.
-  Next: **BUILD #152** — attach scales with amount financed (I4), now deps-met.
-

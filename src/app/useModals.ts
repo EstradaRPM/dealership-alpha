@@ -166,7 +166,13 @@ export function useModals({
             soldPrice: result.soldPrice,
             frontGross: result.frontGross,
           }
-        : { kind: 'walked' },
+        : // #367: the customer agreed and the lender refused the paper. Its own
+          // recap — the player closed this deal, and the store's standing F&I
+          // markup is what killed it, so reporting a plain walk would point them
+          // at the wrong lever.
+          result.status === 'finance_fell_through'
+          ? { kind: 'finance_declined' }
+          : { kind: 'walked' },
     );
     const w = worldRef.current;
     if (w) {

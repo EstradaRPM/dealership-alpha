@@ -83,4 +83,21 @@ describe('DiscountEscalationModal smoke tests', () => {
     expect(screen.getByText(/SOLD at/)).toBeTruthy();
     expect(screen.getByText('Done')).toBeTruthy();
   });
+
+  it('renders the finance-declined recap distinctly from a plain walk (#367)', () => {
+    const screen = render(
+      <DiscountEscalationModal
+        visible
+        review={REVIEW}
+        onDecide={jest.fn()}
+        outcome={{ kind: 'finance_declined' }}
+        onDismiss={jest.fn()}
+      />,
+    );
+    // The player closed this customer — the store's standing rate markup is what
+    // lost it, so the recap must not report a plain "customer walked".
+    expect(screen.getByText(/no bank would take the loan/)).toBeTruthy();
+    expect(screen.queryByText(/Customer walked/)).toBeNull();
+    expect(screen.getByText('Done')).toBeTruthy();
+  });
 });

@@ -825,6 +825,12 @@
       }
     ]
   },
+  "fniDealKill": {
+    "_doc": "Contractual deal-kill (#367) — the teeth that stop 'More per deal' from being strictly better than the other two postures (grill Q3 primary, I8). ONE curve, no per-lender branching: a contract written past `safeFrontierPts` of rate markup doesn't get bought — the lender passes on the paper, or the customer rate-shops it and leaves — so aggressive markup means fewer financed deals actually stick. `fallThroughRate = maxFallThroughRate x clamp01((markupPts - safeFrontierPts) / fullKillRangePts)`, all three numbers in the same unit as `fniPosture.markupPts` and `credit-tiers.markupCapPts` (points of APR as decimals). At or under the frontier NOTHING falls through, which is why the Balanced posture and the unstaffed ambient markup both sit clean — and why a subprime buyer, whose lender caps markup at 0.0100, cannot be over-marked at all while a prime buyer can. This is the CONTRACTUAL kill; the structural one (a marked-up payment breaching ptiCap/maxTerm/ltvCeiling) already falls out of the existing affordability gate for free (grill I3) and is not re-implemented here. The frontier is a flat constant today; #369 lets the F&I manager's `finance_structuring` extend it, which is Q5's 'the peak slides toward aggressive'. Placeholder magnitudes owed to a #286-class calibration pass (grill I9).",
+    "safeFrontierPts": 0.0175,
+    "fullKillRangePts": 0.0100,
+    "maxFallThroughRate": 0.35
+  },
   "fniReserve": {
     "_doc": "Finance reserve (#365). The store sells the paper to the customer at `buyRate + markup` and the lender buys it at `buyRate`; the dealer's reserve is its share of the discounted spread over the loan's scheduled life. `dealerSharePct` is the lender's participation split (the lender keeps the rest). `ambientMarkupPts` is what a store with NO f&i-manager on the desk gets — the T1–T2 backend is ambient and minimal, with no player lever (grill Q2). A staffed desk works to the selected `fniPosture` markup instead; the desked target lives in that catalog and nowhere else (#366 deleted `balancedMarkupPts`, which was the same number in a second place). Both are clamped down to the credit tier's `markupCapPts`. Placeholder magnitudes owed to a #286-class calibration pass (grill I9).",
     "dealerSharePct": 0.75,

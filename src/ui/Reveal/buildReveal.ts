@@ -154,6 +154,14 @@ const WALK_OFF_COPY: Record<
     text: (who) =>
       `${who} wanted a car another customer bought first. Walked.`,
   },
+  finance_fell_through: {
+    // The store reached on the rate and the bank passed (#367). Instructive:
+    // it is the standing F&I posture showing up as a lost sale, which is the
+    // only way "More per deal" reads as a trade rather than free money.
+    starworthy: true,
+    text: (who) =>
+      `${who} agreed to buy, but no bank would take the loan at the rate you marked it up to. Walked.`,
+  },
   demo_nonnegotiable_miss: {
     starworthy: true,
     text: (who) => `${who} needed something the vehicle didn't have. Walked.`,

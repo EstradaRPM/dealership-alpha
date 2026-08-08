@@ -115,6 +115,40 @@ the magnitudes of the last three had been calibrated against a producer that
 never fired (retuned in #363 — see `data/tunables.json` `walkSatisfactionPenalty`
 and `data/failure-tunables.json` `walkPressure`/`angerPressure`).
 
+### The lender is asked before anything settles (#367)
+The **contractual** deal-kill. A financed customer's fall-through is rolled once,
+right beside the quote that sets the markup
+(`DealEngine.rollFinanceFallThrough(quote.markupPts, deriveSeed(masterSeed,
+'fni.deal_fallthrough', { customerId, day }))`) — it turns on the rate and
+nothing else, so the price the deal lands at, the trade and how long the player
+takes to decide cannot move it. A cash buyer has no lender to refuse them.
+
+The answer is then *read* at the two points a contract would be written:
+
+- **The head of `resolveTradeThenClose`.** Guarding here rather than at
+  `closeDealAtPrice` is what keeps the trade half honest — a `trade:resolved`
+  would materialize a trade unit onto the lot for a sale that never happened.
+  It is also why a doomed deal **never escalates a trade review**: there is no
+  decision left for the player to make on it, so `PlayerTradeDecisionResult` has
+  no fall-through case by construction.
+- **`settleDiscount`**, before it settles. The customer took the player's price
+  and the bank still passed, so the held review returns the terminal
+  `{ status: 'finance_fell_through' }` and the modal reports that instead of a
+  sale the ledger never saw.
+
+Either way it emits `staff:auto_resolved`/`no_sale` with the reason
+**`finance_fell_through`**, carrying `processContext` — an ordinary post-process
+walk with residual heat, follow-up eligibility and a reputation hit like any
+other. There is no unwind path and there must not be one: nothing settles off a
+contract nobody bought, so the check sits ahead of the settle rather than
+reversing it afterwards.
+
+Deps: `fniDealKillConfig?` (omitted ⇒ the shipped `fniDealKill` tunables;
+injectable so a suite can dial the teeth without editing the file every other
+calibration reads). **At the default posture nothing falls through** — Balanced
+sits on the frontier and the unstaffed ambient markup under it — which is why
+every pre-#367 harness is byte-identical.
+
 ### A held review outlives the lot (#364)
 Two customers can be held on the **same unit** — a tier-1 lot holds six cars and
 the #296 seed parks three, so it is ordinary, not a corner case. Whichever review
@@ -138,7 +172,7 @@ nothing to sell. Two things follow, and both live at the hold:
 outcomes (`no_session | not_sales | no_fit | no_close | trade_negative_equity |
 trade_manager_declined | trade_player_declined | discount_player_declined |
 discount_below_cost | discount_haggle_exhausted | vehicle_sold_to_other |
-<WalkCause>`). A pending
+finance_fell_through | <WalkCause>`). A pending
 `player_review` trade or discount emits no `staff:auto_resolved` until the
 player declines or accepts a decision through the held-review closure. The
 sole `declined` path is an unstaffed floor.

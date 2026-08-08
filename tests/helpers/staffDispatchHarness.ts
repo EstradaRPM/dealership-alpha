@@ -322,6 +322,16 @@ export function setup(
      * `() => 0` to attach everything the structure allows (#152).
      */
     fniRng?: () => number;
+    /**
+     * F&I desk state (#365/#366). Omitted ⇒ no desk ⇒ the ambient markup, which
+     * sits under the #367 deal-kill frontier — so the default harness never
+     * loses a deal to the lender and every pre-#367 suite is unaffected. Pass
+     * both to write contracts at a posture's markup.
+     */
+    getFniDeskStaffed?: () => boolean;
+    getFniPostureMarkupPts?: () => number;
+    /** The #367 deal-kill curve. Omitted ⇒ the shipped `fniDealKill` tunables. */
+    fniDealKillConfig?: StaffDispatchDeps['fniDealKillConfig'];
   } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
@@ -346,7 +356,13 @@ export function setup(
     },
   } satisfies Pick<Inventory, 'getLotVehicles' | 'getLotVehicle' | 'sellVehicle'>;
 
-  const dealEngine = createDealEngine({ bus, inventory: inventoryStub, economy });
+  const dealEngine = createDealEngine({
+    bus,
+    inventory: inventoryStub,
+    economy,
+    getFniDeskStaffed: opts.getFniDeskStaffed,
+    getFniPostureMarkupPts: opts.getFniPostureMarkupPts,
+  });
   const sessions = new Map<string, StaffDispatchCustomerSession>();
   const staffOrg = makeStaffOrg(roster);
 
@@ -380,6 +396,8 @@ export function setup(
     attributeLeanForDay: opts.attributeLeanForDay,
     // Deterministic FNI: never attach (keeps backGross = 0 so per-test math is exact).
     fniRng: opts.fniRng ?? (() => 1.0),
+    // #367: the contractual deal-kill curve.
+    fniDealKillConfig: opts.fniDealKillConfig,
     // #169: constant book seam + optional UCM condition read.
     tradeBookValueFn: () => TRADE_BOOK,
     getTradeConditionRead: opts.tradeConditionRead,

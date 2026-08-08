@@ -735,7 +735,11 @@ export interface EventMap {
      * `'discount_haggle_exhausted'` — counters ran out), the sold-out-from-
      * under-them walk (`'vehicle_sold_to_other'` — #364: another customer,
      * held on the same unit, was resolved first and drove it away, so this
-     * held review had nothing left to sell), or a SalesProcess
+     * held review had nothing left to sell), the contractual deal-kill
+     * (`'finance_fell_through'` — #367: the store's rate markup ran past the
+     * safe frontier and no lender would buy the paper, so the agreed deal never
+     * became one; nothing settles off it, which is why it fires *before* any
+     * `trade:resolved` or `deal:closed`), or a SalesProcess
      * `WalkCause` (`'patience_drain' | 'trust_collapse' |
      * 'demo_nonnegotiable_miss'`). Omitted on `outcome: 'closed'`. An *unusual*
      * trade or discount escalated to the player emits its escalation event

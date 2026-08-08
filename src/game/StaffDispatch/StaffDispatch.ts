@@ -11,8 +11,14 @@ import type {
   TradeConditionRead,
   TradeApprover,
   TradeReviewPayload,
+  FniDealKillConfig,
 } from '../DealEngine';
-import { resolveTradeIn, rollCustomerCounterResponse } from '../DealEngine';
+import {
+  resolveTradeIn,
+  rollCustomerCounterResponse,
+  rollFinanceFallThrough,
+  loadFniDealKillConfig,
+} from '../DealEngine';
 import type { Person, Visit, SkillDriftConfig } from '../NPC';
 import { skillDriftFraction } from '../NPC';
 import { createRng, deriveSeed } from '../Rng';
@@ -55,6 +61,12 @@ export interface StaffDispatchDeps {
   getCustomerSession: (customerId: string) => StaffDispatchCustomerSession | undefined;
   staffMorale?: StaffMorale;
   config?: StaffDispatchConfig;
+  /**
+   * The contractual deal-kill curve (#367). Defaults to the shipped
+   * `fniDealKill` tunables; injectable so a suite can dial the teeth without
+   * editing the file every other calibration reads.
+   */
+  fniDealKillConfig?: FniDealKillConfig;
   /** RNG for F&I auto-attach (defaults to Math.random). */
   fniRng?: () => number;
   /** Optional unlocked F&I roles override. Defaults to deriving from staffOrg roster. */
@@ -277,6 +289,13 @@ export type PlayerDiscountDecisionResult =
   // Terminal, and not the player's decision at all — whatever they picked, the
   // deal has nothing left to sell, so the customer walks.
   | { readonly status: 'vehicle_sold' }
+  // The price was agreed and the lender still wouldn't buy the paper (#367).
+  // Terminal, and — like `vehicle_sold` — not a verdict on what the player
+  // picked: the store's standing markup killed the contract, not the discount.
+  // Its sibling `PlayerTradeDecisionResult` has no such case by construction:
+  // the fall-through is resolved before a trade is ever escalated, so a doomed
+  // deal never opens a trade review at all.
+  | { readonly status: 'finance_fell_through' }
   | {
       readonly status: 'counter_rejected';
       readonly amount: number;
@@ -381,6 +400,7 @@ const ARCHETYPE_IMPATIENCE = 0.25;
 function makeSalesResolver(deps: StaffDispatchDeps) {
   const { bus, staffOrg, queue, masterSeed, staffMorale } = deps;
   const config = deps.config ?? loadStaffDispatchConfig();
+  const dealKillConfig = deps.fniDealKillConfig ?? loadFniDealKillConfig();
 
   function emitNoSale(
     customerId: string,
@@ -465,6 +485,20 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
             ltvCeiling: tierDef.ltvCeiling,
           }
         : undefined;
+
+    // #367: the lender's answer to the rate this store writes, decided once for
+    // this customer. It turns on the markup and nothing else — not the price
+    // the deal lands at, not the trade, not how long the player took to decide
+    // — so it is resolved here, beside the quote that sets it, and simply read
+    // wherever a contract would be written. Seeded per (customer, day) so a
+    // #122 replay reproduces it. A cash buyer has no lender to refuse them.
+    const financeFallsThrough =
+      quote !== undefined &&
+      rollFinanceFallThrough(
+        quote.markupPts,
+        deriveSeed(masterSeed, 'fni.deal_fallthrough', { customerId, day }),
+        dealKillConfig,
+      );
 
     // Season/weather demand lean (#231 S2): nudge the want-vector before the
     // match so the seasonal effect stays emergent through pickVehicleFor.
@@ -588,6 +622,20 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       );
     };
 
+    // #367: the store marked the rate up past what the paper is worth, and the
+    // deal never became a deal. An ordinary post-process walk — nothing settles
+    // off a contract nobody bought, so this fires *before* the trade is booked
+    // and before `closeDeal`, not as an unwind afterwards.
+    const walkFinanceFellThrough = (): void => {
+      emitNoSale(
+        customerId,
+        salesperson.id,
+        day,
+        'finance_fell_through',
+        processContext,
+      );
+    };
+
     const close = closeAndPrice(
       {
         meters: resolution.meters,
@@ -677,6 +725,17 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
     };
 
     const resolveTradeThenClose = (agreedPrice: number): ResolveResult => {
+      // #367: the lender is asked before anything settles. A contract that
+      // doesn't get bought never happened, so nothing may hang off it — no
+      // `trade:resolved` (which would materialize a trade unit onto the lot for
+      // a sale that didn't occur), no revenue, no unit leaving. Guarding here
+      // rather than at `closeDealAtPrice` is what makes that true for the trade
+      // half too, and it is why a doomed deal never escalates a trade review:
+      // there is no decision left for the player to make on it.
+      if (financeFallsThrough) {
+        walkFinanceFellThrough();
+        return 'resolved';
+      }
       // Trade resolution (#169, escalation #170): a visit that arrived with a
       // trade resolves the allowance after the deal reaches close but before it
       // structures. Routine trades auto-resolve silently (emit `trade:resolved`,
@@ -988,6 +1047,15 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                   processContext,
                 );
                 return { status: 'abandoned' };
+              }
+              // #367: the customer took the price and the bank still passed on
+              // the paper. Asked here rather than left to `resolveTradeThenClose`
+              // so the modal reports what actually happened — a recap claiming a
+              // sale the ledger never saw is the one thing a held review must
+              // not do.
+              if (financeFallsThrough) {
+                walkFinanceFellThrough();
+                return { status: 'finance_fell_through' };
               }
               resolveTradeThenClose(agreedPrice);
               return {

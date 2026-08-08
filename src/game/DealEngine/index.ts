@@ -15,6 +15,12 @@ export type {
   FniPostureOption,
   FniPostureConfig,
 } from './reserve';
+export {
+  loadFniDealKillConfig,
+  fallThroughProbability,
+  rollFinanceFallThrough,
+} from './dealKill';
+export type { FniDealKillConfig } from './dealKill';
 export { loadFniProducts, loadFniAutoAttachConfig } from './fniProducts';
 export { loadDealFraudConfig } from './dealFraudConfig';
 export type { DealFraudConfig } from './dealFraudConfig';
