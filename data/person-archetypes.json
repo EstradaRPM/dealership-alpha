@@ -2,6 +2,7 @@
   "young_family": {
     "trait_pool": ["price-sensitive", "shops-around", "skeptical"],
     "trait_count": { "min": 1, "max": 2 },
+    "payment_traits": { "cash-buyer": 0.01, "must-finance": 0.10 },
     "wealth":        { "mu": 55000, "sigma": 14000 },
     "credit":        { "mu": 658,   "sigma": 48 },
     "annualIncome":  { "mu": 62000, "sigma": 12000 },
@@ -12,6 +13,7 @@
   "enthusiast": {
     "trait_pool": ["easy-to-sell", "luxury-seeker", "impatient"],
     "trait_count": { "min": 1, "max": 2 },
+    "payment_traits": { "cash-buyer": 0.06, "must-finance": 0.03 },
     "wealth":        { "mu": 82000, "sigma": 22000 },
     "credit":        { "mu": 718,   "sigma": 36 },
     "annualIncome":  { "mu": 95000, "sigma": 22000 },
@@ -22,6 +24,7 @@
   "commuter": {
     "trait_pool": ["price-sensitive", "brand-loyal", "easy-to-sell"],
     "trait_count": { "min": 1, "max": 2 },
+    "payment_traits": { "cash-buyer": 0.02, "must-finance": 0.08 },
     "wealth":        { "mu": 48000, "sigma": 10000 },
     "credit":        { "mu": 674,   "sigma": 44 },
     "annualIncome":  { "mu": 58000, "sigma": 11000 },
@@ -32,6 +35,7 @@
   "retiree": {
     "trait_pool": ["brand-loyal", "easy-to-sell", "impatient"],
     "trait_count": { "min": 1, "max": 2 },
+    "payment_traits": { "cash-buyer": 0.12, "must-finance": 0.01 },
     "wealth":        { "mu": 95000, "sigma": 28000 },
     "credit":        { "mu": 754,   "sigma": 26 },
     "annualIncome":  { "mu": 48000, "sigma": 14000 },
@@ -42,6 +46,7 @@
   "tradesperson": {
     "trait_pool": ["truck-buyer", "price-sensitive", "skeptical", "impatient"],
     "trait_count": { "min": 1, "max": 2 },
+    "payment_traits": { "cash-buyer": 0.05, "must-finance": 0.10 },
     "wealth":        { "mu": 70000, "sigma": 20000 },
     "credit":        { "mu": 648,   "sigma": 56 },
     "annualIncome":  { "mu": 78000, "sigma": 18000 },

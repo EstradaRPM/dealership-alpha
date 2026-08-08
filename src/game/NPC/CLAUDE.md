@@ -19,6 +19,26 @@ Shared people-and-traits substrate used by `CustomerPool`, `StaffOrg`, and `Comp
   - **Skill labels (#347):** every entry in `data/staff-skills.json` carries a required plain-language `label` — a surface renders that, never a de-slugged id (`t_o_closing` → "Closing a stalled deal", not "t o closing").
   - **Effective skill (#294, channel-desk M7):** `StaffWithComposites` carries a non-enumerable `effectiveSkills` getter (parallel to `effectiveness`/`trustworthiness`) = Model B derived skill: `clamp(base + growth_rate × counter, base, perHireCap)` per axis, where `perHireCap = min(skill cap, base + max(0, gaussian(cap_headroom)))` is rolled deterministically from the staff id (`SKILL_CAP_HEADROOM_NAMESPACE`). Pure — never mutates `skills`; reflects live `counters`, so it grows as StaffOrg accrues counters overnight. With zero counters `effective === base`. `growth_counter` + `cap_headroom` are optional per-skill fields in `data/staff-skills.json`; omit `growth_counter` ⇒ static axis. `createStaff` seeds the cap from `deps.masterSeed`; `rehydrateStaff`/`promoteStaff` take an optional `masterSeed` (default 0) so the cap re-derives identically on a save reload.
 - Customers: `createCustomer`, `hotButtons`, `loadPersonArchetypes`, `loadVisitArchetypes`. Types: `Person`, `SalesVisit`, `ServiceVisit`, `BodyVisit`, `Visit`, `CustomerBundle`, `CreateCustomerContext`, `CreateCustomerDeps`.
+  - **Payment traits (#153)** — `cash-buyer` and `must-finance`, declared in
+    `data/npc-traits.json` like any other trait and resolved through the ordinary
+    `resolveEffects` machinery (F&I grill I5). Two effect keys, because the two are
+    different facts about a person rather than two sizes of one:
+    `payment.cash_probability` is an **additive shift** on the visit archetype's
+    `payment.cashProbability` (clamped to [0,1]); `payment.must_finance` is
+    **categorical** — any positive total and the customer finances whatever the roll
+    said. **`must-finance` wins when a customer carries both**, and that precedence is
+    stated once, at the payment roll. It needs no exemption from the cash-affordability
+    gate: that gate only ever pushes a customer *toward* finance.
+  - **They are drawn on their own stream, NOT out of `trait_pool`.** Incidence lives in
+    the person archetype's optional `payment_traits` map (trait id → independent
+    per-customer probability, `seedFor('traits.payment')`). Sharing the pool would make
+    a cash buyer *less* likely to be price-sensitive — the two axes are orthogonal — and
+    every payment trait added to a 3-wide pool would dilute the personality mix the #94
+    sales calibration is measured against. With the separate stream the personality draw
+    is byte-identical to a world with no payment traits at all, which
+    `tests/CustomerFactory.payment.test.ts` pins. The incidence numbers are
+    **provisional** — magnitudes belong to the calibration campaign (grill I9), not to
+    this design.
 - CurrentVehicle (#165): `rollCurrentVehicle`, `loadCustomerCurrentVehicleConfig`, `CurrentVehicleSchema`, `CustomerCurrentVehicleConfigSchema`. Types: `CurrentVehicle`, `CustomerCurrentVehicleConfig`, `FinancingConfig`. When the composition root passes `currentVehicleConfig` + `classifyCreditTier` to `createCustomer`, the rolled `Person` carries `currentVehicle` (the car they drove in on). Legacy callers (omitting both deps) get a Person without the field — the engine doesn't require it yet (#165 is data-only; trade-in machinery is #166–#171).
   - **Loan payoff (#282):** a financed owner's `loanPayoff` is derived *relative to the trade's current book value*, not as a value-blind dollar draw: `payoff = book × clamp(ltvAtOrigination × remainingPrincipalFraction ÷ depreciationOverLoanAge)`. The book is read via an injected `bookValueFn` dep (the live MarketEconomy `bookValueFn`, same seam as `tradeAskFn`, threaded through `CreateCustomerDeps.bookValueFn` → `RollCurrentVehicleDeps.bookValueFn`) so NPC stays MarketEconomy-free. The three factors (origination LTV / amortization paydown / depreciation) are the honest mechanics behind negative equity; a tunable `deepTailWeight` sets how many loans sit in the "fresh" high-balance region where negative equity concentrates → mild majority, occasional steep, rare deep tail. **Omit `bookValueFn` (legacy/test path) ⇒ a financed owner comes back with `loanPayoff: null`.** This replaced the old per-archetype absolute-dollar `payoffByTier` table (the "$5k car / $35k payoff" absurdity); the vehicle-cost signal it encoded now flows through book value, so the model is tier-keyed (`config.financing`), not archetype-keyed.
 - TradeIncidence (#166): `rollHasTrade`, `loadTradeIncidenceConfig`, `TradeIncidenceConfigSchema`. Types: `TradeIncidenceConfig`. When `tradeIncidenceConfig` + `classifyCreditTier` are both wired, every sales `Visit` carries `hasTrade: boolean` rolled from the composite (archetype × paymentMethod × creditTier) probability matrix. Legacy callers omit the field.
@@ -50,7 +70,8 @@ NPC is a factory/library module — does not publish or subscribe. Consumers (Cu
 
 ## Data
 - `data/npc-traits.json` — trait taxonomy.
-- `data/person-archetypes.json`, `data/visit-archetypes.json`, `data/customer-tunables.json`.
+- `data/person-archetypes.json` (personality `trait_pool` + the #153 `payment_traits`
+  incidence map), `data/visit-archetypes.json`, `data/customer-tunables.json`.
 - `data/staff-archetypes.json`, `data/staff-roles.json`, `data/staff-skills.json` (each skill carries a plain-language `label`, #347).
 - `data/person-names.json` (#347) — the `first` / `last` name pools every generated person draws from.
 - `data/competitor-archetypes.json`, `data/brand-market-share.json`.

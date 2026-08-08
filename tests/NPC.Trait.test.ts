@@ -2,6 +2,7 @@ import {
   resolveEffects,
   TraitAppliesError,
   loadTraitTaxonomy,
+  loadPersonArchetypes,
 } from '../src/game/NPC';
 import type { Trait } from '../src/game/NPC';
 
@@ -76,5 +77,45 @@ describe('loadTraitTaxonomy', () => {
     expect(Object.keys(taxonomy).length).toBeGreaterThan(0);
     expect(taxonomy['price-sensitive']).toBeDefined();
     expect(taxonomy['price-sensitive'].applies_to).toContain('customer');
+  });
+
+  it('the two payment traits resolve through the taxonomy', () => {
+    const taxonomy = loadTraitTaxonomy();
+    const cashBuyer = taxonomy['cash-buyer'];
+    const mustFinance = taxonomy['must-finance'];
+
+    expect(cashBuyer).toBeDefined();
+    expect(mustFinance).toBeDefined();
+    expect(cashBuyer.applies_to).toEqual(['customer']);
+    expect(mustFinance.applies_to).toEqual(['customer']);
+
+    // Each carries exactly one effect, and the two are different keys — a
+    // leaning and a categorical, not two sizes of the same knob.
+    expect(cashBuyer.effects['payment.cash_probability']).toBeGreaterThan(0);
+    expect(mustFinance.effects['payment.must_finance']).toBeGreaterThan(0);
+
+    // They resolve on the ordinary customer path, no separate machinery.
+    const out = resolveEffects([cashBuyer, mustFinance], {}, 'customer');
+    expect(out['payment.cash_probability']).toBeCloseTo(
+      cashBuyer.effects['payment.cash_probability']!,
+    );
+    expect(out['payment.must_finance']).toBeCloseTo(
+      mustFinance.effects['payment.must_finance']!,
+    );
+  });
+
+  it('every trait the person archetypes draw from is declared in the taxonomy', () => {
+    // A payment trait nobody can roll is a mechanic wired to nothing.
+    const taxonomy = loadTraitTaxonomy();
+    const archetypes = loadPersonArchetypes();
+    const pooled = new Set(
+      Object.values(archetypes).flatMap((a) => [
+        ...a.trait_pool,
+        ...Object.keys(a.payment_traits ?? {}),
+      ]),
+    );
+    for (const id of pooled) expect(taxonomy[id]).toBeDefined();
+    expect(pooled.has('cash-buyer')).toBe(true);
+    expect(pooled.has('must-finance')).toBe(true);
   });
 });

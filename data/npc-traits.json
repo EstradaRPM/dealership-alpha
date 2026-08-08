@@ -62,6 +62,18 @@
       "price_sensitivity": 0.1
     }
   },
+  "cash-buyer": {
+    "applies_to": ["customer"],
+    "effects": {
+      "payment.cash_probability": 0.35
+    }
+  },
+  "must-finance": {
+    "applies_to": ["customer"],
+    "effects": {
+      "payment.must_finance": 1
+    }
+  },
   "charisma": {
     "applies_to": ["staff"],
     "effects": {

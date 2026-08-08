@@ -11,6 +11,14 @@ export const EFFECT_KEYS = [
   'trust_build_rate',
   'price_sensitivity',
   'patience',
+  // How this customer pays (#153). `payment.cash_probability` shifts the visit
+  // archetype's base cash leaning; `payment.must_finance` is categorical — any
+  // positive total means the customer will not pay cash whatever the roll says
+  // or their means allow. Two keys rather than one dominating negative,
+  // because "leans toward cash" and "wants the tradeline" are different facts
+  // about a person, not two sizes of the same one.
+  'payment.cash_probability',
+  'payment.must_finance',
   'closing_skill',
   'desking_skill',
   'competitor.csi',

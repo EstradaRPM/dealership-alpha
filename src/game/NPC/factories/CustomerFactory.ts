@@ -101,6 +101,27 @@ const PSQTC_EFFECT_MAP: Partial<Record<EffectKey, keyof PSQTCVector>> = {
   price_sensitivity: 'price',
 };
 
+// Payment leaning is drawn on its own stream, not out of `trait_pool` (#153).
+// Each declared trait is an independent Bernoulli at its archetype's rate, so
+// adding a payment axis never costs a customer a personality slot — and never
+// re-routes a personality draw the sales calibration is measured against.
+function pickPaymentTraits(
+  rng: () => number,
+  rates: Readonly<Record<string, number>> | undefined,
+): string[] {
+  if (!rates) return [];
+  const chosen: string[] = [];
+  // Sorted so the stream is bound to the ids, not to the file's key order.
+  for (const id of Object.keys(rates).sort()) {
+    if (rng() < rates[id]) chosen.push(id);
+  }
+  return chosen;
+}
+
+function clamp01(x: number): number {
+  return Math.min(1, Math.max(0, x));
+}
+
 function gaussian(rng: () => number, mu: number, sigma: number): number {
   let u1 = rng();
   while (u1 === 0) u1 = rng();
@@ -183,18 +204,30 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
 
   // -- Roll traits --
   const rngTraits = createRng(seedFor('traits'));
-  const traitIds = pickTraits(
-    rngTraits,
-    personArchetype.trait_pool,
-    personArchetype.trait_count.min,
-    personArchetype.trait_count.max,
-  );
+  const traitIds = [
+    ...pickTraits(
+      rngTraits,
+      personArchetype.trait_pool,
+      personArchetype.trait_count.min,
+      personArchetype.trait_count.max,
+    ),
+    ...pickPaymentTraits(
+      createRng(seedFor('traits.payment')),
+      personArchetype.payment_traits,
+    ),
+  ];
 
   const resolvedTraits = traitIds.map((id) => {
     const t = traits[id];
     if (!t) throw new Error(`Unknown trait "${id}"`);
     return t;
   });
+
+  // -- Accumulate trait effects (order-independent addition) once, up front --
+  // Resolved before the rolls because the payment traits (#153) modify the
+  // archetype's base cash leaning rather than a value derived from it; the
+  // preference/resource deltas below still land in one pass at the end.
+  const effectVector = resolveEffects(resolvedTraits, {}, 'customer');
 
   // -- Roll person stats --
   const rollStat = (sub: string, mu: number, sigma: number): number =>
@@ -256,7 +289,17 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
       pay.cashSpendFraction.mu,
       pay.cashSpendFraction.sigma,
     );
-    const wantsCash = cashRoll < pay.cashProbability;
+    // Payment traits (#153) stack on the archetype base, never replace it:
+    // `cash-buyer` shifts the leaning, `must-finance` is categorical. Someone
+    // rebuilding credit wants the tradeline, so they finance regardless of what
+    // the roll said or what they could have written a cheque for — which is
+    // also why the affordability gate below needs no exemption for them: it
+    // only ever pushes a customer toward finance, never away from it.
+    const mustFinance = (effectVector['payment.must_finance'] ?? 0) > 0;
+    const cashProbability = clamp01(
+      pay.cashProbability + (effectVector['payment.cash_probability'] ?? 0),
+    );
+    const wantsCash = !mustFinance && cashRoll < cashProbability;
     const floor = deps.cheapestLotPriceFloor ?? 0;
     const canAffordCash = person.wealth * cashSpendFraction >= floor;
     const paymentMethod: 'cash' | 'finance' =
@@ -344,8 +387,7 @@ export function createCustomer(ctx: CreateCustomerContext, deps: CreateCustomerD
     });
   }
 
-  // -- Apply trait effects (accumulated before application → order-independent) --
-  const effectVector = resolveEffects(resolvedTraits, {}, 'customer');
+  // -- Apply the accumulated trait effects to the visit in one pass --
   const visit = VisitSchema.parse(applyEffectsToVisit(baseVisit, effectVector, agreeableness));
 
   return { person, visit };

@@ -115,22 +115,31 @@ describe('CustomerFactory.createCustomer — paymentMethod', () => {
   });
 
   it('1000-customer cash-share roughly matches archetype cashProbability', () => {
-    // No affordability gate (floor = 0) so the Bernoulli is unbiased.
+    // No affordability gate (floor = 0) so the Bernoulli is unbiased. Customers
+    // who drew a #153 payment trait are excluded — the archetype base is what
+    // those traits modify, so counting them here would measure the shifted
+    // number against the unshifted one. Their behavior is asserted in
+    // tests/CustomerFactory.payment.test.ts.
+    const PAYMENT_TRAITS = ['cash-buyer', 'must-finance'];
     const N = 1000;
     for (const visitArchetypeId of salesArchetypeIds) {
       const arch = visitArchetypes[visitArchetypeId]!;
       if (arch.kind !== 'sales') throw new Error('unreachable');
       const expected = arch.payment.cashProbability;
       let cashCount = 0;
+      let sampled = 0;
       for (let slot = 0; slot < N; slot++) {
-        const { visit } = createCustomer(
+        const { person, visit } = createCustomer(
           { personArchetypeId: 'young_family', visitArchetypeId, day: 7, slot },
           deps,
         );
+        if (person.trait_ids.some((t) => PAYMENT_TRAITS.includes(t))) continue;
+        sampled++;
         if (visit.kind === 'sales' && visit.paymentMethod === 'cash') cashCount++;
       }
-      const observed = cashCount / N;
-      // ±0.04 absolute tolerance — generous for N=1000 Bernoulli (3σ ≈ 0.03 at p=0.5).
+      expect(sampled).toBeGreaterThan(400);
+      const observed = cashCount / sampled;
+      // ±0.04 absolute tolerance — generous for N≈600 Bernoulli.
       expect(Math.abs(observed - expected)).toBeLessThan(0.04);
     }
   });
