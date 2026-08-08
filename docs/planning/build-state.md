@@ -30,7 +30,9 @@ a median survival of the full 360 days.
 
 **Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
 `docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
-issues. The next `/next` on phase 9 is a **BUILD**. **#151 landed 2026-08-07** — eleven left.
+issues. The next `/next` on phase 9 is a **BUILD**. **#151 and #153 landed 2026-08-07** — ten
+left, and the queue now resumes at **#365** (the tracer): #152 is the lowest-numbered open
+issue but it is blocked on #365, and every other slice sits behind #365 or #366.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
@@ -38,7 +40,7 @@ issues. The next `/next` on phase 9 is a **BUILD**. **#151 landed 2026-08-07** �
 |---|---|---|
 | ~~#151~~ | ~~per-brand `Reputation.repFor(make)` replaces the `pickVehicle` stub — ambient, no screen (I6)~~ **BUILT 2026-08-07** | — |
 | #152 | attach scales with amount financed — one per-product `loanSensitivity` (I4) | #365 |
-| #153 | cash-buyer / must-finance traits through `resolveEffects` (I5) | — |
+| ~~#153~~ | ~~cash-buyer / must-finance traits through `resolveEffects` (I5)~~ **BUILT 2026-08-07** | — |
 | #365 | **tracer** — `apr`→`buyRate` + `markupCapPts`, `computeReserve`, back gross splits into `productGross`/`reserveGross` (Q1/Q2, I1–I3) | — |
 | #366 | the posture dial — three positions, slot-persisted like `tradePolicy`, **no snapshot bump** (Q5/Q6/Q9, I7) | #365 |
 | #367 | deal-kill — one curve in `data/`, an over-marked deal falls through (Q3 primary, I8) | #366 |
@@ -70,8 +72,34 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
-- **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed;
-  phase 9's queue resumes at **#152** under the chronological rule with nothing ahead of it.
+- **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
+- **Phase 9's queue is now gated on the tracer.** #152 is the lowest-numbered open issue in the
+  phase but is **blocked by #365**, and every remaining slice depends on #365 or #366. So the
+  chronological rule selects **#365** next, not #152 — do not read "lowest number" past the
+  deps column.
+- **A customer's payment leaning is drawn on its OWN seeded stream, not out of `trait_pool`**
+  (#153). Incidence is an optional `payment_traits` map on the person archetype
+  (`seedFor('traits.payment')`). The shared-pool version was implemented first and reverted:
+  at `trait_count 1..2` it makes a cash buyer *less* likely to be price-sensitive (the axes
+  are orthogonal), and widening a 3-wide pool diluted the personality mix the **#94** sales
+  calibration measures — its apathetic band went 10.2% → 9.7% and failed. **Do not "simplify"
+  this back into `trait_pool`**, and do not add a future orthogonal axis there either; the
+  separate stream is what keeps the personality draw byte-identical (#94 still reads
+  85.7 / 10.2 / 4.2).
+- **The #153 payment traits use TWO effect keys and that is deliberate.**
+  `payment.cash_probability` is an additive shift on the visit archetype's base;
+  `payment.must_finance` is categorical, and **wins when a customer carries both**. Collapsing
+  them into one scalar with a dominating negative was considered and rejected — it flattens a
+  leaning and a category into two sizes of one knob, and is not absolute against a customer
+  who drew both. Neither trait needs an exemption from the cash-affordability gate: **that gate
+  only ever pushes a customer toward finance, never away from it.**
+- **#153's live-band movement is dose-dependent, so it is NOT the #151 trajectory-divergence
+  signature.** Halving every incidence rate lands halfway (positive 38.7% → 36.1% → 33.3%,
+  trade rate 43.3 → 41.3 → 39.3 — cash buyers trade less, and trade-incidence is keyed by
+  `paymentMethod`). Rates were therefore chosen to leave the calibrated bands where they are
+  rather than re-centring them: **C2 owns these magnitudes (grill I9)**, and a trait slice does
+  not get to move the store's close rate 5pp on its way past. Final read: positive 35.8%,
+  apathetic 54.3%, both inside their current windows, nothing re-centred.
 - **Three walk-driven magnitudes were retuned by #363 and the small numbers are deliberate.**
   `walkSatisfactionPenalty` −1 → **−0.12**, `walkPressure` 0.5 → **0.05**, `angerPressure`
   2.0 → **0.4**. All three had been set against a producer that never fired; the live floor
@@ -430,7 +458,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 BUILT 2026-08-07**, eleven left |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07**, ten left, next is the **#365 tracer** |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -448,6 +476,50 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-07 — **BUILT #153** (the two customers who already know how they're paying).
+  `cash-buyer` and `must-finance` — the payment axis the visit archetype's single
+  `cashProbability` constant could not express. Both resolve through the ordinary
+  `resolveEffects` machinery (grill I5), applied after the archetype base roll: no new enum
+  branch, no second modifier system.
+  **Two effect keys, not one.** `payment.cash_probability` is an additive shift on the base
+  leaning; `payment.must_finance` is categorical — someone rebuilding credit wants the
+  tradeline whatever the roll said and whatever they could have written a cheque for. Folding
+  both into one scalar with a dominating negative was the tempting one-rule version and it is
+  wrong: it flattens a leaning and a category into two sizes of the same knob, and it is not
+  actually absolute against a customer who drew both traits. `must-finance` wins that
+  collision, stated once at the payment roll. Neither needs an exemption from the
+  cash-affordability gate, because that gate only ever pushes a customer *toward* finance.
+  **The load-bearing call is that they are drawn on their own stream, not out of
+  `trait_pool`.** Incidence is a new optional `payment_traits` map on the person archetype
+  (id → independent per-customer probability, `seedFor('traits.payment')`). The shared-pool
+  version was built first and reverted: at `trait_count 1..2` it makes a cash buyer *less*
+  likely to be price-sensitive — the axes are orthogonal — and widening a 3-wide pool diluted
+  the personality mix the **#94** sales calibration is measured against, moving its apathetic
+  band 10.2% → 9.7% and breaking it. With the separate stream the personality draw is
+  byte-identical and #94 reads **85.7 / 10.2 / 4.2** exactly as before;
+  `tests/CustomerFactory.payment.test.ts` pins that a payment trait costs no personality slot.
+  **The live band did move, and dose-response says it is the mechanic rather than #151-style
+  trajectory divergence.** Halving every rate lands halfway: positive 38.7% → 36.1% → 33.3%,
+  apathetic 53.0 → 54.1 → 59.3, trade rate 43.3 → 41.3 → 39.3 (trade incidence is keyed by
+  `paymentMethod`, and cash buyers trade less). So the incidence was set to leave the
+  calibrated bands where they are instead of re-centring them — **C2 owns these magnitudes
+  (I9)**, and a trait slice does not get to re-balance the store's close rate by 5pp on its
+  way past. Final live read: positive **35.8%**, apathetic **54.3%**, both inside their
+  current windows, no band touched.
+  `npm run balance -- pacing` against a HEAD baseline on the same 100 seeds: T2 reached
+  87 → **89**, T3 reached 9 → **16**, median failure day 117 → **120**, blend 0.4151 →
+  **0.4273**, verdict pass 19% → 20%; **worse**: bankruptcy 19% → **24%** and FAILED 88% →
+  90%. Every tier status is unchanged (T1 still the standing 1.0mo-vs-2.0 miss, T2 WITHIN),
+  and the ladder measurably reaches further.
+  **Anti-orphan, because a trait nobody rolls is a mechanic wired to nothing** (the #363
+  failure mode): two tests assert both traits actually occur across the shipped archetype
+  crowd and that a real `must-finance` walk-in comes out financed. The one existing suite that
+  measured the archetype base cash share now excludes customers who drew a payment trait —
+  the base is what those traits modify, so counting them would measure the shifted number
+  against the unshifted one.
+  226 suites / **2917** tests, typecheck clean.
+  Next: **BUILD #365** — the F&I tracer. #152 is lower-numbered but blocked on it.
 
 - 2026-08-07 — **BUILT #364** (the car that sold out from under the second customer). Two
   customers can be held on the **same unit** — one on a `trade:escalated` review, one on a
@@ -536,48 +608,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   223 suites / **2896** tests, typecheck clean.
   Next: **#364** (the `No lot vehicle` crash) — or **BUILD #152** if the director places phase
   9's queue first.
-
-- 2026-08-07 — **BUILT #151** (per-brand reputation — the first of phase 9's twelve). The
-  `pickVehicleFor` matcher has carried a `reputationBonusFn` stub returning 0 since #145;
-  `Reputation.repFor(brand)` is now the real thing, and the store's record selling a make is
-  a live term in every walk-in's match.
-  **The input is `staff:auto_resolved`, not `deal:closed`, and that was the load-bearing
-  call.** Per-brand standing needs two facts about the same event — *which make* and *how the
-  delivery went* — and only the live outcome truth (#180) carries both: it gained a `brand`
-  field beside the `vehicleCategory` it already published, and it already carried `badReview`
-  (the low-trust forced close). `deal:closed` has no satisfaction signal at all, so feeding
-  off it would have meant re-deriving one at a second call site — the exact duplication
-  `residualHeat` was consolidated to kill. A walk moves no brand: a customer who never owned
-  the car says nothing about it.
-  **Three rules, and the third one is a trap-remover.** Standing is keyed by the canonical
-  brand id (#224, the same join key the match scores by), carried from sold deals only, and
-  **mean-reverts overnight on the same night and by the same rule as the store-wide
-  scalars**. Without the drift one rough early run would stain a make for the whole career,
-  which is a trap rather than depth. An unseen make reads 0 — no record is neutral, not bad.
-  **`repFor` stays the honest state and the weight lives at the boundary.** The composition
-  root wires `reputationBonusFn: repFor(brand) × brandReputation.matchWeight`; how much a
-  shopper *cares* is the matcher's business, so it is applied in `createWorld` rather than
-  baked into the module's read. Read live, so a brand's record moves the very next customer.
-  **The calibration finding is the part worth keeping.** Adding the term moved the #180 live
-  band: same seed, 28.5% → 39.0% positive, 64.5% → 51.7% apathetic, 213 → 290 closes. I
-  measured three weights before touching the band, and the shift is **the same direction and
-  the same size at 0.05 and at 0.15**, while 0.001 reproduces the pre-#151 run *exactly* —
-  the term either flips a near-tie or it does not, and flipping one re-routes the whole
-  600-up seeded trajectory. So this is trajectory divergence from a new score term, **not a
-  strength effect, and the harness cannot be used to pick the weight** (a C2-class pass owns
-  that magnitude). The apathetic band is re-centred on the new measurement at its old width
-  (0.58–0.72 → 0.45–0.59); `positiveMin` is deliberately left where #286 put it, because a
-  floor that is still cleared is not evidence for a new floor. All of it is written into
-  `data/market-calibration.json#live._doc` so the next reader inherits the reasoning.
-  **The business-level pacing did NOT move**: `npm run balance -- pacing` reads 91 of 100
-  seeds to T2 (was 90), bankruptcy 18% (was 19%), median survival the full 360 days, and T1
-  still clearing in a median 1.0 month against the 2.0 target — the same open miss, no worse.
-  **Anti-orphan, because this mechanic has no screen by design** (I6 — ambient depth). A
-  number that moves in a module nobody reads is indistinguishable from one that never moves,
-  so `tests/BrandReputation.reachability.test.ts` pins both ends in the *assembled* world,
-  and `tests/Reputation.perBrand.test.ts` asserts no UI file reads the surface at all.
-  Snapshot went v1 → v2 (module-owned; the `modules` key set is unchanged, so **no envelope
-  bump and no migration** — a v1 blob restores as "no make has a record yet", which is what
-  every pre-#151 save actually was).
-  221 suites / **2875** tests, typecheck clean.
-  Next: **BUILD #152** — unless the director places #363/#364 first (see Blockers).
