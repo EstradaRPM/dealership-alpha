@@ -6,6 +6,50 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-07 — **BUILT #153** (the two customers who already know how they're paying).
+  `cash-buyer` and `must-finance` — the payment axis the visit archetype's single
+  `cashProbability` constant could not express. Both resolve through the ordinary
+  `resolveEffects` machinery (grill I5), applied after the archetype base roll: no new enum
+  branch, no second modifier system.
+  **Two effect keys, not one.** `payment.cash_probability` is an additive shift on the base
+  leaning; `payment.must_finance` is categorical — someone rebuilding credit wants the
+  tradeline whatever the roll said and whatever they could have written a cheque for. Folding
+  both into one scalar with a dominating negative was the tempting one-rule version and it is
+  wrong: it flattens a leaning and a category into two sizes of the same knob, and it is not
+  actually absolute against a customer who drew both traits. `must-finance` wins that
+  collision, stated once at the payment roll. Neither needs an exemption from the
+  cash-affordability gate, because that gate only ever pushes a customer *toward* finance.
+  **The load-bearing call is that they are drawn on their own stream, not out of
+  `trait_pool`.** Incidence is a new optional `payment_traits` map on the person archetype
+  (id → independent per-customer probability, `seedFor('traits.payment')`). The shared-pool
+  version was built first and reverted: at `trait_count 1..2` it makes a cash buyer *less*
+  likely to be price-sensitive — the axes are orthogonal — and widening a 3-wide pool diluted
+  the personality mix the **#94** sales calibration is measured against, moving its apathetic
+  band 10.2% → 9.7% and breaking it. With the separate stream the personality draw is
+  byte-identical and #94 reads **85.7 / 10.2 / 4.2** exactly as before;
+  `tests/CustomerFactory.payment.test.ts` pins that a payment trait costs no personality slot.
+  **The live band did move, and dose-response says it is the mechanic rather than #151-style
+  trajectory divergence.** Halving every rate lands halfway: positive 38.7% → 36.1% → 33.3%,
+  apathetic 53.0 → 54.1 → 59.3, trade rate 43.3 → 41.3 → 39.3 (trade incidence is keyed by
+  `paymentMethod`, and cash buyers trade less). So the incidence was set to leave the
+  calibrated bands where they are instead of re-centring them — **C2 owns these magnitudes
+  (I9)**, and a trait slice does not get to re-balance the store's close rate by 5pp on its
+  way past. Final live read: positive **35.8%**, apathetic **54.3%**, both inside their
+  current windows, no band touched.
+  `npm run balance -- pacing` against a HEAD baseline on the same 100 seeds: T2 reached
+  87 → **89**, T3 reached 9 → **16**, median failure day 117 → **120**, blend 0.4151 →
+  **0.4273**, verdict pass 19% → 20%; **worse**: bankruptcy 19% → **24%** and FAILED 88% →
+  90%. Every tier status is unchanged (T1 still the standing 1.0mo-vs-2.0 miss, T2 WITHIN),
+  and the ladder measurably reaches further.
+  **Anti-orphan, because a trait nobody rolls is a mechanic wired to nothing** (the #363
+  failure mode): two tests assert both traits actually occur across the shipped archetype
+  crowd and that a real `must-finance` walk-in comes out financed. The one existing suite that
+  measured the archetype base cash share now excludes customers who drew a payment trait —
+  the base is what those traits modify, so counting them would measure the shifted number
+  against the unshifted one.
+  226 suites / **2917** tests, typecheck clean.
+  Next: **BUILD #365** — the F&I tracer. #152 is lower-numbered but blocked on it.
+
 - 2026-08-07 — **BUILT #364** (the car that sold out from under the second customer). Two
   customers can be held on the **same unit** — one on a `trade:escalated` review, one on a
   `discount:escalated` one, or two of either. Whichever the player resolved first drove the

@@ -15,7 +15,6 @@ const CATALOG: CreditTierCatalog = {
 const RESERVE: FniReserveConfig = {
   dealerSharePct: 0.75,
   ambientMarkupPts: 0.0075,
-  balancedMarkupPts: 0.0175,
 };
 
 // Expected values computed from standard amortization: M = P * r / (1 - (1+r)^-n)

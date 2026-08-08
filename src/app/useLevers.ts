@@ -1,9 +1,13 @@
 import { useRef, useState } from 'react';
 import type { World } from '../createWorld';
-import { resolveTradePolicyMultiplier } from '../game/DealEngine';
+import {
+  resolveTradePolicyMultiplier,
+  resolveFniPostureMarkupPts,
+} from '../game/DealEngine';
 import {
   HOURS_OF_OP,
   TRADE_POLICY,
+  FNI_POSTURE,
   PRICING_STRATEGIES,
   DEFAULT_HIRING_ROLE_ID,
   DEFAULT_SOURCING_LEAN,
@@ -24,6 +28,9 @@ export interface Levers {
   tradePolicyId: string;
   setTradePolicyId: (id: string) => void;
   tradePolicyIdRef: React.MutableRefObject<string>;
+  fniPostureId: string;
+  setFniPostureId: (id: string) => void;
+  fniPostureIdRef: React.MutableRefObject<string>;
   pricingStrategyId: string;
   setPricingStrategyId: (id: string) => void;
   pricingStrategyIdRef: React.MutableRefObject<string>;
@@ -39,7 +46,9 @@ export interface Levers {
    *  rebuilding the world. */
   getHoursOfOpTicksPerDay: () => number;
   getTradePolicyMultiplier: () => number;
+  getFniPostureMarkupPts: () => number;
   handleSelectTradePolicy: (id: string) => void;
+  handleSelectFniPosture: (id: string) => void;
   handleSelectAdvertisingCampaign: (id: string) => void;
   handleSelectPricingStrategy: (id: string) => void;
   handleSelectHours: (id: string) => void;
@@ -72,6 +81,15 @@ export function useLevers({
   tradePolicyIdRef.current = tradePolicyId;
   const getTradePolicyMultiplier = () =>
     resolveTradePolicyMultiplier(tradePolicyIdRef.current, TRADE_POLICY);
+  // Per-slot F&I posture (#366) — the store's standing instruction to the
+  // finance desk. The ref feeds the live getter handed to createWorld so a
+  // mid-game change applies on the next deal; the desk only acts on it once an
+  // f&i-manager is on staff (grill Q2), which DealEngine decides, not this hook.
+  const [fniPostureId, setFniPostureId] = useState(FNI_POSTURE.defaultId);
+  const fniPostureIdRef = useRef(FNI_POSTURE.defaultId);
+  fniPostureIdRef.current = fniPostureId;
+  const getFniPostureMarkupPts = () =>
+    resolveFniPostureMarkupPts(fniPostureIdRef.current, FNI_POSTURE);
   // Per-slot list-price strategy (#154). Drives the pricing screen suggestion
   // and — once a UCM is on staff (#285) — the standing auto-pricing policy. The
   // ref feeds the live getter handed to createWorld so a mid-game toggle change
@@ -103,6 +121,16 @@ export function useLevers({
     tradePolicyIdRef.current = id;
     setTradePolicyId(id);
     persistCurrentSave({ tradePolicy: id });
+  };
+
+  // Persist the F&I posture into the active slot (#366) — one id beside the
+  // sibling levers, never world-snapshot state (grill I7). The ref updates
+  // immediately so the live markup getter reflects the new posture before the
+  // persist resolves; the next financed deal is quoted at it.
+  const handleSelectFniPosture = (id: string) => {
+    fniPostureIdRef.current = id;
+    setFniPostureId(id);
+    persistCurrentSave({ fniPosture: id });
   };
 
   const handleSelectAdvertisingCampaign = (id: string) => {
@@ -143,6 +171,9 @@ export function useLevers({
     tradePolicyId,
     setTradePolicyId,
     tradePolicyIdRef,
+    fniPostureId,
+    setFniPostureId,
+    fniPostureIdRef,
     pricingStrategyId,
     setPricingStrategyId,
     pricingStrategyIdRef,
@@ -156,7 +187,9 @@ export function useLevers({
     setSelectedHiringRoleId,
     getHoursOfOpTicksPerDay,
     getTradePolicyMultiplier,
+    getFniPostureMarkupPts,
     handleSelectTradePolicy,
+    handleSelectFniPosture,
     handleSelectAdvertisingCampaign,
     handleSelectPricingStrategy,
     handleSelectHours,

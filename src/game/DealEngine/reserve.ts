@@ -6,15 +6,74 @@ export function loadFniReserveConfig(): FniReserveConfig {
   return loadTunables().fniReserve;
 }
 
+// ── The F&I posture dial (#366) ──────────────────────────────────────────────
+
+/**
+ * One selectable standing F&I posture. `markupPts` is the rate markup in points
+ * of APR the desk works to; `label`/`blurb` drive the Prep lever. Tunables live
+ * in `data/tunables.json` (`fniPosture`).
+ *
+ * The dial is the player's ONE finance input and it is standing, not per-deal
+ * (grill Q5/Q9/Q10) — the F&I manager executes optimally within it.
+ */
+export interface FniPostureOption {
+  readonly id: string;
+  readonly label: string;
+  readonly markupPts: number;
+  readonly blurb: string;
+}
+
+export interface FniPostureConfig {
+  /** Posture applied when a slot has no persisted choice (default: `balanced`). */
+  readonly defaultId: string;
+  readonly postures: readonly FniPostureOption[];
+}
+
+/** Reads the posture catalog from the `fniPosture` section of tunables. */
+export function loadFniPostureConfig(): FniPostureConfig {
+  return loadTunables().fniPosture;
+}
+
+/**
+ * Resolve a persisted posture id to its markup target (#366).
+ *
+ * An unknown id — a slot saved before the dial existed, or one naming a posture
+ * the catalog no longer sells — falls back to the catalog default rather than
+ * throwing, and a catalog whose `defaultId` has itself been retired falls back
+ * to the first posture. This always returns a real markup, which is what lets
+ * the composition root hand DealEngine a getter it never has to null-check.
+ */
+export function resolveFniPostureMarkupPts(
+  postureId: string | undefined,
+  config: FniPostureConfig = loadFniPostureConfig(),
+): number {
+  const chosen =
+    config.postures.find((p) => p.id === postureId) ??
+    config.postures.find((p) => p.id === config.defaultId) ??
+    config.postures[0];
+  return chosen.markupPts;
+}
+
+/** Whose markup the store is working to on this deal (#365, posture #366). */
+export interface FinanceQuoteInput {
+  /** Is an `f&i-manager` working the desk right now? */
+  readonly deskStaffed: boolean;
+  /** The selected posture's markup target, in points of APR. */
+  readonly postureMarkupPts: number;
+}
+
 /**
  * What the store quotes a financed customer (#365).
  *
  * The markup target is the whole of the player's F&I involvement at this point
  * in the ladder: a store with no `f&i-manager` on the desk earns the ambient
  * markup and nothing more (grill Q2 — the T1–T2 backend is minimal and has no
- * lever), and a store with a desk works to the Balanced posture's target. The
- * three-position posture dial that moves that target is #366; this function is
- * where it will land, so there is exactly one place a markup is decided.
+ * lever), and a store with a desk works to the posture the player selected
+ * (#366). One place decides a markup, and it is here.
+ *
+ * The input is named rather than positional for the #365/#152 reason: a quote
+ * resolved against no posture is a silent default, so every call site states
+ * both halves of the answer.
  *
  * The lender's cap is a hard clamp, not a suggestion: subprime programs allow
  * the least markup, which is why the most desperate customer is not the most
@@ -22,10 +81,10 @@ export function loadFniReserveConfig(): FniReserveConfig {
  */
 export function resolveFinanceQuote(
   tierDef: TierDef,
-  deskStaffed: boolean,
+  input: FinanceQuoteInput,
   config: FniReserveConfig,
 ): FinanceQuote {
-  const target = deskStaffed ? config.balancedMarkupPts : config.ambientMarkupPts;
+  const target = input.deskStaffed ? input.postureMarkupPts : config.ambientMarkupPts;
   const markupPts = Math.max(0, Math.min(target, tierDef.markupCapPts));
   return {
     buyRate: tierDef.buyRate,

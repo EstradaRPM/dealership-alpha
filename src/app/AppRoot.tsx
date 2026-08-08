@@ -30,6 +30,7 @@ import { AppOverlays } from './screens/AppOverlays';
 import { RouteContent } from './screens/RouteContent';
 import {
   TRADE_POLICY,
+  FNI_POSTURE,
   PRICING_STRATEGIES,
   HOURS_OF_OP,
   readPersistedCashDelta,
@@ -160,6 +161,17 @@ export function DealershipApp({
       levers.tradePolicyIdRef.current = TRADE_POLICY.defaultId;
       levers.setTradePolicyId(TRADE_POLICY.defaultId);
     }
+    // Restore the persisted per-slot F&I posture (#366) before any deal can be
+    // quoted. The ref backs the live markup getter handed to createWorld; an
+    // absent id (a pre-#366 slot) or one the catalog no longer sells falls back
+    // to the default posture rather than throwing.
+    if (typeof state.fniPosture === 'string') {
+      levers.fniPostureIdRef.current = state.fniPosture;
+      levers.setFniPostureId(state.fniPosture);
+    } else {
+      levers.fniPostureIdRef.current = FNI_POSTURE.defaultId;
+      levers.setFniPostureId(FNI_POSTURE.defaultId);
+    }
     // Restore the persisted per-slot list-price strategy (#154).
     if (typeof state.pricingStrategy === 'string') {
       levers.setPricingStrategyId(state.pricingStrategy);
@@ -185,6 +197,7 @@ export function DealershipApp({
       getHoursOfOpTicksPerDay: levers.getHoursOfOpTicksPerDay,
       getPricingStrategy: levers.getPricingStrategy,
       getSourcingLean: levers.getSourcingLean,
+      getFniPostureMarkupPts: levers.getFniPostureMarkupPts,
     });
     // World-state restore (#188 tracer): rehydrate the persisted world
     // snapshot (day + cash) onto the freshly-built World instead of leaving it
@@ -256,6 +269,7 @@ export function DealershipApp({
       getHoursOfOpTicksPerDay: levers.getHoursOfOpTicksPerDay,
       getPricingStrategy: levers.getPricingStrategy,
       getSourcingLean: levers.getSourcingLean,
+      getFniPostureMarkupPts: levers.getFniPostureMarkupPts,
     });
     setWorld(w);
     setCash(w.economy.cash);

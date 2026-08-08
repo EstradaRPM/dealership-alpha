@@ -4,10 +4,12 @@ import {
   CreditTierCatalogSchema,
   loadCreditTiers,
   loadFniReserveConfig,
+  resolveFniPostureMarkupPts,
 } from '../src/game/DealEngine';
 import type {
   ClosedDealResult,
   CreditTierCatalog,
+  FniPostureConfig,
   FniReserveConfig,
 } from '../src/game/DealEngine';
 import { createEventBus } from '../src/game/EventBus';
@@ -34,7 +36,18 @@ const CATALOG: CreditTierCatalog = {
 const RESERVE: FniReserveConfig = {
   dealerSharePct: 0.75,
   ambientMarkupPts: 0.0075,
-  balancedMarkupPts: 0.0175,
+};
+
+// The desked target lives in the posture catalog (#366), not beside the ambient
+// one — a staffed desk works to whichever posture the store is set to.
+const BALANCED_MARKUP_PTS = 0.0175;
+const POSTURE: FniPostureConfig = {
+  defaultId: 'balanced',
+  postures: [
+    { id: 'more-per-deal', label: 'More per deal', markupPts: 0.025, blurb: 'b' },
+    { id: 'balanced', label: 'Balanced', markupPts: BALANCED_MARKUP_PTS, blurb: 'b' },
+    { id: 'more-deals', label: 'More deals', markupPts: 0.01, blurb: 'b' },
+  ],
 };
 
 const VEHICLE = {
@@ -62,6 +75,7 @@ function harness(opts: { deskStaffed?: boolean } = {}) {
     bus,
     catalog: CATALOG,
     reserveConfig: RESERVE,
+    postureConfig: POSTURE,
     getFniDeskStaffed: () => opts.deskStaffed ?? false,
     inventory: {
       getLotVehicle: () => ({ ...VEHICLE }) as never,
@@ -135,9 +149,9 @@ describe('DealEngine.quoteFinance (#365)', () => {
     );
   });
 
-  it('an F&I desk works to the balanced target instead', () => {
+  it('an F&I desk works to the selected posture instead', () => {
     const { engine } = harness({ deskStaffed: true });
-    expect(engine.quoteFinance('A').markupPts).toBeCloseTo(RESERVE.balancedMarkupPts, 6);
+    expect(engine.quoteFinance('A').markupPts).toBeCloseTo(BALANCED_MARKUP_PTS, 6);
   });
 
   it('markup is capped per credit tier', () => {
@@ -265,7 +279,9 @@ describe('DealEngine.computeReserve — honest amortization (#365)', () => {
     const live = loadFniReserveConfig();
     expect(live.dealerSharePct).toBeGreaterThan(0);
     expect(live.dealerSharePct).toBeLessThanOrEqual(1);
-    expect(live.balancedMarkupPts).toBeGreaterThan(live.ambientMarkupPts);
+    // A staffed desk beats an unstaffed one at the shipped default posture —
+    // hiring the F&I manager has to be worth something (#366).
+    expect(resolveFniPostureMarkupPts(undefined)).toBeGreaterThan(live.ambientMarkupPts);
   });
 });
 

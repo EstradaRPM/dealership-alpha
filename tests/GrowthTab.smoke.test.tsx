@@ -278,6 +278,12 @@ describe('#349 the stack that moved is gone from where it used to be', () => {
           tradePolicyOptions: [{ id: 'fair', label: 'Fair', blurb: 'Book value.' }],
           tradePolicyId: 'fair',
           onSelectTradePolicy: () => {},
+          fniPostureOptions: [
+            { id: 'balanced', label: 'Balanced', blurb: 'A normal markup.' },
+          ],
+          fniPostureId: 'balanced',
+          onSelectFniPosture: () => {},
+          fniDeskStaffed: false,
         }}
       />,
     );

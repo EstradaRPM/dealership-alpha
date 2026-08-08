@@ -433,6 +433,16 @@ export function createWorld(deps: {
    * Omitted ⇒ the configured default (balanced) lean. Manual buy always lives.
    */
   getSourcingLean?: () => SourcingLean;
+  /**
+   * Per-slot F&I posture, resolved to its rate markup in points of APR (#366).
+   * A live getter (not a value) so a mid-game dial change applies on the next
+   * deal without rebuilding the world — the composition root reads the persisted
+   * slot posture id through `resolveFniPostureMarkupPts`. Only bites once an
+   * `f&i-manager` is on the desk (grill Q2); an unstaffed store earns the
+   * ambient markup whatever is selected. Omitted ⇒ the catalog's default
+   * posture (Balanced).
+   */
+  getFniPostureMarkupPts?: () => number;
 }): World {
   const {
     bus,
@@ -443,6 +453,7 @@ export function createWorld(deps: {
     getHoursOfOpTicksPerDay,
     getPricingStrategy,
     getSourcingLean,
+    getFniPostureMarkupPts,
   } = deps;
 
   // Default initialDay = 1: the clock sits on "night before Day 1" so the
@@ -738,6 +749,9 @@ export function createWorld(deps: {
     // Until then the backend is ambient, which is the honest T1–T2 answer.
     getFniDeskStaffed: () =>
       staffOrg.currentRoster.some((s) => s.role_id === 'f&i-manager'),
+    // #366: the standing posture that desk works to, read live so a change on
+    // the Prep lever applies to the very next deal. Omitted ⇒ Balanced.
+    getFniPostureMarkupPts,
   });
   // CustomerPool gets the DealEngine + inventory + tier-catalog wiring (#146)
   // so dispatch(CLOSE) routes real closes through DealEngine.closeDeal — the

@@ -22,6 +22,7 @@ import { GameScreen } from './GameScreen';
 import { TabStackContent } from './TabStackContent';
 import {
   TRADE_POLICY,
+  FNI_POSTURE,
   PRICING_STRATEGIES,
   HOURS_OF_OP,
 } from '../config';
@@ -101,6 +102,8 @@ export function RouteContent({
             levers.setHoursOfOpId(HOURS_OF_OP.defaultId);
             levers.tradePolicyIdRef.current = TRADE_POLICY.defaultId;
             levers.setTradePolicyId(TRADE_POLICY.defaultId);
+            levers.fniPostureIdRef.current = FNI_POSTURE.defaultId;
+            levers.setFniPostureId(FNI_POSTURE.defaultId);
             levers.setPricingStrategyId(PRICING_STRATEGIES.defaultStrategy);
             nav.reset('character-creation');
           }}

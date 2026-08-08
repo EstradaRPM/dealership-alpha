@@ -801,10 +801,33 @@
       }
     ]
   },
+  "fniPosture": {
+    "_doc": "Per-slot F&I posture (#366) — the player's ONE finance-office input, and it is standing rather than per-deal (grill Q5/Q9/Q10: no slider, no per-product switch, no manual deal screen). `markupPts` is the rate markup in points of APR the desk works to, clamped down per deal to the credit tier's `markupCapPts`. Marking up harder earns more reserve on each contract AND raises the payment, so more buyers fail the PTI affordability gate that already exists — which is why 'More deals' is a real trade and not just a smaller number. The posture only bites once an f&i-manager is on the desk; with the desk empty the store earns `fniReserve.ambientMarkupPts` whatever is selected (grill Q2). The composition root resolves the selected id to its markup and hands DealEngine a live getter; the id persists on the save slot alongside tradePolicy/pricingStrategy/sourcingLean — no world-snapshot state (grill I7). Placeholder magnitudes owed to a #286-class calibration pass (grill I9).",
+    "defaultId": "balanced",
+    "postures": [
+      {
+        "id": "more-per-deal",
+        "label": "More per deal",
+        "markupPts": 0.025,
+        "blurb": "Mark the rate up as far as the lender allows — the most finance profit per contract, and the highest payment, so more buyers can't qualify."
+      },
+      {
+        "id": "balanced",
+        "label": "Balanced",
+        "markupPts": 0.0175,
+        "blurb": "A normal market markup — solid finance profit without pricing many buyers out of their payment."
+      },
+      {
+        "id": "more-deals",
+        "label": "More deals",
+        "markupPts": 0.01,
+        "blurb": "Keep the rate close to what the bank charges you — thin finance profit, but the lowest payment, so more buyers qualify."
+      }
+    ]
+  },
   "fniReserve": {
-    "_doc": "Finance reserve (#365). The store sells the paper to the customer at `buyRate + markup` and the lender buys it at `buyRate`; the dealer's reserve is its share of the discounted spread over the loan's scheduled life. `dealerSharePct` is the lender's participation split (the lender keeps the rest). `ambientMarkupPts` is what a store with NO f&i-manager on the desk gets — the T1–T2 backend is ambient and minimal, with no player lever (grill Q2). `balancedMarkupPts` is the target an F&I desk works to at the Balanced posture; the three-position posture dial that moves it is #366. Both are clamped down to the credit tier's `markupCapPts`. Placeholder magnitudes owed to a #286-class calibration pass (grill I9).",
+    "_doc": "Finance reserve (#365). The store sells the paper to the customer at `buyRate + markup` and the lender buys it at `buyRate`; the dealer's reserve is its share of the discounted spread over the loan's scheduled life. `dealerSharePct` is the lender's participation split (the lender keeps the rest). `ambientMarkupPts` is what a store with NO f&i-manager on the desk gets — the T1–T2 backend is ambient and minimal, with no player lever (grill Q2). A staffed desk works to the selected `fniPosture` markup instead; the desked target lives in that catalog and nowhere else (#366 deleted `balancedMarkupPts`, which was the same number in a second place). Both are clamped down to the credit tier's `markupCapPts`. Placeholder magnitudes owed to a #286-class calibration pass (grill I9).",
     "dealerSharePct": 0.75,
-    "ambientMarkupPts": 0.0075,
-    "balancedMarkupPts": 0.0175
+    "ambientMarkupPts": 0.0075
   }
 }

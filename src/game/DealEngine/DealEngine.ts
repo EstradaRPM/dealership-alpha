@@ -2,7 +2,14 @@ import { loadCreditTiers, classifyCredit } from './creditTier';
 import { computeMonthlyPayment } from './loanMath';
 import { loadFniProducts, getFniProductById, loadFniAutoAttachConfig } from './fniProducts';
 import { loadDealFraudConfig, type DealFraudConfig } from './dealFraudConfig';
-import { computeReserve, loadFniReserveConfig, resolveFinanceQuote } from './reserve';
+import {
+  computeReserve,
+  loadFniPostureConfig,
+  loadFniReserveConfig,
+  resolveFinanceQuote,
+  resolveFniPostureMarkupPts,
+  type FniPostureConfig,
+} from './reserve';
 import type {
   CreditTier,
   CreditTierCatalog,
@@ -59,6 +66,16 @@ export interface DealEngineDeps {
    * markup, which is the honest answer for a Tier-1/2 store.
    */
   getFniDeskStaffed?: () => boolean;
+  /**
+   * The store's standing F&I posture, as its markup target in points of APR
+   * (#366). A closure for the same reason as the desk read — the dial is
+   * per-slot UI state, so the engine takes the resolved number and never learns
+   * about save slots — and read live so a mid-game change applies on the next
+   * deal without rebuilding the world. Omitted ⇒ the catalog's default posture,
+   * which is what keeps a harness that never sets one at Balanced.
+   */
+  getFniPostureMarkupPts?: () => number;
+  postureConfig?: FniPostureConfig;
   bus?: EventBus;
   inventory?: Pick<Inventory, 'getLotVehicle' | 'sellVehicle'>;
   economy?: Pick<Economy, 'postRevenue'>;
@@ -79,6 +96,15 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
   const reserveConfig = deps.reserveConfig ?? loadFniReserveConfig();
   const { bus, inventory, economy, getCurrentDay } = deps;
   const deskStaffed = deps.getFniDeskStaffed ?? (() => false);
+  // #366: the posture the desk works to. Resolved once as a fallback so an
+  // engine built without the dial (every isolation harness) sits at the
+  // catalog default rather than at zero markup.
+  const defaultPostureMarkupPts = resolveFniPostureMarkupPts(
+    undefined,
+    deps.postureConfig ?? loadFniPostureConfig(),
+  );
+  const postureMarkupPts =
+    deps.getFniPostureMarkupPts ?? (() => defaultPostureMarkupPts);
 
   return {
     classifyCredit(score) {
@@ -86,7 +112,11 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
     },
 
     quoteFinance(tier) {
-      return resolveFinanceQuote(catalog.tiers[tier], deskStaffed(), reserveConfig);
+      return resolveFinanceQuote(
+        catalog.tiers[tier],
+        { deskStaffed: deskStaffed(), postureMarkupPts: postureMarkupPts() },
+        reserveConfig,
+      );
     },
 
     computeReserve(input) {

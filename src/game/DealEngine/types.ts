@@ -50,8 +50,6 @@ export interface FniReserveConfig {
   dealerSharePct: number;
   /** Markup a store with no `f&i-manager` on the desk earns, in points of APR. */
   ambientMarkupPts: number;
-  /** The target an F&I desk works to at the Balanced posture (#366 makes it a dial). */
-  balancedMarkupPts: number;
 }
 
 /**

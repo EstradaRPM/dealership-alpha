@@ -1337,6 +1337,36 @@ describe('snapshotWorld / restoreWorld seam (#188)', () => {
     return { bus, world };
   }
 
+  // #366 grill I7: the F&I posture is SLOT state, not world state — it persists
+  // as one id beside tradePolicy/pricingStrategy/sourcingLean. The parked grill
+  // doc claimed it needed an envelope bump and a migration; it does not, and
+  // this is the assertion that keeps a future session from writing one.
+  it('the snapshot envelope is unchanged by the F&I posture', () => {
+    const bus = createEventBus();
+    const world = createWorld({
+      bus,
+      masterSeed: 366,
+      characterProfile: PROFILE,
+      getFniPostureMarkupPts: () => 0.025,
+    });
+    const snap = snapshotWorld(world);
+
+    expect(snap.version).toBe(WORLD_SNAPSHOT_VERSION);
+    expect(JSON.stringify(snap)).not.toContain('fniPosture');
+    expect(JSON.stringify(snap)).not.toContain('markupPts');
+    // Two same-seed worlds set to opposite postures snapshot identically — the
+    // dial is nowhere in the world's persisted state.
+    const other = snapshotWorld(
+      createWorld({
+        bus: createEventBus(),
+        masterSeed: 366,
+        characterProfile: PROFILE,
+        getFniPostureMarkupPts: () => 0.01,
+      }),
+    );
+    expect(Object.keys(other.modules)).toEqual(Object.keys(snap.modules));
+  });
+
   it('emits the locked envelope shape', () => {
     const { world } = build(42);
     const snap = snapshotWorld(world);

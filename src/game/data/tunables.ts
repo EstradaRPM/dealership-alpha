@@ -594,13 +594,33 @@ export const TunablesSchema = z.object({
       )
       .nonempty(),
   }),
+  // Per-slot F&I posture (#366) — the player's one finance-office input, in the
+  // same shape as `tradePolicy` above. `markupPts` is the rate markup the desk
+  // works to, in POINTS OF APR as decimals (0.0175 = 1.75 points), clamped down
+  // per deal to the tier's `markupCapPts`. The composition root resolves the
+  // selected id to its markup and hands DealEngine a live getter; the id
+  // persists per save slot, never in the world snapshot (grill I7).
+  fniPosture: z.object({
+    defaultId: z.string().min(1),
+    postures: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          label: z.string().min(1),
+          markupPts: z.number().min(0),
+          blurb: z.string().min(1),
+        }),
+      )
+      .nonempty(),
+  }),
   // Finance reserve (#365). Markup targets are in POINTS OF APR as decimals
   // (0.0175 = 1.75 points), the same unit as `markupCapPts` in
-  // data/credit-tiers.json, which clamps them per tier.
+  // data/credit-tiers.json, which clamps them per tier. The DESKED target is not
+  // here — it is whichever `fniPosture` the player selected (#366), so the
+  // number the desk works to exists in exactly one place.
   fniReserve: z.object({
     dealerSharePct: z.number().min(0).max(1),
     ambientMarkupPts: z.number().min(0),
-    balancedMarkupPts: z.number().min(0),
   }),
 });
 

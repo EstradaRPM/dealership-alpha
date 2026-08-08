@@ -7,7 +7,11 @@
 // editing the 1.8k-line App.tsx.
 import { type ImageSourcePropType } from 'react-native';
 import { loadTunables } from '../game/data';
-import { loadTradePolicyConfig, isTradeApprovalUnlocked } from '../game/DealEngine';
+import {
+  loadTradePolicyConfig,
+  loadFniPostureConfig,
+  isTradeApprovalUnlocked,
+} from '../game/DealEngine';
 import { loadInventoryConfig } from '../game/Inventory';
 import { loadStaffArchetypes, loadStaffTaxonomy } from '../game/NPC';
 import {
@@ -200,6 +204,12 @@ export const AGED_THRESHOLD_DAYS = loadInventoryConfig().carrying.agedThresholdD
 // per save slot and resolves to the acceptance-target multiplier the trade
 // resolver reads. Default = market (1.0).
 export const TRADE_POLICY = loadTradePolicyConfig();
+
+// F&I posture catalog (#366) — the player's one finance-office lever, standing
+// rather than per-deal (grill Q5/Q9). Seed-free; the selected id persists per
+// save slot and resolves to the rate markup the F&I desk works to. Default =
+// balanced. Nothing about it is world state (grill I7).
+export const FNI_POSTURE = loadFniPostureConfig();
 
 // List-price strategy catalog (#154). Seed-free; the selected id persists per
 // save slot and drives the staff-suggested list price on the pricing screen

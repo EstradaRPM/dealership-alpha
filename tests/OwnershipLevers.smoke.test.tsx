@@ -21,6 +21,14 @@ const BASE: OwnershipLeversProps = {
   ],
   tradePolicyId: 'market',
   onSelectTradePolicy: jest.fn(),
+  fniPostureOptions: [
+    { id: 'more-per-deal', label: 'More per deal', blurb: 'Mark the rate up as far as the lender allows.' },
+    { id: 'balanced', label: 'Balanced', blurb: 'A normal market markup.' },
+    { id: 'more-deals', label: 'More deals', blurb: 'Keep the rate close to the bank’s.' },
+  ],
+  fniPostureId: 'balanced',
+  onSelectFniPosture: jest.fn(),
+  fniDeskStaffed: true,
 };
 
 describe('OwnershipLevers smoke tests', () => {
@@ -58,15 +66,45 @@ describe('OwnershipLevers smoke tests', () => {
   });
 });
 
-// #346 — the locked IA §4 says Prep is "pure pre-open policy levers (hours,
-// trade policy). No navigation links parked here." These assert the reduction
-// itself, so a lever or a link creeping back into Prep fails the build.
-describe('#346 Prep holds exactly two levers and no navigation', () => {
-  it('renders the hours and trade-policy levers and nothing else', () => {
+// #366 — the F&I posture dial is the player's ONE finance input, and it sits
+// beside the other desk levers rather than on a store-wide screen (grill Q6).
+describe('#366 the F&I posture dial', () => {
+  it('shows the selected posture blurb and dispatches a posture change', () => {
+    const onSelectFniPosture = jest.fn();
+    const { getByText } = render(
+      <OwnershipLevers {...BASE} onSelectFniPosture={onSelectFniPosture} />,
+    );
+    expect(getByText('A normal market markup.')).toBeTruthy();
+    fireEvent.press(getByText('More per deal'));
+    expect(onSelectFniPosture).toHaveBeenCalledWith('more-per-deal');
+  });
+
+  it('says why it does nothing without an F&I manager', () => {
+    const staffed = render(<OwnershipLevers {...BASE} fniDeskStaffed />);
+    expect(staffed.queryByTestId('fni-posture-unstaffed')).toBeNull();
+
+    const green = render(<OwnershipLevers {...BASE} fniDeskStaffed={false} />);
+    // Plain language, and it names the actual reason — not a greyed control
+    // with no explanation. The dial stays selectable: a store can set its
+    // standing posture before it has anyone to carry it out.
+    expect(
+      green.getByText(/No finance manager on staff/i),
+    ).toBeTruthy();
+    expect(green.getByText(/does nothing until you hire one/i)).toBeTruthy();
+  });
+});
+
+// #346 — the locked IA §4 says Prep is "pure pre-open policy levers". These
+// assert the reduction itself, so a NAVIGATION LINK creeping back into Prep
+// fails the build. #366 added the third policy lever (the F&I posture), which
+// is what "pure pre-open policy" admits; the count moves with the levers.
+describe('#346 Prep holds only policy levers and no navigation', () => {
+  it('renders the hours, trade-policy and F&I-posture levers and nothing else', () => {
     const { queryByTestId } = render(<OwnershipLevers {...BASE} />);
 
     expect(queryByTestId('prep-hours')).not.toBeNull();
     expect(queryByTestId('prep-trade-policy')).not.toBeNull();
+    expect(queryByTestId('prep-fni-posture')).not.toBeNull();
     // The stock list, per-unit price rows, pricing strategy and its auto-pricing
     // status all moved to the Lot room.
     expect(queryByTestId('auto-pricing-status')).toBeNull();
@@ -77,13 +115,15 @@ describe('#346 Prep holds exactly two levers and no navigation', () => {
     const { getAllByRole } = render(<OwnershipLevers {...BASE} />);
 
     // The auction and hiring buttons were the two nav links here; both are gone,
-    // and the only remaining pressables are the policy chips (5 = 2 hours + 3
-    // trade policies), each of which dispatches a setter, never a route — a
-    // selection chip always reports `accessibilityState.selected`, a nav link
-    // never does.
+    // and the only remaining pressables are the policy chips (8 = 2 hours + 3
+    // trade policies + 3 F&I postures), each of which dispatches a setter, never
+    // a route — a selection chip always reports `accessibilityState.selected`, a
+    // nav link never does.
     const buttons = getAllByRole('button');
     expect(buttons).toHaveLength(
-      BASE.hoursOptions.length + BASE.tradePolicyOptions.length,
+      BASE.hoursOptions.length +
+        BASE.tradePolicyOptions.length +
+        BASE.fniPostureOptions.length,
     );
     for (const b of buttons) {
       expect(b.props.accessibilityState?.selected).toBeDefined();

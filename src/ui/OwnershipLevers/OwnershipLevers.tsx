@@ -18,6 +18,14 @@ export interface TradePolicyLeverOption {
   readonly blurb: string;
 }
 
+/** One selectable standing F&I posture (#366). */
+export interface FniPostureLeverOption {
+  readonly id: string;
+  readonly label: string;
+  /** One-sentence description of the consequence, shown for the selection. */
+  readonly blurb: string;
+}
+
 export interface OwnershipLeversProps {
   /** ⇔ DayLoopState.ownershipUnlocked. All levers greyed + inert when false
    *  (#107 d11: levers greyed while the floor is live). */
@@ -29,6 +37,16 @@ export interface OwnershipLeversProps {
   tradePolicyOptions: readonly TradePolicyLeverOption[];
   tradePolicyId: string;
   onSelectTradePolicy: (id: string) => void;
+  /** F&I posture lever (#366): options + current selection + setter. */
+  fniPostureOptions: readonly FniPostureLeverOption[];
+  fniPostureId: string;
+  onSelectFniPosture: (id: string) => void;
+  /**
+   * Is an `f&i-manager` on staff? The posture is a standing instruction to the
+   * finance desk, so with no desk it is a setting that changes nothing yet —
+   * the surface says so rather than implying an effect it doesn't have (Q2).
+   */
+  fniDeskStaffed: boolean;
 }
 
 /**
@@ -53,11 +71,17 @@ export function OwnershipLevers({
   tradePolicyOptions,
   tradePolicyId,
   onSelectTradePolicy,
+  fniPostureOptions,
+  fniPostureId,
+  onSelectFniPosture,
+  fniDeskStaffed,
 }: OwnershipLeversProps) {
   const t = useTheme();
   const selectedPolicy =
     tradePolicyOptions.find((p) => p.id === tradePolicyId) ??
     tradePolicyOptions[0];
+  const selectedPosture =
+    fniPostureOptions.find((p) => p.id === fniPostureId) ?? fniPostureOptions[0];
   const root: ViewStyle = { alignSelf: 'stretch' };
   const locked: TextStyle = {
     ...t.typography.caption,
@@ -111,6 +135,33 @@ export function OwnershipLevers({
             />
             {selectedPolicy && (
               <Text style={blurb}>{selectedPolicy.blurb}</Text>
+            )}
+          </Surface>
+        </View>
+
+        <View style={region}>
+          <Surface testID="prep-fni-posture">
+            <SectionHeader title="Finance Office" />
+            <Text style={hint}>
+              How hard your finance manager marks up the loan rate.
+            </Text>
+            <ChipRow
+              options={fniPostureOptions.map((o) => ({
+                id: o.id,
+                label: o.label,
+              }))}
+              selectedId={fniPostureId}
+              onSelect={onSelectFniPosture}
+              disabled={!enabled}
+            />
+            {selectedPosture && (
+              <Text style={blurb}>{selectedPosture.blurb}</Text>
+            )}
+            {!fniDeskStaffed && (
+              <Text style={blurb} testID="fni-posture-unstaffed">
+                No finance manager on staff — nobody is working the rate, so this
+                setting does nothing until you hire one.
+              </Text>
             )}
           </Surface>
         </View>

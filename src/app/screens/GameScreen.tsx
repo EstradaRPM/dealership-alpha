@@ -46,6 +46,7 @@ import {
   TIER_CONFIG,
   HOURS_OF_OP,
   TRADE_POLICY,
+  FNI_POSTURE,
   PRICING_STRATEGY_OPTIONS,
   DAYS_PER_MONTH,
   BODY_SHOP_MIN_TIER,
@@ -214,6 +215,20 @@ export function GameScreen({
     })),
     tradePolicyId: levers.tradePolicyId,
     onSelectTradePolicy: levers.handleSelectTradePolicy,
+    // F&I posture lever (#366): the store's standing instruction to the finance
+    // desk. Same shape as the trade policy — the UI takes id/label/blurb and
+    // never sees the markup. Whether the desk is staffed is read off the live
+    // roster, because the posture is inert until someone works it (grill Q2).
+    fniPostureOptions: FNI_POSTURE.postures.map((p) => ({
+      id: p.id,
+      label: p.label,
+      blurb: p.blurb,
+    })),
+    fniPostureId: levers.fniPostureId,
+    onSelectFniPosture: levers.handleSelectFniPosture,
+    fniDeskStaffed: world.staffOrg.currentRoster.some(
+      (s) => s.role_id === 'f&i-manager',
+    ),
   };
   // Segment-heat readout (#198 / #278). Read live off DemandShaper each
   // render; reflects the trailing arrival window at MANAGERIAL time. #211

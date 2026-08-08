@@ -30,10 +30,9 @@ a median survival of the full 360 days.
 
 **Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
 `docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
-issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, the #365 tracer and #152
-have all landed** — eight left. **#366** (the three-position posture dial) is now both the
-lowest-numbered open slice and deps-met; #367–#370 and #373 all sit behind it, so the queue
-narrows to one live path. #371 and #372 have no deps and can be taken any time.
+issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, #365, #152 and #366 have all
+landed** — seven left. **#367** (deal-kill) is now the lowest-numbered open, deps-met slice;
+#369 sits behind it and #370 behind both. #368, #371 and #372 are deps-met independently.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
@@ -43,7 +42,7 @@ narrows to one live path. #371 and #372 have no deps and can be taken any time.
 | ~~#152~~ | ~~attach scales with amount financed — one per-product `loanSensitivity` (I4)~~ **BUILT 2026-08-08** | — |
 | ~~#153~~ | ~~cash-buyer / must-finance traits through `resolveEffects` (I5)~~ **BUILT 2026-08-07** | — |
 | ~~#365~~ | ~~**tracer** — `apr`→`buyRate` + `markupCapPts`, `computeReserve`, back gross splits into `productGross`/`reserveGross` (Q1/Q2, I1–I3)~~ **BUILT 2026-08-08** | — |
-| #366 | the posture dial — three positions, slot-persisted like `tradePolicy`, **no snapshot bump** (Q5/Q6/Q9, I7) | #365 |
+| ~~#366~~ | ~~the posture dial — three positions, slot-persisted like `tradePolicy`, **no snapshot bump** (Q5/Q6/Q9, I7)~~ **BUILT 2026-08-08** | #365 |
 | #367 | deal-kill — one curve in `data/`, an over-marked deal falls through (Q3 primary, I8) | #366 |
 | #368 | CSI drag — an over-marked customer publishes `reputation:satisfaction_hit` (Q3 secondary) | #365 |
 | #369 | the F&I manager works the deal — `finance_structuring` frontier, `product_presentation` attach (Q2/Q5/Q10) | #367 |
@@ -74,10 +73,40 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 ## Blockers
 
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
-- **Phase 9's queue now runs through #366.** #365 and #152 both landed 2026-08-08. #367, #370
-  and #373 sit behind **#366**, and #369 behind #367, so the posture dial is the one live path;
+- **Phase 9's queue now runs through #367.** #365, #152 and #366 all landed 2026-08-08. #369
+  sits behind **#367** and #370 behind both; #373's deps (#365/#366/#371) are all but #371.
   #368, #371 and #372 are deps-met independently. Keep reading the deps column, not just the
   number.
+- **`fniReserve.balancedMarkupPts` is GONE and the desked markup lives in the `fniPosture`
+  catalog** (#366). `resolveFinanceQuote` takes a named `{ deskStaffed, postureMarkupPts }`,
+  and the posture reaches DealEngine as `getFniPostureMarkupPts?: () => number` — a closure
+  wired in `createWorld` off `useLevers`, read live. Omitted ⇒ the catalog default ⇒ the old
+  `balancedMarkupPts` number exactly, which is what keeps every pre-#366 harness byte-identical
+  (#180 still reads 39.3% / 51.7%). Do not re-introduce a second desked-markup number beside
+  the catalog, and do not read `ambientMarkupPts` as a posture — it is the no-desk answer and
+  the dial cannot move it (grill Q2).
+- **The posture is SLOT state and there is NO migration to write** (#366, grill I7 —
+  contradicting the parked grill doc's own earlier note). It persists as one id via
+  `persistCurrentSave`, restores in `loadActiveSlotIntoGame`, resets on New Game.
+  `tests/worldSnapshot.test.ts` asserts two same-seed worlds at opposite postures snapshot
+  identically, so a future session cannot add the bump "for consistency".
+- **"More deals" works through the EXISTING PTI gate, not a new check** (#366, grill I3 paying
+  off twice). The payment is built at the marked-up rate, so a thinner markup lowers the
+  payment and more buyers qualify. Do not add a separate "posture affects close rate" term.
+- **The #346 Prep test now asserts THREE levers.** That assertion exists to keep *navigation*
+  out of Prep, and the locked IA calls Prep "pure pre-open policy" — a third policy lever
+  (#366's Finance Office block) is what that admits. The button count moves with the levers;
+  do not read a fourth policy lever as an IA violation, and do not park a nav link there.
+- **The posture dial stays SELECTABLE with no F&I manager on staff** (#366). It renders the
+  plain-language reason it does nothing yet instead of greying out: a store can set its
+  standing posture before it has anyone to carry it out, and a dead control with no explanation
+  is what the copy rule exists to prevent.
+- **A queued `deleteDatabase` was left pending on the web dev-save IndexedDB (2026-08-08).**
+  The `dealership` DB hit the documented "max of 3 slots reached" state; the delete was issued,
+  returned `blocked`, and never completed because the app holds a connection — after which
+  `indexedDB.open` hangs in that tab. The next reload will likely clear the three dev slots.
+  They are regenerable from DEV · START AT TIER. Cleaner next time: delete a slot through the
+  Load screen rather than dropping the database.
 - **`data/credit-tiers.json`'s `apr` is GONE and `TierDefSchema` is `.strict()`** (#365). The
   key is `buyRate` — the lender's cost of money — plus `markupCapPts` per tier; the customer's
   rate is `buyRate + markup`. `.strict()` is load-bearing: a stale `apr` would otherwise be
@@ -533,7 +562,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 + #152 BUILT 2026-08-08**, eight left, next is **#366** |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 + #152 + #366 BUILT 2026-08-08**, seven left, next is **#367** |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -551,6 +580,60 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-08 — **BUILT #366** (the player finally gets to tell the finance office what to do).
+  A three-position standing posture — **"More per deal" / "Balanced" / "More deals"** — in the
+  `fniPosture` catalog in `data/tunables.json`, the exact shape of `tradePolicy`. It is the
+  store's ONE F&I input and it is standing, not per-deal (grill Q5/Q9/Q10): no slider, no
+  per-product switch, no manual deal screen. A session proposing any of those is re-opening a
+  closed grill.
+  **`fniReserve.balancedMarkupPts` is GONE, and deleting it is the load-bearing call.** The
+  desked target now lives in the posture catalog and nowhere else — keeping both would have
+  left the same number in two files, free to drift, which is precisely the duplication #180
+  found in `residualHeat`. `ambientMarkupPts` stays where it is because it is not a posture:
+  it is what the store earns with nobody on the desk (grill Q2), and the dial cannot move it.
+  **The dial persists as one id on the save slot and there is NO envelope bump** (grill I7 —
+  an explicit correction to the parked grill doc's own note, which claimed a
+  `WORLD_SNAPSHOT_VERSION` bump and a migration were needed). It joins `tradePolicy` /
+  `pricingStrategy` / `sourcingLean` through `persistCurrentSave`, restores in
+  `loadActiveSlotIntoGame`, resets on New Game. `tests/worldSnapshot.test.ts` now asserts two
+  same-seed worlds at opposite postures snapshot identically, so a future session cannot
+  "helpfully" add the migration. **Do not go looking for one to write.**
+  **"More deals" is a real trade rather than a smaller number, and it cost nothing to make
+  one.** The payment is already built at the marked-up rate (#365), so PTI — the affordability
+  gate that has always been there — prices more buyers out at the aggressive posture and fewer
+  at the thin one. That is grill I3 paying off a second time: **no new check was added**, and
+  `tests/FniPosture.test.ts` pins the payment difference on identical structures.
+  `resolveFinanceQuote` now takes a named `{ deskStaffed, postureMarkupPts }` (the #365/#152
+  pattern — a quote resolved against no posture is a silent default), and the posture arrives
+  as `DealEngineDeps.getFniPostureMarkupPts?: () => number`, a closure wired in `createWorld`
+  and read live so a change on the lever moves the very next deal. Omitted ⇒ the catalog
+  default ⇒ **the old `balancedMarkupPts` number exactly**, which is why every pre-#366 harness
+  is byte-identical: the #180 live bands read **39.3% / 51.7%**, the same figures #152 left.
+  `resolveFniPostureMarkupPts` mirrors `resolveTradePolicyMultiplier` — unknown id ⇒
+  `defaultId`, retired default ⇒ first posture, so it always returns a real markup and the
+  composition root never null-checks it.
+  Surfaced in **Operations → Prep as "Finance Office"**, the third block under Trade Policy
+  (grill Q6 — parallel to the desk levers, not a store-wide screen). With no `f&i-manager` on
+  staff it renders the plain-language reason it does nothing yet and **stays selectable**: a
+  store can set its standing posture before it has anyone to carry it out, and greying a
+  control without saying why is the thing the copy rule exists to prevent.
+  **The #346 "Prep holds exactly two levers" test now asserts three.** That assertion was
+  written to keep *navigation* out of Prep, and the locked IA says Prep is "pure pre-open
+  policy" — a third policy lever is what that admits. The button-count check moves with the
+  levers rather than being deleted.
+  Web drive (T2 dev slot, Operations → Prep): the block renders under Trade Policy, defaults
+  to **Balanced** off a slot carrying no posture id (the fallback path), pressing "More per
+  deal" reselects the chip and swaps the blurb, and the unstaffed sentence shows — a T2 store
+  cannot hire an F&I manager until T3, so that is the honest live state. What the drive did
+  **not** prove is the markup moving on a real quote (no desk to work it at T2); that is
+  `tests/FniPosture.test.ts`, which hires an `f&i-manager` on a real `createWorld` at T3 and
+  asserts `quoteFinance` moves with the dial. **Note for the next web session: the dev-save
+  IndexedDB has a queued `deleteDatabase` left pending from this one** (the "max of 3 slots
+  reached" workaround) — the next reload of that tab will likely clear the three dev slots.
+  They are regenerable from DEV · START AT TIER.
+  230 suites / **2960** tests, typecheck clean, full suite green on the first run.
+  Next: **BUILD #367** — deal-kill, the curve where an over-marked deal falls through.
 
 - 2026-08-08 — **BUILT #152** (the menu is presented against the deal, not just the customer).
   Attach scaled with the salesperson's skill and nothing else, so a cash buyer was being sold
@@ -666,46 +749,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   227 suites / **2937** tests, typecheck clean.
   Next: **BUILD #152** — attach scales with amount financed (I4), now deps-met.
 
-- 2026-08-07 — **BUILT #153** (the two customers who already know how they're paying).
-  `cash-buyer` and `must-finance` — the payment axis the visit archetype's single
-  `cashProbability` constant could not express. Both resolve through the ordinary
-  `resolveEffects` machinery (grill I5), applied after the archetype base roll: no new enum
-  branch, no second modifier system.
-  **Two effect keys, not one.** `payment.cash_probability` is an additive shift on the base
-  leaning; `payment.must_finance` is categorical — someone rebuilding credit wants the
-  tradeline whatever the roll said and whatever they could have written a cheque for. Folding
-  both into one scalar with a dominating negative was the tempting one-rule version and it is
-  wrong: it flattens a leaning and a category into two sizes of the same knob, and it is not
-  actually absolute against a customer who drew both traits. `must-finance` wins that
-  collision, stated once at the payment roll. Neither needs an exemption from the
-  cash-affordability gate, because that gate only ever pushes a customer *toward* finance.
-  **The load-bearing call is that they are drawn on their own stream, not out of
-  `trait_pool`.** Incidence is a new optional `payment_traits` map on the person archetype
-  (id → independent per-customer probability, `seedFor('traits.payment')`). The shared-pool
-  version was built first and reverted: at `trait_count 1..2` it makes a cash buyer *less*
-  likely to be price-sensitive — the axes are orthogonal — and widening a 3-wide pool diluted
-  the personality mix the **#94** sales calibration is measured against, moving its apathetic
-  band 10.2% → 9.7% and breaking it. With the separate stream the personality draw is
-  byte-identical and #94 reads **85.7 / 10.2 / 4.2** exactly as before;
-  `tests/CustomerFactory.payment.test.ts` pins that a payment trait costs no personality slot.
-  **The live band did move, and dose-response says it is the mechanic rather than #151-style
-  trajectory divergence.** Halving every rate lands halfway: positive 38.7% → 36.1% → 33.3%,
-  apathetic 53.0 → 54.1 → 59.3, trade rate 43.3 → 41.3 → 39.3 (trade incidence is keyed by
-  `paymentMethod`, and cash buyers trade less). So the incidence was set to leave the
-  calibrated bands where they are instead of re-centring them — **C2 owns these magnitudes
-  (I9)**, and a trait slice does not get to re-balance the store's close rate by 5pp on its
-  way past. Final live read: positive **35.8%**, apathetic **54.3%**, both inside their
-  current windows, no band touched.
-  `npm run balance -- pacing` against a HEAD baseline on the same 100 seeds: T2 reached
-  87 → **89**, T3 reached 9 → **16**, median failure day 117 → **120**, blend 0.4151 →
-  **0.4273**, verdict pass 19% → 20%; **worse**: bankruptcy 19% → **24%** and FAILED 88% →
-  90%. Every tier status is unchanged (T1 still the standing 1.0mo-vs-2.0 miss, T2 WITHIN),
-  and the ladder measurably reaches further.
-  **Anti-orphan, because a trait nobody rolls is a mechanic wired to nothing** (the #363
-  failure mode): two tests assert both traits actually occur across the shipped archetype
-  crowd and that a real `must-finance` walk-in comes out financed. The one existing suite that
-  measured the archetype base cash share now excludes customers who drew a payment trait —
-  the base is what those traits modify, so counting them would measure the shifted number
-  against the unshifted one.
-  226 suites / **2917** tests, typecheck clean.
-  Next: **BUILD #365** — the F&I tracer. #152 is lower-numbered but blocked on it.
