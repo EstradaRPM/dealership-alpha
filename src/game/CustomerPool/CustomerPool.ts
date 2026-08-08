@@ -2,7 +2,7 @@ import { createCustomer } from '../NPC';
 import { createRng, deriveSeed } from '../Rng';
 import type { CreateCustomerDeps, CustomerBundle } from '../NPC';
 import type { EventBus } from '../EventBus';
-import type { DealEngine, CreditTierCatalog } from '../DealEngine';
+import type { DealEngine, CreditTierCatalog, CreditTier } from '../DealEngine';
 import type { Inventory } from '../Inventory';
 import { transition, IllegalTransitionError } from './CustomerStateMachine';
 import type { CustomerStage, CustomerAction } from './types';
@@ -238,10 +238,14 @@ export function createCustomerPool(deps: {
           let term = 0;
           let apr = 0;
           let buyRate = 0;
+          // #370: the lender program this contract is written on, recorded on
+          // the close so the store's financed book carries its own credit mix.
+          let creditTier: CreditTier | undefined;
           if (paymentMethod === 'cash') {
             downPayment = agreedPrice;
           } else {
             const tier = deps.dealEngine.classifyCredit(session.bundle.person.credit);
+            creditTier = tier;
             const policy = deps.creditTiers.tiers[tier];
             // #365: the customer is quoted buy rate + markup, and the close
             // carries both so the reserve half of back gross can be earned.
@@ -263,6 +267,7 @@ export function createCustomerPool(deps: {
             term,
             apr,
             buyRate,
+            creditTier,
           });
           return;
         }

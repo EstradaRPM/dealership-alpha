@@ -8,6 +8,7 @@ import type { FloorRenderLoop } from '../../ui/FloorRenderLoop';
 import type { DayRecapModel } from '../../ui/DayRecap';
 import type { CashDeltaSplit } from '../../ui/HomeTab';
 import { DAYS_PER_WEEK, DAYS_PER_YEAR } from '../../game/GameClock';
+import { projectFniPostures } from '../../game/DealEngine';
 import {
   AppShell,
   loadNavTabs,
@@ -229,6 +230,23 @@ export function GameScreen({
     fniDeskStaffed: world.staffOrg.currentRoster.some(
       (s) => s.role_id === 'f&i-manager',
     ),
+    // F&I posture peak meter (#370). A pure read: the engine projects all three
+    // postures over the store's OWN loan contracts — the credit mix that
+    // matters is the one walking through this door — and names where the total
+    // crests. Read fresh each render, like the demand readout below; nothing
+    // here changes state, so re-rendering it is free and always current.
+    fniPeak: (() => {
+      const reading = projectFniPostures({
+        book: world.kpiDashboard.getFinancedBook(),
+        financeStructuringSkill: world.getFniStructuringSkill(),
+      });
+      return {
+        postures: reading.postures,
+        selectedId: levers.fniPostureId,
+        peakId: reading.peakId,
+        dealsRead: reading.dealsRead,
+      };
+    })(),
   };
   // Segment-heat readout (#198 / #278). Read live off DemandShaper each
   // render; reflects the trailing arrival window at MANAGERIAL time. #211

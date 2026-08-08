@@ -3,6 +3,7 @@ import type {
   BackEndBucket,
   DayRange,
   DealRecord,
+  FinancedDealProfile,
   KPIDayTotals,
   KPISnapshot,
   KPIDashboardSnapshot,
@@ -23,6 +24,18 @@ export interface KPIDashboard {
    * dashboard's sparklines and hero trend chart.
    */
   getDailyTotals(range: DayRange): readonly KPIDayTotals[];
+  /**
+   * The store's own financed book across the window (#370) — one entry per
+   * contract that recorded both a lender program and a principal, oldest→newest.
+   *
+   * The credit mix that matters to an F&I decision is the mix that walks
+   * through this door, and it is already recorded here; this read is what stops
+   * the posture peak meter from modelling a crowd instead of reading one. Cash
+   * deals and pre-#370 records carry neither field and are simply absent, so a
+   * store that has financed nothing reads an empty book rather than a made-up
+   * one.
+   */
+  getFinancedBook(range?: DayRange): readonly FinancedDealProfile[];
   snapshot(): KPIDashboardSnapshot;
   restore(snap: KPIDashboardSnapshot): void;
 }
@@ -210,6 +223,8 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
       downPayment: payload.downPayment,
       term: payload.term,
       apr: payload.apr,
+      loanAmount: payload.loanAmount,
+      creditTier: payload.creditTier,
     });
   });
 
@@ -250,6 +265,26 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
           productGross: bucket?.product ?? 0,
           reserveGross: bucket?.reserve ?? 0,
           gross: (bucket?.front ?? 0) + (bucket?.back ?? 0),
+        });
+      }
+      return out;
+    },
+
+    getFinancedBook(range?: DayRange): readonly FinancedDealProfile[] {
+      const out: FinancedDealProfile[] = [];
+      for (const d of range ? inRange(range) : deals) {
+        if (d.paymentMethod !== 'finance') continue;
+        // Both fields arrived together in #370, so a record missing either is a
+        // contract written before the book existed. It is left out rather than
+        // patched with a guess: a made-up tier would move the peak the meter
+        // reports, and a store's first honest reading is better than an early
+        // dishonest one.
+        if (d.creditTier === undefined || d.loanAmount === undefined) continue;
+        out.push({
+          creditTier: d.creditTier,
+          amountFinanced: d.loanAmount,
+          termMonths: d.term,
+          dealGross: d.frontGross + (d.productGross ?? 0),
         });
       }
       return out;

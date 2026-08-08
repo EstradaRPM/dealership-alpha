@@ -218,6 +218,23 @@ export interface StaffDispatchDeps {
 // Intentionally empty — dispatch is fully autonomous.
 export interface StaffDispatch {}
 
+/**
+ * What an F&I desk's composite is worth on the day it is working (#369) —
+ * morale-adjusted and held on the 0–100 scale the F&I rules are written in.
+ *
+ * Exported (#370) because the posture peak meter has to read the very same
+ * number the close will use: a surface that projected the roster composite
+ * while the deal ran on the morale-adjusted one would drift apart exactly when
+ * the desk was unhappy, which is when the player is looking. One rule, two
+ * callers — the `residualHeat` / `resolutionQuality` split.
+ */
+export function resolveDeskSkill(
+  composite: number,
+  moraleMultiplier: number,
+): number {
+  return Math.min(100, Math.max(0, composite * moraleMultiplier));
+}
+
 export type PlayerTradeDecision =
   | { readonly kind: 'accept_ask' }
   | { readonly kind: 'accept_counter' }
@@ -505,7 +522,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       ? staffMorale?.getMoraleMultiplier(fniDesk.staffId) ?? 1.0
       : 1.0;
     const deskSkill = (composite: number): number =>
-      Math.min(100, Math.max(0, composite * fniDeskMorale));
+      resolveDeskSkill(composite, fniDeskMorale);
     // Who actually presents the menu, on the 0–100 scale `computeAutoFni` takes.
     const presenterSkill = fniDesk
       ? deskSkill(fniDesk.productPresentation)
@@ -753,6 +770,10 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         term,
         apr,
         buyRate,
+        // #370: the program this contract was written on. Already classified
+        // above to quote the customer, so the book records the credit mix it
+        // was actually written at instead of inferring one later.
+        creditTier: tierId,
         // #363: the buyer's read on the visit, off the resolution and close
         // that actually ran against the unit they were shown. CustomerPool
         // publishes this straight onto `customer:resolved`; without it, it

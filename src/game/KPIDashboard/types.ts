@@ -1,3 +1,5 @@
+import type { CreditTier } from '../DealEngine';
+
 export interface DealRecord {
   /**
    * In-game day the deal closed on (#351). `deal:closed` carries no day, so the
@@ -28,6 +30,43 @@ export interface DealRecord {
   downPayment: number;
   term: number;
   apr: number;
+  /**
+   * Principal actually financed (#370). Not `agreedPrice − downPayment`: trade
+   * equity shrinks the note as well, so the two disagree on every deal with a
+   * trade in it and deriving one from the other would overstate the book.
+   */
+  loanAmount?: number;
+  /**
+   * The lender program this contract was written on (#370). Optional for the
+   * same reason `productGross`/`reserveGross` are: a cash deal has no program,
+   * and a deal written before the field existed never recorded one. A record
+   * without it (or without `loanAmount`) sits outside the financed book rather
+   * than claiming a tier it never had.
+   */
+  creditTier?: CreditTier;
+}
+
+/**
+ * One financed contract as the F&I posture peak meter reads it (#370) — the
+ * store's own book, which is where its credit mix actually lives.
+ *
+ * A narrow structural shape rather than a `DealRecord`: the meter needs the
+ * program, the principal and the term and has no business seeing gross. It
+ * satisfies `DealEngine.FinancedDealSample` structurally, so the peak model
+ * never learns what a `DealRecord` is.
+ */
+export interface FinancedDealProfile {
+  readonly creditTier: CreditTier;
+  /** Principal after down payment and trade equity. */
+  readonly amountFinanced: number;
+  readonly termMonths: number;
+  /**
+   * `frontGross + productGross` — everything the contract earned except the
+   * reserve, which is the one part a change of posture would rewrite. It rides
+   * along because a contract the lender passes on costs the store the sale, not
+   * a thinner spread.
+   */
+  readonly dealGross: number;
 }
 
 /** An inclusive in-game day window. Both bounds are day indices, not offsets. */

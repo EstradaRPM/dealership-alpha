@@ -3,6 +3,7 @@ import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
 import { Surface, SectionHeader } from '../kit';
 import { ChipRow } from '../DeptControls';
+import { FniPeakMeter, type FniPeakMeterProps } from './FniPeakMeter';
 
 export interface HoursOption {
   readonly id: string;
@@ -47,6 +48,13 @@ export interface OwnershipLeversProps {
    * the surface says so rather than implying an effect it doesn't have (Q2).
    */
   fniDeskStaffed: boolean;
+  /**
+   * The posture peak meter's reading (#370) — what each stop on the dial is
+   * worth on this store's own loan contracts, and where the total crests. Sits
+   * with the dial because it is the feedback that makes the dial a bet rather
+   * than a guess. Omit and the block renders the dial alone.
+   */
+  fniPeak?: FniPeakMeterProps;
 }
 
 /**
@@ -75,6 +83,7 @@ export function OwnershipLevers({
   fniPostureId,
   onSelectFniPosture,
   fniDeskStaffed,
+  fniPeak,
 }: OwnershipLeversProps) {
   const t = useTheme();
   const selectedPolicy =
@@ -163,6 +172,7 @@ export function OwnershipLevers({
                 setting does nothing until you hire one.
               </Text>
             )}
+            {fniPeak && <FniPeakMeter {...fniPeak} />}
           </Surface>
         </View>
       </View>

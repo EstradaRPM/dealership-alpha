@@ -175,6 +175,19 @@ export interface CloseDealParams {
    * process ran.
    */
   salesQuality?: DealSalesQuality;
+  /**
+   * Which lender program this contract was written on (#370). Round-tripped to
+   * `deal:closed` so the store's own financed book records the credit mix it
+   * was actually written at, which is what the posture peak meter reads.
+   *
+   * Not derivable after the fact: `apr` is the customer's rate and the tier's
+   * `markupCapPts` is what decides whether a posture's markup even reached the
+   * contract, so recovering the tier by arithmetic would be an inference the
+   * next edit to `data/credit-tiers.json` could silently break. Omitted on a
+   * cash deal (there is no program) and by pre-#370 harnesses, whose deals then
+   * simply sit outside the book rather than claiming a tier they never had.
+   */
+  creditTier?: CreditTier;
 }
 
 /** @see CloseDealParams.salesQuality */

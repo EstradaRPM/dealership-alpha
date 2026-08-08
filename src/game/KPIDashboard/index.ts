@@ -4,6 +4,7 @@ export type {
   BackEndBucket,
   BackEndByStructure,
   DealRecord,
+  FinancedDealProfile,
   DayRange,
   KPIDayTotals,
   KPISnapshot,

@@ -6,6 +6,58 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **BUILT #367** (the teeth: an over-marked deal falls through instead of closing).
+  Without them "More per deal" was strictly better than the other two positions and #366's dial
+  was not a decision. A financed contract written past a safe markup frontier now doesn't get
+  bought — the lender passes on the paper, or the customer rate-shops it and leaves — so
+  aggressive markup means fewer financed deals actually stick.
+  **One curve, three numbers, all in the same unit** (`data/tunables.json` `fniDealKill`, grill
+  I8): `maxFallThroughRate × clamp01((markupPts − safeFrontierPts) / fullKillRangePts)`, **flat**
+  past the end of the ramp. A curve that kept climbing would eventually refuse every deal, which
+  is a wall rather than a trade-off. No per-lender branching, and no second knob.
+  **At or under the frontier the answer is exactly ZERO, and that is load-bearing rather than
+  incidental.** Balanced (0.0175) sits ON the frontier and the unstaffed `ambientMarkupPts`
+  (0.0075) sits under it, so **every pre-#367 harness is byte-identical** — the whole calibration
+  corpus measures a store that never loses a deal to this. It is the reach past Balanced that
+  costs something. It also falls out that a **subprime buyer cannot be over-marked at all**: tier
+  D's lender caps markup at 0.0100, below the frontier, so the most desperate customer is not the
+  one you can gouge. That emerged from the existing `markupCapPts` table; it was not designed in.
+  Measured on the shipped curve, 40 financed ups per posture: **more-per-deal 12 fell through /
+  28 closed** (modeled rate 0.2625), **balanced 0 / 40**, **more-deals 0 / 40**.
+  **The lender is asked BEFORE anything settles, and the placement is the whole correctness
+  argument.** The roll happens once, beside the quote that sets the markup (`rollFinanceFallThrough`,
+  seeded `deriveSeed(masterSeed, 'fni.deal_fallthrough', { customerId, day })` ⇒ replay-safe): it
+  turns on the rate and nothing else, so price, trade and player deliberation cannot move it. The
+  answer is then read at the head of `resolveTradeThenClose` — **not** at `closeDealAtPrice`,
+  because `trade:resolved` fires in between and would materialize a trade unit onto the lot for a
+  sale that never happened. There is deliberately **no unwind path**: nothing settles off a
+  contract nobody bought, so the check sits ahead of the settle rather than reversing it after.
+  **A doomed deal therefore never escalates a trade review** — there is no decision left to make
+  on it — which is why `PlayerTradeDecisionResult` has no fall-through case by construction.
+  **The held discount review is the one place the player is present for it**, and it needed its
+  own terminal status. `settleDiscount` used to return `{ status: 'closed', soldPrice, frontGross }`
+  unconditionally; on a fallen-through deal that would have been a recap reporting a sale the
+  ledger never saw. It returns `{ status: 'finance_fell_through' }`, and the modal says so in its
+  own words — the player DID close this customer, and pointing them at "customer walked" would
+  point them at the wrong lever. Same shape as #364's `vehicle_sold`.
+  Walk reason **`finance_fell_through`**, carrying `processContext` — an ordinary post-process
+  walk with residual heat, follow-up eligibility and a reputation hit like any other — plus a
+  starred Reveal walk-off line naming the rate. A cash buyer has no lender to refuse them.
+  This is the **contractual** kill only. The structural one — a marked-up payment breaching
+  `ptiCap`/`maxTerm`/`ltvCeiling` — is not re-implemented here because it never needed
+  implementing: the payment is built at the marked-up rate, so it falls out of the affordability
+  gate that has always existed (grill I3, paying off a third time).
+  No web drive. Nothing new renders unconditionally — the two new surfaces (the Reveal line and
+  the modal recap) need a T3 store with an F&I manager at "More per deal" *and* a below-floor
+  discount escalation *and* a losing roll to appear at once. They are covered by the flow tests,
+  the copy anti-orphan assertion and a modal smoke case instead, and that is stated rather than
+  reported as verified.
+  231 suites / **2971** tests, typecheck clean. The one full-suite failure was
+  `App.recapPersistence` timing out on a `waitFor`; it passes in isolation and the re-run was
+  green — the documented RN-Testing-Library CPU-load flake.
+  Next: **BUILD #368** — CSI drag, the over-marked customer who publishes
+  `reputation:satisfaction_hit` (Q3 secondary). #369 is now deps-met too.
+
 - 2026-08-08 — **BUILT #366** (the player finally gets to tell the finance office what to do).
   A three-position standing posture — **"More per deal" / "Balanced" / "More deals"** — in the
   `fniPosture` catalog in `data/tunables.json`, the exact shape of `tradePolicy`. It is the

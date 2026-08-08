@@ -186,6 +186,7 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       apr = 0,
       buyRate,
       salesQuality,
+      creditTier,
     }) {
       // A caller that names no buy rate quoted no spread, so it earns no
       // reserve — the behavior-neutral default for every pre-#365 harness.
@@ -343,6 +344,10 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
         // Carried, never read here (#363): only the caller that ran the sales
         // process knows how the buyer read it, and `customer:resolved` needs it.
         salesQuality,
+        // Carried, never read here (#370): the close flow classified the buyer
+        // to quote them, and KPIDashboard needs the program on the record so
+        // the store's financed book carries its own credit mix.
+        creditTier,
       });
       return result;
     },

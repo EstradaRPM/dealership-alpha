@@ -5,3 +5,5 @@ export type {
   TradePolicyLeverOption,
   FniPostureLeverOption,
 } from './OwnershipLevers';
+export { FniPeakMeter } from './FniPeakMeter';
+export type { FniPeakMeterProps, FniPeakBar } from './FniPeakMeter';

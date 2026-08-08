@@ -24,6 +24,14 @@ export {
 export type { FniDealKillConfig } from './dealKill';
 export { loadFniCsiDragConfig, markupSatisfactionHit } from './csiDrag';
 export type { FniCsiDragConfig } from './csiDrag';
+export { projectFniPostures } from './peakModel';
+export type {
+  FinancedDealSample,
+  FniPostureProjection,
+  FniPeakReading,
+  FniPeakInput,
+  FniPeakDeps,
+} from './peakModel';
 export { loadFniProducts, loadFniAutoAttachConfig } from './fniProducts';
 export { loadDealFraudConfig } from './dealFraudConfig';
 export type { DealFraudConfig } from './dealFraudConfig';

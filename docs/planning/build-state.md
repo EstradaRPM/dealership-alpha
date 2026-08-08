@@ -30,9 +30,10 @@ a median survival of the full 360 days.
 
 **Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
 `docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
-issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, #365, #152, #366, #367, #368
-and #369 have all landed** — four left. **#370** (the peak meter) is now the lowest-numbered
-open, deps-met slice. #371 and #372 are deps-met independently, and #373 waits only on #371.
+issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, #365, #152, #366, #367, #368,
+#369 and #370 have all landed** — three left. **#371** (the crowd's finance mix on the wire) is
+now the lowest-numbered open, deps-met slice. #372 is deps-met independently, and #373 waits
+only on #371.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
@@ -46,7 +47,7 @@ open, deps-met slice. #371 and #372 are deps-met independently, and #373 waits o
 | ~~#367~~ | ~~deal-kill — one curve in `data/`, an over-marked deal falls through (Q3 primary, I8)~~ **BUILT 2026-08-08** | #366 |
 | ~~#368~~ | ~~CSI drag — an over-marked customer publishes `reputation:satisfaction_hit` (Q3 secondary)~~ **BUILT 2026-08-08** | #365 |
 | ~~#369~~ | ~~the F&I manager works the deal — `finance_structuring` frontier, `product_presentation` attach (Q2/Q5/Q10)~~ **BUILT 2026-08-08** | #367 |
-| #370 | the peak meter — twin opposed bars, the crest is not the max (Q4) | #366, #367, #369 |
+| ~~#370~~ | ~~the peak meter — twin opposed bars, the crest is not the max (Q4)~~ **BUILT 2026-08-08** | #366, #367, #369 |
 | #371 | the crowd's finance mix read ahead on the wire — MarketIntel lane, F&I manager is a third opener (Q7) | — |
 | #372 | advertising buys a different crowd — person-archetype weights on campaigns (Q8) | — |
 | #373 | the monthly F&I verdict — Reveal reactions + the PVR record (engagement spine plug-in #2) | #365, #366, #371 |
@@ -73,10 +74,44 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 ## Blockers
 
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
-- **Phase 9's queue now runs through #370.** #365, #152, #366, #367, #368 and #369 all landed
-  2026-08-08. #370 is deps-met (#366/#367/#369 are all built); #373's deps (#365/#366/#371) are
-  all but #371. #371 and #372 are deps-met independently. Keep reading the deps column, not just
-  the number.
+- **Phase 9's queue now runs through #371.** #365, #152, #366, #367, #368, #369 and #370 all
+  landed 2026-08-08. #371 and #372 are deps-met independently; #373's deps (#365/#366/#371) are
+  all but #371. Keep reading the deps column, not just the number.
+- **The peak meter measures the WHOLE DEAL against the fall-through, not the back end**
+  (#370), and that correction is what makes the crest exist. Weighed on reserve alone, the
+  aggressive posture is the maximum at every credit mix under the shipped numbers (+3–6% over
+  Balanced at A/B, ties at C/D) — the meter would have shipped saying "always gouge". A
+  contract the lender passes on costs the store the **sale** (#367 fires before
+  `trade:resolved` and the customer walks), so each book sample carries
+  `dealGross = frontGross + productGross` and the curve is `(dealGross + reserve) × stick`.
+  With that, the shipped config reads exactly as the grill designed: peak at **Balanced** for a
+  green or absent desk, sliding to **More per deal** at a `finance_structuring` around 70, and
+  Balanced again for a subprime-heavy book. **Do not "simplify" the meter back to back gross.**
+- **The CSI cost is reported BESIDE the money, never folded into it** (#370). A satisfaction
+  point is not a dollar; inventing an exchange rate to bend the curve would be a second pricing
+  rule the player can neither see nor move. `satisfactionCostPerDeal` rides the projection and
+  the surface states it as its own sentence ("a cost this total does not count").
+- **The meter's credit mix is the store's OWN BOOK, not a modeled crowd** (#370). #371 is what
+  puts the *crowd's* finance mix on the wire; this reads the contracts already written.
+  `deal:closed` gained `creditTier` and `DealRecord` gained `creditTier` + `loanAmount`, both
+  optional, restored by the existing `...d` spread — **inside the module's blob, so
+  `WORLD_SNAPSHOT_VERSION` did not move and there is no migration.** A record missing either
+  sits outside `getFinancedBook()` rather than being patched with a guess, so a fresh store (and
+  the `tier-2` fixture) reads the empty state. `amountFinanced` is the stored `loanAmount`, NOT
+  `agreedPrice − downPayment` — trade equity shrinks the note too.
+- **The tier is CARRIED, never inferred from `apr`** (#370). The shipped `buyRate` +
+  `markupCapPts` bands happen to be disjoint, so a tier could be decoded by arithmetic today —
+  and that decode would break silently on the next edit to `data/credit-tiers.json` while the
+  meter went on reporting a peak. Do not "save a field" by re-deriving it.
+- **`resolveDeskSkill` is now exported from the StaffDispatch barrel** (#370) and
+  `World.getFniStructuringSkill()` composes it with the same person-pick `getFniDesk` uses
+  (extracted in `createWorld` as the named `resolveFniDesk`). The meter must project against the
+  number the next contract is judged at; a surface reading the raw roster composite would drift
+  from the close exactly when the desk's morale was down. Do not re-derive either half at a UI
+  call site.
+- **Nothing about #370 moved a calibration number and the live bands are unchanged**
+  (#180 still reads 39.3% / 51.7%, closes=290). The whole slice is a read plus two optional
+  recorded fields; no harness hires an `f&i-manager` and none reads the book.
 - **The two F&I frontiers have DIVERGED, and that is #369's design ruling** (the decision #368
   left open). `finance_structuring` extends the **lender's** `fniDealKill` frontier
   (`resolveSafeFrontierPts`); it deliberately does **not** move `fniCsiDrag.fairMarkupPts`,
@@ -637,7 +672,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 + #152 + #366 + #367 + #368 + #369 BUILT 2026-08-08**, four left, next is **#370** |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 + #152 + #366 + #367 + #368 + #369 + #370 BUILT 2026-08-08**, three left, next is **#371** |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -655,6 +690,56 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-08 — **BUILT #370** (the peak meter — the dial finally shows what it costs).
+  The posture had two teeth on it (#367's fall-through, #368's CSI drag) and both were
+  invisible until they had already bitten. Prep's Finance Office block now carries twin opposed
+  bars — **finance profit per contract** filling as the posture gets aggressive, **contracts the
+  bank buys** draining as it does — and a third bar for the resulting total, which **crests**.
+  **The correction that made the crest real: a fall-through costs the WHOLE DEAL.** The issue
+  asked for expected back gross, and back gross alone does not crest — under the shipped numbers
+  the aggressive posture beats Balanced by 3–6% at every credit mix with A/B paper in it, and
+  the meter would have shipped teaching the player to gouge. But #367's guard fires before
+  `trade:resolved` and the customer **walks**: the front and product gross die with the
+  contract, not just the spread. So each book sample carries `dealGross = frontGross +
+  productGross` and the curve is `(dealGross + reserve) × stick`. With that, the shipped
+  placeholder config reads exactly as grill Q4/Q5 designed — peak at **Balanced** with a green
+  or absent desk, sliding to **More per deal** at `finance_structuring` ≈ 70, and back to
+  Balanced for a subprime-heavy book whose lender caps clamp the markup away. No tunable was
+  touched to get there.
+  **The satisfaction cost is stated beside the money and never folded into it.** A satisfaction
+  point is not a dollar, and inventing an exchange rate to bend the curve would be a second
+  pricing rule the player can neither see nor move. `markupSatisfactionHit` rides the projection
+  and the surface says it in its own sentence.
+  **The credit mix is the store's OWN BOOK, not a modeled crowd.** #371 is what puts the
+  *crowd's* finance mix on the wire; this reads the contracts already written, which is where
+  the mix that matters already lives. `deal:closed` gained `creditTier` and `DealRecord` gained
+  `creditTier` + `loanAmount` — both optional, both carried by the existing `...d` restore
+  spread, inside the module's blob, so `WORLD_SNAPSHOT_VERSION` did not move and there is no
+  migration. A record missing either sits outside `getFinancedBook()` rather than being patched
+  with a guess. **The tier is carried, never decoded from `apr`**: the shipped bands are
+  disjoint so arithmetic would work today, and would break silently on the next edit to
+  `data/credit-tiers.json` while the meter went on reporting a peak.
+  **One rule, two callers, again.** `resolveDeskSkill` came out of StaffDispatch onto its barrel
+  and `World.getFniStructuringSkill()` composes it with the same person-pick `getFniDesk` uses
+  (extracted as the named `resolveFniDesk` in `createWorld`) — a meter projecting the raw roster
+  composite would drift from the close exactly when the desk's morale was down, which is when
+  the player is looking.
+  Verified on web against a real Tier-2 store: the empty state on load ("You haven't financed a
+  car yet"), then one day skipped to close, then the populated read — *Finance profit per
+  contract $186 · Contracts the bank buys 100% · Total gross per financed customer $470 ·
+  "Balanced earns the most right now."* Switching the chip with the recap modal up was not
+  reachable (the documented hidden-pane modal artifact), and that branch is covered by the
+  component test. Nine tests across `tests/FniPeakModel.test.ts` +
+  `tests/FniPeakMeter.test.tsx`, plus the #370 anti-orphan assertions folded into
+  `tests/FniPosture.reachability.test.tsx`.
+  235 suites / **2992** tests, typecheck clean, `#180` live bands byte-identical (39.3% /
+  51.7%, closes=290 — the slice is a read plus two recorded fields, and no harness reads the
+  book). The two full-suite failures were `App.saveFlow` and `InTabNavigation.reachability`
+  timing out on `waitFor`; both pass in isolation — the documented RN-Testing-Library CPU-load
+  flake.
+  Next: **BUILD #371** — the crowd's finance mix read ahead on the wire (MarketIntel lane, the
+  F&I manager as a third opener). #372 stays deps-met independently.
 
 - 2026-08-08 — **BUILT #369** (the F&I manager finally works the deal instead of the salesperson).
   The back end had been rolling off the **selling salesperson's** effectiveness, which is exactly
@@ -752,55 +837,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   RN-Testing-Library CPU-load flake, now seen on a third suite.
   Next: **BUILD #369** — the F&I manager works the deal (`finance_structuring` extends the
   frontier, `product_presentation` drives attach). #371 and #372 stay deps-met independently.
-
-- 2026-08-08 — **BUILT #367** (the teeth: an over-marked deal falls through instead of closing).
-  Without them "More per deal" was strictly better than the other two positions and #366's dial
-  was not a decision. A financed contract written past a safe markup frontier now doesn't get
-  bought — the lender passes on the paper, or the customer rate-shops it and leaves — so
-  aggressive markup means fewer financed deals actually stick.
-  **One curve, three numbers, all in the same unit** (`data/tunables.json` `fniDealKill`, grill
-  I8): `maxFallThroughRate × clamp01((markupPts − safeFrontierPts) / fullKillRangePts)`, **flat**
-  past the end of the ramp. A curve that kept climbing would eventually refuse every deal, which
-  is a wall rather than a trade-off. No per-lender branching, and no second knob.
-  **At or under the frontier the answer is exactly ZERO, and that is load-bearing rather than
-  incidental.** Balanced (0.0175) sits ON the frontier and the unstaffed `ambientMarkupPts`
-  (0.0075) sits under it, so **every pre-#367 harness is byte-identical** — the whole calibration
-  corpus measures a store that never loses a deal to this. It is the reach past Balanced that
-  costs something. It also falls out that a **subprime buyer cannot be over-marked at all**: tier
-  D's lender caps markup at 0.0100, below the frontier, so the most desperate customer is not the
-  one you can gouge. That emerged from the existing `markupCapPts` table; it was not designed in.
-  Measured on the shipped curve, 40 financed ups per posture: **more-per-deal 12 fell through /
-  28 closed** (modeled rate 0.2625), **balanced 0 / 40**, **more-deals 0 / 40**.
-  **The lender is asked BEFORE anything settles, and the placement is the whole correctness
-  argument.** The roll happens once, beside the quote that sets the markup (`rollFinanceFallThrough`,
-  seeded `deriveSeed(masterSeed, 'fni.deal_fallthrough', { customerId, day })` ⇒ replay-safe): it
-  turns on the rate and nothing else, so price, trade and player deliberation cannot move it. The
-  answer is then read at the head of `resolveTradeThenClose` — **not** at `closeDealAtPrice`,
-  because `trade:resolved` fires in between and would materialize a trade unit onto the lot for a
-  sale that never happened. There is deliberately **no unwind path**: nothing settles off a
-  contract nobody bought, so the check sits ahead of the settle rather than reversing it after.
-  **A doomed deal therefore never escalates a trade review** — there is no decision left to make
-  on it — which is why `PlayerTradeDecisionResult` has no fall-through case by construction.
-  **The held discount review is the one place the player is present for it**, and it needed its
-  own terminal status. `settleDiscount` used to return `{ status: 'closed', soldPrice, frontGross }`
-  unconditionally; on a fallen-through deal that would have been a recap reporting a sale the
-  ledger never saw. It returns `{ status: 'finance_fell_through' }`, and the modal says so in its
-  own words — the player DID close this customer, and pointing them at "customer walked" would
-  point them at the wrong lever. Same shape as #364's `vehicle_sold`.
-  Walk reason **`finance_fell_through`**, carrying `processContext` — an ordinary post-process
-  walk with residual heat, follow-up eligibility and a reputation hit like any other — plus a
-  starred Reveal walk-off line naming the rate. A cash buyer has no lender to refuse them.
-  This is the **contractual** kill only. The structural one — a marked-up payment breaching
-  `ptiCap`/`maxTerm`/`ltvCeiling` — is not re-implemented here because it never needed
-  implementing: the payment is built at the marked-up rate, so it falls out of the affordability
-  gate that has always existed (grill I3, paying off a third time).
-  No web drive. Nothing new renders unconditionally — the two new surfaces (the Reveal line and
-  the modal recap) need a T3 store with an F&I manager at "More per deal" *and* a below-floor
-  discount escalation *and* a losing roll to appear at once. They are covered by the flow tests,
-  the copy anti-orphan assertion and a modal smoke case instead, and that is stated rather than
-  reported as verified.
-  231 suites / **2971** tests, typecheck clean. The one full-suite failure was
-  `App.recapPersistence` timing out on a `waitFor`; it passes in isolation and the re-run was
-  green — the documented RN-Testing-Library CPU-load flake.
-  Next: **BUILD #368** — CSI drag, the over-marked customer who publishes
-  `reputation:satisfaction_hit` (Q3 secondary). #369 is now deps-met too.

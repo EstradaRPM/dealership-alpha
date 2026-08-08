@@ -17,9 +17,22 @@ heavy-down units, avg APR/term/down) on demand. No logic mutates game state.
     flow across the window, oldest→newest, **one row for every day including
     days with no deals**. A series that skips the quiet days draws a shape the
     business never had. Backs the dashboard's sparklines + hero trend chart.
+  - `getFinancedBook(range?)` → `readonly FinancedDealProfile[]` (#370) — the
+    store's own financed contracts, oldest→newest, one narrow
+    `{ creditTier, amountFinanced, termMonths, dealGross }` per deal. The input
+    to the F&I posture peak meter, and the reason it reads a real credit mix
+    instead of modelling a crowd: the mix that matters to a finance decision is
+    the mix walking through this door, and it is already recorded here.
+    `amountFinanced` is the stored `loanAmount`, **not** `agreedPrice −
+    downPayment` — trade equity shrinks the note too, so the two disagree on
+    every deal with a trade. `dealGross` is `frontGross + productGross`: the
+    reserve is left out because it is the one part of the gross a change of
+    posture would rewrite. Cash deals are excluded, and so is any record missing
+    either #370 field (a contract written before the book existed) — a store
+    that has financed nothing reads an empty book rather than a guessed one.
   - `snapshot()` / `restore()` — save/load blob.
-- Types: `DealRecord`, `DayRange`, `KPIDayTotals`, `KPISnapshot`,
-  `KPIDashboardSnapshot`, `BackEndBucket`, `BackEndByStructure`.
+- Types: `DealRecord`, `FinancedDealProfile`, `DayRange`, `KPIDayTotals`,
+  `KPISnapshot`, `KPIDashboardSnapshot`, `BackEndBucket`, `BackEndByStructure`.
 - `ZERO_KPI_SNAPSHOT` — the read-model of a window with no deals (#152).
   Exported because four test fixtures were each hand-writing that shape, so
   every new KPI field broke them all in the same way.
@@ -73,6 +86,12 @@ heavy-down units, avg APR/term/down) on demand. No logic mutates game state.
   record says how much of it was reserve, so it claims none. This is inside the
   module's blob, not the `modules` key set, so per `docs/save-migration-recipe.md`
   the envelope version does not move and there is no migration to look for.
+- **Pre-#370 records carry no `creditTier` and no `loanAmount`, and simply sit
+  outside `getFinancedBook()`.** Both fields arrived together, so a record
+  missing either is a contract written before the book existed; it is left out
+  rather than patched with a guess, because a made-up tier would move the peak
+  the meter reports. Same call as the back-end split — inside the module's blob,
+  so the envelope version does not move and there is no migration to look for.
 - **Pre-#351 records carry no day and restore as `day: 0`** — real enough to
   count in a lifetime read, outside every day-1-and-later window, and never
   attributed to a day they did not close on.

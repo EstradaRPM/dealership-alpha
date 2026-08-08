@@ -145,6 +145,14 @@ the salesperson presents the two ungated products and the frontier stays flat,
 which is what leaves every pre-#369 harness byte-identical (no calibration bot
 hires an F&I manager).
 
+The morale multiply is `resolveDeskSkill(composite, moraleMultiplier)`, exported
+from the barrel (#370). The posture peak meter has to project against the very
+number the next contract will be judged at, and a surface reading the roster
+composite while the deal ran on the morale-adjusted one would drift apart
+exactly when the desk was unhappy — which is when the player is looking. One
+rule, two callers; the composition root's `World.getFniStructuringSkill()`
+composes it with the same person-pick.
+
 ### The lender is asked before anything settles (#367)
 The **contractual** deal-kill. A financed customer's fall-through is rolled once,
 right beside the quote that sets the markup

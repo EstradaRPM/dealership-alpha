@@ -50,6 +50,14 @@ describe('#366 the F&I posture reaches the live app and the save slot', () => {
     // not in effect yet rather than implying it is.
     expect(screen.getByText(/No finance manager on staff/i)).toBeTruthy();
 
+    // #370 anti-orphan: the peak meter is mounted beside the dial in the live
+    // app, not merely built. A brand-new store has financed nothing, so it must
+    // be reading its empty state off the real `getFinancedBook()` — which is
+    // also proof the composition root wired the book and the desk skill, since
+    // an unwired meter would throw rather than render this.
+    expect(screen.getByTestId('fni-peak-meter')).toBeTruthy();
+    expect(screen.getByTestId('fni-peak-empty')).toBeTruthy();
+
     fireEvent.press(screen.getByText('More per deal'));
 
     await waitFor(async () => {

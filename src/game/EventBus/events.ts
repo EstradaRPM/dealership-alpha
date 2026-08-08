@@ -494,6 +494,19 @@ export interface EventMap {
       satisfaction: number;
       retentionSeed: number;
     };
+    /**
+     * Which lender program the contract was written on (#370). Present on every
+     * financed close the live floor writes; absent on a cash deal (there is no
+     * program) and on pre-#370 harness closes that never named one.
+     *
+     * KPIDashboard records it so the store's financed book carries its own
+     * credit mix — the input the F&I posture peak meter reads. Deliberately
+     * carried rather than inferred from `apr`: the tier's `markupCapPts` is
+     * what decides whether a posture's markup ever reached the contract, and
+     * recovering the tier by arithmetic would break on the next edit to
+     * `data/credit-tiers.json`.
+     */
+    creditTier?: 'A' | 'B' | 'C' | 'D';
   };
 
   // DealEngine — a customer's trade-in resolved during a closing deal (#169).

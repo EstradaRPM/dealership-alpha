@@ -39,6 +39,8 @@ import type { CapacityManager } from './game/CapacityManager';
 import {
   createStaffFloorDrain,
   isDiscountDeskingUnlocked,
+  resolveDeskSkill,
+  type FniDeskSkills,
   type HeldTradeReview,
   type HeldDiscountReview,
   type PlayerTradeDecision,
@@ -211,6 +213,14 @@ export interface World {
    *  current tier's ceiling over each. */
   facility: Facility;
   kpiDashboard: KPIDashboard;
+  /**
+   * The F&I desk's `finance_structuring` as it is working today, or `null` when
+   * the store has no finance office (#370). Read by the posture peak meter,
+   * which needs the very number the next contract will be judged against —
+   * resolved through the same person-pick and the same morale multiplier the
+   * close uses, so a projection and a contract can never disagree.
+   */
+  getFniStructuringSkill(): number | null;
   tierGate: TierGate;
   dayLoop: DayLoopController;
   staffTaxonomy: StaffTaxonomy;
@@ -865,6 +875,48 @@ export function createWorld(deps: {
     masterSeed,
   });
 
+  // #369: who is working the F&I desk right now. Read live off the roster so
+  // the first finance hire works the very next deal, and so a resignation shuts
+  // the office again without anything being rebuilt.
+  //
+  // ONE person works the deal, so ONE person is chosen: the strongest
+  // f&i-manager by the role's own composite, exactly how the resolver picks
+  // which salesperson takes an up. Taking a per-skill maximum across the roster
+  // would staff the desk with a manager nobody hired.
+  //
+  // Named (#370) rather than inlined into `getFniDesk` because the posture peak
+  // meter has to read the same desk the close will run on.
+  const resolveFniDesk = (): FniDeskSkills | null => {
+    const desks = staffOrg.currentRoster.filter(
+      (s) => s.role_id === 'f&i-manager',
+    );
+    if (desks.length === 0) return null;
+    const desk = desks.reduce((best, s) =>
+      s.effectiveness > best.effectiveness ? s : best,
+    );
+    return {
+      staffId: desk.id,
+      productPresentation: desk.effectiveSkills['product_presentation'] ?? 0,
+      financeStructuring: desk.effectiveSkills['finance_structuring'] ?? 0,
+    };
+  };
+
+  /**
+   * The desk's `finance_structuring` as it is working today, or `null` for a
+   * store with no finance office (#370). The one number the F&I posture peak
+   * meter needs, resolved here through the very rules the close uses —
+   * `resolveFniDesk` picks the person, `resolveDeskSkill` applies their morale
+   * — so the projection and the contract can never disagree.
+   */
+  const getFniStructuringSkill = (): number | null => {
+    const desk = resolveFniDesk();
+    if (!desk) return null;
+    return resolveDeskSkill(
+      desk.financeStructuring,
+      staffMorale.getMoraleMultiplier(desk.staffId),
+    );
+  };
+
   // Legacy aggregate admit gate OFF: the per-tick floor gate is the sole
   // admittance path under FloorSim.
   const capacityManager = createCapacityManager({
@@ -1345,20 +1397,7 @@ export function createWorld(deps: {
         // f&i-manager by the role's own composite, exactly how the resolver
         // picks which salesperson takes an up. Taking a per-skill maximum across
         // the roster would staff the desk with a manager nobody hired.
-        getFniDesk: () => {
-          const desks = staffOrg.currentRoster.filter(
-            (s) => s.role_id === 'f&i-manager',
-          );
-          if (desks.length === 0) return null;
-          const desk = desks.reduce((best, s) =>
-            s.effectiveness > best.effectiveness ? s : best,
-          );
-          return {
-            staffId: desk.id,
-            productPresentation: desk.effectiveSkills['product_presentation'] ?? 0,
-            financeStructuring: desk.effectiveSkills['finance_structuring'] ?? 0,
-          };
-        },
+        getFniDesk: resolveFniDesk,
       }),
       // #311: the per-day Service floor drain is built by the Service package
       // (the parts gate + #310 rush/capacity automation + #305 capacity/posture/
@@ -1485,6 +1524,7 @@ export function createWorld(deps: {
     marketIntel,
     facility,
     kpiDashboard,
+    getFniStructuringSkill,
     tierGate,
     dayLoop,
     staffTaxonomy,
