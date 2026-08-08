@@ -66,6 +66,8 @@ function publishDealClosed(bus: ReturnType<typeof createEventBus>, customerId = 
     agreedPrice: 25_000,
     frontGross: 2000,
     backGross: 800,
+    productGross: 800,
+    reserveGross: 0,
     daysInInventory: 0,
     paymentMethod: 'cash',
     downPayment: 25_000,

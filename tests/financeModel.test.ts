@@ -16,6 +16,8 @@ const ZERO_KPI: KPISnapshot = {
   fniPpru: 0,
   avgFrontGross: 0,
   avgBackGross: 0,
+  productGross: 0,
+  reserveGross: 0,
   avgDii: 0,
   cashUnits: 0,
   cashGross: 0,
@@ -49,6 +51,8 @@ function daily(rows: readonly (readonly [number, number, number])[]): KPIDayTota
     units,
     frontGross: gross,
     backGross: 0,
+    productGross: 0,
+    reserveGross: 0,
     gross,
   }));
 }
@@ -237,6 +241,28 @@ describe('finance charts (#351)', () => {
     expect(m.grossMix.centerLabel).toBe('units');
   });
 
+  // #365: the gross breakdown states products and reserve separately. One
+  // undifferentiated "back gross" bar cannot tell the player whether the month
+  // was carried by what attached or by the rate the store held.
+  it('the gross breakdown separates products from reserve', () => {
+    const m = buildFinanceDashboard(
+      inputs({
+        kpi: kpi({ unitsRetailed: 4, productGross: 3_200, reserveGross: 900 }),
+        daily: daily([
+          [4, 2, 6_000],
+          [5, 2, 5_000],
+        ]),
+      }),
+    );
+    const labels = m.grossBreakdown.data.map((d) => d.label);
+    expect(labels).toEqual(['Vehicle', 'F&I Products', 'Rate Reserve']);
+    const byLabel = Object.fromEntries(m.grossBreakdown.data.map((d) => [d.label, d.value]));
+    expect(byLabel['F&I Products']).toBe(3_200);
+    expect(byLabel['Rate Reserve']).toBe(900);
+    // Front is summed off the exact day series, not an average multiplied back.
+    expect(byLabel['Vehicle']).toBe(11_000);
+  });
+
   it('passes the windowed KPI snapshot straight through to the shared block', () => {
     const windowed = kpi({ unitsRetailed: 7 });
     expect(buildFinanceDashboard(inputs({ kpi: windowed })).kpi).toBe(windowed);
@@ -246,6 +272,7 @@ describe('finance charts (#351)', () => {
     const m = buildFinanceDashboard(inputs());
     expect(m.hero.emptyLabel).toBeTruthy();
     expect(m.grossMix.emptyLabel).toBeTruthy();
+    expect(m.grossBreakdown.emptyLabel).toBeTruthy();
     expect(m.expenses.emptyLabel).toBeTruthy();
   });
 });

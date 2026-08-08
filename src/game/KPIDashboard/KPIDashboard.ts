@@ -51,6 +51,8 @@ const ZERO_SNAPSHOT: KPISnapshot = {
   fniPpru: 0,
   avgFrontGross: 0,
   avgBackGross: 0,
+  productGross: 0,
+  reserveGross: 0,
   avgDii: 0,
   cashUnits: 0,
   cashGross: 0,
@@ -72,6 +74,8 @@ function computeSnapshot(
 
   let totalFront = 0;
   let totalBack = 0;
+  let totalProduct = 0;
+  let totalReserve = 0;
   let totalDii = 0;
   let cashUnits = 0;
   let cashGross = 0;
@@ -85,6 +89,8 @@ function computeSnapshot(
   for (const d of deals) {
     totalFront += d.frontGross;
     totalBack += d.backGross;
+    totalProduct += d.productGross ?? 0;
+    totalReserve += d.reserveGross ?? 0;
     totalDii += d.daysInInventory;
     const dealGross = d.frontGross + d.backGross;
     if (d.paymentMethod === 'cash') {
@@ -107,6 +113,8 @@ function computeSnapshot(
     fniPpru: totalBack / n,
     avgFrontGross: totalFront / n,
     avgBackGross: totalBack / n,
+    productGross: totalProduct,
+    reserveGross: totalReserve,
     avgDii: totalDii / n,
     cashUnits,
     cashGross,
@@ -137,6 +145,8 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
       day: getCurrentDay(),
       frontGross: payload.frontGross,
       backGross: payload.backGross,
+      productGross: payload.productGross,
+      reserveGross: payload.reserveGross,
       daysInInventory: payload.daysInInventory,
       agreedPrice: payload.agreedPrice,
       paymentMethod: payload.paymentMethod,
@@ -156,12 +166,18 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
     },
 
     getDailyTotals(range): readonly KPIDayTotals[] {
-      const byDay = new Map<number, { units: number; front: number; back: number }>();
+      const byDay = new Map<
+        number,
+        { units: number; front: number; back: number; product: number; reserve: number }
+      >();
       for (const d of inRange(range)) {
-        const bucket = byDay.get(d.day) ?? { units: 0, front: 0, back: 0 };
+        const bucket =
+          byDay.get(d.day) ?? { units: 0, front: 0, back: 0, product: 0, reserve: 0 };
         bucket.units += 1;
         bucket.front += d.frontGross;
         bucket.back += d.backGross;
+        bucket.product += d.productGross ?? 0;
+        bucket.reserve += d.reserveGross ?? 0;
         byDay.set(d.day, bucket);
       }
       const out: KPIDayTotals[] = [];
@@ -174,6 +190,8 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
           units: bucket?.units ?? 0,
           frontGross: bucket?.front ?? 0,
           backGross: bucket?.back ?? 0,
+          productGross: bucket?.product ?? 0,
+          reserveGross: bucket?.reserve ?? 0,
           gross: (bucket?.front ?? 0) + (bucket?.back ?? 0),
         });
       }
@@ -193,7 +211,18 @@ export function createKPIDashboard(deps: KPIDashboardDeps): KPIDashboard {
       // Pre-#351 records have no day. Stamping 0 keeps them in the lifetime
       // read while excluding them from every real (day ≥ 1) window, rather
       // than inventing a day they did not close on.
-      deals.push(...snap.deals.map((d) => ({ ...d, day: d.day ?? 0 })));
+      // #365: a deal written before the back-end split carries neither half.
+      // Zeroing both keeps its `backGross` intact in every total while
+      // refusing to attribute it to products or reserve, which is the only
+      // honest reading of a record that never recorded the difference.
+      deals.push(
+        ...snap.deals.map((d) => ({
+          ...d,
+          day: d.day ?? 0,
+          productGross: d.productGross ?? 0,
+          reserveGross: d.reserveGross ?? 0,
+        })),
+      );
       dailyCarryingCost = snap.dailyCarryingCost;
     },
   };

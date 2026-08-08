@@ -106,7 +106,7 @@ Customer→vehicle matcher (#145) — `pickVehicleFor(customer, lot, deps?) → 
 Affordability eligibility (#144) — pure, deterministic helpers for whether a deal can structure:
 
 - `cashEligible(customer, vehicle, marketPriceFn?)` → list price ≤ `wealth × cashSpendFraction`.
-- `financeEligible(customer, vehicle, tier, marketPriceFn?, bookValueFn?)` → checks down-gap → PTI → LTV in order; `failReason` ∈ `'down' | 'pti' | 'ltv'` names the FIRST failure. PTI uses `computeMonthlyPayment` from DealEngine against `tier.maxTerm/apr`; LTV compares `loanAmount` to `bookValue × tier.ltvCeiling`.
+- `financeEligible(customer, vehicle, tier, marketPriceFn?, bookValueFn?)` → checks down-gap → PTI → LTV in order; `failReason` ∈ `'down' | 'pti' | 'ltv'` names the FIRST failure. PTI uses `computeMonthlyPayment` from DealEngine against `tier.maxTerm` and `tier.apr` — where `CreditTierPolicy.apr` is the **customer's** rate (`buyRate + markup`, resolved once by the caller through `DealEngine.quoteFinance`), never the tier table's `buyRate` (#365). That is what makes the structural deal-kill free: an over-marked deal raises the payment, and the payment is what PTI measures, so no second check is needed; LTV compares `loanAmount` to `bookValue × tier.ltvCeiling`.
 - `isEligible(customer, vehicle, deps?)` → dispatches on `paymentMethod`; finance requires `deps.tier`.
 - Narrow inputs: `AffordabilityCustomer { wealth, annualIncome, paymentMethod, cashSpendFraction?, downPaymentBehavior? }`, `CreditTierPolicy { apr, maxTerm, ptiCap, ltvCeiling }`. Caller assembles from Person/Visit + DealEngine tier.
 

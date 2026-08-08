@@ -174,6 +174,8 @@ describe('PlaytestLog — bus capture (#332)', () => {
       agreedPrice: 18500,
       frontGross: 1200,
       backGross: 950,
+      productGross: 950,
+      reserveGross: 0,
       daysInInventory: 21,
       paymentMethod: 'finance',
       downPayment: 1500,
@@ -201,6 +203,7 @@ describe('PlaytestLog — bus capture (#332)', () => {
     day = 9;
     bus.publish('deal:closed', {
       customerId: 'c1', vehicleId: 'v1', agreedPrice: 1, frontGross: 0, backGross: 0,
+      productGross: 0, reserveGross: 0,
       daysInInventory: 0, paymentMethod: 'cash', downPayment: 1, loanAmount: 0, term: 0, apr: 0,
     });
 

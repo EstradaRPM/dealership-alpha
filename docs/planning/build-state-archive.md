@@ -6,6 +6,65 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-07 — **BUILT #363** (the live floor's walks reach the rest of the game). A walk on
+  the live sales floor published only `staff:auto_resolved`, so `customer:resolved` never
+  fired for one — and four systems were dead in real play while looking healthy in isolation:
+  the whole BDC follow-up pool never filled, walks cost no reputation, regulatory walk
+  pressure never accrued, and `TierManager.customersServed` counted closes only (~3% of the
+  floor). `CustomerPool` now bridges `staff:auto_resolved`/`no_sale` onto `customer:resolved`.
+  **The bridge belongs in CustomerPool, not in StaffDispatch, and that is the load-bearing
+  call.** `customer:resolved` is the customer *lifecycle* event: the session, the
+  `customer:state_changed` transition, and the guard that stops one customer resolving twice
+  all live in the pool. So the pool gained a second live-floor subscription beside its
+  `deal:closed` one and stayed the sole publisher — three drivers, one owner.
+  **A pre-process walk resolves at `heat: 0` rather than not resolving.** `no_fit` is 71% of
+  the floor and carries no warmth by design (a customer the lot had nothing for never got far
+  enough to leave a temperature). They are still an up who was on the floor and left, so they
+  count as served and cost what a walk costs; they simply are not worth a callback, which
+  `FollowUpPool`'s existing `heat <= 0` guard already expresses. No new carve-out.
+  **The close half was a lie worth fixing in the same slice.** `CustomerPool` re-ran the
+  entire sales process against `STUB_VEHICLE_SPACED` to produce the close's satisfaction —
+  scoring the visit against a car nobody was shown, and emitting a phantom
+  `customer:gate_evaluated` stream for gates that never ran. The live floor already measures
+  this honestly, so the trio now travels with the close: `closeDeal` takes an optional
+  `salesQuality`, `deal:closed` round-trips it, `CustomerPool` publishes it. **DealEngine never
+  reads it** — only the flow that ran the process can know it. Absent (legacy harnesses,
+  direct `closeDeal` callers) the local evaluation still speaks, so the no-DealEngine path is
+  byte-for-byte unchanged. The formula itself moved to `SalesProcess.resolutionQuality`, the
+  sibling of `residualHeat` and for the same reason — the 0.6/0.4 retention blend was two
+  hardcoded magic numbers in `CustomerPool` and is now `data/sales-process.json` `retention`,
+  schema-refused unless the weights sum to 1.
+  **Turning the producer on was a live-balance event, and it revealed three magnitudes that
+  had been calibrated against something that never fired.** First measurement: satisfaction
+  70 → **12.5**, review → 15.9, arrivals collapsed with it (the #180 harness could only
+  collect 457 of its 600 sample in 600 days), and **regulatory pressure pinned at 80.0 — the
+  AG-complaint threshold, terminal at Tier 1**. The store was being shut down for walking the
+  same share of its ups every real dealership walks. Retuned: `walkSatisfactionPenalty`
+  −1 → **−0.12** (against `closedDealSatisfactionBonus` +3), `walkPressure` 0.5 → **0.05**,
+  `angerPressure` 2.0 → **0.4**. The small numbers are not timidity — the walk penalty is
+  charged ~2.6 times a day, every day.
+  **−0.12 was chosen on the pacing targets, not on feel.** −0.08 sends T1→T2 to a median 2.0
+  months (status OUT, too fast); −0.12 holds it at 3.0 against the 3.5 target (WITHIN), which
+  is the same read the pre-#363 baseline gave. Measured against a stashed baseline on the same
+  100 seeds: survival median 360 = 360, bankruptcy 19% vs 18%, T2 reached 87 vs 91, T1 still
+  1.0mo vs the 2.0 target (the standing, unrelated miss). **Better** than baseline: FAILED
+  92% → 88%, median failure day 98 → 117, insolvency *throws* 3 → 0. **Worse**: seeds reaching
+  T3 18 → 9 — reputation now costs arrivals, which slows the ladder, and that is the mechanic
+  working rather than a defect. A 12-seed probe isolates the rest: audit failures 1 → 0,
+  indictment contractions 11 → 8, so the indictment deaths in the pacing report are
+  **pre-existing and slightly improved**, not something this slice introduced.
+  Final live-engine read: 600 reached in 555 days, positive 38.7%, apathetic 53.0%, warm-walk
+  share 95.9%, satisfaction **48.5**, review 60.0, regulatory pressure **0.3**, 313 follow-ups
+  worked through the pool, `customersServed` 2083 against the ~280 closes it used to count.
+  **The four consumers are pinned in the ASSEMBLED world** by
+  `tests/LiveFloorWalk.reachability.test.ts` — a module unit test cannot tell "wired" from
+  "wired to nothing", which is exactly how this went dark for so long. The #180 harness also
+  permanently reports all four now (`[#363 walk consumers]`), so the next retune can see what
+  the walk volume does to them.
+  223 suites / **2896** tests, typecheck clean.
+  Next: **#364** (the `No lot vehicle` crash) — or **BUILD #152** if the director places phase
+  9's queue first.
+
 - 2026-08-07 — **BUILT #151** (per-brand reputation — the first of phase 9's twelve). The
   `pickVehicleFor` matcher has carried a `reputationBonusFn` stub returning 0 since #145;
   `Reputation.repFor(brand)` is now the real thing, and the store's record selling a make is

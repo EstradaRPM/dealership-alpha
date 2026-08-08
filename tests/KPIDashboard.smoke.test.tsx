@@ -22,6 +22,8 @@ const ZERO_SNAPSHOT: KPISnapshot = {
   fniPpru: 0,
   avgFrontGross: 0,
   avgBackGross: 0,
+  productGross: 0,
+  reserveGross: 0,
   avgDii: 0,
   ...ZERO_SPLITS,
 };
@@ -32,6 +34,8 @@ const LIVE_SNAPSHOT: KPISnapshot = {
   fniPpru: 800,
   avgFrontGross: 2_400,
   avgBackGross: 800,
+  productGross: 0,
+  reserveGross: 0,
   avgDii: 18,
   ...ZERO_SPLITS,
 };

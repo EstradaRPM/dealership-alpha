@@ -1,8 +1,14 @@
-import type { LoanParams, LoanResult, TierDef } from './types';
+import type { LoanParams, LoanResult } from './types';
 
-export function computeMonthlyPayment(params: LoanParams, tierDef: TierDef): LoanResult {
+/**
+ * PMT over `params.termMonths` at `apr`. The rate is passed in rather than read
+ * off a tier (#365): the tier table holds the lender's BUY rate, and every
+ * payment a customer is quoted is built from `buyRate + markup`. Taking the
+ * rate explicitly is what makes quoting the wrong one a visible choice at the
+ * call site instead of an invisible default.
+ */
+export function computeMonthlyPayment(params: LoanParams, apr: number): LoanResult {
   const principal = Math.max(0, params.price - params.down);
-  const apr = tierDef.apr;
   const r = apr / 12;
   const n = params.termMonths;
 

@@ -12,7 +12,16 @@ export interface DealRecord {
    */
   day: number;
   frontGross: number;
+  /** `productGross + reserveGross` (#365). */
   backGross: number;
+  /**
+   * The two halves of the back end (#365). Optional because a save written
+   * before the split has neither: `restore` materializes them as zeroes rather
+   * than guessing, so a pre-#365 deal reads as "back gross, unattributed"
+   * instead of silently claiming reserve the store never earned.
+   */
+  productGross?: number;
+  reserveGross?: number;
   daysInInventory: number;
   agreedPrice: number;
   paymentMethod: 'cash' | 'finance';
@@ -38,6 +47,9 @@ export interface KPIDayTotals {
   readonly units: number;
   readonly frontGross: number;
   readonly backGross: number;
+  /** `backGross` split into its two halves (#365). */
+  readonly productGross: number;
+  readonly reserveGross: number;
   /** `frontGross + backGross` — total gross written that day. */
   readonly gross: number;
 }
@@ -61,6 +73,13 @@ export interface KPISnapshot {
   fniPpru: number;
   avgFrontGross: number;
   avgBackGross: number;
+  /**
+   * Window TOTALS for the two halves of the back end (#365) — totals, not
+   * averages, so the Finance tab's breakdown adds up to the gross it sits
+   * beside instead of being an average multiplied back out.
+   */
+  productGross: number;
+  reserveGross: number;
   avgDii: number;
   cashUnits: number;
   cashGross: number;

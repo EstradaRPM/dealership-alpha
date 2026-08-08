@@ -26,6 +26,14 @@ export interface AffordabilityCustomer {
  * caller boundary.
  */
 export interface CreditTierPolicy {
+  /**
+   * The rate the CUSTOMER is quoted — the lender's buy rate plus the store's
+   * markup (#365). Deliberately not the tier table's `buyRate`: the payment a
+   * buyer is measured against has to be the payment they would actually make,
+   * which is what lets an over-marked structure fail PTI on its own instead of
+   * needing a second deal-kill check. The caller resolves it once through
+   * `DealEngine.quoteFinance` and hands the same number to the close.
+   */
   readonly apr: number;
   readonly maxTerm: number;
   readonly ptiCap: number;
@@ -81,8 +89,8 @@ export function financeEligible(
 
   const loanAmount = listPrice - requiredDown;
   const { monthlyPayment } = computeMonthlyPayment(
-    { price: loanAmount, down: 0, termMonths: tier.maxTerm, tier: 'A' },
-    { minScore: 0, apr: tier.apr, maxTerm: tier.maxTerm, ptiCap: tier.ptiCap, minDownPct: 0, ltvCeiling: tier.ltvCeiling },
+    { price: loanAmount, down: 0, termMonths: tier.maxTerm },
+    tier.apr,
   );
   const maxMonthly = (customer.annualIncome / 12) * tier.ptiCap;
   if (monthlyPayment > maxMonthly) {

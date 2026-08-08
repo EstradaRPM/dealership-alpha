@@ -24,6 +24,12 @@ heavy-down units, avg APR/term/down) on demand. No logic mutates game state.
 ## Behavior
 - Appends a `DealRecord` per `deal:closed`; KPIs are **derived on read**, never
   stored pre-aggregated.
+- **Back gross is carried in two halves (#365).** `productGross` (margin on the
+  F&I products that attached) and `reserveGross` (the store's share of the rate
+  spread, 0 on cash) ride every `deal:closed`, accrue per day on `KPIDayTotals`,
+  and total on `KPISnapshot` as **window totals, not averages** — the Finance
+  tab's gross breakdown adds them beside the gross it sits next to. `backGross`
+  stays the sum, so every pre-existing read is unchanged.
 - **The module stamps its own day.** `deal:closed` carries no day, so a
   `clock:day_started` cursor supplies one (the same pattern `HistoryLog` and
   `Records` use) — a range query can window the log without every publisher
@@ -50,6 +56,11 @@ heavy-down units, avg APR/term/down) on demand. No logic mutates game state.
   contract) persists the raw `DealRecord[]` plus `dailyCarryingCost` and the day
   cursor. KPIs are re-derived on restore, so only the log is saved. Distinct
   from `KPISnapshot`, which is the computed read-model, never persisted.
+- **Pre-#365 records carry no back-end split and restore as zeroed halves.**
+  Their `backGross` is real and stays whole in every total, but nothing in the
+  record says how much of it was reserve, so it claims none. This is inside the
+  module's blob, not the `modules` key set, so per `docs/save-migration-recipe.md`
+  the envelope version does not move and there is no migration to look for.
 - **Pre-#351 records carry no day and restore as `day: 0`** — real enough to
   count in a lifetime read, outside every day-1-and-later window, and never
   attributed to a day they did not close on.

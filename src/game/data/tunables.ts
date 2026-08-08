@@ -594,6 +594,14 @@ export const TunablesSchema = z.object({
       )
       .nonempty(),
   }),
+  // Finance reserve (#365). Markup targets are in POINTS OF APR as decimals
+  // (0.0175 = 1.75 points), the same unit as `markupCapPts` in
+  // data/credit-tiers.json, which clamps them per tier.
+  fniReserve: z.object({
+    dealerSharePct: z.number().min(0).max(1),
+    ambientMarkupPts: z.number().min(0),
+    balancedMarkupPts: z.number().min(0),
+  }),
 });
 
 export type Tunables = z.infer<typeof TunablesSchema>;

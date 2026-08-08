@@ -26,6 +26,8 @@ function closeDeal(
     agreedPrice: 21_000,
     frontGross,
     backGross,
+    productGross: backGross,
+    reserveGross: 0,
     daysInInventory: 9,
     paymentMethod: 'cash',
     downPayment: 21_000,

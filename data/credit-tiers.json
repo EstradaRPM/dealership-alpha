@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
+  "_doc": "Lender programs by credit tier (#365). `buyRate` is the LENDER's cost of money — what the store buys the paper at — NOT what the customer pays. The customer's rate is `buyRate + markup`, and the dealer keeps a share of the discounted spread as finance reserve (DealEngine.computeReserve). `markupCapPts` is the maximum rate markup that lender allows in points of APR; subprime programs cap tighter, which is why D is the thinnest. There are deliberately NO lender flats: a flat is a second pricing rule the player can neither see nor move (grill I2). Magnitudes here are placeholders owed to a #286-class calibration pass (grill I9).",
   "tiers": {
-    "A": { "minScore": 720, "apr": 0.059, "maxTerm": 84, "ptiCap": 0.20, "minDownPct": 0.00, "ltvCeiling": 1.25 },
-    "B": { "minScore": 680, "apr": 0.089, "maxTerm": 75, "ptiCap": 0.17, "minDownPct": 0.05, "ltvCeiling": 1.20 },
-    "C": { "minScore": 620, "apr": 0.129, "maxTerm": 72, "ptiCap": 0.15, "minDownPct": 0.10, "ltvCeiling": 1.10 },
-    "D": { "minScore":   0, "apr": 0.189, "maxTerm": 66, "ptiCap": 0.13, "minDownPct": 0.20, "ltvCeiling": 1.05 }
+    "A": { "minScore": 720, "buyRate": 0.059, "markupCapPts": 0.0250, "maxTerm": 84, "ptiCap": 0.20, "minDownPct": 0.00, "ltvCeiling": 1.25 },
+    "B": { "minScore": 680, "buyRate": 0.089, "markupCapPts": 0.0225, "maxTerm": 75, "ptiCap": 0.17, "minDownPct": 0.05, "ltvCeiling": 1.20 },
+    "C": { "minScore": 620, "buyRate": 0.129, "markupCapPts": 0.0175, "maxTerm": 72, "ptiCap": 0.15, "minDownPct": 0.10, "ltvCeiling": 1.10 },
+    "D": { "minScore":   0, "buyRate": 0.189, "markupCapPts": 0.0100, "maxTerm": 66, "ptiCap": 0.13, "minDownPct": 0.20, "ltvCeiling": 1.05 }
   }
 }

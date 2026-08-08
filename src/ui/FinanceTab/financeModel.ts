@@ -137,6 +137,13 @@ export interface FinanceDashboardModel {
   readonly headline: readonly FinanceStat[];
   readonly hero: FinanceHeroChart;
   readonly grossMix: FinanceDonut;
+  /**
+   * What the gross was made of (#365) — front, F&I products, and finance
+   * reserve. Products and reserve are stated as two bars rather than one "back
+   * gross" bucket because they are earned by different things: product margin
+   * comes from what attached, reserve from the rate the store held.
+   */
+  readonly grossBreakdown: FinanceBars;
   readonly expenses: FinanceBars;
   /**
    * The windowed KPI snapshot, passed straight through to the shared
@@ -351,6 +358,24 @@ export function buildFinanceDashboard(
     emptyLabel: noDeals,
   };
 
+  // #365: the back end is two different businesses, so it is stated as two
+  // bars. Summed off the day series rather than off the averages — the series
+  // is exact and an average multiplied back out is not.
+  const frontTotal = daily.reduce((s, d) => s + d.frontGross, 0);
+  const grossBreakdown: FinanceBars = {
+    title: 'What the Gross Was Made Of',
+    caption: 'Margin on the metal, on the F&I products, and on the rate.',
+    data: [
+      { label: 'Vehicle', value: frontTotal, valueLabel: money(frontTotal) },
+      { label: 'F&I Products', value: kpi.productGross, valueLabel: money(kpi.productGross) },
+      // "Rate Reserve", not "Finance Reserve": the horizontal bar chart's name
+      // column clips at ~13 characters, and a half-read label is worse than a
+      // shorter one. The caption carries the full sentence.
+      { label: 'Rate Reserve', value: kpi.reserveGross, valueLabel: money(kpi.reserveGross) },
+    ],
+    emptyLabel: noDeals,
+  };
+
   const grouped = groupExpenses(pnl.entries);
   const expenses: FinanceBars = {
     title: 'Where the Money Went',
@@ -378,6 +403,7 @@ export function buildFinanceDashboard(
     headline,
     hero,
     grossMix,
+    grossBreakdown,
     expenses,
     kpi,
   };

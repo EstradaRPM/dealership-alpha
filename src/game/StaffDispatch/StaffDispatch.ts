@@ -30,6 +30,7 @@ import {
   type ResolveDeps,
   type CloseDeps,
   type PickVehicleDeps,
+  type CreditTierPolicy,
   type SpacedVector,
   type VehicleCategory,
 } from '../SalesProcess';
@@ -48,7 +49,7 @@ export interface StaffDispatchDeps {
   queue: DepartmentQueue;
   masterSeed: number;
   inventory: Pick<Inventory, 'getLotVehicles'>;
-  dealEngine: Pick<DealEngine, 'closeDeal' | 'classifyCredit' | 'computeAutoFni'>;
+  dealEngine: Pick<DealEngine, 'closeDeal' | 'classifyCredit' | 'computeAutoFni' | 'quoteFinance'>;
   creditTiers: CreditTierCatalog;
   /** Resolves the customer's NPC bundle + visit-archetype id. */
   getCustomerSession: (customerId: string) => StaffDispatchCustomerSession | undefined;
@@ -445,9 +446,24 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
     const skill = makeSalespersonProfile({}, { effectiveness, trustworthiness });
 
     // Tier policy used by both finance affordability and deal-structuring.
-    const tier =
+    // #365: the affordability gate is measured against the CUSTOMER's rate
+    // (buy rate + the store's markup), resolved once here and handed unchanged
+    // to the close — so an over-marked structure fails PTI on its own, and the
+    // rate the buyer was qualified at is the rate they sign.
+    const tierId =
       visit.paymentMethod === 'finance'
-        ? deps.creditTiers.tiers[deps.dealEngine.classifyCredit(person.credit)]
+        ? deps.dealEngine.classifyCredit(person.credit)
+        : undefined;
+    const tierDef = tierId ? deps.creditTiers.tiers[tierId] : undefined;
+    const quote = tierId ? deps.dealEngine.quoteFinance(tierId) : undefined;
+    const tier: CreditTierPolicy | undefined =
+      tierDef && quote
+        ? {
+            apr: quote.customerRate,
+            maxTerm: tierDef.maxTerm,
+            ptiCap: tierDef.ptiCap,
+            ltvCeiling: tierDef.ltvCeiling,
+          }
         : undefined;
 
     // Season/weather demand lean (#231 S2): nudge the want-vector before the
@@ -599,12 +615,14 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       let loanAmount = 0;
       let term = 0;
       let apr = 0;
+      let buyRate = 0;
       if (visit.paymentMethod === 'cash') {
         // Net trade equity reduces the cash the customer brings to close.
         downPayment = Math.max(0, agreedPrice - tradeEquity);
       } else {
         const policy = tier!;
         apr = policy.apr;
+        buyRate = quote!.buyRate;
         term = policy.maxTerm;
         downPayment = agreedPrice * (visit.downPaymentBehavior ?? 0);
         // Net trade equity acts as additional cap reduction, shrinking the note.
@@ -621,6 +639,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         loanAmount,
         term,
         apr,
+        buyRate,
         // #363: the buyer's read on the visit, off the resolution and close
         // that actually ran against the unit they were shown. CustomerPool
         // publishes this straight onto `customer:resolved`; without it, it

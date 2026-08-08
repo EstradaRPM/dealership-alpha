@@ -11,6 +11,8 @@ function dealPayload(over: Partial<Record<string, unknown>> = {}) {
     agreedPrice: 25_000,
     frontGross: 1_500,
     backGross: 800,
+    productGross: 800,
+    reserveGross: 0,
     daysInInventory: 12,
     paymentMethod: 'finance' as const,
     downPayment: 2_000,

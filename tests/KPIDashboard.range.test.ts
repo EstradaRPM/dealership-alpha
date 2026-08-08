@@ -11,6 +11,8 @@ function closeDeal(
     agreedPrice: 20_000,
     frontGross: over.frontGross ?? 1_000,
     backGross: over.backGross ?? 500,
+    productGross: over.backGross ?? 500,
+    reserveGross: 0,
     daysInInventory: 10,
     paymentMethod: over.paymentMethod ?? 'cash',
     downPayment: 20_000,
@@ -84,6 +86,8 @@ describe('KPIDashboard day-stamped range reads (#351)', () => {
       units: 2,
       frontGross: 3_000,
       backGross: 500,
+      productGross: 500,
+      reserveGross: 0,
       gross: 3_500,
     });
   });
@@ -114,6 +118,8 @@ describe('KPIDashboard day-stamped range reads (#351)', () => {
         {
           frontGross: 1_000,
           backGross: 0,
+          productGross: 0,
+          reserveGross: 0,
           daysInInventory: 5,
           agreedPrice: 10_000,
           paymentMethod: 'cash',

@@ -648,6 +648,51 @@ describe('FollowUpPool + queues + KPIDashboard + Telemetry through the world sea
     return { bus, world };
   }
 
+  // #365 split back gross into products + reserve. That is a change INSIDE the
+  // KPIDashboard blob, not to the set of `modules` keys, so per
+  // docs/save-migration-recipe.md it belongs to the module's own restore and
+  // the envelope version does not move. A save written before the split has
+  // neither half, and materializing them as zeroes is the only honest reading:
+  // the deal's `backGross` is real and stays whole, but nothing in the record
+  // says how much of it was reserve, so it claims none.
+  it('migrates pre-reserve KPI day records', () => {
+    const { world } = build(4242);
+    world.kpiDashboard.restore({
+      schemaVersion: 1,
+      dailyCarryingCost: 0,
+      deals: [
+        {
+          day: 3,
+          frontGross: 1_500,
+          backGross: 900,
+          daysInInventory: 12,
+          agreedPrice: 20_000,
+          paymentMethod: 'finance',
+          downPayment: 6_000,
+          term: 60,
+          apr: 0.079,
+        },
+      ],
+    });
+
+    const snap = world.kpiDashboard.getSnapshot();
+    expect(snap.unitsRetailed).toBe(1);
+    expect(snap.avgBackGross).toBe(900);
+    expect(snap.productGross).toBe(0);
+    expect(snap.reserveGross).toBe(0);
+
+    const [day] = world.kpiDashboard.getDailyTotals({ fromDay: 3, toDay: 3 });
+    expect(day.backGross).toBe(900);
+    expect(day.productGross).toBe(0);
+    expect(day.reserveGross).toBe(0);
+
+    // Re-snapshotting carries the materialized zeroes forward, so the blob is
+    // current-shape after one save/load rather than staying pre-split forever.
+    const [record] = world.kpiDashboard.snapshot().deals;
+    expect(record.productGross).toBe(0);
+    expect(record.reserveGross).toBe(0);
+  });
+
   // The AC: enqueue follow-ups + service/dept work, accumulate KPIs + telemetry,
   // snapshot, then restore on a fresh same-seed World — all five modules match
   // exactly (queued work, open follow-ups, and accumulated metrics continuous).
@@ -1183,6 +1228,8 @@ describe('world-snapshot versioning + migrations (#196)', () => {
       agreedPrice: 22_000,
       frontGross: 2_400,
       backGross: 900,
+      productGross: 900,
+      reserveGross: 0,
       daysInInventory: 12,
       paymentMethod: 'cash',
       downPayment: 22_000,
@@ -1224,6 +1271,8 @@ describe('world-snapshot versioning + migrations (#196)', () => {
         agreedPrice: 20_000,
         frontGross: front,
         backGross: back,
+        productGross: back,
+        reserveGross: 0,
         daysInInventory: 8,
         paymentMethod: 'cash',
         downPayment: 20_000,

@@ -130,6 +130,8 @@ function emitSale(
     agreedPrice: 20_000,
     frontGross: 1_200,
     backGross: 600,
+    productGross: 600,
+    reserveGross: 0,
     daysInInventory: 10,
     paymentMethod: 'cash',
     downPayment: 20_000,

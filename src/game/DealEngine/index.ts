@@ -1,8 +1,9 @@
 export { createDealEngine } from './DealEngine';
 export type { DealEngine, DealEngineDeps } from './DealEngine';
-export type { CreditTier, CreditTierCatalog, TierDef, LoanParams, LoanResult, CloseDealParams, ClosedDealResult, DealSalesQuality, FniProduct, FniProductCatalog, AttachedFniProduct, FniAutoAttachConfig } from './types';
-export { classifyCredit, loadCreditTiers } from './creditTier';
+export type { CreditTier, CreditTierCatalog, TierDef, LoanParams, StructureParams, LoanResult, CloseDealParams, ClosedDealResult, DealSalesQuality, FniProduct, FniProductCatalog, AttachedFniProduct, FniAutoAttachConfig, FniReserveConfig, FinanceQuote, ReserveInput } from './types';
+export { classifyCredit, loadCreditTiers, CreditTierCatalogSchema } from './creditTier';
 export { computeMonthlyPayment, computeMaxFinancedAmount } from './loanMath';
+export { computeReserve, loadFniReserveConfig, resolveFinanceQuote } from './reserve';
 export { loadFniProducts, loadFniAutoAttachConfig } from './fniProducts';
 export { loadDealFraudConfig } from './dealFraudConfig';
 export type { DealFraudConfig } from './dealFraudConfig';

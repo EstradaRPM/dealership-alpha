@@ -129,7 +129,10 @@ describe('deal:closed — payload completeness (#146)', () => {
         const tier = dealEngine.classifyCredit(session.bundle.person.credit);
         const policy = creditTiers.tiers[tier];
         expect(fin.paymentMethod).toBe('finance');
-        expect(fin.apr).toBe(policy.apr);
+        // #365: the payload carries the CUSTOMER's rate — buy rate plus the
+        // store's markup — not the tier's wholesale buy rate.
+        expect(fin.apr).toBe(dealEngine.quoteFinance(tier).customerRate);
+        expect(fin.apr).toBeGreaterThan(policy.buyRate);
         expect(fin.term).toBe(policy.maxTerm);
         const expectedDown = fin.agreedPrice * (visit.downPaymentBehavior ?? 0);
         expect(fin.downPayment).toBeCloseTo(expectedDown, 5);

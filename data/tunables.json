@@ -800,5 +800,11 @@
         "blurb": "Target ~8% under book to protect gross — fewer trades acquired, fatter margins."
       }
     ]
+  },
+  "fniReserve": {
+    "_doc": "Finance reserve (#365). The store sells the paper to the customer at `buyRate + markup` and the lender buys it at `buyRate`; the dealer's reserve is its share of the discounted spread over the loan's scheduled life. `dealerSharePct` is the lender's participation split (the lender keeps the rest). `ambientMarkupPts` is what a store with NO f&i-manager on the desk gets — the T1–T2 backend is ambient and minimal, with no player lever (grill Q2). `balancedMarkupPts` is the target an F&I desk works to at the Balanced posture; the three-position posture dial that moves it is #366. Both are clamped down to the credit tier's `markupCapPts`. Placeholder magnitudes owed to a #286-class calibration pass (grill I9).",
+    "dealerSharePct": 0.75,
+    "ambientMarkupPts": 0.0075,
+    "balancedMarkupPts": 0.0175
   }
 }

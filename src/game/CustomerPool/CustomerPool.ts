@@ -94,7 +94,7 @@ export function createCustomerPool(deps: {
    * otherwise falls back to the legacy SalesProcess-direct emit so test
    * harnesses without inventory wiring still close.
    */
-  dealEngine?: Pick<DealEngine, 'closeDeal' | 'classifyCredit'>;
+  dealEngine?: Pick<DealEngine, 'closeDeal' | 'classifyCredit' | 'quoteFinance'>;
   inventory?: Pick<Inventory, 'getLotVehicles'>;
   creditTiers?: CreditTierCatalog;
 }): CustomerPool {
@@ -237,12 +237,17 @@ export function createCustomerPool(deps: {
           let loanAmount = 0;
           let term = 0;
           let apr = 0;
+          let buyRate = 0;
           if (paymentMethod === 'cash') {
             downPayment = agreedPrice;
           } else {
             const tier = deps.dealEngine.classifyCredit(session.bundle.person.credit);
             const policy = deps.creditTiers.tiers[tier];
-            apr = policy.apr;
+            // #365: the customer is quoted buy rate + markup, and the close
+            // carries both so the reserve half of back gross can be earned.
+            const quote = deps.dealEngine.quoteFinance(tier);
+            apr = quote.customerRate;
+            buyRate = quote.buyRate;
             term = policy.maxTerm;
             downPayment = agreedPrice * downBehavior;
             loanAmount = agreedPrice - downPayment;
@@ -257,6 +262,7 @@ export function createCustomerPool(deps: {
             loanAmount,
             term,
             apr,
+            buyRate,
           });
           return;
         }

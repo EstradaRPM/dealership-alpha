@@ -452,14 +452,26 @@ export interface EventMap {
     vehicleId: string;
     agreedPrice: number;
     frontGross: number;
+    /** `productGross + reserveGross` — the whole back end. */
     backGross: number;
+    /**
+     * The two halves of the back end (#365), carried so a reader can name WHICH
+     * half moved rather than seeing one undifferentiated bucket. `productGross`
+     * is margin on the F&I products that attached; `reserveGross` is the store's
+     * share of the discounted rate spread and is 0 on every cash deal.
+     */
+    productGross: number;
+    reserveGross: number;
     daysInInventory: number;
     paymentMethod: 'cash' | 'finance';
     downPayment: number;
     loanAmount: number;
     /** Months; 0 for cash. */
     term: number;
-    /** Annualized rate as a decimal (e.g. 0.07); 0 for cash. */
+    /**
+     * The CUSTOMER's annualized rate as a decimal (e.g. 0.07) — the lender's
+     * buy rate plus the store's markup; 0 for cash.
+     */
     apr: number;
     /**
      * How the buyer read the visit that produced this close (#363), computed

@@ -82,6 +82,8 @@ function makeHarness(
       agreedPrice: 20000,
       frontGross: front,
       backGross: back,
+      productGross: back,
+      reserveGross: 0,
       daysInInventory: 5,
       paymentMethod: 'cash',
       downPayment: 0,

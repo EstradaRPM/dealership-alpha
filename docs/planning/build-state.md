@@ -30,18 +30,18 @@ a median survival of the full 360 days.
 
 **Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
 `docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
-issues. The next `/next` on phase 9 is a **BUILD**. **#151 and #153 landed 2026-08-07** — ten
-left, and the queue now resumes at **#365** (the tracer): #152 is the lowest-numbered open
-issue but it is blocked on #365, and every other slice sits behind #365 or #366.
+issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153 and the #365 tracer have all
+landed** — nine left, and with #365 in the queue is unblocked: **#152** is now the
+lowest-numbered open, deps-met slice.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
 | # | Slice | Deps |
 |---|---|---|
 | ~~#151~~ | ~~per-brand `Reputation.repFor(make)` replaces the `pickVehicle` stub — ambient, no screen (I6)~~ **BUILT 2026-08-07** | — |
-| #152 | attach scales with amount financed — one per-product `loanSensitivity` (I4) | #365 |
+| #152 | attach scales with amount financed — one per-product `loanSensitivity` (I4) | ~~#365~~ **met** |
 | ~~#153~~ | ~~cash-buyer / must-finance traits through `resolveEffects` (I5)~~ **BUILT 2026-08-07** | — |
-| #365 | **tracer** — `apr`→`buyRate` + `markupCapPts`, `computeReserve`, back gross splits into `productGross`/`reserveGross` (Q1/Q2, I1–I3) | — |
+| ~~#365~~ | ~~**tracer** — `apr`→`buyRate` + `markupCapPts`, `computeReserve`, back gross splits into `productGross`/`reserveGross` (Q1/Q2, I1–I3)~~ **BUILT 2026-08-08** | — |
 | #366 | the posture dial — three positions, slot-persisted like `tradePolicy`, **no snapshot bump** (Q5/Q6/Q9, I7) | #365 |
 | #367 | deal-kill — one curve in `data/`, an over-marked deal falls through (Q3 primary, I8) | #366 |
 | #368 | CSI drag — an over-marked customer publishes `reputation:satisfaction_hit` (Q3 secondary) | #365 |
@@ -73,10 +73,47 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 ## Blockers
 
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
-- **Phase 9's queue is now gated on the tracer.** #152 is the lowest-numbered open issue in the
-  phase but is **blocked by #365**, and every remaining slice depends on #365 or #366. So the
-  chronological rule selects **#365** next, not #152 — do not read "lowest number" past the
-  deps column.
+- **The tracer is in, so phase 9's queue is ungated at the bottom.** #365 landed 2026-08-08;
+  **#152** is now both the lowest-numbered open slice and deps-met. Everything else still sits
+  behind #365 or #366 — keep reading the deps column, not just the number.
+- **`data/credit-tiers.json`'s `apr` is GONE and `TierDefSchema` is `.strict()`** (#365). The
+  key is `buyRate` — the lender's cost of money — plus `markupCapPts` per tier; the customer's
+  rate is `buyRate + markup`. `.strict()` is load-bearing: a stale `apr` would otherwise be
+  silently stripped and the file would look fine while reserve read zero. Do not relax it, and
+  do not add lender flats (grill I2 — a flat is a second pricing rule the player can neither
+  see nor move).
+- **`computeMonthlyPayment(params, apr)` takes the RATE, not a `TierDef`** (#365), and
+  `LoanParams` no longer carries `tier` (`StructureParams` does, for `structure()` only). The
+  point is that quoting the wrong rate has to be a visible choice at the call site. Every
+  payment a customer sees is built from the marked-up rate — `structure()` resolves it through
+  `quoteFinance` — which is what makes the structural deal-kill free: PTI already measures the
+  payment, so an over-marked deal fails the existing affordability gate with **no new check**
+  (grill I3). `SalesProcess.CreditTierPolicy.apr` is the CUSTOMER's rate; feeding it `buyRate`
+  is the regression `tests/SalesProcess.affordability.test.ts` now guards.
+- **One quote serves both the gate and the close.** StaffDispatch and CustomerPool call
+  `dealEngine.quoteFinance(tier)` once and hand the same `{ buyRate, markupPts, customerRate }`
+  to affordability and to `closeDeal` — so the rate a buyer is qualified at is the rate they
+  sign, by construction rather than by two call sites agreeing. `CloseDealParams.buyRate`
+  omitted ⇒ equals `apr` ⇒ zero spread ⇒ no reserve, which is what leaves every pre-#365
+  harness byte-identical.
+- **Reserve POSTS REVENUE, and the first cut of #365 wrongly did not.** `economy.postRevenue(
+  reserveGross, 'F&I: finance reserve')` fires at the close. Without it the Finance tab reported
+  back gross the books never saw and the breakdown could not reconcile with its own Net Income —
+  and the pacing harness measured *zero* change from the whole slice, which is the tell. Do not
+  "fix" a future accounting question by removing it; the receivable lag from lender funding is
+  not modeled anywhere here and inventing one for this line alone would be a second rule.
+- **The desk read is a closure, not a roster reference.** `DealEngineDeps.getFniDeskStaffed?:
+  () => boolean`, wired in `createWorld` off `staffOrg.currentRoster`; omitted ⇒ false ⇒
+  `ambientMarkupPts`, the honest T1–T2 answer (grill Q2 — no player lever until #366). DealEngine
+  must never import StaffOrg.
+- **The KPI split is inside the module's blob, so there is no envelope bump** (#365, same call
+  as #359/#151). `DealRecord.productGross`/`reserveGross` are optional and `restore` materializes
+  them as zeroes: a pre-split deal's `backGross` stays whole and simply claims no reserve.
+  `WORLD_SNAPSHOT_VERSION` did not move and there is no migration to look for.
+- **The reserve bar is labelled "Rate Reserve", not "Finance Reserve".** The kit's horizontal
+  `BarChart` clips its name column at ~13 characters — caught on the web drive, where the label
+  rendered as "inance Reserve". The caption carries the full sentence. Check a long bar label
+  against the rendered chart, not just the model test.
 - **A customer's payment leaning is drawn on its OWN seeded stream, not out of `trait_pool`**
   (#153). Incidence is an optional `payment_traits` map on the person archetype
   (`seedFor('traits.payment')`). The shared-pool version was implemented first and reverted:
@@ -458,7 +495,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07**, ten left, next is the **#365 tracer** |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 tracer BUILT 2026-08-08**, nine left, next is **#152** |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -476,6 +513,63 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-08 — **BUILT #365** (the F&I tracer: the store finally earns money on the rate).
+  `data/credit-tiers.json`'s `apr` was never the customer's rate — it was the **lender's**, and
+  the store was quoting its own cost of money at retail. It is now `buyRate`, with a per-tier
+  `markupCapPts` beside it, and the customer pays `buyRate + markup`. Back gross splits: a deal
+  earns `productGross` on what attached and `reserveGross` on the spread, `backGross` stays the
+  sum, and `deal:closed` carries all three so a Reveal reaction can later name which half moved.
+  **The reserve is honest amortization, not a percentage of amount financed.** The payment is
+  built at the marked-up rate; the lender advances the present value of that payment stream
+  discounted at its buy rate; the dealer keeps `dealerSharePct` of the difference. It falls out
+  of the two loan-math primitives already in the module (PMT and its inverse), so it moves
+  correctly with term and principal without a second rate model to keep in step. A test pins it
+  **below** the flat `markup × balance × years × share` shortcut, which is exactly the assertion
+  a fudge would fail: real paper amortizes down.
+  **The structural deal-kill (I3) arrived free, and the way it did is the load-bearing call.**
+  `computeMonthlyPayment` now takes the **rate** instead of a `TierDef`, so quoting the wrong one
+  is a visible choice at every call site rather than an invisible default. StaffDispatch and
+  CustomerPool resolve `quoteFinance(tier)` **once** and hand the same
+  `{ buyRate, markupPts, customerRate }` to the affordability gate and to `closeDeal` — the rate
+  a buyer is qualified at is the rate they sign, by construction. Because PTI already measures
+  the payment, an over-marked structure fails the gate that has always been there. **No new
+  check was added**, and `tests/SalesProcess.affordability.test.ts` pins the borderline buyer who
+  clears at the buy rate and fails at +2.5 points.
+  **Reserve posts revenue, and the first cut of this slice wrongly did not.** I recognized it as
+  gross without banking it, reasoning that the lender pays at funding. That was wrong twice over:
+  the Finance tab would report back gross the books never saw, unable to reconcile with its own
+  Net Income — and `npm run balance -- pacing` came back **byte-identical to the #153 baseline**
+  (blend 0.4273, bankruptcy 24%, T2 89, T3 16), which is not a "small effect", it is the tell
+  that the money went nowhere. With `postRevenue`: bankruptcy **24% → 21%**, blend **0.4273 →
+  0.4294**, everything else unmoved (T1 still the standing 1.0mo-vs-2.0 miss, T2 WITHIN, median
+  survival 360). The receivable lag is not modeled anywhere in this project; inventing one for
+  this line alone would be a second accounting rule.
+  **Markup resolution has exactly one home and no player lever yet** (grill Q2). `ambientMarkupPts`
+  with no `f&i-manager` on the desk, `balancedMarkupPts` once there is one, both clamped down to
+  the tier's `markupCapPts` — so the subprime program allows the least markup and the most
+  desperate customer is not the most profitable one. The desk read is a closure
+  (`getFniDeskStaffed`), wired in `createWorld` off the roster and read live, so the first F&I
+  hire moves the next deal; DealEngine never imports StaffOrg. #366 turns that one target into
+  the three-position posture dial.
+  `TierDefSchema` is now `.strict()`. That is not tidiness: a stale `apr` key would have been
+  silently stripped by zod, leaving a file that looks right while reserve reads zero.
+  **The live bands did not move**: #180 reads positive **35.8%**, apathetic **54.3%** — the same
+  numbers #153 left — because ambient markup is 0.75 points and the reserve on a $16k/60mo note
+  is ~$212. Every magnitude here is a placeholder owed to a #286-class pass (grill I9).
+  Surfaced on the Finance tab as "What the Gross Was Made Of" — Vehicle / F&I Products / Rate
+  Reserve, summed off the exact day series rather than an average multiplied back out.
+  **The web drive earned its keep**: the label read "inance Reserve" on screen, because the kit's
+  horizontal `BarChart` clips its name column at ~13 characters. The model test could not see
+  that. Shortened to "Rate Reserve"; the caption carries the full sentence.
+  The KPI split is inside the module's own blob (`DealRecord`, optional, restored as zeroes), so
+  per `docs/save-migration-recipe.md` **no envelope bump and no migration** — a pre-split deal's
+  `backGross` stays whole and simply claims no reserve.
+  Anti-orphan: `tests/DealEngine.reserve.test.ts` closes a financed deal on a real `createWorld`
+  lot and asserts the reserve reaches `ClosedDealResult`, the KPI snapshot **and the cash
+  balance** — a module unit test cannot tell "wired" from "wired to nothing" (#363's lesson).
+  227 suites / **2937** tests, typecheck clean.
+  Next: **BUILD #152** — attach scales with amount financed (I4), now deps-met.
 
 - 2026-08-07 — **BUILT #153** (the two customers who already know how they're paying).
   `cash-buyer` and `must-finance` — the payment axis the visit archetype's single
@@ -549,62 +643,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   rather than being copied.
   225 suites / **2905** tests, typecheck clean.
   Next: **BUILD #152** — the lowest-numbered open, deps-met issue in phase 9.
-
-- 2026-08-07 — **BUILT #363** (the live floor's walks reach the rest of the game). A walk on
-  the live sales floor published only `staff:auto_resolved`, so `customer:resolved` never
-  fired for one — and four systems were dead in real play while looking healthy in isolation:
-  the whole BDC follow-up pool never filled, walks cost no reputation, regulatory walk
-  pressure never accrued, and `TierManager.customersServed` counted closes only (~3% of the
-  floor). `CustomerPool` now bridges `staff:auto_resolved`/`no_sale` onto `customer:resolved`.
-  **The bridge belongs in CustomerPool, not in StaffDispatch, and that is the load-bearing
-  call.** `customer:resolved` is the customer *lifecycle* event: the session, the
-  `customer:state_changed` transition, and the guard that stops one customer resolving twice
-  all live in the pool. So the pool gained a second live-floor subscription beside its
-  `deal:closed` one and stayed the sole publisher — three drivers, one owner.
-  **A pre-process walk resolves at `heat: 0` rather than not resolving.** `no_fit` is 71% of
-  the floor and carries no warmth by design (a customer the lot had nothing for never got far
-  enough to leave a temperature). They are still an up who was on the floor and left, so they
-  count as served and cost what a walk costs; they simply are not worth a callback, which
-  `FollowUpPool`'s existing `heat <= 0` guard already expresses. No new carve-out.
-  **The close half was a lie worth fixing in the same slice.** `CustomerPool` re-ran the
-  entire sales process against `STUB_VEHICLE_SPACED` to produce the close's satisfaction —
-  scoring the visit against a car nobody was shown, and emitting a phantom
-  `customer:gate_evaluated` stream for gates that never ran. The live floor already measures
-  this honestly, so the trio now travels with the close: `closeDeal` takes an optional
-  `salesQuality`, `deal:closed` round-trips it, `CustomerPool` publishes it. **DealEngine never
-  reads it** — only the flow that ran the process can know it. Absent (legacy harnesses,
-  direct `closeDeal` callers) the local evaluation still speaks, so the no-DealEngine path is
-  byte-for-byte unchanged. The formula itself moved to `SalesProcess.resolutionQuality`, the
-  sibling of `residualHeat` and for the same reason — the 0.6/0.4 retention blend was two
-  hardcoded magic numbers in `CustomerPool` and is now `data/sales-process.json` `retention`,
-  schema-refused unless the weights sum to 1.
-  **Turning the producer on was a live-balance event, and it revealed three magnitudes that
-  had been calibrated against something that never fired.** First measurement: satisfaction
-  70 → **12.5**, review → 15.9, arrivals collapsed with it (the #180 harness could only
-  collect 457 of its 600 sample in 600 days), and **regulatory pressure pinned at 80.0 — the
-  AG-complaint threshold, terminal at Tier 1**. The store was being shut down for walking the
-  same share of its ups every real dealership walks. Retuned: `walkSatisfactionPenalty`
-  −1 → **−0.12** (against `closedDealSatisfactionBonus` +3), `walkPressure` 0.5 → **0.05**,
-  `angerPressure` 2.0 → **0.4**. The small numbers are not timidity — the walk penalty is
-  charged ~2.6 times a day, every day.
-  **−0.12 was chosen on the pacing targets, not on feel.** −0.08 sends T1→T2 to a median 2.0
-  months (status OUT, too fast); −0.12 holds it at 3.0 against the 3.5 target (WITHIN), which
-  is the same read the pre-#363 baseline gave. Measured against a stashed baseline on the same
-  100 seeds: survival median 360 = 360, bankruptcy 19% vs 18%, T2 reached 87 vs 91, T1 still
-  1.0mo vs the 2.0 target (the standing, unrelated miss). **Better** than baseline: FAILED
-  92% → 88%, median failure day 98 → 117, insolvency *throws* 3 → 0. **Worse**: seeds reaching
-  T3 18 → 9 — reputation now costs arrivals, which slows the ladder, and that is the mechanic
-  working rather than a defect. A 12-seed probe isolates the rest: audit failures 1 → 0,
-  indictment contractions 11 → 8, so the indictment deaths in the pacing report are
-  **pre-existing and slightly improved**, not something this slice introduced.
-  Final live-engine read: 600 reached in 555 days, positive 38.7%, apathetic 53.0%, warm-walk
-  share 95.9%, satisfaction **48.5**, review 60.0, regulatory pressure **0.3**, 313 follow-ups
-  worked through the pool, `customersServed` 2083 against the ~280 closes it used to count.
-  **The four consumers are pinned in the ASSEMBLED world** by
-  `tests/LiveFloorWalk.reachability.test.ts` — a module unit test cannot tell "wired" from
-  "wired to nothing", which is exactly how this went dark for so long. The #180 harness also
-  permanently reports all four now (`[#363 walk consumers]`), so the next retune can see what
-  the walk volume does to them.
-  223 suites / **2896** tests, typecheck clean.
-  Next: **#364** (the `No lot vehicle` crash) — or **BUILD #152** if the director places phase
-  9's queue first.

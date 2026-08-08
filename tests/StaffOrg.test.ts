@@ -617,7 +617,8 @@ describe('StaffOrg — Model B skill growth (#294)', () => {
   function publishClose(bus: ReturnType<typeof createEventBus>): void {
     bus.publish('deal:closed', {
       customerId: 'c', vehicleId: 'v', agreedPrice: 20_000, frontGross: 1_500,
-      backGross: 500, daysInInventory: 10, paymentMethod: 'cash',
+      backGross: 500, productGross: 500, reserveGross: 0,
+      daysInInventory: 10, paymentMethod: 'cash',
       downPayment: 20_000, loanAmount: 0, term: 0, apr: 0,
     });
   }

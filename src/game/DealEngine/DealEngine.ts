@@ -2,11 +2,15 @@ import { loadCreditTiers, classifyCredit } from './creditTier';
 import { computeMonthlyPayment } from './loanMath';
 import { loadFniProducts, getFniProductById, loadFniAutoAttachConfig } from './fniProducts';
 import { loadDealFraudConfig, type DealFraudConfig } from './dealFraudConfig';
+import { computeReserve, loadFniReserveConfig, resolveFinanceQuote } from './reserve';
 import type {
   CreditTier,
   CreditTierCatalog,
-  LoanParams,
+  FinanceQuote,
+  FniReserveConfig,
   LoanResult,
+  ReserveInput,
+  StructureParams,
   CloseDealParams,
   ClosedDealResult,
   FniProduct,
@@ -20,7 +24,16 @@ import type { Economy } from '../Economy';
 
 export interface DealEngine {
   classifyCredit(score: number): CreditTier;
-  structure(params: LoanParams): LoanResult;
+  structure(params: StructureParams): LoanResult;
+  /**
+   * The rate this store quotes a customer on that tier's program today (#365),
+   * and the buy rate behind it. Callers hand the same quote to the affordability
+   * gate and to `closeDeal`, so the payment a customer is measured against and
+   * the contract they sign are the same rate by construction.
+   */
+  quoteFinance(tier: CreditTier): FinanceQuote;
+  /** The store's share of the discounted rate spread on a financed structure. */
+  computeReserve(input: ReserveInput): number;
   closeDeal(params: CloseDealParams): ClosedDealResult;
   getFniProducts(unlockedRoles?: string[]): FniProduct[];
   computeAutoFni(skill: number, unlockedRoles?: string[], rng?: () => number): AttachedFniProduct[];
@@ -31,6 +44,14 @@ export interface DealEngineDeps {
   fniCatalog?: FniProductCatalog;
   fniAutoAttachConfig?: FniAutoAttachConfig;
   fraudConfig?: DealFraudConfig;
+  reserveConfig?: FniReserveConfig;
+  /**
+   * Is an `f&i-manager` working the desk right now (#365)? A closure rather
+   * than a roster reference so DealEngine never depends on StaffOrg, read live
+   * so the first F&I hire changes the next deal. Omitted ⇒ false ⇒ the ambient
+   * markup, which is the honest answer for a Tier-1/2 store.
+   */
+  getFniDeskStaffed?: () => boolean;
   bus?: EventBus;
   inventory?: Pick<Inventory, 'getLotVehicle' | 'sellVehicle'>;
   economy?: Pick<Economy, 'postRevenue'>;
@@ -48,16 +69,28 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
   const fniCatalog = deps.fniCatalog ?? loadFniProducts();
   const autoAttachConfig = deps.fniAutoAttachConfig ?? loadFniAutoAttachConfig();
   const fraudConfig = deps.fraudConfig ?? loadDealFraudConfig();
+  const reserveConfig = deps.reserveConfig ?? loadFniReserveConfig();
   const { bus, inventory, economy, getCurrentDay } = deps;
+  const deskStaffed = deps.getFniDeskStaffed ?? (() => false);
 
   return {
     classifyCredit(score) {
       return classifyCredit(score, catalog);
     },
 
+    quoteFinance(tier) {
+      return resolveFinanceQuote(catalog.tiers[tier], deskStaffed(), reserveConfig);
+    },
+
+    computeReserve(input) {
+      return computeReserve(input, reserveConfig.dealerSharePct);
+    },
+
     structure(params) {
-      const tierDef = catalog.tiers[params.tier];
-      return computeMonthlyPayment(params, tierDef);
+      // The payment is quoted at the CUSTOMER's rate, never the buy rate — the
+      // markup is what the buyer's payment is actually built from, which is
+      // what makes an over-marked structure fail PTI on its own (grill I3).
+      return computeMonthlyPayment(params, this.quoteFinance(params.tier).customerRate);
     },
 
     getFniProducts(unlockedRoles?: string[]) {
@@ -93,8 +126,12 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       loanAmount = 0,
       term = 0,
       apr = 0,
+      buyRate,
       salesQuality,
     }) {
+      // A caller that names no buy rate quoted no spread, so it earns no
+      // reserve — the behavior-neutral default for every pre-#365 harness.
+      const resolvedBuyRate = buyRate ?? apr;
       // Default to a full-down cash structure when the caller omits the deal-
       // structuring fields. downPayment defaults to agreedPrice for cash so the
       // sum (downPayment + loanAmount) equals what was actually paid.
@@ -128,15 +165,42 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
         });
       }
 
-      let backGross = 0;
+      let productGross = 0;
       let fniBurden = 0;
       for (const attached of fniProducts) {
         const product = getFniProductById(fniCatalog, attached.productId);
         if (product) {
-          backGross += attached.price - product.cost;
+          productGross += attached.price - product.cost;
           fniBurden += attached.price;
           economy.postRevenue(attached.price, `F&I: ${attached.productId}`);
         }
+      }
+
+      // Finance reserve (#365) — the second half of the back end, and the one
+      // that exists only on a financed deal.
+      const reserveGross =
+        paymentMethod === 'finance'
+          ? computeReserve(
+              {
+                amountFinanced: loanAmount,
+                termMonths: term,
+                buyRate: resolvedBuyRate,
+                customerRate: apr,
+              },
+              reserveConfig.dealerSharePct,
+            )
+          : 0;
+      const backGross = productGross + reserveGross;
+
+      // Reserve is money the lender pays the store, so it posts to the books
+      // like every other line of income. Reporting it as back gross without
+      // banking it would leave the Finance tab's gross breakdown unable to
+      // reconcile with its own net income — and reserve is one of the largest
+      // income lines a real F&I department has. Recognized at the close rather
+      // than at funding: the receivable lag is not modeled anywhere here, and
+      // inventing one for this line alone would be a second accounting rule.
+      if (reserveGross > 0) {
+        economy.postRevenue(reserveGross, 'F&I: finance reserve');
       }
 
       // Payment-packing fraud exposure (#327, IndictmentMonitor severe-event
@@ -172,6 +236,8 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
         reconCost: vehicle.reconCost,
         frontGross,
         backGross,
+        productGross,
+        reserveGross,
         daysInInventory,
         fniProducts,
         paymentMethod,
@@ -187,6 +253,8 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
         agreedPrice,
         frontGross,
         backGross,
+        productGross,
+        reserveGross,
         daysInInventory,
         paymentMethod,
         downPayment: resolvedDownPayment,

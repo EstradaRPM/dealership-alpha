@@ -23,6 +23,8 @@ const SNAPSHOT = {
   fniPpru: 980,
   avgFrontGross: 1_370,
   avgBackGross: 980,
+  productGross: 0,
+  reserveGross: 0,
   avgDii: 41,
   ...ZERO_SPLITS,
 };
@@ -61,6 +63,8 @@ describe('MonthCloseInterstitial smoke tests', () => {
               fniPpru: 0,
               avgFrontGross: 0,
               avgBackGross: 0,
+              productGross: 0,
+              reserveGross: 0,
               avgDii: 0,
               ...ZERO_SPLITS,
             },

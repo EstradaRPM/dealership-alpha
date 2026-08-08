@@ -148,4 +148,41 @@ describe('SalesProcess affordability', () => {
       expect(isEligible(customer, vehicle)).toBe(false);
     });
   });
+
+  // #365: `CreditTierPolicy.apr` is the CUSTOMER's rate — the lender's buy rate
+  // plus the store's markup. That is what makes the structural deal-kill fall
+  // out of machinery that already exists: an over-marked deal raises the
+  // payment, and the payment is what PTI measures. Quoting the buy rate here
+  // would silently qualify a buyer for a contract they cannot carry.
+  describe('the customer rate, not the buy rate, is what PTI is measured against', () => {
+    const BUY_RATE = 0.089;
+    // Income tuned so the deal clears PTI at the buy rate and only just.
+    const borderline: AffordabilityCustomer = {
+      wealth: 5_000,
+      annualIncome: 17_500,
+      paymentMethod: 'finance',
+      downPaymentBehavior: 0,
+    };
+    const atRate = (apr: number): CreditTierPolicy => ({
+      apr,
+      maxTerm: 75,
+      ptiCap: 0.17,
+      ltvCeiling: 1.4,
+    });
+
+    it('the same buyer clears at the buy rate and fails once the markup is on', () => {
+      expect(financeEligible(borderline, vehicle, atRate(BUY_RATE)).eligible).toBe(true);
+      const marked = financeEligible(borderline, vehicle, atRate(BUY_RATE + 0.025));
+      expect(marked.eligible).toBe(false);
+      expect(marked.failReason).toBe('pti');
+    });
+
+    it('the payment PTI is measured against is the marked-up one', () => {
+      const atBuy = financeEligible(borderline, vehicle, atRate(BUY_RATE));
+      const marked = financeEligible(borderline, vehicle, atRate(BUY_RATE + 0.025));
+      expect(marked.monthlyPayment!).toBeGreaterThan(atBuy.monthlyPayment!);
+      // Same principal either way — only the rate moved.
+      expect(marked.loanAmount).toBe(atBuy.loanAmount);
+    });
+  });
 });

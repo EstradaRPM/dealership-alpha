@@ -2,14 +2,22 @@ import { z } from 'zod';
 import { parseData } from '../data';
 import type { CreditTier, CreditTierCatalog } from './types';
 
-const TierDefSchema = z.object({
-  minScore: z.number().nonnegative(),
-  apr: z.number().positive(),
-  maxTerm: z.number().int().positive(),
-  ptiCap: z.number().positive().max(1),
-  minDownPct: z.number().min(0).max(1),
-  ltvCeiling: z.number().positive(),
-});
+// `.strict()` is load-bearing (#365): the tier table used to call the lender's
+// cost of money `apr`, and the whole point of the rename is that the customer's
+// rate is `buyRate + markup`. A stale `apr` key would otherwise be silently
+// stripped and the file would look fine while the reserve read zero, so the
+// loader refuses any key it does not know.
+const TierDefSchema = z
+  .object({
+    minScore: z.number().nonnegative(),
+    buyRate: z.number().positive(),
+    markupCapPts: z.number().min(0),
+    maxTerm: z.number().int().positive(),
+    ptiCap: z.number().positive().max(1),
+    minDownPct: z.number().min(0).max(1),
+    ltvCeiling: z.number().positive(),
+  })
+  .strict();
 
 export const CreditTierCatalogSchema = z.object({
   schemaVersion: z.literal(1),

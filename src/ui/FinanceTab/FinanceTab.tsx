@@ -129,6 +129,21 @@ export function FinanceTab({
         </Surface>
       </View>
 
+      <View style={region} testID="finance-region-gross-breakdown">
+        <Surface>
+          <SectionHeader title={model.grossBreakdown.title} />
+          <Text style={caption}>{model.grossBreakdown.caption}</Text>
+          <View style={{ marginTop: t.spacing.md }}>
+            <BarChart
+              data={model.grossBreakdown.data}
+              orientation="horizontal"
+              emptyLabel={model.grossBreakdown.emptyLabel}
+              testID="finance-gross-breakdown-bars"
+            />
+          </View>
+        </Surface>
+      </View>
+
       <View style={region} testID="finance-region-expenses">
         <Surface>
           <SectionHeader title={model.expenses.title} />

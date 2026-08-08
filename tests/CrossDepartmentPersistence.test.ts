@@ -133,6 +133,8 @@ function injectSale(
     agreedPrice: 20_000,
     frontGross: 1_500,
     backGross: 800,
+    productGross: 800,
+    reserveGross: 0,
     daysInInventory: 10,
     paymentMethod: 'finance',
     downPayment: 4_000,

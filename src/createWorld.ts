@@ -733,6 +733,11 @@ export function createWorld(deps: {
     inventory,
     economy,
     getCurrentDay: () => clock.currentDay,
+    // #365: is anyone actually working the F&I desk? Read live off the roster
+    // so the first F&I hire lifts the store's markup on the very next deal.
+    // Until then the backend is ambient, which is the honest T1–T2 answer.
+    getFniDeskStaffed: () =>
+      staffOrg.currentRoster.some((s) => s.role_id === 'f&i-manager'),
   });
   // CustomerPool gets the DealEngine + inventory + tier-catalog wiring (#146)
   // so dispatch(CLOSE) routes real closes through DealEngine.closeDeal — the

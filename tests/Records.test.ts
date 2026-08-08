@@ -39,7 +39,7 @@ function closeDeal(
     term: 0,
     apr: 0,
     ...overrides,
-  });
+  } as EventMap['deal:closed']);
 }
 
 /** Play one day: open it, close `grosses` worth of deals, then settle it. */

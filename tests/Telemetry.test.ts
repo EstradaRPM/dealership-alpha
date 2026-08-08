@@ -19,7 +19,7 @@ describe('Telemetry — enable/disable', () => {
     const { bus, telemetry } = makeSetup();
     bus.publish('deal:closed', {
       customerId: 'c1', vehicleId: 'v1', agreedPrice: 25000,
-      frontGross: 2000, backGross: 500, daysInInventory: 10,
+      frontGross: 2000, backGross: 500, productGross: 500, reserveGross: 0, daysInInventory: 10,
       paymentMethod: 'cash', downPayment: 25000, loanAmount: 0, term: 0, apr: 0,
     });
     expect(telemetry.getEventCount()).toBe(0);
@@ -72,7 +72,7 @@ describe('Telemetry — derived metrics', () => {
     bus.publish('customer:resolved', { customerId: 'c', outcome: 'closed', receptivity: 0.6, satisfaction: 1, retentionSeed: 0.6, heat: 0, agreedPrice: 30000, frontGross: 2000 });
     bus.publish('deal:closed', {
       customerId: 'c', vehicleId: 'v1', agreedPrice: 30000,
-      frontGross: 2000, backGross: 800, daysInInventory: 5,
+      frontGross: 2000, backGross: 800, productGross: 800, reserveGross: 0, daysInInventory: 5,
       paymentMethod: 'cash', downPayment: 30000, loanAmount: 0, term: 0, apr: 0,
     });
     bus.publish('economy:revenue_posted', { day: 1, amount: 30000, label: 'sale' });
@@ -82,7 +82,7 @@ describe('Telemetry — derived metrics', () => {
     bus.publish('clock:day_started', { day: 2 });
     bus.publish('deal:closed', {
       customerId: 'd', vehicleId: 'v2', agreedPrice: 20000,
-      frontGross: 1000, backGross: 0, daysInInventory: 12,
+      frontGross: 1000, backGross: 0, productGross: 0, reserveGross: 0, daysInInventory: 12,
       paymentMethod: 'cash', downPayment: 20000, loanAmount: 0, term: 0, apr: 0,
     });
     bus.publish('economy:revenue_posted', { day: 2, amount: 20000, label: 'sale' });
