@@ -63,6 +63,8 @@ describe('#351 the Finance tab is mounted on the live world', () => {
       'finance-region-hero',
       'finance-region-mix',
       'finance-region-gross-breakdown',
+      // #152: the back end per car by deal structure.
+      'finance-region-back-end-structure',
       'finance-region-expenses',
       'finance-region-kpis',
       'finance-region-records',

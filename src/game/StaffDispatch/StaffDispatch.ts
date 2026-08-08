@@ -605,11 +605,6 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       const unlockedRoles =
         deps.unlockedRolesFn?.() ??
         Array.from(new Set(staffOrg.currentRoster.map(s => s.role_id)));
-      const fni = deps.dealEngine.computeAutoFni(
-        effectiveness * 100,
-        unlockedRoles,
-        deps.fniRng,
-      );
 
       let downPayment = 0;
       let loanAmount = 0;
@@ -628,6 +623,17 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         // Net trade equity acts as additional cap reduction, shrinking the note.
         loanAmount = Math.max(0, agreedPrice - downPayment - tradeEquity);
       }
+
+      // The menu is presented against the structure, so the structure is
+      // resolved first (#152): a customer putting half the price down — or
+      // rolling a big trade equity into it — is borrowing less, and the
+      // products that cover the note attach less often.
+      const fni = deps.dealEngine.computeAutoFni({
+        skill: effectiveness * 100,
+        unlockedRoles,
+        deal: { paymentMethod: visit.paymentMethod, loanAmount, agreedPrice },
+        rng: deps.fniRng,
+      });
 
       const result = deps.dealEngine.closeDeal({
         customerId,

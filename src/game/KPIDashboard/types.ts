@@ -67,6 +67,38 @@ export interface KPIDashboardSnapshot {
   readonly dailyCarryingCost: number;
 }
 
+/**
+ * One deal structure's share of the back end (#152). `perUnit` is the
+ * comparable number — the whole point of the split is that the same store earns
+ * a different back end per car depending on how the car was paid for, and a
+ * total only says which structure was commonest.
+ */
+export interface BackEndBucket {
+  readonly units: number;
+  readonly backGross: number;
+  readonly productGross: number;
+  readonly reserveGross: number;
+  /** `backGross / units`; 0 with no units, never a divide-by-zero. */
+  readonly perUnit: number;
+}
+
+/**
+ * Back end split by how the deal was structured (#152) — the surface where
+ * loan-sensitive attach becomes visible. The three buckets are **disjoint and
+ * exhaustive**: every retailed unit lands in exactly one, so their `backGross`
+ * sums to the window's total back gross. `heavyDown` is financed too, so it is
+ * carved OUT of `standardFinance` rather than sitting inside it (unlike
+ * `KPISnapshot.financeUnits`, which counts both).
+ */
+export interface BackEndByStructure {
+  /** Paid in full. No note, so no reserve and no GAP. */
+  readonly cash: BackEndBucket;
+  /** Financed with less than `HEAVY_DOWN_THRESHOLD` down — the biggest note. */
+  readonly standardFinance: BackEndBucket;
+  /** Financed with a large down payment, so a small note to protect. */
+  readonly heavyDown: BackEndBucket;
+}
+
 export interface KPISnapshot {
   unitsRetailed: number;
   pvr: number;
@@ -86,6 +118,8 @@ export interface KPISnapshot {
   financeUnits: number;
   financeGross: number;
   heavyDownUnits: number;
+  /** @see BackEndByStructure */
+  backEndByStructure: BackEndByStructure;
   avgApr: number;
   avgTerm: number;
   avgDownPct: number;

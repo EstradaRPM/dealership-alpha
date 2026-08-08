@@ -30,16 +30,17 @@ a median survival of the full 360 days.
 
 **Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
 `docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
-issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153 and the #365 tracer have all
-landed** — nine left, and with #365 in the queue is unblocked: **#152** is now the
-lowest-numbered open, deps-met slice.
+issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, the #365 tracer and #152
+have all landed** — eight left. **#366** (the three-position posture dial) is now both the
+lowest-numbered open slice and deps-met; #367–#370 and #373 all sit behind it, so the queue
+narrows to one live path. #371 and #372 have no deps and can be taken any time.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
 | # | Slice | Deps |
 |---|---|---|
 | ~~#151~~ | ~~per-brand `Reputation.repFor(make)` replaces the `pickVehicle` stub — ambient, no screen (I6)~~ **BUILT 2026-08-07** | — |
-| #152 | attach scales with amount financed — one per-product `loanSensitivity` (I4) | ~~#365~~ **met** |
+| ~~#152~~ | ~~attach scales with amount financed — one per-product `loanSensitivity` (I4)~~ **BUILT 2026-08-08** | — |
 | ~~#153~~ | ~~cash-buyer / must-finance traits through `resolveEffects` (I5)~~ **BUILT 2026-08-07** | — |
 | ~~#365~~ | ~~**tracer** — `apr`→`buyRate` + `markupCapPts`, `computeReserve`, back gross splits into `productGross`/`reserveGross` (Q1/Q2, I1–I3)~~ **BUILT 2026-08-08** | — |
 | #366 | the posture dial — three positions, slot-persisted like `tradePolicy`, **no snapshot bump** (Q5/Q6/Q9, I7) | #365 |
@@ -73,9 +74,10 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 ## Blockers
 
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
-- **The tracer is in, so phase 9's queue is ungated at the bottom.** #365 landed 2026-08-08;
-  **#152** is now both the lowest-numbered open slice and deps-met. Everything else still sits
-  behind #365 or #366 — keep reading the deps column, not just the number.
+- **Phase 9's queue now runs through #366.** #365 and #152 both landed 2026-08-08. #367, #370
+  and #373 sit behind **#366**, and #369 behind #367, so the posture dial is the one live path;
+  #368, #371 and #372 are deps-met independently. Keep reading the deps column, not just the
+  number.
 - **`data/credit-tiers.json`'s `apr` is GONE and `TierDefSchema` is `.strict()`** (#365). The
   key is `buyRate` — the lender's cost of money — plus `markupCapPts` per tier; the customer's
   rate is `buyRate + markup`. `.strict()` is load-bearing: a stale `apr` would otherwise be
@@ -460,6 +462,42 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
   for** — a v1 blob restores as "no make has a record yet"). And there is deliberately **no
   brand-reputation screen**: `tests/Reputation.perBrand.test.ts` fails if any UI file reads
   `repFor`/`brandReputation`.
+- **#152 uses TWO product keys and that is the same call #153 made.** `loanSensitivity` is the
+  scalar — attach is multiplied by `1 − loanSensitivity × (1 − financedShare)`, so 0/absent is
+  flat across every structure. `requiresFinancing` is **categorical and checked ahead of the
+  roll**: GAP covers the gap between a loan balance and the car's value, so it cannot attach to
+  a cash deal at any sensitivity or any RNG value. Collapsing the gate into "sensitivity 1.0"
+  reproduces today's behavior and is wrong for tomorrow's — **C2 owns these magnitudes (I9)**,
+  and a calibration pass must not be able to tune loan-gap coverage onto a cash sale.
+- **The attach roll is drawn for EVERY available product, including a gated one** (#152). The
+  `continue` sits after `rng()`, so gating GAP does not shift the stream for the products after
+  it and the same customer on the same seed sees the same menu decisions. That is what makes
+  `tests/DealEngine.attach.test.ts` able to assert the flat products' attach counts are
+  **exactly** equal across cash / standard / heavy-down rather than merely close. Do not move
+  the gate above the draw to "save" a call.
+- **`computeAutoFni` takes ONE named input, not four positional args** (#152, the #365 pattern):
+  a menu presented against no structure was the silent default, so `deal` is required and every
+  call site states it. **StaffDispatch resolves down payment / loan amount BEFORE presenting** —
+  it used to attach first — which also means trade equity correctly shrinks the note and thins
+  the menu with it.
+- **The live #180 bands moved and the pacing blend rose, and neither is a calibration change**
+  (#152). Nothing in `data/market-calibration.json` was touched. Fewer products attach on cash
+  and heavy-down deals ⇒ less back gross ⇒ a different cash trajectory, which is the documented
+  #151 sensitivity of that seeded run. Both bands still hold.
+- **`KPISnapshot.backEndByStructure`'s three buckets are DISJOINT** (#152) — `heavyDown` is
+  carved out of `standardFinance`, so the three `backGross` figures sum to total back gross.
+  That is deliberately unlike the older `financeUnits`, which counts heavy-down deals too. Each
+  bucket carries `perUnit` because a total only reports which structure was commonest. All of it
+  is derived from `DealRecord` fields already persisted: **no envelope bump, no migration.**
+- **`ZERO_KPI_SNAPSHOT` is now exported from the KPIDashboard barrel** (#152). Four test
+  fixtures were each hand-writing the full snapshot shape, so every new KPI field broke all four
+  the same way; they spread the constant now. A fixture that needs "empty" must not re-copy the
+  shape.
+- **A long bar `valueLabel` is clipped by the chart, not just a long label** (#152, extending
+  #365's lesson). The horizontal `BarChart` reserves `VALUE_COLUMN = 56px` and draws the value as
+  SVG text past the plot edge, so `"$2,100 · 3 cars"` is cut off. The unit counts therefore live
+  in the caption — which also suppresses them entirely on an empty window, because "averaged
+  over 0 cash" reads as a broken sentence rather than a fact.
 - **The F&I posture is SLOT state, not world state** (phase 9 gate, I7). The parked grill's own
   note said the standing volume↔gross posture needed a `WORLD_SNAPSHOT_VERSION` bump and a
   migration. It does not — every sibling lever (`tradePolicy`, `pricingStrategy`, `sourcingLean`)
@@ -495,7 +533,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 6 | C1 staff-teeth | **LOCKED 2026-08-02 — `staff-teeth-design.md`** | done — #352–#357 all built |
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
-| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 tracer BUILT 2026-08-08**, nine left, next is **#152** |
+| 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | active — sliced into #151–#153 + #365–#373; **#151 + #153 BUILT 2026-08-07, #365 + #152 BUILT 2026-08-08**, eight left, next is **#366** |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
 | 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
@@ -513,6 +551,63 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-08 — **BUILT #152** (the menu is presented against the deal, not just the customer).
+  Attach scaled with the salesperson's skill and nothing else, so a cash buyer was being sold
+  **GAP** — coverage for the gap between a loan balance and the car's value, on a deal with no
+  loan. Attach is now `baseRate × skillMultiplier × loanFactor`, where
+  `loanFactor = 1 − loanSensitivity × (1 − financedShare)` and
+  `financedShare = loanAmount / agreedPrice`.
+  **Two product keys, and it is the same call #153 made.** `loanSensitivity` is the scalar (VSC
+  0.35, GAP 0.8, prepaid maintenance 0.25; etch / key / tire & wheel declare none and are flat,
+  because they protect the car and not the note). `requiresFinancing` is **categorical**, checked
+  ahead of the roll. Collapsing the gate into "sensitivity 1.0" reproduces today's numbers
+  exactly and is wrong for tomorrow's: **C2 owns these magnitudes (I9)**, and a calibration pass
+  must not be able to tune loan-gap coverage back onto a cash sale. Same shape as #153's
+  leaning-vs-category split, for the same reason.
+  **The roll is drawn for every available product, including a gated one.** The `continue` sits
+  *after* `rng()`, so gating GAP does not shift the stream for the products behind it. That is
+  what lets `tests/DealEngine.attach.test.ts` assert the flat products' attach counts are
+  **exactly** equal across cash / standard / heavy-down over 4,000 presentations rather than
+  merely close — the same measurement is also the proof that the flat products are untouched.
+  **`computeAutoFni` now takes one named input, and StaffDispatch resolves the structure first.**
+  It used to attach *before* computing the down payment, which is the #365 lesson again: a menu
+  presented against no structure is a silent default, so `deal` is required and every call site
+  states it. Consequence beyond the letter of the issue — **trade equity now thins the menu**,
+  because it shrinks the note the products are protecting.
+  Surfaced on Finance as **"Back End per Deal"**: F&I gross **per car** for cash / little down /
+  large down. Per unit, not window totals — a total only reports which structure was commonest,
+  while the actionable fact is that the same store earns a different back end on a big note. The
+  three `KPISnapshot.backEndByStructure` buckets are **disjoint** (heavy-down carved out of
+  standard finance, unlike the older `financeUnits` which counts both), so they sum to total back
+  gross; all of it derives from `DealRecord` fields already persisted, so **no envelope bump**.
+  **The web drive earned its keep again, and on the same class of defect as #365.** The unit
+  counts started life in the bar's `valueLabel` — `"$2,100 · 3 cars"` — and the horizontal
+  `BarChart` reserves 56px for its value column and draws it as SVG text past the plot edge, so
+  it clips. The counts moved into the caption, which also let them disappear on an empty window
+  ("averaged over 0 cash" reads as a broken sentence). Confirmed in the running app: the region
+  mounts on the live Finance tab with the right copy. The chart *body* was not visually
+  verifiable — the Browser pane was hidden, so `ResizeObserver` never fired and every measuring
+  chart collapses to an empty div (the documented probe returned `false`). Not reported as
+  working or broken.
+  **`ZERO_KPI_SNAPSHOT` is now on the KPIDashboard barrel.** Four test fixtures were each
+  hand-writing the full snapshot shape, so this one new field broke all four the same way. They
+  spread the constant now.
+  **The store measurably earns less, and that is the point rather than a regression to tune
+  away.** `npm run balance -- pacing`, 100 seeds against #365's baseline: bankruptcy **21% →
+  28%** (modeled 27, throw 1), blend 0.4294 → **0.4320**, T2 reached 89 → **91**, T3 **16**
+  unchanged, verdict pass 21%, median survival 360, T1 still the standing 1.0mo-vs-2.0 miss.
+  The ladder reaches marginally further while the floor gets harder — the income the store loses
+  is the income it was booking on a product that cannot exist on a cash deal. **The answer to a
+  28% bankruptcy rate is not re-attaching GAP to cash**; it is C2's, alongside the markup
+  magnitudes #365 left it (I9). #180's live bands moved (positive 35.8% → 39.3%, apathetic 54.3%
+  → 51.7%) and **no calibration number was touched** — less back gross is a different cash
+  trajectory, which is the documented #151 sensitivity of that seeded run. Both bands still hold.
+  228 suites / **2948** tests, typecheck clean. Two RN-Testing-Library suites
+  (`InTabNavigation.reachability`, `App.recapPersistence`) failed on later full-suite runs and
+  pass in isolation; the first full run of the session, with every change in place, was green —
+  the documented CPU-load flake, not a regression.
+  Next: **BUILD #366** — the three-position F&I posture dial, the phase's one live path.
 
 - 2026-08-08 — **BUILT #365** (the F&I tracer: the store finally earns money on the rate).
   `data/credit-tiers.json`'s `apr` was never the customer's rate — it was the **lender's**, and
@@ -614,32 +709,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   against the unshifted one.
   226 suites / **2917** tests, typecheck clean.
   Next: **BUILD #365** — the F&I tracer. #152 is lower-numbered but blocked on it.
-
-- 2026-08-07 — **BUILT #364** (the car that sold out from under the second customer). Two
-  customers can be held on the **same unit** — one on a `trade:escalated` review, one on a
-  `discount:escalated` one, or two of either. Whichever the player resolved first drove the
-  car off the lot, and the second resolution died on `No lot vehicle` inside
-  `DealEngine.closeDeal`, throwing out of `resolvePlayerDiscountDecision` and into the app.
-  **The fix is a walk, not a reservation.** Holding a unit for a pending review was the
-  tempting shape and it is the wrong one: it would quietly take cars off the floor for
-  everyone else, which is a balance change smuggled in as a crash fix. The car being gone is
-  a real dealership moment, so the second customer resolves as an ordinary no-sale with its
-  own reason (`vehicle_sold_to_other`) carrying the same residual heat, follow-up eligibility
-  and reputation hit every other post-process walk carries — asserted end-to-end against the
-  assembled world with the payload the resolver actually emits, not a hand-written one.
-  **The guard sits at the decision, not at the settle.** With the car gone, `accept`,
-  `counter` and `decline` all have the same answer, so every held-review `decide` re-checks
-  the lot before it reads the decision. One check, one `no_sale`, four decision kinds.
-  **A held review outlives the lot, so it carries its own vehicle.** `trade:escalated` gained
-  a `vehicle` field and the discount payload's became the shared `EscalationVehicle` type;
-  the prompt names the car off that snapshot, because a lot lookup comes back empty exactly
-  when the player most needs telling which car it was. The live prompt now watches
-  `inventory:vehicle_sold`, states in plain language that another customer bought it, and
-  drops every accept/counter control — pressing its one button resolves the customer as the
-  walk it is, rather than leaving a held review to rot in the composition root.
-  Both live-engine harnesses dropped the `try/catch` + `escalationsLostToSoldUnit` tally they
-  were carrying as a workaround (#181 and, since #286 made closes common, #180). Test
-  scaffolding the two StaffDispatch suites share moved to `tests/helpers/staffDispatchHarness.ts`
-  rather than being copied.
-  225 suites / **2905** tests, typecheck clean.
-  Next: **BUILD #152** — the lowest-numbered open, deps-met issue in phase 9.

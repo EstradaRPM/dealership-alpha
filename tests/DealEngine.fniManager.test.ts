@@ -1,5 +1,5 @@
 import { createDealEngine, loadFniProducts, loadFniAutoAttachConfig } from '../src/game/DealEngine';
-import type { FniAutoAttachConfig, FniProductCatalog } from '../src/game/DealEngine';
+import type { AutoFniDeal, FniAutoAttachConfig, FniProductCatalog } from '../src/game/DealEngine';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import type { CharacterProfile } from '../src/game/CareerProgression';
@@ -44,6 +44,17 @@ const PROFILE: CharacterProfile = {
 function makeEngine(catalog = FULL_CATALOG, autoAttachConfig = AUTO_ATTACH_CONFIG) {
   return createDealEngine({ fniCatalog: catalog, fniAutoAttachConfig: autoAttachConfig });
 }
+
+// The skill-scaling cases below are all measured on a fully-financed deal, where
+// #152's loan factor is 1 for every product — so they stay assertions about
+// skill. `FULL_CATALOG` declares no `loanSensitivity` either, which keeps the
+// structure out of these numbers twice over. The structure's own effect is
+// tests/DealEngine.attach.test.ts.
+const FULLY_FINANCED: AutoFniDeal = {
+  paymentMethod: 'finance',
+  loanAmount: 20_000,
+  agreedPrice: 20_000,
+};
 
 // ── getFniProducts — role gating ──────────────────────────────────────────────
 
@@ -95,21 +106,21 @@ describe('DealEngine.computeAutoFni — attach rate skill scaling', () => {
   it('always-attach RNG: all available products attached at any skill', () => {
     const engine = makeEngine();
     const alwaysAttach = () => 0;
-    const result = engine.computeAutoFni(50, ['f&i-manager'], alwaysAttach);
+    const result = engine.computeAutoFni({ skill: 50, unlockedRoles: ['f&i-manager'], deal: FULLY_FINANCED, rng: alwaysAttach });
     expect(result).toHaveLength(6);
   });
 
   it('never-attach RNG: no products attached regardless of skill', () => {
     const engine = makeEngine();
     const neverAttach = () => 1;
-    const result = engine.computeAutoFni(100, ['f&i-manager'], neverAttach);
+    const result = engine.computeAutoFni({ skill: 100, unlockedRoles: ['f&i-manager'], deal: FULLY_FINANCED, rng: neverAttach });
     expect(result).toHaveLength(0);
   });
 
   it('without f&i-manager role only 2 base products can attach', () => {
     const engine = makeEngine();
     const alwaysAttach = () => 0;
-    const result = engine.computeAutoFni(100, [], alwaysAttach);
+    const result = engine.computeAutoFni({ skill: 100, unlockedRoles: [], deal: FULLY_FINANCED, rng: alwaysAttach });
     const ids = result.map((p) => p.productId);
     expect(ids).toContain('vsc');
     expect(ids).toContain('gap');
@@ -132,7 +143,12 @@ describe('DealEngine.computeAutoFni — attach rate skill scaling', () => {
 
     const beforeRoles = world.staffOrg.currentRoster.map((s) => s.role_id);
     expect(
-      world.dealEngine.computeAutoFni(100, beforeRoles, () => 0),
+      world.dealEngine.computeAutoFni({
+        skill: 100,
+        unlockedRoles: beforeRoles,
+        deal: FULLY_FINANCED,
+        rng: () => 0,
+      }),
     ).toHaveLength(2);
 
     const fniCandidate = world.staffOrg.getCandidates('f&i-manager')[0];
@@ -140,7 +156,12 @@ describe('DealEngine.computeAutoFni — attach rate skill scaling', () => {
     world.staffOrg.hire(fniCandidate.candidateId);
 
     const afterRoles = world.staffOrg.currentRoster.map((s) => s.role_id);
-    const attached = world.dealEngine.computeAutoFni(100, afterRoles, () => 0);
+    const attached = world.dealEngine.computeAutoFni({
+      skill: 100,
+      unlockedRoles: afterRoles,
+      deal: FULLY_FINANCED,
+      rng: () => 0,
+    });
     expect(attached.map((p) => p.productId)).toEqual(
       expect.arrayContaining(['tireWheel', 'etch', 'prepaidMaintenance', 'keyReplacement']),
     );
@@ -153,8 +174,8 @@ describe('DealEngine.computeAutoFni — attach rate skill scaling', () => {
     // At skill 100: multiplier = 1.1, vsc rate = 0.55 * 1.1 = 0.605
     // RNG value 0.30: attached at skill=100, not attached at skill=0
     const rng30 = () => 0.30;
-    const atLowSkill  = engine.computeAutoFni(0,   ['f&i-manager'], rng30);
-    const atHighSkill = engine.computeAutoFni(100, ['f&i-manager'], rng30);
+    const atLowSkill  = engine.computeAutoFni({ skill: 0,   unlockedRoles: ['f&i-manager'], deal: FULLY_FINANCED, rng: rng30 });
+    const atHighSkill = engine.computeAutoFni({ skill: 100, unlockedRoles: ['f&i-manager'], deal: FULLY_FINANCED, rng: rng30 });
     const lowVsc  = atLowSkill.some((p)  => p.productId === 'vsc');
     const highVsc = atHighSkill.some((p) => p.productId === 'vsc');
     expect(lowVsc).toBe(false);
@@ -163,7 +184,7 @@ describe('DealEngine.computeAutoFni — attach rate skill scaling', () => {
 
   it('attached products use defaultPrice', () => {
     const engine = makeEngine();
-    const result = engine.computeAutoFni(100, ['f&i-manager'], () => 0);
+    const result = engine.computeAutoFni({ skill: 100, unlockedRoles: ['f&i-manager'], deal: FULLY_FINANCED, rng: () => 0 });
     for (const attached of result) {
       const product = FULL_CATALOG.products.find((p) => p.id === attached.productId)!;
       expect(attached.price).toBe(product.defaultPrice);
@@ -172,7 +193,7 @@ describe('DealEngine.computeAutoFni — attach rate skill scaling', () => {
 
   it('skill=0 attach rates are clamped to min multiplier (never negative)', () => {
     const engine = makeEngine();
-    const result = engine.computeAutoFni(0, ['f&i-manager'], () => -1);
+    const result = engine.computeAutoFni({ skill: 0, unlockedRoles: ['f&i-manager'], deal: FULLY_FINANCED, rng: () => -1 });
     // rng() returning -1 is always < any positive rate — all attach
     expect(result.length).toBeGreaterThan(0);
   });

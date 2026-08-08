@@ -1,19 +1,23 @@
 {
   "schemaVersion": 1,
+  "_doc": "F&I product catalog. `loanSensitivity` (#152) is how much of a product's attach rate depends on the amount financed: attach is multiplied by `1 - loanSensitivity * (1 - financedShare)`, where financedShare = loanAmount / agreedPrice. 0 (or absent) = flat, sells the same on any structure. `requiresFinancing` is categorical, not a magnitude — GAP covers the gap between a loan balance and the car's value, so a cash deal has nothing for it to cover at any sensitivity. Magnitudes here are placeholders owed to a #286-class calibration pass (grill I9).",
   "products": [
     {
       "id": "vsc",
       "label": "Vehicle Service Contract",
       "shortLabel": "VSC",
       "defaultPrice": 1495,
-      "cost": 495
+      "cost": 495,
+      "loanSensitivity": 0.35
     },
     {
       "id": "gap",
       "label": "GAP Insurance",
       "shortLabel": "GAP",
       "defaultPrice": 695,
-      "cost": 195
+      "cost": 195,
+      "requiresFinancing": true,
+      "loanSensitivity": 0.8
     },
     {
       "id": "tireWheel",
@@ -37,7 +41,8 @@
       "shortLabel": "PPM",
       "defaultPrice": 895,
       "cost": 300,
-      "requiredRole": "f&i-manager"
+      "requiredRole": "f&i-manager",
+      "loanSensitivity": 0.25
     },
     {
       "id": "keyReplacement",

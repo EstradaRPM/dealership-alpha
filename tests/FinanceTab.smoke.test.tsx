@@ -6,11 +6,13 @@ import {
   buildFinanceDashboard,
   buildMonthResults,
 } from '../src/ui/FinanceTab';
+import { ZERO_KPI_SNAPSHOT } from '../src/game/KPIDashboard';
 import type { KPISnapshot } from '../src/game/KPIDashboard';
 import type { PnLSummary } from '../src/game/Economy';
 import type { GateMonthVerdict } from '../src/game/TierGate';
 
 const KPI: KPISnapshot = {
+  ...ZERO_KPI_SNAPSHOT,
   unitsRetailed: 5,
   pvr: 3_000,
   fniPpru: 900,

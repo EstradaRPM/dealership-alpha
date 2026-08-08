@@ -1,10 +1,12 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { KPIDashboard } from '../src/ui/KPIDashboard';
+import { ZERO_KPI_SNAPSHOT } from '../src/game/KPIDashboard';
 import type { KPISnapshot } from '../src/game/KPIDashboard';
 import type { MarketStateModel } from '../src/ui/KPIDashboard';
 
 const ZERO_SPLITS = {
+  backEndByStructure: ZERO_KPI_SNAPSHOT.backEndByStructure,
   cashUnits: 0,
   cashGross: 0,
   financeUnits: 0,

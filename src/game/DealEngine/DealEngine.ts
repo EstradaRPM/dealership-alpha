@@ -17,6 +17,7 @@ import type {
   FniProductCatalog,
   FniAutoAttachConfig,
   AttachedFniProduct,
+  AutoFniInput,
 } from './types';
 import type { EventBus } from '../EventBus';
 import type { Inventory } from '../Inventory';
@@ -36,7 +37,13 @@ export interface DealEngine {
   computeReserve(input: ReserveInput): number;
   closeDeal(params: CloseDealParams): ClosedDealResult;
   getFniProducts(unlockedRoles?: string[]): FniProduct[];
-  computeAutoFni(skill: number, unlockedRoles?: string[], rng?: () => number): AttachedFniProduct[];
+  /**
+   * The menu the F&I desk gets signed on this deal. Attach scales with the
+   * presenter's skill AND with how much of the price is financed (#152) — a
+   * product that covers a note is a harder sell the less note there is, and
+   * GAP cannot attach to a cash deal at all.
+   */
+  computeAutoFni(input: AutoFniInput): AttachedFniProduct[];
 }
 
 export interface DealEngineDeps {
@@ -100,16 +107,34 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       );
     },
 
-    computeAutoFni(skill: number, unlockedRoles?: string[], rng: () => number = Math.random): AttachedFniProduct[] {
+    computeAutoFni({ skill, unlockedRoles, deal, rng = Math.random }: AutoFniInput): AttachedFniProduct[] {
       const available = this.getFniProducts(unlockedRoles);
       const [minMult, maxMult] = autoAttachConfig.skillMultiplierRange;
       const skillFactor = skill / 100;
       const multiplier = minMult + (maxMult - minMult) * skillFactor;
+      // How much of the price the customer is borrowing (#152). A cash deal
+      // finances nothing; a heavy-down deal finances a little. This is the one
+      // term the structure enters the attach rate through.
+      const financedShare =
+        deal.paymentMethod === 'finance' && deal.agreedPrice > 0
+          ? Math.min(1, Math.max(0, deal.loanAmount / deal.agreedPrice))
+          : 0;
       const attached: AttachedFniProduct[] = [];
       for (const product of available) {
+        // The roll is drawn for every available product whether or not it can
+        // attach, so gating one does not shift the stream for the rest — the
+        // same customer on the same seed sees the same menu decisions.
+        const roll = rng();
+        // Categorical, and therefore ahead of the roll: GAP covers the gap
+        // between a loan balance and the car's value, so there is nothing to
+        // cover on a cash deal at any sensitivity or any RNG value.
+        if (product.requiresFinancing && deal.paymentMethod !== 'finance') continue;
         const baseRate = autoAttachConfig.baseAttachRates[product.id] ?? 0;
-        const actualRate = Math.min(1, baseRate * multiplier);
-        if (rng() < actualRate) {
+        // A product with no `loanSensitivity` is flat: the factor is 1 whatever
+        // the structure. At 1 it tracks the financed share outright.
+        const loanFactor = 1 - (product.loanSensitivity ?? 0) * (1 - financedShare);
+        const actualRate = Math.min(1, baseRate * multiplier * loanFactor);
+        if (roll < actualRate) {
           attached.push({ productId: product.id, price: product.defaultPrice });
         }
       }

@@ -4,8 +4,10 @@ import {
   MonthCloseInterstitial,
   type MonthCloseModel,
 } from '../src/ui/MonthCloseInterstitial';
+import { ZERO_KPI_SNAPSHOT } from '../src/game/KPIDashboard';
 
 const ZERO_SPLITS = {
+  backEndByStructure: ZERO_KPI_SNAPSHOT.backEndByStructure,
   cashUnits: 0,
   cashGross: 0,
   financeUnits: 0,

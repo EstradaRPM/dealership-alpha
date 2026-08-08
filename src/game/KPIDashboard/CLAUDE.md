@@ -19,7 +19,10 @@ heavy-down units, avg APR/term/down) on demand. No logic mutates game state.
     business never had. Backs the dashboard's sparklines + hero trend chart.
   - `snapshot()` / `restore()` — save/load blob.
 - Types: `DealRecord`, `DayRange`, `KPIDayTotals`, `KPISnapshot`,
-  `KPIDashboardSnapshot`.
+  `KPIDashboardSnapshot`, `BackEndBucket`, `BackEndByStructure`.
+- `ZERO_KPI_SNAPSHOT` — the read-model of a window with no deals (#152).
+  Exported because four test fixtures were each hand-writing that shape, so
+  every new KPI field broke them all in the same way.
 
 ## Behavior
 - Appends a `DealRecord` per `deal:closed`; KPIs are **derived on read**, never
@@ -38,6 +41,15 @@ heavy-down units, avg APR/term/down) on demand. No logic mutates game state.
 - Finance deals with `downPayment / agreedPrice ≥ HEAVY_DOWN_THRESHOLD` (0.25,
   code-local tunable) are bucketed as `heavyDownUnits`. Cash deals never count
   toward APR/term/down averages.
+- **`backEndByStructure` splits the back end three ways — cash / standard
+  finance / heavy-down (#152)** — which is where loan-sensitive F&I attach
+  becomes visible. The three buckets are **disjoint and exhaustive**, so their
+  `backGross` sums to the window's total back gross; `heavyDown` is therefore
+  carved OUT of `standardFinance`, unlike `financeUnits`, which counts both.
+  Each bucket carries `perUnit` because the comparable number is back end per
+  car — a total only reports which structure was commonest. Derived from fields
+  the `DealRecord` log already persists, so nothing new is stored and there is
+  no envelope bump.
 - `dailyCarryingCost` is the most-recent day's lot-wide floorplan + carrying
   burn (#173), tracked off the bus so the snapshot surfaces it without reaching
   into `Inventory`. Full month-to-date aggregation is deferred to slice #25.

@@ -144,6 +144,8 @@ export interface FinanceDashboardModel {
    * comes from what attached, reserve from the rate the store held.
    */
   readonly grossBreakdown: FinanceBars;
+  /** Back-end gross per car by deal structure (#152). */
+  readonly backEndByStructure: FinanceBars;
   readonly expenses: FinanceBars;
   /**
    * The windowed KPI snapshot, passed straight through to the shared
@@ -376,6 +378,48 @@ export function buildFinanceDashboard(
     emptyLabel: noDeals,
   };
 
+  // #152: the back end per car, by how much of the price the customer borrowed.
+  // Stated PER UNIT rather than as window totals — a total here just reports
+  // which structure was commonest, while the thing the player can act on is
+  // that the same store earns a different back end on a big note than on a
+  // cash deal. The three buckets are disjoint, so nothing is double-counted.
+  const structures = kpi.backEndByStructure;
+  const backEndByStructure: FinanceBars = {
+    title: 'Back End per Deal',
+    // The denominators ride the CAPTION, not the bar labels: the horizontal
+    // chart reserves 56px for its value column and clips anything wider at the
+    // plot edge, which is the same trap that shortened #365's reserve label. A
+    // per-unit figure with no count invites reading one lucky cash deal as a
+    // trend, so the counts have to be somewhere — they just cannot be there.
+    caption:
+      'F&I gross per car, by how much of the price the customer borrowed.' +
+      // Only state the denominators when there are some — "averaged over 0
+      // cash" on a quiet window reads as a broken sentence, not as a fact.
+      (hasDeals
+        ? ` Averaged over ${structures.cash.units} cash, ` +
+          `${structures.standardFinance.units} little-down and ` +
+          `${structures.heavyDown.units} large-down deals.`
+        : ''),
+    data: [
+      {
+        label: 'Cash',
+        value: structures.cash.perUnit,
+        valueLabel: money(structures.cash.perUnit),
+      },
+      {
+        label: 'Little Down',
+        value: structures.standardFinance.perUnit,
+        valueLabel: money(structures.standardFinance.perUnit),
+      },
+      {
+        label: 'Large Down',
+        value: structures.heavyDown.perUnit,
+        valueLabel: money(structures.heavyDown.perUnit),
+      },
+    ],
+    emptyLabel: noDeals,
+  };
+
   const grouped = groupExpenses(pnl.entries);
   const expenses: FinanceBars = {
     title: 'Where the Money Went',
@@ -404,6 +448,7 @@ export function buildFinanceDashboard(
     hero,
     grossMix,
     grossBreakdown,
+    backEndByStructure,
     expenses,
     kpi,
   };

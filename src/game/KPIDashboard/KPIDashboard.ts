@@ -1,5 +1,6 @@
 import type { EventBus } from '../EventBus';
 import type {
+  BackEndBucket,
   DayRange,
   DealRecord,
   KPIDayTotals,
@@ -45,7 +46,20 @@ export interface KPIDashboardDeps {
 // future calibration doesn't touch logic.
 const HEAVY_DOWN_THRESHOLD = 0.25;
 
-const ZERO_SNAPSHOT: KPISnapshot = {
+const ZERO_BUCKET: BackEndBucket = {
+  units: 0,
+  backGross: 0,
+  productGross: 0,
+  reserveGross: 0,
+  perUnit: 0,
+};
+
+/**
+ * The read-model of a window with no deals in it. Exported (#152) because four
+ * test fixtures were each hand-writing this shape, so every new KPI field broke
+ * them all in the same way; a fixture that only needs "empty" spreads this.
+ */
+export const ZERO_KPI_SNAPSHOT: KPISnapshot = {
   unitsRetailed: 0,
   pvr: 0,
   fniPpru: 0,
@@ -59,18 +73,43 @@ const ZERO_SNAPSHOT: KPISnapshot = {
   financeUnits: 0,
   financeGross: 0,
   heavyDownUnits: 0,
+  backEndByStructure: {
+    cash: ZERO_BUCKET,
+    standardFinance: ZERO_BUCKET,
+    heavyDown: ZERO_BUCKET,
+  },
   avgApr: 0,
   avgTerm: 0,
   avgDownPct: 0,
   dailyCarryingCost: 0,
 };
 
+/** Mutable accumulator behind one `BackEndBucket`. */
+interface BucketTally {
+  units: number;
+  backGross: number;
+  productGross: number;
+  reserveGross: number;
+}
+
+const emptyTally = (): BucketTally => ({
+  units: 0,
+  backGross: 0,
+  productGross: 0,
+  reserveGross: 0,
+});
+
+const sealBucket = (t: BucketTally): BackEndBucket => ({
+  ...t,
+  perUnit: t.units > 0 ? t.backGross / t.units : 0,
+});
+
 function computeSnapshot(
   deals: readonly DealRecord[],
   dailyCarryingCost: number,
 ): KPISnapshot {
   const n = deals.length;
-  if (n === 0) return { ...ZERO_SNAPSHOT, dailyCarryingCost };
+  if (n === 0) return { ...ZERO_KPI_SNAPSHOT, dailyCarryingCost };
 
   let totalFront = 0;
   let totalBack = 0;
@@ -85,6 +124,12 @@ function computeSnapshot(
   let totalApr = 0;
   let totalTerm = 0;
   let totalDownPct = 0;
+  // #152: the same three structures again, but tallying the BACK end rather
+  // than total gross — and disjoint, so a heavy-down deal is counted here only
+  // as heavy-down while `financeUnits` above still counts it as financed.
+  const cashTally = emptyTally();
+  const standardTally = emptyTally();
+  const heavyTally = emptyTally();
 
   for (const d of deals) {
     totalFront += d.frontGross;
@@ -93,6 +138,7 @@ function computeSnapshot(
     totalReserve += d.reserveGross ?? 0;
     totalDii += d.daysInInventory;
     const dealGross = d.frontGross + d.backGross;
+    let tally = cashTally;
     if (d.paymentMethod === 'cash') {
       cashUnits += 1;
       cashGross += dealGross;
@@ -103,8 +149,14 @@ function computeSnapshot(
       totalTerm += d.term;
       const downPct = d.agreedPrice > 0 ? d.downPayment / d.agreedPrice : 0;
       totalDownPct += downPct;
-      if (downPct >= HEAVY_DOWN_THRESHOLD) heavyDownUnits += 1;
+      const heavy = downPct >= HEAVY_DOWN_THRESHOLD;
+      if (heavy) heavyDownUnits += 1;
+      tally = heavy ? heavyTally : standardTally;
     }
+    tally.units += 1;
+    tally.backGross += d.backGross;
+    tally.productGross += d.productGross ?? 0;
+    tally.reserveGross += d.reserveGross ?? 0;
   }
 
   return {
@@ -121,6 +173,11 @@ function computeSnapshot(
     financeUnits,
     financeGross,
     heavyDownUnits,
+    backEndByStructure: {
+      cash: sealBucket(cashTally),
+      standardFinance: sealBucket(standardTally),
+      heavyDown: sealBucket(heavyTally),
+    },
     avgApr: financeUnits > 0 ? totalApr / financeUnits : 0,
     avgTerm: financeUnits > 0 ? totalTerm / financeUnits : 0,
     avgDownPct: financeUnits > 0 ? totalDownPct / financeUnits : 0,

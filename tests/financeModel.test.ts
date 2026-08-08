@@ -7,28 +7,11 @@ import {
   financeRangeDays,
   type FinanceDashboardInputs,
 } from '../src/ui/FinanceTab';
+import { ZERO_KPI_SNAPSHOT } from '../src/game/KPIDashboard';
 import type { KPIDayTotals, KPISnapshot } from '../src/game/KPIDashboard';
 import type { LedgerEntry, PnLSummary } from '../src/game/Economy';
 
-const ZERO_KPI: KPISnapshot = {
-  unitsRetailed: 0,
-  pvr: 0,
-  fniPpru: 0,
-  avgFrontGross: 0,
-  avgBackGross: 0,
-  productGross: 0,
-  reserveGross: 0,
-  avgDii: 0,
-  cashUnits: 0,
-  cashGross: 0,
-  financeUnits: 0,
-  financeGross: 0,
-  heavyDownUnits: 0,
-  avgApr: 0,
-  avgTerm: 0,
-  avgDownPct: 0,
-  dailyCarryingCost: 0,
-};
+const ZERO_KPI: KPISnapshot = ZERO_KPI_SNAPSHOT;
 
 const ZERO_PNL: PnLSummary = {
   totalRevenue: 0,
@@ -263,6 +246,54 @@ describe('finance charts (#351)', () => {
     expect(byLabel['Vehicle']).toBe(11_000);
   });
 
+  // #152: attach scales with the amount financed, so the back end per car
+  // differs by structure. Per unit rather than as totals — a total only reports
+  // which structure was commonest that month.
+  it('states the back end per car for each deal structure', () => {
+    const m = buildFinanceDashboard(
+      inputs({
+        kpi: kpi({
+          unitsRetailed: 6,
+          backEndByStructure: {
+            cash: { units: 2, backGross: 800, productGross: 800, reserveGross: 0, perUnit: 400 },
+            standardFinance: {
+              units: 3,
+              backGross: 6_300,
+              productGross: 5_400,
+              reserveGross: 900,
+              perUnit: 2_100,
+            },
+            heavyDown: {
+              units: 1,
+              backGross: 1_200,
+              productGross: 1_080,
+              reserveGross: 120,
+              perUnit: 1_200,
+            },
+          },
+        }),
+      }),
+    );
+    expect(m.backEndByStructure.data.map((d) => d.label)).toEqual([
+      'Cash',
+      'Little Down',
+      'Large Down',
+    ]);
+    expect(m.backEndByStructure.data.map((d) => d.value)).toEqual([400, 2_100, 1_200]);
+    expect(m.backEndByStructure.data.map((d) => d.valueLabel)).toEqual([
+      '$400',
+      '$2,100',
+      '$1,200',
+    ]);
+    // The denominators ride the caption rather than the bars: a per-unit figure
+    // with no count invites reading one lucky cash deal as a trend, and the
+    // chart's 56px value column clips anything longer than the money figure
+    // (the #365 label-clipping lesson).
+    expect(m.backEndByStructure.caption).toContain(
+      'Averaged over 2 cash, 3 little-down and 1 large-down deals.',
+    );
+  });
+
   it('passes the windowed KPI snapshot straight through to the shared block', () => {
     const windowed = kpi({ unitsRetailed: 7 });
     expect(buildFinanceDashboard(inputs({ kpi: windowed })).kpi).toBe(windowed);
@@ -273,6 +304,7 @@ describe('finance charts (#351)', () => {
     expect(m.hero.emptyLabel).toBeTruthy();
     expect(m.grossMix.emptyLabel).toBeTruthy();
     expect(m.grossBreakdown.emptyLabel).toBeTruthy();
+    expect(m.backEndByStructure.emptyLabel).toBeTruthy();
     expect(m.expenses.emptyLabel).toBeTruthy();
   });
 });

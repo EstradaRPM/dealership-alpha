@@ -84,6 +84,21 @@ export interface FniProduct {
   defaultPrice: number;
   cost: number;
   requiredRole?: string;
+  /**
+   * The product covers a loan, so a cash deal has nothing for it to cover
+   * (#152). Categorical, not a magnitude: GAP insures the gap between a loan
+   * balance and the car's value, and that is true at any `loanSensitivity`.
+   * Absent ⇒ sells on any structure.
+   */
+  requiresFinancing?: boolean;
+  /**
+   * How much of this product's attach rate depends on how much is financed
+   * (#152), 0–1. Attach is multiplied by `1 − loanSensitivity × (1 −
+   * financedShare)`, so 0 (or absent) is flat across every structure and 1
+   * falls to nothing on a full-cash deal. Etch, key replacement and tire &
+   * wheel are deliberately flat — they protect the car, not the note.
+   */
+  loanSensitivity?: number;
 }
 
 export interface FniAutoAttachConfig {
@@ -94,6 +109,31 @@ export interface FniAutoAttachConfig {
 export interface FniProductCatalog {
   schemaVersion: number;
   products: FniProduct[];
+}
+
+/**
+ * The structure a deal is closing on, as far as F&I attach is concerned (#152).
+ * Named rather than positional because attach without a structure is the same
+ * silent-default mistake `computeMonthlyPayment` stopped allowing in #365: the
+ * menu a customer says yes to depends on what they are borrowing.
+ */
+export interface AutoFniDeal {
+  paymentMethod: 'cash' | 'finance';
+  /** 0 on a cash deal. Net of down payment and trade equity. */
+  loanAmount: number;
+  /** The transaction price the loan is measured against. */
+  agreedPrice: number;
+}
+
+/** @see DealEngine.computeAutoFni */
+export interface AutoFniInput {
+  /** The presenting salesperson's resolved effectiveness, 0–100. */
+  skill: number;
+  /** Roles on staff; gates the products that need an F&I desk. Omit ⇒ all. */
+  unlockedRoles?: string[];
+  deal: AutoFniDeal;
+  /** Injected for determinism; defaults to `Math.random`. */
+  rng?: () => number;
 }
 
 export interface AttachedFniProduct {

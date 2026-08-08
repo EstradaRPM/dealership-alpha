@@ -55,17 +55,27 @@ function publishFinance(
     apr: number;
     frontGross?: number;
     backGross?: number;
+    /** Split out of `backGross`; the rest is product margin (#365). */
+    reserveGross?: number;
   },
 ) {
-  const { agreedPrice, downPayment, term, apr, frontGross = 1_000, backGross = 500 } = opts;
+  const {
+    agreedPrice,
+    downPayment,
+    term,
+    apr,
+    frontGross = 1_000,
+    backGross = 500,
+    reserveGross = 0,
+  } = opts;
   bus.publish('deal:closed', {
     customerId: 'c1',
     vehicleId: 'v1',
     agreedPrice,
     frontGross,
     backGross,
-    productGross: backGross,
-    reserveGross: 0,
+    productGross: backGross - reserveGross,
+    reserveGross,
     daysInInventory: 10,
     paymentMethod: 'finance',
     downPayment,
@@ -322,3 +332,97 @@ describe('KPIDashboard.getSnapshot — payment splits', () => {
   });
 });
 
+
+// ── Back end by deal structure (#152) ────────────────────────────────────────
+
+describe('KPIDashboard.getSnapshot — back end by deal structure', () => {
+  it('back gross splits by deal structure', () => {
+    const bus = createEventBus();
+    const dashboard = createKPIDashboard({ bus });
+
+    // One of each structure, with back ends that could only have come from the
+    // structure they are on: no reserve on the cash deal, a full menu on the
+    // big note, a thin one on the deal that barely financed anything.
+    publishCash(bus, { agreedPrice: 20_000, backGross: 400 });
+    publishFinance(bus, {
+      agreedPrice: 20_000,
+      downPayment: 1_000, // 5% down — a standard-finance note
+      term: 72,
+      apr: 0.08,
+      backGross: 2_100,
+      reserveGross: 300,
+    });
+    publishFinance(bus, {
+      agreedPrice: 20_000,
+      downPayment: 8_000, // 40% down — heavy
+      term: 48,
+      apr: 0.08,
+      backGross: 900,
+      reserveGross: 120,
+    });
+
+    const { cash, standardFinance, heavyDown } = dashboard.getSnapshot().backEndByStructure;
+
+    expect(cash.units).toBe(1);
+    expect(cash.backGross).toBe(400);
+    expect(cash.productGross).toBe(400);
+    // A cash deal has no note to hold rate on, so it can never carry reserve.
+    expect(cash.reserveGross).toBe(0);
+    expect(cash.perUnit).toBe(400);
+
+    expect(standardFinance.units).toBe(1);
+    expect(standardFinance.backGross).toBe(2_100);
+    expect(standardFinance.reserveGross).toBe(300);
+    expect(standardFinance.productGross).toBe(1_800);
+
+    // Heavy-down is carved OUT of standard finance, not nested inside it —
+    // unlike `financeUnits`, which counts both.
+    expect(heavyDown.units).toBe(1);
+    expect(heavyDown.backGross).toBe(900);
+    expect(heavyDown.perUnit).toBe(900);
+    expect(dashboard.getSnapshot().financeUnits).toBe(2);
+  });
+
+  it('the three buckets are exhaustive — they sum to total back gross', () => {
+    const bus = createEventBus();
+    const dashboard = createKPIDashboard({ bus });
+
+    publishCash(bus, { agreedPrice: 15_000, backGross: 250 });
+    publishCash(bus, { agreedPrice: 18_000, backGross: 610 });
+    publishFinance(bus, { agreedPrice: 20_000, downPayment: 0, term: 72, apr: 0.07, backGross: 1_900 });
+    publishFinance(bus, { agreedPrice: 22_000, downPayment: 7_000, term: 60, apr: 0.07, backGross: 800 });
+
+    const snap = dashboard.getSnapshot();
+    const { cash, standardFinance, heavyDown } = snap.backEndByStructure;
+    const summed = cash.backGross + standardFinance.backGross + heavyDown.backGross;
+
+    expect(summed).toBe(250 + 610 + 1_900 + 800);
+    expect(summed).toBeCloseTo(snap.avgBackGross * snap.unitsRetailed, 6);
+    expect(cash.units + standardFinance.units + heavyDown.units).toBe(snap.unitsRetailed);
+  });
+
+  it('an empty bucket reads zero per unit rather than dividing by zero', () => {
+    const bus = createEventBus();
+    const dashboard = createKPIDashboard({ bus });
+    publishCash(bus, { agreedPrice: 15_000, backGross: 250 });
+
+    const { standardFinance, heavyDown } = dashboard.getSnapshot().backEndByStructure;
+    expect(standardFinance.units).toBe(0);
+    expect(standardFinance.perUnit).toBe(0);
+    expect(heavyDown.perUnit).toBe(0);
+  });
+
+  it('the window read only counts the deals inside the window', () => {
+    const bus = createEventBus();
+    let day = 1;
+    const dashboard = createKPIDashboard({ bus, getCurrentDay: () => day });
+
+    publishFinance(bus, { agreedPrice: 20_000, downPayment: 0, term: 72, apr: 0.07, backGross: 1_500 });
+    day = 2;
+    publishFinance(bus, { agreedPrice: 20_000, downPayment: 0, term: 72, apr: 0.07, backGross: 900 });
+
+    const day2 = dashboard.getSnapshot({ fromDay: 2, toDay: 2 }).backEndByStructure;
+    expect(day2.standardFinance.units).toBe(1);
+    expect(day2.standardFinance.perUnit).toBe(900);
+  });
+});

@@ -317,6 +317,11 @@ export function setup(
     getDiscountDeskingUnlocked?: StaffDispatchDeps['getDiscountDeskingUnlocked'];
     getDeskingDrift?: StaffDispatchDeps['getDeskingDrift'];
     getTradeAllowanceDrift?: StaffDispatchDeps['getTradeAllowanceDrift'];
+    /**
+     * Defaults to never-attach so per-test gross math stays exact. Pass
+     * `() => 0` to attach everything the structure allows (#152).
+     */
+    fniRng?: () => number;
   } = {},
 ): Wired & { economy: ReturnType<typeof createEconomy> } {
   const bus = createEventBus();
@@ -374,7 +379,7 @@ export function setup(
     wantVectorBias: opts.wantVectorBias,
     attributeLeanForDay: opts.attributeLeanForDay,
     // Deterministic FNI: never attach (keeps backGross = 0 so per-test math is exact).
-    fniRng: () => 1.0,
+    fniRng: opts.fniRng ?? (() => 1.0),
     // #169: constant book seam + optional UCM condition read.
     tradeBookValueFn: () => TRADE_BOOK,
     getTradeConditionRead: opts.tradeConditionRead,

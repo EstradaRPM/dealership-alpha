@@ -6,6 +6,35 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-07 — **BUILT #364** (the car that sold out from under the second customer). Two
+  customers can be held on the **same unit** — one on a `trade:escalated` review, one on a
+  `discount:escalated` one, or two of either. Whichever the player resolved first drove the
+  car off the lot, and the second resolution died on `No lot vehicle` inside
+  `DealEngine.closeDeal`, throwing out of `resolvePlayerDiscountDecision` and into the app.
+  **The fix is a walk, not a reservation.** Holding a unit for a pending review was the
+  tempting shape and it is the wrong one: it would quietly take cars off the floor for
+  everyone else, which is a balance change smuggled in as a crash fix. The car being gone is
+  a real dealership moment, so the second customer resolves as an ordinary no-sale with its
+  own reason (`vehicle_sold_to_other`) carrying the same residual heat, follow-up eligibility
+  and reputation hit every other post-process walk carries — asserted end-to-end against the
+  assembled world with the payload the resolver actually emits, not a hand-written one.
+  **The guard sits at the decision, not at the settle.** With the car gone, `accept`,
+  `counter` and `decline` all have the same answer, so every held-review `decide` re-checks
+  the lot before it reads the decision. One check, one `no_sale`, four decision kinds.
+  **A held review outlives the lot, so it carries its own vehicle.** `trade:escalated` gained
+  a `vehicle` field and the discount payload's became the shared `EscalationVehicle` type;
+  the prompt names the car off that snapshot, because a lot lookup comes back empty exactly
+  when the player most needs telling which car it was. The live prompt now watches
+  `inventory:vehicle_sold`, states in plain language that another customer bought it, and
+  drops every accept/counter control — pressing its one button resolves the customer as the
+  walk it is, rather than leaving a held review to rot in the composition root.
+  Both live-engine harnesses dropped the `try/catch` + `escalationsLostToSoldUnit` tally they
+  were carrying as a workaround (#181 and, since #286 made closes common, #180). Test
+  scaffolding the two StaffDispatch suites share moved to `tests/helpers/staffDispatchHarness.ts`
+  rather than being copied.
+  225 suites / **2905** tests, typecheck clean.
+  Next: **BUILD #152** — the lowest-numbered open, deps-met issue in phase 9.
+
 - 2026-08-07 — **BUILT #363** (the live floor's walks reach the rest of the game). A walk on
   the live sales floor published only `staff:auto_resolved`, so `customer:resolved` never
   fired for one — and four systems were dead in real play while looking healthy in isolation:
