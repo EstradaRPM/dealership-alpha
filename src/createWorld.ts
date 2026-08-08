@@ -23,6 +23,7 @@ import {
   createCustomerPool,
   SALES_ARCHETYPES,
   resolveSegmentArchetypes,
+  skewSegmentArchetypes,
   type CustomerPool,
 } from './game/CustomerPool';
 import { createEconomy, type Economy } from './game/Economy';
@@ -382,12 +383,20 @@ function buildAdvertisingInfluence(
   const campaign = config.advertisingInfluence?.campaigns.find(
     (entry) => entry.id === campaignId,
   );
-  if (!campaign || !hasInfluence(campaign.weights)) return null;
+  if (!campaign) return null;
+  const weights = campaign.weights ?? {};
+  const personWeights = campaign.personWeights ?? {};
+  // #372: a campaign is live if EITHER lane pulls. Reading only the segment
+  // lane here would make a crowd-only push (the whole point of "we finance
+  // anyone") resolve to null — no influence input, and therefore no daily bill
+  // either, since the spend is read back off the running input.
+  if (!hasInfluence(weights) && !hasInfluence(personWeights)) return null;
   return {
     id: advertisingInputId(campaign.id),
     label: `Advertising: ${campaign.label}`,
     producer: 'advertising',
-    weights: campaign.weights,
+    weights,
+    personWeights,
     lagDays: campaign.lagDays,
     decayDays: campaign.decayDays ?? campaign.lagDays,
   };
@@ -1094,6 +1103,11 @@ export function createWorld(deps: {
       demandShaperSegments,
       demandShaperConfig,
     ),
+    // #372: the person-archetype universe an influence input may skew. Passed
+    // in like `segments` so DemandShaper keeps no CustomerPool dep; the
+    // catalog is the same one the within-segment roll resolves against, so a
+    // campaign cannot name a buyer the game does not spawn.
+    personArchetypes: SALES_ARCHETYPES.map((a) => a.personId),
   });
   const syncDemandInfluence = (id: string, input: DemandInfluenceInput | null) => {
     if (input) demandShaper.upsertInfluenceInput(input);
@@ -1130,7 +1144,12 @@ export function createWorld(deps: {
     getAdvertisingCampaignId: () => {
       const active = demandShaper
         .getInfluenceInputs()
-        .find((input) => input.producer === 'advertising' && hasInfluence(input.targetWeights));
+        .find(
+          (input) =>
+            input.producer === 'advertising' &&
+            (hasInfluence(input.targetWeights) ||
+              hasInfluence(input.targetPersonWeights)),
+        );
       return active ? active.id.replace(/^advertising:/, '') : 'none';
     },
     getAdvertisingDailyCost: () =>
@@ -1175,8 +1194,16 @@ export function createWorld(deps: {
   const segmentArchetypes = resolveSegmentArchetypes(
     demandShaperConfig.segmentArchetypes,
   );
+  // The live within-segment weights: the static table bent by whatever crowd
+  // skew advertising is currently pulling (#372). Read live, so a campaign
+  // ramping in changes who walks in as it ramps.
+  const liveArchetypesFor = (segment: string) =>
+    skewSegmentArchetypes(
+      segmentArchetypes.get(segment) ?? [],
+      demandShaper.getPersonSkew(),
+    );
   const drawArchetypeForSegment = (segment: string, rng: () => number) => {
-    const candidates = segmentArchetypes.get(segment) ?? [];
+    const candidates = liveArchetypesFor(segment);
     const total = candidates.reduce((sum, c) => sum + c.weight, 0);
     if (total > 0) {
       const r = rng() * total;
@@ -1206,7 +1233,10 @@ export function createWorld(deps: {
     for (const segment of demandShaper.segments) {
       const segmentShare = mix[segment] ?? 0;
       if (segmentShare <= 0) continue;
-      const candidates = segmentArchetypes.get(segment) ?? [];
+      // Same live, skewed weights the spawn draw uses (#372) — the wire has to
+      // report the crowd the store's own advertising is buying, not the crowd
+      // it would see with no campaign running.
+      const candidates = liveArchetypesFor(segment);
       const total = candidates.reduce((sum, c) => sum + c.weight, 0);
       const within = total > 0 ? candidates : [{ ...SALES_ARCHETYPES[0], weight: 1 }];
       const withinTotal = total > 0 ? total : 1;

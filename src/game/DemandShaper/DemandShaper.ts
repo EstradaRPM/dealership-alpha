@@ -18,6 +18,15 @@
 /** Normalized or raw segment-heat weight vector, keyed by segment id. */
 export type SegmentMix = Record<string, number>;
 
+/**
+ * Additive deltas over the PERSON archetype universe (#372) — the second lane
+ * an influence input can pull. Where `SegmentMix` says which kind of car is in
+ * demand, this says who is walking in to buy it, and the two are orthogonal:
+ * segment heat picks the segment, the person skew bends the within-segment
+ * archetype roll the composition root makes inside that segment.
+ */
+export type PersonMix = Record<string, number>;
+
 export type DemandTrend = 'rising' | 'steady' | 'falling';
 
 export interface DemandInfluenceInput {
@@ -30,6 +39,14 @@ export interface DemandInfluenceInput {
    * target over lagDays.
    */
   readonly weights: SegmentMix;
+  /**
+   * Target additive person-archetype deltas (#372). Omitted ⇒ no crowd skew,
+   * which is what leaves every segment-only producer byte-identical. Ramped by
+   * the SAME lag/decay clock as `weights` — a campaign's two lanes are one
+   * lever, and letting them ramp on separate clocks would let a push arrive as
+   * one crowd and settle as another.
+   */
+  readonly personWeights?: PersonMix;
   /** Days for a changed target to ramp in. 0 means immediate. */
   readonly lagDays: number;
   /** Days for the lever to ramp out after removal. Defaults to lagDays. */
@@ -41,6 +58,10 @@ export interface DemandInfluenceState extends DemandInfluenceInput {
   readonly weights: SegmentMix;
   /** Requested target deltas; may differ from weights while lagging/decaying. */
   readonly targetWeights: SegmentMix;
+  /** Current effective person-archetype deltas used by getPersonSkew/readout. */
+  readonly personWeights: PersonMix;
+  /** Requested target person deltas; differs while lagging/decaying. */
+  readonly targetPersonWeights: PersonMix;
   readonly lagDays: number;
   readonly decayDays: number;
   readonly elapsedDays: number;
@@ -97,6 +118,14 @@ export interface DemandShaper {
   advanceInfluenceDay(days?: number): void;
   /** Live influence inputs with defensive copies for readout attribution. */
   getInfluenceInputs(): readonly DemandInfluenceState[];
+  /**
+   * Summed effective person-archetype deltas across every live input (#372).
+   * These are ADDITIVE skews on the within-segment archetype weights, not a
+   * distribution — the shaper does not own that table (it belongs to
+   * CustomerPool, whose `skewSegmentArchetypes` is the one place the skew is
+   * applied). Every declared archetype is present, absent ones as 0.
+   */
+  getPersonSkew(): PersonMix;
   /** Deterministic weighted segment draw from the current heat map. */
   drawSegment(rng: () => number): string;
   /** Append a realized arrival (by segment) to the trailing window. */
@@ -123,12 +152,22 @@ export function createDemandShaper(deps: {
   config: DemandShaperConfig;
   /** Initial weights (raw). Omitted ⇒ uniform (behavior-neutral baseline). */
   initialMix?: SegmentMix;
+  /**
+   * The person-archetype id universe an input may skew (#372). Passed in by the
+   * composition root off `SALES_ARCHETYPES`, the same way `segments` is passed
+   * in off the tunables — the shaper stays free of a CustomerPool dep. Omitted
+   * ⇒ the lane is closed and any person weight is refused by key, which is a
+   * louder failure than silently skewing a crowd nobody declared.
+   */
+  personArchetypes?: readonly string[];
 }): DemandShaper {
   const segments = [...deps.segments];
   if (segments.length === 0) {
     throw new Error('DemandShaper requires at least one segment');
   }
   const segmentSet = new Set(segments);
+  const personArchetypes = [...(deps.personArchetypes ?? [])];
+  const personSet = new Set(personArchetypes);
   const { windowSize, trendEpsilon } = deps.config;
 
   // Raw weights; normalized lazily on read/draw so set/normalize stay consistent.
@@ -166,6 +205,22 @@ export function createDemandShaper(deps: {
     }
     return next;
   };
+  const validatePersonWeights = (raw: PersonMix | undefined): PersonMix => {
+    const next: PersonMix = {};
+    for (const p of personArchetypes) {
+      const w = raw?.[p] ?? 0;
+      if (!Number.isFinite(w)) {
+        throw new Error(`DemandShaper person weight for "${p}" is not finite`);
+      }
+      next[p] = w;
+    }
+    for (const key of Object.keys(raw ?? {})) {
+      if (!personSet.has(key)) {
+        throw new Error(`DemandShaper: unknown person archetype "${key}"`);
+      }
+    }
+    return next;
+  };
   const setWeights = (raw: SegmentMix): void => {
     const next = validateWeights(raw);
     baselineWeights = next;
@@ -174,29 +229,67 @@ export function createDemandShaper(deps: {
     deps.initialMix ?? Object.fromEntries(segments.map((s) => [s, 1])),
   );
 
-  const zeroWeights = (): SegmentMix =>
-    Object.fromEntries(segments.map((s) => [s, 0]));
+  // Vector helpers are keyed by an explicit key list so the segment lane and the
+  // #372 person lane share ONE set of them. Two hand-copied sets is how the two
+  // lanes would start lagging on different arithmetic.
+  const zeroOver = (keys: readonly string[]): Record<string, number> =>
+    Object.fromEntries(keys.map((k) => [k, 0]));
 
+  const copyOver = (
+    keys: readonly string[],
+    weights: Record<string, number>,
+  ): Record<string, number> =>
+    Object.fromEntries(keys.map((k) => [k, weights[k] ?? 0]));
+
+  const hasDeltaOver = (
+    keys: readonly string[],
+    weights: Record<string, number>,
+  ): boolean => keys.some((k) => Math.abs(weights[k] ?? 0) > 1e-9);
+
+  const sameOver = (
+    keys: readonly string[],
+    a: Record<string, number>,
+    b: Record<string, number>,
+  ): boolean => keys.every((k) => Math.abs((a[k] ?? 0) - (b[k] ?? 0)) <= 1e-9);
+
+  const lerpOver = (
+    keys: readonly string[],
+    from: Record<string, number>,
+    to: Record<string, number>,
+    progress: number,
+  ): Record<string, number> =>
+    Object.fromEntries(
+      keys.map((k) => [
+        k,
+        (from[k] ?? 0) + ((to[k] ?? 0) - (from[k] ?? 0)) * progress,
+      ]),
+    );
+
+  const zeroWeights = (): SegmentMix => zeroOver(segments);
   const copyWeights = (weights: SegmentMix): SegmentMix =>
-    Object.fromEntries(segments.map((s) => [s, weights[s] ?? 0]));
-
+    copyOver(segments, weights);
   const hasDelta = (weights: SegmentMix): boolean =>
-    segments.some((s) => Math.abs(weights[s] ?? 0) > 1e-9);
-
+    hasDeltaOver(segments, weights);
   const sameWeights = (a: SegmentMix, b: SegmentMix): boolean =>
-    segments.every((s) => Math.abs((a[s] ?? 0) - (b[s] ?? 0)) <= 1e-9);
-
+    sameOver(segments, a, b);
   const lerpWeights = (
     from: SegmentMix,
     to: SegmentMix,
     progress: number,
-  ): SegmentMix =>
-    Object.fromEntries(
-      segments.map((s) => [
-        s,
-        (from[s] ?? 0) + ((to[s] ?? 0) - (from[s] ?? 0)) * progress,
-      ]),
-    );
+  ): SegmentMix => lerpOver(segments, from, to, progress);
+
+  const zeroPersons = (): PersonMix => zeroOver(personArchetypes);
+  const copyPersons = (weights: PersonMix): PersonMix =>
+    copyOver(personArchetypes, weights);
+  const hasPersonDelta = (weights: PersonMix): boolean =>
+    hasDeltaOver(personArchetypes, weights);
+  const samePersons = (a: PersonMix, b: PersonMix): boolean =>
+    sameOver(personArchetypes, a, b);
+  const lerpPersons = (
+    from: PersonMix,
+    to: PersonMix,
+    progress: number,
+  ): PersonMix => lerpOver(personArchetypes, from, to, progress);
 
   const normalizeDuration = (days: number | undefined, fallback = 0): number => {
     const value = days ?? fallback;
@@ -211,12 +304,17 @@ export function createDemandShaper(deps: {
     existing?: DemandInfluenceState,
   ): DemandInfluenceState => {
     const targetWeights = validateInfluenceWeights(input.weights);
+    const targetPersonWeights = validatePersonWeights(input.personWeights);
     const lagDays = normalizeDuration(input.lagDays);
     const decayDays = normalizeDuration(input.decayDays, lagDays);
     const startWeights = existing ? copyWeights(existing.weights) : zeroWeights();
+    const startPersons = existing
+      ? copyPersons(existing.personWeights)
+      : zeroPersons();
     const targetUnchanged =
       existing &&
       sameWeights(existing.targetWeights, targetWeights) &&
+      samePersons(existing.targetPersonWeights, targetPersonWeights) &&
       existing.label === input.label &&
       existing.producer === input.producer &&
       existing.lagDays === lagDays &&
@@ -230,6 +328,8 @@ export function createDemandShaper(deps: {
       producer: input.producer,
       weights: lagDays === 0 ? copyWeights(targetWeights) : startWeights,
       targetWeights,
+      personWeights: lagDays === 0 ? copyPersons(targetPersonWeights) : startPersons,
+      targetPersonWeights,
       lagDays,
       decayDays,
       elapsedDays: lagDays === 0 ? lagDays : 0,
@@ -243,6 +343,8 @@ export function createDemandShaper(deps: {
     producer: input.producer,
     weights: copyWeights(input.weights),
     targetWeights: copyWeights(input.targetWeights),
+    personWeights: copyPersons(input.personWeights),
+    targetPersonWeights: copyPersons(input.targetPersonWeights),
     lagDays: input.lagDays,
     decayDays: input.decayDays,
     elapsedDays: input.elapsedDays,
@@ -259,6 +361,11 @@ export function createDemandShaper(deps: {
         producer: input.producer,
         weights: validateInfluenceWeights(input.weights),
         targetWeights: validateInfluenceWeights(input.targetWeights),
+        // Optional on the wire (#372): a pre-#372 schema-3 blob carries neither
+        // key and restores as "this lever skews nobody", which is exactly what
+        // it meant. That is why the snapshot schema did NOT need a version bump.
+        personWeights: validatePersonWeights(input.personWeights),
+        targetPersonWeights: validatePersonWeights(input.targetPersonWeights),
         lagDays: normalizeDuration(input.lagDays),
         decayDays: normalizeDuration(input.decayDays, input.lagDays),
         elapsedDays: normalizeDuration(input.elapsedDays),
@@ -287,12 +394,18 @@ export function createDemandShaper(deps: {
   const removeInput = (id: string): void => {
     activeInputs = activeInputs.flatMap((input) => {
       if (input.id !== id) return [input];
-      if (!hasDelta(input.weights) && !hasDelta(input.targetWeights)) return [];
+      const carriesDelta =
+        hasDelta(input.weights) ||
+        hasDelta(input.targetWeights) ||
+        hasPersonDelta(input.personWeights) ||
+        hasPersonDelta(input.targetPersonWeights);
+      if (!carriesDelta) return [];
       if (input.decayDays === 0) return [];
       return [
         {
           ...input,
           targetWeights: zeroWeights(),
+          targetPersonWeights: zeroPersons(),
           elapsedDays: 0,
           removing: true,
         },
@@ -308,8 +421,20 @@ export function createDemandShaper(deps: {
         const elapsedDays = input.elapsedDays + 1;
         const progress = duration === 0 ? 1 : Math.min(1, elapsedDays / duration);
         const weights = lerpWeights(input.weights, input.targetWeights, progress);
-        const next = { ...input, weights, elapsedDays };
-        if (next.removing && progress >= 1 && !hasDelta(next.weights)) return [];
+        const personWeights = lerpPersons(
+          input.personWeights,
+          input.targetPersonWeights,
+          progress,
+        );
+        const next = { ...input, weights, personWeights, elapsedDays };
+        if (
+          next.removing &&
+          progress >= 1 &&
+          !hasDelta(next.weights) &&
+          !hasPersonDelta(next.personWeights)
+        ) {
+          return [];
+        }
         return [next];
       });
     }
@@ -398,6 +523,16 @@ export function createDemandShaper(deps: {
     removeInfluenceInput: removeInput,
     advanceInfluenceDay: advanceInfluences,
     getInfluenceInputs: () => activeInputs.map(snapshotInput),
+    getPersonSkew: () => {
+      const skew: PersonMix = {};
+      for (const p of personArchetypes) {
+        skew[p] = activeInputs.reduce(
+          (sum, input) => sum + (input.personWeights[p] ?? 0),
+          0,
+        );
+      }
+      return skew;
+    },
     restore: (snap) => {
       // Legacy persona-keyed snapshots (#198 schemas 1|2) cannot be re-keyed to
       // segments cleanly, so they migrate to the behavior-neutral default

@@ -8,6 +8,7 @@ export type {
   DemandAdvertisingControl,
   DemandAdvertisingOption,
   DemandCoverageGap,
+  DemandCrowdLean,
   DemandReadoutEntry,
   DemandReadoutModel,
   DemandTargetingLean,

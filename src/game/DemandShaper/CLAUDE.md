@@ -13,6 +13,10 @@ driver and buyer personas demote to per-customer negotiation flavor.
   - `segments` — the segment ids to distribute over (the composition root passes
     `data/tunables.json` → `demandShaper.segments`, the `VehicleCategory`
     universe, so this module stays free of an Inventory/CustomerPool dep).
+  - `personArchetypes?` — the person-archetype id universe an influence input may
+    skew (#372). Passed in off `SALES_ARCHETYPES` by the composition root for the
+    same reason `segments` is passed in. Omitted ⇒ the lane is closed and any
+    person weight is refused by key.
   - `config: DemandShaperConfig` — `{ windowSize, trendEpsilon }` from
     `data/tunables.json` → `demandShaper`.
   - `initialMix?` — raw baseline weights. Omitted ⇒ uniform; `createWorld`
@@ -37,6 +41,17 @@ driver and buyer personas demote to per-customer negotiation flavor.
     filled by the calibration slice. The separate price → arrival *volume* seam
     lives in `computePricingTrafficMultiplier` (#125 `pricing.trafficMultiplier`
     composite), NOT here.
+    **#372 gave every input a SECOND lane, `personWeights`** — additive deltas
+    over the person-archetype universe, saying *who* walks in rather than *what
+    kind of car* they want. Both lanes ride ONE lag/decay clock on one input:
+    a campaign's two halves are one lever, and separate clocks would let a push
+    arrive as one crowd and settle as another. Only `advertising` fills it today.
+  - `getPersonSkew()` — the summed effective person deltas across live inputs.
+    These are ADDITIVE SKEWS on the within-segment archetype weights, not a
+    distribution: DemandShaper does not own that table. The skew is applied in
+    exactly one place, `CustomerPool.skewSegmentArchetypes`, which both the
+    spawn draw and the #371 finance-mix projection read — so the crowd the wire
+    promises is the crowd that walks in.
   - `drawSegment(rng)` — deterministic weighted segment draw. **Pure function of
     the injected RNG** — the root feeds the existing seeded per-spawn stream so
     replays (#122) reproduce the segment sequence. The within-segment visit
@@ -46,7 +61,10 @@ driver and buyer personas demote to per-customer negotiation flavor.
   - `getObservedMix()` — per-segment `{ count, share, trend }` over the window.
   - `snapshot()/restore()` (barrel-exported `DemandShaperSnapshot`) persist
     `{ baselineMix, activeInputs, observedHistory }`. `activeInputs` are lag
-    states: current weights, target weights, lag/decay days, elapsed days,
+    states: current weights, target weights, current/target person weights
+    (#372 — both **optional on the wire**, so a pre-#372 schema-3 blob restores
+    as "this lever skews nobody", which is exactly what it meant; the snapshot
+    schema did NOT need a version bump), lag/decay days, elapsed days,
     producer id, removal state. The snapshot is **schema 3** (segment-keyed);
     restore of legacy persona-keyed schemas 1|2 migrates to the behavior-neutral
     uniform segment baseline (they cannot be re-keyed cleanly).
@@ -63,7 +81,11 @@ assemble the MANAGERIAL readout model.
   segmentArchetypes, locationProfiles, inventoryInfluence, reputationInfluence,
   advertisingInfluence }`. `segments` is the ordered heat-map dimension;
   `segmentArchetypes` (segment → persona weights) is the within-segment visit
-  archetype roll used by `createWorld` to mint customers.
+  archetype roll used by `createWorld` to mint customers. An
+  `advertisingInfluence` campaign declares `weights` (vehicle-type),
+  `personWeights` (#372) or both — the schema **refuses** a campaign declaring
+  neither, since a lever the player pays for daily that moves nothing is a chip
+  with nothing behind it.
 
 ## Scope notes
 - Segment heat only. **Does NOT** touch the locked #125 `DemandContext` (the

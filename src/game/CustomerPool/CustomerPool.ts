@@ -104,6 +104,34 @@ export function resolveSegmentArchetypes(
   );
 }
 
+/**
+ * Apply an additive person-archetype skew (#372, advertising's second lane) to
+ * one segment's resolved archetype weights, clamping each at zero.
+ *
+ * This is the ONE place the skew is applied, for the same reason
+ * `resolveSegmentArchetypes` is the one reading of the table: the spawn draw
+ * and the #371 finance-mix projection have to describe the same crowd, and a
+ * second copy of the clamp is how a forward read starts promising buyers who
+ * never walk in.
+ *
+ * A skew that zeroes out every candidate returns the segment UNSKEWED rather
+ * than an empty list — advertising bends who walks in, it cannot close a
+ * segment the heat map still spawns, and an empty list would fall through to a
+ * persona that does not belong to the segment at all.
+ */
+export function skewSegmentArchetypes(
+  candidates: readonly SegmentArchetypeWeight[],
+  skew: Readonly<Record<string, number>>,
+): readonly SegmentArchetypeWeight[] {
+  if (candidates.length === 0) return candidates;
+  const skewed = candidates.map((candidate) => ({
+    ...candidate,
+    weight: Math.max(0, candidate.weight + (skew[candidate.personId] ?? 0)),
+  }));
+  const total = skewed.reduce((sum, c) => sum + c.weight, 0);
+  return total > 0 ? skewed : candidates;
+}
+
 export function createCustomerPool(deps: {
   bus: EventBus;
   npcDeps: CreateCustomerDeps;

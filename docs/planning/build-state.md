@@ -31,9 +31,8 @@ a median survival of the full 360 days.
 **Phase 9's gate is CLOSED as of 2026-08-07** and the phase is **SLICED as of 2026-08-07** —
 `docs/planning/fni-mechanics-grill-state.md` is a locked design, and B2 is now twelve filed
 issues. The next `/next` on phase 9 is a **BUILD**. **#151, #153, #365, #152, #366, #367, #368,
-#369, #370 and #371 have all landed** — two left. **#372** (advertising buys a different crowd)
-is now the lowest-numbered open, deps-met slice. **#373's deps are now ALL met** (#365/#366/#371
-all landed), so it is buildable independently of #372.
+#369, #370, #371 and #372 have all landed** — **one left**. **#373** (the monthly F&I verdict)
+is the last slice in the phase and its deps (#365/#366/#371) were already met.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
@@ -49,7 +48,7 @@ all landed), so it is buildable independently of #372.
 | ~~#369~~ | ~~the F&I manager works the deal — `finance_structuring` frontier, `product_presentation` attach (Q2/Q5/Q10)~~ **BUILT 2026-08-08** | #367 |
 | ~~#370~~ | ~~the peak meter — twin opposed bars, the crest is not the max (Q4)~~ **BUILT 2026-08-08** | #366, #367, #369 |
 | ~~#371~~ | ~~the crowd's finance mix read ahead on the wire — MarketIntel lane, F&I manager is a third opener (Q7)~~ **BUILT 2026-08-08** | — |
-| #372 | advertising buys a different crowd — person-archetype weights on campaigns (Q8) | — |
+| ~~#372~~ | ~~advertising buys a different crowd — person-archetype weights on campaigns (Q8)~~ **BUILT 2026-08-08** | — |
 | #373 | the monthly F&I verdict — Reveal reactions + the PVR record (engagement spine plug-in #2) | #365, #366, #371 |
 
 (#151–#153 were **absorbed as filed** rather than re-filed — their bodies now carry the locked
@@ -74,9 +73,37 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 ## Blockers
 
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
-- **Phase 9's queue now runs through #372 and #373, and BOTH are deps-met.** #365, #152, #366,
-  #367, #368, #369, #370 and #371 all landed 2026-08-08. #373's deps (#365/#366/#371) are now
-  all satisfied, so it does not wait on #372. Keep reading the deps column, not just the number.
+- **Phase 9 has ONE slice left: #373.** #365, #152, #366, #367, #368, #369, #370, #371 and #372
+  all landed 2026-08-08. #373's deps (#365/#366/#371) were satisfied before #372 landed — keep
+  reading the deps column, not just the number.
+- **An advertising campaign has TWO lanes and they ride ONE clock** (#372).
+  `DemandInfluenceInput.personWeights` (optional ⇒ every segment-only producer byte-identical)
+  ramps on the same lag/decay as `weights`, because a campaign's two halves are one lever;
+  separate clocks would let a push arrive as one crowd and settle as another. `weights` is now
+  **optional too**, and `buildAdvertisingInfluence` returns an input if **either** lane pulls —
+  not taste: the daily bill is read back off the *running input*, so a crowd-only campaign that
+  resolved to `null` would have run free. The schema **refuses a campaign declaring neither**.
+- **`CustomerPool.skewSegmentArchetypes` is the ONE place the crowd skew is applied** (#372),
+  the same rule `resolveSegmentArchetypes` exists for one level down: the spawn draw and the
+  #371 finance-mix projection both go through it, so the crowd the wire promises is the crowd
+  that walks in. A skew that would zero every candidate returns the segment **unskewed** —
+  advertising bends who walks in, it cannot close a segment the heat map still spawns, and an
+  empty list would fall through to a persona that does not belong to that segment at all.
+- **The person weights bend the WITHIN-segment roll only, and that is not a gap** (#372).
+  `tradesperson` is 100% of `truck` and `retiree` only lives in `suv`, so a crowd skew that also
+  moved the segment draw would be the vehicle lane written twice on a clock the player cannot
+  see. The cross-segment half is the campaign's own `weights`; both shipped campaigns carry
+  both lanes. Do not "fix" the truck segment's inertness by coupling the two lanes.
+- **DemandShaper takes `personArchetypes` the way it takes `segments`** (#372) — passed in by
+  `createWorld` off `SALES_ARCHETYPES`, so the module keeps no CustomerPool dep and a campaign
+  cannot name a buyer the game does not spawn (unknown key ⇒ throws at campaign start). Omitted
+  ⇒ the lane is closed.
+- **#372 did NOT bump the snapshot.** The two person vectors are optional on the wire and a
+  pre-#372 schema-3 blob restores as "this lever skews nobody", which is what it meant. There is
+  no migration to look for.
+- **Nothing calibrated moved and nothing could** (#372) — no harness or script runs a campaign,
+  so `#180` still reads 39.3% / 51.7%, closes=290. Campaign **costs and magnitudes are
+  placeholders owed to a C2-class calibration pass**, as the issue filed them.
 - **`NewsAccessRead.hasDeskManager` IS GONE — a staff door names the role that opens it**
   (#371). The read carries `staffedDesks`, the roster's role ids, and
   `data/news-progression-gating.json` says which role each `kind: 'staff'` unlock needs
@@ -734,6 +761,58 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-08 — **BUILT #372** (advertising buys a different crowd). #371 gave the player a read
+  on how the coming crowd pays; this is the answer they get to give back. An advertising
+  campaign now carries **two orthogonal lanes** — vehicle-type weights (which segment walks in)
+  and **person-archetype weights** (who does) — and the second one moves the store's credit and
+  payment mix for real. `data/tunables.json` gains **we-finance-anyone** ($110/day: pulls
+  young families / commuters / tradespeople, thin front, busy office) and **certified-preowned**
+  ($130/day: pulls retirees / enthusiasts, fat front, quiet office).
+  **The two lanes ride ONE input on ONE lag/decay clock**, because a campaign's two halves are
+  one lever — separate clocks would let a push arrive as one crowd and settle as another.
+  `DemandInfluenceInput.personWeights` is optional, so every segment-only producer (inventory,
+  reputation, pricing) is byte-identical, and the vector helpers were re-keyed by an explicit
+  key list rather than duplicated per lane.
+  **The skew is applied in exactly ONE place: `CustomerPool.skewSegmentArchetypes`.** Both the
+  spawn draw and the #371 finance-mix projection go through it, so the crowd the wire promises
+  is the crowd that walks in — the same rule `resolveSegmentArchetypes` exists for, one level
+  down. A skew that would zero every candidate in a segment returns it **unskewed**:
+  advertising bends who walks in, it cannot close a segment the heat map still spawns, and an
+  empty candidate list would fall through to a persona that does not belong to that segment.
+  **The person weights bend the WITHIN-segment roll only, and the cross-segment half is the
+  campaign's other lane.** That is not a gap — `tradesperson` is 100% of `truck` and `retiree`
+  only lives in `suv`, so a crowd skew that also moved the segment draw would be the vehicle
+  lane written twice, on a clock the player cannot see. Both shipped campaigns therefore carry
+  both lanes, and the schema **refuses a campaign declaring neither** — a chip the player pays
+  $110/day for that moves nothing is a lever with nothing behind it. `weights` is now optional
+  and `buildAdvertisingInfluence` reads **either** lane, which matters beyond taste: the daily
+  bill is read back off the running input, so a crowd-only campaign that resolved to `null`
+  would have run **free**.
+  **No snapshot bump.** The two person vectors are optional on the wire, and a pre-#372 schema-3
+  blob restores as "this lever skews nobody" — which is exactly what it meant.
+  Surfaced on the Growth demand console as its own sentence — *Trucks +40 / Sedans +35* then
+  **Brings in: Young Family +50 / Commuter +40 / Tradesperson +30** — because what they want to
+  buy and who they are are different kinds of fact, and running them together invites the player
+  to read one as the other. Labels come from `SALES_ARCHETYPES`, so a lever can never name a
+  buyer the game does not spawn.
+  Verified on web at T2: both chips render with their prices, selecting one shows the blurb +
+  "Billed $110/day while it runs", cash dropped by the bill on the next day close, and after the
+  2-day lag the lever row rendered both sentences above with the observed mix leaning trucks.
+  Six tests in `tests/DemandShaper.advertising.test.ts` (one per EARS criterion plus the
+  free-campaign guard) — the crowd assertions run **real days** and read
+  `capacity:customer_admitted`, so they measure the shipped generation path, not a
+  re-derivation — plus a #372 anti-orphan case in `tests/DemandShaper.reachability.test.tsx`
+  driving the real `buildTargetingLevers`. Measured: financed share 80.2% → **88.4%** and mean
+  credit 676 → **662** under we-finance-anyone; 80.2% → **74.4%** and 676 → **692** under
+  certified-preowned.
+  237 suites / **3011** tests, typecheck clean, **`#180` live bands byte-identical** (39.3% /
+  51.7%, closes=290) — no harness runs a campaign, so nothing calibrated could move. The
+  full-suite failures were `LegacyWall.reachability`, `FniPosture.reachability`,
+  `App.recapPersistence` and `App.saveFlow` timing out on `waitFor`; all four pass in isolation
+  and none touches this slice — the documented RN-Testing-Library CPU-load flake.
+  Next: **BUILD #373** — the monthly F&I verdict (Reveal reactions + the PVR record), the last
+  slice in phase 9. Its deps (#365/#366/#371) were already met.
+
 - 2026-08-08 — **BUILT #371** (the crowd tells you how it pays before you set the dial).
   #370 gave the posture a meter that reads the store's **own book**; this is what puts the
   *coming crowd* on the wire, so next month's posture is a bet placed on information rather
@@ -834,50 +913,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   flake.
   Next: **BUILD #371** — the crowd's finance mix read ahead on the wire (MarketIntel lane, the
   F&I manager as a third opener). #372 stays deps-met independently.
-
-- 2026-08-08 — **BUILT #369** (the F&I manager finally works the deal instead of the salesperson).
-  The back end had been rolling off the **selling salesperson's** effectiveness, which is exactly
-  what a store with no finance office looks like — and it kept looking like that after the hire.
-  Hiring an `f&i-manager` now turns the office on: `product_presentation` works the menu and
-  `finance_structuring` decides how much markup the lender will still buy.
-  **One closure, one person, two composites.** The desk reaches the flow as
-  `StaffDispatchDeps.getFniDesk?: () => FniDeskSkills | null` (`{ staffId, productPresentation,
-  financeStructuring }`) — the `getTradeApprover` idiom, so StaffDispatch never learns a role id.
-  The composition root picks **the strongest `f&i-manager` by the role's own composite**, exactly
-  how the resolver picks which salesperson takes an up; a per-skill maximum across the roster
-  would have staffed the desk with a manager nobody hired. **The desk's morale multiplies both
-  composites** — the finance manager is not the one employee whose mood doesn't matter.
-  **The premium shelf needed no gate of its own.** `unlockedRoles` is already derived from the
-  roster, so the four `requiredRole`-gated products come off the shelf with the person who sells
-  them. All six unlock together and there is no per-product control anywhere (grill Q10) — the
-  test scans every `src/ui/**` file for a product id or a menu call and asserts the engine's only
-  product-shaped surface is the read `getFniProducts`.
-  **The frontier extension is ONE monotonic relation in `data/`** (`fniDealKill`
-  `structuringFrontierMaxPts` 0.0075 / `structuringSkillReference` 100, via the new pure
-  `resolveSafeFrontierPts`): linear from the bare `safeFrontierPts` at skill 0 to a full extension
-  at the reference, then **flat** — a manager cannot out-structure the lender forever. The max
-  extension is deliberately the reach **from Balanced to "More per deal"** (0.0175 → 0.0250), so a
-  reference-grade desk can run the aggressive posture with nothing falling through and every desk
-  short of it pays a real rate. That is grill Q5's "the peak slides toward aggressive", and it
-  slides rather than disappearing.
-  **The design call this slice owed (build-state, #368): the CSI drag's `fairMarkupPts` does NOT
-  follow the lender's frontier.** A slicker structurer changes what the **bank** will buy, not how
-  gouged the **customer** feels. So a sharp desk makes the aggressive posture *survivable*, never
-  *free* — it changes which tooth bites, and the two teeth stop being one line the moment the
-  store hires someone good. Recorded in the `fniDealKill` `_doc`, both module CLAUDE.mds and the
-  blockers below; do not "restore consistency" by coupling them.
-  **`null` is "no finance office", not "skill 0", and they are written separately on purpose.**
-  They coincide numerically today; keeping them distinct means a future extension that is nonzero
-  at skill 0 cannot silently grant itself to a store that never hired anyone.
-  Byte-identity holds by construction: nothing in `tests/` or `scripts/` hires an `f&i-manager`,
-  and with none on the roster `getFniDesk` returns `null` ⇒ the salesperson presents ⇒ the flat
-  #367 frontier. No calibration number was touched and no harness moved.
-  No web drive: this slice adds **no** surface. The posture dial (#366) is already on Operations →
-  Prep and the effect of the hire is engine-side, so there was nothing new to look at; the
-  player-facing read of what a desk buys is #370's peak meter. Five flow/pure tests in
-  `tests/FniManagerDesk.test.ts`, one per EARS criterion.
-  233 suites / **2982** tests, typecheck clean. The one full-suite failure was `App.saveFlow`
-  timing out on a `waitFor`; it passes in isolation — the documented RN-Testing-Library CPU-load
-  flake, now seen on a fourth suite.
-  Next: **BUILD #370** — the peak meter (twin opposed bars, the crest is not the max), which is
-  now deps-met. #371 and #372 stay deps-met independently.

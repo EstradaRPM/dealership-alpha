@@ -136,19 +136,40 @@ export const TunablesSchema = z.object({
     advertisingInfluence: z
       .object({
         campaigns: z.array(
-          z.object({
-            id: z.string().min(1),
-            label: z.string().min(1),
-            blurb: z.string().min(1),
-            /** Daily spend while the campaign runs (#349). A demand lever with
-             *  no price is a strictly dominant choice — the demand console's
-             *  campaign section only holds a decision because running one costs
-             *  money every day, the same shape ServiceMarketing's arms use. */
-            dailyCost: z.number().nonnegative(),
-            lagDays: z.number().int().nonnegative(),
-            decayDays: z.number().int().nonnegative().optional(),
-            weights: z.record(z.string().min(1), z.number()),
-          }),
+          z
+            .object({
+              id: z.string().min(1),
+              label: z.string().min(1),
+              blurb: z.string().min(1),
+              /** Daily spend while the campaign runs (#349). A demand lever with
+               *  no price is a strictly dominant choice — the demand console's
+               *  campaign section only holds a decision because running one costs
+               *  money every day, the same shape ServiceMarketing's arms use. */
+              dailyCost: z.number().nonnegative(),
+              lagDays: z.number().int().nonnegative(),
+              decayDays: z.number().int().nonnegative().optional(),
+              /** Additive vehicle-type deltas — which segment walks in. */
+              weights: z.record(z.string().min(1), z.number()).optional(),
+              /** Additive person-archetype deltas (#372) — WHO walks in, and so
+               *  what the store's credit and payment mix looks like. Bends the
+               *  within-segment archetype roll on the same lag/decay clock as
+               *  `weights`. Orthogonal to it: a "we finance anyone" push and a
+               *  certified-preowned push can want the same segments and
+               *  opposite crowds. */
+              personWeights: z.record(z.string().min(1), z.number()).optional(),
+            })
+            // A campaign the player pays for daily that moves neither lane is a
+            // lever with nothing behind it. Refuse the file rather than let it
+            // ship as a chip that quietly does nothing.
+            .refine(
+              (campaign) =>
+                Object.keys(campaign.weights ?? {}).length > 0 ||
+                Object.keys(campaign.personWeights ?? {}).length > 0,
+              {
+                message:
+                  'an advertising campaign must declare vehicle-type weights, person-archetype weights, or both',
+              },
+            ),
         ),
       })
       .optional(),

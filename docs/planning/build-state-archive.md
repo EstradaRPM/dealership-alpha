@@ -6,6 +6,53 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **BUILT #369** (the F&I manager finally works the deal instead of the salesperson).
+  The back end had been rolling off the **selling salesperson's** effectiveness, which is exactly
+  what a store with no finance office looks like — and it kept looking like that after the hire.
+  Hiring an `f&i-manager` now turns the office on: `product_presentation` works the menu and
+  `finance_structuring` decides how much markup the lender will still buy.
+  **One closure, one person, two composites.** The desk reaches the flow as
+  `StaffDispatchDeps.getFniDesk?: () => FniDeskSkills | null` (`{ staffId, productPresentation,
+  financeStructuring }`) — the `getTradeApprover` idiom, so StaffDispatch never learns a role id.
+  The composition root picks **the strongest `f&i-manager` by the role's own composite**, exactly
+  how the resolver picks which salesperson takes an up; a per-skill maximum across the roster
+  would have staffed the desk with a manager nobody hired. **The desk's morale multiplies both
+  composites** — the finance manager is not the one employee whose mood doesn't matter.
+  **The premium shelf needed no gate of its own.** `unlockedRoles` is already derived from the
+  roster, so the four `requiredRole`-gated products come off the shelf with the person who sells
+  them. All six unlock together and there is no per-product control anywhere (grill Q10) — the
+  test scans every `src/ui/**` file for a product id or a menu call and asserts the engine's only
+  product-shaped surface is the read `getFniProducts`.
+  **The frontier extension is ONE monotonic relation in `data/`** (`fniDealKill`
+  `structuringFrontierMaxPts` 0.0075 / `structuringSkillReference` 100, via the new pure
+  `resolveSafeFrontierPts`): linear from the bare `safeFrontierPts` at skill 0 to a full extension
+  at the reference, then **flat** — a manager cannot out-structure the lender forever. The max
+  extension is deliberately the reach **from Balanced to "More per deal"** (0.0175 → 0.0250), so a
+  reference-grade desk can run the aggressive posture with nothing falling through and every desk
+  short of it pays a real rate. That is grill Q5's "the peak slides toward aggressive", and it
+  slides rather than disappearing.
+  **The design call this slice owed (build-state, #368): the CSI drag's `fairMarkupPts` does NOT
+  follow the lender's frontier.** A slicker structurer changes what the **bank** will buy, not how
+  gouged the **customer** feels. So a sharp desk makes the aggressive posture *survivable*, never
+  *free* — it changes which tooth bites, and the two teeth stop being one line the moment the
+  store hires someone good. Recorded in the `fniDealKill` `_doc`, both module CLAUDE.mds and the
+  blockers below; do not "restore consistency" by coupling them.
+  **`null` is "no finance office", not "skill 0", and they are written separately on purpose.**
+  They coincide numerically today; keeping them distinct means a future extension that is nonzero
+  at skill 0 cannot silently grant itself to a store that never hired anyone.
+  Byte-identity holds by construction: nothing in `tests/` or `scripts/` hires an `f&i-manager`,
+  and with none on the roster `getFniDesk` returns `null` ⇒ the salesperson presents ⇒ the flat
+  #367 frontier. No calibration number was touched and no harness moved.
+  No web drive: this slice adds **no** surface. The posture dial (#366) is already on Operations →
+  Prep and the effect of the hire is engine-side, so there was nothing new to look at; the
+  player-facing read of what a desk buys is #370's peak meter. Five flow/pure tests in
+  `tests/FniManagerDesk.test.ts`, one per EARS criterion.
+  233 suites / **2982** tests, typecheck clean. The one full-suite failure was `App.saveFlow`
+  timing out on a `waitFor`; it passes in isolation — the documented RN-Testing-Library CPU-load
+  flake, now seen on a fourth suite.
+  Next: **BUILD #370** — the peak meter (twin opposed bars, the crest is not the max), which is
+  now deps-met. #371 and #372 stay deps-met independently.
+
 - 2026-08-08 — **BUILT #368** (the second tooth: gouging a customer thins the crowd).
   Deal-kill costs the store the deal it was working; this costs it the **next** customer. A
   financed deal closed past a fairness line publishes `reputation:satisfaction_hit` scaled by the

@@ -9,6 +9,7 @@ Competitors are the ambient market force (price drift + demand heat), not a per-
 - Session type: `CustomerSession`.
 - `SALES_ARCHETYPES` (type `SalesArchetype`) — the person/visit pairings the sales floor spawns.
 - **`resolveSegmentArchetypes(table)` (#371)** → `ReadonlyMap<segment, SegmentArchetypeWeight[]>`. Resolves `demandShaper.segmentArchetypes` (segment → personId → weight) against those pairings, dropping any personId the catalog doesn't spawn. **The ONE reading of that table**: `createWorld`'s spawn draw uses it, and the finance-mix projection (#371) integrates over it. A second copy of the filter or the normalization is how a forward read starts describing a crowd that never walks in.
+- **`skewSegmentArchetypes(candidates, skew)` (#372)** → the same weights bent by an additive person-archetype skew (advertising's crowd lane, `DemandShaper.getPersonSkew()`), each clamped at zero. **The ONE place the skew is applied** — the spawn draw and the #371 finance-mix projection both go through it, so the crowd the wire promises is the crowd that walks in. A skew that zeroes every candidate returns the segment **unskewed**: advertising bends who walks in, it cannot close a segment the heat map still spawns, and an empty list would fall through to a persona that does not belong to the segment at all.
 - `transition(...)`, `IllegalTransitionError` — FSM validates dispatch legality (intermediate stages).
 - Types: `CustomerStage`, `CustomerAction`.
 

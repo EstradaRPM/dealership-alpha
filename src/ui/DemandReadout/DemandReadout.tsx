@@ -102,10 +102,23 @@ export interface DemandTargetingLean {
   weight: number;
 }
 
+/** One buyer type a lever is pulling harder on (#372). */
+export interface DemandCrowdLean {
+  personArchetype: string;
+  label: string;
+  /** Raw additive person-archetype weight from the lever. */
+  weight: number;
+}
+
 export interface DemandTargetingLever {
   id: string;
   label: string;
   lean: readonly DemandTargetingLean[];
+  /**
+   * Who this lever brings in (#372) — the crowd lane, beside `lean`'s vehicle
+   * lane. Empty for a lever that only shifts which kind of car is in demand.
+   */
+  crowdLean?: readonly DemandCrowdLean[];
 }
 
 /** One selectable advertising campaign (#212). */
@@ -256,12 +269,23 @@ function DemandRow({ entry }: { entry: DemandReadoutEntry }) {
 
 function TargetingLeverRow({ lever }: { lever: DemandTargetingLever }) {
   const t = useTheme();
+  const crowdLean = lever.crowdLean ?? [];
   const leanText =
     lever.lean.length === 0
       ? 'Neutral'
       : lever.lean
           .map((item) => `${item.label} +${Math.round(item.weight * 100)}`)
           .join(' / ');
+  // The crowd lane reads as its own sentence rather than more chips (#372):
+  // "SUVs +85" and "Retirees +50" are different kinds of fact — what they want
+  // to buy, and who they are — and running them together invites the player to
+  // read one as the other.
+  const crowdText =
+    crowdLean.length === 0
+      ? null
+      : `Brings in: ${crowdLean
+          .map((item) => `${item.label} +${Math.round(item.weight * 100)}`)
+          .join(' / ')}`;
   return (
     <View style={{ paddingVertical: t.spacing.xs }} accessibilityRole="text">
       <Text style={{ ...t.typography.label, color: t.colors.textSecondary }} numberOfLines={1}>
@@ -276,6 +300,17 @@ function TargetingLeverRow({ lever }: { lever: DemandTargetingLever }) {
       >
         {leanText}
       </Text>
+      {crowdText ? (
+        <Text
+          style={{
+            ...t.typography.caption,
+            color: t.colors.textMuted,
+            marginTop: t.spacing.xxs,
+          }}
+        >
+          {crowdText}
+        </Text>
+      ) : null}
     </View>
   );
 }

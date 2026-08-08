@@ -2,6 +2,7 @@ export {
   createCustomerPool,
   SALES_ARCHETYPES,
   resolveSegmentArchetypes,
+  skewSegmentArchetypes,
 } from './CustomerPool';
 export type {
   CustomerPool,

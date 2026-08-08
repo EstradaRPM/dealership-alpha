@@ -7,7 +7,11 @@ import { createRng } from '../src/game/Rng';
 // #349: the demand console moved off Home into the Growth tab. Same model,
 // same component underneath — the room it renders in changed.
 import { GrowthTab } from '../src/ui/GrowthTab';
-import { buildHeatConsole, resolvePricingIntel } from '../src/app/config';
+import {
+  buildHeatConsole,
+  buildTargetingLevers,
+  resolvePricingIntel,
+} from '../src/app/config';
 import type { DemandReadoutModel, DemandTargetingLever } from '../src/ui/DemandReadout';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
@@ -262,6 +266,29 @@ describe('#198 / #278 demand readout — reachable through the live pipeline', (
     for (const word of [/\bhot\b/i, /\bwarm\b/i, /\bcold\b/i, /\bcool\b/i]) {
       expect(queryByText(word)).toBeNull();
     }
+  });
+
+  it('surfaces the crowd a campaign buys, not just the segment (#372)', () => {
+    const bus = createEventBus();
+    const world = createWorld({ bus, masterSeed: 42, characterProfile: PROFILE });
+    world.demandControls.setAdvertisingCampaign('we-finance-anyone');
+    for (let day = 1; day <= 4; day++) bus.publish('clock:day_started', { day });
+
+    // The REAL model builder App.tsx calls — a crowd lane the shell never
+    // receives is the "built but never surfaced" failure this file guards.
+    const levers = buildTargetingLevers(world);
+    const campaign = levers.find((l) => l.label === 'Advertising: We finance anyone');
+    expect(campaign).toBeDefined();
+    expect(campaign!.crowdLean?.length).toBeGreaterThan(0);
+
+    const { getByText } = render(
+      <GrowthTab
+        demandReadout={{ entries: [], totalObserved: 0, targetingLevers: levers }}
+      />,
+    );
+    // Plain language: who walks in, named as people rather than as archetype ids.
+    expect(getByText(/Brings in: /)).toBeTruthy();
+    expect(getByText(/Young Family|Commuter|Tradesperson/)).toBeTruthy();
   });
 
   it('App.tsx wires demandReadout from the live world into the Home tab', () => {

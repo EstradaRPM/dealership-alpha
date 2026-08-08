@@ -128,6 +128,46 @@
             "sedan": 0.55,
             "truck": -0.2
           }
+        },
+        {
+          "id": "we-finance-anyone",
+          "label": "We finance anyone",
+          "blurb": "Push easy approvals. Brings in buyers who need the loan — busy finance office, thinner front-end profit.",
+          "dailyCost": 110,
+          "lagDays": 2,
+          "decayDays": 3,
+          "weights": {
+            "truck": 0.4,
+            "sedan": 0.35,
+            "suv": -0.2
+          },
+          "personWeights": {
+            "young_family": 0.5,
+            "commuter": 0.4,
+            "tradesperson": 0.3,
+            "enthusiast": -0.2,
+            "retiree": -0.3
+          }
+        },
+        {
+          "id": "certified-preowned",
+          "label": "Certified pre-owned push",
+          "blurb": "Advertise inspected, warrantied units. Brings in stronger-credit shoppers who often pay cash — fat front-end profit, quiet finance office.",
+          "dailyCost": 130,
+          "lagDays": 3,
+          "decayDays": 3,
+          "weights": {
+            "suv": 0.5,
+            "sedan": 0.3,
+            "truck": -0.25
+          },
+          "personWeights": {
+            "retiree": 0.5,
+            "enthusiast": 0.35,
+            "tradesperson": -0.2,
+            "young_family": -0.25,
+            "commuter": -0.3
+          }
         }
       ]
     }

@@ -13,6 +13,7 @@ import {
   isTradeApprovalUnlocked,
 } from '../game/DealEngine';
 import { loadInventoryConfig } from '../game/Inventory';
+import { SALES_ARCHETYPES } from '../game/CustomerPool';
 import { loadStaffArchetypes, loadStaffTaxonomy } from '../game/NPC';
 import {
   loadNewsTemplatesConfig,
@@ -296,6 +297,13 @@ export const SEGMENT_LABELS: Record<string, string> = {
   suv: 'SUVs',
 };
 
+// person archetype id → the plain-language buyer label the crowd lane shows
+// (#372). Sourced from the spawn catalog itself, so a lever can never name a
+// buyer type the game does not actually generate.
+const PERSON_LABELS: Record<string, string> = Object.fromEntries(
+  SALES_ARCHETYPES.map((a) => [a.personId, a.label]),
+);
+
 export function buildTargetingLevers(world: World): DemandTargetingLever[] {
   return world.demandShaper.getInfluenceInputs().map((input) => ({
     id: input.id,
@@ -307,6 +315,15 @@ export function buildTargetingLevers(world: World): DemandTargetingLever[] {
       .map(([segment, weight]) => ({
         segment,
         label: SEGMENT_LABELS[segment] ?? segment,
+        weight,
+      })),
+    crowdLean: Object.entries(input.personWeights)
+      .filter(([, weight]) => weight > 0)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([personArchetype, weight]) => ({
+        personArchetype,
+        label: PERSON_LABELS[personArchetype] ?? personArchetype,
         weight,
       })),
   }));
