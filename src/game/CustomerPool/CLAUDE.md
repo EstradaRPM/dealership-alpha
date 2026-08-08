@@ -7,6 +7,8 @@ Competitors are the ambient market force (price drift + demand heat), not a per-
 ## Public API (`index.ts`)
 - `createCustomerPool(deps)` → `CustomerPool`. Optional `deps.skill?: SalespersonSkill` (defaults to `GREEN_SALESPERSON`; StaffOrg wiring is a follow-on). Optional `deps.legacyDailyArrivals?: boolean` (default `true`) — the old `clock:day_started` once-per-day arrival generator; the #114 composition root passes `false` so FloorSim's customer-source seam is the sole arrival source (`currentDay` still tracked). Optional `deps.dealEngine` + `deps.inventory` + `deps.creditTiers` (all three together) — when supplied, `dispatch(CLOSE)` real-close path routes through `DealEngine.closeDeal` (#146) so the canonical `deal:closed` with the five deal-structuring fields fires; absent any of the three, falls back to legacy SalesProcess-direct emit (test harnesses without inventory wiring).
 - Session type: `CustomerSession`.
+- `SALES_ARCHETYPES` (type `SalesArchetype`) — the person/visit pairings the sales floor spawns.
+- **`resolveSegmentArchetypes(table)` (#371)** → `ReadonlyMap<segment, SegmentArchetypeWeight[]>`. Resolves `demandShaper.segmentArchetypes` (segment → personId → weight) against those pairings, dropping any personId the catalog doesn't spawn. **The ONE reading of that table**: `createWorld`'s spawn draw uses it, and the finance-mix projection (#371) integrates over it. A second copy of the filter or the normalization is how a forward read starts describing a crowd that never walks in.
 - `transition(...)`, `IllegalTransitionError` — FSM validates dispatch legality (intermediate stages).
 - Types: `CustomerStage`, `CustomerAction`.
 

@@ -30,6 +30,15 @@ export type {
   WireUnlockView,
   WireGatingCopyInput,
 } from './industryWireModel';
+export { FinanceMixPanel } from './FinanceMixPanel';
+export type { FinanceMixPanelProps } from './FinanceMixPanel';
+export { buildFinanceMixModel } from './financeMixModel';
+export type {
+  FinanceMixModel,
+  FinanceMixModelInput,
+  FinanceMixRow,
+  FinanceMixDoorInput,
+} from './financeMixModel';
 export { WeeklyMarketReportCard } from './WeeklyMarketReportCard';
 export type { WeeklyMarketReportCardProps } from './WeeklyMarketReportCard';
 export { buildWeeklyReportCard, signedPercent } from './weeklyReportModel';

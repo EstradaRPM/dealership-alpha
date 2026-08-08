@@ -30,7 +30,7 @@ function economyStub() {
   };
 }
 
-const T1_COLD = { tier: 1, activeSubscriptions: [], hasDeskManager: false };
+const T1_COLD = { tier: 1, activeSubscriptions: [], staffedDesks: [] };
 
 describe('#178 news access — the free lane', () => {
   it('lets a cold Tier-1 lot read the public voices', () => {
@@ -86,7 +86,7 @@ describe('#178 news access — the tier sweep', () => {
   it('never opens a paid lane on tier alone', () => {
     for (let tier = 1; tier <= 5; tier += 1) {
       const access = resolveNewsAccess(
-        { tier, activeSubscriptions: [], hasDeskManager: false },
+        { tier, activeSubscriptions: [], staffedDesks: [] },
         CONFIG,
       );
       for (const [source, reliability] of lanes) {
@@ -100,7 +100,7 @@ describe('#178 news access — the tier sweep', () => {
     if (!feed) throw new Error('auction_data unlock missing from config');
     for (let tier = 1; tier <= 5; tier += 1) {
       const lock = resolveNewsAccess(
-        { tier, activeSubscriptions: [], hasDeskManager: false },
+        { tier, activeSubscriptions: [], staffedDesks: [] },
         CONFIG,
       ).lockFor('auction_report', 'direct');
       expect(lock?.available).toBe(tier >= feed.minTier);
@@ -116,7 +116,7 @@ describe('#178 news access — the tier sweep', () => {
 
   it('will not open a subscription lane below its tier even if it is somehow paid for', () => {
     const access = resolveNewsAccess(
-      { tier: 1, activeSubscriptions: ['auction_data'], hasDeskManager: false },
+      { tier: 1, activeSubscriptions: ['auction_data'], staffedDesks: [] },
       CONFIG,
     );
     expect(access.canRead('auction_report', 'direct')).toBe(false);
@@ -126,7 +126,7 @@ describe('#178 news access — the tier sweep', () => {
 describe('#178 news access — the two currencies', () => {
   it('opens exactly the lane a subscription pays for', () => {
     const access = resolveNewsAccess(
-      { tier: 3, activeSubscriptions: ['auction_data'], hasDeskManager: false },
+      { tier: 3, activeSubscriptions: ['auction_data'], staffedDesks: [] },
       CONFIG,
     );
     expect(access.canRead('auction_report', 'direct')).toBe(true);
@@ -139,7 +139,7 @@ describe('#178 news access — the two currencies', () => {
     // Channel-desk §3: advise is free on hire. A green UCM reads the same wire
     // a seasoned one does — what skill buys is precision elsewhere (#284).
     const access = resolveNewsAccess(
-      { tier: 3, activeSubscriptions: [], hasDeskManager: true },
+      { tier: 3, activeSubscriptions: [], staffedDesks: ['used-car-manager'] },
       CONFIG,
     );
     expect(access.canRead('analyst_desk', 'leading')).toBe(true);
@@ -147,9 +147,49 @@ describe('#178 news access — the two currencies', () => {
     expect(access.canRead('auction_report', 'direct')).toBe(false);
   });
 
+  it('the F&I manager on the desk opens the finance-mix lane', () => {
+    // #371 — the crowd's finance mix is a lane like any other, and knowing how
+    // people pay is what the F&I office does all day. Free on hire, the same
+    // rule the UCM's forward calls follow.
+    const access = resolveNewsAccess(
+      { tier: 3, activeSubscriptions: [], staffedDesks: ['f&i-manager'] },
+      CONFIG,
+    );
+    expect(access.canRead('finance_desk', 'direct')).toBe(true);
+    expect(access.lockFor('finance_desk', 'direct')).toBeNull();
+    // And the F&I desk buys nothing else — a second staff door must not open on
+    // whoever happens to be on the roster.
+    expect(access.canRead('analyst_desk', 'leading')).toBe(false);
+  });
+
+  it('the paid feed opens the same lane', () => {
+    // Two doors, either one. A store that never hires a finance office can buy
+    // the read; a store that hires one does not pay twice for it.
+    const access = resolveNewsAccess(
+      { tier: 3, activeSubscriptions: ['finance_mix_feed'], staffedDesks: [] },
+      CONFIG,
+    );
+    expect(access.canRead('finance_desk', 'direct')).toBe(true);
+    // Neither door alone is enough for anything else.
+    expect(access.canRead('auction_report', 'direct')).toBe(false);
+  });
+
+  it('names BOTH ways into the finance-mix lane while it is shut', () => {
+    const access = resolveNewsAccess(
+      { tier: 3, activeSubscriptions: [], staffedDesks: [] },
+      CONFIG,
+    );
+    expect(access.locksFor('finance_desk', 'direct').map((l) => l.id)).toEqual([
+      'finance_mix_feed',
+      'fni_desk',
+    ]);
+    // An open lane has no doors left to name.
+    expect(access.locksFor('lot_talk', 'direct')).toEqual([]);
+  });
+
   it('reports each door as satisfied or not', () => {
     const access = resolveNewsAccess(
-      { tier: 3, activeSubscriptions: ['competitor_tracking'], hasDeskManager: true },
+      { tier: 3, activeSubscriptions: ['competitor_tracking'], staffedDesks: ['used-car-manager'] },
       CONFIG,
     );
     const byId = new Map(access.locks.map((l) => [l.id, l]));
@@ -191,7 +231,7 @@ describe('#178 gateHeadlines', () => {
         {
           tier: 3,
           activeSubscriptions: ['auction_data', 'competitor_tracking'],
-          hasDeskManager: true,
+          staffedDesks: ['used-car-manager'],
         },
         CONFIG,
       ),
@@ -284,11 +324,11 @@ describe('#178 MarketIntel — subscriptions', () => {
     const { economy } = economyStub();
     const intel = createMarketIntel({ economy });
     expect(
-      intel.accessFor({ tier: 3, hasDeskManager: false }).canRead('auction_report', 'direct'),
+      intel.accessFor({ tier: 3, staffedDesks: [] }).canRead('auction_report', 'direct'),
     ).toBe(false);
     intel.setSubscribed('auction_data', true);
     expect(
-      intel.accessFor({ tier: 3, hasDeskManager: false }).canRead('auction_report', 'direct'),
+      intel.accessFor({ tier: 3, staffedDesks: [] }).canRead('auction_report', 'direct'),
     ).toBe(true);
   });
 

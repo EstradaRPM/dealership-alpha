@@ -1,4 +1,5 @@
 import {
+  laneRequirements,
   loadNewsGatingConfig,
   type NewsGatingConfig,
   type NewsLane,
@@ -53,11 +54,14 @@ export function fillHint(
   );
 }
 
+// Both currencies read the same way — is this door's key in the player's hand?
+// The subscription's key is its own id; a staff door's key is the role that
+// opens it, so a second desk can never inherit the first desk's read (#371).
 function isSatisfied(unlock: NewsUnlock, read: NewsAccessRead): boolean {
   if (read.tier < unlock.minTier) return false;
   return unlock.kind === 'subscription'
     ? read.activeSubscriptions.includes(unlock.id)
-    : read.hasDeskManager;
+    : unlock.role != null && read.staffedDesks.includes(unlock.role);
 }
 
 function toLock(unlock: NewsUnlock, read: NewsAccessRead): NewsLock {
@@ -100,25 +104,37 @@ export function resolveNewsAccess(
     config.unlocks.map((u) => [u.id, toLock(u, read)]),
   );
 
-  function requirementFor(source: string, reliability: string): string | null {
-    return resolveLane(config, source, reliability)?.requires ?? null;
+  function requirementsFor(source: string, reliability: string): readonly string[] {
+    const lane = resolveLane(config, source, reliability);
+    return lane ? laneRequirements(lane) : [];
+  }
+
+  /** The doors on this lane that are still shut, in declaration order. */
+  function closedDoors(source: string, reliability: string): readonly NewsLock[] {
+    return requirementsFor(source, reliability)
+      .filter((id) => unlockById.has(id) && satisfied.get(id) !== true)
+      .map((id) => lockById.get(id) as NewsLock);
   }
 
   return {
     canRead(source, reliability) {
-      const required = requirementFor(source, reliability);
-      if (required == null) return true;
-      // A lane naming an unlock that no longer exists in data fails OPEN: a
+      const required = requirementsFor(source, reliability);
+      if (required.length === 0) return true;
+      // A lane naming only unlocks that no longer exist in data fails OPEN: a
       // config gap must never hide news about something that really happened.
-      if (!unlockById.has(required)) return true;
-      return satisfied.get(required) === true;
+      const known = required.filter((id) => unlockById.has(id));
+      if (known.length === 0) return true;
+      // ANY door opens the lane — the paid feed and the hire are alternatives,
+      // not a checklist.
+      return known.some((id) => satisfied.get(id) === true);
     },
     lockFor(source, reliability) {
-      const required = requirementFor(source, reliability);
-      if (required == null) return null;
-      const lock = lockById.get(required);
-      if (!lock || satisfied.get(required) === true) return null;
-      return lock;
+      if (this.canRead(source, reliability)) return null;
+      return closedDoors(source, reliability)[0] ?? null;
+    },
+    locksFor(source, reliability) {
+      if (this.canRead(source, reliability)) return [];
+      return closedDoors(source, reliability);
     },
     locks: config.unlocks.map((u) => lockById.get(u.id) as NewsLock),
   };

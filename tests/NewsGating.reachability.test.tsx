@@ -5,9 +5,13 @@ import * as path from 'path';
 import { fireEvent, render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld, type World } from '../src/createWorld';
-import { buildIndustryWire, buildWeeklyReport } from '../src/app/config';
+import { buildIndustryWire, buildWeeklyReport, buildFinanceMix } from '../src/app/config';
 // #349: the wire moved to the Growth demand console (Home keeps a glance).
-import { IndustryWire } from '../src/ui/GrowthTab';
+import {
+  IndustryWire,
+  FinanceMixPanel,
+  type FinanceMixModel,
+} from '../src/ui/GrowthTab';
 import { snapshotWorld, restoreWorld } from '../src/worldSnapshot';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
@@ -53,6 +57,17 @@ function hireUcm(world: World): void {
   const candidate = world.staffOrg.getCandidates('used-car-manager')[0];
   expect(candidate).toBeDefined();
   world.staffOrg.hire(candidate.candidateId);
+}
+
+/** Put an F&I manager on the desk (#371 — hireTier is 3, same as the UCM). */
+function hireFniManager(world: World): void {
+  const candidate = world.staffOrg.getCandidates('f&i-manager')[0];
+  expect(candidate).toBeDefined();
+  world.staffOrg.hire(candidate.candidateId);
+}
+
+function renderFinanceMix(model: FinanceMixModel) {
+  return { screen: render(<FinanceMixPanel model={model} />) };
 }
 
 describe('#178 news gating — live world', () => {
@@ -101,6 +116,81 @@ describe('#178 news gating — live world', () => {
 
     expect(paidPublished.length).toBeGreaterThan(0);
     expect(paidPublished).toEqual(coldPublished);
+  });
+
+  it('the finance-mix row teases its two openers', () => {
+    // #371 — a locked lane's job is saying what would open it, and this one
+    // opens two ways. Naming only the subscription would sell a store something
+    // the hire already gives them for free.
+    const { world } = build(371);
+    setTier(world, 3);
+
+    const shut = buildFinanceMix(world);
+    expect(shut.open).toBe(false);
+    expect(shut.paymentRows).toEqual([]);
+    expect(shut.doors.map((d) => d.id)).toEqual(['finance_mix_feed', 'fni_desk']);
+    for (const door of shut.doors) {
+      expect(door.hint.length).toBeGreaterThan(0);
+      // Plain language, not an id: a player reads the sentence, never the key.
+      expect(door.hint).not.toContain('_');
+    }
+
+    const { screen } = renderFinanceMix(shut);
+    expect(screen.getByTestId('finance-mix-locked')).toBeTruthy();
+    expect(screen.getByTestId('finance-mix-door-finance_mix_feed')).toBeTruthy();
+    expect(screen.getByTestId('finance-mix-door-fni_desk')).toBeTruthy();
+    expect(screen.queryByTestId('finance-mix-panel')).toBeNull();
+
+    // Either door alone opens it, and an open lane names no doors at all.
+    world.marketIntel.setSubscribed('finance_mix_feed', true);
+    const bought = buildFinanceMix(world);
+    expect(bought.open).toBe(true);
+    expect(bought.doors).toEqual([]);
+    expect(bought.paymentRows.map((r) => r.id)).toEqual(['finance', 'cash']);
+    expect(bought.creditRows.length).toBeGreaterThan(0);
+    const open = renderFinanceMix(bought);
+    expect(open.screen.getByTestId('finance-mix-panel')).toBeTruthy();
+    expect(open.screen.queryByTestId('finance-mix-locked')).toBeNull();
+
+    world.marketIntel.setSubscribed('finance_mix_feed', false);
+    expect(buildFinanceMix(world).open).toBe(false);
+    hireFniManager(world);
+    expect(buildFinanceMix(world).open).toBe(true);
+  });
+
+  it('opening the finance-mix lane does not perturb the stream', () => {
+    // The read is derived from the demand configuration, never sampled from the
+    // customer stream — so a store that buys it lives in the same world a store
+    // that doesn't lives in. Gating is a lens; it cannot be a fork.
+    const cold = build(3711);
+    const paid = build(3711);
+    setTier(paid.world, 3);
+    paid.world.marketIntel.setSubscribed('finance_mix_feed', true);
+
+    const coldSpawns: string[] = [];
+    const paidSpawns: string[] = [];
+    cold.bus.subscribe('customer:arrived', (e) => coldSpawns.push(e.customerId));
+    paid.bus.subscribe('customer:arrived', (e) => paidSpawns.push(e.customerId));
+
+    const runFloorDay = (w: World, day: number): void => {
+      const floor = w.dayLoop.beginDay({ day, department: 'sales' });
+      floor.runDay();
+    };
+
+    for (let d = 1; d <= 20; d += 1) {
+      cold.bus.publish('clock:day_started', { day: d });
+      paid.bus.publish('clock:day_started', { day: d });
+      // The paid store reads its lane every single day; the cold one never can.
+      expect(buildFinanceMix(paid.world).open).toBe(true);
+      expect(buildFinanceMix(cold.world).open).toBe(false);
+      runFloorDay(cold.world, d);
+      runFloorDay(paid.world, d);
+    }
+
+    expect(paidSpawns.length).toBeGreaterThan(0);
+    expect(paidSpawns).toEqual(coldSpawns);
+    // Same crowd ⇒ same projected mix, whoever is allowed to look at it.
+    expect(paid.world.getCrowdFinanceMix()).toEqual(cold.world.getCrowdFinanceMix());
   });
 
   it('opens the paid lanes when the subscriptions are bought at a tier that sells them', () => {
@@ -210,7 +300,7 @@ describe('#178 news gating — live world', () => {
     ]);
     expect(
       reloaded.marketIntel
-        .accessFor({ tier: 2, hasDeskManager: false })
+        .accessFor({ tier: 2, staffedDesks: [] })
         .canRead('competitor_watch', 'direct'),
     ).toBe(true);
   });
@@ -222,6 +312,19 @@ describe('#178 news gating — composition wiring', () => {
     const src = readAppCompositionSource();
     expect(src).toMatch(/onToggleSubscription=\{/);
     expect(src).toMatch(/marketIntel\.setSubscribed/);
+  });
+
+  it('is mounted: the Growth tab renders the finance-mix read', () => {
+    // #371 anti-orphan — the panel and its model exist, but a surface nobody
+    // passes is a mechanic that was built and never shipped.
+    const src = readAppCompositionSource();
+    expect(src).toMatch(/financeMix=\{buildFinanceMix\(world\)\}/);
+    const tab = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'ui', 'GrowthTab', 'GrowthTab.tsx'),
+      'utf8',
+    );
+    expect(tab).toMatch(/growth-region-finance-mix/);
+    expect(tab).toMatch(/<FinanceMixPanel/);
   });
 
   it('is billed: the world drives the daily debit off the clock', () => {

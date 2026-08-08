@@ -10,6 +10,8 @@ import { GateBoard } from './GateBoard';
 import type { GateBoardModel } from './gateBoardModel';
 import { IndustryWire } from './IndustryWire';
 import type { IndustryWireModel } from './industryWireModel';
+import { FinanceMixPanel } from './FinanceMixPanel';
+import type { FinanceMixModel } from './financeMixModel';
 import { WeeklyMarketReportCard } from './WeeklyMarketReportCard';
 import type { WeeklyReportCardModel } from './weeklyReportModel';
 
@@ -22,6 +24,8 @@ export interface GrowthTabProps {
   industryWire?: IndustryWireModel;
   /** Buy/cancel a wire subscription (#178). */
   onToggleSubscription?: (id: string, on: boolean) => void;
+  /** How the coming crowd would pay, behind the wire's door model (#371). */
+  financeMix?: FinanceMixModel;
   /** The tier-gate detail board (#349). */
   gateBoard?: GateBoardModel;
   /** Built vs the tier's ceiling per capacity kind, and the price of more (#359). */
@@ -61,6 +65,7 @@ export function GrowthTab({
   weeklyReport,
   industryWire,
   onToggleSubscription,
+  financeMix,
   gateBoard,
   facilityBuild,
   onBuildFacility,
@@ -105,6 +110,19 @@ export function GrowthTab({
           ) : (
             <EmptyNote icon="newspaper">
               The wire starts up when your first day opens.
+            </EmptyNote>
+          )}
+        </View>
+      </View>
+
+      <View style={region} testID="growth-region-finance-mix">
+        <SectionHeader title="How the Crowd Pays" />
+        <View style={regionBody}>
+          {financeMix ? (
+            <FinanceMixPanel model={financeMix} />
+          ) : (
+            <EmptyNote icon="people">
+              The read on how buyers are paying shows up once the store opens.
             </EmptyNote>
           )}
         </View>

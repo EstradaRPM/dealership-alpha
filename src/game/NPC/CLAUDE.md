@@ -19,6 +19,30 @@ Shared people-and-traits substrate used by `CustomerPool`, `StaffOrg`, and `Comp
   - **Skill labels (#347):** every entry in `data/staff-skills.json` carries a required plain-language `label` — a surface renders that, never a de-slugged id (`t_o_closing` → "Closing a stalled deal", not "t o closing").
   - **Effective skill (#294, channel-desk M7):** `StaffWithComposites` carries a non-enumerable `effectiveSkills` getter (parallel to `effectiveness`/`trustworthiness`) = Model B derived skill: `clamp(base + growth_rate × counter, base, perHireCap)` per axis, where `perHireCap = min(skill cap, base + max(0, gaussian(cap_headroom)))` is rolled deterministically from the staff id (`SKILL_CAP_HEADROOM_NAMESPACE`). Pure — never mutates `skills`; reflects live `counters`, so it grows as StaffOrg accrues counters overnight. With zero counters `effective === base`. `growth_counter` + `cap_headroom` are optional per-skill fields in `data/staff-skills.json`; omit `growth_counter` ⇒ static axis. `createStaff` seeds the cap from `deps.masterSeed`; `rehydrateStaff`/`promoteStaff` take an optional `masterSeed` (default 0) so the cap re-derives identically on a save reload.
 - Customers: `createCustomer`, `hotButtons`, `loadPersonArchetypes`, `loadVisitArchetypes`. Types: `Person`, `SalesVisit`, `ServiceVisit`, `BodyVisit`, `Visit`, `CustomerBundle`, `CreateCustomerContext`, `CreateCustomerDeps`.
+- **Crowd projection (#371):** `projectCrowdFinanceMix(crowd, deps)` →
+  `CrowdFinanceMix` (`{ cashShare, financeShare, creditMix }`). Types
+  `CrowdArchetypeShare`, `CrowdCreditBand`, `CrowdCreditBandShare`,
+  `ProjectCrowdFinanceMixDeps`. Answers **in closed form** the question
+  `createCustomer` answers by sampling: given a distribution over archetype
+  pairings, how would that crowd pay? It **draws no randomness** — that is the
+  point, since the read is gated (MarketIntel) and a gated read that consumed a
+  seeded stream would make a fixed seed replay differently depending on what the
+  player bought (#122).
+  - The payment traits are independent Bernoullis, so the expectation
+    **enumerates the subsets** and runs each through the same `resolveEffects`
+    machinery the roll uses. Averaging the effects instead would let a partial
+    `must-finance` chance *partly* forbid cash and would smear the `[0,1]` clamp
+    — the categorical/additive split (see the #153 note above) has to survive the
+    integration, not be flattened by it.
+  - `creditMix` describes only the **financed** crowd, weighted by
+    `P(finance | archetype)` — the book the F&I office actually writes. Credit
+    and payment leaning correlate through the archetype (the best-credit retiree
+    is also the likeliest cash buyer), so an all-comers credit mix would
+    systematically flatter the book.
+  - The credit bands arrive as `{ tier, minScore }` **data**, not as a
+    classifier function: a classifier can say which tier one score is in, but not
+    how much of a distribution lands in each — and the second question is the
+    whole read. NPC stays free of a DealEngine dep either way.
   - **Payment traits (#153)** — `cash-buyer` and `must-finance`, declared in
     `data/npc-traits.json` like any other trait and resolved through the ordinary
     `resolveEffects` machinery (F&I grill I5). Two effect keys, because the two are

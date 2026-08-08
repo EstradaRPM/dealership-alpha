@@ -30,6 +30,14 @@ export type { PersonNameCatalog } from './schemas/person-name';
 export { PersonNameCatalogSchema } from './schemas/person-name';
 
 export { createCustomer } from './factories/CustomerFactory';
+export { projectCrowdFinanceMix } from './factories/CrowdMixProjection';
+export type {
+  CrowdFinanceMix,
+  CrowdCreditBandShare,
+  CrowdArchetypeShare,
+  CrowdCreditBand,
+  ProjectCrowdFinanceMixDeps,
+} from './factories/CrowdMixProjection';
 export type {
   CreateCustomerContext,
   CreateCustomerDeps,

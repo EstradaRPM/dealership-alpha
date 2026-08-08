@@ -2,7 +2,7 @@ import React from 'react';
 import type { World } from '../../createWorld';
 import type { DemandReadoutModel } from '../../ui/DemandReadout';
 import { GrowthTab, buildGateBoard, buildFacilityBuild } from '../../ui/GrowthTab';
-import { buildIndustryWire, buildWeeklyReport } from '../config';
+import { buildIndustryWire, buildWeeklyReport, buildFinanceMix } from '../config';
 
 export interface GrowthTabContainerProps {
   world: World;
@@ -51,6 +51,7 @@ export function GrowthTabContainer({
       demandReadout={demandReadout}
       weeklyReport={buildWeeklyReport(world)}
       industryWire={buildIndustryWire(world)}
+      financeMix={buildFinanceMix(world)}
       onToggleSubscription={(id, on) => {
         // #178: a standing subscription is world state (persisted, billed
         // daily), so the toggle writes through the module and the shell

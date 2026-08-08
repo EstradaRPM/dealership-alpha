@@ -61,17 +61,48 @@ export interface CustomerPool {
   spawnCustomer(personArchetypeId: string, visitArchetypeId: string, label: string): string;
 }
 
-export const SALES_ARCHETYPES: ReadonlyArray<{
+export interface SalesArchetype {
   personId: string;
   visitId: string;
   label: string;
-}> = [
+}
+
+export const SALES_ARCHETYPES: readonly SalesArchetype[] = [
   { personId: 'young_family',  visitId: 'family_vehicle_search',  label: 'Young Family'  },
   { personId: 'enthusiast',    visitId: 'performance_test_drive', label: 'Enthusiast'    },
   { personId: 'commuter',      visitId: 'commuter_replacement',   label: 'Commuter'      },
   { personId: 'retiree',       visitId: 'retirement_upgrade',     label: 'Retiree'       },
   { personId: 'tradesperson',  visitId: 'work_truck_purchase',    label: 'Tradesperson'  },
 ];
+
+/** One archetype's weight within its segment, resolved to a real pairing. */
+export interface SegmentArchetypeWeight extends SalesArchetype {
+  readonly weight: number;
+}
+
+/**
+ * Resolve `demandShaper.segmentArchetypes` (segment → personId → weight) against
+ * the real archetype pairings, dropping any personId the catalog doesn't
+ * actually spawn.
+ *
+ * This is the ONE reading of that table. The spawn seam draws from it and the
+ * #371 finance-mix projection integrates over it, and the two must describe the
+ * same crowd — a second copy of the filter or the normalization is how the
+ * forward read starts describing a crowd that never walks in.
+ */
+export function resolveSegmentArchetypes(
+  table: Readonly<Record<string, Readonly<Record<string, number>>>>,
+): ReadonlyMap<string, readonly SegmentArchetypeWeight[]> {
+  const byPersona = new Map(SALES_ARCHETYPES.map((a) => [a.personId, a]));
+  return new Map(
+    Object.entries(table).map(([segment, weights]) => [
+      segment,
+      Object.entries(weights)
+        .filter(([personId]) => byPersona.has(personId))
+        .map(([personId, weight]) => ({ ...byPersona.get(personId)!, weight })),
+    ]),
+  );
+}
 
 export function createCustomerPool(deps: {
   bus: EventBus;

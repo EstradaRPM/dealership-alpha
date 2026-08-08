@@ -39,9 +39,11 @@ import type { CashDeltaSplit } from '../ui/HomeTab';
 import {
   buildIndustryWire as buildIndustryWireModel,
   buildWeeklyReportCard,
+  buildFinanceMixModel,
   type IndustryWireModel,
   type WeeklyReportCardModel,
   type WireLockInput,
+  type FinanceMixModel,
 } from '../ui/GrowthTab';
 import { gateHeadlines, type NewsAccess, type NewsLock } from '../game/MarketIntel';
 import {
@@ -430,17 +432,71 @@ const NEWS_COPY = loadNewsTemplatesConfig();
 // copy. Empty until the first headline publishes — the panel says so honestly
 // rather than rendering a placeholder.
 /**
- * Read access to the wire (#178). Resolved from the live tier + the paid
- * subscriptions + who is on the desk — the used car manager's presence, not a
- * skill threshold, because forward calls are the channel-desk *advise* surface
+ * Read access to the wire (#178, extended #371). Resolved from the live tier +
+ * the paid subscriptions + who is on the desk — a manager's *presence*, not a
+ * skill threshold, because these reads are the channel-desk *advise* surface
  * and advise is free on hire (manager-roles-channel-desk.md §3).
+ *
+ * The whole roster's roles go over, and `data/news-progression-gating.json`
+ * says which role opens which door. Filtering to an allowlist here would put
+ * half of that rule in code and half in data, and the two would drift the first
+ * time a door moved desks.
  */
 export function resolveWireAccess(world: World): NewsAccess {
   return world.marketIntel.accessFor({
     tier: world.tierManager.currentTier,
-    hasDeskManager: world.staffOrg.currentRoster.some(
-      (s) => s.role_id === 'used-car-manager',
-    ),
+    staffedDesks: world.staffOrg.currentRoster.map((s) => s.role_id),
+  });
+}
+
+/**
+ * The (source, reliability) pair the finance-mix read is filed under (#371).
+ * It carries no headlines — what the player is allowed to KNOW is one door
+ * model whether the answer arrives as a story or as a number, so the panel
+ * asks the wire rather than growing a second gate of its own.
+ */
+const FINANCE_MIX_LANE = ['finance_desk', 'direct'] as const;
+
+/**
+ * Plain-language names for the lender's credit tiers. The player never has to
+ * learn that "D" means subprime to read this panel; the letter stays in the
+ * engine, where the lender programs are keyed by it.
+ */
+const CREDIT_TIER_LABELS: Record<string, string> = {
+  A: 'Strongest credit',
+  B: 'Strong credit',
+  C: 'Fair credit',
+  D: 'Rebuilding credit',
+};
+
+/**
+ * How the coming crowd would pay (#371) — the read the F&I posture dial is set
+ * against, gated behind the wire's door model. Two doors open it: the paid
+ * lender-mix feed, or an F&I manager on the desk (free on hire, like every
+ * other desk read). The numbers come from `world.getCrowdFinanceMix()`, which
+ * derives them from the live demand configuration and draws no randomness — so
+ * building this model can never move a seeded replay (#122).
+ */
+export function buildFinanceMix(world: World): FinanceMixModel {
+  const access = resolveWireAccess(world);
+  const open = access.canRead(...FINANCE_MIX_LANE);
+  const mix = world.getCrowdFinanceMix();
+  return buildFinanceMixModel({
+    open,
+    cashShare: mix.cashShare,
+    financeShare: mix.financeShare,
+    creditMix: mix.creditMix.map((band) => ({
+      id: band.tier,
+      label: CREDIT_TIER_LABELS[band.tier] ?? band.tier,
+      share: band.share,
+    })),
+    // Every way in, not just the first — the hire and the subscription are
+    // alternatives, and a row naming one would sell what the other gives free.
+    doors: access.locksFor(...FINANCE_MIX_LANE).map((lock) => ({
+      id: lock.id,
+      label: lock.label,
+      hint: lock.hint,
+    })),
   });
 }
 

@@ -42,8 +42,18 @@ export interface NewsLock {
 export interface NewsAccess {
   /** Can the player read a headline from this (source, reliability) lane? */
   canRead(source: string, reliability: string): boolean;
-  /** The door standing in the way, or null when the lane is open. */
+  /**
+   * The first door standing in the way, or null when the lane is open. A lane
+   * reachable two ways reports the first shut one — enough for a headline row,
+   * which has space for a single sentence.
+   */
   lockFor(source: string, reliability: string): NewsLock | null;
+  /**
+   * EVERY door standing in the way, in declaration order — empty when the lane
+   * is open. A surface with room to state both alternatives uses this, so a
+   * lane the player could either buy or hire into says both out loud (#371).
+   */
+  locksFor(source: string, reliability: string): readonly NewsLock[];
   /** Every unlock the config defines, in declaration order, with live state. */
   readonly locks: readonly NewsLock[];
 }
@@ -54,11 +64,16 @@ export interface NewsAccessRead {
   /** Subscription ids currently being paid for. */
   readonly activeSubscriptions: readonly string[];
   /**
-   * Whether a used car manager sits on the desk. The forward-call lane is the
-   * channel-desk `advise` surface (manager-roles-channel-desk.md §3), which is
-   * free on hire and never behind a skill threshold — hiring one is the gate.
+   * The staff role ids currently on the roster. A staff door names the role
+   * that opens it (`NewsUnlock.role`) and this is the key ring — read the same
+   * way `activeSubscriptions` is read, so the two currencies share one rule.
+   *
+   * Access is always the HIRE, never a skill threshold: reading what is coming
+   * is part of the job (manager-roles-channel-desk.md §3, "advise is free on
+   * hire") for the used car manager's forward calls and for the F&I manager's
+   * read on how the crowd pays (#371).
    */
-  readonly hasDeskManager: boolean;
+  readonly staffedDesks: readonly string[];
 }
 
 /** The engine-side shape the gate needs off a published headline. */

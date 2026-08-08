@@ -22,6 +22,7 @@ import {
 import {
   createCustomerPool,
   SALES_ARCHETYPES,
+  resolveSegmentArchetypes,
   type CustomerPool,
 } from './game/CustomerPool';
 import { createEconomy, type Economy } from './game/Economy';
@@ -85,6 +86,9 @@ import {
   loadCustomerTunables,
   loadCustomerCurrentVehicleConfig,
   loadTradeIncidenceConfig,
+  projectCrowdFinanceMix,
+  type CrowdFinanceMix,
+  type CrowdArchetypeShare,
 } from './game/NPC';
 import {
   classifyCredit,
@@ -221,6 +225,15 @@ export interface World {
    * close uses, so a projection and a contract can never disagree.
    */
   getFniStructuringSkill(): number | null;
+  /**
+   * How the COMING crowd would pay — the cash/finance split over every up, and
+   * the credit-tier mix among the ones who would finance (#371). Derived in
+   * closed form from the live demand configuration (heat map + advertising
+   * influence + the within-segment archetype weights), never sampled: the read
+   * consumes no seeded stream, so a fixed seed replays identically whether or
+   * not the player has opened the lane that shows it.
+   */
+  getCrowdFinanceMix(): CrowdFinanceMix;
   tierGate: TierGate;
   dayLoop: DayLoopController;
   staffTaxonomy: StaffTaxonomy;
@@ -799,14 +812,19 @@ export function createWorld(deps: {
   const tradeAllowanceNoise = loadTradeAllowanceNoiseConfig();
   const tradeBookValue: TradeBookValueFn = (cv) =>
     marketEconomy.bookValueFn(cv as unknown as PricedVehicleInput);
+  // Loaded once and shared: the customer factory samples these, and the #371
+  // finance-mix projection integrates over the very same tables.
+  const personArchetypes = loadPersonArchetypes();
+  const visitArchetypes = loadVisitArchetypes();
+  const traits = loadTraitTaxonomy();
   const customerPool = createCustomerPool({
     bus,
     legacyDailyArrivals: false,
     npcDeps: {
       masterSeed,
-      personArchetypes: loadPersonArchetypes(),
-      visitArchetypes: loadVisitArchetypes(),
-      traits: loadTraitTaxonomy(),
+      personArchetypes,
+      visitArchetypes,
+      traits,
       // #165: stamp a deterministic `currentVehicle` on every customer so
       // the trade-in slices (#166–#171) have real history to work against.
       currentVehicleConfig: loadCustomerCurrentVehicleConfig(),
@@ -1149,20 +1167,13 @@ export function createWorld(deps: {
       );
     }
   });
-  const archetypeByPersona = new Map(
-    SALES_ARCHETYPES.map((a) => [a.personId, a]),
-  );
   // Within-segment archetype roll (#278): demand picks the *segment*; this table
   // picks which visit archetype walks in for that segment (the negotiation
   // flavor personas demote to). Resolved against SALES_ARCHETYPES so the heat
-  // map stays free of a CustomerPool dep.
-  const segmentArchetypes = new Map<string, { personId: string; weight: number }[]>(
-    Object.entries(demandShaperConfig.segmentArchetypes).map(([segment, weights]) => [
-      segment,
-      Object.entries(weights)
-        .filter(([personId]) => archetypeByPersona.has(personId))
-        .map(([personId, weight]) => ({ personId, weight })),
-    ]),
+  // map stays free of a CustomerPool dep — and resolved ONCE (#371), because
+  // the finance-mix projection below integrates over the same weights.
+  const segmentArchetypes = resolveSegmentArchetypes(
+    demandShaperConfig.segmentArchetypes,
   );
   const drawArchetypeForSegment = (segment: string, rng: () => number) => {
     const candidates = segmentArchetypes.get(segment) ?? [];
@@ -1172,11 +1183,47 @@ export function createWorld(deps: {
       let cum = 0;
       for (const candidate of candidates) {
         cum += candidate.weight;
-        if (r < cum) return archetypeByPersona.get(candidate.personId)!;
+        if (r < cum) return candidate;
       }
-      return archetypeByPersona.get(candidates[candidates.length - 1].personId)!;
+      return candidates[candidates.length - 1];
     }
     return SALES_ARCHETYPES[0];
+  };
+
+  // The coming crowd's finance mix (#371) — the read the F&I posture dial is
+  // set against. Composed from the LIVE demand configuration: the same heat map
+  // `drawSegment` samples (advertising influence and all) crossed with the same
+  // within-segment weights above, then integrated in closed form by NPC. It
+  // draws no randomness and consumes no seeded stream, so a fixed seed replays
+  // byte-identically whether or not the player ever opens the lane.
+  const creditBands = Object.entries(creditTiers.tiers).map(([tier, def]) => ({
+    tier,
+    minScore: def.minScore,
+  }));
+  const getCrowdFinanceMix = (): CrowdFinanceMix => {
+    const mix = demandShaper.getMix();
+    const crowd: CrowdArchetypeShare[] = [];
+    for (const segment of demandShaper.segments) {
+      const segmentShare = mix[segment] ?? 0;
+      if (segmentShare <= 0) continue;
+      const candidates = segmentArchetypes.get(segment) ?? [];
+      const total = candidates.reduce((sum, c) => sum + c.weight, 0);
+      const within = total > 0 ? candidates : [{ ...SALES_ARCHETYPES[0], weight: 1 }];
+      const withinTotal = total > 0 ? total : 1;
+      for (const candidate of within) {
+        crowd.push({
+          personArchetypeId: candidate.personId,
+          visitArchetypeId: candidate.visitId,
+          share: segmentShare * (candidate.weight / withinTotal),
+        });
+      }
+    }
+    return projectCrowdFinanceMix(crowd, {
+      personArchetypes,
+      visitArchetypes,
+      traits,
+      creditBands,
+    });
   };
 
   // #306 warm repeat-buyer leads: an aged-out, still-loyal owner re-enters Sales.
@@ -1525,6 +1572,7 @@ export function createWorld(deps: {
     facility,
     kpiDashboard,
     getFniStructuringSkill,
+    getCrowdFinanceMix,
     tierGate,
     dayLoop,
     staffTaxonomy,

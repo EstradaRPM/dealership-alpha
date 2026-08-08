@@ -7,11 +7,15 @@ reach the player's eyes, and the two currencies that open them.
 
 - **Money** — a standing data subscription (`data/news-progression-gating.json`),
   its `dailyCost` debited from Economy every day it stays on.
-- **People** — a used car manager on the desk. Forward calls are the
-  channel-desk **advise** surface, and advise is *free on hire*
+- **People** — a manager on the desk. Reading what is coming is the channel-desk
+  **advise** surface, and advise is *free on hire*
   (`docs/planning/manager-roles-channel-desk.md` §3) — never behind a skill
   threshold. #178's original "Market Analyst" hire was adjudicated onto the UCM:
-  the locked roster is UCM/NCM/GM, and `pricing` already owns intel (#284).
+  the locked roster is UCM/NCM/GM, and `pricing` already owns intel (#284). A
+  staff unlock **names the role that opens it** (#371); before the F&I manager
+  became a second desk the read carried one `hasDeskManager` boolean and the
+  mapping was implicit, which would have handed the finance-mix lane to any
+  store with a UCM.
 - **Career tier** decides which doors are on the market at all (`minTier`), so a
   Tier-1 lot reads the public voices and sees the rest as locked rows.
 
@@ -28,13 +32,17 @@ participation**. The composition root constructs it, drives `advanceDay` on
   minTier}`), `isSubscribed(id)`, `activeSubscriptions()` (catalog order),
   `setSubscribed(id, on)` (**throws** on an id it doesn't sell — including a
   staff unlock, whose price is a hire), `dailySpend()`.
-- `accessFor({ tier, hasDeskManager })` → `NewsAccess` resolved against the live
-  subscriptions.
+- `accessFor({ tier, staffedDesks })` → `NewsAccess` resolved against the live
+  subscriptions. `staffedDesks` is the roster's **role ids** — read exactly the
+  way `activeSubscriptions` is read, so the two currencies share one rule and a
+  new staff door is a data edit rather than a new boolean.
 - `advanceDay(day)` — debit each active subscription.
 - `snapshot()` / `restore()` → `MarketIntelSnapshot` (the active ids). `restore`
   drops a product the catalog no longer sells rather than billing for it.
 - `resolveNewsAccess(read, config?)` → `NewsAccess` — the pure resolution.
-  `canRead(source, reliability)` / `lockFor(...)` / `locks` (every declared door
+  `canRead(source, reliability)` / `lockFor(...)` (the FIRST shut door, all a
+  headline row has space for) / `locksFor(...)` (**every** shut door, for a
+  surface with room to state both ways in, #371) / `locks` (every declared door
   with live `available` + `satisfied` state, for the wire's footer).
 - `gateHeadlines(headlines, access)` → `GatedHeadline[]`, order preserved. A
   locked row keeps its place in the chronology: *when* something you can't read
@@ -47,7 +55,12 @@ participation**. The composition root constructs it, drives `advanceDay` on
 A lane is `{ source, reliability, requires }` with `'*'` wildcards on either
 axis. Matching is by **specificity** — an exact source (2) outranks an exact
 reliability (1), ties fall back to declaration order — never by array order, so
-a voice can be slotted in anywhere. The first lane in data is a free catch-all,
+a voice can be slotted in anywhere. `requires` may name **several** unlocks, and
+then **any** of them opens the lane (#371: the finance-mix read is bought *or*
+hired into, never both). A lane can also carry **no headlines at all** —
+`finance_desk` is the Growth finance-mix panel's door — because what the player
+is allowed to *know* is one model whether the answer arrives as a story or as a
+number. The first lane in data is a free catch-all,
 so a voice added to the news catalog without a lane of its own **fails OPEN**
 (readable), the same philosophy as #177's source fallback: a config gap must
 never swallow news about something that really happened. `tests/MarketIntel.test.ts`
@@ -61,9 +74,10 @@ None — driven entirely by the composition root.
 ## Data
 
 - `data/news-progression-gating.json` (`schemaVersion: 1`) — `unlocks` (each
-  `{id,kind,label,blurb,dailyCost?,minTier,lockedHint,tierLockedHint}`), `lanes`,
-  and the wire's gating `copy`. Costs are first-pass placeholders tuned in the
-  S14 balance pass (#286).
+  `{id,kind,label,blurb,dailyCost?,role?,minTier,lockedHint,tierLockedHint}`;
+  `role` is **required on a staff door and refused on a subscription one**),
+  `lanes`, and the wire's gating `copy`. Costs are first-pass placeholders tuned
+  in the S14 balance pass (#286).
 
 ## Determinism & persistence
 
@@ -77,5 +91,7 @@ materializes an unsubscribed default for older saves).
 ## Decoupling
 
 Never imports MarketEconomy, StaffOrg or CareerProgression. It sees only a
-`(source, reliability)` pair and a narrow `{ tier, hasDeskManager }` read the
-composition root distills — `resolveWireAccess(world)` in `src/app/config.ts`.
+`(source, reliability)` pair and a narrow `{ tier, staffedDesks }` read the
+composition root distills — `resolveWireAccess(world)` in `src/app/config.ts`,
+which hands over the whole roster's role ids rather than an allowlist, so which
+role opens which door stays entirely in data.

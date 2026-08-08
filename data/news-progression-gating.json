@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "_doc": "News access gating (#178, parent #150). What the player is ALLOWED to read on the industry wire, as opposed to what the market engine publishes — the engine always publishes everything (so the seed stream, and therefore replay, is identical whether or not anything is unlocked); this file decides which lanes reach the player's eyes. Three access lanes, each a different currency: PUBLIC (free — lot talk, the trade magazine, factory recall/incentive bulletins: vague, late, or already public), PAID (a data subscription — the block's actual numbers, a rival's actual percentages: the same events you already hear about, quantified), and STAFFED (a used car manager on the desk — forward calls, per manager-roles-channel-desk.md §3 'advise = free on hire'). A lane's `requires` names an unlock id; `null` is free. Lane matching is by SPECIFICITY, not array order: an exact source+reliability rule beats a source wildcard, which beats a reliability wildcard (ties fall back to declaration order), so a new voice can be slotted in anywhere in the list. All costs are first-pass placeholders tuned in the S14 balance pass (#286).",
+  "_doc": "News access gating (#178, parent #150). What the player is ALLOWED to read on the industry wire, as opposed to what the market engine publishes — the engine always publishes everything (so the seed stream, and therefore replay, is identical whether or not anything is unlocked); this file decides which lanes reach the player's eyes. Three access lanes, each a different currency: PUBLIC (free — lot talk, the trade magazine, factory recall/incentive bulletins: vague, late, or already public), PAID (a data subscription — the block's actual numbers, a rival's actual percentages: the same events you already hear about, quantified), and STAFFED (a manager on the desk — reading what is coming is part of the job, per manager-roles-channel-desk.md §3 'advise = free on hire'). A staff unlock names the `role` that opens it, so a second desk never inherits the first desk's read (#371). A lane's `requires` names an unlock id, or a LIST of ids of which ANY one opens it — the finance-mix lane can be bought or hired into. `null` is free. Lane matching is by SPECIFICITY, not array order: an exact source+reliability rule beats a source wildcard, which beats a reliability wildcard (ties fall back to declaration order), so a new voice can be slotted in anywhere in the list. All costs are first-pass placeholders tuned in the S14 balance pass (#286).",
   "unlocks": [
     {
       "id": "auction_data",
@@ -23,18 +23,40 @@
       "tierLockedHint": "Competitor price tracking sells to lots at Tier {tier} and up."
     },
     {
+      "id": "finance_mix_feed",
+      "kind": "subscription",
+      "label": "Lender mix report",
+      "blurb": "How the people walking onto lots like yours are paying — cash or a note, and what their credit looks like.",
+      "dailyCost": 25,
+      "minTier": 2,
+      "lockedHint": "Subscribe to the lender mix report — ${cost} a day — to set next month's finance posture knowing how the crowd pays.",
+      "tierLockedHint": "The lender mix report sells to lots at Tier {tier} and up."
+    },
+    {
       "id": "desk_manager",
       "kind": "staff",
+      "role": "used-car-manager",
       "label": "A used car manager on the desk",
       "blurb": "Reading what is coming is part of the job — the day you hire one, the forward calls are yours.",
       "minTier": 3,
       "lockedHint": "Hire a used car manager. Calling the market before it moves is part of the job.",
       "tierLockedHint": "A used car manager comes on the desk at Tier {tier}."
+    },
+    {
+      "id": "fni_desk",
+      "kind": "staff",
+      "role": "f&i-manager",
+      "label": "An F&I manager on the desk",
+      "blurb": "They already know how the crowd is paying — it is what they do all day. Hire one and the read comes with them.",
+      "minTier": 3,
+      "lockedHint": "Hire an F&I manager. Knowing how the crowd pays comes with the job.",
+      "tierLockedHint": "An F&I manager comes on the desk at Tier {tier}."
     }
   ],
-  "_lanesDoc": "source '*' / reliability '*' are wildcards. The first lane is the free catch-all, so a voice added to the news catalog without a lane of its own FAILS OPEN — readable rather than silently unreadable. Same philosophy as #177's source fallback: a copy or config gap must never swallow news about something that really happened. A test cross-checks every (source, reliability) pair the catalog can publish against these lanes, so an unintended free lane is caught at review, not in play.",
+  "_lanesDoc": "source '*' / reliability '*' are wildcards. The first lane is the free catch-all, so a voice added to the news catalog without a lane of its own FAILS OPEN — readable rather than silently unreadable. Same philosophy as #177's source fallback: a copy or config gap must never swallow news about something that really happened. A test cross-checks every (source, reliability) pair the catalog can publish against these lanes, so an unintended free lane is caught at review, not in play. `finance_desk` is a lane with no headlines behind it (#371): the Growth finance-mix panel reads it, because what the player is allowed to KNOW is one door model whether the answer arrives as a story or as a number.",
   "lanes": [
     { "source": "*", "reliability": "*", "requires": null },
+    { "source": "finance_desk", "reliability": "*", "requires": ["finance_mix_feed", "fni_desk"] },
     { "source": "*", "reliability": "leading", "requires": "desk_manager" },
     { "source": "auction_report", "reliability": "*", "requires": "auction_data" },
     { "source": "competitor_watch", "reliability": "*", "requires": "competitor_tracking" },
