@@ -32,12 +32,54 @@ a median survival of the full 360 days.
 #152, #366, #367, #368, #369, #370, #371, #372, #373). `docs/planning/fni-mechanics-grill-state.md`
 stays a locked design; do not re-grill it.
 
-**The pointer now sits on phase 10 — D1 People + Finance + Growth dashboards.** Its row says
-*"largely absorbed by 5c (#349/#350/#351); re-scope when reached"*, and it is now reached: the
-next `/next` on it opens `docs/planning/path-to-finished-product.md` §D1, subtracts what 5c
-already shipped, and either **SLICES** the remainder into filed issues or advances past the
-phase if nothing survives the subtraction. That re-scope is the unit — do not start it by
-re-reading the three landed 5c slices' source.
+**Phase 10 — D1 — is RE-SCOPED AND FILED as of 2026-08-08.** Its row's *"largely absorbed by 5c;
+re-scope when reached"* was mostly right: the subtraction against the shipped app killed Growth's
+D1 scope entirely and left People with two items and Finance with three. Five issues filed,
+**#374–#378** (table below). The next `/next` on this phase BUILDS #374.
+
+### Phase 10 — D1 the three dashboards (re-scoped + filed 2026-08-08)
+
+| # | Slice | Deps |
+|---|---|---|
+| #374 | the P&L relieves inventory at the sale — Net Income becomes what the store *earned* | — |
+| #375 | **tracer** — `ProfitCenter` axis on the ledger + `getDepartmentPnL` + the Finance "Where the Gross Came From" panel | #374 |
+| #376 | the P&L proper — revenue/expenses/net over time + the gross→overhead→net ladder | #375 |
+| #377 | People — skill growth made visible, and what morale is costing | — |
+| #378 | closing sweep — delete the dead placeholder tab surface + the stale comments | — |
+
+**What the subtraction actually found** (do not re-derive it; this is the record):
+
+- **Growth is DONE — nothing survives.** All six D1-implied panels ship (`GrowthTab.tsx:79-157`):
+  demand console, market report, industry wire + subscription lanes, the #371 finance-mix panel,
+  the #359 build surface, and the gate board with live verdict pills. D1's remaining Growth line
+  is *"courtship/brand portfolio once T4 lands"*, which is **E1**, not this phase.
+- **People had 6 of 8 shipped.** Roster + slot boards, morale meter, salary book (grade + daily
+  wage + total payroll), hiring, promotion, and raise/poach prompts are all live. Missing: skill
+  **growth** is invisible (the card draws `effectiveSkills` alone, never against the hire-time base
+  or the per-hire cap, so a climbing rookie and a topped-out veteran look identical), and
+  `getMoraleMultiplier` — which the engine reads at `createWorld.ts:977` and
+  `StaffDispatch.ts:508/522` — is read by **no UI**, so the morale bar states a level and never a
+  consequence. → #377.
+- **Finance had the charts and the F&I detail, and was missing the statement.** Shipped: the gross
+  hero, cash-vs-financed donut, the #365 product/reserve split, back-end-by-structure, expenses by
+  label, PVR + PPRU + carrying cost as KPI rows, Deal History and Month-Close sub-screens. Missing:
+  **per-department gross does not exist anywhere in the game and no getter can build it** (zero
+  engine hits for `departmentGross|grossByDepartment|deptGross`) → #375; and the "P&L trend" is a
+  trend of *gross* — Net Income alone among the four headline cards has no series
+  (`financeModel.ts:322`), and `PnLSummary.totalRevenue`/`.totalExpenses` are computed on every
+  read and rendered nowhere → #376.
+- **#374 is the prerequisite nobody had filed.** `getPnL` is pure cash-basis
+  (`Economy.ts:124`): an auction purchase is charged as an operating expense on the day of the
+  buy while the unit's revenue arrives weeks later, so at T1 — where a six-space lot is bought out
+  in three days — a stocking month reports a loss the store did not make. The fix is already
+  half-built: `category: 'inventoryAcquisition'` (#255) exists precisely to say "cash converted
+  into stock, NOT operating spend" and the P&L never acts on it. Without #374, #375's department
+  panel cannot reconcile with its own Net Income — the exact defect the #365 reserve-posting note
+  was written about.
+- **#374 can move no calibration number, and that was checked, not assumed.** `getPnL` has four
+  consumers and all four are Finance UI (`FinanceTabContainer.tsx:47-48`, `TabStackContent.tsx:136`,
+  `financeModel.ts:322`, `monthResultsModel.ts:115`). `scripts/` has **zero** hits for `getPnL` or
+  `netIncome`; every monitor and gate face branches on `economy.cash`, which #374 does not touch.
 
 ### Phase 9 — B2 F&I plug-in #2 (filed 2026-08-07)
 
@@ -804,6 +846,65 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-08 — **SLICED phase 10 (D1, the three dashboards) into #374–#378.** The phase row had
+  carried *"largely absorbed by 5c (#349/#350/#351); re-scope when reached"* since it was written,
+  and the subtraction against the app that actually ships is the unit. It was done by inventorying
+  the three rooms as rendered — not by re-reading the 5c slices' source — and the result is
+  asymmetric: **Growth survives nothing, People two items, Finance three.**
+  **Growth is complete.** All six D1-implied panels are live and its only remaining charter line
+  (courtship / brand portfolio) is explicitly T4, i.e. E1. A phase can close a room by finding
+  nothing left in it, and this one did.
+  **The find that changed the shape of the slice is in Finance, and it is an engine gap, not a UI
+  gap.** D1 names "per-department gross"; the game has no such number and no getter that could
+  build one — `departmentGross|grossByDepartment|deptGross|serviceGross|bodyShopGross` returns
+  **zero engine hits**. The store can run four profit centers (sales, F&I, service, body shop) and
+  cannot answer which one made the money. Finance's existing "What the Gross Was Made Of" splits
+  by *revenue line*, which is a different axis, and the department pages show demand and health
+  and no money at all. So #375 is a real vertical tracer — a `ProfitCenter` tag on the ledger in
+  the exact idiom `ExpenseCategory` already established (**omitted ⇒ `store` overhead**, which is
+  what keeps every existing harness honest), `getDepartmentPnL`, and the panel that reads it.
+  **Writing that tracer surfaced a prerequisite nobody had filed, so it became #374.**
+  `Economy.getPnL` is pure cash-basis: an auction purchase is charged as an operating expense on
+  the day of the buy, while that unit's revenue arrives weeks later. At Tier 1, where a six-space
+  lot is bought out in two or three days, that is not a rounding artifact — it is most of the
+  number, and it means **a month spent stocking reports a loss the store did not make.** The model
+  is already half-built: #255's `category: 'inventoryAcquisition'` exists to say "cash converted
+  into stock, NOT operating spend", and the P&L simply never acts on the tag. #374 makes it
+  accrual — inventory relieved at the sale, cash untouched — which needs one new concept, a
+  **non-cash ledger entry**, because posting the relief through `postExpense` would debit the store
+  twice for one car. It relieves `purchasePrice` **only**: recon and carrying are already expensed
+  when incurred, which is what that same category boundary says, so relieving the full cost basis
+  would double-charge recon. Filed before #375 because without it gross-by-department and Net
+  Income are two numbers that do not add up — the exact defect the #365 reserve-posting note exists
+  about.
+  **#374's blast radius was checked rather than assumed.** `getPnL` has four consumers, all four
+  Finance UI; `scripts/` has zero hits for `getPnL` or `netIncome`; every monitor and gate face
+  branches on `economy.cash`. So a change to what Net Income *means* moves no calibration number —
+  which is the difference between this being a one-slice fix and a C2-class gate.
+  **Payroll stays in overhead, deliberately.** Techs and advisors draw a flat daily wage, not
+  flat-rate, and payroll posts as one aggregate (`StaffOrg.ts:621`); splitting it across
+  departments would need a second wage model nobody asked for. Gross is revenue less cost of sale,
+  and the ladder **departmental gross → less store overhead → net** is #376's statement. That is
+  also the classic dealership month-end reading, so it is one rule, not a compromise.
+  **People's two survivors are both engine values with no surface.** Skill growth (#294 Model B) is
+  invisible — the card renders `effectiveSkills` alone, never against the hire-time base or the
+  per-hire cap, so a rookie who is climbing and a veteran who has topped out draw identically, and
+  the counters accruing overnight produce no visible event. And `getMoraleMultiplier` scales what a
+  person actually produces (`createWorld.ts:977`, `StaffDispatch.ts:508/522`) and **no UI reads
+  it**, so the morale bar states a level and never a consequence — the "dead control with no
+  explanation" case the plain-language rule exists to prevent. #377 adds no lever: the deliberate
+  refusal to ship a training section (`PeopleTab.tsx:288-294`) stands.
+  **#378 is the phase's closing act and it is not just a deletion.** `StrategicTab.tsx:40` still
+  renders "This surface is coming in a later slice" and `navTabs.ts:9` still calls the three rooms
+  placeholders; both are false and the component is **unreachable** (its `GameScreen.tsx:464`
+  fallback cannot fire, since all five tab keys exist). The substantive half of the slice is
+  replacing that silent render-time fallback with a composition-time failure, so this class of stub
+  cannot grow back. A stale "coming soon" is worse than no surface — it is what makes the next
+  session re-derive a phase that is already done.
+  All five bodies carry EARS acceptance criteria with named tests per the `pre-issue-criteria`
+  hook. No code changed this session.
+  Next: **BUILD #374**.
+
 - 2026-08-08 — **BUILT #373** (the monthly F&I verdict — phase 9 COMPLETE). The posture (#366)
   is a bet the player places once and leaves standing; every tooth on it bites one deal at a
   time, which is a grain the bet was never placed at. This is the Reveal resolving it at the
@@ -924,53 +1025,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   Next: **BUILD #373** — the monthly F&I verdict (Reveal reactions + the PVR record), the last
   slice in phase 9. Its deps (#365/#366/#371) were already met.
 
-- 2026-08-08 — **BUILT #371** (the crowd tells you how it pays before you set the dial).
-  #370 gave the posture a meter that reads the store's **own book**; this is what puts the
-  *coming crowd* on the wire, so next month's posture is a bet placed on information rather
-  than a coin flip. Growth gains a **How the Crowd Pays** panel behind the wire's door model:
-  cash-vs-financed over every up, and the credit mix of the ones who would finance.
-  **The read is DERIVED, never sampled, and that is the load-bearing decision.**
-  `projectCrowdFinanceMix` (NPC, `factories/CrowdMixProjection.ts`) answers in closed form the
-  question `createCustomer` answers by rolling. It draws no randomness at all — a test hands it
-  a counting `Math.random` and asserts zero calls — because a **gated** read that consumed a
-  seeded stream would make a fixed seed replay differently depending on what the player bought
-  (#122). The reachability test runs two same-seed worlds 20 floor days apart, one subscribed
-  and one cold, and pins the arrival stream identical.
-  **The payment traits are integrated by enumerating subsets, not by averaging effects.** They
-  are independent Bernoullis, so the exact expectation walks the 2^n subsets and runs each
-  through the same `resolveEffects` machinery the roll uses. Averaging would let a partial
-  `must-finance` chance *partly* forbid cash (it is categorical) and would smear the [0,1]
-  clamp on `payment.cash_probability` (it is additive) — the #153 split has to survive the
-  integration, not be flattened by it. Credit falls out as normal-CDF mass between the
-  `data/credit-tiers.json` thresholds, so the bands arrive as **data** (`{tier, minScore}`),
-  not as a classifier function: a classifier can say which tier one score is in but not how
-  much of a distribution lands in each, and the second question is the whole read.
-  **`creditMix` describes the FINANCED crowd, weighted by P(finance | archetype).** Credit and
-  payment leaning correlate through the archetype — the best-credit retiree is also the
-  likeliest cash buyer — so an all-comers credit mix would systematically flatter the book the
-  F&I office actually writes. Do not "simplify" it to the whole crowd.
-  **`resolveSegmentArchetypes` moved onto the CustomerPool barrel** so the spawn draw and the
-  projection read the segment→archetype table exactly once (`createWorld`'s private map
-  building is gone). Two copies of that filter + normalization is how a forward read starts
-  describing a crowd that never walks in.
-  **MarketIntel's door model grew two ways, both forced by there being a SECOND desk.**
-  (1) A staff unlock now **names the role** that opens it (`role`, schema-required on a staff
-  door and refused on a subscription one), and `NewsAccessRead` carries `staffedDesks` — the
-  roster's role ids, read exactly the way `activeSubscriptions` is read — instead of one
-  `hasDeskManager` boolean. That boolean opened *every* staff door, so an `fni_desk` unlock
-  would have been handed free to any store with a used car manager: a live bug, not a
-  refactor. `resolveWireAccess` passes the whole roster's roles rather than an allowlist, so
-  which role opens which door stays entirely in data.
-  (2) A lane's `requires` may name **several** unlocks and **any** of them opens it, with
-  `NewsAccess.locksFor` reporting every shut door. `lockFor` still returns the first — all a
-  headline row has space for — so nothing about the existing wire moved. The finance-mix lane
-  is bought (`finance_mix_feed`, $25/day, T2) **or** hired into (`fni_desk`, T3, free on hire
-  like every other desk read), and a locked row naming only the subscription would have sold a
-  store exactly what the hire already gives them.
-  **`finance_desk` is a lane with no headlines behind it, deliberately.** What the player is
-  allowed to *know* is one door model whether the answer arrives as a story or as a number;
-  growing a second gate for the panel would have been the same rule written twice.
-  Verified on web at T2: locked panel names both doors in plain language, the wire footer's
-  Subscribe opens it in place, and the read comes out **84% financed** with an A/B/C/D book of
-  **23/24/36/18**. No console errors. Nothing calibrated moved — the projection is a pure read
-  and no harness opens the lane.

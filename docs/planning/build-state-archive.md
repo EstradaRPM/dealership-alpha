@@ -6,6 +6,57 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **BUILT #371** (the crowd tells you how it pays before you set the dial).
+  #370 gave the posture a meter that reads the store's **own book**; this is what puts the
+  *coming crowd* on the wire, so next month's posture is a bet placed on information rather
+  than a coin flip. Growth gains a **How the Crowd Pays** panel behind the wire's door model:
+  cash-vs-financed over every up, and the credit mix of the ones who would finance.
+  **The read is DERIVED, never sampled, and that is the load-bearing decision.**
+  `projectCrowdFinanceMix` (NPC, `factories/CrowdMixProjection.ts`) answers in closed form the
+  question `createCustomer` answers by rolling. It draws no randomness at all — a test hands it
+  a counting `Math.random` and asserts zero calls — because a **gated** read that consumed a
+  seeded stream would make a fixed seed replay differently depending on what the player bought
+  (#122). The reachability test runs two same-seed worlds 20 floor days apart, one subscribed
+  and one cold, and pins the arrival stream identical.
+  **The payment traits are integrated by enumerating subsets, not by averaging effects.** They
+  are independent Bernoullis, so the exact expectation walks the 2^n subsets and runs each
+  through the same `resolveEffects` machinery the roll uses. Averaging would let a partial
+  `must-finance` chance *partly* forbid cash (it is categorical) and would smear the [0,1]
+  clamp on `payment.cash_probability` (it is additive) — the #153 split has to survive the
+  integration, not be flattened by it. Credit falls out as normal-CDF mass between the
+  `data/credit-tiers.json` thresholds, so the bands arrive as **data** (`{tier, minScore}`),
+  not as a classifier function: a classifier can say which tier one score is in but not how
+  much of a distribution lands in each, and the second question is the whole read.
+  **`creditMix` describes the FINANCED crowd, weighted by P(finance | archetype).** Credit and
+  payment leaning correlate through the archetype — the best-credit retiree is also the
+  likeliest cash buyer — so an all-comers credit mix would systematically flatter the book the
+  F&I office actually writes. Do not "simplify" it to the whole crowd.
+  **`resolveSegmentArchetypes` moved onto the CustomerPool barrel** so the spawn draw and the
+  projection read the segment→archetype table exactly once (`createWorld`'s private map
+  building is gone). Two copies of that filter + normalization is how a forward read starts
+  describing a crowd that never walks in.
+  **MarketIntel's door model grew two ways, both forced by there being a SECOND desk.**
+  (1) A staff unlock now **names the role** that opens it (`role`, schema-required on a staff
+  door and refused on a subscription one), and `NewsAccessRead` carries `staffedDesks` — the
+  roster's role ids, read exactly the way `activeSubscriptions` is read — instead of one
+  `hasDeskManager` boolean. That boolean opened *every* staff door, so an `fni_desk` unlock
+  would have been handed free to any store with a used car manager: a live bug, not a
+  refactor. `resolveWireAccess` passes the whole roster's roles rather than an allowlist, so
+  which role opens which door stays entirely in data.
+  (2) A lane's `requires` may name **several** unlocks and **any** of them opens it, with
+  `NewsAccess.locksFor` reporting every shut door. `lockFor` still returns the first — all a
+  headline row has space for — so nothing about the existing wire moved. The finance-mix lane
+  is bought (`finance_mix_feed`, $25/day, T2) **or** hired into (`fni_desk`, T3, free on hire
+  like every other desk read), and a locked row naming only the subscription would have sold a
+  store exactly what the hire already gives them.
+  **`finance_desk` is a lane with no headlines behind it, deliberately.** What the player is
+  allowed to *know* is one door model whether the answer arrives as a story or as a number;
+  growing a second gate for the panel would have been the same rule written twice.
+  Verified on web at T2: locked panel names both doors in plain language, the wire footer's
+  Subscribe opens it in place, and the read comes out **84% financed** with an A/B/C/D book of
+  **23/24/36/18**. No console errors. Nothing calibrated moved — the projection is a pure read
+  and no harness opens the lane.
+
 - 2026-08-08 — **BUILT #370** (the peak meter — the dial finally shows what it costs).
   The posture had two teeth on it (#367's fall-through, #368's CSI drag) and both were
   invisible until they had already bitten. Prep's Finance Office block now carries twin opposed
