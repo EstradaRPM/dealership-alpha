@@ -6,6 +6,74 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **BUILT #373** (the monthly F&I verdict — phase 9 COMPLETE). The posture (#366)
+  is a bet the player places once and leaves standing; every tooth on it bites one deal at a
+  time, which is a grain the bet was never placed at. This is the Reveal resolving it at the
+  grain it *was* — and it is the plug-in that proves the spine's "self-similar" claim, because
+  carrying a month-grain beat needed **one more weight and one more term**, not a month mode.
+  **The verdict is a `reactions[]` entry like any other.** `DramaCandidate` gained a fourth kind
+  (`fni`), `scoreDrama` a flat `weights.fniVerdict` (2.5, above `recordBroken`), and the verdict
+  leads the arrival order so it wins an exact tie with the crown it may arrive beside. There is
+  deliberately **no margin half** on its score: it fires on exactly one bite a month, and scaling
+  it by how much money it made would let a quiet month's verdict get pushed off the feed by an
+  ordinary Tuesday's walk-off. How good the month *was* is what `bestFniPvr` scores.
+  **It stars an entity with a fate, never the number** — *"Dana Reyes worked the desk on
+  'Balanced' — $8,400 on 12 cars ($4,800 products, $3,600 rate)"*, or *"No finance office —
+  'More per deal' had nobody to carry it out"* when nobody was hired, which is a fate and not a
+  missing value. The two halves are named separately because #365 split them: one undifferentiated
+  "back gross" cannot tell the player which lever moved.
+  **The mix read is ONE comparison, and it is what teaches #371 and #372 without a tutorial.**
+  Each posture in `data/tunables.json` now carries a `financedShareBand` — the share of a month's
+  retail that has to finance for that posture to have been the right standing bet. Reserve is
+  earned on financed contracts and nowhere else, so *"Only 2 of 12 financed — a cash-paying crowd,
+  and a rate you mark up earns nothing on the ones who pay cash"* and *"12 of 12 financed — that
+  crowd was going to borrow anyway, and you held the rate down for them"* are the same rule read
+  from opposite ends. **Balanced spans [0,1] on purpose**: it is the posture that makes no bet on
+  the mix, so it can be beaten on money and never mismatched. **Tone follows the mix, not the
+  money** — a month can earn well and still have been the wrong bet, and which crowd the dial was
+  pointed at is the whole lesson.
+  **`bestFniPvr` is the seventh mark and a MONTH mark** (`monthBackGross ÷ monthUnits`, settled on
+  `clock:month_ended` beside `bestMonthGross`). Not a day mark: a single day's back end is noise
+  against which two or three customers happened to walk in. It has **no `pvrMinUnits`-style volume
+  floor** — that floor exists on `bestPvr` because a one-unit day duplicates `bestSingleDeal`, and
+  nothing else measures the back end at all. An all-cash month leaves the mark standing rather
+  than setting it to zero (`tryBreak` refuses a non-positive), and a month with no units crowns
+  nothing — which is the same month the verdict refuses to fire on, for the same reason: no crowd,
+  no bet to resolve, and "$0 a car" would blame the dial for a floor problem.
+  **No envelope bump — this was the module's own `schemaVersion` 1 → 2.** Per
+  `docs/save-migration-recipe.md` the `modules` key set did not change, so `WORLD_SNAPSHOT_VERSION`
+  stays **21** and there is no migration to look for (the #359 Facility call, same shape).
+  `Records.restore` takes an `AnyRecordsSnapshot` union: a v1 blob's missing seventh mark
+  materializes as `null` — **not** as a `{}` mark the feed would then try to crown — and the month
+  back-end tally restarts from the reload rather than being reconstructed from a figure the save
+  never kept. `data/fixtures/tier-2.json` was deliberately **not** re-stamped.
+  **The verdict is composed in `createWorld`, not at the surface** (`World.getFniMonthVerdict`),
+  because it is three reads that have to agree and each has exactly one right source: the month's
+  retail flow off the KPI window (the same log the peak meter reads), the person off the ONE desk
+  pick the close runs on (`resolveFniDeskPerson`, lifted out of #369's `resolveFniDesk` so the
+  name and the skills come from one pick), and the posture off the slot state that priced the
+  deals — reaching it through a new `getFniPostureId` getter beside the existing markup one, two
+  getters over one piece of state so the pricing path cannot read a label and the reporting path
+  cannot read a rate.
+  **It is told the morning after, by construction.** `clock:month_ended` fires during the Next Day
+  transition, so — exactly like the `bestMonthGross` crown — the verdict lands in the following
+  day's ref and is read on that day's Reveal. Its crown rides the same bite for free.
+  **Nothing calibrated moved and nothing could**: the verdict is a pure read, `bestFniPvr` is a
+  scoreboard entry nothing branches on, and no harness closes a month with the Reveal assembled.
+  `#180` still reads 39.3% / 51.7%, closes=290.
+  10 tests in `tests/Reveal.fni.test.ts` (including an anti-orphan case that queries
+  `World.getFniMonthVerdict` off real `deal:closed` traffic on a real bus), 4 in
+  `tests/Records.test.ts`, the pre-#373 restore in `tests/worldSnapshot.test.ts`, and a #373
+  composition guard in `tests/Reveal.reachability.test.tsx` asserting **both** halves of the
+  wiring — the capture at month close and the parameter it fills — because either alone is wired
+  to nothing. **238 suites / 3027 tests, typecheck clean.**
+  Web: the T2 dev fixture and the day-35 `Harness Bot's Lot` slot both carry a **schemaVersion-1
+  records blob**, so loading that save through the real load path is the live proof of the union
+  restore — it came up clean (cash, tier strip, month bars, recap chip all rendering, no console
+  errors). The month beat itself was **not** driven on web: reaching it needs a 30-day window,
+  and standing the store on one would have meant editing the user's own save. It is covered by
+  the reachability test + the composition guard, which run in CI where a drive does not.
+
 - 2026-08-08 — **BUILT #372** (advertising buys a different crowd). #371 gave the player a read
   on how the coming crowd pays; this is the answer they get to give back. An advertising
   campaign now carries **two orthogonal lanes** — vehicle-type weights (which segment walks in)

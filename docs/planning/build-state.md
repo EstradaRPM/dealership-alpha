@@ -35,14 +35,14 @@ stays a locked design; do not re-grill it.
 **Phase 10 — D1 — is RE-SCOPED AND FILED as of 2026-08-08.** Its row's *"largely absorbed by 5c;
 re-scope when reached"* was mostly right: the subtraction against the shipped app killed Growth's
 D1 scope entirely and left People with two items and Finance with three. Five issues filed,
-**#374–#378** (table below). The next `/next` on this phase BUILDS #375.
+**#374–#378** (table below). The next `/next` on this phase BUILDS **#376** (the P&L proper).
 
 ### Phase 10 — D1 the three dashboards (re-scoped + filed 2026-08-08)
 
 | # | Slice | Deps |
 |---|---|---|
 | ~~#374~~ | ~~the P&L relieves inventory at the sale — Net Income becomes what the store *earned*~~ **BUILT 2026-08-09** | — |
-| #375 | **tracer** — `ProfitCenter` axis on the ledger + `getDepartmentPnL` + the Finance "Where the Gross Came From" panel | #374 |
+| ~~#375~~ | ~~**tracer** — `ProfitCenter` axis on the ledger + `getDepartmentPnL` + the Finance "Where the Gross Came From" panel~~ **BUILT 2026-08-09** | #374 |
 | #376 | the P&L proper — revenue/expenses/net over time + the gross→overhead→net ladder | #375 |
 | #377 | People — skill growth made visible, and what morale is costing | — |
 | #378 | closing sweep — delete the dead placeholder tab surface + the stale comments | — |
@@ -128,6 +128,49 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **`profitCenter` omitted means `store` OVERHEAD, and that default is load-bearing** (#375).
+  It is what keeps every untagged post — pre-#375 saves, every harness, a call site somebody
+  forgets — below the gross line instead of flattering a department. A future session that
+  "tidies" it to throw on a missing tag, or picks a different default, silently re-attributes
+  the whole existing corpus.
+- **`sum(departments.gross) − overhead === netIncome` is the product, and both reads share ONE
+  filter** (#375, the private `pnlEntries`). A department cut with its own entry filter is how
+  four grosses start disagreeing with the Net Income printed beside them. Do not add a second
+  filter, and do not add a per-department running accumulator beside the ledger — the ledger
+  IS the record (the `weeklyPayrollStub` lesson, #353).
+- **`overhead` is store expenses NET of store revenue** (#375), so the reconciliation stays one
+  subtraction. On a **pre-#375 save it reads large and NEGATIVE** — a month of untagged revenue
+  sitting on the store line (the live drive read −$35,479 over 30 days). That is the documented
+  "a pre-tag ledger reads as overhead" behavior, not a bug, and it does not happen to a career
+  started after this commit. Do not back-fill an old ledger.
+- **Payroll is NOT departmental cost of sale, by design** (#375). Techs and advisors draw one
+  aggregate daily wage in this sim, not flat rate, and StaffOrg posts it as a single line;
+  splitting it needs a second wage model nobody asked for. The statement is departmental gross
+  → less store overhead → net income. Allocating payroll across departments is a different
+  mechanic, not "finishing" this one.
+- **PARTS NOW RELIEVE ON CONSUMPTION, and before #375 they never did** — the half #374 left
+  open. Orders debit cash as `inventoryAcquisition`, which the accrual P&L drops whole, so
+  every part the store bought had been off the statement since #374 and Net Income was
+  overstated by it. `PartsInventory.consume` posts `postCostOfSale(lot.unitCost, 'Parts used:
+  <category>')` at the part's own department. A **miss relieves nothing**. `PART_PROFIT_CENTER`
+  has **no default**: a new `PartCategory` without a home there is a compile error rather than a
+  silent charge to overhead. `PartsInventoryDeps.economy` now requires `postCostOfSale` as well
+  as `postExpense`, so a test spy must supply both.
+- **The department attribution rides `DeptDispatchProfile.profitCenter`** (#375), beside the
+  pricing, RNG namespace and event family a department already owns. The shared engine names
+  neither department. `tests/DeptDispatch.profitCenter.test.ts` runs two profiles differing only
+  in department-owned fields, so a hard-coded `'service'` inside the engine fails the body-shop
+  half while every Service test still passes.
+- **The ledger tag is a NAMED OBJECT (`PostTag`/`ExpenseTag`), not trailing positional args**
+  (#375). `postExpense(x, 'Recon', undefined, 'sales')` was the alternative. `tagFields` OMITS
+  an absent key rather than writing `undefined`, which is what keeps an untagged entry's
+  snapshot byte-identical — `EconomySnapshot.schemaVersion` stays 1, `WORLD_SNAPSHOT_VERSION`
+  stays **21**, and there is no migration to look for.
+- **The panel OMITS an inactive department, it does not draw a zero** (#375). `active` (the
+  center posted *anything* in the window) is the test, **not** `gross !== 0` — so a Tier-1
+  store draws no "Body Shop" bar asserting a loss on collision work it never did, while a
+  department that burned parts and billed nothing still shows its negative bar. Do not
+  "simplify" the filter to a nonzero check.
 - **`getPnL` is a READ of the ledger, not the ledger** (#374). It drops
   `inventoryAcquisition` entries from the totals **and** from `entries`; `snapshot().ledger`
   is still the complete record. A future test asserting an acquisition shows up in
@@ -876,6 +919,70 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-09 — **BUILT #375** (gross by department — the tracer for the D1 profit-center axis).
+  The store has run four profit centers since #314 and nothing in the game could say which one
+  made the money; a repo-wide search for a per-department gross getter returned zero engine
+  hits. It is one optional `ProfitCenter` tag on every ledger post — `sales | fni | service |
+  bodyshop | store` — plus `getDepartmentPnL(from, to)` and the Finance panel that reads it.
+  **Omitted ⇒ `store` overhead is the RULE, not a fallback.** Every untagged post — pre-#375
+  saves, every harness, every future call site somebody forgets — lands below the gross line
+  rather than being credited to a department it did not come from. That default is why the
+  slice moved nothing: an untagged ledger reads exactly as it did before.
+  **The reconciliation is the whole product.** `sum(departments.gross) − overhead ===
+  netIncome`, for any window, always — and it is only available because #374 made the statement
+  accrual. Both reads go through ONE private `pnlEntries` filter (which drops
+  `inventoryAcquisition` whole); a department cut with its own filter is how four grosses start
+  disagreeing with the Net Income printed beside them. **Verified live** on the Day-39 T2 save:
+  Sales $716 + F&I $1,581 − $1,779 overhead = the $518 the Net Income card shows.
+  **`overhead` is store expenses NET of store revenue**, so the identity stays one subtraction.
+  A store-center receipt (PE sellout, admin injection) is not a department's gross and has
+  nowhere else honest to go. Consequence on a **legacy save**: the 30D window read overhead of
+  **−$35,479** — a whole month of untagged revenue sitting on the store line. That is correct
+  and documented (a pre-tag ledger reads as overhead); it is not a bug, and it does not happen
+  to a career started after this commit.
+  **Payroll is NOT cost of sale, and that is a design call not an omission.** Techs and advisors
+  draw one aggregate daily wage in this sim, not flat rate, and StaffOrg posts it as a single
+  line. Splitting it across departments needs a second wage model nobody asked for. The
+  statement is the classic one: departmental gross → less store overhead → net income. A future
+  session "finishing" the panel by allocating payroll is building a different mechanic.
+  **The tag arrives as a NAMED OBJECT (`PostTag` / `ExpenseTag`), not a fourth positional
+  argument.** `postExpense(x, 'Recon', undefined, 'sales')` was the alternative. Every existing
+  `'inventoryAcquisition'` call site became `{ category: 'inventoryAcquisition' }` — a small,
+  once-only churn that buys a surface the next axis can join without touching a call site.
+  **Service and Body Shop attribute through `DeptDispatchProfile.profitCenter`**, alongside the
+  pricing, RNG namespace and event family a department already owns. The one shared engine
+  names neither department; `tests/DeptDispatch.profitCenter.test.ts` runs two profiles that
+  differ only in the fields a department owns, so a hard-coded `'service'` inside the engine
+  fails the body-shop half while every Service test still passes.
+  **PARTS WERE THE HALF #374 LEFT OPEN, and this slice closed it.** Parts orders debit cash
+  tagged `inventoryAcquisition`, which the accrual P&L drops whole — and *nothing ever relieved
+  them*. So since #374 every part the store ever bought had been silently off the statement:
+  Service and Body Shop would have shipped a gross with no parts in it, and Net Income was
+  overstated by the lot. `consume` now posts `postCostOfSale(lot.unitCost, 'Parts used: <cat>')`
+  at the part's own department, keyed off its category (`PART_PROFIT_CENTER` — no default, so a
+  new `PartCategory` without a home there is a compile error rather than a silent charge to
+  overhead). A **miss relieves nothing** — no part left the shelf. `PartsInventoryDeps.economy`
+  is now `Pick<Economy, 'postExpense' | 'postCostOfSale'>`; both halves are required, because a
+  stock room that only ever debits is exactly the cash-basis defect #374 closed for vehicles.
+  This was folded in rather than filed as a follow-on (the #379 treatment) because without it
+  the panel this slice ships would state a Service gross that is knowably wrong.
+  **Nothing calibrated moved and nothing could.** Cash is untouched by every part of this;
+  `getPnL`/`getDepartmentPnL` have no consumer outside the Finance UI, and `scripts/` has zero
+  hits for either. Full suite green at 242 suites / 3047 tests, `#94` still reads
+  85.7 / 10.2 / 4.2.
+  **The panel omits, never zeroes.** `active` (a center posted *anything* in the window) is the
+  test, not `gross !== 0` — so a Tier-1 store draws no "Body Shop" bar asserting a loss on
+  collision work it never did, while a department that burned parts and billed nothing still
+  shows its negative bar. Confirmed on the drive: with no service advisor on staff the day's
+  tickets went unserved and the Service bar was correctly absent.
+  **`EconomySnapshot.schemaVersion` stays 1 and `WORLD_SNAPSHOT_VERSION` stays 21** —
+  `profitCenter` is optional inside the module's own blob, and `tagFields` OMITS the key rather
+  than writing `undefined`, so an untagged entry snapshots byte-identical. There is no
+  migration to look for.
+  Bar labels were checked against the ~13-character clip that shortened #365's reserve label:
+  "Body Shop" is 9, and a test pins every center's label at ≤13 so a rename cannot ship
+  half-read.
+
 - 2026-08-09 — **BUILT #374** (the P&L relieves inventory at the sale). `Economy.getPnL` was
   pure cash-basis, so a month spent stocking reported a loss the store did not make — at Tier 1,
   where a six-space lot is bought out in two or three days, that was most of the number. It is
@@ -1001,72 +1108,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   All five bodies carry EARS acceptance criteria with named tests per the `pre-issue-criteria`
   hook. No code changed this session.
   Next: **BUILD #374**.
-
-- 2026-08-08 — **BUILT #373** (the monthly F&I verdict — phase 9 COMPLETE). The posture (#366)
-  is a bet the player places once and leaves standing; every tooth on it bites one deal at a
-  time, which is a grain the bet was never placed at. This is the Reveal resolving it at the
-  grain it *was* — and it is the plug-in that proves the spine's "self-similar" claim, because
-  carrying a month-grain beat needed **one more weight and one more term**, not a month mode.
-  **The verdict is a `reactions[]` entry like any other.** `DramaCandidate` gained a fourth kind
-  (`fni`), `scoreDrama` a flat `weights.fniVerdict` (2.5, above `recordBroken`), and the verdict
-  leads the arrival order so it wins an exact tie with the crown it may arrive beside. There is
-  deliberately **no margin half** on its score: it fires on exactly one bite a month, and scaling
-  it by how much money it made would let a quiet month's verdict get pushed off the feed by an
-  ordinary Tuesday's walk-off. How good the month *was* is what `bestFniPvr` scores.
-  **It stars an entity with a fate, never the number** — *"Dana Reyes worked the desk on
-  'Balanced' — $8,400 on 12 cars ($4,800 products, $3,600 rate)"*, or *"No finance office —
-  'More per deal' had nobody to carry it out"* when nobody was hired, which is a fate and not a
-  missing value. The two halves are named separately because #365 split them: one undifferentiated
-  "back gross" cannot tell the player which lever moved.
-  **The mix read is ONE comparison, and it is what teaches #371 and #372 without a tutorial.**
-  Each posture in `data/tunables.json` now carries a `financedShareBand` — the share of a month's
-  retail that has to finance for that posture to have been the right standing bet. Reserve is
-  earned on financed contracts and nowhere else, so *"Only 2 of 12 financed — a cash-paying crowd,
-  and a rate you mark up earns nothing on the ones who pay cash"* and *"12 of 12 financed — that
-  crowd was going to borrow anyway, and you held the rate down for them"* are the same rule read
-  from opposite ends. **Balanced spans [0,1] on purpose**: it is the posture that makes no bet on
-  the mix, so it can be beaten on money and never mismatched. **Tone follows the mix, not the
-  money** — a month can earn well and still have been the wrong bet, and which crowd the dial was
-  pointed at is the whole lesson.
-  **`bestFniPvr` is the seventh mark and a MONTH mark** (`monthBackGross ÷ monthUnits`, settled on
-  `clock:month_ended` beside `bestMonthGross`). Not a day mark: a single day's back end is noise
-  against which two or three customers happened to walk in. It has **no `pvrMinUnits`-style volume
-  floor** — that floor exists on `bestPvr` because a one-unit day duplicates `bestSingleDeal`, and
-  nothing else measures the back end at all. An all-cash month leaves the mark standing rather
-  than setting it to zero (`tryBreak` refuses a non-positive), and a month with no units crowns
-  nothing — which is the same month the verdict refuses to fire on, for the same reason: no crowd,
-  no bet to resolve, and "$0 a car" would blame the dial for a floor problem.
-  **No envelope bump — this was the module's own `schemaVersion` 1 → 2.** Per
-  `docs/save-migration-recipe.md` the `modules` key set did not change, so `WORLD_SNAPSHOT_VERSION`
-  stays **21** and there is no migration to look for (the #359 Facility call, same shape).
-  `Records.restore` takes an `AnyRecordsSnapshot` union: a v1 blob's missing seventh mark
-  materializes as `null` — **not** as a `{}` mark the feed would then try to crown — and the month
-  back-end tally restarts from the reload rather than being reconstructed from a figure the save
-  never kept. `data/fixtures/tier-2.json` was deliberately **not** re-stamped.
-  **The verdict is composed in `createWorld`, not at the surface** (`World.getFniMonthVerdict`),
-  because it is three reads that have to agree and each has exactly one right source: the month's
-  retail flow off the KPI window (the same log the peak meter reads), the person off the ONE desk
-  pick the close runs on (`resolveFniDeskPerson`, lifted out of #369's `resolveFniDesk` so the
-  name and the skills come from one pick), and the posture off the slot state that priced the
-  deals — reaching it through a new `getFniPostureId` getter beside the existing markup one, two
-  getters over one piece of state so the pricing path cannot read a label and the reporting path
-  cannot read a rate.
-  **It is told the morning after, by construction.** `clock:month_ended` fires during the Next Day
-  transition, so — exactly like the `bestMonthGross` crown — the verdict lands in the following
-  day's ref and is read on that day's Reveal. Its crown rides the same bite for free.
-  **Nothing calibrated moved and nothing could**: the verdict is a pure read, `bestFniPvr` is a
-  scoreboard entry nothing branches on, and no harness closes a month with the Reveal assembled.
-  `#180` still reads 39.3% / 51.7%, closes=290.
-  10 tests in `tests/Reveal.fni.test.ts` (including an anti-orphan case that queries
-  `World.getFniMonthVerdict` off real `deal:closed` traffic on a real bus), 4 in
-  `tests/Records.test.ts`, the pre-#373 restore in `tests/worldSnapshot.test.ts`, and a #373
-  composition guard in `tests/Reveal.reachability.test.tsx` asserting **both** halves of the
-  wiring — the capture at month close and the parameter it fills — because either alone is wired
-  to nothing. **238 suites / 3027 tests, typecheck clean.**
-  Web: the T2 dev fixture and the day-35 `Harness Bot's Lot` slot both carry a **schemaVersion-1
-  records blob**, so loading that save through the real load path is the live proof of the union
-  restore — it came up clean (cash, tier strip, month bars, recap chip all rendering, no console
-  errors). The month beat itself was **not** driven on web: reaching it needs a 30-day window,
-  and standing the store on one would have meant editing the user's own save. It is covered by
-  the reachability test + the composition guard, which run in CI where a drive does not.
-
