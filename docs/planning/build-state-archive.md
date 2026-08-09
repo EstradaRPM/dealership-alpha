@@ -6,6 +6,58 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **BUILT #372** (advertising buys a different crowd). #371 gave the player a read
+  on how the coming crowd pays; this is the answer they get to give back. An advertising
+  campaign now carries **two orthogonal lanes** — vehicle-type weights (which segment walks in)
+  and **person-archetype weights** (who does) — and the second one moves the store's credit and
+  payment mix for real. `data/tunables.json` gains **we-finance-anyone** ($110/day: pulls
+  young families / commuters / tradespeople, thin front, busy office) and **certified-preowned**
+  ($130/day: pulls retirees / enthusiasts, fat front, quiet office).
+  **The two lanes ride ONE input on ONE lag/decay clock**, because a campaign's two halves are
+  one lever — separate clocks would let a push arrive as one crowd and settle as another.
+  `DemandInfluenceInput.personWeights` is optional, so every segment-only producer (inventory,
+  reputation, pricing) is byte-identical, and the vector helpers were re-keyed by an explicit
+  key list rather than duplicated per lane.
+  **The skew is applied in exactly ONE place: `CustomerPool.skewSegmentArchetypes`.** Both the
+  spawn draw and the #371 finance-mix projection go through it, so the crowd the wire promises
+  is the crowd that walks in — the same rule `resolveSegmentArchetypes` exists for, one level
+  down. A skew that would zero every candidate in a segment returns it **unskewed**:
+  advertising bends who walks in, it cannot close a segment the heat map still spawns, and an
+  empty candidate list would fall through to a persona that does not belong to that segment.
+  **The person weights bend the WITHIN-segment roll only, and the cross-segment half is the
+  campaign's other lane.** That is not a gap — `tradesperson` is 100% of `truck` and `retiree`
+  only lives in `suv`, so a crowd skew that also moved the segment draw would be the vehicle
+  lane written twice, on a clock the player cannot see. Both shipped campaigns therefore carry
+  both lanes, and the schema **refuses a campaign declaring neither** — a chip the player pays
+  $110/day for that moves nothing is a lever with nothing behind it. `weights` is now optional
+  and `buildAdvertisingInfluence` reads **either** lane, which matters beyond taste: the daily
+  bill is read back off the running input, so a crowd-only campaign that resolved to `null`
+  would have run **free**.
+  **No snapshot bump.** The two person vectors are optional on the wire, and a pre-#372 schema-3
+  blob restores as "this lever skews nobody" — which is exactly what it meant.
+  Surfaced on the Growth demand console as its own sentence — *Trucks +40 / Sedans +35* then
+  **Brings in: Young Family +50 / Commuter +40 / Tradesperson +30** — because what they want to
+  buy and who they are are different kinds of fact, and running them together invites the player
+  to read one as the other. Labels come from `SALES_ARCHETYPES`, so a lever can never name a
+  buyer the game does not spawn.
+  Verified on web at T2: both chips render with their prices, selecting one shows the blurb +
+  "Billed $110/day while it runs", cash dropped by the bill on the next day close, and after the
+  2-day lag the lever row rendered both sentences above with the observed mix leaning trucks.
+  Six tests in `tests/DemandShaper.advertising.test.ts` (one per EARS criterion plus the
+  free-campaign guard) — the crowd assertions run **real days** and read
+  `capacity:customer_admitted`, so they measure the shipped generation path, not a
+  re-derivation — plus a #372 anti-orphan case in `tests/DemandShaper.reachability.test.tsx`
+  driving the real `buildTargetingLevers`. Measured: financed share 80.2% → **88.4%** and mean
+  credit 676 → **662** under we-finance-anyone; 80.2% → **74.4%** and 676 → **692** under
+  certified-preowned.
+  237 suites / **3011** tests, typecheck clean, **`#180` live bands byte-identical** (39.3% /
+  51.7%, closes=290) — no harness runs a campaign, so nothing calibrated could move. The
+  full-suite failures were `LegacyWall.reachability`, `FniPosture.reachability`,
+  `App.recapPersistence` and `App.saveFlow` timing out on `waitFor`; all four pass in isolation
+  and none touches this slice — the documented RN-Testing-Library CPU-load flake.
+  Next: **BUILD #373** — the monthly F&I verdict (Reveal reactions + the PVR record), the last
+  slice in phase 9. Its deps (#365/#366/#371) were already met.
+
 - 2026-08-08 — **BUILT #371** (the crowd tells you how it pays before you set the dial).
   #370 gave the posture a meter that reads the store's **own book**; this is what puts the
   *coming crowd* on the wire, so next month's posture is a bet placed on information rather

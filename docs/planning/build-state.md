@@ -35,17 +35,26 @@ stays a locked design; do not re-grill it.
 **Phase 10 — D1 — is RE-SCOPED AND FILED as of 2026-08-08.** Its row's *"largely absorbed by 5c;
 re-scope when reached"* was mostly right: the subtraction against the shipped app killed Growth's
 D1 scope entirely and left People with two items and Finance with three. Five issues filed,
-**#374–#378** (table below). The next `/next` on this phase BUILDS #374.
+**#374–#378** (table below). The next `/next` on this phase BUILDS #375.
 
 ### Phase 10 — D1 the three dashboards (re-scoped + filed 2026-08-08)
 
 | # | Slice | Deps |
 |---|---|---|
-| #374 | the P&L relieves inventory at the sale — Net Income becomes what the store *earned* | — |
+| ~~#374~~ | ~~the P&L relieves inventory at the sale — Net Income becomes what the store *earned*~~ **BUILT 2026-08-09** | — |
 | #375 | **tracer** — `ProfitCenter` axis on the ledger + `getDepartmentPnL` + the Finance "Where the Gross Came From" panel | #374 |
 | #376 | the P&L proper — revenue/expenses/net over time + the gross→overhead→net ladder | #375 |
 | #377 | People — skill growth made visible, and what morale is costing | — |
 | #378 | closing sweep — delete the dead placeholder tab surface + the stale comments | — |
+| #380 | Cash on Hand + "What the Store Is Worth" — automated spending stops reading as decay (filed 2026-08-09 from a director question) | #376 for the Finance half only |
+
+**Filed out of phase, from #374's tracing: #379** — a trade-in credits the store the full
+selling price in cash *and* lands the trade car free (`DealEngine.ts:205` vs
+`StaffDispatch.ts:736/744`; `acquireFromTrade` posts no offsetting expense, and the lien
+`payoff` never leaves the bank). At a 42.1% trade rate over 290 closes it is a standing cash
+faucet, so **fixing it will move the #286 balance bands** — that is expected, and the issue
+says to state the new numbers rather than tune others back to the old ones. It is a **cash**
+defect only; the accrual P&L is already right on a trade deal and stays right.
 
 **What the subtraction actually found** (do not re-derive it; this is the record):
 
@@ -119,6 +128,27 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **`getPnL` is a READ of the ledger, not the ledger** (#374). It drops
+  `inventoryAcquisition` entries from the totals **and** from `entries`; `snapshot().ledger`
+  is still the complete record. A future test asserting an acquisition shows up in
+  `getPnL().entries` is asserting the pre-#374 rule — assert it against the ledger, which is
+  where the #255 category test was moved.
+- **`postCostOfSale` publishes NO event, deliberately** (#374). `economy:expense_posted` means
+  cash moved and Telemetry's `cashCurve` is its only consumer. Firing it from a non-cash entry
+  would corrupt the one thing that event exists for. Do not "fix" the silence for consistency.
+- **Only `Inventory` relieves, and only `purchasePrice`** (#374). One private
+  `relieveCostOfSale`, called from `sellVehicle` and `wholesaleOut` — the two doors a unit
+  leaves by. Relieving `costBasisOf` would bill recon twice (it is already operating spend on
+  the day it was incurred). Trade-ins and #296 seed units are relieved too even though their
+  `purchasePrice` never cost cash; that is correct, not an oversight.
+- **A pre-#374 ledger is NEVER back-filled** and needs no migration (`nonCash` is optional
+  inside the module's own blob, `schemaVersion` stays 1, `WORLD_SNAPSHOT_VERSION` stays 21).
+  An old save's historical months read more profitable than they were, because their
+  acquisitions have no matching relief. The ledger records what was posted; the rule governs
+  how it is read. Synthesizing relief entries would be inventing history the store never had.
+- **#379 is a KNOWN, FILED cash defect that #374 deliberately did not touch** — a trade-in is
+  paid for twice. Do not treat a cash balance that looks generous on a trade-heavy run as a
+  new bug, and do not fold the fix into an unrelated slice: it moves calibration.
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
 - **Phase 9 is DONE — all twelve B2 slices landed.** Nothing in it is outstanding.
 - **`bestFniPvr` is a MONTH mark with no volume floor, and that is not an oversight** (#373).
@@ -846,6 +876,73 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-09 — **BUILT #374** (the P&L relieves inventory at the sale). `Economy.getPnL` was
+  pure cash-basis, so a month spent stocking reported a loss the store did not make — at Tier 1,
+  where a six-space lot is bought out in two or three days, that was most of the number. It is
+  accrual now, and the model was already half-built: #255's `inventoryAcquisition` category
+  existed precisely to say "cash converted into stock, NOT operating spend" and the P&L had
+  never acted on the tag.
+  **`inventoryAcquisition` entries drop out of `getPnL` WHOLE — totals and `entries` both.**
+  The criterion only named the total; dropping them from `entries` as well is what makes the
+  room reconcile, because `financeModel.groupExpenses` builds the "Where the Money Went" chart
+  off `pnl.entries`. Leaving them in would have listed an "Auction purchase" the Net Income
+  above it does not count — two numbers on one screen that cannot be added up, which is the
+  exact defect this read exists to close. `snapshot().ledger` is still the complete record;
+  `getPnL` is a **read** of it, and one #255 test was moved onto the ledger to say so.
+  **`postCostOfSale(amount, label)` is the new concept and it publishes NOTHING.**
+  `economy:expense_posted` means cash moved — Telemetry's `cashCurve` is its only consumer and
+  is a cash curve — so a non-cash entry firing it would silently corrupt the one thing that
+  event exists for. A P&L reader wants `getPnL`. Posting the relief through `postExpense`
+  instead would have debited the store twice for one car.
+  **`Inventory` is the only relieving module and it relieves `purchasePrice` ONLY**, from a
+  private `relieveCostOfSale` called at the two doors a unit leaves by (`sellVehicle`,
+  `wholesaleOut` — so both wholesale reasons are covered by the same line). Recon, inspection
+  and carrying are already operating spend on the days they were incurred, so relieving
+  `costBasisOf` would bill recon twice. **A trade-in and a #296 seed unit are relieved too**
+  even though their `purchasePrice` never cost cash: what a sold car cost the store is what the
+  store gave up to have it, bank account or not — the same statement `frontGross` has always
+  made.
+  **The label is ONE constant** (`Cost of Vehicles Sold`), not per-vehicle: the expense chart
+  groups by label and a label per car would shatter the biggest line on a dealership's
+  statement into slivers that all fold into "Other".
+  **No envelope bump and no migration** — `nonCash` is optional inside the module's own blob, so
+  `EconomySnapshot.schemaVersion` stays 1 and `WORLD_SNAPSHOT_VERSION` stays 21. A pre-#374 save
+  is read under the new rule and **never back-filled**: its historical months read more
+  profitable than they did on the day they closed, because their acquisitions have no matching
+  relief. That is the accepted artifact the issue named, not a bug to fix later.
+  **Nothing calibrated moved and nothing could** — `getPnL`'s four consumers are all Finance UI,
+  `scripts/` has zero hits for it, every monitor and gate face branches on `economy.cash`.
+  `#180` still reads 39.3% / 51.7%, closes=290. **239 suites / 3033 tests, typecheck clean.**
+  Web-verified end to end on the day-35 `Harness Bot's Lot` slot — a legacy pre-#374 save, which
+  also proves the no-migration restore. Wholesaling a unit the confirm sheet said the store had
+  **$14,026** in posted a **$12,900** "Cost of Vehicles Sold" line: the acquisition price alone,
+  so recon is demonstrably not double-charged. The day's Net Income of **−$1,779** reconciles
+  line for line ($11,922 proceeds − 12,900 − 241 − 204 − 155 − 126 − 75). No "Auction purchase"
+  row remains anywhere on the breakdown.
+  **Two follow-ups were FILED, not folded in.** **#379** — found while tracing the trade path:
+  `closeDeal` posts the full `agreedPrice` to cash (`DealEngine.ts:205`) while `StaffDispatch`
+  builds the structure net of the trade (`:736`/`:744`) and `acquireFromTrade` posts no expense,
+  so the store banks `tradeEquity` it was never paid **and** keeps the trade car free; the lien
+  `payoff` never leaves the bank either. `Inventory/CLAUDE.md`'s claim that the allowance "is
+  offset against deal cash in the close structure" is what made it invisible — the offset does
+  not exist, and `DealEngineDeps.economy` is `Pick<Economy,'postRevenue'>` so the module cannot
+  debit even in principle. At a **42.1% trade rate** over 290 closes this is a standing cash
+  faucet, so the fix **will** move the #286 balance bands and is filed to say so rather than
+  measure it away. Deliberately not folded into #374, which promised to move no cash. The P&L
+  is already right on a trade deal and stays right; only the cash balance is wrong.
+  **#380** — the director's question this session: automated buying (UCM auto-source #293,
+  construction #359, wire billing #178) drops the Home HUD's one headline number without the
+  player touching anything, which reads as decay. #374 taught the *engine* that buying a car is
+  a conversion; the HUD still doesn't know. Filed as **Cash on Hand + "What the Store Is
+  Worth"** (`cash + inventory at book`), cash staying the primary figure because it is what
+  bankruptcy and every gate face branch on. Book not market — a worth figure that drifts with
+  the used-car market would fall on a day the player did nothing, which is the exact
+  disconnection it exists to remove. Facility and floorplan are **not excluded**: whether a
+  built bay is a sellable asset has never been asked, so the figure is labeled for exactly what
+  it sums until that ruling exists. The one thing for the director to overrule is Home-vs-
+  Finance-only.
+  Next: **BUILD #375** (the `ProfitCenter` tracer), whose only dep was #374.
+
 - 2026-08-08 — **SLICED phase 10 (D1, the three dashboards) into #374–#378.** The phase row had
   carried *"largely absorbed by 5c (#349/#350/#351); re-scope when reached"* since it was written,
   and the subtraction against the app that actually ships is the unit. It was done by inventorying
@@ -972,56 +1069,4 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   errors). The month beat itself was **not** driven on web: reaching it needs a 30-day window,
   and standing the store on one would have meant editing the user's own save. It is covered by
   the reachability test + the composition guard, which run in CI where a drive does not.
-
-- 2026-08-08 — **BUILT #372** (advertising buys a different crowd). #371 gave the player a read
-  on how the coming crowd pays; this is the answer they get to give back. An advertising
-  campaign now carries **two orthogonal lanes** — vehicle-type weights (which segment walks in)
-  and **person-archetype weights** (who does) — and the second one moves the store's credit and
-  payment mix for real. `data/tunables.json` gains **we-finance-anyone** ($110/day: pulls
-  young families / commuters / tradespeople, thin front, busy office) and **certified-preowned**
-  ($130/day: pulls retirees / enthusiasts, fat front, quiet office).
-  **The two lanes ride ONE input on ONE lag/decay clock**, because a campaign's two halves are
-  one lever — separate clocks would let a push arrive as one crowd and settle as another.
-  `DemandInfluenceInput.personWeights` is optional, so every segment-only producer (inventory,
-  reputation, pricing) is byte-identical, and the vector helpers were re-keyed by an explicit
-  key list rather than duplicated per lane.
-  **The skew is applied in exactly ONE place: `CustomerPool.skewSegmentArchetypes`.** Both the
-  spawn draw and the #371 finance-mix projection go through it, so the crowd the wire promises
-  is the crowd that walks in — the same rule `resolveSegmentArchetypes` exists for, one level
-  down. A skew that would zero every candidate in a segment returns it **unskewed**:
-  advertising bends who walks in, it cannot close a segment the heat map still spawns, and an
-  empty candidate list would fall through to a persona that does not belong to that segment.
-  **The person weights bend the WITHIN-segment roll only, and the cross-segment half is the
-  campaign's other lane.** That is not a gap — `tradesperson` is 100% of `truck` and `retiree`
-  only lives in `suv`, so a crowd skew that also moved the segment draw would be the vehicle
-  lane written twice, on a clock the player cannot see. Both shipped campaigns therefore carry
-  both lanes, and the schema **refuses a campaign declaring neither** — a chip the player pays
-  $110/day for that moves nothing is a lever with nothing behind it. `weights` is now optional
-  and `buildAdvertisingInfluence` reads **either** lane, which matters beyond taste: the daily
-  bill is read back off the running input, so a crowd-only campaign that resolved to `null`
-  would have run **free**.
-  **No snapshot bump.** The two person vectors are optional on the wire, and a pre-#372 schema-3
-  blob restores as "this lever skews nobody" — which is exactly what it meant.
-  Surfaced on the Growth demand console as its own sentence — *Trucks +40 / Sedans +35* then
-  **Brings in: Young Family +50 / Commuter +40 / Tradesperson +30** — because what they want to
-  buy and who they are are different kinds of fact, and running them together invites the player
-  to read one as the other. Labels come from `SALES_ARCHETYPES`, so a lever can never name a
-  buyer the game does not spawn.
-  Verified on web at T2: both chips render with their prices, selecting one shows the blurb +
-  "Billed $110/day while it runs", cash dropped by the bill on the next day close, and after the
-  2-day lag the lever row rendered both sentences above with the observed mix leaning trucks.
-  Six tests in `tests/DemandShaper.advertising.test.ts` (one per EARS criterion plus the
-  free-campaign guard) — the crowd assertions run **real days** and read
-  `capacity:customer_admitted`, so they measure the shipped generation path, not a
-  re-derivation — plus a #372 anti-orphan case in `tests/DemandShaper.reachability.test.tsx`
-  driving the real `buildTargetingLevers`. Measured: financed share 80.2% → **88.4%** and mean
-  credit 676 → **662** under we-finance-anyone; 80.2% → **74.4%** and 676 → **692** under
-  certified-preowned.
-  237 suites / **3011** tests, typecheck clean, **`#180` live bands byte-identical** (39.3% /
-  51.7%, closes=290) — no harness runs a campaign, so nothing calibrated could move. The
-  full-suite failures were `LegacyWall.reachability`, `FniPosture.reachability`,
-  `App.recapPersistence` and `App.saveFlow` timing out on `waitFor`; all four pass in isolation
-  and none touches this slice — the documented RN-Testing-Library CPU-load flake.
-  Next: **BUILD #373** — the monthly F&I verdict (Reveal reactions + the PVR record), the last
-  slice in phase 9. Its deps (#365/#366/#371) were already met.
 
