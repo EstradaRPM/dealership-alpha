@@ -92,7 +92,7 @@ describe('Economy snapshot/restore (#188)', () => {
 
   it('round-trips the lifetime inventory-acquisition spend (#255)', () => {
     const economy = createEconomy({ bus: createEventBus(), startingCash: 100_000 });
-    economy.postExpense(38_000, 'Auction purchase: v1', 'inventoryAcquisition');
+    economy.postExpense(38_000, 'Auction purchase: v1', { category: 'inventoryAcquisition' });
     economy.postExpense(500, 'Inspection: v2'); // uncategorized → operating
     expect(economy.inventoryAcquisitionSpend).toBe(38_000);
 

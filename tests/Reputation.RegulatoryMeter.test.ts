@@ -34,6 +34,11 @@ function makeEconomy(initialCash: number): Economy & { setCash(v: number): void 
       netIncome: 0,
       entries: [],
     }),
+    getDepartmentPnL: jest.fn().mockReturnValue({
+      departments: [],
+      overhead: 0,
+      netIncome: 0,
+    }),
     snapshot: jest.fn().mockReturnValue({ schemaVersion: 1, cash }),
     restore: jest.fn(),
   };

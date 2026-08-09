@@ -220,8 +220,14 @@ export interface PartsInventory {
 }
 
 export interface PartsInventoryDeps {
-  /** Stock-in and order placement debit cash here. */
-  economy: Pick<Economy, 'postExpense'>;
+  /**
+   * Stock-in and order placement debit cash here (`postExpense`); a consumed
+   * unit relieves its cost here (`postCostOfSale`, #375). Both halves are
+   * required — a parts room that only ever debits is the cash-basis defect
+   * #374 closed for vehicles, and it would report a Service gross with no
+   * parts in it.
+   */
+  economy: Pick<Economy, 'postExpense' | 'postCostOfSale'>;
   /**
    * Procurement tunables (category base costs + par defaults, supplier tiers).
    * Optional: defaults to `loadPartsInventoryConfig()` so legacy callers that

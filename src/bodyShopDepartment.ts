@@ -287,6 +287,7 @@ export function createBodyShopDepartment(
     },
     revenueLabel: (item, rush) =>
       rush ? `Body Shop (rush) — ${item.label}` : `Body Shop — ${item.label}`,
+    profitCenter: 'bodyshop',
     subscribeIntake: (b, enqueue) => {
       b.subscribe('bodyshop:intake_ready', ({ day, items }) => {
         for (const item of items) {

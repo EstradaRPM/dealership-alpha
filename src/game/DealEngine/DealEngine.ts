@@ -202,7 +202,7 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       if (!vehicle) throw new Error(`No lot vehicle "${vehicleId}"`);
 
       inventory.sellVehicle(vehicleId, agreedPrice);
-      economy.postRevenue(agreedPrice, `Vehicle sale: ${vehicleId}`);
+      economy.postRevenue(agreedPrice, `Vehicle sale: ${vehicleId}`, { profitCenter: 'sales' });
 
       // Lemon-law exposure (#271, IndictmentMonitor severe-event producer).
       // Retailing a unit whose hidden recon landed in a severe tail bucket
@@ -231,7 +231,7 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
         if (product) {
           productGross += attached.price - product.cost;
           fniBurden += attached.price;
-          economy.postRevenue(attached.price, `F&I: ${attached.productId}`);
+          economy.postRevenue(attached.price, `F&I: ${attached.productId}`, { profitCenter: 'fni' });
         }
       }
 
@@ -259,7 +259,7 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       // than at funding: the receivable lag is not modeled anywhere here, and
       // inventing one for this line alone would be a second accounting rule.
       if (reserveGross > 0) {
-        economy.postRevenue(reserveGross, 'F&I: finance reserve');
+        economy.postRevenue(reserveGross, 'F&I: finance reserve', { profitCenter: 'fni' });
       }
 
       // Payment-packing fraud exposure (#327, IndictmentMonitor severe-event

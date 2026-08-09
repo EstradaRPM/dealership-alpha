@@ -2,7 +2,16 @@ import type { EventBus } from '../EventBus';
 import { DAYS_PER_WEEK } from '../GameClock';
 import { loadEconomyConfig } from './economyData';
 import type { EconomyConfig } from './economyData';
-import type { ExpenseCategory, LedgerEntry, PnLSummary } from './types';
+import { DEPARTMENT_CENTERS } from './types';
+import type {
+  DepartmentPnL,
+  DepartmentPnLSummary,
+  ExpenseTag,
+  LedgerEntry,
+  PnLSummary,
+  PostTag,
+  ProfitCenter,
+} from './types';
 
 /**
  * Persistence surface for Economy (#188). Module-owned `schemaVersion`, same as
@@ -38,8 +47,8 @@ export interface Economy {
    * closes the same way it diffs `cash`, so no per-day windowing lives here.
    */
   readonly inventoryAcquisitionSpend: number;
-  postRevenue(amount: number, label: string): void;
-  postExpense(amount: number, label: string, category?: ExpenseCategory): void;
+  postRevenue(amount: number, label: string, tag?: PostTag): void;
+  postExpense(amount: number, label: string, tag?: ExpenseTag): void;
   /**
    * Relieve the cost of a unit that just left the lot (#374). Writes a
    * `nonCash` expense entry and **does not touch cash** — the money for that
@@ -50,11 +59,17 @@ export interface Economy {
    * (Telemetry's `cashCurve` is its only consumer and is a cash curve). A P&L
    * reader wants `getPnL`, which is where this entry shows up.
    */
-  postCostOfSale(amount: number, label: string): void;
+  postCostOfSale(amount: number, label: string, tag?: PostTag): void;
   // Bypass the solvency check. Used by failure paths (bankruptcy debt service,
   // compliance fees) where cash legitimately goes negative.
-  forceDebit(amount: number, label: string, category?: ExpenseCategory): void;
+  forceDebit(amount: number, label: string, tag?: ExpenseTag): void;
   getPnL(fromDay: number, toDay: number): PnLSummary;
+  /**
+   * The same window, cut by profit center (#375). Reads the same entries
+   * `getPnL` does — so `sum(departments.gross) − overhead === netIncome`
+   * always, for any window.
+   */
+  getDepartmentPnL(fromDay: number, toDay: number): DepartmentPnLSummary;
   /** #188 SaveStore seam: capture/rehydrate the cash balance. */
   snapshot(): EconomySnapshot;
   restore(snap: EconomySnapshot): void;
@@ -102,38 +117,70 @@ export function createEconomy(deps: EconomyDeps): Economy {
     day: number,
     amount: number,
     label: string,
-    category?: ExpenseCategory,
+    tag?: ExpenseTag,
   ): void {
     cash -= amount;
-    if (category === 'inventoryAcquisition') inventoryAcquisitionSpend += amount;
-    ledger.push({ day, type: 'expense', amount, label, ...(category ? { category } : {}) });
+    if (tag?.category === 'inventoryAcquisition') inventoryAcquisitionSpend += amount;
+    ledger.push({ day, type: 'expense', amount, label, ...tagFields(tag) });
     bus.publish('economy:expense_posted', { day, amount, label });
+  }
+
+  /**
+   * The optional tag fields, spread onto an entry. Omitted keys rather than
+   * `undefined` values, so an untagged entry snapshots byte-identical to a
+   * pre-#255/#375 one and a `toEqual` against a plain object still holds.
+   */
+  function tagFields(tag?: ExpenseTag): Partial<LedgerEntry> {
+    return {
+      ...(tag?.category ? { category: tag.category } : {}),
+      ...(tag?.profitCenter ? { profitCenter: tag.profitCenter } : {}),
+    };
+  }
+
+  /**
+   * The window's entries as the P&L sees them — the ONE filter both reads
+   * share (#375). `inventoryAcquisition` entries are dropped whole (see
+   * `getPnL`); if the department cut ever applied a different filter, its four
+   * grosses would stop adding up to the Net Income printed beside them, which
+   * is the exact defect the panel exists to close.
+   */
+  function pnlEntries(fromDay: number, toDay: number): readonly LedgerEntry[] {
+    return ledger.filter(
+      (e) => e.day >= fromDay && e.day <= toDay && e.category !== 'inventoryAcquisition',
+    );
   }
 
   return {
     get cash() { return cash; },
     get inventoryAcquisitionSpend() { return inventoryAcquisitionSpend; },
 
-    postRevenue(amount, label) {
+    postRevenue(amount, label, tag) {
       cash += amount;
       const day = getCurrentDay();
-      ledger.push({ day, type: 'revenue', amount, label });
+      ledger.push({ day, type: 'revenue', amount, label, ...tagFields(tag) });
       bus.publish('economy:revenue_posted', { day, amount, label });
     },
 
-    postExpense(amount, label, category) {
+    postExpense(amount, label, tag) {
       if (cash < amount) {
         throw new Error(`Insufficient cash (have ${cash}, need ${amount})`);
       }
-      postExpenseInternal(getCurrentDay(), amount, label, category);
+      postExpenseInternal(getCurrentDay(), amount, label, tag);
     },
 
-    forceDebit(amount, label, category) {
-      postExpenseInternal(getCurrentDay(), amount, label, category);
+    forceDebit(amount, label, tag) {
+      postExpenseInternal(getCurrentDay(), amount, label, tag);
     },
 
-    postCostOfSale(amount, label) {
-      ledger.push({ day: getCurrentDay(), type: 'expense', amount, label, nonCash: true });
+    postCostOfSale(amount, label, tag) {
+      ledger.push({
+        day: getCurrentDay(),
+        type: 'expense',
+        amount,
+        label,
+        nonCash: true,
+        ...tagFields(tag),
+      });
     },
 
     /**
@@ -149,9 +196,7 @@ export function createEconomy(deps: EconomyDeps): Economy {
      * is the exact defect this read exists to close.
      */
     getPnL(fromDay, toDay) {
-      const entries = ledger.filter(
-        (e) => e.day >= fromDay && e.day <= toDay && e.category !== 'inventoryAcquisition',
-      );
+      const entries = pnlEntries(fromDay, toDay);
       const totalRevenue = entries
         .filter((e) => e.type === 'revenue')
         .reduce((sum, e) => sum + e.amount, 0);
@@ -159,6 +204,41 @@ export function createEconomy(deps: EconomyDeps): Economy {
         .filter((e) => e.type === 'expense')
         .reduce((sum, e) => sum + e.amount, 0);
       return { totalRevenue, totalExpenses, netIncome: totalRevenue - totalExpenses, entries };
+    },
+
+    /**
+     * The same window cut by profit center (#375) — which of the store's four
+     * businesses made the money, and what the building cost to run.
+     *
+     * Every center is reported, active or not, so a consumer never has to
+     * guess whether a missing key means "nothing" or "not built yet"; `active`
+     * is the flag a surface reads to omit a bar rather than draw a zero.
+     */
+    getDepartmentPnL(fromDay, toDay) {
+      const entries = pnlEntries(fromDay, toDay);
+      const revenue = new Map<ProfitCenter, number>();
+      const cost = new Map<ProfitCenter, number>();
+      const touched = new Set<ProfitCenter>();
+
+      for (const e of entries) {
+        // Untagged ⇒ overhead. The default is the rule, not a fallback: it is
+        // what keeps every pre-#375 entry and every untagged harness post
+        // below the gross line instead of flattering a department.
+        const center = e.profitCenter ?? 'store';
+        touched.add(center);
+        const into = e.type === 'revenue' ? revenue : cost;
+        into.set(center, (into.get(center) ?? 0) + e.amount);
+      }
+
+      const departments: readonly DepartmentPnL[] = DEPARTMENT_CENTERS.map((center) => {
+        const rev = revenue.get(center) ?? 0;
+        const cos = cost.get(center) ?? 0;
+        return { center, revenue: rev, costOfSale: cos, gross: rev - cos, active: touched.has(center) };
+      });
+
+      const overhead = (cost.get('store') ?? 0) - (revenue.get('store') ?? 0);
+      const netIncome = departments.reduce((sum, d) => sum + d.gross, 0) - overhead;
+      return { departments, overhead, netIncome };
     },
 
     snapshot() {

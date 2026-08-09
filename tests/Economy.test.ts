@@ -68,7 +68,7 @@ describe('Economy — inventory-acquisition spend (#255)', () => {
     const { clock, economy } = makeSetup();
     clock.advanceDay();
     expect(economy.inventoryAcquisitionSpend).toBe(0);
-    economy.postExpense(12_000, 'Auction purchase: v1', 'inventoryAcquisition');
+    economy.postExpense(12_000, 'Auction purchase: v1', { category: 'inventoryAcquisition' });
     economy.postExpense(500, 'Inspection: v2');
     economy.postRevenue(8_000, 'Sale');
     expect(economy.inventoryAcquisitionSpend).toBe(12_000);
@@ -77,16 +77,16 @@ describe('Economy — inventory-acquisition spend (#255)', () => {
   it('accumulates across days and never resets (lifetime counter)', () => {
     const { clock, economy } = makeSetup();
     clock.advanceDay();
-    economy.postExpense(10_000, 'Auction purchase: v1', 'inventoryAcquisition');
+    economy.postExpense(10_000, 'Auction purchase: v1', { category: 'inventoryAcquisition' });
     clock.advanceDay();
-    economy.postExpense(15_000, 'Auction purchase: v2', 'inventoryAcquisition');
+    economy.postExpense(15_000, 'Auction purchase: v2', { category: 'inventoryAcquisition' });
     expect(economy.inventoryAcquisitionSpend).toBe(25_000);
   });
 
   it('forceDebit honors the category too', () => {
     const { clock, economy } = makeSetup(1_000);
     clock.advanceDay();
-    economy.forceDebit(5_000, 'Auction purchase: v1', 'inventoryAcquisition');
+    economy.forceDebit(5_000, 'Auction purchase: v1', { category: 'inventoryAcquisition' });
     expect(economy.inventoryAcquisitionSpend).toBe(5_000);
   });
 
@@ -95,7 +95,7 @@ describe('Economy — inventory-acquisition spend (#255)', () => {
     // entry is stamped with the day the clock reports rather than the day that
     // last ended.
     const { economy } = makeSetup();
-    economy.postExpense(9_000, 'Auction purchase: v1', 'inventoryAcquisition');
+    economy.postExpense(9_000, 'Auction purchase: v1', { category: 'inventoryAcquisition' });
     economy.postExpense(300, 'Supplies');
     // Asserted against the LEDGER, not `getPnL` (#374): the ledger is the
     // record of everything posted, and the P&L is a read of it that

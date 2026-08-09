@@ -34,10 +34,50 @@ Cash movement and P&L effect are orthogonal, and the ledger now carries both axe
   relief. The ledger records what was posted; the rule governs how it is read. Inventing
   synthetic relief entries would be inventing history the store never had.
 
+## The P&L also has a DEPARTMENTAL axis (#375)
+
+Every post may carry an optional `profitCenter` — `sales | fni | service | bodyshop | store`
+— beside its human `label`, exactly as `ExpenseCategory` does. **Omitted ⇒ `store`
+(overhead)**, which is the rule and not a fallback: it keeps every untagged post (pre-#375
+saves, every harness) below the gross line instead of flattering a department it did not
+come from.
+
+- **`getDepartmentPnL(fromDay, toDay)`** → `{ departments, overhead, netIncome }`. All four
+  earning centers are always reported, in `DEPARTMENT_CENTERS` order, each with
+  `revenue`/`costOfSale`/`gross`/`active`. `active` is what a surface reads to omit a bar
+  rather than draw a zero — a consumer never has to guess whether a missing line means
+  "nothing" or "not built yet".
+- **`sum(departments.gross) − overhead === netIncome`, for any window, always.** That
+  identity is the whole reason the panel is trustworthy, and it is only available because
+  #374 made the statement accrual. Both reads go through the ONE private `pnlEntries` filter;
+  a department cut with a different filter would stop adding up to the Net Income printed
+  beside it.
+- **`overhead` is store expenses NET of store revenue.** A store-center receipt (PE sellout,
+  admin injection) is not a department's gross and has nowhere else honest to go, and stating
+  it net keeps the reconciliation one subtraction.
+- **Gross is revenue less cost of sale, and payroll is NOT cost of sale here.** Techs and
+  advisors draw one aggregate daily wage in this sim, not flat-rate, and it is posted as a
+  single line by StaffOrg. Splitting it across departments would need a second wage model
+  nobody asked for, so payroll sits in overhead with rent: departmental gross → less store
+  overhead → net income, the classic statement.
+- **The tag arrives as a named object** (`PostTag` / `ExpenseTag`), not as trailing
+  positional arguments — a site that wants only a profit center should not write `undefined`
+  in the category slot, and the next axis added there changes no existing call site.
+- Who tags what: `sales` = the vehicle sale, its cost-of-sale relief, wholesale proceeds,
+  recon / inspection / carrying, the auction buy. `fni` = product and reserve. `service` /
+  `bodyshop` = the ticket posting (via `DeptDispatchProfile.profitCenter`, so the one shared
+  engine names neither department) and parts, keyed off the part's category. `store` =
+  everything left, by omission.
+
 ## Public API (`index.ts`)
 - `createEconomy()` → `Economy`. `postCostOfSale(amount, label)` is the accrual half (above).
 - `loadEconomyConfig` — reads economy tunables from `data/tunables.json` (Economy section).
-- Types: `Economy`, `EconomyDeps`, `EconomyConfig`, `ExpenseCategory`, `LedgerEntry`, `PnLSummary`.
+- `getDepartmentPnL(fromDay, toDay)` — the departmental axis (above).
+- `DEPARTMENT_CENTERS` (the four earning centers, in reporting order) and
+  `PROFIT_CENTER_LABELS` (how each reads on a surface).
+- Types: `Economy`, `EconomyDeps`, `EconomyConfig`, `ExpenseCategory`, `LedgerEntry`,
+  `PnLSummary`, `ProfitCenter`, `PostTag`, `ExpenseTag`, `DepartmentPnL`,
+  `DepartmentPnLSummary`.
 - `postExpense`/`forceDebit` take an optional `ExpenseCategory`
   (`'inventoryAcquisition'` = cash converted into stock, i.e. auction purchase
   price; inspection/recon/carrying stay uncategorized = operating). The lifetime

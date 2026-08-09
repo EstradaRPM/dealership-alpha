@@ -189,6 +189,10 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   Vehicles Sold')`. Called from the only two doors a car leaves by — `sellVehicle` (retail)
   and `wholesaleOut` (both wholesale reasons) — so the P&L charges each unit exactly once.
   Economy's side of the contract is in its own `CLAUDE.md`.
+- **Every Inventory post is tagged `profitCenter: 'sales'` (#375)** — the relief, wholesale
+  proceeds, the auction buy, recon, inspection and carrying. The lot is the Sales department's
+  cost of doing business; an untagged post would land in store overhead and understate what
+  the metal actually cost to sell.
 - **`purchasePrice` only, never `costBasisOf`.** Recon, inspection and carrying are already
   expensed as operating spend on the days they were incurred (#255's category boundary);
   relieving the full basis would charge recon twice. `frontGross` has always said the same.

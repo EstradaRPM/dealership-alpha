@@ -9,7 +9,8 @@ import {
 } from '../src/ui/FinanceTab';
 import { ZERO_KPI_SNAPSHOT } from '../src/game/KPIDashboard';
 import type { KPIDayTotals, KPISnapshot } from '../src/game/KPIDashboard';
-import type { LedgerEntry, PnLSummary } from '../src/game/Economy';
+import { DEPARTMENT_CENTERS } from '../src/game/Economy';
+import type { DepartmentPnLSummary, LedgerEntry, PnLSummary } from '../src/game/Economy';
 
 const ZERO_KPI: KPISnapshot = ZERO_KPI_SNAPSHOT;
 
@@ -19,6 +20,41 @@ const ZERO_PNL: PnLSummary = {
   netIncome: 0,
   entries: [],
 };
+
+/** Every center reported and none of them active — a fresh store's books. */
+const ZERO_DEPT_PNL: DepartmentPnLSummary = {
+  departments: DEPARTMENT_CENTERS.map((center) => ({
+    center,
+    revenue: 0,
+    costOfSale: 0,
+    gross: 0,
+    active: false,
+  })),
+  overhead: 0,
+  netIncome: 0,
+};
+
+/** A departmental P&L with only the named centers active. */
+function deptPnl(
+  active: Partial<Record<string, { revenue: number; costOfSale: number }>>,
+  overhead = 0,
+): DepartmentPnLSummary {
+  const departments = DEPARTMENT_CENTERS.map((center) => {
+    const line = active[center];
+    return {
+      center,
+      revenue: line?.revenue ?? 0,
+      costOfSale: line?.costOfSale ?? 0,
+      gross: (line?.revenue ?? 0) - (line?.costOfSale ?? 0),
+      active: line !== undefined,
+    };
+  });
+  return {
+    departments,
+    overhead,
+    netIncome: departments.reduce((s, d) => s + d.gross, 0) - overhead,
+  };
+}
 
 function kpi(over: Partial<KPISnapshot>): KPISnapshot {
   return { ...ZERO_KPI, ...over };
@@ -48,6 +84,7 @@ function inputs(over: Partial<FinanceDashboardInputs> = {}): FinanceDashboardInp
     priorKpi: ZERO_KPI,
     pnl: ZERO_PNL,
     priorPnl: ZERO_PNL,
+    departmentPnl: ZERO_DEPT_PNL,
     daily: [],
     hasPriorWindow: true,
     ...over,

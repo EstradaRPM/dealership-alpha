@@ -4,6 +4,7 @@ import {
   type PartsInventory,
   type PartsInventoryConfig,
 } from '../src/game/PartsInventory';
+import type { ExpenseTag, PostTag } from '../src/game/Economy';
 
 /**
  * PartsInventory isolation tests (#299, parent #297). Exercise the public
@@ -12,13 +13,23 @@ import {
  * persistence round-trip.
  */
 
-/** A spy Economy capturing the `postExpense` calls the module makes. */
+/**
+ * A spy Economy capturing the ledger calls the module makes: the cash debits
+ * (`postExpense`) and, since #375, the non-cash relief a consumed part posts
+ * (`postCostOfSale`). `total` stays the CASH total — the relief moves no money,
+ * so folding it in would double-count every part.
+ */
 function createEconomySpy() {
-  const expenses: { amount: number; label: string; category?: string }[] = [];
+  const expenses: { amount: number; label: string; tag?: ExpenseTag }[] = [];
+  const relief: { amount: number; label: string; tag?: PostTag }[] = [];
   return {
     expenses,
-    postExpense(amount: number, label: string, category?: string) {
-      expenses.push({ amount, label, category });
+    relief,
+    postExpense(amount: number, label: string, tag?: ExpenseTag) {
+      expenses.push({ amount, label, tag });
+    },
+    postCostOfSale(amount: number, label: string, tag?: PostTag) {
+      relief.push({ amount, label, tag });
     },
     get total() {
       return expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -58,7 +69,7 @@ describe('PartsInventory (#299)', () => {
       expect(economy.expenses).toHaveLength(1);
       expect(economy.expenses[0]).toMatchObject({
         amount: 1000,
-        category: 'inventoryAcquisition',
+        tag: { category: 'inventoryAcquisition', profitCenter: 'service' },
       });
     });
 
@@ -108,6 +119,31 @@ describe('PartsInventory (#299)', () => {
       expect(parts.getStock('tires_brakes')).toBe(1);
       expect(parts.consume('tires_brakes')).toBe(true);
       expect(parts.getStock('tires_brakes')).toBe(0);
+    });
+
+    // #375 — the accrual half. The cash left at the order (dropped from the
+    // P&L as `inventoryAcquisition`); the cost arrives on the statement here,
+    // on the day a job used the part, against that department's revenue.
+    it("relieves the consumed unit's cost to the part's own department", () => {
+      const { parts, economy } = build();
+      parts.addStock('tires_brakes', 2, 250); // Service
+      parts.addStock('paint', 1, 400); // Body Shop
+
+      parts.consume('tires_brakes');
+      parts.consume('paint');
+
+      expect(economy.relief).toEqual([
+        { amount: 250, label: 'Parts used: tires_brakes', tag: { profitCenter: 'service' } },
+        { amount: 400, label: 'Parts used: paint', tag: { profitCenter: 'bodyshop' } },
+      ]);
+      // The relief moves no money — the cash total is still the two orders.
+      expect(economy.total).toBe(2 * 250 + 400);
+    });
+
+    it('a miss relieves nothing — no part left the shelf', () => {
+      const { parts, economy } = build();
+      expect(parts.consume('drivetrain')).toBe(false);
+      expect(economy.relief).toHaveLength(0);
     });
 
     it('returns false (miss signal) on an empty category, without throwing', () => {

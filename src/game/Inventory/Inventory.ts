@@ -346,7 +346,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
    * has always made.
    */
   function relieveCostOfSale(v: LotVehicle): void {
-    economy.postCostOfSale(v.purchasePrice, COST_OF_SALE_LABEL);
+    economy.postCostOfSale(v.purchasePrice, COST_OF_SALE_LABEL, { profitCenter: 'sales' });
   }
 
   /**
@@ -378,7 +378,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
     reason: 'released' | 'recon_abandoned',
     label: string,
   ): void {
-    economy.postRevenue(quote.proceeds, label);
+    economy.postRevenue(quote.proceeds, label, { profitCenter: 'sales' });
     relieveCostOfSale(v);
     lotVehicles.delete(v.id);
     bus.publish('inventory:vehicle_wholesaled', {
@@ -443,11 +443,10 @@ export function createInventory(deps: InventoryDeps): Inventory {
     // Categorized as stock acquisition (#255): the Home cash delta breaks
     // this out as "into stock" instead of coloring a deliberate buy as a
     // loss. Inspection/recon/carrying stay uncategorized (operating spend).
-    economy.postExpense(
-      listing.askingPrice,
-      `Auction purchase: ${listing.id}`,
-      'inventoryAcquisition',
-    );
+    economy.postExpense(listing.askingPrice, `Auction purchase: ${listing.id}`, {
+      category: 'inventoryAcquisition',
+      profitCenter: 'sales',
+    });
 
     const reliability = sourceReliability.reliability[listing.sourceId] ?? 0.5;
     const lotVehicle = buildAcquiredVehicle({
@@ -521,6 +520,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
       economy.forceDebit(
         totalCarry,
         `Floorplan & carrying cost (Day ${day}, ${unitCount} unit${unitCount === 1 ? '' : 's'})`,
+        { profitCenter: 'sales' },
       );
     }
     bus.publish('economy:carrying_cost_posted', {
@@ -787,6 +787,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
     economy.postExpense(
       Math.round(spendThisDay),
       `Recon: ${v.year} ${v.make} ${v.model} (${v.id})`,
+      { profitCenter: 'sales' },
     );
 
     const surpriseTriggerCost = v.reconEstimate * reconVariance.surpriseThreshold;
@@ -968,6 +969,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
       economy.postExpense(
         inventoryConfig.inspection.cost,
         `Inspection: ${listing.id}`,
+        { profitCenter: 'sales' },
       );
 
       const availableDay =

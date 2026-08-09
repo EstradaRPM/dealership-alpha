@@ -46,6 +46,7 @@ export function FinanceTabContainer({ world, tabs }: FinanceTabContainerProps) {
     priorKpi: world.kpiDashboard.getSnapshot(priorClamped),
     pnl: world.economy.getPnL(window.fromDay, window.toDay),
     priorPnl: world.economy.getPnL(priorClamped.fromDay, priorClamped.toDay),
+    departmentPnl: world.economy.getDepartmentPnL(window.fromDay, window.toDay),
     daily: world.kpiDashboard.getDailyTotals(window),
     hasPriorWindow,
   });

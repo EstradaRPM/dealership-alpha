@@ -13,6 +13,7 @@ import {
   type ProcurementPolicy,
   type SupplierTier,
 } from './types';
+import type { ProfitCenter } from '../Economy';
 
 /** Internal mutable lot — the public `PartLot` is the readonly projection. */
 interface MutableLot {
@@ -22,6 +23,24 @@ interface MutableLot {
 }
 
 const ORDER_SEED_NAMESPACE = 'parts_inventory.order';
+
+/**
+ * Which department a part belongs to (#375). One shared parts room stocks both
+ * ladders, and the category is what says whose it is — the same keying the
+ * 8-category union was declared for. No default: every category is one
+ * department's or the other's, and a `PartCategory` added without a home here
+ * is a compile error rather than a silent charge to overhead.
+ */
+const PART_PROFIT_CENTER: Readonly<Record<PartCategory, ProfitCenter>> = {
+  oil_filters: 'service',
+  tires_brakes: 'service',
+  drivetrain: 'service',
+  electronics: 'service',
+  windows_glass: 'bodyshop',
+  doors_panels: 'bodyshop',
+  interior_trim: 'bodyshop',
+  paint: 'bodyshop',
+};
 
 /**
  * PartsInventory (#299/#301, parent PRD #297) — parts stock for the four Service
@@ -114,11 +133,10 @@ export function createPartsInventory(deps: PartsInventoryDeps): PartsInventory {
     const spec = config.supplierTiers[tier];
     const unitCost = Math.round(config.categories[category].baseUnitCost * spec.costMultiplier);
 
-    economy.postExpense(
-      qty * unitCost,
-      `Parts order (${tier}): ${qty}× ${category}`,
-      'inventoryAcquisition',
-    );
+    economy.postExpense(qty * unitCost, `Parts order (${tier}): ${qty}× ${category}`, {
+      category: 'inventoryAcquisition',
+      profitCenter: PART_PROFIT_CENTER[category],
+    });
 
     // Seeded on-time roll — a failure pushes arrival out by the tier's penalty.
     const rng = createRng(
@@ -148,11 +166,10 @@ export function createPartsInventory(deps: PartsInventoryDeps): PartsInventory {
       if (qty <= 0) return;
       const cost = Math.max(0, unitCost);
       lots.push({ category, qty, unitCost: cost });
-      economy.postExpense(
-        Math.round(qty * cost),
-        `Parts stock-in: ${qty}× ${category}`,
-        'inventoryAcquisition',
-      );
+      economy.postExpense(Math.round(qty * cost), `Parts stock-in: ${qty}× ${category}`, {
+        category: 'inventoryAcquisition',
+        profitCenter: PART_PROFIT_CENTER[category],
+      });
     },
 
     consume(category) {
@@ -162,6 +179,16 @@ export function createPartsInventory(deps: PartsInventoryDeps): PartsInventory {
       if (lotIndex === -1) return false;
       const lot = lots[lotIndex];
       lot.qty -= 1;
+      // The accrual half (#375, the #374 rule applied to the other stock the
+      // store carries). The cash for this unit left when it was ordered and
+      // was booked `inventoryAcquisition`, which the P&L drops whole; the cost
+      // arrives on the statement here, on the day a job used it, against the
+      // revenue that job earned. Without this, Service and Body Shop would
+      // report gross with no parts in it and Net Income would be overstated by
+      // every part ever bought.
+      economy.postCostOfSale(lot.unitCost, `Parts used: ${category}`, {
+        profitCenter: PART_PROFIT_CENTER[category],
+      });
       if (lot.qty <= 0) lots.splice(lotIndex, 1);
       return true;
     },

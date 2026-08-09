@@ -26,18 +26,36 @@ coverage-gap read-model. (#304): the ServiceDispatch parts gate now calls
 module). (#312): the four Body-Shop parts categories are keyed (inactive 0-par)
 so collision jobs can stock/consume/cover against the same machinery.**
 
+## Parts are accrual too, and they belong to a department (#375)
+
+The vehicle-`Inventory` discipline above is now complete in both halves:
+
+- **Acquisition is not a loss.** Orders and stock-ins debit cash tagged
+  `inventoryAcquisition`, which `Economy.getPnL` drops whole.
+- **Consumption is.** `consume` posts `economy.postCostOfSale(lot.unitCost, 'Parts used:
+  <category>')` — a non-cash entry on the day a job used the part, against the revenue that
+  job earned. Without it the parts room would only ever debit, Service and Body Shop would
+  report gross with no parts in it, and Net Income would be overstated by every part ever
+  bought. A **miss relieves nothing** (no part left the shelf).
+- **The category says whose part it is.** `PART_PROFIT_CENTER` maps the Service four to
+  `service` and the Body-Shop four to `bodyshop`, on both the debit and the relief — the same
+  keying the 8-category union was declared for. There is no default: a new `PartCategory`
+  without a home there is a compile error rather than a silent charge to overhead.
+
 ## Public API (`index.ts`)
 - `createPartsInventory({ economy, config?, masterSeed? })` → `PartsInventory`.
-  `economy` is `Pick<Economy, 'postExpense'>` (stock-in + order placement debit
-  cash). `config` defaults to `loadPartsInventoryConfig()`; `masterSeed`
-  defaults to 0 (seeds the order lead-time/reliability draw).
+  `economy` is `Pick<Economy, 'postExpense' | 'postCostOfSale'>` — stock-in and
+  order placement debit cash, a consumed unit relieves its cost (#375). Both
+  halves are required. `config` defaults to `loadPartsInventoryConfig()`;
+  `masterSeed` defaults to 0 (seeds the order lead-time/reliability draw).
 - `addStock(category, qty, unitCost)` — append a lot and debit `qty × unitCost`
   via Economy (categorized `inventoryAcquisition`). `qty <= 0` is a no-op;
   negative `unitCost` clamps to 0.
-- `consume(category)` → `boolean` — deplete one unit (oldest lot first). Returns
-  `true` when consumed, `false` on a miss (empty category). **Never throws** —
-  the miss is the observable signal the future parts-gate routes to the
-  lost-revenue / rush path.
+- `consume(category)` → `boolean` — deplete one unit (oldest lot first) and
+  relieve its cost to that category's department (#375, above). Returns `true`
+  when consumed, `false` on a miss (empty category). **Never throws** — the miss
+  is the observable signal the future parts-gate routes to the lost-revenue /
+  rush path.
 - `getStock(category)` / `getCoverage()` — on-hand reads. `getCoverage()` keys
   all four categories (0 when empty).
 - **Procurement (#301):**

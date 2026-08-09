@@ -8,7 +8,8 @@ import {
 } from '../src/ui/FinanceTab';
 import { ZERO_KPI_SNAPSHOT } from '../src/game/KPIDashboard';
 import type { KPISnapshot } from '../src/game/KPIDashboard';
-import type { PnLSummary } from '../src/game/Economy';
+import { DEPARTMENT_CENTERS } from '../src/game/Economy';
+import type { DepartmentPnLSummary, PnLSummary } from '../src/game/Economy';
 import type { GateMonthVerdict } from '../src/game/TierGate';
 
 const KPI: KPISnapshot = {
@@ -43,6 +44,18 @@ const PNL: PnLSummary = {
   ],
 };
 
+const DEPT_PNL: DepartmentPnLSummary = {
+  departments: DEPARTMENT_CENTERS.map((center) => ({
+    center,
+    revenue: center === 'sales' ? 120_000 : 0,
+    costOfSale: center === 'sales' ? 90_000 : 0,
+    gross: center === 'sales' ? 30_000 : 0,
+    active: center === 'sales',
+  })),
+  overhead: 6_000,
+  netIncome: 24_000,
+};
+
 const MODEL = buildFinanceDashboard({
   rangeId: '7d',
   currentDay: 9,
@@ -50,6 +63,7 @@ const MODEL = buildFinanceDashboard({
   priorKpi: { ...KPI, unitsRetailed: 4, cashGross: 4_000, financeGross: 8_000 },
   pnl: PNL,
   priorPnl: { totalRevenue: 0, totalExpenses: 0, netIncome: 0, entries: [] },
+  departmentPnl: DEPT_PNL,
   daily: [3, 4, 5, 6, 7, 8, 9].map((day) => ({
     day,
     units: day % 2,

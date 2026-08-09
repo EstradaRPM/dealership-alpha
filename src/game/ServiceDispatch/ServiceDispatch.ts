@@ -1,5 +1,5 @@
 import type { EventBus } from '../EventBus';
-import type { Economy } from '../Economy';
+import type { Economy, ProfitCenter } from '../Economy';
 import type { StaffOrg } from '../StaffOrg';
 import type { DepartmentQueue } from '../DepartmentQueue';
 import type { QueueItem, DeptKey } from '../DepartmentQueue';
@@ -81,6 +81,11 @@ export interface DeptDispatchProfile {
   priceTicket(item: DeptIntakeItem): number;
   /** Economy ledger label for a posted ticket. */
   revenueLabel(item: DeptIntakeItem, rush: boolean): string;
+  /** Which profit center this department's revenue belongs to (#375). Carried
+   *  on the profile rather than branched on inside the engine: one engine runs
+   *  both departments, and a hard-coded name here is exactly the coupling the
+   *  shared line was extracted to remove. */
+  profitCenter: ProfitCenter;
   /** Subscribe the engine's enqueue to this department's intake event. */
   subscribeIntake(
     bus: EventBus,
@@ -296,7 +301,9 @@ function makeDeptResolver(deps: DeptDispatchDeps) {
       if (isRushUnlocked?.()) {
         partsInventory.rushOrder(item.jobCategory, 1);
         if (revenue > 0) {
-          economy.postRevenue(revenue, profile.revenueLabel(item, true));
+          economy.postRevenue(revenue, profile.revenueLabel(item, true), {
+            profitCenter: profile.profitCenter,
+          });
         }
         profile.emit.jobRushed({
           itemId: item.itemId,
@@ -331,7 +338,9 @@ function makeDeptResolver(deps: DeptDispatchDeps) {
     queue.resolveItem(item.itemId);
 
     if (revenue > 0) {
-      economy.postRevenue(revenue, profile.revenueLabel(item, false));
+      economy.postRevenue(revenue, profile.revenueLabel(item, false), {
+        profitCenter: profile.profitCenter,
+      });
     }
 
     if (partsInventory) {
@@ -539,6 +548,7 @@ function serviceProfile(
     },
     revenueLabel: (item, rush) =>
       rush ? `Service (rush) — ${item.label}` : `Service — ${item.label}`,
+    profitCenter: 'service',
     subscribeIntake: (b, enqueue) => {
       b.subscribe('service:intake_ready', ({ day, items }) => {
         for (const item of items) {

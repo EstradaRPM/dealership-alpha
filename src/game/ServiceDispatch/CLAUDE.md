@@ -11,8 +11,9 @@ the advisor pick, the skill-scaled auto-resolve roll, the #304 parts gate, the
 department supplies a **`DeptDispatchProfile`** for everything that differs:
 advisor role, queue lane, RNG namespace, per-ticket pricing (Service's
 competitive↔premium dial vs Body Shop's insurance rate-capped / retail
-player-priced split), revenue label, the intake feed, and the event family it
-emits. Per the locked event-name decision (#312) the two emit PARALLEL families
+player-priced split), revenue label, **which profit center its revenue posts to**
+(#375 — `profitCenter`, so the one engine names neither department), the intake
+feed, and the event family it emits. Per the locked event-name decision (#312) the two emit PARALLEL families
 (`service:*` / `bodyshop:*`) bound to this one engine — NOT a collapsed `dept:*`.
 
 - Generic exports: `createDeptFloorDrain`, `createDeptDispatch`,

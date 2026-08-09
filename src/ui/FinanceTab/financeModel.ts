@@ -1,5 +1,6 @@
 import type { DayRange, KPIDayTotals, KPISnapshot } from '../../game/KPIDashboard';
-import type { LedgerEntry, PnLSummary } from '../../game/Economy';
+import { PROFIT_CENTER_LABELS } from '../../game/Economy';
+import type { DepartmentPnLSummary, LedgerEntry, PnLSummary } from '../../game/Economy';
 import type { BarDatum, DonutDatum, TrendDirection } from '../kit';
 
 /**
@@ -144,6 +145,13 @@ export interface FinanceDashboardModel {
    * comes from what attached, reserve from the rate the store held.
    */
   readonly grossBreakdown: FinanceBars;
+  /**
+   * Where the gross came from (#375) — gross per profit center. The store runs
+   * four businesses out of one building and this is the only surface that says
+   * which of them earned. A different axis from `grossBreakdown`, which cuts
+   * the *sales* deal into its revenue lines.
+   */
+  readonly departmentGross: FinanceBars;
   /** Back-end gross per car by deal structure (#152). */
   readonly backEndByStructure: FinanceBars;
   readonly expenses: FinanceBars;
@@ -168,6 +176,8 @@ export interface FinanceDashboardInputs {
   readonly pnl: PnLSummary;
   /** P&L over the immediately preceding window. */
   readonly priorPnl: PnLSummary;
+  /** The same window cut by profit center (#375). */
+  readonly departmentPnl: DepartmentPnLSummary;
   /** Per-day retail flow across the selected window, oldest→newest. */
   readonly daily: readonly KPIDayTotals[];
   /** True when the prior window contains at least one real day (day ≥ 1). */
@@ -378,6 +388,28 @@ export function buildFinanceDashboard(
     emptyLabel: noDeals,
   };
 
+  // #375: which of the store's four businesses made the money. A department
+  // that posted nothing in the window is OMITTED rather than drawn at zero — a
+  // Tier-1 store has no service lane and no body shop, and a flat bar labelled
+  // "Body Shop" says it lost money on collision work it never did. `active`
+  // (not `gross !== 0`) is the test, so a department that spent on parts and
+  // billed nothing still shows its negative bar.
+  const departmentGross: FinanceBars = {
+    title: 'Where the Gross Came From',
+    caption:
+      'Gross by department — revenue less what it cost to deliver. ' +
+      `Store overhead of ${money(inputs.departmentPnl.overhead)} sits below this ` +
+      'and is what the four have to cover.',
+    data: inputs.departmentPnl.departments
+      .filter((d) => d.active)
+      .map((d) => ({
+        label: PROFIT_CENTER_LABELS[d.center],
+        value: d.gross,
+        valueLabel: money(d.gross),
+      })),
+    emptyLabel: 'No department has posted to the books in this window.',
+  };
+
   // #152: the back end per car, by how much of the price the customer borrowed.
   // Stated PER UNIT rather than as window totals — a total here just reports
   // which structure was commonest, while the thing the player can act on is
@@ -448,6 +480,7 @@ export function buildFinanceDashboard(
     hero,
     grossMix,
     grossBreakdown,
+    departmentGross,
     backEndByStructure,
     expenses,
     kpi,
