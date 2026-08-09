@@ -32,6 +32,7 @@ function makeEconomy(initialCash: number): Economy {
     postRevenue: jest.fn((amount: number) => { cash += amount; }),
     postExpense: jest.fn((amount: number) => { cash -= amount; }),
     forceDebit: jest.fn((amount: number) => { cash -= amount; }),
+    postCostOfSale: jest.fn(),
     getPnL: jest.fn().mockReturnValue({
       totalRevenue: 0,
       totalExpenses: 0,

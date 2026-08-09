@@ -40,6 +40,17 @@ export interface Economy {
   readonly inventoryAcquisitionSpend: number;
   postRevenue(amount: number, label: string): void;
   postExpense(amount: number, label: string, category?: ExpenseCategory): void;
+  /**
+   * Relieve the cost of a unit that just left the lot (#374). Writes a
+   * `nonCash` expense entry and **does not touch cash** — the money for that
+   * car left when it was bought, and posting the relief through `postExpense`
+   * would debit the store twice for one vehicle.
+   *
+   * Publishes nothing, deliberately: `economy:expense_posted` means cash moved
+   * (Telemetry's `cashCurve` is its only consumer and is a cash curve). A P&L
+   * reader wants `getPnL`, which is where this entry shows up.
+   */
+  postCostOfSale(amount: number, label: string): void;
   // Bypass the solvency check. Used by failure paths (bankruptcy debt service,
   // compliance fees) where cash legitimately goes negative.
   forceDebit(amount: number, label: string, category?: ExpenseCategory): void;
@@ -121,8 +132,26 @@ export function createEconomy(deps: EconomyDeps): Economy {
       postExpenseInternal(getCurrentDay(), amount, label, category);
     },
 
+    postCostOfSale(amount, label) {
+      ledger.push({ day: getCurrentDay(), type: 'expense', amount, label, nonCash: true });
+    },
+
+    /**
+     * The P&L, and since #374 an ACCRUAL one: it reports what the window
+     * earned, not what its bank account did.
+     *
+     * `inventoryAcquisition` entries are dropped whole — from the totals AND
+     * from `entries`. Buying a car converts cash into stock; it is a cash
+     * movement with no P&L effect, and the cost comes back as the `nonCash`
+     * relief on the day that car sells. Leaving them in `entries` would put
+     * "Auction purchase" on the expense breakdown under a Net Income that does
+     * not count it — two numbers on one screen that cannot be added up, which
+     * is the exact defect this read exists to close.
+     */
     getPnL(fromDay, toDay) {
-      const entries = ledger.filter((e) => e.day >= fromDay && e.day <= toDay);
+      const entries = ledger.filter(
+        (e) => e.day >= fromDay && e.day <= toDay && e.category !== 'inventoryAcquisition',
+      );
       const totalRevenue = entries
         .filter((e) => e.type === 'revenue')
         .reduce((sum, e) => sum + e.amount, 0);

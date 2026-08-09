@@ -13,6 +13,16 @@ export interface LedgerEntry {
   amount: number;
   label: string;
   category?: ExpenseCategory;
+  /**
+   * Accrual marker (#374). Cash movement and P&L effect are orthogonal, and
+   * this is the half that hits the statement without touching the balance: the
+   * cost of a vehicle sold is relieved out of stock on the day it leaves the
+   * lot, weeks after the cash for it left. Only `postCostOfSale` writes it.
+   *
+   * Optional and only ever `true`, so a pre-#374 ledger restores unchanged and
+   * reads as what it was — all cash.
+   */
+  nonCash?: true;
 }
 
 export interface PnLSummary {

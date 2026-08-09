@@ -31,6 +31,7 @@ function makeEconomy(initialCash: number): MutableEconomy {
       cash -= amount;
       debits.push({ amount, label });
     }),
+    postCostOfSale: jest.fn(),
     getPnL: jest.fn().mockReturnValue({
       totalRevenue: 0,
       totalExpenses: 0,

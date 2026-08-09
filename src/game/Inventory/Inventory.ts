@@ -22,6 +22,14 @@ import type { StartingInventorySpec } from './startingInventory';
 import type { AuctionListing, LotVehicle, TradeAcquisitionInput } from './types';
 
 /**
+ * The one ledger label every cost-of-sale relief is written under (#374).
+ * Deliberately NOT per-vehicle: the Finance expense breakdown groups by label,
+ * and a label per car would shatter the single largest line on a dealership's
+ * statement into a hundred slivers that all fold into "Other".
+ */
+const COST_OF_SALE_LABEL = 'Cost of Vehicles Sold';
+
+/**
  * Powertrain stamped on every `inventory:vehicle_sold` (#298). The vehicle
  * catalog has no powertrain axis yet — every unit is internal-combustion — so
  * this is the single honest value, not a placeholder guess. When EV/hybrid
@@ -180,7 +188,10 @@ export interface Inventory {
 export interface InventoryDeps {
   bus: EventBus;
   masterSeed: number;
-  economy: Pick<Economy, 'cash' | 'postExpense' | 'postRevenue' | 'forceDebit'>;
+  economy: Pick<
+    Economy,
+    'cash' | 'postExpense' | 'postRevenue' | 'forceDebit' | 'postCostOfSale'
+  >;
   /**
    * Live dealership tier provider (#173). Drives the floorplan APR used in the
    * daily carrying-cost accrual — better tiers borrow more cheaply. Omit to
@@ -317,6 +328,28 @@ export function createInventory(deps: InventoryDeps): Inventory {
   }
 
   /**
+   * Relieve a departing unit's acquisition price out of stock (#374). The one
+   * place it happens, called from the only two doors a car leaves by — a retail
+   * sale and a wholesale-out — so the P&L charges each unit exactly once, on
+   * the day it left.
+   *
+   * **`purchasePrice` only, never `costBasisOf`.** Recon, inspection and
+   * carrying are already expensed as operating spend on the days they were
+   * incurred (#255's category boundary says so in as many words); relieving the
+   * full cost basis would charge recon to the store twice.
+   *
+   * A trade-in and a #296 seed unit carry a `purchasePrice` that never cost
+   * cash — the allowance is settled inside the deal structure, and opening
+   * stock is contributed capital. Both are still relieved: the cost of a car
+   * the store sold is what it gave up to have it, whether or not the payment
+   * went out through the bank account. That is the same statement `frontGross`
+   * has always made.
+   */
+  function relieveCostOfSale(v: LotVehicle): void {
+    economy.postCostOfSale(v.purchasePrice, COST_OF_SALE_LABEL);
+  }
+
+  /**
    * What wholesaling this unit would pay and cost (#362). Book value with the
    * `data/`-configured haircut — **not** the asking price. The ask is what you
    * hope a retail customer pays; a wholesale buyer is buying to resell and
@@ -346,6 +379,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
     label: string,
   ): void {
     economy.postRevenue(quote.proceeds, label);
+    relieveCostOfSale(v);
     lotVehicles.delete(v.id);
     bus.publish('inventory:vehicle_wholesaled', {
       day: currentDay,
@@ -880,6 +914,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
     sellVehicle(vehicleId, salePrice) {
       const vehicle = lotVehicles.get(vehicleId);
       if (!vehicle) throw new Error(`No lot vehicle "${vehicleId}"`);
+      relieveCostOfSale(vehicle);
       lotVehicles.delete(vehicleId);
       bus.publish('inventory:vehicle_sold', {
         day: currentDay,

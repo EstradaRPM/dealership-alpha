@@ -182,6 +182,24 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   `Wholesale $N` button and the `lot-wholesale-confirm` sheet. Read side:
   `HistoryLog` records the dump, naming the car and the loss.
 
+## Cost of sale — relieving stock (#374)
+
+- **A unit's acquisition price is relieved out of stock on the day it leaves the lot**, via
+  the private `relieveCostOfSale` → `economy.postCostOfSale(v.purchasePrice, 'Cost of
+  Vehicles Sold')`. Called from the only two doors a car leaves by — `sellVehicle` (retail)
+  and `wholesaleOut` (both wholesale reasons) — so the P&L charges each unit exactly once.
+  Economy's side of the contract is in its own `CLAUDE.md`.
+- **`purchasePrice` only, never `costBasisOf`.** Recon, inspection and carrying are already
+  expensed as operating spend on the days they were incurred (#255's category boundary);
+  relieving the full basis would charge recon twice. `frontGross` has always said the same.
+- **The label is one constant, deliberately.** The Finance expense breakdown groups by label,
+  so a per-vehicle label would shatter the single biggest line on a dealership's statement
+  into slivers that all fold into "Other".
+- **A trade-in and a #296 seed unit are relieved too**, even though their `purchasePrice`
+  never cost cash (the allowance settles inside the deal structure; opening stock is
+  contributed capital). What a sold car cost the store is what the store gave up to have it,
+  bank account or not.
+
 ## Frontline-hold on acquired units (#295)
 - Every `LotVehicle` carries `frontlineDay` — the first day it is offered to the
   auto-sim walk-in pool. `buildAcquiredVehicle` (shared by `buyFromAuction` and

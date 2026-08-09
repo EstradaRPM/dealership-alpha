@@ -2,8 +2,40 @@
 
 Money ledger. Posts revenue and expense entries, computes P&L summaries.
 
+## The P&L is ACCRUAL (#374)
+
+Cash movement and P&L effect are orthogonal, and the ledger now carries both axes:
+
+| Entry | Moves cash | Hits the P&L |
+|---|---|---|
+| Auction purchase (`category: 'inventoryAcquisition'`) | yes | **no** |
+| Cost of a vehicle sold (`postCostOfSale`, `nonCash: true`) | **no** | yes |
+| Everything else (rent, payroll, recon, carrying, service revenue, …) | yes | yes |
+
+- **`postCostOfSale(amount, label)`** writes a `nonCash` expense entry and does not touch
+  cash. Posting the relief through `postExpense` would debit the store twice for one car.
+  It **publishes nothing** — `economy:expense_posted` means cash moved, and Telemetry's
+  `cashCurve` (its only consumer) is a cash curve. A P&L reader wants `getPnL`.
+- **`getPnL` drops `inventoryAcquisition` entries whole** — from the totals *and* from
+  `entries`. Buying a car converts cash into stock; the cost comes back as the relief on the
+  day that car sells. Leaving them in `entries` would put "Auction purchase" on the Finance
+  expense breakdown under a Net Income that does not count it — two numbers on one screen
+  that cannot be added up. `snapshot().ledger` is still the complete record; `getPnL` is a
+  read of it.
+- **Why it exists:** cash-basis charged an auction buy on the day of the buy while that
+  unit's revenue arrived weeks later. At Tier 1 a six-space lot is bought out in two or three
+  days, so a month spent stocking reported a loss the store did not make.
+- **Only `Inventory` relieves**, at the two doors a unit leaves by (retail sale and
+  wholesale-out), and it relieves `purchasePrice` **only** — recon/inspection/carrying are
+  already operating spend on the days they were incurred.
+- **A pre-#374 save needs no migration** (`schemaVersion` stays 1 — `nonCash` is optional
+  inside the module's own blob) and is **never back-filled**. Its historical months read more
+  profitable than they did on the day they closed, because their acquisitions have no matching
+  relief. The ledger records what was posted; the rule governs how it is read. Inventing
+  synthetic relief entries would be inventing history the store never had.
+
 ## Public API (`index.ts`)
-- `createEconomy()` → `Economy`.
+- `createEconomy()` → `Economy`. `postCostOfSale(amount, label)` is the accrual half (above).
 - `loadEconomyConfig` — reads economy tunables from `data/tunables.json` (Economy section).
 - Types: `Economy`, `EconomyDeps`, `EconomyConfig`, `ExpenseCategory`, `LedgerEntry`, `PnLSummary`.
 - `postExpense`/`forceDebit` take an optional `ExpenseCategory`

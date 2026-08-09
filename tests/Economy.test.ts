@@ -90,14 +90,18 @@ describe('Economy — inventory-acquisition spend (#255)', () => {
     expect(economy.inventoryAcquisitionSpend).toBe(5_000);
   });
 
-  it('categorized entries carry the category in the P&L ledger', () => {
+  it('categorized entries carry the category in the ledger', () => {
     // A fresh clock is already ON day 1 — no advance needed, and since #351 an
     // entry is stamped with the day the clock reports rather than the day that
     // last ended.
     const { economy } = makeSetup();
     economy.postExpense(9_000, 'Auction purchase: v1', 'inventoryAcquisition');
     economy.postExpense(300, 'Supplies');
-    const entries = economy.getPnL(1, 1).entries;
+    // Asserted against the LEDGER, not `getPnL` (#374): the ledger is the
+    // record of everything posted, and the P&L is a read of it that
+    // deliberately drops acquisitions. The category has to survive on the
+    // record for the read to be able to act on it.
+    const entries = economy.snapshot().ledger ?? [];
     expect(entries.find((e) => e.label.startsWith('Auction'))?.category).toBe(
       'inventoryAcquisition',
     );
@@ -187,6 +191,35 @@ describe('Economy — P&L correctness', () => {
     expect(economy.getPnL(2, 2).totalRevenue).toBe(3_000);
     expect(economy.getPnL(1, 2).totalRevenue).toBe(8_000);
     expect(economy.getPnL(1, 3).totalRevenue).toBe(10_000);
+  });
+
+  it('a pre-accrual ledger restores without migration (#374)', () => {
+    const { economy } = makeSetup();
+
+    // Exactly what a pre-#374 save holds: entries with no `nonCash` marker.
+    // `schemaVersion` did not move — the field is optional inside the module's
+    // own blob — so there is no migration and the old ledger is simply read
+    // under the new rule.
+    economy.restore({
+      schemaVersion: 1,
+      cash: 12_345,
+      inventoryAcquisitionSpend: 9_000,
+      ledger: [
+        { day: 1, type: 'expense', amount: 9_000, label: 'Auction purchase: L1', category: 'inventoryAcquisition' },
+        { day: 1, type: 'expense', amount: 1_200, label: 'Rent' },
+        { day: 2, type: 'revenue', amount: 14_000, label: 'Vehicle sale: L1' },
+      ],
+    });
+
+    expect(economy.cash).toBe(12_345);
+    const pnl = economy.getPnL(1, 2);
+    expect(pnl.totalRevenue).toBe(14_000);
+    // The old acquisition entry stops being operating spend the moment it is
+    // read under the new rule. Its unit sold before the save, so no relief
+    // entry exists to pair with it — the known, accepted artifact: history is
+    // read, never back-filled.
+    expect(pnl.totalExpenses).toBe(1_200);
+    expect(pnl.netIncome).toBe(12_800);
   });
 });
 
@@ -351,7 +384,7 @@ describe('Economy — Inventory integration', () => {
     expect(economy.cash).toBe(STARTING_CASH - listing.askingPrice);
   });
 
-  it('vehicle purchase appears as an expense entry in P&L', () => {
+  it('an auction purchase is not an operating expense (#374)', () => {
     const bus = createEventBus();
     const clock = createGameClock({ bus });
     const economy = createEconomy({
@@ -368,9 +401,16 @@ describe('Economy — Inventory integration', () => {
     const [listing] = inventory.getAuctionListings();
     inventory.buyFromAuction(listing.id);
 
+    // Cash left (that half is asserted above and by #255's counter), but a
+    // month spent stocking is not a month spent losing money: the buy converted
+    // cash into stock and the P&L waits for the sale.
     const pnl = economy.getPnL(2, 2);
-    expect(pnl.totalExpenses).toBe(listing.askingPrice);
-    expect(pnl.entries[0].type).toBe('expense');
+    expect(pnl.totalExpenses).toBe(0);
+    expect(pnl.netIncome).toBe(0);
+    // Dropped from `entries` too, not just from the total — an expense
+    // breakdown that lists a purchase the net income does not count is two
+    // numbers on one screen that cannot be added up.
+    expect(pnl.entries).toHaveLength(0);
   });
 
   it('auction buy counts as inventory-acquisition spend (#255)', () => {
