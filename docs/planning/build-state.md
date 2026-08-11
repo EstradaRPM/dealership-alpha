@@ -35,8 +35,10 @@ stays a locked design; do not re-grill it.
 **Phase 10 — D1 — is RE-SCOPED AND FILED as of 2026-08-08.** Its row's *"largely absorbed by 5c;
 re-scope when reached"* was mostly right: the subtraction against the shipped app killed Growth's
 D1 scope entirely and left People with two items and Finance with three. Five issues filed,
-**#374–#378** (table below). The next `/next` on this phase BUILDS **#378** (closing sweep —
-delete the dead placeholder tab surface + the stale comments).
+**#374–#378** (table below). **All five have landed as of 2026-08-11** — #378's sweep closed the
+phase's own scope. What remains under the phase pointer is #380 (filed later from a director
+question) and the out-of-phase #379; the next `/next` builds **#379**, which is lower-numbered
+and deps-met.
 
 ### Phase 10 — D1 the three dashboards (re-scoped + filed 2026-08-08)
 
@@ -46,7 +48,7 @@ delete the dead placeholder tab surface + the stale comments).
 | ~~#375~~ | ~~**tracer** — `ProfitCenter` axis on the ledger + `getDepartmentPnL` + the Finance "Where the Gross Came From" panel~~ **BUILT 2026-08-09** | #374 |
 | ~~#376~~ | ~~the P&L proper — revenue/expenses/net over time + the gross→overhead→net ladder~~ **BUILT 2026-08-11** | #375 |
 | ~~#377~~ | ~~People — skill growth made visible, and what morale is costing~~ **BUILT 2026-08-11** | — |
-| #378 | closing sweep — delete the dead placeholder tab surface + the stale comments | — |
+| ~~#378~~ | ~~closing sweep — delete the dead placeholder tab surface + the stale comments~~ **BUILT 2026-08-11** | — |
 | #380 | Cash on Hand + "What the Store Is Worth" — automated spending stops reading as decay (filed 2026-08-09 from a director question) | #376 for the Finance half only |
 
 **Filed out of phase, from #374's tracing: #379** — a trade-in credits the store the full
@@ -129,6 +131,21 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **A nav tab with no composed room THROWS, and there is no stub to fall back to** (#378).
+  `composeShellTabs` (AppShell barrel) is the one binding of `loadNavTabs()` to `tabContent`.
+  Re-introducing a render-time fallback — even "just for a new tab being built" — recreates the
+  exact artifact this slice deleted: a dead surface that nothing fails over and that the next
+  session reads as unfinished work. A sixth tab is a room wired in the composition root or it is
+  a crash.
+- **`NavTabDef` is `{ key, label }` — `tagline` is GONE and must not come back as data** (#378).
+  It captioned the deleted stub and had no other reader; `tests/NavGating.test.tsx` pins the
+  string out of `data/nav-tabs.json`. A future subtitle is a surface decision with a reader, not
+  three unread strings parked in the IA file.
+- **The #378 source scans match on the literal dead copy, so do not quote it** (#378).
+  `tests/Composition.completeness.test.ts` fails any file under `src/` containing `StrategicTab`
+  or the old "coming in a later slice" line, and any file claiming People / Finance / Growth are
+  placeholders. A comment *describing* the deletion trips it — word it around the copy rather
+  than exempting the scan, which is how a scan stops guarding anything.
 - **The skill track keeps a SHARED 0…cap axis; the ceiling dims the tail, it does not rescale
   the bar** (#377). Rescaling each person's bar to their own limit — the literal reading of the
   issue's "the per-hire cap as the end of the track" — makes a rookie capped at 30 sitting at 30
@@ -976,6 +993,39 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT #378** (D1's closing sweep — the placeholder tab surface is gone, and a
+  tab with no room is now a composition error). `StrategicTab` rendered *"This surface is coming
+  in a later slice."* and had been **unreachable since #351**: `GameScreen` fell back to it only
+  when a nav key was missing from `tabContent`, and all five keys have existed since the 5c
+  rebuild. Deleted, with the two comments and the `tagline` data that fed it.
+  **The fallback was the defect, not the component.** A render-time substitution is exactly what
+  let a stub outlive the three rooms that replaced it — nothing failed, nothing was logged, and
+  the copy sat in the tree waiting for the next session to grep it and re-derive a finished
+  phase. `composeShellTabs(defs, content)` (on the AppShell barrel, beside `loadNavTabs`) binds
+  each nav def to its composed room and **throws** on a missing key. An unwired tab now fails at
+  composition, where whoever forgot to wire it is looking. Deleting only the component while
+  leaving the fallback would have satisfied the letter of the sweep and none of the point.
+  **`tagline` went with it.** It was the stub's caption prop and had no other reader; leaving
+  three unread strings in `data/nav-tabs.json` is the same "dead artifact grows back" failure one
+  level down. `NavTabDef` is now `{ key, label }` and `tests/NavGating.test.tsx` pins the field
+  out of the data file.
+  **The guard is in two halves, matching where each can fail.** `tests/Composition.completeness
+  .test.ts` gains the UI half of the #185 completeness contract — no placeholder surface anywhere
+  under `src/`, a missing room throws for **every one of the five keys** (not just one), and no
+  source claims People / Finance / Growth are stubs. `tests/InTabNavigation.reachability
+  .test.tsx` walks all five tabs in the real app and asserts each opens its own room. The
+  source-scan guards match on the literal dead copy, so the two comments that *describe* the
+  deletion had to be reworded to avoid quoting it — a scan that its own commit has to exempt is
+  a scan that will be exempted again.
+  **Nothing calibrated moved and nothing could** — no engine file was touched. `npm run
+  typecheck` clean, `npm test` 245 suites / 3091 tests green, `#180` still 39.3% / 51.7%,
+  closes=290.
+  Verified on web against the live Day-39 Tier-2 career (the `DEV · START AT TIER` shortcut still
+  hits the documented 3-slot cap; `Continue` loaded fine): Home, Operations, People, Finance and
+  Growth each rendered their real surface, no console errors beyond that slot-cap message.
+  Next: **BUILD #379** (a trade-in pays the store twice) — the lowest-numbered open, deps-met
+  issue, and the one that moves the #286 bands.
+
 - 2026-08-11 — **BUILT #377** (People — skill growth made visible, and what morale is costing).
   Both halves were already modelled in the engine and read by nobody. Model B (#294) holds
   **three** numbers per axis — the roll at hire, the grown value, and a per-hire ceiling — and
@@ -1059,68 +1109,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   **Nothing calibrated moved and nothing could** — the whole slice is a read of a ledger it
   never writes to. `#180` still reads 39.3% / 51.7%, closes=290.
   Next: **BUILD #377** (People — skill growth made visible, and what morale is costing).
-
-- 2026-08-09 — **BUILT #375** (gross by department — the tracer for the D1 profit-center axis).
-  The store has run four profit centers since #314 and nothing in the game could say which one
-  made the money; a repo-wide search for a per-department gross getter returned zero engine
-  hits. It is one optional `ProfitCenter` tag on every ledger post — `sales | fni | service |
-  bodyshop | store` — plus `getDepartmentPnL(from, to)` and the Finance panel that reads it.
-  **Omitted ⇒ `store` overhead is the RULE, not a fallback.** Every untagged post — pre-#375
-  saves, every harness, every future call site somebody forgets — lands below the gross line
-  rather than being credited to a department it did not come from. That default is why the
-  slice moved nothing: an untagged ledger reads exactly as it did before.
-  **The reconciliation is the whole product.** `sum(departments.gross) − overhead ===
-  netIncome`, for any window, always — and it is only available because #374 made the statement
-  accrual. Both reads go through ONE private `pnlEntries` filter (which drops
-  `inventoryAcquisition` whole); a department cut with its own filter is how four grosses start
-  disagreeing with the Net Income printed beside them. **Verified live** on the Day-39 T2 save:
-  Sales $716 + F&I $1,581 − $1,779 overhead = the $518 the Net Income card shows.
-  **`overhead` is store expenses NET of store revenue**, so the identity stays one subtraction.
-  A store-center receipt (PE sellout, admin injection) is not a department's gross and has
-  nowhere else honest to go. Consequence on a **legacy save**: the 30D window read overhead of
-  **−$35,479** — a whole month of untagged revenue sitting on the store line. That is correct
-  and documented (a pre-tag ledger reads as overhead); it is not a bug, and it does not happen
-  to a career started after this commit.
-  **Payroll is NOT cost of sale, and that is a design call not an omission.** Techs and advisors
-  draw one aggregate daily wage in this sim, not flat rate, and StaffOrg posts it as a single
-  line. Splitting it across departments needs a second wage model nobody asked for. The
-  statement is the classic one: departmental gross → less store overhead → net income. A future
-  session "finishing" the panel by allocating payroll is building a different mechanic.
-  **The tag arrives as a NAMED OBJECT (`PostTag` / `ExpenseTag`), not a fourth positional
-  argument.** `postExpense(x, 'Recon', undefined, 'sales')` was the alternative. Every existing
-  `'inventoryAcquisition'` call site became `{ category: 'inventoryAcquisition' }` — a small,
-  once-only churn that buys a surface the next axis can join without touching a call site.
-  **Service and Body Shop attribute through `DeptDispatchProfile.profitCenter`**, alongside the
-  pricing, RNG namespace and event family a department already owns. The one shared engine
-  names neither department; `tests/DeptDispatch.profitCenter.test.ts` runs two profiles that
-  differ only in the fields a department owns, so a hard-coded `'service'` inside the engine
-  fails the body-shop half while every Service test still passes.
-  **PARTS WERE THE HALF #374 LEFT OPEN, and this slice closed it.** Parts orders debit cash
-  tagged `inventoryAcquisition`, which the accrual P&L drops whole — and *nothing ever relieved
-  them*. So since #374 every part the store ever bought had been silently off the statement:
-  Service and Body Shop would have shipped a gross with no parts in it, and Net Income was
-  overstated by the lot. `consume` now posts `postCostOfSale(lot.unitCost, 'Parts used: <cat>')`
-  at the part's own department, keyed off its category (`PART_PROFIT_CENTER` — no default, so a
-  new `PartCategory` without a home there is a compile error rather than a silent charge to
-  overhead). A **miss relieves nothing** — no part left the shelf. `PartsInventoryDeps.economy`
-  is now `Pick<Economy, 'postExpense' | 'postCostOfSale'>`; both halves are required, because a
-  stock room that only ever debits is exactly the cash-basis defect #374 closed for vehicles.
-  This was folded in rather than filed as a follow-on (the #379 treatment) because without it
-  the panel this slice ships would state a Service gross that is knowably wrong.
-  **Nothing calibrated moved and nothing could.** Cash is untouched by every part of this;
-  `getPnL`/`getDepartmentPnL` have no consumer outside the Finance UI, and `scripts/` has zero
-  hits for either. Full suite green at 242 suites / 3047 tests, `#94` still reads
-  85.7 / 10.2 / 4.2.
-  **The panel omits, never zeroes.** `active` (a center posted *anything* in the window) is the
-  test, not `gross !== 0` — so a Tier-1 store draws no "Body Shop" bar asserting a loss on
-  collision work it never did, while a department that burned parts and billed nothing still
-  shows its negative bar. Confirmed on the drive: with no service advisor on staff the day's
-  tickets went unserved and the Service bar was correctly absent.
-  **`EconomySnapshot.schemaVersion` stays 1 and `WORLD_SNAPSHOT_VERSION` stays 21** —
-  `profitCenter` is optional inside the module's own blob, and `tagFields` OMITS the key rather
-  than writing `undefined`, so an untagged entry snapshots byte-identical. There is no
-  migration to look for.
-  Bar labels were checked against the ~13-character clip that shortened #365's reserve label:
-  "Body Shop" is 9, and a test pins every center's label at ≤13 so a rename cannot ship
-  half-read.
-
