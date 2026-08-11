@@ -10,6 +10,21 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Current phase
 
+**Phase 11 — B4 drive-the-clock — is SLICED AND FILED as of 2026-08-11: #381–#385 (table
+below), and the bite-unlock gate is RULED (see the log entry; recorded in
+`engagement-spine.md` + `gates.md` Settled).** Nothing in the phase is un-filed. The next
+`/next` builds **#381**, the tracer.
+
+### Phase 11 — B4 drive-the-clock (sliced + filed 2026-08-11)
+
+| # | Slice | Deps |
+|---|---|---|
+| #381 | **tracer** — `data/clock-bites.json` + `src/game/ClockBite/` headless multi-day runner + halt + the Home bite picker + the bite-grain Reveal | — |
+| #382 | the star budget scales with the bite; what the feed leaves out is stated, not dropped | #381 |
+| #383 | the bite is a bet — `PrepBet` captured at the bite's start, scored over the days that ran | #381 |
+| #384 | the overnight interrupt channel — a moment that asks the owner a question stops the run | #381 |
+| #385 | the month rung — GM-gated, the desks earn the silence, multi-store safe **[HITL]**, closes #124 | #381, #384 |
+
 **Phase 5 — #74 round-1 playtest (HITL). The script is prepared, verified and HANDED OVER
 as of 2026-08-06.** It now sits with the director; nothing in the repo blocks it.
 
@@ -43,8 +58,8 @@ re-scope when reached"* was mostly right: the subtraction against the shipped ap
 D1 scope entirely and left People with two items and Finance with three. Five issues filed,
 **#374–#378** (table below). **All five have landed as of 2026-08-11** — #378's sweep closed the
 phase's own scope. The out-of-phase **#379 landed 2026-08-11** too. **#380 landed 2026-08-11 as
-well — phase 10 is COMPLETE.** Nothing under this pointer is outstanding; the next `/next`
-advances to the next phase in `path-to-finished-product.md` §12.
+well — phase 10 is COMPLETE.** Nothing under it is outstanding; the pointer advanced to phase 11
+on 2026-08-11.
 
 ### Phase 10 — D1 the three dashboards (re-scoped + filed 2026-08-08)
 
@@ -1042,8 +1057,8 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 7 | A2 staff slots / facility scale | **LOCKED 2026-08-03 — `path-to-finished-product.md` §3 A2** | done — #352 + #358–#362 all built |
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | **COMPLETE 2026-08-08** — all twelve slices built (#151, #153, #365, #152, #366–#373) |
-| 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | largely absorbed by 5c (#349/#350/#351); re-scope when reached |
-| 11 | B4 drive-the-clock (absorbs #124) | decide bite-unlock schedule while building (spine STILL-OPEN) | pending |
+| 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | **COMPLETE 2026-08-11** — re-scoped by subtraction, filed as #374–#378 + #380 (and #379 out of phase); all built |
+| 11 | B4 drive-the-clock (absorbs #124) | **RULED 2026-08-11 — `engagement-spine.md`** (bite unlock = the cover your people give you) | **active** — sliced + filed as #381–#385; next is #381 |
 | 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
 | 13 | H1 fictional brands (#246) | — | pending |
 | 14 | E1 Tier 4 — OEM engine, courtship, NCM, brand archetypes | — | pending |
@@ -1059,6 +1074,46 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-11 — **SLICED phase 11 (B4 drive-the-clock) into #381–#385, and RULED the bite-unlock
+  schedule** — the engagement spine's "grain/clock unlock schedule" STILL-OPEN item, settled at
+  the slice gate rather than during the build because the schedule had to be encoded into the
+  filed issues; filing it unruled would have smuggled it.
+  **The ruling is ONE rule: you can skip ahead exactly as far as your people can cover for you.**
+  Day always; Week when the used desk covers **both** discount desking (#290) and trade approval
+  (#291); Month when a **general manager** is staffed (#124's filed rule). The door and the
+  capability are the same fact — a multi-day run can only go headless when nothing escalates, and
+  what stops escalations is a staffed desk at threshold — so the player learns one sentence and
+  the schedule lands at ~T3 and ~T6 without ever naming a tier. **Rejected:** a bare tier number
+  (opens the door while the desks are empty, so the bite promises a week and halts on day 1), and
+  an earned clean-day streak (a new persisted counter, and the player has to infer why the button
+  came and went). Recorded in `engagement-spine.md` + `.claude/skills/decide/gates.md` Settled.
+  **The slices.** **#381** tracer — `data/clock-bites.json` + a new `src/game/ClockBite/` module
+  (`availableBites` / `runBite`) driving the existing per-day path headless through injected
+  closures, halting on the first day that needs a human, plus the Home bite picker and the
+  bite-grain Reveal. **#382** the star budget scales with the bite and what the feed leaves out is
+  stated, not silently dropped (closes the spine's "star budget per altitude" item at the grain
+  that forces it). **#383** the bite is a bet — `PrepBet` captured at the bite's *start* and held,
+  scored over the days that ran. **#384** the overnight interrupt channel — a moment that asks the
+  owner a question (raise demand #356, rival offer #357, an adverse news choice) stops the run
+  between days; a moment that only reports does not. **#385** the month rung, HITL, **closes
+  #124**.
+  **The subtraction that shaped it:** the primitives already exist and this phase composes them
+  rather than building a batch mode. `floor.runDay()` already exhausts a day headlessly
+  (`useFloorRenderLoop.ts:82`'s `skipToClose`), `rankDrama` already pools reactions at any grain
+  (#373 proved it with the monthly F&I verdict), and the desk-cover predicates already ship —
+  `isDiscountDeskingUnlocked` / `isTradeApprovalUnlocked`, read three times over at
+  `src/app/config.ts:624-650`. What is genuinely missing is the *bite* as an object, the halt, and
+  the aggregation. **#124's `escalated:0` argument is the whole design one rung down**, which is
+  why the week's door is the desks and not a tier.
+  **Two traps written into #381 so the build cannot walk into them:** per-day Reveal refs are
+  cleared before each `nextDay()`, so a runner that read only the final day would silently swallow
+  six days of wins, walk-offs, crowned records and month verdicts — beats are captured as each day
+  closes; and a halted bite leaves **no queued remainder and no auto-resume**, because a run that
+  continued past the thing that interrupted it would be the bite making the player's decision for
+  them.
+  No code changed and nothing calibrated moved — this session filed issues and recorded a ruling.
+  Next: **BUILD #381**.
 
 - 2026-08-11 — **BUILT #380** (Cash on Hand stops being the only number: the store also shows
   what it is worth). The Home HUD's one big figure was Cash, and every automation the game
@@ -1163,35 +1218,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   `DayLoopController` for 360 days apiece, which is stronger evidence than a hand-driven day.
   Next: **BUILD #380** (Cash on Hand + "What the Store Is Worth").
 
-- 2026-08-11 — **BUILT #378** (D1's closing sweep — the placeholder tab surface is gone, and a
-  tab with no room is now a composition error). `StrategicTab` rendered *"This surface is coming
-  in a later slice."* and had been **unreachable since #351**: `GameScreen` fell back to it only
-  when a nav key was missing from `tabContent`, and all five keys have existed since the 5c
-  rebuild. Deleted, with the two comments and the `tagline` data that fed it.
-  **The fallback was the defect, not the component.** A render-time substitution is exactly what
-  let a stub outlive the three rooms that replaced it — nothing failed, nothing was logged, and
-  the copy sat in the tree waiting for the next session to grep it and re-derive a finished
-  phase. `composeShellTabs(defs, content)` (on the AppShell barrel, beside `loadNavTabs`) binds
-  each nav def to its composed room and **throws** on a missing key. An unwired tab now fails at
-  composition, where whoever forgot to wire it is looking. Deleting only the component while
-  leaving the fallback would have satisfied the letter of the sweep and none of the point.
-  **`tagline` went with it.** It was the stub's caption prop and had no other reader; leaving
-  three unread strings in `data/nav-tabs.json` is the same "dead artifact grows back" failure one
-  level down. `NavTabDef` is now `{ key, label }` and `tests/NavGating.test.tsx` pins the field
-  out of the data file.
-  **The guard is in two halves, matching where each can fail.** `tests/Composition.completeness
-  .test.ts` gains the UI half of the #185 completeness contract — no placeholder surface anywhere
-  under `src/`, a missing room throws for **every one of the five keys** (not just one), and no
-  source claims People / Finance / Growth are stubs. `tests/InTabNavigation.reachability
-  .test.tsx` walks all five tabs in the real app and asserts each opens its own room. The
-  source-scan guards match on the literal dead copy, so the two comments that *describe* the
-  deletion had to be reworded to avoid quoting it — a scan that its own commit has to exempt is
-  a scan that will be exempted again.
-  **Nothing calibrated moved and nothing could** — no engine file was touched. `npm run
-  typecheck` clean, `npm test` 245 suites / 3091 tests green, `#180` still 39.3% / 51.7%,
-  closes=290.
-  Verified on web against the live Day-39 Tier-2 career (the `DEV · START AT TIER` shortcut still
-  hits the documented 3-slot cap; `Continue` loaded fine): Home, Operations, People, Finance and
-  Growth each rendered their real surface, no console errors beyond that slot-cap message.
-  Next: **BUILD #379** (a trade-in pays the store twice) — the lowest-numbered open, deps-met
-  issue, and the one that moves the #286 bands. [It did — see the #379 entry above.]

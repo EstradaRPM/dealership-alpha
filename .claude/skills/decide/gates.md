@@ -12,17 +12,6 @@ the row in the same commit as the ruling.
 
 ---
 
-## Phase 11 — B4 bite-unlock schedule · **decide while building**
-
-- **Scope:** §4 B4 (`path-to-finished-product.md:139`). Which tier/delegation state unlocks
-  which bite (day / week / month), absorbing #124 as the top rung.
-- **Load:** `docs/planning/engagement-spine.md` (its STILL-OPEN section, `:150`) ·
-  `docs/planning/macro-loop-spine.md` §2 (delegation = permission) + §10 (intra-tier pacing).
-- **Locked:** the spine itself; delegation gates the bite — the fork is only the schedule.
-- **Record:** `engagement-spine.md`'s STILL-OPEN entry, flipped to the settled schedule.
-- **Note:** this one is explicitly ruled *during* phase 11's build; `/decide` may run it early
-  if the user asks, but `/next` does not owe it a separate gate session.
-
 ## Phase 12 — F2 backstory legibility · F3 notifications · D3 plain-language pass · **ADJUDICATE** `[NEW]`
 
 - **Scope:** §8 F2 (`:257`), §8 F3 (`:262`), §6 D3 (`:194`). Three small independent rulings —
@@ -69,6 +58,14 @@ the row in the same commit as the ruling.
 ## Settled
 
 (Ruled gates move here: gate · date · doc holding the ruling.)
+
+- **Phase 11 — B4 bite-unlock schedule** · 2026-08-11 · `docs/planning/engagement-spine.md`
+  (the STILL-OPEN "grain/clock unlock schedule" entry, flipped to settled). **One rule: you can
+  skip ahead exactly as far as your people can cover for you.** Day always; Week when the used
+  desk covers both discount desking (#290) and trade approval (#291); Month when a GM is staffed
+  (#124). Ruled at the slice gate rather than during the build because the schedule had to be
+  encoded into the filed issues (#381–#385) — filing it unruled would have smuggled it. Rejected:
+  a bare tier number, and an earned clean-day streak.
 
 - **Phase 9 — B2 F&I plug-in #2** · 2026-08-07 · `docs/planning/fni-mechanics-grill-state.md`
   (the grill record itself, now CLOSED). Four rulings on top of the original Q1–Q6: **Q7** the

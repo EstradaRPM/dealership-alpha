@@ -6,6 +6,39 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT #378** (D1's closing sweep — the placeholder tab surface is gone, and a
+  tab with no room is now a composition error). `StrategicTab` rendered *"This surface is coming
+  in a later slice."* and had been **unreachable since #351**: `GameScreen` fell back to it only
+  when a nav key was missing from `tabContent`, and all five keys have existed since the 5c
+  rebuild. Deleted, with the two comments and the `tagline` data that fed it.
+  **The fallback was the defect, not the component.** A render-time substitution is exactly what
+  let a stub outlive the three rooms that replaced it — nothing failed, nothing was logged, and
+  the copy sat in the tree waiting for the next session to grep it and re-derive a finished
+  phase. `composeShellTabs(defs, content)` (on the AppShell barrel, beside `loadNavTabs`) binds
+  each nav def to its composed room and **throws** on a missing key. An unwired tab now fails at
+  composition, where whoever forgot to wire it is looking. Deleting only the component while
+  leaving the fallback would have satisfied the letter of the sweep and none of the point.
+  **`tagline` went with it.** It was the stub's caption prop and had no other reader; leaving
+  three unread strings in `data/nav-tabs.json` is the same "dead artifact grows back" failure one
+  level down. `NavTabDef` is now `{ key, label }` and `tests/NavGating.test.tsx` pins the field
+  out of the data file.
+  **The guard is in two halves, matching where each can fail.** `tests/Composition.completeness
+  .test.ts` gains the UI half of the #185 completeness contract — no placeholder surface anywhere
+  under `src/`, a missing room throws for **every one of the five keys** (not just one), and no
+  source claims People / Finance / Growth are stubs. `tests/InTabNavigation.reachability
+  .test.tsx` walks all five tabs in the real app and asserts each opens its own room. The
+  source-scan guards match on the literal dead copy, so the two comments that *describe* the
+  deletion had to be reworded to avoid quoting it — a scan that its own commit has to exempt is
+  a scan that will be exempted again.
+  **Nothing calibrated moved and nothing could** — no engine file was touched. `npm run
+  typecheck` clean, `npm test` 245 suites / 3091 tests green, `#180` still 39.3% / 51.7%,
+  closes=290.
+  Verified on web against the live Day-39 Tier-2 career (the `DEV · START AT TIER` shortcut still
+  hits the documented 3-slot cap; `Continue` loaded fine): Home, Operations, People, Finance and
+  Growth each rendered their real surface, no console errors beyond that slot-cap message.
+  Next: **BUILD #379** (a trade-in pays the store twice) — the lowest-numbered open, deps-met
+  issue, and the one that moves the #286 bands. [It did — see the #379 entry above.]
+
 - 2026-08-11 — **BUILT #377** (People — skill growth made visible, and what morale is costing).
   Both halves were already modelled in the engine and read by nobody. Model B (#294) holds
   **three** numbers per axis — the roll at hire, the grown value, and a per-hire ceiling — and

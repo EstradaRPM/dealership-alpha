@@ -153,7 +153,15 @@ labels (no temperature words). Small: reuses the event stream already emitted.
   (match strength, gross surprise, walk-off pain, record broken, coupling fired). Tuning.
 - **Bet-capture shape at T1** — what exactly is snapshotted at prep to score against the day.
 - **Star budget per altitude** — how many reactions before it becomes noise (T1 ~3–5).
-- **Grain/clock unlock schedule** — which zoom becomes available at which tier (couples to the
-  macro-loop spine + tier ladder).
+- ~~**Grain/clock unlock schedule**~~ — **SETTLED 2026-08-11 (phase 11 / B4). One rule: you can
+  skip ahead exactly as far as your people can cover for you.** *Run the Day* is always open;
+  *Run the Week* opens when the used desk covers **both** discount desking (#290) and trade
+  approval (#291); *Run the Month* opens when a **general manager** is staffed (#124's filed
+  rule). The door and the capability are the same fact — a multi-day run can only go headless when
+  nothing escalates to the player, and what stops escalations is a staffed desk at threshold — so
+  the player never learns a second rule, and the schedule lands at ~T3 and ~T6 without naming a
+  tier. **Rejected:** a bare tier number (opens the door while the desks are empty, so the bite
+  promises a week and halts on day 1) and an earned clean-day streak (a new persisted counter, and
+  the player has to infer why the button came and went). Filed as **#381–#385**; do not re-open.
 - **Records catalog** — which high-water marks are worth crowning (best day, PVR record, streak…).
 - Magnitudes throughout → the #286 calibration campaign.
