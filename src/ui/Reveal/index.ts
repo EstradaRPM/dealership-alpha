@@ -1,6 +1,8 @@
 export { Reveal } from './Reveal';
 export {
   buildReveal,
+  buildBiteReveal,
+  poolBiteDays,
   betVerdictScoreline,
   scoreDrama,
   rankDrama,
@@ -12,6 +14,8 @@ export {
   fniVerdictReactionText,
 } from './buildReveal';
 export type {
+  BiteDayBeats,
+  BiteSpan,
   RevealModel,
   RevealReaction,
   RevealReactionTone,

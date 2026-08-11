@@ -518,13 +518,24 @@ function matchClause(tally: MatchTally): string {
     : `the lot didn't fit the crowd: ${tally.strong} of ${tally.matched} stuck`;
 }
 
-/** The match-summary reaction — always the first (and, at S1, only) entry. */
-function matchReaction(tally: MatchTally, gross: number): RevealReaction {
+/**
+ * The match-summary reaction — always the first (and, at S1, only) entry.
+ *
+ * `span` names the window the tally covers. It is "today" at the day grain and
+ * the bite's own span at any bigger one (#381): a week's pooled figure printed
+ * as "gross today" states a number the player can check and find wrong, which
+ * is the one thing this feed cannot do.
+ */
+function matchReaction(
+  tally: MatchTally,
+  gross: number,
+  span = 'today',
+): RevealReaction {
   if (tally.matched <= 0) {
     return {
       id: 'match-summary',
       tone: 'neutral',
-      text: `No sales closed today. ${money(gross)} gross.`,
+      text: `No sales closed ${span}. ${money(gross)} gross.`,
     };
   }
   const strong = majorityStrong(tally);
@@ -534,7 +545,7 @@ function matchReaction(tally: MatchTally, gross: number): RevealReaction {
   return {
     id: 'match-summary',
     tone: strong ? 'positive' : 'negative',
-    text: `${tally.strong} of ${tally.matched} stuck — ${verdict}. ${money(gross)} gross today.`,
+    text: `${tally.strong} of ${tally.matched} stuck — ${verdict}. ${money(gross)} gross ${span}.`,
   };
 }
 
@@ -639,5 +650,158 @@ export function buildReveal(
   return {
     scoreline,
     reactions: [matchReaction(matchTally, gross), ...topDrama.map(dramaReaction)],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// B4 S1 (#381): the same feed at the BITE grain.
+//
+// A multi-day run ends in ONE Reveal covering the days that actually ran. This
+// is one more producer, not a second mode — #373 already proved the grammar
+// spans grains, and the pooled reactions are ranked in the same single
+// `rankDrama` pool the day uses. Per-day beats are captured AS EACH DAY CLOSES
+// (the daily refs are cleared before the next `nextDay()`), so a runner that
+// only read the final day would silently swallow the rest of the bite's wins,
+// walk-offs, crowned records and month verdicts.
+// ---------------------------------------------------------------------------
+
+/** One closed day's beats, captured at its own day-close. */
+export interface BiteDayBeats {
+  funnel: DayFunnel;
+  gross: number;
+  matchTally: MatchTally;
+  closes: readonly ClosedSale[];
+  walkOffs: readonly WalkOff[];
+  prepBet: PrepBet | null;
+  records: readonly BrokenRecord[];
+  fniVerdict: FniMonthVerdict | null;
+}
+
+export interface BiteSpan {
+  /** Days the bite asked for — 7 for the week, whatever halted or not. */
+  daysRequested: number;
+  /**
+   * The halt's plain-language sentence, stated verbatim; null when the run
+   * completed. Off `data/clock-bites.json` via ClockBite — never phrased here.
+   */
+  haltSentence: string | null;
+}
+
+/** Sum the funnel across the bite; the leak is the one that led on most days. */
+function poolFunnel(days: readonly BiteDayBeats[]): DayFunnel {
+  const leakDays = new Map<DayFunnel['leakCause'], number>();
+  for (const d of days) {
+    leakDays.set(d.funnel.leakCause, (leakDays.get(d.funnel.leakCause) ?? 0) + 1);
+  }
+  let leakCause = days[0].funnel.leakCause;
+  let best = 0;
+  for (const [cause, count] of leakDays) {
+    if (count > best) {
+      best = count;
+      leakCause = cause;
+    }
+  }
+  return {
+    potentialTraffic: days.reduce((n, d) => n + d.funnel.potentialTraffic, 0),
+    walkedIn: days.reduce((n, d) => n + d.funnel.walkedIn, 0),
+    gated: days.reduce((n, d) => n + d.funnel.gated, 0),
+    staffEngaged: days.reduce((n, d) => n + d.funnel.staffEngaged, 0),
+    sold: days.reduce((n, d) => n + d.funnel.sold, 0),
+    leakCause,
+  };
+}
+
+/** The pooled totals a bite's recap and Reveal are both built from. */
+export function poolBiteDays(days: readonly BiteDayBeats[]): {
+  funnel: DayFunnel;
+  gross: number;
+  matchTally: MatchTally;
+  closes: readonly ClosedSale[];
+  walkOffs: readonly WalkOff[];
+  records: readonly BrokenRecord[];
+  fniVerdict: FniMonthVerdict | null;
+} {
+  return {
+    funnel: poolFunnel(days),
+    gross: days.reduce((n, d) => n + d.gross, 0),
+    matchTally: {
+      strong: days.reduce((n, d) => n + d.matchTally.strong, 0),
+      matched: days.reduce((n, d) => n + d.matchTally.matched, 0),
+    },
+    closes: days.flatMap((d) => [...d.closes]),
+    walkOffs: days.flatMap((d) => [...d.walkOffs]),
+    records: days.flatMap((d) => [...d.records]),
+    // At most one month can close inside a bite — a bite that crosses a month
+    // boundary halts on the gate verdict — so the last one told is the one.
+    fniVerdict: days.reduce<FniMonthVerdict | null>(
+      (v, d) => d.fniVerdict ?? v,
+      null,
+    ),
+  };
+}
+
+/**
+ * The Reveal for a whole bite. Reactions are pooled from every day that ran and
+ * ranked in the single existing drama pool.
+ *
+ * A one-day bite delegates straight to `buildReveal` — the live floor's day is
+ * the day it has always been, including its morning bet. The bet at BITE grain
+ * is #383's, deliberately not resolved here: pooling a week of per-day bets
+ * into one verdict is a different bet, and inventing one now would be a rule
+ * the player was never shown placing.
+ */
+export function buildBiteReveal(
+  days: readonly BiteDayBeats[],
+  span: BiteSpan,
+): RevealModel {
+  if (days.length === 0) {
+    return {
+      scoreline: `0 of ${span.daysRequested} days run.`,
+      reactions: span.haltSentence
+        ? [{ id: 'bite-halt', tone: 'neutral', text: span.haltSentence }]
+        : [],
+    };
+  }
+  if (span.daysRequested === 1) {
+    const d = days[0];
+    return buildReveal(
+      d.funnel,
+      d.gross,
+      d.matchTally,
+      d.closes,
+      d.walkOffs,
+      d.prepBet,
+      d.records,
+      d.fniVerdict,
+    );
+  }
+  const pooled = poolBiteDays(days);
+  const tunables = loadTunables().reveal;
+  // "3 of 7 days run" is itself the statement that the run stopped early; the
+  // halt reaction below says why. Both, because the scoreline is what the
+  // player reads first and the reason is what they act on.
+  const spanClause = span.haltSentence
+    ? `${days.length} of ${span.daysRequested} days run`
+    : `${days.length} days run`;
+  // The window the pooled figures actually cover. A week's gross printed as
+  // "gross today" states a number the player can check and find wrong.
+  const spanWord = `over ${days.length} days`;
+  const topDrama = rankDrama(
+    pooled.closes,
+    pooled.walkOffs,
+    pooled.records,
+    tunables.drama.starBudget,
+    pooled.fniVerdict,
+  );
+  const haltReactions: RevealReaction[] = span.haltSentence
+    ? [{ id: 'bite-halt', tone: 'neutral', text: span.haltSentence }]
+    : [];
+  return {
+    scoreline: `${spanClause} — ${matchClause(pooled.matchTally)}.`,
+    reactions: [
+      ...haltReactions,
+      matchReaction(pooled.matchTally, pooled.gross, spanWord),
+      ...topDrama.map(dramaReaction),
+    ],
   };
 }

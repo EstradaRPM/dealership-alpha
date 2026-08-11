@@ -94,6 +94,13 @@ export interface AppShellProps {
     onPress: () => void;
     /** Leading glyph on the CTA face. Default: the checkered start flag. */
     icon?: IconName;
+    /**
+     * The bite picker (#381), pinned directly ABOVE the day CTA inside the same
+     * footer — the calendar-zoom ladder and the day verb are one control in one
+     * place. A node rather than a data prop (the `banner` idiom) so the shell
+     * stays generic and never imports a tab's surface.
+     */
+    picker?: React.ReactNode;
   };
   /**
    * Optional persistent status strip pinned above the primary-action footer,
@@ -686,6 +693,7 @@ export function AppShell({
 
       {primaryAction && (
         <View style={footer} testID="app-shell-action-footer">
+          {primaryAction.picker}
           {/* Mockup's START DAY face: start flag on the left rim, the verb
               centered, the onward arrow on the right rim. The arrow is a
               trailing ICON, never a "→" glued onto the label — that drew the

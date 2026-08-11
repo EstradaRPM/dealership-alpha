@@ -995,6 +995,18 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     expect(snapshotWorld(world).version).toBe(WORLD_SNAPSHOT_VERSION);
   });
 
+  it('the chosen bite is not snapshot state (#381)', () => {
+    // The picker's default is the day, EVERY time. A remembered bite is a
+    // standing instruction to skip, which is the opposite of a bet you place
+    // each time — so ClockBite persists nothing, the envelope is untouched
+    // (version stays 21), and there is no migration to look for.
+    const { world } = build(42);
+    const snap = snapshotWorld(world);
+    expect(snap.version).toBe(21);
+    expect(Object.keys(snap.modules)).not.toContain('clockBite');
+    expect(JSON.stringify(snap)).not.toContain('bite');
+  });
+
   it('migrates pre-DemandShaper snapshots by adding a default shaper blob', () => {
     const { world } = build(4242);
     const current = snapshotWorld(world);

@@ -217,6 +217,7 @@ export function RouteContent({
           lastRecap={dayLoop.lastRecap}
           setRecapModalOpen={dayLoop.setRecapModalOpen}
           handleNextDay={dayLoop.handleNextDay}
+          handleRunBite={dayLoop.handleRunBite}
           handleDeptPress={handleDeptPress}
           openInGameMenu={saveSlots.openInGameMenu}
           persistCurrentSave={persistCurrentSave}

@@ -7,13 +7,17 @@ import type { FloorEvent } from '../ui/FloorDashboard';
 import type { DayRecapModel } from '../ui/DayRecap';
 import {
   buildReveal,
+  buildBiteReveal,
+  poolBiteDays,
   winReactionText,
   walkOffReactionText,
   isStarworthyWalkOff,
+  type BiteDayBeats,
   type ClosedSale,
   type WalkOff,
   type BrokenRecord,
 } from '../ui/Reveal';
+import { runBite, type BiteId, type HaltReasonId } from '../game/ClockBite';
 import type { FniMonthVerdict } from '../game/DealEngine';
 import type { CashDeltaSplit } from '../ui/HomeTab';
 import { buildRecoveryBeat, type RecoveryBeat } from '../ui/NarrativeBeat';
@@ -67,6 +71,12 @@ export interface DayLoop {
   endCard: EndCardData | null;
   setEndCard: (d: EndCardData | null) => void;
   handleNextDay: () => void;
+  /**
+   * Run a bite above the day headless (#381), ending in one Reveal over the
+   * days that actually ran. `Run the Day` is `handleNextDay` — the day is the
+   * live floor and keeps its intra-day pause/speed control.
+   */
+  handleRunBite: (biteId: BiteId) => void;
   /** Reset all day-cycle accumulators / interrupts (session teardown). */
   reset: () => void;
 }
@@ -166,6 +176,35 @@ export function useDayLoop({
   const [recoveryQueue, setRecoveryQueue] = useState<readonly RecoveryBeat[]>([]);
   // Terminal end-of-career data (#127 decision 2). Set on career:game_over.
   const [endCard, setEndCard] = useState<EndCardData | null>(null);
+  // --- clock bites (#381) ---------------------------------------------------
+  // A bite above the day runs headless: `advanceOneDay` exhausts each day and
+  // the day-close handler diverts its capture into `biteDaysRef` instead of
+  // popping the per-day recap. Non-null IS the "a bite is running" flag — one
+  // fact, so the handler cannot disagree with the runner about which mode it is
+  // in. Nothing here is persisted: the picker's default is the day, every time.
+  const biteDaysRef = useRef<BiteDayBeats[] | null>(null);
+  // Latched halt signals, cleared at the start of every run. The composition
+  // root is the only thing that knows what "a moment the player is needed"
+  // looks like in this app, which is why ClockBite takes no EventBus.
+  const biteHaltRef = useRef<HaltReasonId | null>(null);
+  // Did any day inside the run land on the 7-day history-snapshot cadence? The
+  // per-day autosave is skipped during a bite (seven `void async` writes racing
+  // for one slot is how the last write ends up stale), so the run's single
+  // closing write has to know whether it also owes a history snapshot.
+  const biteCrossedSnapshotDayRef = useRef(false);
+  // The run's cash movement, summed over the days that ran — a week's delta is
+  // the week's, not its last day's. Accumulated here rather than on
+  // `BiteDayBeats` because cash is not a Reveal fact.
+  const biteCashRef = useRef<CashDeltaSplit | null>(null);
+
+  /** Reset the per-bite accumulators the Reveal is assembled from. */
+  const clearDayRefs = () => {
+    matchTallyRef.current = { strong: 0, matched: 0 };
+    closesRef.current = [];
+    walkOffsRef.current = [];
+    recordsRef.current = [];
+    fniVerdictRef.current = null;
+  };
 
   const handleNextDay = () => {
     // MANAGERIAL → FLOOR_OPEN. The live render loop (#121) now drives the
@@ -176,11 +215,7 @@ export function useDayLoop({
     const w = worldRef.current;
     if (!w) return;
     setFloorEvents([]);
-    matchTallyRef.current = { strong: 0, matched: 0 };
-    closesRef.current = [];
-    walkOffsRef.current = [];
-    recordsRef.current = [];
-    fniVerdictRef.current = null;
+    clearDayRefs();
     // Leaving MANAGERIAL → the day-close recap modal is done; the chip keeps
     // the prior recap reachable until the next day closes over it (#253).
     setRecapModalOpen(false);
@@ -189,6 +224,92 @@ export function useDayLoop({
     // stocking lean vs. the demand-heat read), so the day-close Reveal can
     // resolve it. Post-nextDay: the clock now sits on the day being played.
     w.captureDayStartPrepBet();
+    bump();
+  };
+
+  /**
+   * Run a bite above the day (#381) — headless and synchronous, ending in ONE
+   * Reveal over the days that actually ran.
+   *
+   * `Run the Day` does NOT come here: the day is the live floor and keeps
+   * `handleNextDay`, so the intra-day pause/speed control still drives it.
+   * Running the day headless would delete the floor view, which is the opposite
+   * of what B4 extends.
+   */
+  const handleRunBite = (biteId: BiteId) => {
+    const w = worldRef.current;
+    if (!w) return;
+    biteDaysRef.current = [];
+    biteHaltRef.current = null;
+    biteCrossedSnapshotDayRef.current = false;
+    biteCashRef.current = null;
+    const run = runBite(biteId, {
+      advanceOneDay: () => {
+        setFloorEvents([]);
+        // Cleared BEFORE nextDay(), exactly as the hand-driven path clears
+        // them — `clock:month_ended` fires during the transition, so the
+        // verdict it produces has to survive into the day it is read on.
+        clearDayRefs();
+        setRecapModalOpen(false);
+        const floor = w.dayLoop.nextDay();
+        w.captureDayStartPrepBet();
+        // The same exhaust-the-day primitive `skipToClose` drives. Synchronous:
+        // `floor:day_complete` fires inside this call, so the day's beats are
+        // in `biteDaysRef` before the next iteration clears the refs.
+        floor.runDay();
+      },
+      checkHalt: () => biteHaltRef.current,
+    });
+    const days = biteDaysRef.current ?? [];
+    // Back to hand-driven mode BEFORE anything below can re-enter the handler.
+    biteDaysRef.current = null;
+    const crossedSnapshotDay = biteCrossedSnapshotDayRef.current;
+    if (days.length > 0) {
+      const pooled = poolBiteDays(days);
+      const recapModel: DayRecapModel = {
+        day: w.clock.currentDay,
+        potentialTraffic: pooled.funnel.potentialTraffic,
+        walkedIn: pooled.funnel.walkedIn,
+        staffEngaged: pooled.funnel.staffEngaged,
+        sold: pooled.funnel.sold,
+        gross: pooled.gross,
+        leakCause: pooled.funnel.leakCause,
+        strongMatches: pooled.matchTally.strong,
+        matchedSales: pooled.matchTally.matched,
+        reveal: buildBiteReveal(days, {
+          daysRequested: run.daysRequested,
+          haltSentence: run.halt?.sentence ?? null,
+        }),
+      };
+      setLastRecap(recapModel);
+      setRecapModalOpen(true);
+      const biteDelta = biteCashRef.current;
+      setCashDelta(biteDelta);
+      setLotVehicles(w.inventory.getLotVehicles());
+      setCash(w.economy.cash);
+      // ONE closing write for the whole run (see biteCrossedSnapshotDayRef).
+      void (async () => {
+        const worldSnapshot = snapshotWorld(w);
+        const nextState = await buildCurrentSaveState(
+          {
+            lastRecap: recapModel,
+            prevDayCash: w.economy.cash,
+            prevDayAcquisitionSpend: w.economy.inventoryAcquisitionSpend,
+            cashDelta: biteDelta,
+          },
+          worldSnapshot,
+        );
+        await saveStore.save(nextState);
+        if (crossedSnapshotDay) {
+          const snapshotStore = await snapshotStoreForActiveSlot();
+          await snapshotStore?.saveSnapshot(nextState, {
+            day: worldSnapshot.modules.gameClock.day,
+            tier: worldSnapshot.modules.tierManager.currentTier,
+          });
+        }
+      })();
+      void slotStore.clearCheckpoint();
+    }
     bump();
   };
 
@@ -230,10 +351,40 @@ export function useDayLoop({
           const stock =
             acquisitionSpend - (prevDayAcquisitionSpendRef.current ?? 0);
           deltaSplit = { ops: closingCash - prevDayCash + stock, stock };
-          setCashDelta(deltaSplit);
+          // Inside a bite the split is accumulated and published once, at the
+          // end of the run — a week's delta is the week's, not its last day's.
+          if (!biteDaysRef.current) setCashDelta(deltaSplit);
         }
         prevDayCashRef.current = closingCash;
         prevDayAcquisitionSpendRef.current = acquisitionSpend;
+        // Inside a bite (#381) the day's beats are captured here — as the day
+        // closes, while its refs still stand — and pooled into ONE Reveal when
+        // the run ends. The per-day modal and the per-day autosave are the two
+        // things a bite deliberately skips: seven recaps the player never
+        // dismissed, and seven `void async` writes racing for one slot.
+        if (biteDaysRef.current) {
+          biteDaysRef.current.push({
+            funnel: w.capacityManager.getDayFunnel(),
+            gross: w.records.getDayTotals().gross,
+            matchTally: { ...matchTallyRef.current },
+            closes: [...closesRef.current],
+            walkOffs: [...walkOffsRef.current],
+            prepBet: w.getPrepBet(),
+            records: [...recordsRef.current],
+            fniVerdict: fniVerdictRef.current,
+          });
+          if (deltaSplit) {
+            const acc = biteCashRef.current;
+            biteCashRef.current = {
+              ops: (acc?.ops ?? 0) + deltaSplit.ops,
+              stock: (acc?.stock ?? 0) + deltaSplit.stock,
+            };
+          }
+          if (w.clock.currentDay % 7 === 0) {
+            biteCrossedSnapshotDayRef.current = true;
+          }
+          return;
+        }
         // Day-close reward beat (#253): capture the just-closed day's recap
         // from the live funnel + the synchronously-mirrored gross/match refs,
         // pop it as a modal over Home, and persist it in the save envelope so
@@ -464,7 +615,28 @@ export function useDayLoop({
         }),
       );
 
+    // --- clock-bite halt latches (#381) -----------------------------------
+    // A bite stops at the first moment the store needs a human. Only the FIRST
+    // signal of a run is kept: it is the one that stopped the clock, and the
+    // day it landed on is where the player picks up. `runBite` clears the latch
+    // at the start of every run, so nothing carries between bites.
+    const latchHalt = (id: HaltReasonId) => () => {
+      if (biteDaysRef.current && biteHaltRef.current === null) {
+        biteHaltRef.current = id;
+      }
+    };
+    const onTradeEscalated = latchHalt('escalation');
+    const onDiscountEscalated = latchHalt('escalation');
+    const onBankruptTerminal = latchHalt('insolvent');
+    const onBankruptContraction = latchHalt('insolvent');
+    const onGateVerdict = latchHalt('gate_verdict');
+
     bus.subscribe('floor:day_complete', onDayComplete);
+    bus.subscribe('trade:escalated', onTradeEscalated);
+    bus.subscribe('discount:escalated', onDiscountEscalated);
+    bus.subscribe('career:bankruptcy_terminal', onBankruptTerminal);
+    bus.subscribe('career:bankruptcy_contraction', onBankruptContraction);
+    bus.subscribe('tierGate:month_verdict', onGateVerdict);
     bus.subscribe('clock:month_ended', onMonthEnded);
     bus.subscribe('career:tier_up', onTierUp);
     bus.subscribe('career:game_over', onGameOver);
@@ -477,6 +649,11 @@ export function useDayLoop({
     bus.subscribe('records:broken', onRecordBroken);
     return () => {
       bus.unsubscribe('floor:day_complete', onDayComplete);
+      bus.unsubscribe('trade:escalated', onTradeEscalated);
+      bus.unsubscribe('discount:escalated', onDiscountEscalated);
+      bus.unsubscribe('career:bankruptcy_terminal', onBankruptTerminal);
+      bus.unsubscribe('career:bankruptcy_contraction', onBankruptContraction);
+      bus.unsubscribe('tierGate:month_verdict', onGateVerdict);
       bus.unsubscribe('clock:month_ended', onMonthEnded);
       bus.unsubscribe('career:tier_up', onTierUp);
       bus.unsubscribe('career:game_over', onGameOver);
@@ -510,6 +687,7 @@ export function useDayLoop({
     endCard,
     setEndCard,
     handleNextDay,
+    handleRunBite,
     reset,
   };
 }

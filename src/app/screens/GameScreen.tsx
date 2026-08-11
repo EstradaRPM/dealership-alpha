@@ -19,10 +19,12 @@ import {
 } from '../../ui/AppShell';
 import {
   HomeTab,
+  BitePicker,
   buildHomeDashboard,
   buildGateStrip,
   buildMarketGlance,
 } from '../../ui/HomeTab';
+import { availableBites, type BiteId } from '../../game/ClockBite';
 import { OperationsTab } from '../../ui/OperationsTab';
 import { PeopleTabContainer } from './PeopleTabContainer';
 import { GrowthTabContainer } from './GrowthTabContainer';
@@ -61,6 +63,7 @@ import {
   buildManagerStatus,
   buildRecoveryBanners,
   buildDepartmentDock,
+  resolveBiteCoverage,
 } from '../config';
 
 export interface GameScreenProps {
@@ -82,6 +85,8 @@ export interface GameScreenProps {
   lastRecap: DayRecapModel | null;
   setRecapModalOpen: (open: boolean) => void;
   handleNextDay: () => void;
+  /** Run a bite above the day headless (#381). */
+  handleRunBite: (biteId: BiteId) => void;
   handleDeptPress: (dept: DeptKey) => void;
   openInGameMenu: () => void;
   persistCurrentSave: () => void;
@@ -110,6 +115,7 @@ export function GameScreen({
   lastRecap,
   setRecapModalOpen,
   handleNextDay,
+  handleRunBite,
   handleDeptPress,
   openInGameMenu,
   persistCurrentSave,
@@ -495,6 +501,16 @@ export function GameScreen({
         // No "→" in the label — the shell's CTA draws the onward arrow itself.
         label: loopState.hasRecap ? 'Next Day' : 'Open Floor',
         onPress: handleNextDay,
+        // The clock-zoom ladder (#381), pinned above the day verb in the same
+        // footer. The doors are resolved from the live roster with the same
+        // act-gate predicates the engine gates on — you can skip ahead exactly
+        // as far as your people can cover for you.
+        picker: (
+          <BitePicker
+            options={availableBites(resolveBiteCoverage(world))}
+            onRun={handleRunBite}
+          />
+        ),
       }}
       // Persistent recovery banner (#326): derived from the live monitor state,
       // so it stays pinned across tabs while a debt overhang / license suspension

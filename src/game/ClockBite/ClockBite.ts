@@ -1,0 +1,154 @@
+import {
+  loadClockBites,
+  type BiteId,
+  type ClockBitesConfig,
+  type CoverageFactId,
+  type HaltReasonId,
+} from './clockBiteData';
+
+/**
+ * ClockBite (#381) — the bite lifecycle, one altitude above DayLoopController's
+ * day lifecycle.
+ *
+ * The player chooses how big a bite of the calendar to run before they look
+ * again, and the size of the bite is itself a bet: a bigger bite wagers that
+ * your standing policy and your staff carry the store without your judgment.
+ *
+ * ONE rule governs the ladder — **you can skip ahead exactly as far as your
+ * people can cover for you.** A day can only run headless when nothing
+ * escalates to the player, and what stops things escalating is a desk that is
+ * staffed and at threshold. The door and the capability are the same fact, so
+ * the player never learns a second rule.
+ *
+ * This module imports no sibling module: it never sees StaffOrg,
+ * DayLoopController or FloorSim. The composition root resolves coverage from
+ * the live roster with the existing act-gate predicates and injects the two
+ * closures the runner drives.
+ */
+
+export interface BiteOption {
+  id: BiteId;
+  label: string;
+  days: number;
+  unlocked: boolean;
+  /**
+   * Plain-language statement of the shut door, or null when the bite is open.
+   * The picker states this verbatim — a locked bite is never a silently greyed
+   * control.
+   */
+  lockedReason: string | null;
+}
+
+/** Why a run stopped short, and the sentence the surface states. */
+export interface HaltReason {
+  id: HaltReasonId;
+  sentence: string;
+}
+
+export interface BiteRunDeps {
+  /**
+   * Advance the clock exactly one day and exhaust it — the composition root's
+   * `nextDay()` + `floor.runDay()`, the same primitive `skipToClose` drives.
+   * Per-day beats must be captured as each day closes: the daily refs are
+   * cleared before the next `nextDay()`, so a runner that only read the final
+   * day would silently swallow the rest of the bite's wins, walk-offs, crowned
+   * records and month verdicts.
+   */
+  advanceOneDay: () => void;
+  /**
+   * Asked once after each day. A non-null reason ends the bite at that day.
+   * The day still counts — it happened.
+   */
+  checkHalt: () => HaltReasonId | null;
+}
+
+export interface BiteRun {
+  biteId: BiteId;
+  daysRequested: number;
+  /** Days that actually ran. Equals `daysRequested` when nothing halted. */
+  daysRun: number;
+  halt: HaltReason | null;
+}
+
+function biteDef(config: ClockBitesConfig, biteId: BiteId) {
+  const bite = config.bites.find((b) => b.id === biteId);
+  // The schema refuses a catalog missing any declared id, so this is a
+  // programming error rather than a data one.
+  if (!bite) throw new Error(`ClockBite: unknown bite "${biteId}"`);
+  return bite;
+}
+
+/**
+ * The three bites with their doors resolved against what the store currently
+ * covers. Every bite is always returned — a locked one carries its reason, it
+ * is never dropped from the list.
+ */
+export function availableBites(
+  coverage: readonly CoverageFactId[],
+  config: ClockBitesConfig = loadClockBites(),
+): readonly BiteOption[] {
+  const held = new Set(coverage);
+  return config.bites.map((bite) => {
+    const missing = bite.requires.filter((r) => !held.has(r));
+    return {
+      id: bite.id,
+      label: bite.label,
+      days: bite.days,
+      unlocked: missing.length === 0,
+      // Each missing cover states itself; two of them read as one plain
+      // explanation, which is why the sentences are written to stand alone.
+      lockedReason:
+        missing.length === 0
+          ? null
+          : missing
+              .map(
+                (id) =>
+                  config.coverage.find((f) => f.id === id)?.missingSentence ?? '',
+              )
+              .filter(Boolean)
+              .join(' '),
+    };
+  });
+}
+
+/**
+ * Run a bite headless and synchronously.
+ *
+ * The runner does NOT check the door — `availableBites` is the door and the
+ * picker is what obeys it. Keeping the runner a pure "run N days, stop when
+ * asked" primitive is what lets a test drive it without a roster.
+ *
+ * There is no queued remainder and no auto-resume, by construction: this
+ * function holds no state between calls. A run that silently continued past the
+ * thing that interrupted it would be the bite making the player's decision for
+ * them.
+ */
+export function runBite(
+  biteId: BiteId,
+  deps: BiteRunDeps,
+  config: ClockBitesConfig = loadClockBites(),
+): BiteRun {
+  const bite = biteDef(config, biteId);
+  let daysRun = 0;
+  let halt: HaltReason | null = null;
+  for (let i = 0; i < bite.days; i += 1) {
+    deps.advanceOneDay();
+    daysRun += 1;
+    const reason = deps.checkHalt();
+    if (reason) {
+      halt = haltReason(reason, config);
+      break;
+    }
+  }
+  return { biteId, daysRequested: bite.days, daysRun, halt };
+}
+
+/** The plain-language sentence for a halt, off the catalog. */
+export function haltReason(
+  id: HaltReasonId,
+  config: ClockBitesConfig = loadClockBites(),
+): HaltReason {
+  const halt = config.halts.find((h) => h.id === id);
+  if (!halt) throw new Error(`ClockBite: unknown halt reason "${id}"`);
+  return { id: halt.id, sentence: halt.sentence };
+}

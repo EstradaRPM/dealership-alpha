@@ -27,6 +27,7 @@ import {
   type SourcingLean,
 } from '../game/MarketEconomy';
 import { isDiscountDeskingUnlocked } from '../game/StaffDispatch';
+import type { CoverageFactId } from '../game/ClockBite';
 import { isServiceFunctionAutomated } from '../game/ServiceDispatch';
 import { isBodyShopFunctionAutomated } from '../bodyShopManager';
 import { loadRegulatoryTunables } from '../game/Reputation';
@@ -673,6 +674,33 @@ export function buildManagerStatus(world: World): ManagerStatusModel {
   ];
 
   return { ucmPresent: pricingSkill !== null, ucm, departments };
+}
+
+/**
+ * What the store currently covers without the player (#381) — the doors on the
+ * clock-bite ladder. **You can skip ahead exactly as far as your people can
+ * cover for you**: a day can only run headless when nothing escalates, and what
+ * stops things escalating is a desk that is staffed and at threshold, so the
+ * door and the capability are the same fact.
+ *
+ * Derived from `buildManagerStatus`, deliberately — that function already owns
+ * the act-gate predicate reads the ENGINE gates on. A second read of
+ * `isTradeApprovalUnlocked` here is how the button and the desk start
+ * disagreeing about who is covering what.
+ */
+export function resolveBiteCoverage(world: World): readonly CoverageFactId[] {
+  const status = buildManagerStatus(world);
+  const delegated = (axis: string) =>
+    status.ucm.find((f) => f.axis === axis)?.delegated === true;
+  const facts: CoverageFactId[] = [];
+  if (delegated('t_o_closing')) facts.push('discount_desking');
+  if (delegated('condition_reading')) facts.push('trade_approval');
+  // The GM is a presence test, not a skill threshold: the role IS the cover
+  // (#124's filed rule — the top-rung specifics are #385).
+  if (world.staffOrg.currentRoster.some((s) => s.role_id === 'gm')) {
+    facts.push('general_manager');
+  }
+  return facts;
 }
 
 // Recovery-banner read-model (#326, workstream A4): the persistent "climbing

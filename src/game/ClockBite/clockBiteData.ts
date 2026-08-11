@@ -1,0 +1,101 @@
+import { z } from 'zod';
+import { parseData } from '../data';
+
+/**
+ * The bite catalog (#381) — `data/clock-bites.json`.
+ *
+ * The doors live in data, the predicates in code. Naming the required coverage
+ * in the file is what keeps the two from drifting: #371 had to delete a
+ * `hasDeskManager` boolean that lived in code precisely because it satisfied
+ * every staff door at once.
+ */
+
+export const BITE_IDS = ['day', 'week', 'month'] as const;
+export type BiteId = (typeof BITE_IDS)[number];
+
+export const COVERAGE_FACT_IDS = [
+  'discount_desking',
+  'trade_approval',
+  'general_manager',
+] as const;
+/** A capability the store has handed to somebody other than the player. */
+export type CoverageFactId = (typeof COVERAGE_FACT_IDS)[number];
+
+export const HALT_REASON_IDS = ['escalation', 'insolvent', 'gate_verdict'] as const;
+export type HaltReasonId = (typeof HALT_REASON_IDS)[number];
+
+const BiteIdSchema = z.enum(BITE_IDS);
+const CoverageFactIdSchema = z.enum(COVERAGE_FACT_IDS);
+const HaltReasonIdSchema = z.enum(HALT_REASON_IDS);
+
+const CoverageFactSchema = z
+  .object({
+    id: CoverageFactIdSchema,
+    /** Stated verbatim by the picker when this cover is the shut door. */
+    missingSentence: z.string().min(1),
+  })
+  .strict();
+
+const BiteSchema = z
+  .object({
+    id: BiteIdSchema,
+    label: z.string().min(1),
+    days: z.number().int().positive(),
+    requires: z.array(CoverageFactIdSchema),
+  })
+  .strict();
+
+const HaltSchema = z
+  .object({
+    id: HaltReasonIdSchema,
+    /** Stated verbatim by the Reveal when the run stopped here. */
+    sentence: z.string().min(1),
+  })
+  .strict();
+
+// Top level is deliberately NOT `.strict()`: the `_doc` annotation fields are
+// the file's own record of why the doors are what they are, and Zod strips
+// them. Every nested object IS strict — a stale key inside a bite would
+// otherwise be silently dropped while the file looked fine.
+export const ClockBitesConfigSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    coverage: z.array(CoverageFactSchema).nonempty(),
+    bites: z.array(BiteSchema).nonempty(),
+    halts: z.array(HaltSchema).nonempty(),
+  })
+  .refine(
+    (c) => new Set(c.coverage.map((f) => f.id)).size === c.coverage.length,
+    { message: 'coverage ids must be unique' },
+  )
+  .refine((c) => new Set(c.bites.map((b) => b.id)).size === c.bites.length, {
+    message: 'bite ids must be unique',
+  })
+  .refine((c) => new Set(c.halts.map((h) => h.id)).size === c.halts.length, {
+    message: 'halt ids must be unique',
+  })
+  // Every declared bite and halt reason must be present: the runner and the
+  // picker index this catalog by id, so a missing entry is a crash at the
+  // moment the player taps rather than a load-time error.
+  .refine((c) => BITE_IDS.every((id) => c.bites.some((b) => b.id === id)), {
+    message: 'every bite id must be declared',
+  })
+  .refine((c) => HALT_REASON_IDS.every((id) => c.halts.some((h) => h.id === id)), {
+    message: 'every halt reason must be declared',
+  })
+  // A door naming coverage the file never declares has no sentence to state,
+  // which is how a locked bite ends up greyed out with no explanation.
+  .refine(
+    (c) =>
+      c.bites.every((b) =>
+        b.requires.every((r) => c.coverage.some((f) => f.id === r)),
+      ),
+    { message: 'every required coverage fact must be declared' },
+  );
+
+export type ClockBitesConfig = z.infer<typeof ClockBitesConfigSchema>;
+
+export function loadClockBites(): ClockBitesConfig {
+  const raw: unknown = require('../../../data/clock-bites.json');
+  return parseData(raw, ClockBitesConfigSchema, 'data/clock-bites.json');
+}
