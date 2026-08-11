@@ -48,6 +48,7 @@ function makeStaffOrg(roster: StaffWithComposites[], pay: PayStub = {}): StaffOr
         dailyWage: pay[s.id]?.dailyWage ?? 340,
         askingWage: pay[s.id]?.askingWage ?? 340,
       })),
+    getSkillGrowth: () => [],
     getRaiseRequests: () => [],
     getRaiseRequest: () => null,
     acceptRaise: () => {},

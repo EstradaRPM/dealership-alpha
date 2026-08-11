@@ -7,7 +7,11 @@ import {
   type PeopleSkillRead,
   type PeopleSlotRow,
 } from '../../ui/PeopleTab';
-import { MIN_GRADE, type StaffWithComposites } from '../../game/StaffOrg';
+import {
+  MIN_GRADE,
+  type StaffSkillGrowth,
+  type StaffWithComposites,
+} from '../../game/StaffOrg';
 import {
   buildHiringRoleOptions,
   buildManagerStatus,
@@ -28,23 +32,48 @@ export interface PeopleTabContainerProps {
   bump: () => void;
 }
 
-/** Plain-language skill reads for one person, in a stable order (#347). */
-function skillReads(staff: StaffWithComposites): PeopleSkillRead[] {
+/** The plain-language axis name — data (`data/staff-skills.json`), never a
+ * de-slugged id: "t_o_closing" rendered as "t o closing" is what the audit
+ * found. */
+function skillLabel(id: string): string {
+  return staffTaxonomy.skills[id]?.label ?? id;
+}
+
+/** Plain-language skill reads for one applicant, in a stable order (#347). */
+function candidateSkillReads(staff: StaffWithComposites): PeopleSkillRead[] {
   return Object.keys(staff.skills)
     .sort()
-    .map((id) => {
-      const def = staffTaxonomy.skills[id];
-      return {
-        id,
-        // The label is data (`data/staff-skills.json`), never a de-slugged id —
-        // "t_o_closing" rendered as "t o closing" is what the audit found.
-        label: def?.label ?? id,
-        // The *grown* value is what every capability gate reads (#294), so it
-        // is what the card shows.
-        value: staff.effectiveSkills[id] ?? staff.skills[id],
-        cap: def?.cap ?? 100,
-      };
-    });
+    .map((id) => ({
+      id,
+      label: skillLabel(id),
+      // The *grown* value is what every capability gate reads (#294), so it
+      // is what the card shows. On a candidate it equals the base roll —
+      // nobody accrues counters before they are hired, which is also why an
+      // applicant's card carries no growth reading.
+      value: staff.effectiveSkills[id] ?? staff.skills[id],
+      cap: staffTaxonomy.skills[id]?.cap ?? 100,
+    }));
+}
+
+/**
+ * The same reads for somebody on payroll, carrying the three-number growth
+ * reading (#377). Every figure comes off `staffOrg.getSkillGrowth` rather than
+ * being re-derived here: the per-hire ceiling is rolled from the master seed
+ * and the staff id, so a surface computing its own would name a limit the
+ * engine does not clamp to.
+ */
+function rosterSkillReads(growth: readonly StaffSkillGrowth[]): PeopleSkillRead[] {
+  return growth.map((axis) => ({
+    id: axis.skillId,
+    label: skillLabel(axis.skillId),
+    value: axis.current,
+    cap: axis.cap,
+    growth: {
+      hiredAt: axis.hiredAt,
+      ceiling: axis.ceiling,
+      grows: axis.grows,
+    },
+  }));
 }
 
 function humanizeTrait(traitId: string): string {
@@ -93,10 +122,14 @@ export function PeopleTabContainer({
       honesty: staff.trustworthinessRatio,
       // StaffMorale tracks 0–100; the meters are fractions.
       morale: world.staffMorale.getMorale(staff.id) / 100,
+      // ...and what that level is actually doing to their output (#377). The
+      // engine reads this multiplier on every dispatch; until now no surface
+      // did, so the meter stated a level and never a consequence.
+      moraleMultiplier: world.staffMorale.getMoraleMultiplier(staff.id),
       grade: pay?.grade ?? MIN_GRADE,
       paidGrade: pay?.paidGrade ?? MIN_GRADE,
       dailyWage: pay?.dailyWage ?? 0,
-      skills: skillReads(staff),
+      skills: rosterSkillReads(world.staffOrg.getSkillGrowth(staff.id)),
       promotions: world.staffOrg.getPromotionOptions(staff.id).map((p) => ({
         toRoleId: p.toRoleId,
         label: humanizeRole(p.toRoleId),
@@ -128,7 +161,7 @@ export function PeopleTabContainer({
       // carried by the listing, so the card and `hire()` agree by construction.
       grade: listing.grade,
       dailyWage: listing.dailyWage,
-      skills: skillReads(listing.staff),
+      skills: candidateSkillReads(listing.staff),
       hiringCost: listing.hiringCost,
     }));
 

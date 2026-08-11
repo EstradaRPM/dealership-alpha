@@ -18,6 +18,7 @@ import type { ManagerStatusModel } from './managerStatus';
 
 export type {
   PeopleSkillRead,
+  PeopleSkillGrowth,
   PeoplePromotionOption,
   PeopleRaiseAsk,
   PeopleRosterMember,

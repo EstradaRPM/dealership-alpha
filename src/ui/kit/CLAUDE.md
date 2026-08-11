@@ -50,9 +50,19 @@ function MyScreen() {
 `Badge`/`Pill` (neutral·info·positive·reward·danger; `outline`·`soft` fill) ·
 `Icon` (kit glyph by name, themed `size`/`tone`) · `IconBadge` (colored
 tile holding an `Icon`; `solid`·`soft`, rounded·circle) · `ProgressBar` ·
-`Meter` (labeled gauge) · `StatCard` (value·label·trend delta, optional leading
+`Meter` (labeled gauge, optional `caption` under the bar) · `StatCard` (value·label·trend delta, optional leading
 `icon`) · `SectionHeader` · `Collapsible` (headed panel that opens and shuts) ·
 the chart primitives below.
+
+`ProgressBar` carries three optional readings beyond the fill, and they are not
+interchangeable. `tick` is a **second segment** appended after the fill (a
+daily contribution riding a pace bar). `mark` is a **hairline reference point**
+— where the value started, so the fill beyond it is distance travelled. `reach`
+is the **point past which the track cannot be filled**; everything beyond it is
+scrimmed. `mark`/`reach` are ignored in `tick` mode. The reason `reach` dims a
+shared axis rather than rescaling the bar to each subject's own limit: two bars
+rescaled to different limits are not comparable, and a column of them (a
+roster's skills, #377) exists to be compared down the page.
 
 `Collapsible` is the grouping primitive for a surface with more content than one
 screen of attention (People's per-department panels, its folded person cards).

@@ -12,6 +12,7 @@ export {
   promoteStaff,
   rehydrateStaff,
   effectiveSkillValue,
+  perHireSkillCap,
   computeEffectiveSkills,
   compositeRatio,
 } from './factories/StaffFactory';

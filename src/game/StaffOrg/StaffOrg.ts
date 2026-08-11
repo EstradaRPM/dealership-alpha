@@ -7,6 +7,7 @@ import {
   rehydrateStaff,
   promoteStaff,
   compositeRatio,
+  perHireSkillCap,
   type StaffWithComposites,
 } from '../NPC/factories/StaffFactory';
 import type { Staff } from '../NPC/schemas/staff';
@@ -218,6 +219,35 @@ export interface StaffPay {
   readonly askingWage: number;
 }
 
+/**
+ * One skill axis of one roster member, read as the **three** numbers Model B
+ * (#294) actually holds rather than the one a card used to draw (#377).
+ *
+ * `current` alone makes a climbing rookie and a topped-out veteran identical on
+ * screen, which is the whole decision the growth model exists to create. Only
+ * the engine can answer two of these: the grown value is derived from counters
+ * it accrues overnight, and `ceiling` is rolled from `masterSeed` + the staff
+ * id, so a surface that re-derived it would name a limit the engine does not
+ * clamp to.
+ */
+export interface StaffSkillGrowth {
+  readonly skillId: string;
+  /** The value rolled at hire — where this person started on this axis. */
+  readonly hiredAt: number;
+  /** What they are now: the grown value every capability gate reads. */
+  readonly current: number;
+  /** The highest THIS hire can ever reach — `min(cap, hiredAt + headroom)`. */
+  readonly ceiling: number;
+  /** The axis's own maximum, the same for everybody. */
+  readonly cap: number;
+  /**
+   * Whether experience moves this axis at all — `growth_counter` in
+   * `data/staff-skills.json`. False ⇒ `current` is `hiredAt` forever, and a
+   * surface must say so rather than implying a bar that will fill.
+   */
+  readonly grows: boolean;
+}
+
 export interface StaffOrg {
   readonly currentRoster: readonly StaffWithComposites[];
   /**
@@ -249,6 +279,12 @@ export interface StaffOrg {
    * all-roster read the People surface renders, parallel to `getSlotBoard`.
    */
   getPayBoard(): readonly StaffPay[];
+  /**
+   * Every skill axis one roster member carries, in the same stable id order the
+   * card renders (#377). Throws `StaffOrgError` off the roster — a card is
+   * always built for somebody who is on it.
+   */
+  getSkillGrowth(staffId: string): readonly StaffSkillGrowth[];
   /**
    * Every raise demand waiting on an answer, in roster order (#356). The People
    * surface renders one prompt per entry; empty means nobody is asking.
@@ -763,6 +799,33 @@ export function createStaffOrg(deps: StaffOrgDeps): StaffOrg {
         dailyWage: paidWageFor(s),
         askingWage: askingWageFor(s),
       }));
+    },
+
+    getSkillGrowth(staffId: string): readonly StaffSkillGrowth[] {
+      const staff = roster.find((s) => s.id === staffId);
+      if (!staff) {
+        throw new StaffOrgError(`Staff "${staffId}" is not on the roster`);
+      }
+      // One read of the getter, not one per axis: `effectiveSkills` recomputes
+      // the whole map every access.
+      const effective = staff.effectiveSkills;
+      return Object.keys(staff.skills)
+        .sort()
+        .map((skillId) => {
+          const def = taxonomy.skills[skillId];
+          const hiredAt = staff.skills[skillId] ?? 0;
+          return {
+            skillId,
+            hiredAt,
+            current: effective[skillId] ?? hiredAt,
+            ceiling: perHireSkillCap(staff, skillId, def, masterSeed),
+            // An axis the taxonomy does not name has no room above where it
+            // already is — the same answer `perHireSkillCap` gives it, rather
+            // than a default ceiling invented here.
+            cap: def?.cap ?? hiredAt,
+            grows: def?.growth_counter != null,
+          };
+        });
     },
 
     getRaiseRequests(): readonly RaiseRequest[] {

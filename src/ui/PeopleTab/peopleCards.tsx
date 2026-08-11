@@ -4,6 +4,8 @@ import { useTheme } from '../theme';
 import { Collapsible, Button, Badge, Meter } from '../kit';
 import {
   wageText,
+  skillGrowthText,
+  moraleEffectText,
   type PeopleCandidate,
   type PeopleRosterMember,
   type PeopleSkillRead,
@@ -13,10 +15,18 @@ function CompositeMeters({
   workQuality,
   honesty,
   morale,
+  moraleMultiplier,
+  idPrefix,
 }: {
   workQuality: number;
   honesty: number;
   morale?: number | null;
+  /**
+   * What morale multiplies their output by (#377). Present on a roster card;
+   * a candidate has no morale to have a consequence.
+   */
+  moraleMultiplier?: number | null;
+  idPrefix?: string;
 }) {
   const t = useTheme();
   return (
@@ -39,6 +49,12 @@ function CompositeMeters({
           value={morale}
           readout={`${Math.round(morale * 100)}%`}
           tone={morale >= 0.6 ? 'positive' : morale >= 0.35 ? 'primary' : 'danger'}
+          // The bar states the level; this states what the level is costing —
+          // the engine has always scaled their output by it (#377).
+          caption={
+            moraleMultiplier != null ? moraleEffectText(moraleMultiplier) : undefined
+          }
+          captionTestID={idPrefix != null ? `${idPrefix}-morale-effect` : undefined}
         />
       )}
     </View>
@@ -55,16 +71,38 @@ function SkillList({
   const t = useTheme();
   if (skills.length === 0) return null;
   return (
-    <View style={{ marginTop: t.spacing.lg, gap: t.spacing.sm }}>
-      {skills.map((skill) => (
-        <Meter
-          key={skill.id}
-          label={skill.label}
-          value={skill.cap > 0 ? skill.value / skill.cap : 0}
-          readout={String(Math.round(skill.value))}
-          fillTestID={`${idPrefix}-skill-fill-${skill.id}`}
-        />
-      ))}
+    <View style={{ marginTop: t.spacing.lg, gap: t.spacing.md }}>
+      {skills.map((skill) => {
+        const growth = skill.growth;
+        const scale = skill.cap > 0 ? skill.cap : 0;
+        // Three numbers on ONE shared 0…cap axis (#377): where they started
+        // (the hairline), where they are (the fill), and where their own
+        // ceiling is (everything past it dimmed). The axis stays shared rather
+        // than rescaling per person, because the roster panel exists to compare
+        // people down the page. A static axis draws none of it — there is no
+        // journey to show, and a marked-up track would imply one.
+        const marks =
+          growth != null && growth.grows && scale > 0
+            ? {
+                mark: growth.hiredAt / scale,
+                markTestID: `${idPrefix}-skill-hired-${skill.id}`,
+                reach: growth.ceiling / scale,
+                reachTestID: `${idPrefix}-skill-ceiling-${skill.id}`,
+              }
+            : {};
+        return (
+          <Meter
+            key={skill.id}
+            label={skill.label}
+            value={scale > 0 ? skill.value / scale : 0}
+            readout={String(Math.round(skill.value))}
+            fillTestID={`${idPrefix}-skill-fill-${skill.id}`}
+            {...marks}
+            caption={growth != null ? skillGrowthText(skill.value, growth) : undefined}
+            captionTestID={`${idPrefix}-skill-growth-${skill.id}`}
+          />
+        );
+      })}
     </View>
   );
 }
@@ -233,6 +271,8 @@ export function RosterCard({
         workQuality={member.workQuality}
         honesty={member.honesty}
         morale={member.morale}
+        moraleMultiplier={member.moraleMultiplier}
+        idPrefix={`people-roster-${member.id}`}
       />
       <SkillList skills={member.skills} idPrefix={`roster-${member.id}`} />
       <View style={s.actionRow}>

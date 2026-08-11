@@ -28,6 +28,23 @@ export interface ProgressBarProps {
    * that two different values produce two different widths).
    */
   fillTestID?: string;
+  /**
+   * Optional [0,1] reference point drawn as a hairline across the track — where
+   * the value STARTED, so the fill beyond it reads as distance travelled
+   * (issue 377: a staff card showed the current skill alone, so a climbing
+   * rookie and a topped-out veteran drew the same bar). Ignored in `tick` mode.
+   */
+  mark?: number;
+  markTestID?: string;
+  /**
+   * Optional [0,1] point past which this track cannot be filled — the segment
+   * beyond is dimmed, so the bar states a reachable end without rescaling the
+   * axis. Rescaling each bar to its own limit was the alternative and it makes
+   * two people's bars incomparable, which is the one thing a roster of them is
+   * for. Ignored in `tick` mode.
+   */
+  reach?: number;
+  reachTestID?: string;
 }
 
 /** Every `ProgressTone` is also a gradient role + flat color role of the same name. */
@@ -48,6 +65,10 @@ export function ProgressBar({
   tickTone = 'reward',
   tickTestID,
   fillTestID,
+  mark,
+  markTestID,
+  reach,
+  reachTestID,
 }: ProgressBarProps) {
   const t = useTheme();
   const pct = Math.max(0, Math.min(1, value)) * 100;
@@ -97,8 +118,29 @@ export function ProgressBar({
     shadowColor: t.colors[tone],
   };
 
+  // The unreachable tail, laid over the empty groove. Drawn before the fill so
+  // it can never dim the filled part of the bar.
+  const reachPct = reach == null ? null : Math.max(0, Math.min(1, reach)) * 100;
+  // Where the value started. A hairline in the ink color that reads on the
+  // fill's own gradient, since the mark is always at or behind the fill's edge.
+  const markPct = mark == null ? null : Math.max(0, Math.min(1, mark)) * 100;
+
   return (
     <View style={track}>
+      {reachPct != null && (
+        <View
+          pointerEvents="none"
+          testID={reachTestID}
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: `${reachPct}%`,
+            right: 0,
+            backgroundColor: t.colors.scrim,
+          }}
+        />
+      )}
       <GradientSurface gradient={roles(tone)} style={fill} testID={fillTestID}>
         {/* Top sheen so the fill reads as a glossy lozenge, not a flat stick. */}
         <GradientSurface
@@ -107,6 +149,20 @@ export function ProgressBar({
           style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%' }}
         />
       </GradientSurface>
+      {markPct != null && (
+        <View
+          pointerEvents="none"
+          testID={markTestID}
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: `${markPct}%`,
+            width: t.spacing.xxs,
+            backgroundColor: t.colors.onAccent,
+          }}
+        />
+      )}
     </View>
   );
 }

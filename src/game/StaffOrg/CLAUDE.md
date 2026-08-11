@@ -13,9 +13,10 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
   — the salary book (#353), see "Pay" below.
 - `computeConditionRead`, `deriveConditionReadSeed` — pure helpers behind
   `assessCondition` (also exported for fixture/test use).
+- `getSkillGrowth(staffId)` (#377) — see "Skill growth" below.
 - Types: `StaffOrg`, `StaffOrgDeps`, `StaffOrgConfig`, `CandidateListing`,
   `ConditionAssessInput`, `ConditionRead`, `ConditionReadConfig`, `StaffPay`,
-  `StaffPayTable`, `RaiseRequest`.
+  `StaffPayTable`, `RaiseRequest`, `StaffSkillGrowth`.
 
 ## Pay — the salary book (#353, C1 R1)
 - **One rule: a daily wage set by grade (1–5) and role.** `data/staff-pay.json` is
@@ -157,6 +158,16 @@ Roster + hiring/firing + candidate listings. Source of truth for "who is on payr
   `pricing`/`t_o_closing` → `deals_closed`; `condition_reading` → `days_employed`.
   Axes without a `growth_counter` stay static. Magnitudes (`growth_rate`,
   `cap_headroom`) are placeholders — calibration deferred to S14 (#286).
+- **`getSkillGrowth(staffId)` is how a surface reads the model (#377)** — per axis,
+  `{ skillId, hiredAt, current, ceiling, cap, grows }` in sorted-id order, throwing off the
+  roster. Two of those cannot be derived by a consumer: `current` comes off counters this
+  module accrues, and `ceiling` is `NPC.perHireSkillCap` — rolled from `masterSeed` + the
+  staff id, so a surface computing its own would name a limit the engine does not clamp to.
+  `cap` for an axis the taxonomy does not name is `hiredAt` (no room above where they are),
+  not an invented default. `grows` is `growth_counter != null` and is the whole test for
+  "static": the People card draws no start mark and no ceiling on a static axis, because the
+  furniture of a journey implies one. Nothing here is stored — a save round trip re-derives
+  the same ceiling, which is why there is no migration.
 
 ## Events
 - **Emits:** `staff:hired` (with `hiringCost`), `staff:fired`, `staff:promoted`,

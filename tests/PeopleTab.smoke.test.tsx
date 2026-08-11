@@ -21,6 +21,8 @@ const MEMBER: PeopleRosterMember = {
   workQuality: 0.72,
   honesty: 0.64,
   morale: 0.8,
+  // #377 — what that morale is doing to their output. 1 is no effect.
+  moraleMultiplier: 1.08,
   // #353 — a fresh hire is paid at the grade they signed at, so the two agree.
   grade: 3,
   paidGrade: 3,

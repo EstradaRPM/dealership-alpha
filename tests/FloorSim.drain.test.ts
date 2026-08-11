@@ -63,6 +63,7 @@ function makeStaffOrg(roster: StaffWithComposites[]): StaffOrg {
     getSlotBoard: () => [],
     dailyPayroll: 0,
     getPayBoard: () => [],
+    getSkillGrowth: () => [],
     getCandidates: () => [],
     hire: () => {},
     fire: () => {},

@@ -6,6 +6,73 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-09 — **BUILT #374** (the P&L relieves inventory at the sale). `Economy.getPnL` was
+  pure cash-basis, so a month spent stocking reported a loss the store did not make — at Tier 1,
+  where a six-space lot is bought out in two or three days, that was most of the number. It is
+  accrual now, and the model was already half-built: #255's `inventoryAcquisition` category
+  existed precisely to say "cash converted into stock, NOT operating spend" and the P&L had
+  never acted on the tag.
+  **`inventoryAcquisition` entries drop out of `getPnL` WHOLE — totals and `entries` both.**
+  The criterion only named the total; dropping them from `entries` as well is what makes the
+  room reconcile, because `financeModel.groupExpenses` builds the "Where the Money Went" chart
+  off `pnl.entries`. Leaving them in would have listed an "Auction purchase" the Net Income
+  above it does not count — two numbers on one screen that cannot be added up, which is the
+  exact defect this read exists to close. `snapshot().ledger` is still the complete record;
+  `getPnL` is a **read** of it, and one #255 test was moved onto the ledger to say so.
+  **`postCostOfSale(amount, label)` is the new concept and it publishes NOTHING.**
+  `economy:expense_posted` means cash moved — Telemetry's `cashCurve` is its only consumer and
+  is a cash curve — so a non-cash entry firing it would silently corrupt the one thing that
+  event exists for. A P&L reader wants `getPnL`. Posting the relief through `postExpense`
+  instead would have debited the store twice for one car.
+  **`Inventory` is the only relieving module and it relieves `purchasePrice` ONLY**, from a
+  private `relieveCostOfSale` called at the two doors a unit leaves by (`sellVehicle`,
+  `wholesaleOut` — so both wholesale reasons are covered by the same line). Recon, inspection
+  and carrying are already operating spend on the days they were incurred, so relieving
+  `costBasisOf` would bill recon twice. **A trade-in and a #296 seed unit are relieved too**
+  even though their `purchasePrice` never cost cash: what a sold car cost the store is what the
+  store gave up to have it, bank account or not — the same statement `frontGross` has always
+  made.
+  **The label is ONE constant** (`Cost of Vehicles Sold`), not per-vehicle: the expense chart
+  groups by label and a label per car would shatter the biggest line on a dealership's
+  statement into slivers that all fold into "Other".
+  **No envelope bump and no migration** — `nonCash` is optional inside the module's own blob, so
+  `EconomySnapshot.schemaVersion` stays 1 and `WORLD_SNAPSHOT_VERSION` stays 21. A pre-#374 save
+  is read under the new rule and **never back-filled**: its historical months read more
+  profitable than they did on the day they closed, because their acquisitions have no matching
+  relief. That is the accepted artifact the issue named, not a bug to fix later.
+  **Nothing calibrated moved and nothing could** — `getPnL`'s four consumers are all Finance UI,
+  `scripts/` has zero hits for it, every monitor and gate face branches on `economy.cash`.
+  `#180` still reads 39.3% / 51.7%, closes=290. **239 suites / 3033 tests, typecheck clean.**
+  Web-verified end to end on the day-35 `Harness Bot's Lot` slot — a legacy pre-#374 save, which
+  also proves the no-migration restore. Wholesaling a unit the confirm sheet said the store had
+  **$14,026** in posted a **$12,900** "Cost of Vehicles Sold" line: the acquisition price alone,
+  so recon is demonstrably not double-charged. The day's Net Income of **−$1,779** reconciles
+  line for line ($11,922 proceeds − 12,900 − 241 − 204 − 155 − 126 − 75). No "Auction purchase"
+  row remains anywhere on the breakdown.
+  **Two follow-ups were FILED, not folded in.** **#379** — found while tracing the trade path:
+  `closeDeal` posts the full `agreedPrice` to cash (`DealEngine.ts:205`) while `StaffDispatch`
+  builds the structure net of the trade (`:736`/`:744`) and `acquireFromTrade` posts no expense,
+  so the store banks `tradeEquity` it was never paid **and** keeps the trade car free; the lien
+  `payoff` never leaves the bank either. `Inventory/CLAUDE.md`'s claim that the allowance "is
+  offset against deal cash in the close structure" is what made it invisible — the offset does
+  not exist, and `DealEngineDeps.economy` is `Pick<Economy,'postRevenue'>` so the module cannot
+  debit even in principle. At a **42.1% trade rate** over 290 closes this is a standing cash
+  faucet, so the fix **will** move the #286 balance bands and is filed to say so rather than
+  measure it away. Deliberately not folded into #374, which promised to move no cash. The P&L
+  is already right on a trade deal and stays right; only the cash balance is wrong.
+  **#380** — the director's question this session: automated buying (UCM auto-source #293,
+  construction #359, wire billing #178) drops the Home HUD's one headline number without the
+  player touching anything, which reads as decay. #374 taught the *engine* that buying a car is
+  a conversion; the HUD still doesn't know. Filed as **Cash on Hand + "What the Store Is
+  Worth"** (`cash + inventory at book`), cash staying the primary figure because it is what
+  bankruptcy and every gate face branch on. Book not market — a worth figure that drifts with
+  the used-car market would fall on a day the player did nothing, which is the exact
+  disconnection it exists to remove. Facility and floorplan are **not excluded**: whether a
+  built bay is a sellable asset has never been asked, so the figure is labeled for exactly what
+  it sums until that ruling exists. The one thing for the director to overrule is Home-vs-
+  Finance-only.
+  Next: **BUILD #375** (the `ProfitCenter` tracer), whose only dep was #374.
+
 - 2026-08-08 — **SLICED phase 10 (D1, the three dashboards) into #374–#378.** The phase row had
   carried *"largely absorbed by 5c (#349/#350/#351); re-scope when reached"* since it was written,
   and the subtraction against the app that actually ships is the unit. It was done by inventorying

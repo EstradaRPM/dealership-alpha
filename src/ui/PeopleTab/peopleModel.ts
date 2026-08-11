@@ -1,5 +1,23 @@
 import type { PeopleDepartmentId } from './departments';
 
+/**
+ * Where one skill axis started and how far it can go (#377) — the two numbers
+ * that turn a level into a trajectory. Present on a roster card, absent on a
+ * candidate's: nobody has started yet, so there is no distance to draw.
+ */
+export interface PeopleSkillGrowth {
+  /** The value they were hired at. */
+  readonly hiredAt: number;
+  /** The highest THIS person can reach on this axis — not the axis's own cap. */
+  readonly ceiling: number;
+  /**
+   * Whether experience moves this axis at all. False ⇒ the card says the value
+   * is fixed, rather than drawing a bar that implies a climb (`growth_counter`
+   * in `data/staff-skills.json`).
+   */
+  readonly grows: boolean;
+}
+
 /** One skill axis as a staff card shows it (#347). */
 export interface PeopleSkillRead {
   readonly id: string;
@@ -8,6 +26,8 @@ export interface PeopleSkillRead {
   /** Current value on the 0…`cap` scale. */
   readonly value: number;
   readonly cap: number;
+  /** The growth reading (#377), or absent when there is none to state. */
+  readonly growth?: PeopleSkillGrowth;
 }
 
 /** A legal promotion target, already labelled for display (#324). */
@@ -49,6 +69,12 @@ export interface PeopleRosterMember {
   readonly honesty: number;
   /** 0–1, or `null` when morale isn't being tracked for this staffer. */
   readonly morale: number | null;
+  /**
+   * What that morale multiplies this person's output by (#377) — 1 is no
+   * effect. The engine has always scaled production by it and no surface ever
+   * read it, so the meter stated a level and never a consequence.
+   */
+  readonly moraleMultiplier: number | null;
   /** What they are worth right now, 1–5 — climbs as their skills grow (#353). */
   readonly grade: number;
   /**
@@ -121,4 +147,35 @@ export interface PeopleSlotRow {
 /** `$340/day` — the wage grammar shared by every card on this surface. */
 export function wageText(dailyWage: number): string {
   return `$${dailyWage.toLocaleString()}/day`;
+}
+
+/**
+ * The sentence under a skill bar (#377). Three states, one grammar, no jargon:
+ * an axis experience never moves says so outright; a climbing one names the
+ * number it is heading for; a finished one says there is nowhere left to go.
+ *
+ * The topped-out test is made on the **displayed** figures, so the sentence can
+ * never claim room above a ceiling the bar has already drawn the value at.
+ */
+export function skillGrowthText(value: number, growth: PeopleSkillGrowth): string {
+  if (!growth.grows) return "Fixed at hire — experience doesn't move this one.";
+  const hiredAt = Math.round(growth.hiredAt);
+  const ceiling = Math.round(growth.ceiling);
+  return Math.round(value) >= ceiling
+    ? `From ${hiredAt} at hire · as far as they can go.`
+    : `From ${hiredAt} at hire · can reach ${ceiling}.`;
+}
+
+/**
+ * What morale is doing to this person's work (#377) — the consequence beside
+ * the level, which is the whole reason the meter is worth drawing. Stated as a
+ * share of their work rather than a temperature word, and a person morale is
+ * doing nothing to still gets the sentence: an omitted line reads as a surface
+ * that forgot, not as "no effect".
+ */
+export function moraleEffectText(multiplier: number): string {
+  const pct = Math.round((multiplier - 1) * 100);
+  if (pct > 0) return `Morale is getting ${pct}% more work out of them.`;
+  if (pct < 0) return `Morale is costing ${-pct}% of their work.`;
+  return 'Morale is neither helping nor holding them back.';
 }

@@ -14,6 +14,19 @@ export interface MeterProps {
   tone?: ProgressTone;
   /** Forwarded to the bar's fill, so a caller can assert the fill's width. */
   fillTestID?: string;
+  /** Forwarded to the bar — a [0,1] hairline marking where the value started. */
+  mark?: number;
+  markTestID?: string;
+  /** Forwarded to the bar — the [0,1] point past which the track is unreachable. */
+  reach?: number;
+  reachTestID?: string;
+  /**
+   * One line under the bar saying what the gauge means for the thing it
+   * measures. A bar states a level; a caption states the consequence, which is
+   * the difference between a readout and a decision (issue 377).
+   */
+  caption?: string;
+  captionTestID?: string;
 }
 
 /**
@@ -26,6 +39,12 @@ export function Meter({
   readout,
   tone = 'primary',
   fillTestID,
+  mark,
+  markTestID,
+  reach,
+  reachTestID,
+  caption,
+  captionTestID,
 }: MeterProps) {
   const t = useTheme();
 
@@ -40,6 +59,12 @@ export function Meter({
     color: t.colors.textSecondary,
     fontVariant: ['tabular-nums'],
   };
+  const captionText: TextStyle = {
+    ...t.typography.caption,
+    color: t.colors.textMuted,
+    marginTop: t.spacing.xs,
+    fontVariant: ['tabular-nums'],
+  };
 
   return (
     <View>
@@ -47,7 +72,20 @@ export function Meter({
         <Text style={labelText}>{label}</Text>
         {readout != null && <Text style={readoutText}>{readout}</Text>}
       </View>
-      <ProgressBar value={value} tone={tone} fillTestID={fillTestID} />
+      <ProgressBar
+        value={value}
+        tone={tone}
+        fillTestID={fillTestID}
+        mark={mark}
+        markTestID={markTestID}
+        reach={reach}
+        reachTestID={reachTestID}
+      />
+      {caption != null && (
+        <Text style={captionText} testID={captionTestID}>
+          {caption}
+        </Text>
+      )}
     </View>
   );
 }

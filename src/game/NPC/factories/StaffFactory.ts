@@ -168,6 +168,28 @@ function rollPerHireCap(
 }
 
 /**
+ * The highest this **particular hire** can ever reach on one axis (#377) — the
+ * public reading of the per-hire cap `effectiveSkillValue` already clamps to.
+ * Parallel in shape to `effectiveSkillValue` so a caller holding a `Staff` and
+ * the taxonomy can ask for either number the same way.
+ *
+ * It exists on the barrel because a surface cannot derive it: the headroom is
+ * rolled from `masterSeed` + the staff id, and re-rolling it at a call site is
+ * how a card starts naming a ceiling the engine does not clamp to. No `def`
+ * (an axis the taxonomy does not name) ⇒ where they are is where they stop.
+ */
+export function perHireSkillCap(
+  staff: Staff,
+  skillId: string,
+  def: StaffSkill | undefined,
+  masterSeed: number,
+): number {
+  const base = staff.skills[skillId] ?? 0;
+  if (!def) return base;
+  return rollPerHireCap(masterSeed, staff.id, skillId, base, def);
+}
+
+/**
  * Channel-desk M7 (#294) — Model B effective skill on one axis:
  * `clamp(base + growth_rate × counter, base, perHireCap)`. With zero counters
  * (a fresh hire) effective === base, so the M2–M6 gates behave identically at

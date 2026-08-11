@@ -35,8 +35,8 @@ stays a locked design; do not re-grill it.
 **Phase 10 — D1 — is RE-SCOPED AND FILED as of 2026-08-08.** Its row's *"largely absorbed by 5c;
 re-scope when reached"* was mostly right: the subtraction against the shipped app killed Growth's
 D1 scope entirely and left People with two items and Finance with three. Five issues filed,
-**#374–#378** (table below). The next `/next` on this phase BUILDS **#377** (People — skill
-growth made visible, and what morale is costing).
+**#374–#378** (table below). The next `/next` on this phase BUILDS **#378** (closing sweep —
+delete the dead placeholder tab surface + the stale comments).
 
 ### Phase 10 — D1 the three dashboards (re-scoped + filed 2026-08-08)
 
@@ -45,7 +45,7 @@ growth made visible, and what morale is costing).
 | ~~#374~~ | ~~the P&L relieves inventory at the sale — Net Income becomes what the store *earned*~~ **BUILT 2026-08-09** | — |
 | ~~#375~~ | ~~**tracer** — `ProfitCenter` axis on the ledger + `getDepartmentPnL` + the Finance "Where the Gross Came From" panel~~ **BUILT 2026-08-09** | #374 |
 | ~~#376~~ | ~~the P&L proper — revenue/expenses/net over time + the gross→overhead→net ladder~~ **BUILT 2026-08-11** | #375 |
-| #377 | People — skill growth made visible, and what morale is costing | — |
+| ~~#377~~ | ~~People — skill growth made visible, and what morale is costing~~ **BUILT 2026-08-11** | — |
 | #378 | closing sweep — delete the dead placeholder tab surface + the stale comments | — |
 | #380 | Cash on Hand + "What the Store Is Worth" — automated spending stops reading as decay (filed 2026-08-09 from a director question) | #376 for the Finance half only |
 
@@ -129,6 +129,29 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **The skill track keeps a SHARED 0…cap axis; the ceiling dims the tail, it does not rescale
+  the bar** (#377). Rescaling each person's bar to their own limit — the literal reading of the
+  issue's "the per-hire cap as the end of the track" — makes a rookie capped at 30 sitting at 30
+  draw the same full bar as a veteran capped at 95 sitting at 95, and the roster panel exists to
+  compare people down the page. `ProgressBar.mark` (hairline at the hire value) + `.reach`
+  (scrim past the ceiling) put all three numbers on one shared axis. Do not "finish" this by
+  rescaling, and do not fold `mark`/`reach` into the existing `tick` (a second *segment*, a
+  different reading — they are ignored in `tick` mode).
+- **A static axis draws NO growth furniture, and most axes are static** (#377). `grows` is
+  `growth_counter != null`; only `pricing`, `t_o_closing` and `condition_reading` carry one in
+  `data/staff-skills.json`, and all three are manager axes — so a Tier-1 salesperson's card is
+  honestly all "Fixed at hire" and the growth reading first appears on a UCM. That is the data
+  as filed (magnitudes are S14/#286), not a narrowed slice, and a card with no marks on it is
+  not a bug.
+- **The per-hire ceiling is an ENGINE read and must never be re-derived at a call site** (#377).
+  The headroom rolls from `masterSeed` + the staff id inside `StaffFactory`; a surface computing
+  its own would name a limit the engine does not clamp to. `NPC.perHireSkillCap` →
+  `StaffOrg.getSkillGrowth(staffId)` is the one path. Nothing is stored, so a save round trip
+  re-derives the same ceiling and **`WORLD_SNAPSHOT_VERSION` stays 21** — no migration.
+- **The morale sentence is stated at neutral too, deliberately** (#377). An omitted line reads
+  as a surface that forgot, not as "no effect", and the player cannot tell those apart by
+  looking. Nothing calibrated moved and nothing could — both halves of #377 are reads of values
+  the engine already computes.
 - **`BarChart` clamps negatives to zero and `LineChart` does not — pick by the data's sign**
   (#376). `BarChart`'s `Math.max(0, d.value)` is deliberate; a signed series charted on it
   reads as break-even. Anything that can go below zero (a P&L, a delta, an equity position)
@@ -953,6 +976,53 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT #377** (People — skill growth made visible, and what morale is costing).
+  Both halves were already modelled in the engine and read by nobody. Model B (#294) holds
+  **three** numbers per axis — the roll at hire, the grown value, and a per-hire ceiling — and
+  `PeopleTabContainer` drew the middle one alone, so a rookie climbing and a veteran who had
+  topped out rendered as the same bar. `staffMorale.getMoraleMultiplier` scales what a person
+  produces on every dispatch (`createWorld.ts:977`, `StaffDispatch.ts:508/522`) and **no UI read
+  it at all**, so the morale meter stated a level and never a consequence.
+  **The ceiling is an engine read, because a surface cannot derive it.** The per-hire headroom is
+  rolled from `masterSeed` + the staff id inside `StaffFactory`, so a card computing its own
+  would name a limit the engine does not clamp to. `NPC.perHireSkillCap` is that clamp exposed on
+  its own (parallel in shape to `effectiveSkillValue`), and `StaffOrg.getSkillGrowth(staffId)` is
+  the one read a surface makes: `{ skillId, hiredAt, current, ceiling, cap, grows }` per axis,
+  sorted, throwing off the roster. Nothing is stored, so a save round trip re-derives the same
+  ceiling and there is **no migration** — `WORLD_SNAPSHOT_VERSION` stays 21.
+  **The axis stays SHARED and the ceiling dims the tail — it does NOT rescale the bar.** The
+  issue's shape line said "the per-hire cap as the end of the track", which read literally means
+  each person's bar rescaled to their own limit. That was rejected on inspection: a rookie capped
+  at 30 sitting at 30 would draw the same full bar as a veteran capped at 95 sitting at 95, and a
+  roster panel exists to compare people down the page. Instead the track keeps its 0…cap scale,
+  `ProgressBar.mark` puts a hairline where they were hired, and `ProgressBar.reach` scrims
+  everything past their ceiling. All three numbers are on the bar and two people are still
+  comparable. Do not "finish" this by rescaling.
+  **A static axis draws none of the furniture.** `grows` is `growth_counter != null` and is the
+  whole test; an axis experience never moves gets no start mark, no ceiling, and the sentence
+  *"Fixed at hire — experience doesn't move this one."* Drawing a marked-up track on it would
+  imply a bar that will fill. Under the shipped `data/staff-skills.json` that is **most** axes:
+  only `pricing`, `t_o_closing` and `condition_reading` carry a `growth_counter`, and all three
+  are manager axes — so a Tier-1 salesperson's card is honestly all-static, and the growth
+  reading first appears on a UCM. That is the data as filed (magnitudes are S14/#286), not
+  something this slice narrowed.
+  **The morale sentence is beside the money, never folded into it**, and it is a share of their
+  work rather than a temperature word: *"Morale is costing 22% of their work."* /
+  *"Morale is getting 17% more work out of them."* / at neutral, *"Morale is neither helping nor
+  holding them back."* — the neutral case **gets the line**, because an omitted sentence reads as
+  a surface that forgot, not as "no effect", and the player cannot tell those apart by looking.
+  **A candidate card carries no growth reading, deliberately.** Nobody has started yet, so there
+  is no distance to draw; "from 44 at hire" about somebody who has not been hired is a claim
+  about a career that has not happened. `candidateSkillReads` and `rosterSkillReads` are two
+  functions for that reason.
+  **No training lever was added** (`PeopleTab.tsx:288-294`'s refusal stands) and **no calibration
+  number could move** — both halves are reads of values the engine already computes.
+  Verified on the live web drive off the T2 fixture: the UCM's card reads
+  `From 71 at hire · can reach 94.` on condition reading, `From 69 at hire · can reach 88.` on
+  pricing, `From 81 at hire · can reach 94.` on T.O. closing, three `Fixed at hire` axes beside
+  them, and the morale line. Marks land at 71.2% / 69.1% / 81.4% with the scrim starting at
+  94.2% / 88.5% / 93.9%. `npm run typecheck` clean, `npm test` 245 suites / 3088 tests green.
+
 - 2026-08-11 — **BUILT #376** (the P&L proper — the statement over time, and the gross→net
   ladder). The room charted *gross* and printed Net Income as a bare number: it could say what
   came in by revenue line and what went out by ledger label, and could not show the statement
@@ -1054,69 +1124,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   "Body Shop" is 9, and a test pins every center's label at ≤13 so a rename cannot ship
   half-read.
 
-- 2026-08-09 — **BUILT #374** (the P&L relieves inventory at the sale). `Economy.getPnL` was
-  pure cash-basis, so a month spent stocking reported a loss the store did not make — at Tier 1,
-  where a six-space lot is bought out in two or three days, that was most of the number. It is
-  accrual now, and the model was already half-built: #255's `inventoryAcquisition` category
-  existed precisely to say "cash converted into stock, NOT operating spend" and the P&L had
-  never acted on the tag.
-  **`inventoryAcquisition` entries drop out of `getPnL` WHOLE — totals and `entries` both.**
-  The criterion only named the total; dropping them from `entries` as well is what makes the
-  room reconcile, because `financeModel.groupExpenses` builds the "Where the Money Went" chart
-  off `pnl.entries`. Leaving them in would have listed an "Auction purchase" the Net Income
-  above it does not count — two numbers on one screen that cannot be added up, which is the
-  exact defect this read exists to close. `snapshot().ledger` is still the complete record;
-  `getPnL` is a **read** of it, and one #255 test was moved onto the ledger to say so.
-  **`postCostOfSale(amount, label)` is the new concept and it publishes NOTHING.**
-  `economy:expense_posted` means cash moved — Telemetry's `cashCurve` is its only consumer and
-  is a cash curve — so a non-cash entry firing it would silently corrupt the one thing that
-  event exists for. A P&L reader wants `getPnL`. Posting the relief through `postExpense`
-  instead would have debited the store twice for one car.
-  **`Inventory` is the only relieving module and it relieves `purchasePrice` ONLY**, from a
-  private `relieveCostOfSale` called at the two doors a unit leaves by (`sellVehicle`,
-  `wholesaleOut` — so both wholesale reasons are covered by the same line). Recon, inspection
-  and carrying are already operating spend on the days they were incurred, so relieving
-  `costBasisOf` would bill recon twice. **A trade-in and a #296 seed unit are relieved too**
-  even though their `purchasePrice` never cost cash: what a sold car cost the store is what the
-  store gave up to have it, bank account or not — the same statement `frontGross` has always
-  made.
-  **The label is ONE constant** (`Cost of Vehicles Sold`), not per-vehicle: the expense chart
-  groups by label and a label per car would shatter the biggest line on a dealership's
-  statement into slivers that all fold into "Other".
-  **No envelope bump and no migration** — `nonCash` is optional inside the module's own blob, so
-  `EconomySnapshot.schemaVersion` stays 1 and `WORLD_SNAPSHOT_VERSION` stays 21. A pre-#374 save
-  is read under the new rule and **never back-filled**: its historical months read more
-  profitable than they did on the day they closed, because their acquisitions have no matching
-  relief. That is the accepted artifact the issue named, not a bug to fix later.
-  **Nothing calibrated moved and nothing could** — `getPnL`'s four consumers are all Finance UI,
-  `scripts/` has zero hits for it, every monitor and gate face branches on `economy.cash`.
-  `#180` still reads 39.3% / 51.7%, closes=290. **239 suites / 3033 tests, typecheck clean.**
-  Web-verified end to end on the day-35 `Harness Bot's Lot` slot — a legacy pre-#374 save, which
-  also proves the no-migration restore. Wholesaling a unit the confirm sheet said the store had
-  **$14,026** in posted a **$12,900** "Cost of Vehicles Sold" line: the acquisition price alone,
-  so recon is demonstrably not double-charged. The day's Net Income of **−$1,779** reconciles
-  line for line ($11,922 proceeds − 12,900 − 241 − 204 − 155 − 126 − 75). No "Auction purchase"
-  row remains anywhere on the breakdown.
-  **Two follow-ups were FILED, not folded in.** **#379** — found while tracing the trade path:
-  `closeDeal` posts the full `agreedPrice` to cash (`DealEngine.ts:205`) while `StaffDispatch`
-  builds the structure net of the trade (`:736`/`:744`) and `acquireFromTrade` posts no expense,
-  so the store banks `tradeEquity` it was never paid **and** keeps the trade car free; the lien
-  `payoff` never leaves the bank either. `Inventory/CLAUDE.md`'s claim that the allowance "is
-  offset against deal cash in the close structure" is what made it invisible — the offset does
-  not exist, and `DealEngineDeps.economy` is `Pick<Economy,'postRevenue'>` so the module cannot
-  debit even in principle. At a **42.1% trade rate** over 290 closes this is a standing cash
-  faucet, so the fix **will** move the #286 balance bands and is filed to say so rather than
-  measure it away. Deliberately not folded into #374, which promised to move no cash. The P&L
-  is already right on a trade deal and stays right; only the cash balance is wrong.
-  **#380** — the director's question this session: automated buying (UCM auto-source #293,
-  construction #359, wire billing #178) drops the Home HUD's one headline number without the
-  player touching anything, which reads as decay. #374 taught the *engine* that buying a car is
-  a conversion; the HUD still doesn't know. Filed as **Cash on Hand + "What the Store Is
-  Worth"** (`cash + inventory at book`), cash staying the primary figure because it is what
-  bankruptcy and every gate face branch on. Book not market — a worth figure that drifts with
-  the used-car market would fall on a day the player did nothing, which is the exact
-  disconnection it exists to remove. Facility and floorplan are **not excluded**: whether a
-  built bay is a sellable asset has never been asked, so the figure is labeled for exactly what
-  it sums until that ruling exists. The one thing for the director to overrule is Home-vs-
-  Finance-only.
-  Next: **BUILD #375** (the `ProfitCenter` tracer), whose only dep was #374.
