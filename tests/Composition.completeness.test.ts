@@ -1,7 +1,15 @@
+import fs from 'fs';
+import path from 'path';
+import type { ReactNode } from 'react';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld, type World } from '../src/createWorld';
 import type { EventName } from '../src/game/EventBus';
 import type { CharacterProfile } from '../src/game/CareerProgression';
+import {
+  composeShellTabs,
+  loadNavTabs,
+  type ShellTabKey,
+} from '../src/ui/AppShell';
 
 // #185 — Composition-completeness guard.
 //
@@ -182,5 +190,71 @@ describe('#185 — composition-completeness guard over a real createWorld', () =
     expect(world.competitorMarket.getCompetitors().length).toBeGreaterThan(0);
     expect(world.staffOrg).toBeDefined();
     expect(world.dayLoop).toBeDefined();
+  });
+});
+
+// #378 — the UI half of the same guard. `createWorld` completeness says every
+// module is wired; this says every nav tab is backed by a room that was really
+// built. The old render-time fallback answered "no room composed" with a
+// "coming in a later slice" card, which is how a dead placeholder outlived the
+// three surfaces that replaced it.
+
+const SRC_ROOT = path.join(__dirname, '..', 'src');
+
+function sourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...sourceFiles(full));
+    else if (/\.tsx?$/.test(entry.name)) out.push(full);
+  }
+  return out;
+}
+
+describe('#378 — no placeholder tab surface survives anywhere in the tree', () => {
+  it('no placeholder tab surface exists', () => {
+    expect(fs.existsSync(path.join(SRC_ROOT, 'ui', 'StrategicTab'))).toBe(false);
+    const offenders = sourceFiles(SRC_ROOT).filter((f) =>
+      /StrategicTab|coming in a later slice/i.test(fs.readFileSync(f, 'utf8')),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('a missing tab is a composition error, not a stub', () => {
+    const defs = loadNavTabs();
+    const full = Object.fromEntries(
+      defs.map((d) => [d.key, `${d.label} ROOM`]),
+    ) as Record<ShellTabKey, ReactNode>;
+
+    // The composed case binds each def to its room, in canonical order.
+    expect(composeShellTabs(defs, full).map((t) => t.content)).toEqual(
+      defs.map((d) => `${d.label} ROOM`),
+    );
+
+    // Drop any one room and composition throws — it does NOT substitute a
+    // placeholder at render time.
+    for (const def of defs) {
+      const missing = { ...full, [def.key]: undefined } as Record<
+        ShellTabKey,
+        ReactNode
+      >;
+      expect(() => composeShellTabs(defs, missing)).toThrow(
+        new RegExp(`"${def.key}" has no composed room`),
+      );
+    }
+  });
+
+  it('no source claims the three rooms are placeholders', () => {
+    // The false claim always reads "People/Finance/Growth ... placeholder".
+    // Whitespace is normalized first because both offenders #378 deleted wrapped
+    // the sentence across two comment lines.
+    const claim = /(People|Finance|Growth)[^\n]{0,80}?(placeholder|stub|coming soon|not yet built)/i;
+    const offenders = [
+      ...sourceFiles(SRC_ROOT),
+      path.join(__dirname, '..', 'data', 'nav-tabs.json'),
+    ].filter((f) =>
+      claim.test(fs.readFileSync(f, 'utf8').replace(/\s+/g, ' ')),
+    );
+    expect(offenders).toEqual([]);
   });
 });

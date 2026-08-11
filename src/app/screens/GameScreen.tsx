@@ -12,6 +12,7 @@ import { projectFniPostures } from '../../game/DealEngine';
 import {
   AppShell,
   loadNavTabs,
+  composeShellTabs,
   type ShellTab,
   type ShellTabKey,
   type ShellStat,
@@ -27,7 +28,6 @@ import { PeopleTabContainer } from './PeopleTabContainer';
 import { GrowthTabContainer } from './GrowthTabContainer';
 import { FinanceTabContainer } from './FinanceTabContainer';
 import { RecoveryBanner } from '../../ui/NarrativeBeat';
-import { StrategicTab } from '../../ui/StrategicTab';
 import {
   FloorDashboard,
   type FloorDashboardModel,
@@ -403,9 +403,8 @@ export function GameScreen({
   });
   // The fixed 5-tab IA (#215). All five tabs are ALWAYS present — navigation
   // is never gated by tier; progression is altitude rising inside a surface,
-  // not tabs appearing/disappearing (spine §2). Home + Operations back live
-  // surfaces today; People/Finance/Growth show a placeholder until their own
-  // per-surface rebrand slice lands. Per-tab content is selected by key.
+  // not tabs appearing/disappearing (spine §2). Every one of the five backs a
+  // real, built room (5c layout rebuild #346–#351). Content is selected by key.
   const tabContent: Record<ShellTabKey, React.ReactNode> = {
     home: (
       <HomeTab
@@ -457,15 +456,10 @@ export function GameScreen({
       />
     ),
   };
-  const shellTabs: ShellTab[] = loadNavTabs().map((tab) => ({
-    key: tab.key,
-    label: tab.label,
-    content:
-      tabContent[tab.key] ??
-      (tab.tagline ? (
-        <StrategicTab title={tab.label} tagline={tab.tagline} />
-      ) : null),
-  }));
+  // #378: a tab with no composed room throws here. There is no render-time stub
+  // to fall back to any more — that fallback is what kept a dead surface alive
+  // long after all five rooms were built.
+  const shellTabs: ShellTab[] = composeShellTabs(loadNavTabs(), tabContent);
 
   if (loopState.phase === 'FLOOR_OPEN' && floorModel) {
     // The live floor is a full-screen MODE entered via START DAY, not a

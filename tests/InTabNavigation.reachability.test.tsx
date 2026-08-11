@@ -89,6 +89,29 @@ describe('#348 in-tab navigation — the shell survives walking into a room', ()
     expect(screen.getByTestId('app-shell-tabbar')).toBeTruthy();
   });
 
+  it('all five tabs render their room', async () => {
+    // #378 — the anti-orphan half of the sweep. Every tab in the fixed IA opens
+    // a surface that was really built; none of them lands on a "coming in a
+    // later slice" card. Each assertion names a testID only that room renders.
+    const screen = render(
+      <DealershipApp driverFactory={createInMemoryDriverFactory()} />,
+    );
+    await startNewCareer(screen);
+
+    const rooms: ReadonlyArray<[string, string]> = [
+      ['Home', 'home-dashboard'],
+      ['Operations', 'department-dock'],
+      ['People', 'people-region-roster'],
+      ['Finance', 'finance-tab'],
+      ['Growth', 'growth-tab'],
+    ];
+    for (const [tab, testID] of rooms) {
+      fireEvent.press(screen.getByLabelText(tab));
+      await waitFor(() => expect(screen.getByTestId(testID)).toBeTruthy());
+      expect(screen.queryByText(/coming in a later slice/i)).toBeNull();
+    }
+  });
+
   it('renders the live floor as a full-screen mode with no tab bar', async () => {
     const screen = render(
       <DealershipApp driverFactory={createInMemoryDriverFactory()} />,

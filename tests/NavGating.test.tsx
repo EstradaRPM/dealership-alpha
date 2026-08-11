@@ -5,14 +5,13 @@ import { readAppCompositionSource } from './helpers/appComposition';
 import { Text } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { AppShell, loadNavTabs, type ShellTab } from '../src/ui/AppShell';
-import { StrategicTab } from '../src/ui/StrategicTab';
 
 // The 5-tab IA is FIXED — navigation is never gated by tier (#226 reverted the
 // progressive tab-unlock that was never an agreed mechanic). All five tabs are
 // always present; progression is altitude rising inside a surface, not tabs
-// appearing/disappearing. Finance is the last placeholder (#351); Home,
-// Operations, People and Growth all back real surfaces. This file guards the
-// static nav + the active-tab fix.
+// appearing/disappearing. All five back real rooms as of the 5c rebuild, and
+// #378 deleted the placeholder surface the last three used to fall back to.
+// This file guards the static nav + the active-tab fix.
 
 describe('the fixed 5-tab IA — always present, never tier-gated', () => {
   it('is exactly the canonical five, in order, regardless of tier', () => {
@@ -33,23 +32,15 @@ describe('the fixed 5-tab IA — always present, never tier-gated', () => {
     expect(raw).not.toMatch(/unlockTier|revealTier/);
   });
 
-  it('every remaining placeholder tab carries the tagline it needs', () => {
-    // #349 built Growth, so Finance is the last tab still falling back to
-    // StrategicTab. The tagline is only load-bearing for a placeholder.
-    for (const def of loadNavTabs()) {
-      if (def.key === 'finance') expect(def.tagline).toBeTruthy();
-    }
-  });
-});
-
-describe('StrategicTab — placeholder for an unbuilt strategic surface', () => {
-  it('renders the title + tagline with no tier/unlock language', () => {
-    const { getByTestId, getByText, queryByText } = render(
-      <StrategicTab title="People" tagline="Hiring, training, morale." />,
+  it('carries no placeholder tagline field — the surface it fed is gone', () => {
+    // #378: `tagline` existed only to caption the StrategicTab stub. With the
+    // stub deleted the field has no reader, and dead data is exactly how a
+    // placeholder grows back.
+    const raw = fs.readFileSync(
+      path.join(__dirname, '..', 'data', 'nav-tabs.json'),
+      'utf8',
     );
-    expect(getByTestId('strategic-tab-people')).toBeTruthy();
-    expect(getByText('Hiring, training, morale.')).toBeTruthy();
-    expect(queryByText(/lock|Lock|Tier|tier/)).toBeNull();
+    expect(raw).not.toMatch(/tagline/);
   });
 });
 
@@ -108,7 +99,9 @@ describe('App.tsx wiring', () => {
     const src = readAppCompositionSource();
     expect(src).toMatch(/loadNavTabs\(\)/);
     expect(src).not.toMatch(/resolveNavTabs/);
-    expect(src).toMatch(/<StrategicTab/);
+    // #378: the nav defs are bound to composed rooms, not to a render-time
+    // placeholder fallback.
+    expect(src).toMatch(/composeShellTabs\(loadNavTabs\(\), tabContent\)/);
     // #348: the active tab moved from a lifted useState into TabStacks, which
     // owns the tab AND that tab's stack position.
     expect(src).toMatch(/activeTabKey=\{tabs\.activeTab\}/);

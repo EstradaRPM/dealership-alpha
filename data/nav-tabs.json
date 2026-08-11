@@ -1,22 +1,10 @@
 {
-  "_doc": "The canonical, fixed 5-tab IA (fork 1, re-validated 2026-06-10). Always present — navigation is NOT gated by tier; progression is altitude rising INSIDE each surface (spine §2), never tabs appearing/disappearing. All five back live surfaces as of the 5c layout rebuild (#346-#351) — no tab is a placeholder. tagline = the one-line description of what each strategic surface is for.",
+  "_doc": "The canonical, fixed 5-tab IA (fork 1, re-validated 2026-06-10). Always present — navigation is NOT gated by tier; progression is altitude rising INSIDE each surface (spine §2), never tabs appearing/disappearing. All five back live surfaces as of the 5c layout rebuild (#346-#351); #378 deleted the last placeholder surface, so a tab with no composed room is now a composition error rather than a stub.",
   "tabs": [
     { "key": "home", "label": "Home" },
     { "key": "operations", "label": "Operations" },
-    {
-      "key": "people",
-      "label": "People",
-      "tagline": "Hiring, talent ceilings, training, morale, and your org chart."
-    },
-    {
-      "key": "finance",
-      "label": "Finance",
-      "tagline": "Where the money went — the numbers that judge the period."
-    },
-    {
-      "key": "growth",
-      "label": "Growth",
-      "tagline": "Capex, marketing, franchise courtship, and the path to a dealer group."
-    }
+    { "key": "people", "label": "People" },
+    { "key": "finance", "label": "Finance" },
+    { "key": "growth", "label": "Growth" }
   ]
 }
