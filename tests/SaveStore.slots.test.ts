@@ -267,3 +267,65 @@ describe('MultiSlotSaveStore mid-day checkpoint (#109)', () => {
     expect(await store.readCheckpoint()).toBeNull();
   });
 });
+
+/**
+ * The weekly-snapshot window is the slot's third cell. It was minted in the
+ * composition root, so `deleteSlot` never saw it: on a live web save, deleting
+ * a slot left its `snapshot:<id>` record in IndexedDB with nothing able to
+ * address it again (found driving the delete on 2026-08-11).
+ */
+describe('MultiSlotSaveStore weekly snapshots', () => {
+  it('addresses the active slot, and each slot keeps its own window', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    const a = await store.createSlot('Alice');
+    const b = await store.createSlot('Bob');
+
+    await store.selectSlot(a.id);
+    const aSnaps = await store.snapshotStore();
+    await aSnaps?.saveSnapshot({ who: 'alice' }, { day: 7, tier: 1 });
+
+    await store.selectSlot(b.id);
+    expect(await (await store.snapshotStore())?.listSnapshots()).toEqual([]);
+
+    await store.selectSlot(a.id);
+    expect(
+      (await (await store.snapshotStore())?.listSnapshots())?.map((s) => s.state),
+    ).toEqual([{ who: 'alice' }]);
+  });
+
+  it('is null when no slot is selected', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    expect(await store.snapshotStore()).toBeNull();
+  });
+
+  it('deleteSlot wipes the snapshot window too — the whole slot goes', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    const a = await store.createSlot('Alice');
+    await (await store.snapshotStore())?.saveSnapshot(
+      { doomed: true },
+      { day: 7, tier: 1 },
+    );
+    await store.deleteSlot(a.id);
+
+    const recreated = await store.createSlot('Alice2');
+    await store.selectSlot(recreated.id);
+    expect(await (await store.snapshotStore())?.listSnapshots()).toEqual([]);
+  });
+
+  it('a sibling slot keeps its snapshots when another is deleted', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    const a = await store.createSlot('Alice');
+    const b = await store.createSlot('Bob');
+
+    await store.selectSlot(a.id);
+    await (await store.snapshotStore())?.saveSnapshot({ keep: true }, { day: 7, tier: 1 });
+    await store.selectSlot(b.id);
+    await (await store.snapshotStore())?.saveSnapshot({ doomed: true }, { day: 9, tier: 1 });
+
+    await store.deleteSlot(b.id);
+    await store.selectSlot(a.id);
+    expect(
+      (await (await store.snapshotStore())?.listSnapshots())?.map((s) => s.state),
+    ).toEqual([{ keep: true }]);
+  });
+});

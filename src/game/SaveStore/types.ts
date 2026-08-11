@@ -102,6 +102,15 @@ export interface MultiSlotSaveStore {
   readCheckpoint(): Promise<MidDayCheckpoint | null>;
   /** Clear the active slot's mid-day checkpoint (called on day-complete). */
   clearCheckpoint(): Promise<void>;
+  /**
+   * The active slot's weekly-snapshot store, or null if no slot is selected.
+   *
+   * It lives here rather than in the composition root because a slot's cells
+   * are one key space and `deleteSlot` has to be able to wipe all of it — a
+   * `snapshot:<id>` cell minted outside this module outlived the slot it
+   * belonged to, and nothing could ever reach it again.
+   */
+  snapshotStore(): Promise<SnapshotStore | null>;
 }
 
 export interface LegacyEntry {

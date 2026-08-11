@@ -6,6 +6,64 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT #381** (phase 11 tracer: the clock takes a bigger bite). The clock had
+  exactly one verb — `nextDay()`, one day at a time. It now has a ladder: the player picks how
+  big a bite of the calendar to run before they look again, and the size of the bite is the bet.
+  **ONE rule opens it — you can skip ahead exactly as far as your people can cover for you.** Day
+  always; Week when the used desk covers **both** discount desking and trade approval; Month when
+  a GM is staffed. The door and the capability are the same fact, so nothing new had to be taught.
+  **The doors are in `data/clock-bites.json`, the predicates in code**, and `resolveBiteCoverage`
+  derives coverage from `buildManagerStatus` rather than reading the act-gate predicates a second
+  time — the #371 lesson, where a `hasDeskManager` boolean living in code had to be deleted
+  because it satisfied every staff door at once. A second read here is how the button and the desk
+  start disagreeing about who is covering what.
+  **`src/game/ClockBite/` imports no sibling and takes no EventBus.** `runBite` is a pure "run N
+  days, stop when asked" primitive over two injected closures, which is what lets its unit tests
+  drive a week with no roster at all. It also does **not** check the door — `availableBites` is
+  the door and the picker is what obeys it.
+  **`checkHalt` is asked AFTER each day, so the halting day counts** — it happened. There is no
+  queued remainder and no auto-resume, by construction: the module holds no state between calls.
+  Halts latch at the composition root (an escalation, insolvency, a tier-gate verdict) because
+  that is the only layer that knows what "a moment the player is needed" looks like in this app.
+  **`tierGate:month_verdict` fires unconditionally every month**, so a bite crossing a month
+  boundary ALWAYS halts there. That is the design, not an oversight — the month's grade is the
+  moment you must look, and it is what syncs the month bite to the calendar after its first run.
+  **The Reveal aggregates to the bite: one more producer, not a second mode.** Reactions pool
+  across every day and rank in the same single `rankDrama` pool (#373 already proved the grammar
+  spans grains). Per-day beats are captured **as each day closes**, because the daily refs clear
+  before the next `nextDay()` — a runner reading only the final day would have swallowed six days
+  of wins, walk-offs, crowns and month verdicts. A one-day bite delegates straight to
+  `buildReveal`, morning bet included, so the day is byte-identically the day it always was.
+  **The day bite is the LIVE floor and routes to `handleNextDay`, not to the runner.** Running the
+  day headless would delete the floor view and its pause/speed control, which is the opposite of
+  what B4 extends. The picker therefore draws only the bites *above* the day, pinned above the
+  hero CTA in the same footer — one control, one place. A locked bite **states its door in plain
+  language** rather than greying out.
+  **The bite skips the per-day modal and the per-day autosave, and does ONE closing write.** Seven
+  recaps nobody dismissed, and seven `void async` writes racing for one slot, are both wrong;
+  `biteCrossedSnapshotDayRef` carries whether the run owes a history snapshot so the 7-day cadence
+  is not silently dropped. The cash delta is the run's, accumulated across the days — a week's
+  delta is the week's, not its last day's.
+  **`matchReaction` now takes the window it covers, and that defect was found on the drive, not by
+  a test.** The pooled feed printed `$47,366 gross today` for a whole week — a number the player
+  can check and find wrong, which is the one thing this feed cannot do. It reads `gross over 7
+  days` now.
+  **Nothing calibrated moved and nothing could** — a bite is a "how many times", not a different
+  day. `#180` still reads 35.8% positive / 54.3% apathetic, closes=274, `costOverAsk` 1.026.
+  Nothing is persisted (the picker's default is the day, every time — a remembered bite is a
+  standing instruction to skip), so `WORLD_SNAPSHOT_VERSION` stays **21** with no migration.
+  Determinism is asserted at the seeded-controller scope, never as a full `snapshotWorld` re-run:
+  seven hand-driven days and seven runner-driven days produce identical FloorSim surfaces, and the
+  controller lands MANAGERIAL both on a complete run and on a halted one.
+  `npm run typecheck` clean, `npm test` **255 suites / 3142 tests** green. Verified on the web
+  drive (T2 dev slot, covered desk): two full weeks ran, each ending in ONE Reveal — *"7 days run
+  — you had what the crowd wanted: 6 of 8 stuck"*, *"$24,834 gross over 7 days"* — with crowns and
+  walk-offs drawn from across the days; the month stayed locked stating *"You haven't hired a
+  general manager to run the store"*; and a reload resumed on the run's single closing save with
+  the week's cash delta intact. The `max of 3 slots reached` console error is the documented
+  dev-slot blocker below, not this slice.
+  Next: **BUILD #382**.
+
 - 2026-08-11 — **SLICED phase 11 (B4 drive-the-clock) into #381–#385, and RULED the bite-unlock
   schedule** — the engagement spine's "grain/clock unlock schedule" STILL-OPEN item, settled at
   the slice gate rather than during the build because the schedule had to be encoded into the

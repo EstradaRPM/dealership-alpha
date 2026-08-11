@@ -11,7 +11,7 @@ import { useTheme } from '../theme';
 import { GradientSurface } from './Gradient';
 import { Icon, type IconName } from './Icon';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'md' | 'hero';
 
 export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
@@ -38,9 +38,10 @@ export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> 
 /**
  * Themed pressable. `primary` is a glossy saturated-blue gradient CTA carrying a
  * near-white label + colored glow, `secondary` a dim-blue gradient companion
- * with a raised bevel, `ghost` an outline-only action. `size="hero"` swells the
- * primary CTA into the screen's headline verb. Disabled state dims the whole
- * control. Pure presentation — the caller owns `onPress` semantics.
+ * with a raised bevel, `ghost` an outline-only action, `danger` the same glossy
+ * body in the destructive red role (the verb that deletes something). `size="hero"`
+ * swells the primary CTA into the screen's headline verb. Disabled state dims the
+ * whole control. Pure presentation — the caller owns `onPress` semantics.
  */
 export function Button({
   label,
@@ -79,18 +80,27 @@ export function Button({
   }
 
   const isPrimary = variant === 'primary';
+  const isDanger = variant === 'danger';
   const isHero = size === 'hero';
   const radius = isHero ? t.radius.lg : t.radius.md;
+  // The gradient body and the solid fallback under it are the same role, so a
+  // variant is one decision (which fill), not two that can disagree.
+  const fillRole = isDanger ? 'danger' : isPrimary ? 'primary' : 'primaryDim';
+  const fillColor = isDanger
+    ? t.colors.danger
+    : isPrimary
+      ? t.colors.primary
+      : t.colors.primaryDim;
 
   // Outer frame: solid fallback fill (so the bevel/glow has a shape to cast) +
-  // depth. Primary glows in its own accent (a fat `glowHero` halo at hero
-  // scale); secondary takes the raised bevel.
+  // depth. Primary and danger glow in their own accent (a fat `glowHero` halo at
+  // hero scale); secondary takes the raised bevel.
   const frame: ViewStyle = {
     borderRadius: radius,
-    backgroundColor: isPrimary ? t.colors.primary : t.colors.primaryDim,
+    backgroundColor: fillColor,
     opacity: disabled ? 0.45 : 1,
-    ...(isPrimary
-      ? { ...(isHero ? t.elevation.glowHero : t.elevation.glow), shadowColor: t.colors.primary }
+    ...(isPrimary || isDanger
+      ? { ...(isHero ? t.elevation.glowHero : t.elevation.glow), shadowColor: fillColor }
       : t.elevation.raised),
   };
   // Faked under-glow: a translucent cyan bloom bleeding below + beside the frame
@@ -134,7 +144,7 @@ export function Button({
       {isPrimary && isHero ? (
         <GradientSurface gradient="primaryGlow" pointerEvents="none" style={glow} />
       ) : null}
-      <GradientSurface gradient={isPrimary ? 'primary' : 'primaryDim'} style={fill}>
+      <GradientSurface gradient={fillRole} style={fill}>
         <GradientSurface
           gradient="gloss"
           start={{ x: 0, y: 0 }}

@@ -1,4 +1,5 @@
 import { createSaveStore } from './SaveStore';
+import { createSnapshotStore } from './SnapshotStore';
 import type {
   DriverFactory,
   MidDayCheckpoint,
@@ -29,6 +30,14 @@ function slotKey(id: string): string {
 // independent across slots (each id → its own driver cell).
 function checkpointKey(id: string): string {
   return `checkpoint:${id}`;
+}
+
+// The slot's weekly-snapshot window, also its own cell. Every per-slot key is
+// minted here so `deleteSlot` can wipe the whole of a slot: this one used to be
+// built in the composition root, and the cells it left behind survived the slot
+// forever with nothing able to address them again.
+function snapshotKey(id: string): string {
+  return `snapshot:${id}`;
 }
 
 export interface MultiSlotOptions {
@@ -101,10 +110,13 @@ export function createMultiSlotSaveStore(
     async deleteSlot(id) {
       const index = await readIndex();
       if (!index.slots.some((s) => s.id === id)) return;
-      // Wipe only this slot's blob + checkpoint — other slots use
-      // independent drivers, so siblings are untouched.
+      // Wipe every cell this slot owns — blob, checkpoint and weekly-snapshot
+      // window. Other slots use independent drivers, so siblings are untouched.
+      // A delete that left one of the three behind would leave storage holding
+      // a career the player asked to be rid of, unreachable and un-deletable.
       await createSaveStore(driverFactory(slotKey(id))).clear();
       await driverFactory(checkpointKey(id)).clear();
+      await createSnapshotStore(driverFactory(snapshotKey(id))).clear();
       const slots = index.slots.filter((s) => s.id !== id);
       await writeIndex({
         ...index,
@@ -165,6 +177,12 @@ export function createMultiSlotSaveStore(
       const index = await readIndex();
       if (index.activeSlotId === null) return;
       await driverFactory(checkpointKey(index.activeSlotId)).clear();
+    },
+
+    async snapshotStore() {
+      const index = await readIndex();
+      if (index.activeSlotId === null) return null;
+      return createSnapshotStore(driverFactory(snapshotKey(index.activeSlotId)));
     },
   };
 }

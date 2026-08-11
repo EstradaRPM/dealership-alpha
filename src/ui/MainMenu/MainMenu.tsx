@@ -5,10 +5,10 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   StyleSheet,
 } from 'react-native';
 import type { MultiSlotSaveStore, SlotMetadata } from '../../game/SaveStore';
+import { useConfirm } from '../kit';
 import { colors } from '../theme';
 
 type Mode = 'menu' | 'new' | 'load';
@@ -61,6 +61,7 @@ export function MainMenu({
   const [slots, setSlots] = useState<readonly SlotMetadata[]>([]);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const { ask, dialog } = useConfirm();
 
   const refresh = useCallback(async () => {
     setSlots(await saveStore.listSlots());
@@ -89,21 +90,16 @@ export function MainMenu({
   }
 
   function handleDelete(slot: SlotMetadata) {
-    Alert.alert(
-      'Delete Save',
-      `Delete "${slot.name}" (Day ${slot.day})? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await saveStore.deleteSlot(slot.id);
-            await refresh();
-          },
-        },
-      ],
-    );
+    ask({
+      title: 'Delete Save',
+      message: `Delete "${slot.name}" (Day ${slot.day})? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+      onConfirm: async () => {
+        await saveStore.deleteSlot(slot.id);
+        await refresh();
+      },
+    });
   }
 
   async function handleLoad(slot: SlotMetadata) {
@@ -205,14 +201,17 @@ export function MainMenu({
                   Day {slot.day}  ·  T{slot.tier}  ·  {formatLastPlayed(slot.lastPlayed)}
                 </Text>
               </TouchableOpacity>
-              {mode === 'new' ? (
-                <TouchableOpacity
-                  style={styles.deleteBtn}
-                  onPress={() => handleDelete(slot)}
-                >
-                  <Text style={styles.deleteText}>Delete</Text>
-                </TouchableOpacity>
-              ) : null}
+              {/* Delete rides every slot list, not just the at-cap New Game
+                  one. LOAD GAME is where a player looks at their saves, so it
+                  is where "get rid of this one" has to be — a delete reachable
+                  only from the screen you go to when you want a *new* game is
+                  a delete most players never find. */}
+              <TouchableOpacity
+                style={styles.deleteBtn}
+                onPress={() => handleDelete(slot)}
+              >
+                <Text style={styles.deleteText}>Delete</Text>
+              </TouchableOpacity>
             </View>
           ))
         )}
@@ -244,6 +243,7 @@ export function MainMenu({
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
+      {dialog}
     </View>
   );
 }

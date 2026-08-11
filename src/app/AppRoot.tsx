@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, AppState, Alert } from 'react-native';
+import { View, StyleSheet, AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createPlatformDriverFactory } from './storage';
@@ -13,6 +13,7 @@ import {
   type PersistedWorldSnapshot,
 } from '../worldSnapshot';
 import { ThemeProvider } from '../ui/theme';
+import { useConfirm } from '../ui/kit';
 import { useNavigator, useTabStacks } from '../ui/Navigator';
 import { useFloorRenderLoop } from '../ui/FloorRenderLoop';
 import type { CharacterProfile } from '../game/CareerProgression';
@@ -64,6 +65,10 @@ export function DealershipApp({
     onServicesReady?.(servicesRef.current as AppServices);
   }, [onServicesReady]);
   const nav = useNavigator('loading');
+  // The composition root's own dialog channel. It exists because a failure
+  // reported through `Alert.alert` is invisible on web — the fixture launch
+  // would fail and the menu would just sit there.
+  const notice = useConfirm();
   const screen = nav.current.route;
   // Per-tab navigation stacks (#348, locked IA §3). The Navigator owns the
   // app's flow states; this owns the active tab and one stack per tab, so a
@@ -308,10 +313,13 @@ export function DealershipApp({
         await loadActiveSlotIntoGame();
       } catch (err) {
         console.error('Dev tier-fixture launch failed', err);
-        Alert.alert(
-          'Dev fixture',
-          'Could not start — save slots may be full. Delete one and retry.',
-        );
+        // A notice, not a question: one acknowledging button, nothing to decline.
+        notice.ask({
+          title: 'Dev fixture',
+          message: 'Could not start — save slots may be full. Delete one and retry.',
+          confirmLabel: 'OK',
+          cancelLabel: null,
+        });
       }
     })();
   };
@@ -439,6 +447,7 @@ export function DealershipApp({
             handleSaveCleared={handleSaveCleared}
             bump={bump}
           />
+          {notice.dialog}
         </View>
       </ThemeProvider>
     </SafeAreaProvider>

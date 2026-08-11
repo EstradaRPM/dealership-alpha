@@ -13,11 +13,13 @@ Persistence layer. The **only** module that touches storage drivers (SQLite or i
   - `createSlot(name)` → `SlotMetadata` (auto-activates the first slot; throws at the cap).
   - `listSlots()` → `readonly SlotMetadata[]` (id/name/day/tier/lastPlayed).
   - `selectSlot(id)` / `getActiveSlotId()` — active selection persists across cold start.
-  - `deleteSlot(id)` — wipes only that slot's blob; clears active selection iff it was the deleted slot; recreated ids never reuse a deleted blob.
+  - `deleteSlot(id)` — wipes **every cell the slot owns** (`slot:<id>`, `checkpoint:<id>`, `snapshot:<id>`) and nothing else; clears active selection iff it was the deleted slot; recreated ids never reuse a deleted blob.
+  - `snapshotStore()` → `SnapshotStore | null` — the active slot's weekly-snapshot window.
   - `save(state, { day, tier })` / `load()` — addresses the active slot and refreshes its metadata.
   - `writeCheckpoint(cp)` / `readCheckpoint()` / `clearCheckpoint()` — per-slot mid-day checkpoint (#109). Lives in its own cell (`checkpoint:<id>`), independent across slots, separate from the main save blob; `deleteSlot` wipes it too. Payload `MidDayCheckpoint = { seed, day, dayContext, currentTick, actionLog }` — `dayContext`/`actionLog` are opaque serializable data SaveStore round-trips but never inspects. Schema + accessors only; replay logic is #122. Caller clears it on day-complete.
 - Drivers: `createInMemoryDriver` (single-cell, tests), `createSqliteDriver` (device via `expo-sqlite`), `createWebDriver` (browser). Options: `SqliteDriverOptions`, `WebDriverOptions`.
 - Driver factories (for multi-slot — one isolated cell per key): `createInMemoryDriverFactory` (tests), `createSqliteDriverFactory` (per-key db file), `createWebDriverFactory` (per-key record in one IndexedDB store).
+- **Every per-slot cell key is minted inside `SlotStore.ts` and nowhere else.** `snapshot:<id>` used to be built in the composition root (`src/app/services.ts`), which meant `deleteSlot` could not see it: a deleted slot left its whole weekly-snapshot window behind in storage, unreachable and un-deletable. A new per-slot cell goes in that file, beside the delete that has to wipe it.
 - Web backends (`webDriver.ts`, #338): resolved once per factory by `resolveWebStorageBackend` — IndexedDB, else localStorage, else memory. Each is a `WebKeyValueStore` and can be injected via `WebDriverOptions.backend`; `createIndexedDbStore` / `createLocalStorageStore` / `createMemoryStore` are exported for that. **Which platform gets which factory is not decided here** — that is `src/app/storage.ts` (`createPlatformDriverFactory`), so no module under `src/game/` imports `react-native`.
 - Migration helpers: `CURRENT_SAVE_VERSION`, `migrate`, `wrap`. Types: `Migration`, `SaveEnvelope`.
 - Types: `SaveStore`, `SaveState`, `StorageDriver`, `DriverFactory`, `MultiSlotSaveStore`, `SlotMetadata`, `MidDayCheckpoint`, `CheckpointAction`, `SnapshotStore`, `WeeklySnapshot`.

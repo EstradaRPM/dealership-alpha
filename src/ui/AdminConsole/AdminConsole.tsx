@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { EventBus, TapListener } from '../../game/EventBus';
@@ -25,6 +24,7 @@ import { SALES_ARCHETYPES } from '../../game/CustomerPool';
 import type { PlaytestLog } from '../../game/PlaytestLog';
 import { exportMarkdown } from '../../game/PlaytestLog';
 import { CustomerCard } from '../CustomerCard';
+import { useConfirm } from '../kit';
 import { colors } from '../theme';
 
 interface Props {
@@ -43,6 +43,7 @@ interface Props {
 
 export function AdminConsole({ bus, clock, economy, inventory, saveStore, telemetry, customerPool, playtestLog, tier, onSaveCleared }: Props) {
   const insets = useSafeAreaInsets();
+  const { ask, dialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [eventCount, setEventCount] = useState(telemetry.getEventCount());
   const [status, setStatus] = useState<string | null>(null);
@@ -200,41 +201,31 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
   };
 
   const clearPlaytestLog = () => {
-    Alert.alert(
-      'Clear Playtest Log',
-      `This deletes all ${playtestLog.count()} recorded entries. Export first if you haven't.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear',
-          style: 'destructive',
-          onPress: async () => {
-            await playtestLog.clear();
-            setSessionTick((t) => t + 1);
-            setStatus('playtest log cleared');
-          },
-        },
-      ],
-    );
+    ask({
+      title: 'Clear Playtest Log',
+      message: `This deletes all ${playtestLog.count()} recorded entries. Export first if you haven't.`,
+      confirmLabel: 'Clear',
+      tone: 'danger',
+      onConfirm: async () => {
+        await playtestLog.clear();
+        setSessionTick((t) => t + 1);
+        setStatus('playtest log cleared');
+      },
+    });
   };
 
   const resetSave = () => {
-    Alert.alert(
-      'Reset Save',
-      'This will wipe all progress and start a new run. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            await saveStore.clear();
-            setOpen(false);
-            onSaveCleared();
-          },
-        },
-      ],
-    );
+    ask({
+      title: 'Reset Save',
+      message: 'This will wipe all progress and start a new run. This cannot be undone.',
+      confirmLabel: 'Reset',
+      tone: 'danger',
+      onConfirm: async () => {
+        await saveStore.clear();
+        setOpen(false);
+        onSaveCleared();
+      },
+    });
   };
 
   return (
@@ -416,6 +407,9 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
               <View style={styles.scrollPad} />
             </ScrollView>
           </KeyboardAvoidingView>
+          {/* Inside the console's own full-screen modal so the question layers
+              over the screen that asked it. */}
+          {dialog}
         </SafeAreaView>
       </Modal>
     </>

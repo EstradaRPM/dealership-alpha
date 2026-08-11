@@ -4,10 +4,10 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  Alert,
   StyleSheet,
 } from 'react-native';
 import type { WeeklySnapshot } from '../../game/SaveStore';
+import { useConfirm } from '../kit';
 import { colors } from '../theme';
 
 interface Props {
@@ -22,21 +22,18 @@ function formatDay(day: number): string {
 }
 
 export function SettingsScreen({ snapshots, onRollback, onClose }: Props) {
+  const { ask, dialog } = useConfirm();
+
   function handleRollback(index: number) {
     const snap = snapshots[index];
     if (!snap) return;
-    Alert.alert(
-      'Rollback Save',
-      `Restore to ${formatDay(snap.day)}, Tier ${snap.tier}? Progress since then will be lost.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Rollback',
-          style: 'destructive',
-          onPress: () => onRollback(index),
-        },
-      ],
-    );
+    ask({
+      title: 'Rollback Save',
+      message: `Restore to ${formatDay(snap.day)}, Tier ${snap.tier}? Progress since then will be lost.`,
+      confirmLabel: 'Rollback',
+      tone: 'danger',
+      onConfirm: () => onRollback(index),
+    });
   }
 
   return (
@@ -73,6 +70,7 @@ export function SettingsScreen({ snapshots, onRollback, onClose }: Props) {
           Up to 6 snapshots are kept. Rolling back restores game state to that week.
         </Text>
       </ScrollView>
+      {dialog}
     </View>
   );
 }

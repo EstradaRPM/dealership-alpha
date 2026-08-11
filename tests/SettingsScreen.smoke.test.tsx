@@ -1,6 +1,5 @@
 import React from 'react';
-import { Alert } from 'react-native';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SettingsScreen } from '../src/ui/SettingsScreen';
 import type { WeeklySnapshot } from '../src/game/SaveStore';
 
@@ -29,13 +28,12 @@ describe('SettingsScreen smoke', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('confirms before dispatching rollback for the selected snapshot', () => {
+  // Drives the real dialog rather than a mocked `Alert.alert`. The old form of
+  // this test passed while the shipped button did nothing on web, because it
+  // asserted that the app *called* an API that is a no-op there.
+  it('asks before rolling back, and dispatches the selected snapshot on yes', async () => {
     const onRollback = jest.fn();
-    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
-      buttons?.find((button) => button.text === 'Rollback')?.onPress?.();
-    });
-
-    const { getByText } = render(
+    const screen = render(
       <SettingsScreen
         snapshots={SNAPSHOTS}
         onRollback={onRollback}
@@ -43,15 +41,37 @@ describe('SettingsScreen smoke', () => {
       />,
     );
 
-    expect(getByText('Week 2  ·  Day 14')).toBeTruthy();
-    expect(getByText('Tier 2')).toBeTruthy();
+    expect(screen.getByText('Week 2  ·  Day 14')).toBeTruthy();
+    expect(screen.getByText('Tier 2')).toBeTruthy();
 
-    fireEvent.press(getByText('Week 1  ·  Day 7'));
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'Rollback Save',
-      'Restore to Week 1  ·  Day 7, Tier 1? Progress since then will be lost.',
-      expect.any(Array),
+    fireEvent.press(screen.getByText('Week 1  ·  Day 7'));
+    await screen.findByText('Rollback Save');
+    expect(
+      screen.getByText(
+        'Restore to Week 1  ·  Day 7, Tier 1? Progress since then will be lost.',
+      ),
+    ).toBeTruthy();
+    expect(onRollback).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByText('Rollback'));
+    await waitFor(() => expect(onRollback).toHaveBeenCalledWith(1));
+  });
+
+  it('rolls nothing back when the question is declined', async () => {
+    const onRollback = jest.fn();
+    const screen = render(
+      <SettingsScreen
+        snapshots={SNAPSHOTS}
+        onRollback={onRollback}
+        onClose={jest.fn()}
+      />,
     );
-    expect(onRollback).toHaveBeenCalledWith(1);
+
+    fireEvent.press(screen.getByText('Week 1  ·  Day 7'));
+    await screen.findByText('Rollback Save');
+    fireEvent.press(screen.getByText('Cancel'));
+
+    await waitFor(() => expect(screen.queryByText('Rollback Save')).toBeNull());
+    expect(onRollback).not.toHaveBeenCalled();
   });
 });

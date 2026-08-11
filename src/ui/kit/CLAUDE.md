@@ -48,7 +48,8 @@ function MyScreen() {
 `Surface`/`Card` (raised·inset·flat) · `Gradient`/`GradientSurface` (themed
 `LinearGradient` by role) · `Button` (primary·secondary·ghost) ·
 `Badge`/`Pill` (neutral·info·positive·reward·danger; `outline`·`soft` fill) ·
-`Icon` (kit glyph by name, themed `size`/`tone`) · `IconBadge` (colored
+`Icon` (kit glyph by name, themed `size`/`tone`) · `ConfirmDialog`/`useConfirm`
+(the app's one confirmation surface) · `IconBadge` (colored
 tile holding an `Icon`; `solid`·`soft`, rounded·circle) · `ProgressBar` ·
 `Meter` (labeled gauge, optional `caption` under the bar) · `StatCard` (value·label·trend delta, optional leading
 `icon`) · `SectionHeader` · `Collapsible` (headed panel that opens and shuts) ·
@@ -80,6 +81,33 @@ per-surface `useState`:
 Uncontrolled by default (`defaultExpanded`); pass `expanded` + `onToggle` when
 the parent must drive it. `variant` + `bodyPadded` let a panel host a card
 instead of raw content without nesting two raised slabs.
+
+## Asking the player to confirm something
+
+**`Alert.alert` is a no-op on web and must never come back.** react-native-web
+ships `class Alert { static alert() {} }` — it compiles, type-checks and runs,
+and does nothing. Every destructive confirmation in this app (delete a save,
+roll a save back, wipe the playtest log, reset the run) was routed through it,
+so on the web target — the one an agent drives, and the one the game was being
+played in — those buttons were dead. There is no way to reach browser storage
+from inside the game either, so a save the player wanted gone could not be got
+rid of at all. `tests/ConfirmDialog.test.tsx` scans all of `src/` for the call.
+
+`useConfirm()` is the replacement and the whole pattern: `const { ask, dialog }
+= useConfirm()`, render `{dialog}` once in the surface's tree, then `ask({ title,
+message, confirmLabel, tone: 'danger', onConfirm })`. A few rules it is built on:
+
+- **The dialog closes BEFORE `onConfirm` runs.** The handlers here are async
+  (`await saveStore.deleteSlot(...)`), and a question left on screen while its
+  answer is being carried out reads as a press that did not land.
+- **`cancelLabel: null` is the notice form** — one acknowledging button, nothing
+  to decline. It is why a message-only alert needs no second component.
+- **`tone` defaults to `primary`, not `danger`.** Red is the four destructive
+  sites opting in; a dialog that painted every question red would stop meaning
+  anything. `Button` carries the matching `variant="danger"`.
+- **While it is up, everything behind it is inaccessible** (`accessibilityViewIsModal`).
+  A test can therefore address the dialog's own "Delete" without disambiguating
+  it from the row label that opened it.
 
 ## Charts (#350, #376)
 

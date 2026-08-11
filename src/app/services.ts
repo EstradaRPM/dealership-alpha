@@ -14,7 +14,6 @@
 import {
   createLegacyStore,
   createMultiSlotSaveStore,
-  createSnapshotStore,
 } from '../game/SaveStore';
 import { createEventBus } from '../game/EventBus';
 import { createPlaytestLog } from '../game/PlaytestLog';
@@ -27,10 +26,6 @@ import type {
   SnapshotStore,
 } from '../game/SaveStore';
 import type { WorldSnapshot } from '../worldSnapshot';
-
-function snapshotKey(slotId: string): string {
-  return `snapshot:${slotId}`;
-}
 
 export interface AppServices {
   bus: ReturnType<typeof createEventBus>;
@@ -79,11 +74,9 @@ export function createAppServices(driverFactory: DriverFactory): AppServices {
     slotStore,
     legacyStore,
     playtestLog,
-    async snapshotStoreForActiveSlot() {
-      const activeSlotId = await slotStore.getActiveSlotId();
-      return activeSlotId === null
-        ? null
-        : createSnapshotStore(driverFactory(snapshotKey(activeSlotId)));
-    },
+    // Delegated, not built here. The slot store mints every per-slot cell key
+    // so that deleting a slot can wipe all of them; a `snapshot:<id>` cell
+    // created at this layer outlived the slot it belonged to.
+    snapshotStoreForActiveSlot: () => slotStore.snapshotStore(),
   };
 }

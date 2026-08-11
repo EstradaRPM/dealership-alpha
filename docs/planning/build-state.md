@@ -153,6 +153,19 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **`Alert.alert` is DEAD on web and must never come back** (delete-a-save session, 2026-08-11).
+  react-native-web ships `class Alert { static alert() {} }`. It compiles, type-checks and runs,
+  and does nothing — so every confirmation routed through it was inert on the target the game is
+  actually played and driven from. `useConfirm()` / `ConfirmDialog` on the kit barrel is the one
+  confirmation surface; `tests/ConfirmDialog.test.tsx` scans all of `src/` for the call. A test
+  that *mocks* `Alert.alert` and asserts the app called it proves nothing (that is exactly what
+  `SettingsScreen.smoke` was doing while the shipped button did nothing) — drive the real dialog.
+- **Every per-slot cell key is minted in `SlotStore.ts` and nowhere else** (same session).
+  `snapshot:<id>` was built in `src/app/services.ts`, so `deleteSlot` could not see it and a
+  deleted career left its whole weekly-snapshot window in storage, unreachable and un-deletable.
+  A slot's cells are one key space: `slot:` / `checkpoint:` / `snapshot:` are wiped together, and
+  a new per-slot cell goes in that file beside the delete that has to reach it. The pre-fix
+  orphans in an existing save are **not** swept — same rule as the pre-#374 ledger.
 - **The bite bet is READ off `days[0].prepBet`, never held in a second slot** (#383).
   `biteBetVerdictScoreline` takes the days and reads the first one's captured bet itself rather
   than accepting a bet, so no caller can hand it day four's. The per-day capture deliberately
@@ -1198,6 +1211,54 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT (director-directed, out of phase): a save can actually be deleted.** The
+  director could not get rid of a save from the built-in browser, was sitting at the 3-slot cap,
+  and so could not start a new game either. The Delete button was not missing — it had been there
+  since #195 — it was **dead**. `Alert.alert` is a literal no-op on react-native-web
+  (`class Alert { static alert() {} }`), so **every destructive confirmation in the app did
+  nothing at all on the web target the game is played and driven from**: delete a save, roll a
+  save back, clear the playtest log, reset the run, and the dev-fixture failure notice. Five call
+  sites, all silently inert. The console errors already sitting in the live tab
+  (`Dev tier-fixture launch failed … max of 3 slots reached`, four of them) are that failure
+  reporting itself to nobody.
+  **The fix is one confirmation surface, `ConfirmDialog` + `useConfirm` on the kit barrel**, and
+  all five call sites now go through it. `useConfirm()` holds the "what is being asked" state so a
+  surface is two lines (`const { ask, dialog } = useConfirm()`, then `{dialog}`) — one place owns
+  the pattern, so nothing can quietly re-invent it as a dead `Alert.alert`.
+  **`tests/ConfirmDialog.test.tsx` scans every file under `src/` for the call.** It compiles,
+  type-checks and runs everywhere; it just does nothing on web, so nothing but a source scan
+  catches its return. `tests/SettingsScreen.smoke.test.tsx`'s rollback case was **rewritten** — it
+  had been mocking `Alert.alert` and asserting the app called it, which passed for the whole time
+  the shipped button did nothing.
+  **The dialog closes BEFORE `onConfirm` runs** (the handlers are async — a question left on
+  screen while its answer runs reads as a press that did not land). **`cancelLabel: null` is the
+  notice form**, one acknowledging button, which is why the message-only alert needed no second
+  component. **`tone` defaults to `primary`**; red is the four destructive sites opting in, and
+  `Button` gained the matching `variant="danger"`.
+  **Delete now rides the LOAD list, not only the New Game one.** LOAD GAME is where a player looks
+  at their saves; a delete reachable only from the screen you go to when you want a *new* game is
+  a delete most players never find.
+  **Found while verifying, and fixed here: `deleteSlot` was leaking a third of the save.** Reading
+  IndexedDB after the two live deletes showed `snapshot:slot-2` and `snapshot:slot-3` still
+  sitting there. The weekly-snapshot cell was minted in the composition root
+  (`src/app/services.ts`), so the slot store could not see it — a deleted career left its whole
+  6-week snapshot window behind, unreachable and un-deletable. **Every per-slot cell key is now
+  minted inside `SlotStore.ts` and nowhere else** (`slot:` / `checkpoint:` / `snapshot:`),
+  `MultiSlotSaveStore.snapshotStore()` joined the interface, and `services.ts` delegates. A new
+  per-slot cell goes in that file, beside the delete that has to wipe it. Nothing is persisted
+  differently and no envelope moved: `WORLD_SNAPSHOT_VERSION` stays **21**.
+  **The pre-fix orphans are NOT swept.** `snapshot:slot-2` / `snapshot:slot-3` are still in the
+  director's browser storage; nothing in the app can address them. Synthesizing a cleanup pass
+  over cells whose slots no longer exist would be the same "invent history" move #374/#379 refused
+  — the rule governs what happens from here.
+  `npm run typecheck` clean, `npm test` **260 suites / 3606 tests** green. Verified on the web
+  drive: the DELETE SAVE dialog rendered over LOAD GAME, Cancel left all three slots intact, and
+  confirming removed Day 31 and then Day 37 from the list **and from IndexedDB** (`index` down to
+  one slot, `slot:slot-2` / `slot:slot-3` gone). The surviving Day 60 career reloaded and Settings
+  still listed its four weekly snapshots through the delegated `snapshotStore()`, with ROLLBACK
+  SAVE opening and cancelling cleanly.
+  Next: **BUILD #384** — phase 11 is untouched by this.
+
 - 2026-08-11 — **BUILT #383** (the bite stops being a bet only in spirit — it is placed, and it
   is settled). After the tracer, picking a week ran seven days and reported what happened; nothing
   ever said what the player was *wagering* by picking it, so nothing resolved. Both halves are now
@@ -1280,60 +1341,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   exactly **5**, said *"gross today"*, and carried no leftover line.
   Next: **BUILD #383**.
 
-- 2026-08-11 — **BUILT #381** (phase 11 tracer: the clock takes a bigger bite). The clock had
-  exactly one verb — `nextDay()`, one day at a time. It now has a ladder: the player picks how
-  big a bite of the calendar to run before they look again, and the size of the bite is the bet.
-  **ONE rule opens it — you can skip ahead exactly as far as your people can cover for you.** Day
-  always; Week when the used desk covers **both** discount desking and trade approval; Month when
-  a GM is staffed. The door and the capability are the same fact, so nothing new had to be taught.
-  **The doors are in `data/clock-bites.json`, the predicates in code**, and `resolveBiteCoverage`
-  derives coverage from `buildManagerStatus` rather than reading the act-gate predicates a second
-  time — the #371 lesson, where a `hasDeskManager` boolean living in code had to be deleted
-  because it satisfied every staff door at once. A second read here is how the button and the desk
-  start disagreeing about who is covering what.
-  **`src/game/ClockBite/` imports no sibling and takes no EventBus.** `runBite` is a pure "run N
-  days, stop when asked" primitive over two injected closures, which is what lets its unit tests
-  drive a week with no roster at all. It also does **not** check the door — `availableBites` is
-  the door and the picker is what obeys it.
-  **`checkHalt` is asked AFTER each day, so the halting day counts** — it happened. There is no
-  queued remainder and no auto-resume, by construction: the module holds no state between calls.
-  Halts latch at the composition root (an escalation, insolvency, a tier-gate verdict) because
-  that is the only layer that knows what "a moment the player is needed" looks like in this app.
-  **`tierGate:month_verdict` fires unconditionally every month**, so a bite crossing a month
-  boundary ALWAYS halts there. That is the design, not an oversight — the month's grade is the
-  moment you must look, and it is what syncs the month bite to the calendar after its first run.
-  **The Reveal aggregates to the bite: one more producer, not a second mode.** Reactions pool
-  across every day and rank in the same single `rankDrama` pool (#373 already proved the grammar
-  spans grains). Per-day beats are captured **as each day closes**, because the daily refs clear
-  before the next `nextDay()` — a runner reading only the final day would have swallowed six days
-  of wins, walk-offs, crowns and month verdicts. A one-day bite delegates straight to
-  `buildReveal`, morning bet included, so the day is byte-identically the day it always was.
-  **The day bite is the LIVE floor and routes to `handleNextDay`, not to the runner.** Running the
-  day headless would delete the floor view and its pause/speed control, which is the opposite of
-  what B4 extends. The picker therefore draws only the bites *above* the day, pinned above the
-  hero CTA in the same footer — one control, one place. A locked bite **states its door in plain
-  language** rather than greying out.
-  **The bite skips the per-day modal and the per-day autosave, and does ONE closing write.** Seven
-  recaps nobody dismissed, and seven `void async` writes racing for one slot, are both wrong;
-  `biteCrossedSnapshotDayRef` carries whether the run owes a history snapshot so the 7-day cadence
-  is not silently dropped. The cash delta is the run's, accumulated across the days — a week's
-  delta is the week's, not its last day's.
-  **`matchReaction` now takes the window it covers, and that defect was found on the drive, not by
-  a test.** The pooled feed printed `$47,366 gross today` for a whole week — a number the player
-  can check and find wrong, which is the one thing this feed cannot do. It reads `gross over 7
-  days` now.
-  **Nothing calibrated moved and nothing could** — a bite is a "how many times", not a different
-  day. `#180` still reads 35.8% positive / 54.3% apathetic, closes=274, `costOverAsk` 1.026.
-  Nothing is persisted (the picker's default is the day, every time — a remembered bite is a
-  standing instruction to skip), so `WORLD_SNAPSHOT_VERSION` stays **21** with no migration.
-  Determinism is asserted at the seeded-controller scope, never as a full `snapshotWorld` re-run:
-  seven hand-driven days and seven runner-driven days produce identical FloorSim surfaces, and the
-  controller lands MANAGERIAL both on a complete run and on a halted one.
-  `npm run typecheck` clean, `npm test` **255 suites / 3142 tests** green. Verified on the web
-  drive (T2 dev slot, covered desk): two full weeks ran, each ending in ONE Reveal — *"7 days run
-  — you had what the crowd wanted: 6 of 8 stuck"*, *"$24,834 gross over 7 days"* — with crowns and
-  walk-offs drawn from across the days; the month stayed locked stating *"You haven't hired a
-  general manager to run the store"*; and a reload resumed on the run's single closing save with
-  the week's cash delta intact. The `max of 3 slots reached` console error is the documented
-  dev-slot blocker below, not this slice.
-  Next: **BUILD #382**.
