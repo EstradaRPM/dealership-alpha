@@ -20,6 +20,7 @@
 
   "_bitesDoc": "`days` is how many days the bite runs. The day is always open and is the LIVE floor — the runner is what a bite above the day uses. Rejected doors, recorded so they are not re-proposed: a bare tier number (opens the door while the desks are empty, so the bite would promise a week and halt on day 1), and an earned clean-day streak (a new persisted counter, and the player has to infer why the button came and went).",
 
+  "_stakesDoc": "B4 S3 (#383) — what the player is WAGERING by picking this bite, stated at the picker before they commit. A bet you cannot read before placing is not a decision. The day carries none and is the only bite allowed to: it is the live floor, watched as it happens, so there is nothing to state in advance — and the schema refuses a bite above the day that omits it, so a fourth rung cannot ship blind. Stated verbatim by the picker; nothing is worded in the component.",
   "_starBudgetDoc": "B4 S2 (#382) — how many individual reactions the Reveal at THIS grain surfaces, wins/losses/crowns pooled. It rides the bite because the bite is the window the feed covers: seven days run through a day's budget throw away roughly seven times as much, and throw it away silently. It grows SUB-LINEARLY on purpose — seven days of reactions at seven times the stars is a scroll, not a beat — and what the budget cut is then stated as one line rather than dropped. The day's 5 is the shipped pre-#382 number, moved here from `tunables.reveal.drama.starBudget` (deleted) so there is one budget per grain and not two places to disagree.",
   "bites": [
     { "id": "day", "label": "Run the Day", "days": 1, "starBudget": 5, "requires": [] },
@@ -28,6 +29,7 @@
       "label": "Run the Week",
       "days": 7,
       "starBudget": 9,
+      "stakes": "Seven days run without you unless something needs you. The lot you stocked and the policy you set have to carry them.",
       "requires": ["discount_desking", "trade_approval"]
     },
     {
@@ -35,6 +37,7 @@
       "label": "Run the Month",
       "days": 30,
       "starBudget": 14,
+      "stakes": "Thirty days run without you unless something needs you. The lot you stocked, the policy you set and the people you hired have to carry them.",
       "requires": ["general_manager"]
     }
   ],

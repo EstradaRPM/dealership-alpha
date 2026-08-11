@@ -17,6 +17,10 @@ import type { BiteOption } from '../../game/ClockBite';
  * A locked bite renders **with its door stated in plain language** — never
  * hidden, never a silently greyed control. The sentence arrives pre-phrased
  * from `availableBites`; nothing is worded here.
+ *
+ * An open bite renders **with its stakes stated under the control** (#383): the
+ * bite is a bet, and a bet you cannot read before placing is not a decision.
+ * That sentence is pre-phrased too — the whole picker words nothing.
  */
 export function BitePicker({
   options,
@@ -44,6 +48,18 @@ export function BitePicker({
               disabled={disabled}
               testID={`bite-run-${option.id}`}
             />
+            {option.stakes ? (
+              <Text
+                testID={`bite-stakes-${option.id}`}
+                style={{
+                  ...t.typography.caption,
+                  color: t.colors.textSecondary,
+                  marginTop: t.spacing.xs,
+                }}
+              >
+                {option.stakes}
+              </Text>
+            ) : null}
           </View>
         ) : (
           <View

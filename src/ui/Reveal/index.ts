@@ -4,6 +4,7 @@ export {
   buildBiteReveal,
   poolBiteDays,
   betVerdictScoreline,
+  biteBetVerdictScoreline,
   scoreDrama,
   rankDrama,
   isStarworthyWalkOff,

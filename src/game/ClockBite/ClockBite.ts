@@ -37,6 +37,13 @@ export interface BiteOption {
    * control.
    */
   lockedReason: string | null;
+  /**
+   * What picking this bite wagers (#383), stated verbatim by the picker before
+   * the player commits — a bet you cannot read before placing is not a
+   * decision. Null only for the day, which is watched as it happens; the schema
+   * refuses any bite above the day that omits it.
+   */
+  stakes: string | null;
 }
 
 /** Why a run stopped short, and the sentence the surface states. */
@@ -95,6 +102,7 @@ export function availableBites(
       label: bite.label,
       days: bite.days,
       unlocked: missing.length === 0,
+      stakes: bite.stakes ?? null,
       // Each missing cover states itself; two of them read as one plain
       // explanation, which is why the sentences are written to stand alone.
       lockedReason:

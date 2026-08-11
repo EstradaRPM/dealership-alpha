@@ -1007,6 +1007,18 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     expect(JSON.stringify(snap)).not.toContain('bite');
   });
 
+  it('the bite bet is not persisted (#383)', () => {
+    // The bite bet lives for the length of ONE synchronous run and the run ends
+    // MANAGERIAL, so there is no moment a save can land mid-bite. It is also
+    // not a second copy of anything: it is read back off the run's first day.
+    // `prepBet` stays the one persisted World-level wager it already was.
+    const { world } = build(42);
+    const snap = snapshotWorld(world);
+    expect(snap.version).toBe(21);
+    expect(Object.keys(snap.modules)).toContain('prepBet');
+    expect(JSON.stringify(snap)).not.toContain('biteBet');
+  });
+
   it('migrates pre-DemandShaper snapshots by adding a default shaper blob', () => {
     const { world } = build(4242);
     const current = snapshotWorld(world);

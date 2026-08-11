@@ -46,6 +46,14 @@ const BiteSchema = z
      * The budget rides the bite because the bite is the window the feed covers.
      */
     starBudget: z.number().int().positive(),
+    /**
+     * #383: what the player is wagering by picking this bite, stated at the
+     * picker before they commit. Optional in the object schema and required by
+     * the array refine below for every bite above the day — the day is watched
+     * as it happens, so it has nothing to state in advance, and a field carried
+     * with no reader is the dead-`tagline` trap #378 had to delete.
+     */
+    stakes: z.string().min(1).optional(),
     requires: z.array(CoverageFactIdSchema),
   })
   .strict();
@@ -99,6 +107,13 @@ export const ClockBitesConfigSchema = z
         .every((b, i, sorted) => i === 0 || b.starBudget >= sorted[i - 1].starBudget),
     { message: 'a longer bite must not carry a smaller starBudget' },
   )
+  // #383: a bite above the day is committed to blind — the player hands over N
+  // days and does not look again — so it must state what it is wagering before
+  // they tap. A bet you cannot read before placing is not a decision, which is
+  // why this is a load refusal rather than a copy convention.
+  .refine((c) => c.bites.every((b) => b.days === 1 || !!b.stakes), {
+    message: 'a bite above the day must state its stakes',
+  })
   // A door naming coverage the file never declares has no sentence to state,
   // which is how a locked bite ends up greyed out with no explanation.
   .refine(

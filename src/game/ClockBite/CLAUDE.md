@@ -43,6 +43,12 @@ persisted counter, and the player has to infer why the button came and went).
 - `loadClockBites()` / `ClockBitesConfigSchema` + the id unions and their
   `as const` arrays.
 
+`BiteOption.stakes` (#383) is what picking this bite **wagers**, stated verbatim
+by the picker before the player commits — a bet you cannot read before placing is
+not a decision. `null` only for the day, which is watched as it happens; the
+schema **refuses** any bite above the day that omits it, so a fourth rung cannot
+ship blind.
+
 ## Hard rules
 
 - **No sibling imports.** ClockBite never sees `StaffOrg`, `DayLoopController`
@@ -110,10 +116,22 @@ stars is a scroll, not a beat. The schema refuses a longer bite carrying a
 smaller budget. What the budget cut is stated by the Reveal as one line, and a
 crowned record is admitted before the budget is spent.
 
+## The bet, settled (#383)
+
+The bite is a bet, and the Reveal covering it **settles** the bet:
+`biteBetVerdictScoreline` (`src/ui/Reveal/buildReveal.ts`) scores the lean the
+run started with against the days that actually ran. The bet is the **first**
+day's captured `PrepBet` — the per-day capture keeps running inside the bite
+(that is what feeds each day's own beat into the pooled feed), and the bite's own
+bet is the one standing when the run began. It is **read back off
+`BiteDayBeats[0]`, never copied into a second slot**, so nothing can disagree
+about what was wagered, and nothing new is persisted. A halted bite is scored on
+the days it ran; a run whose days named no favorite is not scored at all.
+
 ## Data
 
 `data/clock-bites.json` — `coverage[]` (the facts and their missing-sentences),
-`bites[]` (`{ id, label, days, starBudget, requires }`) and `halts[]`
+`bites[]` (`{ id, label, days, starBudget, stakes?, requires }`) and `halts[]`
 (`{ id, sentence }`).
 Loaded through `parseData` + `ClockBitesConfigSchema`. Every nested object is
 `.strict()`; the top level is not, so the file's `_doc` annotations survive

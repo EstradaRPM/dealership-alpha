@@ -32,6 +32,17 @@ Day 1) and no clobber race with the next day's `clock:managerial_prep` (which
 fires at the prior day's close). On a mid-day reload the capture does **not**
 re-run; the frozen morning bet is restored from the snapshot instead.
 
+## Two grains, one module (#383)
+A **bite** above the day (`ClockBite`) is the same bet held longer: you wagered
+that the lot you had stocked when you tapped carries the store for N days without
+you. The per-day capture keeps running inside a bite — day 4 recaptures against
+day 4's lot, which is what feeds each day's own beat into the pooled feed — and
+the **bite's** bet is the one standing when the run began. That frozen bet
+already rides the run's first `BiteDayBeats`, so the bite verdict
+(`biteBetVerdictScoreline`) reads it back from there rather than holding a second
+copy that could disagree with it. Nothing extra is persisted: a bite runs
+synchronously and ends MANAGERIAL, so there is no mid-bite save to survive.
+
 ## Persistence (#122-safe)
 `PrepBet | null` rides `worldSnapshot` as the World-level `prepBet` key
 (`WORLD_SNAPSHOT_VERSION` bump + a migration materializing `null` ⇒ old saves

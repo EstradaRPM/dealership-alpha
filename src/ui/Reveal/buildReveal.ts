@@ -561,9 +561,14 @@ function majorityStrong(tally: MatchTally): boolean {
   return tally.matched > 0 && tally.strong * 2 >= tally.matched;
 }
 
-/** Mid-sentence clause for the scoreline. */
-function matchClause(tally: MatchTally): string {
-  if (tally.matched <= 0) return 'nothing closed today';
+/**
+ * Mid-sentence clause for the scoreline. `span` names the window it covers, the
+ * same rule `matchReaction` learned on #381's drive: "nothing closed today" over
+ * a week is a statement the player can check and find wrong, and this clause is
+ * what a bite falls back to when there is no bet to settle (#383).
+ */
+function matchClause(tally: MatchTally, span = 'today'): string {
+  if (tally.matched <= 0) return `nothing closed ${span}`;
   return majorityStrong(tally)
     ? `you had what the crowd wanted: ${tally.strong} of ${tally.matched} stuck`
     : `the lot didn't fit the crowd: ${tally.strong} of ${tally.matched} stuck`;
@@ -748,6 +753,61 @@ export interface BiteSpan {
   haltSentence: string | null;
 }
 
+/**
+ * Did this day's crowd ask for that category at all — bought one, or walked off
+ * wanting one? (#383)
+ *
+ * The bite verdict counts DAYS the category was asked for, not closes, because
+ * the bet being resolved is a bet about days: you wagered that the lean you
+ * stocked would carry N days without you. A count of units would let one busy
+ * Saturday speak for a week the store was wrong about.
+ */
+function dayAskedFor(day: BiteDayBeats, category: PrepCategory): boolean {
+  return (
+    day.closes.some((c) => c.vehicleCategory === category) ||
+    day.walkOffs.some((w) => w.wantedCategory === category)
+  );
+}
+
+/**
+ * The bite's bet→verdict scoreline (#383) — the lean you went in with, scored
+ * over the days that actually ran.
+ *
+ * **The bet is the FIRST day's captured bet, and the function reads it itself**
+ * rather than taking one, so a caller cannot hand it day four's. A bite is the
+ * day bet held longer: you wagered that the lot you had stocked when you tapped
+ * carries the store for N days. The per-day capture keeps running inside the run
+ * — that is what feeds each day's own beat into the pooled feed — and this is
+ * the one standing when the run began, held for the whole bite. Two grains, one
+ * module, and NOT a second copy of the fact: the frozen bet already rides
+ * `BiteDayBeats[0]`, captured as that day opened.
+ *
+ * The crowd is read with the same `dominantCrowdWant` rule the day grain uses,
+ * over every day that ran. `null` (nothing was ever asked for, or the bite asked
+ * evenly and named no favorite) falls back to the caller's span scoreline rather
+ * than inventing a verdict — a bet nobody can settle is not scored.
+ *
+ * A halted bite is scored on the days it ran, by construction: `days` is what
+ * ran. A three-day week is a three-day bet, and judging it over seven would be
+ * reporting a bet the player never got to place.
+ */
+export function biteBetVerdictScoreline(
+  days: readonly BiteDayBeats[],
+): string | null {
+  const stocked = days[0]?.prepBet?.stockedCategory ?? null;
+  if (!stocked) return null;
+  const crowd = dominantCrowdWant(
+    days.flatMap((d) => [...d.closes]),
+    days.flatMap((d) => [...d.walkOffs]),
+  );
+  if (!crowd) return null;
+  const asked = days.filter((d) => dayAskedFor(d, crowd)).length;
+  const span = `on ${asked} of ${plural(days.length, 'day', 'days')}`;
+  return stocked === crowd
+    ? `You went in leaning on ${CATEGORY_PLURAL_MID[stocked]}; the crowd asked for them ${span}. Good match.`
+    : `You went in leaning on ${CATEGORY_PLURAL_MID[stocked]}; the crowd asked for ${CATEGORY_PLURAL_MID[crowd]} ${span}. Poor match.`;
+}
+
 /** Sum the funnel across the bite; the leak is the one that led on most days. */
 function poolFunnel(days: readonly BiteDayBeats[]): DayFunnel {
   const leakDays = new Map<DayFunnel['leakCause'], number>();
@@ -843,6 +903,11 @@ export function buildBiteReveal(
   const spanClause = span.haltSentence
     ? `${days.length} of ${span.daysRequested} days run`
     : `${days.length} days run`;
+  // #383: the bite is a bet, so the scoreline resolves it — the lean the run
+  // started with, against every day that ran. The span clause stays in front of
+  // it either way: it is what states that a halted run was a shorter bet than
+  // the one placed, which the verdict must not silently absorb.
+  const betVerdict = biteBetVerdictScoreline(days);
   // The window the pooled figures actually cover. A week's gross printed as
   // "gross today" states a number the player can check and find wrong.
   const spanWord = `over ${days.length} days`;
@@ -862,7 +927,7 @@ export function buildBiteReveal(
     ? [{ id: 'bite-halt', tone: 'neutral', text: span.haltSentence }]
     : [];
   return {
-    scoreline: `${spanClause} — ${matchClause(pooled.matchTally)}.`,
+    scoreline: `${spanClause} — ${betVerdict ?? `${matchClause(pooled.matchTally, spanWord)}.`}`,
     reactions: [
       ...haltReactions,
       matchReaction(pooled.matchTally, pooled.gross, spanWord),

@@ -63,6 +63,22 @@ describe('#381 the bite picker is wired into the live app', () => {
     }
   });
 
+  it('every bite the player can actually place states its stakes (#383)', () => {
+    // A GM'd store can place both bigger bets; each arrives pre-phrased from
+    // the catalog, so the picker states the wager without wording anything.
+    const options = availableBites([
+      'discount_desking',
+      'trade_approval',
+      'general_manager',
+    ]);
+    for (const bite of options.filter((o) => o.days > 1)) {
+      expect(bite.unlocked).toBe(true);
+      expect(bite.stakes).toBeTruthy();
+    }
+    // The day is watched as it happens — nothing to state in advance.
+    expect(options[0].stakes).toBeNull();
+  });
+
   it('nothing about the bite is persisted — the default is the day, every time', () => {
     // A remembered bite is a standing instruction to skip, the opposite of a
     // bet you place each time. No save-layer wire may reference one.

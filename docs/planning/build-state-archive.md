@@ -6,6 +6,46 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **SLICED phase 11 (B4 drive-the-clock) into #381–#385, and RULED the bite-unlock
+  schedule** — the engagement spine's "grain/clock unlock schedule" STILL-OPEN item, settled at
+  the slice gate rather than during the build because the schedule had to be encoded into the
+  filed issues; filing it unruled would have smuggled it.
+  **The ruling is ONE rule: you can skip ahead exactly as far as your people can cover for you.**
+  Day always; Week when the used desk covers **both** discount desking (#290) and trade approval
+  (#291); Month when a **general manager** is staffed (#124's filed rule). The door and the
+  capability are the same fact — a multi-day run can only go headless when nothing escalates, and
+  what stops escalations is a staffed desk at threshold — so the player learns one sentence and
+  the schedule lands at ~T3 and ~T6 without ever naming a tier. **Rejected:** a bare tier number
+  (opens the door while the desks are empty, so the bite promises a week and halts on day 1), and
+  an earned clean-day streak (a new persisted counter, and the player has to infer why the button
+  came and went). Recorded in `engagement-spine.md` + `.claude/skills/decide/gates.md` Settled.
+  **The slices.** **#381** tracer — `data/clock-bites.json` + a new `src/game/ClockBite/` module
+  (`availableBites` / `runBite`) driving the existing per-day path headless through injected
+  closures, halting on the first day that needs a human, plus the Home bite picker and the
+  bite-grain Reveal. **#382** the star budget scales with the bite and what the feed leaves out is
+  stated, not silently dropped (closes the spine's "star budget per altitude" item at the grain
+  that forces it). **#383** the bite is a bet — `PrepBet` captured at the bite's *start* and held,
+  scored over the days that ran. **#384** the overnight interrupt channel — a moment that asks the
+  owner a question (raise demand #356, rival offer #357, an adverse news choice) stops the run
+  between days; a moment that only reports does not. **#385** the month rung, HITL, **closes
+  #124**.
+  **The subtraction that shaped it:** the primitives already exist and this phase composes them
+  rather than building a batch mode. `floor.runDay()` already exhausts a day headlessly
+  (`useFloorRenderLoop.ts:82`'s `skipToClose`), `rankDrama` already pools reactions at any grain
+  (#373 proved it with the monthly F&I verdict), and the desk-cover predicates already ship —
+  `isDiscountDeskingUnlocked` / `isTradeApprovalUnlocked`, read three times over at
+  `src/app/config.ts:624-650`. What is genuinely missing is the *bite* as an object, the halt, and
+  the aggregation. **#124's `escalated:0` argument is the whole design one rung down**, which is
+  why the week's door is the desks and not a tier.
+  **Two traps written into #381 so the build cannot walk into them:** per-day Reveal refs are
+  cleared before each `nextDay()`, so a runner that read only the final day would silently swallow
+  six days of wins, walk-offs, crowned records and month verdicts — beats are captured as each day
+  closes; and a halted bite leaves **no queued remainder and no auto-resume**, because a run that
+  continued past the thing that interrupted it would be the bite making the player's decision for
+  them.
+  No code changed and nothing calibrated moved — this session filed issues and recorded a ruling.
+  Next: **BUILD #381**.
+
 - 2026-08-11 — **BUILT #380** (Cash on Hand stops being the only number: the store also shows
   what it is worth). The Home HUD's one big figure was Cash, and every automation the game
   already ships makes it fall without the player touching anything — the UCM sources the board

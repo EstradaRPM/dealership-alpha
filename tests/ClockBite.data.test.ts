@@ -63,6 +63,27 @@ describe('ClockBite catalog (#381)', () => {
     expect(ClockBitesConfigSchema.safeParse(bad).success).toBe(false);
   });
 
+  // #383 — the bite is a bet, so a bite the player commits to blind has to say
+  // what it is wagering. The day is the exception and the only one: it is the
+  // live floor, watched as it happens.
+  it('every bite above the day states its stakes, and the day states none', () => {
+    expect(config.bites.find((b) => b.id === 'day')?.stakes).toBeUndefined();
+    for (const bite of config.bites.filter((b) => b.days > 1)) {
+      expect(bite.stakes?.length ?? 0).toBeGreaterThan(0);
+    }
+  });
+
+  it('refuses a bite above the day that ships without its stakes', () => {
+    const shipped = loadClockBites();
+    const bad = {
+      ...shipped,
+      bites: shipped.bites.map((b) =>
+        b.id === 'week' ? { ...b, stakes: undefined } : b,
+      ),
+    };
+    expect(ClockBitesConfigSchema.safeParse(bad).success).toBe(false);
+  });
+
   it('is strict inside a bite, so a stale key is a load error not a silent drop', () => {
     const bad = {
       ...loadClockBites(),

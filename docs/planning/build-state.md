@@ -15,7 +15,8 @@ below), and the bite-unlock gate is RULED (see the log entry; recorded in
 `engagement-spine.md` + `gates.md` Settled).** Nothing in the phase is un-filed. **#381, the tracer, LANDED
 2026-08-11** — the ladder, the runner, the halt, the picker and the bite-grain Reveal are all
 standing. **#382 LANDED 2026-08-11** — the star budget rides the bite and what it cuts is stated.
-The next `/next` builds **#383**.
+**#383 LANDED 2026-08-11** — the bite is a placed bet: the picker states the stake and the Reveal
+settles it. The next `/next` builds **#384**.
 
 ### Phase 11 — B4 drive-the-clock (sliced + filed 2026-08-11)
 
@@ -23,7 +24,7 @@ The next `/next` builds **#383**.
 |---|---|---|
 | ~~#381~~ | ~~**tracer** — `data/clock-bites.json` + `src/game/ClockBite/` headless multi-day runner + halt + the Home bite picker + the bite-grain Reveal~~ **BUILT 2026-08-11** | — |
 | ~~#382~~ | ~~the star budget scales with the bite; what the feed leaves out is stated, not dropped~~ **BUILT 2026-08-11** | #381 |
-| #383 | the bite is a bet — `PrepBet` captured at the bite's start, scored over the days that ran | #381 |
+| ~~#383~~ | ~~the bite is a bet — `PrepBet` captured at the bite's start, scored over the days that ran~~ **BUILT 2026-08-11** | #381 |
 | #384 | the overnight interrupt channel — a moment that asks the owner a question stops the run | #381 |
 | #385 | the month rung — GM-gated, the desks earn the silence, multi-store safe **[HITL]**, closes #124 | #381, #384 |
 
@@ -152,6 +153,38 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **The bite bet is READ off `days[0].prepBet`, never held in a second slot** (#383).
+  `biteBetVerdictScoreline` takes the days and reads the first one's captured bet itself rather
+  than accepting a bet, so no caller can hand it day four's. The per-day capture deliberately
+  keeps running inside a bite — that is what feeds each day's own beat into the pooled feed — and
+  a `biteBetRef` beside it would be a second copy of one fact with a way to disagree. A future
+  session "finishing" this with a ref in `useDayLoop` is adding the disagreement, not the
+  capture. Nothing is persisted: a bite runs synchronously and ends MANAGERIAL, so there is no
+  mid-bite save, and `WORLD_SNAPSHOT_VERSION` stays 21.
+- **A run whose FIRST day had no lean is not scored, even if a later day has one** (#383). The
+  first non-null bet down the run is a later day's posture; adopting it would invent a wager out
+  of a mid-week restock the player never placed. `days[0].prepBet?.stockedCategory` is the whole
+  test.
+- **The bite verdict counts DAYS the category was asked for, not units** (#383). The bet is about
+  days — you wagered the lean carries N days — so a count of units would let one busy Saturday
+  speak for a week the store was wrong about. The denominator is the days that RAN, which is also
+  how a halted bite is scored on the M it got rather than the N it wagered.
+- **The bite names the crowd with the SAME `dominantCrowdWant` rule the day uses, and `null`
+  falls back** (#383). A run that named no favorite (nothing asked, or a dead tie) states the
+  tracer's span scoreline rather than a verdict — a bet nobody can settle is not scored, and the
+  bite must not learn a second crowd rule. Note the day grain falls back to `readCategory` on a
+  dead day and the bite does **not**: a week is long enough that silence is an answer.
+- **The span clause stays IN FRONT of the bite verdict** (#383). "3 of 7 days run" is what states
+  that the player did not get the run they wagered on; a verdict that replaced it would report a
+  bet nobody placed. The day grain replaces its scoreline with the verdict; the bite prefixes it.
+- **`stakes` is DATA, optional-with-a-refine, and the day is the only bite without one** (#383).
+  `ClockBitesConfigSchema` refuses a bite with `days > 1` that omits it, so a fourth rung cannot
+  ship blind; the day carries none because it is watched as it happens, and a required-but-unread
+  string is the dead `tagline` #378 had to delete. The picker states it verbatim and words
+  nothing.
+- **`matchClause` takes its window now, like `matchReaction`** (#383). It was still printing
+  "nothing closed today" on the bite fallback path. Any future scoreline helper that names a
+  window must take one rather than inheriting the day's default.
 - **`tunables.reveal.drama.starBudget` IS GONE and must not come back** (#382). The budget lives
   on the bite in `data/clock-bites.json`, and `buildReveal` reads the **day bite's** through
   `biteStarBudget('day')` rather than keeping a constant of its own — the day is a bite. Two
@@ -1165,6 +1198,50 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT #383** (the bite stops being a bet only in spirit — it is placed, and it
+  is settled). After the tracer, picking a week ran seven days and reported what happened; nothing
+  ever said what the player was *wagering* by picking it, so nothing resolved. Both halves are now
+  real: the picker states the stake **before** the tap, and the Reveal settles it after.
+  **The bite bet is the FIRST day's captured `PrepBet`, READ BACK off the run's first
+  `BiteDayBeats` — not copied into a second slot.** A bite is the day bet held longer: you wagered
+  that the lot you had stocked when you tapped carries the store for N days. The per-day capture
+  keeps running inside the run (day 4 recaptures against day 4's lot — that is what feeds each
+  day's own beat into the pooled feed), and `biteBetVerdictScoreline` reads `days[0].prepBet`
+  itself rather than taking one, so **no caller can hand it day four's**. Two grains, one module,
+  one copy of the fact. A run whose first day had no lean states no verdict even if a later day
+  does — adopting the first non-null bet down the run would invent a wager out of a mid-week
+  restock.
+  **The verdict counts DAYS, not units.** The bet being settled is a bet about days, so the
+  scoreline reads *"You went in leaning on trucks; the crowd asked for sedans on 3 of 7 days. Poor
+  match."* A count of units would let one busy Saturday speak for a week the store was wrong
+  about. The crowd is named with the **same `dominantCrowdWant` rule the day grain uses** — the
+  bite learns no second rule — and `null` (nothing ever asked, or the run named no favorite) falls
+  back to the tracer's span scoreline rather than inventing a verdict. A bet nobody can settle is
+  not scored.
+  **A halted bite is scored on the days it ran, by construction** — `days` *is* what ran — and the
+  span clause stays in front of the verdict, because it is what states that a 3-day run was a
+  shorter bet than the seven that were placed. The verdict must not silently absorb that.
+  **`matchClause` now takes its window too.** The fallback path this slice routes through was
+  still printing *"nothing closed today"* over a week — the same defect #381's drive caught in
+  `matchReaction`, one function over.
+  **The stakes sentence is DATA, and the schema refuses a bite above the day that omits it.**
+  `stakes` rides `data/clock-bites.json` beside `days`, is stated verbatim under the control, and
+  the picker words nothing. The day carries none and is the only bite allowed to: it is the live
+  floor, watched as it happens, so there is nothing to state in advance — which is also why the
+  field is optional-with-a-refine rather than required-and-unread (the dead `tagline` #378 had to
+  delete).
+  **Nothing calibrated moved and nothing is persisted.** Capture and scoring are reads of values
+  the sim already computes; the bite bet lives for one synchronous run that ends MANAGERIAL, so
+  `WORLD_SNAPSHOT_VERSION` stays **21** and `prepBet` is still the one persisted wager.
+  `npm run typecheck` clean, `npm test` **258 suites / 3165 tests** green. Verified on the web
+  drive (T2 dev slot, covered desk): the Home footer states *"Seven days run without you unless
+  something needs you. The lot you stocked and the policy you set have to carry them."* under Run
+  the Week while the month stays locked stating its door; the second week ran to *"7 days run —
+  You went in leaning on trucks; the crowd asked for sedans on 3 of 7 days. Poor match."* over a
+  feed of one truck sale and eight sedan walk-offs. The first week drew the fallback, which is the
+  no-favorite branch doing its job.
+  Next: **BUILD #384**.
+
 - 2026-08-11 — **BUILT #382** (the bigger the bite, the more the Reveal has to leave out).
   A day's Reveal shows a handful of starred reactions out of a day's candidates. The week the
   tracer shipped ran seven days through the **same** budget, so it threw away roughly seven times
@@ -1260,43 +1337,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   the week's cash delta intact. The `max of 3 slots reached` console error is the documented
   dev-slot blocker below, not this slice.
   Next: **BUILD #382**.
-
-- 2026-08-11 — **SLICED phase 11 (B4 drive-the-clock) into #381–#385, and RULED the bite-unlock
-  schedule** — the engagement spine's "grain/clock unlock schedule" STILL-OPEN item, settled at
-  the slice gate rather than during the build because the schedule had to be encoded into the
-  filed issues; filing it unruled would have smuggled it.
-  **The ruling is ONE rule: you can skip ahead exactly as far as your people can cover for you.**
-  Day always; Week when the used desk covers **both** discount desking (#290) and trade approval
-  (#291); Month when a **general manager** is staffed (#124's filed rule). The door and the
-  capability are the same fact — a multi-day run can only go headless when nothing escalates, and
-  what stops escalations is a staffed desk at threshold — so the player learns one sentence and
-  the schedule lands at ~T3 and ~T6 without ever naming a tier. **Rejected:** a bare tier number
-  (opens the door while the desks are empty, so the bite promises a week and halts on day 1), and
-  an earned clean-day streak (a new persisted counter, and the player has to infer why the button
-  came and went). Recorded in `engagement-spine.md` + `.claude/skills/decide/gates.md` Settled.
-  **The slices.** **#381** tracer — `data/clock-bites.json` + a new `src/game/ClockBite/` module
-  (`availableBites` / `runBite`) driving the existing per-day path headless through injected
-  closures, halting on the first day that needs a human, plus the Home bite picker and the
-  bite-grain Reveal. **#382** the star budget scales with the bite and what the feed leaves out is
-  stated, not silently dropped (closes the spine's "star budget per altitude" item at the grain
-  that forces it). **#383** the bite is a bet — `PrepBet` captured at the bite's *start* and held,
-  scored over the days that ran. **#384** the overnight interrupt channel — a moment that asks the
-  owner a question (raise demand #356, rival offer #357, an adverse news choice) stops the run
-  between days; a moment that only reports does not. **#385** the month rung, HITL, **closes
-  #124**.
-  **The subtraction that shaped it:** the primitives already exist and this phase composes them
-  rather than building a batch mode. `floor.runDay()` already exhausts a day headlessly
-  (`useFloorRenderLoop.ts:82`'s `skipToClose`), `rankDrama` already pools reactions at any grain
-  (#373 proved it with the monthly F&I verdict), and the desk-cover predicates already ship —
-  `isDiscountDeskingUnlocked` / `isTradeApprovalUnlocked`, read three times over at
-  `src/app/config.ts:624-650`. What is genuinely missing is the *bite* as an object, the halt, and
-  the aggregation. **#124's `escalated:0` argument is the whole design one rung down**, which is
-  why the week's door is the desks and not a tier.
-  **Two traps written into #381 so the build cannot walk into them:** per-day Reveal refs are
-  cleared before each `nextDay()`, so a runner that read only the final day would silently swallow
-  six days of wins, walk-offs, crowned records and month verdicts — beats are captured as each day
-  closes; and a halted bite leaves **no queued remainder and no auto-resume**, because a run that
-  continued past the thing that interrupted it would be the bite making the player's decision for
-  them.
-  No code changed and nothing calibrated moved — this session filed issues and recorded a ruling.
-  Next: **BUILD #381**.

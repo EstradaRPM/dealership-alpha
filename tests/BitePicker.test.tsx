@@ -49,6 +49,24 @@ describe('BitePicker (#381)', () => {
     expect(queryByTestId('bite-run-month')).toBeTruthy();
   });
 
+  // #383 — the bite is a bet, so the picker states what is being wagered before
+  // the player commits. A bet you cannot read before placing is not a decision.
+  it('the picker names the stakes of a bigger bite', () => {
+    const { getByTestId, queryByTestId, getByText } = render(
+      <BitePicker
+        options={availableBites(['discount_desking', 'trade_approval'])}
+        onRun={() => {}}
+      />,
+    );
+    // Stated verbatim off the catalog, under the control that places the bet.
+    expect(getByTestId('bite-stakes-week')).toBeTruthy();
+    expect(getByText(/Seven days run without you unless something needs you/)).toBeTruthy();
+    // A locked bite states its door instead — the stakes of a bet you cannot
+    // place yet are not what the player needs to read.
+    expect(queryByTestId('bite-stakes-month')).toBeNull();
+    expect(getByTestId('bite-locked-month')).toBeTruthy();
+  });
+
   it('renders without crashing when every bite is open', () => {
     expect(() =>
       render(
