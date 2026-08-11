@@ -1,7 +1,8 @@
 import type { DayRange, KPIDayTotals, KPISnapshot } from '../../game/KPIDashboard';
 import { PROFIT_CENTER_LABELS } from '../../game/Economy';
 import type { DepartmentPnLSummary, LedgerEntry, PnLSummary } from '../../game/Economy';
-import type { BarDatum, DonutDatum, TrendDirection } from '../kit';
+import { domainFraction, signedDomain } from '../kit';
+import type { BarDatum, DonutDatum, LineSeries, TrendDirection } from '../kit';
 
 /**
  * Finance's pure read-model (#351).
@@ -61,6 +62,20 @@ const PRIOR_PHRASE: Record<FinanceRangeId, string> = {
 
 export function financeRangeDays(id: FinanceRangeId): number {
   return RANGE_DAYS[id];
+}
+
+/**
+ * Whether the period-over-period delta has an honest comparison base (#376).
+ *
+ * The test is that the prior window fits **entirely** inside the career, not
+ * merely that it overlaps it: on day 10 the "7D" chip's prior window reaches
+ * back to day −3, and comparing seven traded days against the three that
+ * actually happened reports a collapse the store never had. A clamped prior
+ * window is a shorter window, and two spans of different lengths are not a
+ * period-over-period move.
+ */
+export function financeHasPriorWindow(id: FinanceRangeId, currentDay: number): boolean {
+  return financePriorWindow(id, currentDay).fromDay >= 1;
 }
 
 /**
@@ -128,6 +143,45 @@ export interface FinanceBars {
   readonly emptyLabel: string;
 }
 
+/**
+ * The three P&L lines over the window (#376). Bucketed on the *same* boundaries
+ * as the gross hero, so the two charts sit above each other and read against
+ * each other rather than against two different clocks.
+ */
+export interface FinanceTrendChart {
+  readonly title: string;
+  readonly caption: string;
+  /** Bucket labels, shared with the hero chart. Empty ⇒ the empty state. */
+  readonly labels: readonly string[];
+  readonly series: readonly LineSeries[];
+  readonly emptyLabel: string;
+}
+
+/**
+ * One line on the gross→net statement (#376). `amount` is the signed figure the
+ * line contributes, so the arithmetic can be checked without parsing money out
+ * of a string, and `value` is how it reads.
+ */
+export interface FinanceStatementLine {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string;
+  readonly amount: number;
+  /**
+   * `department` lines add up to the `subtotal`; the `deduction` comes off it;
+   * the `total` is what is left. The surface reads this to weight a line, and
+   * a test reads it to check the ladder adds up.
+   */
+  readonly kind: 'department' | 'subtotal' | 'deduction' | 'total';
+}
+
+export interface FinanceStatement {
+  readonly title: string;
+  readonly caption: string;
+  readonly lines: readonly FinanceStatementLine[];
+  readonly emptyLabel: string;
+}
+
 export interface FinanceDashboardModel {
   readonly ranges: readonly FinanceRangeOption[];
   readonly selectedRangeId: FinanceRangeId;
@@ -152,6 +206,19 @@ export interface FinanceDashboardModel {
    * the *sales* deal into its revenue lines.
    */
   readonly departmentGross: FinanceBars;
+  /**
+   * The statement itself (#376) — what came in, what went out, and what was
+   * left, across the window. The hero charts *gross*; this charts the P&L, and
+   * net income is the line that can go below zero.
+   */
+  readonly pnlTrend: FinanceTrendChart;
+  /**
+   * Departmental gross → less store overhead → net income (#376), stated as a
+   * ladder the player can follow line by line. This is where a fat service
+   * month visibly paid for a thin sales month, which is the load-bearing
+   * reading of a real dealership's month-end.
+   */
+  readonly statement: FinanceStatement;
   /** Back-end gross per car by deal structure (#152). */
   readonly backEndByStructure: FinanceBars;
   readonly expenses: FinanceBars;
@@ -190,6 +257,28 @@ export function money(n: number): string {
   const rounded = Math.round(n);
   const sign = rounded < 0 ? '-' : '';
   return `${sign}$${Math.abs(rounded).toLocaleString('en-US')}`;
+}
+
+/**
+ * Money short enough for a chart's axis gutter (#376) — "$12k", "-$1.4k".
+ *
+ * A value axis has ~52px for its widest tick, and `money()` at five figures
+ * blows straight through it; the #365 label-clipping lesson is that a
+ * half-rendered label is worse than a shorter one. The sign is kept because a
+ * P&L axis runs below zero, which is the whole point of charting it.
+ */
+export function compactMoney(n: number): string {
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${sign}$${trimTenth(abs / 1_000_000)}M`;
+  if (abs >= 1_000) return `${sign}$${trimTenth(abs / 1_000)}k`;
+  return `${sign}$${Math.round(abs)}`;
+}
+
+/** One decimal, and none at all when it would be a trailing zero. */
+function trimTenth(v: number): string {
+  const rounded = Math.round(v * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
 
 function pct(n: number): string {
@@ -273,6 +362,64 @@ export function bucketDaily(
   return out;
 }
 
+/** One day's three P&L lines. `net` is `revenue − expenses` and may be negative. */
+export interface PnLDayTotals {
+  readonly day: number;
+  readonly revenue: number;
+  readonly expenses: number;
+  readonly net: number;
+}
+
+/**
+ * The P&L per day across the window (#376), read off the ledger entries the
+ * summary already carries.
+ *
+ * No new engine read: `PnLSummary.entries` is exactly the set the totals are
+ * computed from — accrual, with `inventoryAcquisition` already dropped — and
+ * every entry is day-stamped. Asking Economy for one summary per bucket would
+ * be the same filter run thirteen times and would let the chart's arithmetic
+ * drift from the Net Income printed above it.
+ *
+ * `days` is the window's day list (every day, traded or not), so a quiet day is
+ * a zero in the series rather than a gap — a series that skips its quiet days
+ * draws a shape the business never had.
+ */
+export function dailyPnL(
+  entries: readonly LedgerEntry[],
+  days: readonly number[],
+): readonly PnLDayTotals[] {
+  const byDay = new Map<number, { revenue: number; expenses: number }>();
+  for (const e of entries) {
+    const bucket = byDay.get(e.day) ?? { revenue: 0, expenses: 0 };
+    if (e.type === 'revenue') bucket.revenue += e.amount;
+    else bucket.expenses += e.amount;
+    byDay.set(e.day, bucket);
+  }
+  return days.map((day) => {
+    const b = byDay.get(day) ?? { revenue: 0, expenses: 0 };
+    return { day, revenue: b.revenue, expenses: b.expenses, net: b.revenue - b.expenses };
+  });
+}
+
+/**
+ * A raw series mapped into the [0,1] samples `Sparkline` draws (#376).
+ *
+ * The kit primitive takes normalized samples because only the caller knows
+ * where the meaningful baseline is, and this caller's baseline is **zero** —
+ * every headline figure here is a money-or-count flow, so a bar half as tall
+ * must mean half as much. Handing it raw dollars (which is what shipped before
+ * #376) clamps every figure over 1 to the top of the plot, and the trend of a
+ * store writing $2k, $6k and $3k days draws as a flat line.
+ *
+ * The domain includes zero on both sides, so a negative day — Net Income is the
+ * one headline that has them — sits below where zero sits rather than on the
+ * floor.
+ */
+export function normalizeSeries(values: readonly number[]): readonly number[] {
+  const domain = signedDomain([...values]);
+  return values.map((v) => domainFraction(v, domain));
+}
+
 /**
  * Where the money went, grouped by the ledger's human-readable label (#351).
  * Labels are already the grouping Economy writes them for; the top few by size
@@ -313,6 +460,11 @@ export function buildFinanceDashboard(
   const gross = kpi.cashGross + kpi.financeGross;
   const priorGross = priorKpi.cashGross + priorKpi.financeGross;
 
+  // The P&L per day, off the entries the summary already carries. Both the Net
+  // Income sparkline and the trend chart are read from this one series, so the
+  // card and the chart beside it cannot disagree about the same window.
+  const pnlDays = dailyPnL(pnl.entries, daily.map((d) => d.day));
+
   const noDeals = 'No deals closed in this window.';
   const headline: readonly FinanceStat[] = [
     stat('units', 'Units Retailed', kpi.unitsRetailed, priorKpi.unitsRetailed, (n) => String(n), {
@@ -320,20 +472,25 @@ export function buildFinanceDashboard(
       rangeId,
       empty: !hasDeals,
       emptyNote: noDeals,
-      series: daily.map((d) => d.units),
+      series: normalizeSeries(daily.map((d) => d.units)),
     }),
     stat('gross', 'Total Gross', gross, priorGross, money, {
       hasPrior: hasPriorWindow,
       rangeId,
       empty: !hasDeals,
       emptyNote: noDeals,
-      series: daily.map((d) => d.gross),
+      series: normalizeSeries(daily.map((d) => d.gross)),
     }),
+    // #376: Net Income was the one headline card with no shape at all, which
+    // made the single number look like a verdict rather than a trajectory. Its
+    // series is the per-day net — the only one of the four that goes negative,
+    // which is why the normalized domain has to hold zero.
     stat('net', 'Net Income', pnl.netIncome, priorPnl.netIncome, money, {
       hasPrior: hasPriorWindow,
       rangeId,
       empty: !hasLedger,
       emptyNote: 'Nothing has been posted to the books in this window.',
+      series: normalizeSeries(pnlDays.map((d) => d.net)),
     }),
     // PVR carries no sparkline on purpose: it is undefined on a day with no
     // units, so a per-day series would draw zeroes on quiet days and read as a
@@ -410,6 +567,117 @@ export function buildFinanceDashboard(
     emptyLabel: 'No department has posted to the books in this window.',
   };
 
+  // #376: the statement over time. Bucketed off the SAME `buckets` the hero
+  // chart is built from — one call, not two computations that agree today — so
+  // "Gross Written" and this sit on identical boundaries and can be read
+  // against each other. A window with nothing posted ships no series at all,
+  // because a flat line at zero is a claim the store broke even.
+  const netByDay = new Map(pnlDays.map((d) => [d.day, d]));
+  const sumBucket = (
+    b: { days: readonly KPIDayTotals[] },
+    pick: (d: PnLDayTotals) => number,
+  ): number => b.days.reduce((s, d) => s + (netByDay.has(d.day) ? pick(netByDay.get(d.day)!) : 0), 0);
+  const trendBuckets = hasLedger ? buckets : [];
+  const pnlTrend: FinanceTrendChart = {
+    title: 'What Came In, What Went Out',
+    caption:
+      `Revenue, spending and what was left across ${RANGE_PHRASE[rangeId]}. ` +
+      'What was left is the only one of the three that can drop below the line.',
+    labels: trendBuckets.map((b) => b.label),
+    series: trendBuckets.length
+      ? [
+          // The three lines take semantic roles rather than categorical slots:
+          // money in, money out and what survived are exactly what `positive`,
+          // `danger` and `primary` mean, and a palette hue here would strip the
+          // meaning the reader already has.
+          {
+            label: 'Came in',
+            tone: 'positive',
+            values: trendBuckets.map((b) => sumBucket(b, (d) => d.revenue)),
+          },
+          {
+            label: 'Went out',
+            tone: 'danger',
+            values: trendBuckets.map((b) => sumBucket(b, (d) => d.expenses)),
+          },
+          {
+            label: 'Left over',
+            tone: 'primary',
+            values: trendBuckets.map((b) => sumBucket(b, (d) => d.net)),
+          },
+        ]
+      : [],
+    emptyLabel: 'Nothing has been posted to the books in this window.',
+  };
+
+  // #376: the ladder. Departmental gross → less store overhead → what was left.
+  // The same `active` rule the bars use, for the same reason: a Tier-1 store
+  // has no body shop, and a "Body Shop $0" line on a statement asserts a
+  // department that broke even rather than one that does not exist.
+  //
+  // Every figure is rounded to whole dollars ONCE, and each summed line is the
+  // sum of the rounded lines above it — so the ladder adds up on screen. Six
+  // independently rounded cents' worth of residue is what made a live 30-day
+  // window print $2,713 + $35,479 = $38,191, which is exactly the arithmetic
+  // this panel promises the player they can follow.
+  //
+  // The residue lands on the overhead line, not on the bottom one: Net Income
+  // is stated by the headline card six inches above and by `getDepartmentPnL`
+  // itself, so it is the figure that must match everywhere, and a balancing
+  // line absorbing rounding is how a real statement handles the same problem.
+  const activeDepartments = inputs.departmentPnl.departments.filter((d) => d.active);
+  const departmentLines = activeDepartments.map((d) => ({
+    center: d.center,
+    amount: Math.round(d.gross),
+  }));
+  const departmentTotal = departmentLines.reduce((s, d) => s + d.amount, 0);
+  const netTotal = Math.round(inputs.departmentPnl.netIncome);
+  const deduction = netTotal - departmentTotal;
+  const statement: FinanceStatement = {
+    title: 'From Gross to What You Kept',
+    caption:
+      'Each department earns its own gross. The store is run out of what they ' +
+      'make together — so a strong month in one covers a thin month in another.',
+    lines: hasLedger
+      ? [
+          ...departmentLines.map((d) => ({
+            id: `dept-${d.center}`,
+            label: PROFIT_CENTER_LABELS[d.center],
+            value: money(d.amount),
+            amount: d.amount,
+            kind: 'department' as const,
+          })),
+          {
+            id: 'departments-total',
+            label: 'The departments together',
+            value: money(departmentTotal),
+            amount: departmentTotal,
+            kind: 'subtotal' as const,
+          },
+          {
+            // Stated as the negative it is, so the ladder reads as arithmetic
+            // rather than as three unrelated figures the player must sign
+            // themselves. Overhead is store expenses NET of store revenue, so
+            // a store-level receipt legitimately makes this line positive —
+            // which is what a pre-#375 save's untagged revenue does.
+            id: 'overhead',
+            label: 'Less what it costs to run the store',
+            value: money(deduction),
+            amount: deduction,
+            kind: 'deduction' as const,
+          },
+          {
+            id: 'net',
+            label: 'Net Income',
+            value: money(netTotal),
+            amount: netTotal,
+            kind: 'total' as const,
+          },
+        ]
+      : [],
+    emptyLabel: 'Nothing has been posted to the books in this window.',
+  };
+
   // #152: the back end per car, by how much of the price the customer borrowed.
   // Stated PER UNIT rather than as window totals — a total here just reports
   // which structure was commonest, while the thing the player can act on is
@@ -481,6 +749,8 @@ export function buildFinanceDashboard(
     grossMix,
     grossBreakdown,
     departmentGross,
+    pnlTrend,
+    statement,
     backEndByStructure,
     expenses,
     kpi,

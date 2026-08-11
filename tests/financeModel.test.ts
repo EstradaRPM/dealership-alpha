@@ -192,8 +192,11 @@ describe('finance headline stats (#351)', () => {
         ]),
       }),
     );
+    // Normalized to the [0,1] samples `Sparkline` draws, against a zero-based
+    // domain (#376): the kit primitive clamps, so raw dollars used to draw a
+    // $2k day and a $6k day at exactly the same height.
     expect(stat(m, 'units').series).toEqual([1, 0, 1]);
-    expect(stat(m, 'gross').series).toEqual([2_000, 0, 2_000]);
+    expect(stat(m, 'gross').series).toEqual([1, 0, 1]);
     // PVR is undefined on a day with no units — a per-day series would draw a
     // collapse in per-deal profit that never happened.
     expect(stat(m, 'pvr').series).toBeUndefined();

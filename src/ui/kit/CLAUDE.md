@@ -71,12 +71,25 @@ Uncontrolled by default (`defaultExpanded`); pass `expanded` + `onToggle` when
 the parent must drive it. `variant` + `bodyPadded` let a panel host a card
 instead of raw content without nesting two raised slabs.
 
-## Charts (#350)
+## Charts (#350, #376)
 
-`Sparkline` (inline trend, no axes) · `BarChart` (categorical comparison,
+`Sparkline` (inline trend, no axes) · `LineChart` (multi-series trend on a
+signed value axis) · `BarChart` (categorical comparison,
 `vertical`|`horizontal`) · `DonutChart` (composition/share) · shared sub-parts
 `ChartGrid`, `ChartLegend`, `ChartEmpty`, `useChartWidth`. Built on
 `react-native-svg`; `GaugeArc` predates it and stays a pure-`View` build.
+
+- **`LineChart` vs `Sparkline` is the axis, and the axis is the point** (#376).
+  A sparkline takes samples the *caller* normalized and has no baseline, so it
+  cannot say whether a dip crossed zero. `LineChart` takes raw values and places
+  them in a `signedDomain` — which **always contains zero** — so a loss renders
+  below a drawn zero rule instead of at the plot floor. A chart of a number that
+  can go negative (a P&L) must be this one. `BarChart` clamps negatives to zero
+  by design and is the wrong primitive for signed data.
+- **Series identity defaults to the categorical palette; `tone` is the
+  exception.** Pass a semantic role only when the category genuinely carries the
+  role's meaning (money out really is `danger`) — the same exception `BarChart`
+  makes per datum.
 
 - **Geometry is a separate pure module.** Every number lives in `chartScale.ts`
   — scales, tick ladders, bar bands, ring segments, and the SVG `d` strings

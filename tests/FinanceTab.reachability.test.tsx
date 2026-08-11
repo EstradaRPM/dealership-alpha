@@ -62,6 +62,12 @@ describe('#351 the Finance tab is mounted on the live world', () => {
       'finance-region-headline',
       'finance-region-hero',
       'finance-region-mix',
+      // #375: which of the store's four businesses earned.
+      'finance-region-department-gross',
+      // #376: the three P&L lines over time, and the gross→net ladder. The
+      // room charted gross and printed net as a bare number before these.
+      'finance-region-pnl-trend',
+      'finance-region-statement',
       'finance-region-gross-breakdown',
       // #152: the back end per car by deal structure.
       'finance-region-back-end-structure',
@@ -89,9 +95,17 @@ describe('#351 the Finance tab is mounted on the live world', () => {
     );
     for (const id of ['units', 'gross', 'net', 'pvr']) {
       expect(getByTestId(`finance-stat-${id}`)).toBeTruthy();
-      // No sparkline is drawn for a card with nothing behind it.
+    }
+    // No deals have closed, so the three retail cards have nothing behind them
+    // and draw no sparkline.
+    for (const id of ['units', 'gross', 'pvr']) {
       expect(queryByTestId(`finance-spark-${id}`)).toBeNull();
     }
+    // Net Income is the exception, and it is not a zero reading as a result:
+    // day 1 already carries the seed lot, so the books hold a real (negative)
+    // carrying-cost entry. Before #376 this card had no series at all, which is
+    // the only reason it used to draw nothing here.
+    expect(getByTestId('finance-spark-net')).toBeTruthy();
   });
 
   it('re-reads the engine when the player selects a different range', () => {

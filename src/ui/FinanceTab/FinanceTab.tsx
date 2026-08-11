@@ -8,15 +8,18 @@ import {
   Sparkline,
   BarChart,
   DonutChart,
+  LineChart,
   Button,
 } from '../kit';
 import { ChipRow } from '../DeptControls';
 import { KPIDashboard } from '../KPIDashboard';
 import type { MarketStateModel } from '../KPIDashboard';
+import { compactMoney } from './financeModel';
 import type {
   FinanceDashboardModel,
   FinanceRangeId,
   FinanceStat,
+  FinanceStatementLine,
 } from './financeModel';
 
 export interface FinanceTabProps {
@@ -144,6 +147,38 @@ export function FinanceTab({
         </Surface>
       </View>
 
+      <View style={region} testID="finance-region-pnl-trend">
+        <Surface>
+          <SectionHeader title={model.pnlTrend.title} />
+          <Text style={caption}>{model.pnlTrend.caption}</Text>
+          <View style={{ marginTop: t.spacing.md }}>
+            <LineChart
+              series={model.pnlTrend.series}
+              labels={model.pnlTrend.labels}
+              formatTick={compactMoney}
+              emptyLabel={model.pnlTrend.emptyLabel}
+              testID="finance-pnl-trend-chart"
+            />
+          </View>
+        </Surface>
+      </View>
+
+      <View style={region} testID="finance-region-statement">
+        <Surface>
+          <SectionHeader title={model.statement.title} />
+          <Text style={caption}>{model.statement.caption}</Text>
+          <View style={{ marginTop: t.spacing.md }}>
+            {model.statement.lines.length === 0 ? (
+              <Text style={caption}>{model.statement.emptyLabel}</Text>
+            ) : (
+              model.statement.lines.map((line) => (
+                <StatementRow key={line.id} line={line} />
+              ))
+            )}
+          </View>
+        </Surface>
+      </View>
+
       <View style={region} testID="finance-region-gross-breakdown">
         <Surface>
           <SectionHeader title={model.grossBreakdown.title} />
@@ -224,6 +259,52 @@ export function FinanceTab({
           </View>
         </Surface>
       </View>
+    </View>
+  );
+}
+
+/**
+ * One line of the gross→net ladder (#376).
+ *
+ * A statement is read down the left and totalled on the right, so the rows are
+ * a label/figure pair and nothing else — no bars, no chips. The two summed
+ * lines carry a rule above them and heavier type, which is the only cue that
+ * says "this one is the sum of what is above it"; without it the ladder reads
+ * as six unrelated numbers, which is the state the slice exists to fix.
+ */
+function StatementRow({ line }: { line: FinanceStatementLine }) {
+  const t = useTheme();
+  const summed = line.kind === 'subtotal' || line.kind === 'total';
+  const total = line.kind === 'total';
+  const text = {
+    ...(summed ? t.typography.bodyStrong : t.typography.body),
+    color: summed ? t.colors.textPrimary : t.colors.textSecondary,
+  };
+  return (
+    <View
+      testID={`finance-statement-${line.id}`}
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: t.spacing.md,
+        paddingVertical: t.spacing.xs,
+        ...(summed
+          ? { borderTopWidth: 1, borderTopColor: t.colors.border, marginTop: t.spacing.xxs }
+          : {}),
+      }}
+    >
+      <Text style={{ ...text, flexShrink: 1 }}>{line.label}</Text>
+      <Text
+        style={{
+          ...text,
+          // The bottom line is the answer the whole panel builds to, so it is
+          // the one figure allowed to be louder than the rows above it.
+          ...(total ? { color: line.amount < 0 ? t.colors.danger : t.colors.positive } : {}),
+        }}
+      >
+        {line.value}
+      </Text>
     </View>
   );
 }

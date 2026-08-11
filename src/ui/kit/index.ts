@@ -32,6 +32,8 @@ export { BarChart } from './BarChart';
 export type { BarChartProps, BarDatum } from './BarChart';
 export { DonutChart } from './DonutChart';
 export type { DonutChartProps, DonutDatum } from './DonutChart';
+export { LineChart } from './LineChart';
+export type { LineChartProps, LineSeries } from './LineChart';
 export { ChartLegend, ChartGrid, ChartEmpty, useChartWidth } from './ChartParts';
 export type {
   ChartLegendProps,
@@ -43,7 +45,11 @@ export type {
 export {
   clamp01,
   niceTicks,
+  signedDomain,
+  signedTicks,
+  domainFraction,
   sparklinePoints,
+  linePoints,
   polylinePath,
   areaPath,
   barBands,
@@ -51,7 +57,7 @@ export {
   donutSegments,
   arcPath,
 } from './chartScale';
-export type { Point, BarBand, DonutSegment } from './chartScale';
+export type { Point, BarBand, DonutSegment, ValueDomain } from './chartScale';
 export { SectionHeader } from './SectionHeader';
 export type { SectionHeaderProps } from './SectionHeader';
 export { Collapsible } from './Collapsible';

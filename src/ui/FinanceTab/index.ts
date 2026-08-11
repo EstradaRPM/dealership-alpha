@@ -12,9 +12,13 @@ export {
   financeRangeWindow,
   financePriorWindow,
   financeRangeDays,
+  financeHasPriorWindow,
   bucketDaily,
+  dailyPnL,
+  normalizeSeries,
   groupExpenses,
   money,
+  compactMoney,
   FINANCE_RANGES,
 } from './financeModel';
 export type {
@@ -26,6 +30,10 @@ export type {
   FinanceHeroChart,
   FinanceDonut,
   FinanceBars,
+  FinanceTrendChart,
+  FinanceStatement,
+  FinanceStatementLine,
+  PnLDayTotals,
 } from './financeModel';
 export { buildMonthResults } from './monthResultsModel';
 export type {

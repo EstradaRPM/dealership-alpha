@@ -42,6 +42,69 @@ export function niceTicks(max: number, count = 4): number[] {
   return out;
 }
 
+export interface ValueDomain {
+  min: number;
+  max: number;
+}
+
+/**
+ * The value domain a signed series is plotted in — the data's own extremes,
+ * **always widened to include zero**.
+ *
+ * That inclusion is the whole point. A domain of the data alone would put the
+ * plot floor at the smallest sample, so a window whose every bucket lost money
+ * would draw its least-bad week sitting on the baseline and read as break-even.
+ * With zero inside the domain the baseline is a real position on the axis and a
+ * loss renders *below the line*, which is the only honest way to chart a number
+ * that can go negative (issue 376).
+ */
+export function signedDomain(values: readonly number[]): ValueDomain {
+  let min = 0;
+  let max = 0;
+  for (const v of values) {
+    if (!Number.isFinite(v)) continue;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  return { min, max };
+}
+
+/**
+ * A "nice" tick ladder spanning a domain that may cross zero, stepping by the
+ * same 1/2/2.5/5/10 x 10^k interval `niceTicks` uses. The ends are rounded
+ * outward to a whole step, so a domain containing zero always lands a tick
+ * exactly on it — the baseline is a gridline, never an interpolated position.
+ *
+ * A degenerate (zero-span) domain has one tick at zero; the caller draws its
+ * flat line against that.
+ */
+export function signedTicks(domain: ValueDomain, count = 4): number[] {
+  const span = domain.max - domain.min;
+  if (!Number.isFinite(span) || span <= 0 || count < 1) return [0];
+  const raw = span / count;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  const normalized = raw / magnitude;
+  const step =
+    (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.5 ? 2.5 : normalized <= 5 ? 5 : 10) *
+    magnitude;
+  const lo = Math.floor(domain.min / step) * step;
+  const steps = Math.round((Math.ceil(domain.max / step) * step - lo) / step);
+  // Indexed rather than accumulated: adding `step` in a loop drifts, and a tick
+  // ladder that misses zero by float dust stops being a baseline.
+  return Array.from({ length: steps + 1 }, (_, i) => tidy(lo + step * i));
+}
+
+/**
+ * Where a value sits in a domain, 0 at the bottom and 1 at the top. A
+ * zero-span domain reads as the middle, so a flat all-zero series draws on its
+ * own baseline rather than at an edge.
+ */
+export function domainFraction(value: number, domain: ValueDomain): number {
+  const span = domain.max - domain.min;
+  if (!Number.isFinite(span) || span <= 0) return 0.5;
+  return clamp01((value - domain.min) / span);
+}
+
 export interface Point {
   x: number;
   y: number;
@@ -73,6 +136,30 @@ export function sparklinePoints(
     x: inset + stepX * i,
     y: top + (1 - clamp01(v)) * usableH,
   }));
+}
+
+/**
+ * Vertices for a trend line over **raw** values placed in an explicit domain —
+ * the axis-bearing sibling of `sparklinePoints`, which takes pre-normalized
+ * samples because an inline mark has no axis to normalize against.
+ *
+ * One shared placement routine on purpose: a chart and the sparkline beside it
+ * that computed their vertices differently would disagree about the same
+ * window, and the disagreement would be invisible.
+ */
+export function linePoints(
+  values: readonly number[],
+  domain: ValueDomain,
+  width: number,
+  height: number,
+  inset = 0,
+): Point[] {
+  return sparklinePoints(
+    values.map((v) => domainFraction(v, domain)),
+    width,
+    height,
+    inset,
+  );
 }
 
 /** `M x y L x y ...` for a vertex list. Empty list ⇒ empty string, never `M`. */

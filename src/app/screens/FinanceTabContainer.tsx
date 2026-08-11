@@ -7,6 +7,7 @@ import {
   buildFinanceDashboard,
   financeRangeWindow,
   financePriorWindow,
+  financeHasPriorWindow,
   type FinanceRangeId,
 } from '../../ui/FinanceTab';
 import { buildMarketState } from '../config';
@@ -34,10 +35,13 @@ export function FinanceTabContainer({ world, tabs }: FinanceTabContainerProps) {
   const currentDay = world.clock.currentDay;
   const window = financeRangeWindow(rangeId, currentDay);
   const prior = financePriorWindow(rangeId, currentDay);
-  // A prior window that ends before day 1 never happened, so the deltas are
-  // suppressed rather than compared against a period the career did not have.
-  const hasPriorWindow = prior.toDay >= 1;
-  const priorClamped = { fromDay: Math.max(1, prior.fromDay), toDay: prior.toDay };
+  // A prior window that does not fit entirely inside the career never happened
+  // at full length, so the deltas are suppressed rather than compared against a
+  // shorter period (#376 — a clamped prior window is a *different span*, and a
+  // seven-day window against three real days reports a collapse that is only
+  // the clamp).
+  const hasPriorWindow = financeHasPriorWindow(rangeId, currentDay);
+  const priorClamped = { fromDay: Math.max(1, prior.fromDay), toDay: Math.max(1, prior.toDay) };
 
   const model = buildFinanceDashboard({
     rangeId,

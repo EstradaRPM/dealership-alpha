@@ -5,13 +5,18 @@ import {
   BarChart,
   ChartLegend,
   DonutChart,
+  LineChart,
   Sparkline,
   arcPath,
   barBands,
   barPath,
+  domainFraction,
   donutSegments,
+  linePoints,
   niceTicks,
   polylinePath,
+  signedDomain,
+  signedTicks,
   sparklinePoints,
 } from '../src/ui/kit';
 import { ThemeProvider, defaultTheme, type Theme } from '../src/ui/theme';
@@ -353,5 +358,123 @@ describe('#350 chart primitives re-skin from the theme object alone', () => {
     const base = markUnder(defaultTheme, chart, 'spark-line');
     const alt = markUnder(altTheme, chart, 'spark-line');
     expect(alt.d).toBe(base.d);
+  });
+});
+
+/**
+ * `LineChart` (issue 376) — the axis-bearing sibling of `Sparkline`. The axis
+ * is the whole reason it exists: a P&L can go negative, and a chart that draws
+ * a loss on the plot floor tells the player the store broke even.
+ */
+describe('#376 chartScale — the signed value axis', () => {
+  describe('signedDomain', () => {
+    it('always contains zero, so the baseline is a real position', () => {
+      expect(signedDomain([4_000, 9_000])).toEqual({ min: 0, max: 9_000 });
+      expect(signedDomain([-4_000, -1_000])).toEqual({ min: -4_000, max: 0 });
+      expect(signedDomain([-2_000, 5_000])).toEqual({ min: -2_000, max: 5_000 });
+    });
+
+    it('reads an empty or non-finite series as the degenerate zero domain', () => {
+      expect(signedDomain([])).toEqual({ min: 0, max: 0 });
+      expect(signedDomain([Number.NaN, Number.POSITIVE_INFINITY])).toEqual({ min: 0, max: 0 });
+    });
+  });
+
+  describe('signedTicks', () => {
+    it('lands a tick exactly on zero whenever the domain crosses it', () => {
+      expect(signedTicks({ min: -9_000, max: 21_000 })).toContain(0);
+      expect(signedTicks({ min: -1, max: 3 })).toContain(0);
+    });
+
+    it('rounds both ends outward to a whole step', () => {
+      const ticks = signedTicks({ min: -900, max: 2_100 });
+      expect(ticks[0]).toBeLessThanOrEqual(-900);
+      expect(ticks[ticks.length - 1]).toBeGreaterThanOrEqual(2_100);
+    });
+
+    it('returns a lone zero for a degenerate domain rather than dividing by it', () => {
+      expect(signedTicks({ min: 0, max: 0 })).toEqual([0]);
+    });
+  });
+
+  describe('domainFraction', () => {
+    it('places a value by where it sits in the domain, not by its sign', () => {
+      const domain = { min: -100, max: 100 };
+      expect(domainFraction(0, domain)).toBe(0.5);
+      expect(domainFraction(-100, domain)).toBe(0);
+      expect(domainFraction(100, domain)).toBe(1);
+    });
+
+    it('reads a degenerate domain as its own middle', () => {
+      expect(domainFraction(0, { min: 0, max: 0 })).toBe(0.5);
+    });
+  });
+
+  describe('linePoints', () => {
+    it('puts a negative sample below where zero sits, never on the floor', () => {
+      const domain = signedDomain([-50, 150]);
+      const pts = linePoints([-50, 0, 150], domain, 200, 100);
+      expect(pts[1]!.y).toBeLessThan(pts[0]!.y);
+      // Screen y grows downward: the loss is the largest y, and zero is above it.
+      expect(pts[0]!.y).toBeGreaterThan(pts[1]!.y);
+      expect(pts[2]!.y).toBeLessThan(pts[1]!.y);
+    });
+  });
+});
+
+describe('#376 LineChart', () => {
+  const SERIES = [
+    { label: 'Came in', values: [10, 20, 30] },
+    { label: 'Went out', values: [8, 25, 12] },
+    { label: 'Left over', values: [2, -5, 18] },
+  ];
+
+  it('draws one line per series and names each in the legend', () => {
+    const { getAllByTestId, getByText } = render(
+      <LineChart testID="pnl" width={300} series={SERIES} />,
+    );
+    expect(getAllByTestId(/^pnl-line-\d+$/)).toHaveLength(3);
+    for (const s of SERIES) expect(getByText(s.label)).toBeTruthy();
+  });
+
+  it('draws the zero rule only when the data actually crosses it', () => {
+    const crossing = render(<LineChart testID="a" width={300} series={SERIES} />);
+    expect(crossing.getByTestId('a-zero')).toBeTruthy();
+
+    const profitable = render(
+      <LineChart testID="b" width={300} series={[{ label: 'Left over', values: [2, 5, 18] }]} />,
+    );
+    expect(profitable.queryByTestId('b-zero')).toBeNull();
+  });
+
+  it('renders the empty state rather than a flat line at zero', () => {
+    const { getByText, queryByTestId } = render(
+      <LineChart testID="pnl" width={300} series={[]} emptyLabel="Nothing posted yet" />,
+    );
+    expect(getByText('Nothing posted yet')).toBeTruthy();
+    expect(queryByTestId('pnl-line-0')).toBeNull();
+  });
+
+  it('takes a semantic role when the caller passes one and a palette slot otherwise', () => {
+    const toned = render(
+      <LineChart testID="t" width={300} series={[{ label: 'Went out', values: [1, 2], tone: 'danger' }]} />,
+    );
+    expect(fillOf(toned.getByTestId('t-latest-0'))).toEqual(
+      expectedFill(defaultTheme.colors.danger),
+    );
+
+    const plain = render(
+      <LineChart testID="p" width={300} series={[{ label: 'Anything', values: [1, 2] }]} />,
+    );
+    expect(fillOf(plain.getByTestId('p-latest-0'))).toEqual(
+      expectedFill(defaultTheme.series[0]!),
+    );
+  });
+
+  it('labels the time axis under the plot', () => {
+    const { getByText } = render(
+      <LineChart testID="pnl" width={300} series={SERIES} labels={['D1', 'D2', 'D3']} />,
+    );
+    for (const label of ['D1', 'D2', 'D3']) expect(getByText(label)).toBeTruthy();
   });
 });
