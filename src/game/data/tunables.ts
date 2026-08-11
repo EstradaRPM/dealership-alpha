@@ -291,16 +291,18 @@ export const TunablesSchema = z.object({
   reveal: z.object({
     busyWalkedInThreshold: z.number().nonnegative(),
     // #328: the unified drama ranking. Wins and losses are scored on ONE drama
-    // axis and the top `starBudget` are surfaced — a dramatic loss can outrank a
-    // mild win and vice-versa. The scorer is a weighted sum of per-axis terms so
-    // a new axis (e.g. `recordBroken`, #330) drops in by extending `weights` +
+    // axis and the top few are surfaced — a dramatic loss can outrank a mild
+    // win and vice-versa. The scorer is a weighted sum of per-axis terms so a
+    // new axis (e.g. `recordBroken`, #330) drops in by extending `weights` +
     // one term, never a rewrite. All magnitudes are first-pass — tuned last
     // (#286).
+    //
+    // HOW MANY survive the ranking is NOT here (#382): the star budget rides
+    // the bite in `data/clock-bites.json`, because it is a property of the
+    // window the feed covers, not of the ranking. `drama.starBudget` was
+    // deleted rather than left beside it — two budgets is two places to
+    // disagree about the same day.
     drama: z.object({
-      // Single unified star budget (replaces #320's `starBudget` + #321's
-      // `lossStarBudget`): the total individual reactions the feed surfaces per
-      // day, wins and losses pooled. Kept small — standout beats, not a ticker.
-      starBudget: z.number().int().positive(),
       // #330: how many crowned records (broken high-water marks) may take star
       // slots in one bite. A great day can beat four marks at once; without a
       // cap the feed becomes all-crown and the day's actual drama gets pushed

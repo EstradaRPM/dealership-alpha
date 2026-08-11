@@ -331,7 +331,6 @@
   "reveal": {
     "busyWalkedInThreshold": 6,
     "drama": {
-      "starBudget": 5,
       "crownBudget": 2,
       "grossSurpriseScale": 1500,
       "basePain": 0.5,

@@ -19,15 +19,24 @@
   ],
 
   "_bitesDoc": "`days` is how many days the bite runs. The day is always open and is the LIVE floor — the runner is what a bite above the day uses. Rejected doors, recorded so they are not re-proposed: a bare tier number (opens the door while the desks are empty, so the bite would promise a week and halt on day 1), and an earned clean-day streak (a new persisted counter, and the player has to infer why the button came and went).",
+
+  "_starBudgetDoc": "B4 S2 (#382) — how many individual reactions the Reveal at THIS grain surfaces, wins/losses/crowns pooled. It rides the bite because the bite is the window the feed covers: seven days run through a day's budget throw away roughly seven times as much, and throw it away silently. It grows SUB-LINEARLY on purpose — seven days of reactions at seven times the stars is a scroll, not a beat — and what the budget cut is then stated as one line rather than dropped. The day's 5 is the shipped pre-#382 number, moved here from `tunables.reveal.drama.starBudget` (deleted) so there is one budget per grain and not two places to disagree.",
   "bites": [
-    { "id": "day", "label": "Run the Day", "days": 1, "requires": [] },
+    { "id": "day", "label": "Run the Day", "days": 1, "starBudget": 5, "requires": [] },
     {
       "id": "week",
       "label": "Run the Week",
       "days": 7,
+      "starBudget": 9,
       "requires": ["discount_desking", "trade_approval"]
     },
-    { "id": "month", "label": "Run the Month", "days": 30, "requires": ["general_manager"] }
+    {
+      "id": "month",
+      "label": "Run the Month",
+      "days": 30,
+      "starBudget": 14,
+      "requires": ["general_manager"]
+    }
   ],
 
   "_haltsDoc": "A bite stops at the first moment the store needs a human, and the bite is OVER — the player picks again from wherever the clock now sits. There is no queued remainder and no auto-resume: a run that silently continued past the thing that interrupted it would be the bite making the player's decision for them. Each sentence is stated verbatim by the Reveal.",

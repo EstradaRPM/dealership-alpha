@@ -14,14 +14,15 @@ session start — open it on demand when a past slice's rationale needs recoveri
 below), and the bite-unlock gate is RULED (see the log entry; recorded in
 `engagement-spine.md` + `gates.md` Settled).** Nothing in the phase is un-filed. **#381, the tracer, LANDED
 2026-08-11** — the ladder, the runner, the halt, the picker and the bite-grain Reveal are all
-standing. The next `/next` builds **#382**.
+standing. **#382 LANDED 2026-08-11** — the star budget rides the bite and what it cuts is stated.
+The next `/next` builds **#383**.
 
 ### Phase 11 — B4 drive-the-clock (sliced + filed 2026-08-11)
 
 | # | Slice | Deps |
 |---|---|---|
 | ~~#381~~ | ~~**tracer** — `data/clock-bites.json` + `src/game/ClockBite/` headless multi-day runner + halt + the Home bite picker + the bite-grain Reveal~~ **BUILT 2026-08-11** | — |
-| #382 | the star budget scales with the bite; what the feed leaves out is stated, not dropped | #381 |
+| ~~#382~~ | ~~the star budget scales with the bite; what the feed leaves out is stated, not dropped~~ **BUILT 2026-08-11** | #381 |
 | #383 | the bite is a bet — `PrepBet` captured at the bite's start, scored over the days that ran | #381 |
 | #384 | the overnight interrupt channel — a moment that asks the owner a question stops the run | #381 |
 | #385 | the month rung — GM-gated, the desks earn the silence, multi-store safe **[HITL]**, closes #124 | #381, #384 |
@@ -151,6 +152,37 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **`tunables.reveal.drama.starBudget` IS GONE and must not come back** (#382). The budget lives
+  on the bite in `data/clock-bites.json`, and `buildReveal` reads the **day bite's** through
+  `biteStarBudget('day')` rather than keeping a constant of its own — the day is a bite. Two
+  budgets is two places to disagree about the same day, which is the whole reason one was deleted
+  rather than left beside the other. `tests/RevealBudget.test.ts` scans both files for the string.
+  `drama.crownBudget` stays in tunables: it caps a *ranking*, not a window.
+- **The star budget grows SUB-LINEARLY and the schema refuses a shrink** (#382). 5 / 9 / 14
+  against 1 / 7 / 30 days. Seven days of reactions at seven times the stars is a scroll, not a
+  beat; a longer bite carrying a *smaller* budget is a typo, and `ClockBitesConfigSchema` rejects
+  it. **The day's 5 must not move** — it is the pre-#382 shipped number, and moving it changes the
+  tracer's live reading for a reason nobody filed.
+- **The leftover line is the BITE's, deliberately absent at day grain** (#382). A day's handful of
+  beats through a day's budget is the feed doing its job; the statement exists because a bite
+  discards multiples more. Adding it to `buildReveal` would change a day's Reveal, which #382 filed
+  as identical to before the slice. It is **one line, never an expandable list** — a surface that
+  can show everything is a report, not a Reveal — and it carries the bite's own span word, the same
+  rule `matchReaction` learned on #381's drive.
+- **A crowned record is admitted BEFORE the budget is spent, and the reservation must not
+  reorder the feed** (#382). `rankDramaPool` reserves crowns and then fills the remaining budget in
+  drama order, emitting the admitted set in the pool's own order. Under the *shipped* weights a
+  crown already outranks any win (`recordBroken` 2 vs. a win's clamped ceiling of 2, crowns leading
+  the arrival tiebreak), so the reservation cannot be observed in normal play — that is exactly why
+  it exists rather than the weighting being trusted, since retuning the drama weights is C2-class
+  calibration. `tests/RevealBudget.test.ts` drives it at the one limit where it bites (the #373
+  month verdict, weight 2.5, is the only candidate that outscores a crown). **`drama.crownBudget`
+  still caps how many crowns take slots** — the reservation guarantees the survivors of that cap,
+  it does not repeal it.
+- **The remainder counts what the RANKING cut, not every event of the week** (#382). Non-starworthy
+  walk-offs are dropped at the eligibility gate and were never candidates; counting them would
+  inflate the line into a claim the feed cannot back. The halt and match-summary reactions are not
+  drama and are not counted either.
 - **The DAY bite is the live floor and must never route through the runner** (#381). `Run the
   Day` is `handleNextDay`; only bites *above* the day call `runBite`. Running the day headless
   would delete the floor view and its intra-day pause/speed control — the opposite of what B4
@@ -1133,6 +1165,44 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT #382** (the bigger the bite, the more the Reveal has to leave out).
+  A day's Reveal shows a handful of starred reactions out of a day's candidates. The week the
+  tracer shipped ran seven days through the **same** budget, so it threw away roughly seven times
+  as much — and threw it away **silently**, which is the failure: a player who sold their best
+  unit ever on day 4 of a quiet week finishes the week never told, and concludes the feed is
+  noise. This closes the engagement spine's last **"star budget per altitude"** STILL-OPEN item,
+  at the grain that forced it.
+  **The budget rides the BITE, and `tunables.reveal.drama.starBudget` was DELETED rather than
+  left beside it.** `starBudget` sits in `data/clock-bites.json` next to `days`, because it is a
+  property of the window the feed covers, not of the ranking — and one budget per grain is the
+  only shape with no second place to disagree about the same day. `biteStarBudget(biteId)` is the
+  one read, and **`buildReveal` takes the DAY bite's budget through it**: the day is a bite, so it
+  has no constant of its own. Shipped **5 / 9 / 14** against 1 / 7 / 30 days — **sub-linear on
+  purpose**, seven days of reactions at seven times the stars is a scroll, not a beat — and the
+  schema refuses a longer bite carrying a smaller budget.
+  **The day's 5 is the pre-#382 number, unmoved.** A day's Reveal is identical to before the
+  slice, in the test and on the drive, or the tracer's live reading would have changed for a
+  reason nobody filed.
+  **What the budget cut is STATED, not dropped** — one plain-language line at the foot of a bite's
+  feed (*"Plus 38 smaller moments over 7 days, too small to make the cut."*), never an expandable
+  list: the feed's job is the top of the pile, and a surface that can show everything is a report,
+  not a Reveal. It carries the bite's own span word for the same reason the pooled tally does.
+  **A crowned record is admitted BEFORE the budget is spent.** #330 weights crowns above the
+  win/loss axes, but weighting is not a guarantee. `rankDramaPool` reserves the crowned marks and
+  then fills the rest of the budget in drama order — the admitted set is still emitted in the
+  pool's own order, so reserving a slot cannot reorder the feed. `drama.crownBudget` still caps
+  how many crowns take slots; the reservation guarantees the ones that survive that cap, it does
+  not repeal it.
+  **No drama weight moved and nothing calibrated could move** — the whole slice is a read of
+  reactions the sim already emitted. `#180` still reads 35.8% positive / 54.3% apathetic,
+  closes=274, `costOverAsk` 1.026. `WORLD_SNAPSHOT_VERSION` stays **21**, nothing persisted.
+  `npm run typecheck` clean, `npm test` **256 suites / 3151 tests** green. Verified on the web
+  drive (T2 dev slot, covered desk): a full week's Reveal drew exactly **9** starred reactions —
+  two crowns at the top, then wins and walk-offs from across the days — followed by *"Plus 38
+  smaller moments over 7 days, too small to make the cut."*; the very next hand-driven day drew
+  exactly **5**, said *"gross today"*, and carried no leftover line.
+  Next: **BUILD #383**.
+
 - 2026-08-11 — **BUILT #381** (phase 11 tracer: the clock takes a bigger bite). The clock had
   exactly one verb — `nextDay()`, one day at a time. It now has a ladder: the player picks how
   big a bite of the calendar to run before they look again, and the size of the bite is the bet.
@@ -1230,56 +1300,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   them.
   No code changed and nothing calibrated moved — this session filed issues and recorded a ruling.
   Next: **BUILD #381**.
-
-- 2026-08-11 — **BUILT #380** (Cash on Hand stops being the only number: the store also shows
-  what it is worth). The Home HUD's one big figure was Cash, and every automation the game
-  already ships makes it fall without the player touching anything — the UCM sources the board
-  (#293), construction draws on a timer (#359), a wire subscription bills daily (#178). A
-  headline that only goes down reads as decay. #374 had already taught the P&L that buying a car
-  converts cash into stock rather than losing it; the HUD did not know, and that was the gap.
-  **The stock half is COST BASIS, and that is the whole reason the figure is checkable.**
-  `Inventory.getStockValue()` sums `purchasePrice + reconCost` — the same basis
-  `getWholesaleQuote` states — never `bookValueFn`. Book value is an appraisal that drifts with
-  the used-car market, so a worth figure built on it would fall on a day the player did nothing,
-  which is the exact disconnection this exists to remove. On cost basis all three doors state one
-  rule: an auction buy debits cash and raises stock by the same number so the total sits still, a
-  retail close raises it by the front gross, and a wholesale-out lowers it by the quote's `gain`.
-  `tests/Economy.netWorth.test.ts` drives all three against a real world.
-  **`World.getStoreWorth()` is the one place the addition happens** — `{ cash, stockValue, total
-  }`, composed at the composition root because that is the only place that sees both modules, and
-  `total` is carried rather than left to the caller so two surfaces cannot compute two totals.
-  Live, never memoized, the way `economy.cash` already is. Facility and floorplan are deliberately
-  NOT in it: Facility has no dollar value in the engine (#358 counts built spaces) and floorplan
-  is modeled as a daily carrying cost, not a debt balance, so either would be a term the player
-  cannot check. Whether a built bay is a sellable asset is a design question that has never been
-  asked — it is not omitted, it is unasked, and the label says exactly what the figure sums.
-  **The caption names COST, departing from the issue's filed copy on the issue's own rule.**
-  Filed as *"your cash plus the cars on your lot"*; shipped as **"Your cash plus what the cars on
-  your lot cost you."** The Finance room renders a market Book Value a few inches below (the
-  #179 INVENTORY VALUATION panel), so the filed sentence would have invited the player to check
-  the addition against a number it does not use and find it does not work. #380's own instruction
-  is that the figure is labeled for exactly what it sums.
-  **`HomeDashboardInputs.cash` is GONE, replaced by `storeWorth`.** Two ways in for the same
-  number is how a HUD starts stating a cash figure its own worth line disagrees with; the
-  headline now reads its value AND its name ("Cash on Hand") out of the same `buildStoreWorth`
-  model the line under it does. Four test fixtures moved with it.
-  **One copy, two rooms: `src/ui/StoreWorth`.** `buildStoreWorth` owns the formatting and the
-  three strings; `StoreWorthLine` is the worth half alone (Home, under the existing #230 cash
-  StatCard and its #255 ops/stock delta) and `StoreWorthPair` is cash-plus-worth (Finance, which
-  had no cash figure at all). Finance takes it as its **own prop, not a field on
-  `FinanceDashboardModel`** — everything in that model is a reading of the selected time window
-  and this is a reading of this moment, so changing the range chips must not appear to move it.
-  It heads the room under "Where You Stand", above the chips.
-  **Cash stays primary on both surfaces**, deliberately: every bankruptcy, tier gate and
-  career-ending face branches on `economy.cash`, so a larger worth figure beside it would be a lie
-  of a different kind. What the pair buys is the reading that cash falling was a *move*.
-  **An empty lot is not an empty state** — the store is worth its cash. A dash there would read as
-  "unknown" on exactly the day a Tier-1 player has sold out and is about to restock.
-  **Nothing calibrated moved and nothing could** — the whole slice is a read. `#180` still reads
-  35.8% positive / 54.3% apathetic, closes=274. No snapshot field was added, so
-  `WORLD_SNAPSHOT_VERSION` stays **21** and there is no migration.
-  Verified on the web drive (T2 dev slot via Continue, day 39): Home reads `$167,361 Cash on
-  Hand` over `What the Store Is Worth $270,356` with the caption, and Finance's "Where You Stand"
-  states the identical pair — two rooms, one getter. 248 suites / 3107 tests green, typecheck
-  clean. The `Cannot create slot: max of 3 slots reached` error in the console is the documented
-  dev-slot blocker below, not this slice.

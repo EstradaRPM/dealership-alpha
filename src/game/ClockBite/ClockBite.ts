@@ -143,6 +143,21 @@ export function runBite(
   return { biteId, daysRequested: bite.days, daysRun, halt };
 }
 
+/**
+ * How many individual reactions the Reveal covering this bite may surface
+ * (#382). The budget rides the bite, beside its day count, because the bite is
+ * the window the feed covers: a week run through a day's budget throws away
+ * roughly seven times as much, silently. It grows sub-linearly — seven days of
+ * reactions at seven times the stars is a scroll, not a beat — and what the
+ * budget cut is stated by the Reveal rather than dropped.
+ */
+export function biteStarBudget(
+  biteId: BiteId,
+  config: ClockBitesConfig = loadClockBites(),
+): number {
+  return biteDef(config, biteId).starBudget;
+}
+
 /** The plain-language sentence for a halt, off the catalog. */
 export function haltReason(
   id: HaltReasonId,

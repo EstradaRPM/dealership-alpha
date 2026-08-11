@@ -6,9 +6,9 @@ import type {
   BrokenRecord,
 } from '../src/ui/Reveal';
 import type { DayFunnel } from '../src/game/CapacityManager';
-import { loadTunables } from '../src/game/data';
+import { biteStarBudget } from '../src/game/ClockBite';
 
-const STAR_BUDGET = loadTunables().reveal.drama.starBudget;
+const WEEK_BUDGET = biteStarBudget('week');
 
 function funnel(overrides: Partial<DayFunnel> = {}): DayFunnel {
   return {
@@ -71,7 +71,7 @@ describe('buildBiteReveal (#381)', () => {
         gross: 1_000 + i * 500,
       }),
     );
-    const model = buildBiteReveal(days, { daysRequested: 7, haltSentence: null });
+    const model = buildBiteReveal(days, { biteId: 'week', daysRequested: 7, haltSentence: null });
 
     expect(model.scoreline).toContain('7 days run');
     // The pooled tally over the window it actually covers — a week's gross
@@ -79,10 +79,10 @@ describe('buildBiteReveal (#381)', () => {
     expect(model.reactions[0].text).toContain('7 of 7 stuck');
     expect(model.reactions[0].text).toContain('gross over 7 days');
     expect(model.reactions[0].text).not.toContain('today');
-    // Every starred reaction is drawn from the pool of all seven days, and the
-    // budget is the existing single one (#382 is what scales it).
+    // Every starred reaction is drawn from the pool of all seven days, against
+    // the WEEK's own budget (#382).
     const starred = model.reactions.slice(1);
-    expect(starred.length).toBeLessThanOrEqual(STAR_BUDGET);
+    expect(starred.length).toBeLessThanOrEqual(WEEK_BUDGET);
     expect(starred.length).toBeGreaterThan(0);
     // The biggest deal of the week is day 7's, and it is the one crowned —
     // proof the ranking saw days the final one would have swallowed.
@@ -108,6 +108,7 @@ describe('buildBiteReveal (#381)', () => {
     const model = buildBiteReveal(
       [day({ closes: [sale('a')] }), day({ closes: [sale('b')] })],
       {
+        biteId: 'week',
         daysRequested: 7,
         haltSentence: 'A deal came to your desk, so the run stopped there.',
       },
@@ -124,6 +125,7 @@ describe('buildBiteReveal (#381)', () => {
 
   it('a completed run states no halt', () => {
     const model = buildBiteReveal([day(), day()], {
+      biteId: 'week',
       daysRequested: 2,
       haltSentence: null,
     });
@@ -139,6 +141,7 @@ describe('buildBiteReveal (#381)', () => {
       readCategory: 'suv' as const,
     };
     const model = buildBiteReveal([day({ prepBet: bet, closes: [sale('a')] })], {
+      biteId: 'day',
       daysRequested: 1,
       haltSentence: null,
     });
@@ -149,6 +152,7 @@ describe('buildBiteReveal (#381)', () => {
 
   it('a bite that ran no days states so rather than inventing a day', () => {
     const model = buildBiteReveal([], {
+      biteId: 'week',
       daysRequested: 7,
       haltSentence: 'The store ran out of money, so the run stopped there.',
     });

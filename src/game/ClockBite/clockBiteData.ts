@@ -41,6 +41,11 @@ const BiteSchema = z
     id: BiteIdSchema,
     label: z.string().min(1),
     days: z.number().int().positive(),
+    /**
+     * #382: how many individual reactions the Reveal at this grain surfaces.
+     * The budget rides the bite because the bite is the window the feed covers.
+     */
+    starBudget: z.number().int().positive(),
     requires: z.array(CoverageFactIdSchema),
   })
   .strict();
@@ -83,6 +88,17 @@ export const ClockBitesConfigSchema = z
   .refine((c) => HALT_REASON_IDS.every((id) => c.halts.some((h) => h.id === id)), {
     message: 'every halt reason must be declared',
   })
+  // #382: a longer bite covers strictly more of the calendar, so it may never
+  // carry a SMALLER star budget than a shorter one — a week that surfaced fewer
+  // moments than a day would be the feed getting quieter the more happened.
+  // (Sub-linear growth is the design; shrinking is a typo.)
+  .refine(
+    (c) =>
+      [...c.bites]
+        .sort((a, b) => a.days - b.days)
+        .every((b, i, sorted) => i === 0 || b.starBudget >= sorted[i - 1].starBudget),
+    { message: 'a longer bite must not carry a smaller starBudget' },
+  )
   // A door naming coverage the file never declares has no sentence to state,
   // which is how a locked bite ends up greyed out with no explanation.
   .refine(

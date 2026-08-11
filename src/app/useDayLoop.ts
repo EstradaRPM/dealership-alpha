@@ -277,6 +277,7 @@ export function useDayLoop({
         strongMatches: pooled.matchTally.strong,
         matchedSales: pooled.matchTally.matched,
         reveal: buildBiteReveal(days, {
+          biteId: run.biteId,
           daysRequested: run.daysRequested,
           haltSentence: run.halt?.sentence ?? null,
         }),

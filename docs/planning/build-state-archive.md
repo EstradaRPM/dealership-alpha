@@ -6,6 +6,59 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT #380** (Cash on Hand stops being the only number: the store also shows
+  what it is worth). The Home HUD's one big figure was Cash, and every automation the game
+  already ships makes it fall without the player touching anything — the UCM sources the board
+  (#293), construction draws on a timer (#359), a wire subscription bills daily (#178). A
+  headline that only goes down reads as decay. #374 had already taught the P&L that buying a car
+  converts cash into stock rather than losing it; the HUD did not know, and that was the gap.
+  **The stock half is COST BASIS, and that is the whole reason the figure is checkable.**
+  `Inventory.getStockValue()` sums `purchasePrice + reconCost` — the same basis
+  `getWholesaleQuote` states — never `bookValueFn`. Book value is an appraisal that drifts with
+  the used-car market, so a worth figure built on it would fall on a day the player did nothing,
+  which is the exact disconnection this exists to remove. On cost basis all three doors state one
+  rule: an auction buy debits cash and raises stock by the same number so the total sits still, a
+  retail close raises it by the front gross, and a wholesale-out lowers it by the quote's `gain`.
+  `tests/Economy.netWorth.test.ts` drives all three against a real world.
+  **`World.getStoreWorth()` is the one place the addition happens** — `{ cash, stockValue, total
+  }`, composed at the composition root because that is the only place that sees both modules, and
+  `total` is carried rather than left to the caller so two surfaces cannot compute two totals.
+  Live, never memoized, the way `economy.cash` already is. Facility and floorplan are deliberately
+  NOT in it: Facility has no dollar value in the engine (#358 counts built spaces) and floorplan
+  is modeled as a daily carrying cost, not a debt balance, so either would be a term the player
+  cannot check. Whether a built bay is a sellable asset is a design question that has never been
+  asked — it is not omitted, it is unasked, and the label says exactly what the figure sums.
+  **The caption names COST, departing from the issue's filed copy on the issue's own rule.**
+  Filed as *"your cash plus the cars on your lot"*; shipped as **"Your cash plus what the cars on
+  your lot cost you."** The Finance room renders a market Book Value a few inches below (the
+  #179 INVENTORY VALUATION panel), so the filed sentence would have invited the player to check
+  the addition against a number it does not use and find it does not work. #380's own instruction
+  is that the figure is labeled for exactly what it sums.
+  **`HomeDashboardInputs.cash` is GONE, replaced by `storeWorth`.** Two ways in for the same
+  number is how a HUD starts stating a cash figure its own worth line disagrees with; the
+  headline now reads its value AND its name ("Cash on Hand") out of the same `buildStoreWorth`
+  model the line under it does. Four test fixtures moved with it.
+  **One copy, two rooms: `src/ui/StoreWorth`.** `buildStoreWorth` owns the formatting and the
+  three strings; `StoreWorthLine` is the worth half alone (Home, under the existing #230 cash
+  StatCard and its #255 ops/stock delta) and `StoreWorthPair` is cash-plus-worth (Finance, which
+  had no cash figure at all). Finance takes it as its **own prop, not a field on
+  `FinanceDashboardModel`** — everything in that model is a reading of the selected time window
+  and this is a reading of this moment, so changing the range chips must not appear to move it.
+  It heads the room under "Where You Stand", above the chips.
+  **Cash stays primary on both surfaces**, deliberately: every bankruptcy, tier gate and
+  career-ending face branches on `economy.cash`, so a larger worth figure beside it would be a lie
+  of a different kind. What the pair buys is the reading that cash falling was a *move*.
+  **An empty lot is not an empty state** — the store is worth its cash. A dash there would read as
+  "unknown" on exactly the day a Tier-1 player has sold out and is about to restock.
+  **Nothing calibrated moved and nothing could** — the whole slice is a read. `#180` still reads
+  35.8% positive / 54.3% apathetic, closes=274. No snapshot field was added, so
+  `WORLD_SNAPSHOT_VERSION` stays **21** and there is no migration.
+  Verified on the web drive (T2 dev slot via Continue, day 39): Home reads `$167,361 Cash on
+  Hand` over `What the Store Is Worth $270,356` with the caption, and Finance's "Where You Stand"
+  states the identical pair — two rooms, one getter. 248 suites / 3107 tests green, typecheck
+  clean. The `Cannot create slot: max of 3 slots reached` error in the console is the documented
+  dev-slot blocker below, not this slice.
+
 - 2026-08-11 — **BUILT #379** (a trade-in was paid for twice — the store banked the full selling
   price *and* got the trade car free). `closeDeal` posted `agreedPrice` to cash while
   `Inventory.acquireFromTrade` materialized the customer's car onto the lot with no offsetting

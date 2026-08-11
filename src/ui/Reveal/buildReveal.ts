@@ -1,4 +1,5 @@
 import { loadTunables } from '../../game/data';
+import { biteStarBudget, type BiteId } from '../../game/ClockBite';
 import type { DayFunnel } from '../../game/CapacityManager';
 import type { PrepBet, PrepCategory } from '../../game/PrepBet';
 import type { RecordKind } from '../../game/Records';
@@ -388,36 +389,59 @@ export function scoreDrama(candidate: DramaCandidate, ctx: DramaContext): number
   return drama.weights.walkOffPain * pain;
 }
 
+/** Score and sort drama-desc with a stable arrival-order tiebreak. */
+function sortByDrama(
+  candidates: readonly DramaCandidate[],
+  ctx: DramaContext,
+): readonly DramaCandidate[] {
+  return candidates
+    .map((candidate, index) => ({ candidate, index, drama: scoreDrama(candidate, ctx) }))
+    .sort((a, b) => b.drama - a.drama || a.index - b.index)
+    .map((entry) => entry.candidate);
+}
+
 /** Score, sort drama-desc with a stable arrival-order tiebreak, take the top N. */
 function topByDrama(
   candidates: readonly DramaCandidate[],
   ctx: DramaContext,
   limit: number,
 ): readonly DramaCandidate[] {
-  return candidates
-    .map((candidate, index) => ({ candidate, index, drama: scoreDrama(candidate, ctx) }))
-    .sort((a, b) => b.drama - a.drama || a.index - b.index)
-    .slice(0, limit)
-    .map((entry) => entry.candidate);
+  return sortByDrama(candidates, ctx).slice(0, limit);
+}
+
+/** What the ranking admitted, and how much of the eligible pool it cut (#382). */
+export interface DramaPool {
+  top: readonly DramaCandidate[];
+  /**
+   * Eligible candidates the budget left out. A bite states this as one line
+   * rather than dropping it silently — a player who sold their best unit ever
+   * on day 4 of a quiet week and was never told concludes the feed is noise.
+   */
+  remainder: number;
 }
 
 /**
- * Ranks the day's wins, starworthy losses and crowned records in ONE pool by
- * drama score and takes the top `limit`. Two eligibility gates run before
- * scoring, so ineligible entries never crowd out real drama: non-starworthy
- * walk-offs are dropped entirely, and records are filtered to the crownworthy
- * ones then capped at `drama.crownBudget` (a great day can beat four marks at
- * once; without the cap the feed goes all-crown and the day's actual drama gets
- * pushed off). Pure + deterministic: ties break by arrival order, and the input
- * arrays are never mutated.
+ * The ranking proper (#382 split it out of `rankDrama` so the cut is countable).
+ *
+ * Two eligibility gates run before scoring, so ineligible entries never crowd
+ * out real drama: non-starworthy walk-offs are dropped entirely, and records
+ * are filtered to the crownworthy ones then capped at `drama.crownBudget`.
+ *
+ * A CROWN IS ADMITTED BEFORE THE BUDGET IS SPENT. #330 weights crowns above the
+ * win/loss axes, but weighting is not a guarantee: a week that breaks three
+ * marks and also has five loud walk-offs can rank a crown off the end. A
+ * high-water mark is the one reaction the player provably cannot see anywhere
+ * else on that screen, so it is reserved rather than merely favoured. The
+ * admitted set is still emitted in the pool's own drama order — reserving a
+ * slot must not reorder the feed.
  */
-export function rankDrama(
+function rankDramaPool(
   closes: readonly ClosedSale[],
   walkOffs: readonly WalkOff[],
   records: readonly BrokenRecord[],
   limit: number,
-  fniVerdict: FniMonthVerdict | null = null,
-): readonly DramaCandidate[] {
+  fniVerdict: FniMonthVerdict | null,
+): DramaPool {
   const meanGross = closes.length
     ? closes.reduce((sum, c) => sum + c.gross, 0) / closes.length
     : 0;
@@ -429,7 +453,7 @@ export function rankDrama(
     ctx,
     loadTunables().reveal.drama.crownBudget,
   );
-  return topByDrama(
+  const ordered = sortByDrama(
     [
       // The month verdict leads the arrival order ahead of the crowns (#373):
       // on the one bite a month where it exists, it is the headline, and a tie
@@ -443,8 +467,35 @@ export function rankDrama(
         .map((walkOff): DramaCandidate => ({ kind: 'loss', walkOff })),
     ],
     ctx,
-    limit,
   );
+  // Crowns first (capped by the budget itself — a feed cannot exceed its own
+  // budget), then the rest of the pool in drama order until the budget is out.
+  const admitted = new Set<DramaCandidate>(
+    ordered.filter((c) => c.kind === 'record').slice(0, limit),
+  );
+  for (const candidate of ordered) {
+    if (admitted.size >= limit) break;
+    admitted.add(candidate);
+  }
+  const top = ordered.filter((c) => admitted.has(c));
+  return { top, remainder: ordered.length - top.length };
+}
+
+/**
+ * Ranks the bite's wins, starworthy losses and crowned records in ONE pool by
+ * drama score and takes the top `limit`. Pure + deterministic: ties break by
+ * arrival order, and the input arrays are never mutated. See `rankDramaPool`
+ * for the gates and the crown reservation; this is the surface for callers that
+ * only want the admitted reactions.
+ */
+export function rankDrama(
+  closes: readonly ClosedSale[],
+  walkOffs: readonly WalkOff[],
+  records: readonly BrokenRecord[],
+  limit: number,
+  fniVerdict: FniMonthVerdict | null = null,
+): readonly DramaCandidate[] {
+  return rankDramaPool(closes, walkOffs, records, limit, fniVerdict).top;
 }
 
 function winReaction(sale: ClosedSale): RevealReaction {
@@ -640,11 +691,14 @@ export function buildReveal(
   // surfaced — no separate win/loss tracks and no separate records screen.
   // #373: on the first bite after a month closes, the F&I verdict rides the same
   // pool at the month grain — one feed, one grammar, two clocks.
+  // #382: the budget is the DAY bite's, read off `data/clock-bites.json` — the
+  // same catalog every other grain reads its own from. The day is a bite, so it
+  // has no separate constant of its own.
   const topDrama = rankDrama(
     closes,
     walkOffs,
     records,
-    tunables.drama.starBudget,
+    biteStarBudget('day'),
     fniVerdict,
   );
   return {
@@ -678,6 +732,13 @@ export interface BiteDayBeats {
 }
 
 export interface BiteSpan {
+  /**
+   * Which bite was run (#382). The star budget rides the bite, so the feed
+   * needs to know which grain it is covering — not just how many days landed.
+   * A week that halted on day 2 still gets the week's budget: the budget is a
+   * property of the window the player bet on, not of how far it got.
+   */
+  biteId: BiteId;
   /** Days the bite asked for — 7 for the week, whatever halted or not. */
   daysRequested: number;
   /**
@@ -776,7 +837,6 @@ export function buildBiteReveal(
     );
   }
   const pooled = poolBiteDays(days);
-  const tunables = loadTunables().reveal;
   // "3 of 7 days run" is itself the statement that the run stopped early; the
   // halt reaction below says why. Both, because the scoreline is what the
   // player reads first and the reason is what they act on.
@@ -786,11 +846,16 @@ export function buildBiteReveal(
   // The window the pooled figures actually cover. A week's gross printed as
   // "gross today" states a number the player can check and find wrong.
   const spanWord = `over ${days.length} days`;
-  const topDrama = rankDrama(
+  // #382: the budget rides the bite. A week runs seven days through the pool,
+  // so a day's budget would throw away roughly seven times as much — and throw
+  // it away silently, which is the failure: a player who sold their best unit
+  // ever on day 4 of a quiet week finishes the week never told and concludes
+  // the feed is noise.
+  const pool = rankDramaPool(
     pooled.closes,
     pooled.walkOffs,
     pooled.records,
-    tunables.drama.starBudget,
+    biteStarBudget(span.biteId),
     pooled.fniVerdict,
   );
   const haltReactions: RevealReaction[] = span.haltSentence
@@ -801,7 +866,33 @@ export function buildBiteReveal(
     reactions: [
       ...haltReactions,
       matchReaction(pooled.matchTally, pooled.gross, spanWord),
-      ...topDrama.map(dramaReaction),
+      ...pool.top.map(dramaReaction),
+      ...remainderReactions(pool.remainder, spanWord),
     ],
   };
+}
+
+/**
+ * What the budget left out, stated as ONE line (#382) — never dropped, and
+ * never expanded into a list. The feed's job is the top of the pile; a surface
+ * that can show everything is a report, not a Reveal.
+ *
+ * Deliberately absent at the DAY grain: a day's handful of beats through a
+ * day's budget is the feed doing its job, and #382 filed the day's Reveal as
+ * identical to before this slice. The line exists because a bite discards
+ * multiples more.
+ */
+function remainderReactions(
+  remainder: number,
+  spanWord: string,
+): readonly RevealReaction[] {
+  if (remainder <= 0) return [];
+  const moments = remainder === 1 ? 'smaller moment' : 'smaller moments';
+  return [
+    {
+      id: 'bite-remainder',
+      tone: 'neutral',
+      text: `Plus ${remainder} ${moments} ${spanWord}, too small to make the cut.`,
+    },
+  ];
 }

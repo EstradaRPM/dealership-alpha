@@ -1,4 +1,4 @@
-export { availableBites, runBite, haltReason } from './ClockBite';
+export { availableBites, runBite, haltReason, biteStarBudget } from './ClockBite';
 export type { BiteOption, BiteRun, BiteRunDeps, HaltReason } from './ClockBite';
 export {
   loadClockBites,

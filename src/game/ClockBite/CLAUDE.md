@@ -36,6 +36,10 @@ persisted counter, and the player has to infer why the button came and went).
   bite headless and synchronously.
 - `haltReason(id, config?) → HaltReason` — the plain-language sentence for a
   halt, off the catalog.
+- `biteStarBudget(biteId, config?) → number` (#382) — how many individual
+  reactions the Reveal covering this bite may surface. Read by
+  `src/ui/Reveal/buildReveal.ts` at **both** grains: the day bite's budget is
+  the day Reveal's, so the day has no constant of its own.
 - `loadClockBites()` / `ClockBitesConfigSchema` + the id unions and their
   `as const` arrays.
 
@@ -94,10 +98,23 @@ ClockBite emits nothing and subscribes to nothing — it takes no `EventBus`. Th
 halt signals are observed by the composition root, which is the only thing that
 knows what a "moment the player is needed" looks like in this app.
 
+## The star budget (#382)
+
+`starBudget` rides the bite, beside its day count, because it is a property of
+the **window the feed covers** — not of the drama ranking, which is why
+`tunables.reveal.drama.starBudget` was deleted rather than left beside it. A
+week runs seven days through the same pool, so a day's budget would throw away
+roughly seven times as much and throw it away silently. It grows **sub-linearly**
+(5 / 9 / 14 against 1 / 7 / 30 days): seven days of reactions at seven times the
+stars is a scroll, not a beat. The schema refuses a longer bite carrying a
+smaller budget. What the budget cut is stated by the Reveal as one line, and a
+crowned record is admitted before the budget is spent.
+
 ## Data
 
 `data/clock-bites.json` — `coverage[]` (the facts and their missing-sentences),
-`bites[]` (`{ id, label, days, requires }`) and `halts[]` (`{ id, sentence }`).
+`bites[]` (`{ id, label, days, starBudget, requires }`) and `halts[]`
+(`{ id, sentence }`).
 Loaded through `parseData` + `ClockBitesConfigSchema`. Every nested object is
 `.strict()`; the top level is not, so the file's `_doc` annotations survive
 review and are stripped at load.

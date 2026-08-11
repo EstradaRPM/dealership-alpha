@@ -152,7 +152,19 @@ labels (no temperature words). Small: reuses the event stream already emitted.
 - **Reveal ranking function** — how "drama" is scored to pick the top few reactions per bite
   (match strength, gross surprise, walk-off pain, record broken, coupling fired). Tuning.
 - **Bet-capture shape at T1** — what exactly is snapshotted at prep to score against the day.
-- **Star budget per altitude** — how many reactions before it becomes noise (T1 ~3–5).
+- ~~**Star budget per altitude**~~ — **CLOSED 2026-08-11 by #382 (phase 11 / B4 S2), at the grain
+  that forced it.** The budget rides the **bite** in `data/clock-bites.json` (`starBudget`, beside
+  `days`), not the ranking — `tunables.reveal.drama.starBudget` was deleted rather than left beside
+  it, so there is one budget per grain and not two places to disagree about the same day. Shipped:
+  **5 / 9 / 14** against 1 / 7 / 30 days, i.e. it grows **sub-linearly** — seven days of reactions at
+  seven times the stars is a scroll, not a beat — and the schema refuses a longer bite carrying a
+  smaller budget. The day's 5 is the pre-#382 number unmoved, so a day's Reveal is identical to
+  before the slice. Two rules go with it: **what the budget cut is stated, not dropped** (one
+  plain-language line at the foot of a bite's feed, never an expandable list — a surface that can
+  show everything is a report, not a Reveal), and **a crowned record is admitted before the budget
+  is spent** (weighting a crown above the win/loss axes, #330, is not a guarantee; a high-water mark
+  is the one reaction the player provably cannot see anywhere else on that screen). Re-tuning the
+  drama *weights* remains C2-class calibration and is untouched.
 - ~~**Grain/clock unlock schedule**~~ — **SETTLED 2026-08-11 (phase 11 / B4). One rule: you can
   skip ahead exactly as far as your people can cover for you.** *Run the Day* is always open;
   *Run the Week* opens when the used desk covers **both** discount desking (#290) and trade

@@ -13,9 +13,11 @@ import type { ClosedSale, WalkOff, BrokenRecord, CrownedRecord } from '../src/ui
 import type { DayFunnel } from '../src/game/CapacityManager';
 import type { PrepBet } from '../src/game/PrepBet';
 import { loadTunables } from '../src/game/data';
+import { biteStarBudget } from '../src/game/ClockBite';
 
 const BUSY_THRESHOLD = loadTunables().reveal.busyWalkedInThreshold;
-const STAR_BUDGET = loadTunables().reveal.drama.starBudget;
+// #382: the day's budget is the DAY bite's, off `data/clock-bites.json`.
+const STAR_BUDGET = biteStarBudget('day');
 
 function sale(overrides: Partial<ClosedSale> = {}): ClosedSale {
   return {
@@ -262,12 +264,12 @@ describe('#320 buildReveal — individual starred win reactions', () => {
     expect(model.reactions[1].text).toBe(winReactionText(closes[0]));
   });
 
-  it('caps starred wins to the tunable star budget', () => {
+  it("caps starred wins to the day bite's star budget", () => {
     const closes = Array.from({ length: STAR_BUDGET + 5 }, (_, i) =>
       sale({ customerId: `c${i}`, matchQuality: 1 - i / 100 }),
     );
     const model = buildReveal(funnel(), 10_000, { strong: 5, matched: closes.length }, closes);
-    // One match-summary + at most starBudget win reactions.
+    // One match-summary + at most the day's star budget in win reactions.
     expect(model.reactions.length).toBeLessThanOrEqual(1 + STAR_BUDGET);
   });
 
@@ -371,7 +373,7 @@ describe('#328 buildReveal — wins and losses interleave on the unified feed', 
       walkOff({ customerId: `w${i}`, reason: 'no_fit' }),
     );
     const model = buildReveal(funnel(), 10_000, { strong: 5, matched: closes.length }, closes, walkOffs);
-    // One match summary + at most starBudget pooled reactions.
+    // One match summary + at most the day's star budget in pooled reactions.
     expect(model.reactions.length).toBeLessThanOrEqual(1 + STAR_BUDGET);
   });
 
