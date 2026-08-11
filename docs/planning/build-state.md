@@ -12,14 +12,15 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 **Phase 11 — B4 drive-the-clock — is SLICED AND FILED as of 2026-08-11: #381–#385 (table
 below), and the bite-unlock gate is RULED (see the log entry; recorded in
-`engagement-spine.md` + `gates.md` Settled).** Nothing in the phase is un-filed. The next
-`/next` builds **#381**, the tracer.
+`engagement-spine.md` + `gates.md` Settled).** Nothing in the phase is un-filed. **#381, the tracer, LANDED
+2026-08-11** — the ladder, the runner, the halt, the picker and the bite-grain Reveal are all
+standing. The next `/next` builds **#382**.
 
 ### Phase 11 — B4 drive-the-clock (sliced + filed 2026-08-11)
 
 | # | Slice | Deps |
 |---|---|---|
-| #381 | **tracer** — `data/clock-bites.json` + `src/game/ClockBite/` headless multi-day runner + halt + the Home bite picker + the bite-grain Reveal | — |
+| ~~#381~~ | ~~**tracer** — `data/clock-bites.json` + `src/game/ClockBite/` headless multi-day runner + halt + the Home bite picker + the bite-grain Reveal~~ **BUILT 2026-08-11** | — |
 | #382 | the star budget scales with the bite; what the feed leaves out is stated, not dropped | #381 |
 | #383 | the bite is a bet — `PrepBet` captured at the bite's start, scored over the days that ran | #381 |
 | #384 | the overnight interrupt channel — a moment that asks the owner a question stops the run | #381 |
@@ -150,6 +151,63 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **The DAY bite is the live floor and must never route through the runner** (#381). `Run the
+  Day` is `handleNextDay`; only bites *above* the day call `runBite`. Running the day headless
+  would delete the floor view and its intra-day pause/speed control — the opposite of what B4
+  extends, which is the existing control *upward*. `runBite('day', …)` still works and is
+  unit-tested; the app deliberately does not take that path, and the picker draws only
+  `days > 1`.
+- **`checkHalt` is asked AFTER the day, and the halting day counts** (#381). A bite stops at the
+  first moment the store needs a human and **the bite is over** — no queued remainder, no
+  auto-resume, and the module holds no state between calls to make one possible. A run that
+  silently continued past the thing that interrupted it would be the bite making the player's
+  decision for them. A future session "finishing" this with a resume is reversing the ruling.
+- **`tierGate:month_verdict` fires unconditionally every month, so a bite crossing a month
+  boundary ALWAYS halts there** (#381, `TierGate.ts:200-211`). That is the design: the month's
+  grade is the moment you must look, and it is what syncs the month bite to the calendar after
+  its first run. Do not "fix" it by grading only decisive verdicts.
+- **The doors are in `data/clock-bites.json` and the predicates in code, joined by
+  `resolveBiteCoverage` deriving from `buildManagerStatus`** (#381). It reads no act-gate
+  predicate a second time. This is the #371 lesson applied: a `hasDeskManager`-style boolean
+  living in code satisfied every staff door at once and had to be deleted. A second read here is
+  how the button and the desk start disagreeing about who is covering what.
+- **ClockBite takes no EventBus and imports no sibling** (#381). The halt signals are latched by
+  the composition root because it is the only layer that knows what "a moment the player is
+  needed" looks like in this app. `runBite` also does **not** check the door — `availableBites`
+  is the door, the picker obeys it, and that separation is what lets the runner's tests drive a
+  week with no roster.
+- **A bite skips the per-day recap modal and the per-day autosave, and does ONE closing write**
+  (#381). Seven recaps nobody dismissed is noise; seven `void async` writes racing for one slot
+  is how the last write ends up stale. `biteCrossedSnapshotDayRef` carries whether the run owes
+  the 7-day history snapshot so that cadence is not silently dropped, and the cash delta is
+  accumulated across the run — a week's delta is the week's, not its last day's.
+- **Per-day Reveal beats are captured AS EACH DAY CLOSES** (#381). The daily refs
+  (`matchTallyRef`/`closesRef`/`walkOffsRef`/`recordsRef`/`fniVerdictRef`) are cleared *before*
+  each `nextDay()`, so a runner reading only the final day would silently swallow six days of
+  wins, walk-offs, crowns and month verdicts. `biteDaysRef.current != null` is the one "a bite is
+  running" fact, so the day-close handler cannot disagree with the runner about the mode.
+- **A one-day bite delegates straight to `buildReveal`, morning bet included** (#381). The bet at
+  BITE grain is **#383's** and is deliberately not resolved by the tracer: pooling a week of
+  per-day bets into one verdict is a different bet, and inventing one now would be a rule the
+  player was never shown placing. The bite Reveal passes `prepBet: null`.
+- **`matchReaction` takes the window it covers, and "today" is only correct at day grain**
+  (#381). The pooled feed shipped a week's figure as `$47,366 gross today` on the first drive — a
+  number the player can check and find wrong, which is the one thing this feed cannot do. Any
+  future grain must pass its own span word rather than inheriting the default.
+- **The star budget is UNCHANGED at bite grain, on purpose** (#381). A week's Reveal uses the
+  same `tunables.reveal.drama.starBudget` a day does. Scaling it — and stating what the feed
+  leaves out rather than dropping it silently — is **#382**, which is the seam this tracer left
+  open, not an omission to patch here.
+- **Nothing about the bite is persisted and `WORLD_SNAPSHOT_VERSION` stays 21** (#381). The
+  picker's default is the day, every time. A remembered bite is a standing instruction to skip,
+  which is the opposite of a bet you place each time. `tests/worldSnapshot.test.ts` pins it and
+  `tests/BitePicker.reachability.test.tsx` scans the composition layer for a persisted bite id.
+- **#381's determinism is asserted at the SEEDED CONTROLLER scope, never as a full
+  `snapshotWorld` re-run** (`tests/ClockBite.determinism.test.ts`). Two fresh same-seed *worlds*
+  legitimately diverge on the sales floor; two same-seed `DayLoopController`s do not. Seven
+  hand-driven days and seven runner-driven days produce identical FloorSim surfaces, and the
+  controller lands MANAGERIAL on both a complete and a halted run — which is what makes
+  mid-bite checkpointing a thing that cannot exist rather than a thing that was skipped.
 - **The store's worth is COST BASIS + cash, and `getStoreWorth()` is the one place it is
   added** (#380). `Inventory.getStockValue()` sums `purchasePrice + reconCost`, never
   `bookValueFn` — a market appraisal would move the total on a day the player did nothing,
@@ -1075,6 +1133,64 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT #381** (phase 11 tracer: the clock takes a bigger bite). The clock had
+  exactly one verb — `nextDay()`, one day at a time. It now has a ladder: the player picks how
+  big a bite of the calendar to run before they look again, and the size of the bite is the bet.
+  **ONE rule opens it — you can skip ahead exactly as far as your people can cover for you.** Day
+  always; Week when the used desk covers **both** discount desking and trade approval; Month when
+  a GM is staffed. The door and the capability are the same fact, so nothing new had to be taught.
+  **The doors are in `data/clock-bites.json`, the predicates in code**, and `resolveBiteCoverage`
+  derives coverage from `buildManagerStatus` rather than reading the act-gate predicates a second
+  time — the #371 lesson, where a `hasDeskManager` boolean living in code had to be deleted
+  because it satisfied every staff door at once. A second read here is how the button and the desk
+  start disagreeing about who is covering what.
+  **`src/game/ClockBite/` imports no sibling and takes no EventBus.** `runBite` is a pure "run N
+  days, stop when asked" primitive over two injected closures, which is what lets its unit tests
+  drive a week with no roster at all. It also does **not** check the door — `availableBites` is
+  the door and the picker is what obeys it.
+  **`checkHalt` is asked AFTER each day, so the halting day counts** — it happened. There is no
+  queued remainder and no auto-resume, by construction: the module holds no state between calls.
+  Halts latch at the composition root (an escalation, insolvency, a tier-gate verdict) because
+  that is the only layer that knows what "a moment the player is needed" looks like in this app.
+  **`tierGate:month_verdict` fires unconditionally every month**, so a bite crossing a month
+  boundary ALWAYS halts there. That is the design, not an oversight — the month's grade is the
+  moment you must look, and it is what syncs the month bite to the calendar after its first run.
+  **The Reveal aggregates to the bite: one more producer, not a second mode.** Reactions pool
+  across every day and rank in the same single `rankDrama` pool (#373 already proved the grammar
+  spans grains). Per-day beats are captured **as each day closes**, because the daily refs clear
+  before the next `nextDay()` — a runner reading only the final day would have swallowed six days
+  of wins, walk-offs, crowns and month verdicts. A one-day bite delegates straight to
+  `buildReveal`, morning bet included, so the day is byte-identically the day it always was.
+  **The day bite is the LIVE floor and routes to `handleNextDay`, not to the runner.** Running the
+  day headless would delete the floor view and its pause/speed control, which is the opposite of
+  what B4 extends. The picker therefore draws only the bites *above* the day, pinned above the
+  hero CTA in the same footer — one control, one place. A locked bite **states its door in plain
+  language** rather than greying out.
+  **The bite skips the per-day modal and the per-day autosave, and does ONE closing write.** Seven
+  recaps nobody dismissed, and seven `void async` writes racing for one slot, are both wrong;
+  `biteCrossedSnapshotDayRef` carries whether the run owes a history snapshot so the 7-day cadence
+  is not silently dropped. The cash delta is the run's, accumulated across the days — a week's
+  delta is the week's, not its last day's.
+  **`matchReaction` now takes the window it covers, and that defect was found on the drive, not by
+  a test.** The pooled feed printed `$47,366 gross today` for a whole week — a number the player
+  can check and find wrong, which is the one thing this feed cannot do. It reads `gross over 7
+  days` now.
+  **Nothing calibrated moved and nothing could** — a bite is a "how many times", not a different
+  day. `#180` still reads 35.8% positive / 54.3% apathetic, closes=274, `costOverAsk` 1.026.
+  Nothing is persisted (the picker's default is the day, every time — a remembered bite is a
+  standing instruction to skip), so `WORLD_SNAPSHOT_VERSION` stays **21** with no migration.
+  Determinism is asserted at the seeded-controller scope, never as a full `snapshotWorld` re-run:
+  seven hand-driven days and seven runner-driven days produce identical FloorSim surfaces, and the
+  controller lands MANAGERIAL both on a complete run and on a halted one.
+  `npm run typecheck` clean, `npm test` **255 suites / 3142 tests** green. Verified on the web
+  drive (T2 dev slot, covered desk): two full weeks ran, each ending in ONE Reveal — *"7 days run
+  — you had what the crowd wanted: 6 of 8 stuck"*, *"$24,834 gross over 7 days"* — with crowns and
+  walk-offs drawn from across the days; the month stayed locked stating *"You haven't hired a
+  general manager to run the store"*; and a reload resumed on the run's single closing save with
+  the week's cash delta intact. The `max of 3 slots reached` console error is the documented
+  dev-slot blocker below, not this slice.
+  Next: **BUILD #382**.
+
 - 2026-08-11 — **SLICED phase 11 (B4 drive-the-clock) into #381–#385, and RULED the bite-unlock
   schedule** — the engagement spine's "grain/clock unlock schedule" STILL-OPEN item, settled at
   the slice gate rather than during the build because the schedule had to be encoded into the
@@ -1167,54 +1283,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   states the identical pair — two rooms, one getter. 248 suites / 3107 tests green, typecheck
   clean. The `Cannot create slot: max of 3 slots reached` error in the console is the documented
   dev-slot blocker below, not this slice.
-
-- 2026-08-11 — **BUILT #379** (a trade-in was paid for twice — the store banked the full selling
-  price *and* got the trade car free). `closeDeal` posted `agreedPrice` to cash while
-  `Inventory.acquireFromTrade` materialized the customer's car onto the lot with no offsetting
-  debit, and the lien `payoff` never left the bank. At a **42.1% trade rate over 290 closes**
-  that was a standing cash faucet on two deals in five, and every bankruptcy, tier gate and
-  career-ending face in the game branches on `economy.cash`.
-  **One debit of the whole ALLOWANCE, not two.** The issue names two movements — the equity the
-  customer never hands over (it is credit against the purchase) and the payoff wired to their
-  lienholder — but they come out of the same pocket, sum to the allowance, and the allowance is
-  already the number `acquireFromTrade` books as the unit's `purchasePrice`. One economic event,
-  one line: `CloseDealParams.tradeAllowance`. Splitting it would be two numbers that can
-  disagree about what a trade cost, which is the shape the defect lived in.
-  **Categorized `inventoryAcquisition`, which is what keeps the P&L still.** Cash converted into
-  a car, exactly like an auction buy: #374 drops it whole from the statement and the cost comes
-  back as the cost-of-sale relief when that trade unit resells. Net income on a trade deal does
-  not move by a dollar — a plain `postExpense` would have charged the store for the same car
-  twice and printed a phantom five-figure loss on a trade-heavy month. It also puts the allowance
-  in the Home cash-delta's "into stock" column, where it belongs.
-  **`forceDebit`, not `postExpense`, and not in `Inventory`.** By the time it fires the revenue
-  is posted and the unit is off the lot; the lienholder gets paid whether the store can afford it
-  or not, so a solvency throw would abort a deal that had already half-happened. And the offset
-  lives at the close because the close is the only place that sees both halves — a second
-  `Inventory` debit could only ever disagree with it. **Revenue stays the full `agreedPrice`**:
-  netting it would wreck front gross, PVR and every gross reading built on the selling price,
-  which is exactly why this was filed apart from #374.
-  **The #286 bands MOVED, as the issue said they would.** Same command, same 100 seeds, measured
-  before and after rather than against the recorded figure: T2 reached **91 → 69**, median
-  survival **360 → 203 days**, bankrupt **28% → 60%** (modeled 27 → 52, hard throw 1 → 8),
-  completed **59 → 16**, T3 reached **16 → 7**, search score **0.4320 → 0.3218**. Median final
-  tier is still 1.0 and verdict pass rate is unchanged at 21%. **The `FAILED:` line FELL, 92% →
-  83%, and that is not an improvement** — the median failure day fell with it (118 → 90), because
-  a run that goes broke early stops accruing the miss streaks and forced contractions that scored
-  the old cohort as failed (43/49 → 39/38, with 6 new insolvency failures). It is the recipe's
-  own "bankruptcy rate is misleading" trap pointing the other way: read the causes, not the
-  percentage. **Nothing was tuned back.** A retune against honest cash is C2's.
-  **#180 moved and #181 did not.** Live calibration: positive **39.3% → 35.8%**, apathetic
-  **51.7% → 54.3%**, closes **290 → 274**, trades **122 → 113** (rate 42.1% → 41.2%),
-  `costOverAsk` **1.113 → 1.026** — a store with an honest bank stocks cheaper metal, and both
-  bands stayed inside their windows. The #181 early-game floor is **byte-identical** (1.0%
-  positive, closes=39, days=184): the green-operator run barely trades, so it had nothing to be
-  paid twice for.
-  **The docs that hid it were corrected, not just supplemented.** `Inventory/CLAUDE.md` and
-  `StaffDispatch/CLAUDE.md` both asserted the allowance "is offset against deal cash in the close
-  structure (#169)". It was not — that offset did not exist — and the confident sentence is what
-  kept the defect invisible through six slices that read those files.
-  `npm run typecheck` clean, `npm test` **246 suites / 3098 tests** green. No web drive: the
-  slice adds no surface, and the 100-seed harness drives the real `createWorld` →
-  `DayLoopController` for 360 days apiece, which is stronger evidence than a hand-driven day.
-  Next: **BUILD #380** (Cash on Hand + "What the Store Is Worth").
-

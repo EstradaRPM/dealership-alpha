@@ -6,6 +6,56 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT #379** (a trade-in was paid for twice — the store banked the full selling
+  price *and* got the trade car free). `closeDeal` posted `agreedPrice` to cash while
+  `Inventory.acquireFromTrade` materialized the customer's car onto the lot with no offsetting
+  debit, and the lien `payoff` never left the bank. At a **42.1% trade rate over 290 closes**
+  that was a standing cash faucet on two deals in five, and every bankruptcy, tier gate and
+  career-ending face in the game branches on `economy.cash`.
+  **One debit of the whole ALLOWANCE, not two.** The issue names two movements — the equity the
+  customer never hands over (it is credit against the purchase) and the payoff wired to their
+  lienholder — but they come out of the same pocket, sum to the allowance, and the allowance is
+  already the number `acquireFromTrade` books as the unit's `purchasePrice`. One economic event,
+  one line: `CloseDealParams.tradeAllowance`. Splitting it would be two numbers that can
+  disagree about what a trade cost, which is the shape the defect lived in.
+  **Categorized `inventoryAcquisition`, which is what keeps the P&L still.** Cash converted into
+  a car, exactly like an auction buy: #374 drops it whole from the statement and the cost comes
+  back as the cost-of-sale relief when that trade unit resells. Net income on a trade deal does
+  not move by a dollar — a plain `postExpense` would have charged the store for the same car
+  twice and printed a phantom five-figure loss on a trade-heavy month. It also puts the allowance
+  in the Home cash-delta's "into stock" column, where it belongs.
+  **`forceDebit`, not `postExpense`, and not in `Inventory`.** By the time it fires the revenue
+  is posted and the unit is off the lot; the lienholder gets paid whether the store can afford it
+  or not, so a solvency throw would abort a deal that had already half-happened. And the offset
+  lives at the close because the close is the only place that sees both halves — a second
+  `Inventory` debit could only ever disagree with it. **Revenue stays the full `agreedPrice`**:
+  netting it would wreck front gross, PVR and every gross reading built on the selling price,
+  which is exactly why this was filed apart from #374.
+  **The #286 bands MOVED, as the issue said they would.** Same command, same 100 seeds, measured
+  before and after rather than against the recorded figure: T2 reached **91 → 69**, median
+  survival **360 → 203 days**, bankrupt **28% → 60%** (modeled 27 → 52, hard throw 1 → 8),
+  completed **59 → 16**, T3 reached **16 → 7**, search score **0.4320 → 0.3218**. Median final
+  tier is still 1.0 and verdict pass rate is unchanged at 21%. **The `FAILED:` line FELL, 92% →
+  83%, and that is not an improvement** — the median failure day fell with it (118 → 90), because
+  a run that goes broke early stops accruing the miss streaks and forced contractions that scored
+  the old cohort as failed (43/49 → 39/38, with 6 new insolvency failures). It is the recipe's
+  own "bankruptcy rate is misleading" trap pointing the other way: read the causes, not the
+  percentage. **Nothing was tuned back.** A retune against honest cash is C2's.
+  **#180 moved and #181 did not.** Live calibration: positive **39.3% → 35.8%**, apathetic
+  **51.7% → 54.3%**, closes **290 → 274**, trades **122 → 113** (rate 42.1% → 41.2%),
+  `costOverAsk` **1.113 → 1.026** — a store with an honest bank stocks cheaper metal, and both
+  bands stayed inside their windows. The #181 early-game floor is **byte-identical** (1.0%
+  positive, closes=39, days=184): the green-operator run barely trades, so it had nothing to be
+  paid twice for.
+  **The docs that hid it were corrected, not just supplemented.** `Inventory/CLAUDE.md` and
+  `StaffDispatch/CLAUDE.md` both asserted the allowance "is offset against deal cash in the close
+  structure (#169)". It was not — that offset did not exist — and the confident sentence is what
+  kept the defect invisible through six slices that read those files.
+  `npm run typecheck` clean, `npm test` **246 suites / 3098 tests** green. No web drive: the
+  slice adds no surface, and the 100-seed harness drives the real `createWorld` →
+  `DayLoopController` for 360 days apiece, which is stronger evidence than a hand-driven day.
+  Next: **BUILD #380** (Cash on Hand + "What the Store Is Worth").
+
 - 2026-08-11 — **BUILT #378** (D1's closing sweep — the placeholder tab surface is gone, and a
   tab with no room is now a composition error). `StrategicTab` rendered *"This surface is coming
   in a later slice."* and had been **unreachable since #351**: `GameScreen` fell back to it only
