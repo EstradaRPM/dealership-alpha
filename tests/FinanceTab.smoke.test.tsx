@@ -1,5 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
+import { buildStoreWorth } from '../src/ui/StoreWorth';
 import {
   FinanceTab,
   MonthResultsScreen,
@@ -11,6 +12,10 @@ import type { KPISnapshot } from '../src/game/KPIDashboard';
 import { DEPARTMENT_CENTERS } from '../src/game/Economy';
 import type { DepartmentPnLSummary, PnLSummary } from '../src/game/Economy';
 import type { GateMonthVerdict } from '../src/game/TierGate';
+
+// #380: the room's position header. Fixed here — these suites are about the
+// windowed readings below it.
+const WORTH = buildStoreWorth({ cash: 120_000, stockValue: 80_000, total: 200_000 });
 
 const KPI: KPISnapshot = {
   ...ZERO_KPI_SNAPSHOT,
@@ -81,6 +86,7 @@ describe('FinanceTab view', () => {
     const { getByTestId, getByText } = render(
       <FinanceTab
         model={MODEL}
+        storeWorth={WORTH}
         onSelectRange={() => {}}
         onOpenHistory={() => {}}
         onOpenMonthResults={() => {}}
@@ -98,6 +104,7 @@ describe('FinanceTab view', () => {
     const { queryByText } = render(
       <FinanceTab
         model={MODEL}
+        storeWorth={WORTH}
         onSelectRange={() => {}}
         onOpenHistory={() => {}}
         onOpenMonthResults={() => {}}

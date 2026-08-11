@@ -6,6 +6,53 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT #377** (People — skill growth made visible, and what morale is costing).
+  Both halves were already modelled in the engine and read by nobody. Model B (#294) holds
+  **three** numbers per axis — the roll at hire, the grown value, and a per-hire ceiling — and
+  `PeopleTabContainer` drew the middle one alone, so a rookie climbing and a veteran who had
+  topped out rendered as the same bar. `staffMorale.getMoraleMultiplier` scales what a person
+  produces on every dispatch (`createWorld.ts:977`, `StaffDispatch.ts:508/522`) and **no UI read
+  it at all**, so the morale meter stated a level and never a consequence.
+  **The ceiling is an engine read, because a surface cannot derive it.** The per-hire headroom is
+  rolled from `masterSeed` + the staff id inside `StaffFactory`, so a card computing its own
+  would name a limit the engine does not clamp to. `NPC.perHireSkillCap` is that clamp exposed on
+  its own (parallel in shape to `effectiveSkillValue`), and `StaffOrg.getSkillGrowth(staffId)` is
+  the one read a surface makes: `{ skillId, hiredAt, current, ceiling, cap, grows }` per axis,
+  sorted, throwing off the roster. Nothing is stored, so a save round trip re-derives the same
+  ceiling and there is **no migration** — `WORLD_SNAPSHOT_VERSION` stays 21.
+  **The axis stays SHARED and the ceiling dims the tail — it does NOT rescale the bar.** The
+  issue's shape line said "the per-hire cap as the end of the track", which read literally means
+  each person's bar rescaled to their own limit. That was rejected on inspection: a rookie capped
+  at 30 sitting at 30 would draw the same full bar as a veteran capped at 95 sitting at 95, and a
+  roster panel exists to compare people down the page. Instead the track keeps its 0…cap scale,
+  `ProgressBar.mark` puts a hairline where they were hired, and `ProgressBar.reach` scrims
+  everything past their ceiling. All three numbers are on the bar and two people are still
+  comparable. Do not "finish" this by rescaling.
+  **A static axis draws none of the furniture.** `grows` is `growth_counter != null` and is the
+  whole test; an axis experience never moves gets no start mark, no ceiling, and the sentence
+  *"Fixed at hire — experience doesn't move this one."* Drawing a marked-up track on it would
+  imply a bar that will fill. Under the shipped `data/staff-skills.json` that is **most** axes:
+  only `pricing`, `t_o_closing` and `condition_reading` carry a `growth_counter`, and all three
+  are manager axes — so a Tier-1 salesperson's card is honestly all-static, and the growth
+  reading first appears on a UCM. That is the data as filed (magnitudes are S14/#286), not
+  something this slice narrowed.
+  **The morale sentence is beside the money, never folded into it**, and it is a share of their
+  work rather than a temperature word: *"Morale is costing 22% of their work."* /
+  *"Morale is getting 17% more work out of them."* / at neutral, *"Morale is neither helping nor
+  holding them back."* — the neutral case **gets the line**, because an omitted sentence reads as
+  a surface that forgot, not as "no effect", and the player cannot tell those apart by looking.
+  **A candidate card carries no growth reading, deliberately.** Nobody has started yet, so there
+  is no distance to draw; "from 44 at hire" about somebody who has not been hired is a claim
+  about a career that has not happened. `candidateSkillReads` and `rosterSkillReads` are two
+  functions for that reason.
+  **No training lever was added** (`PeopleTab.tsx:288-294`'s refusal stands) and **no calibration
+  number could move** — both halves are reads of values the engine already computes.
+  Verified on the live web drive off the T2 fixture: the UCM's card reads
+  `From 71 at hire · can reach 94.` on condition reading, `From 69 at hire · can reach 88.` on
+  pricing, `From 81 at hire · can reach 94.` on T.O. closing, three `Fixed at hire` axes beside
+  them, and the morale line. Marks land at 71.2% / 69.1% / 81.4% with the scrim starting at
+  94.2% / 88.5% / 93.9%. `npm run typecheck` clean, `npm test` 245 suites / 3088 tests green.
+
 - 2026-08-11 — **BUILT #376** (the P&L proper — the statement over time, and the gross→net
   ladder). The room charted *gross* and printed Net Income as a bare number: it could say what
   came in by revenue line and what went out by ledger label, and could not show the statement

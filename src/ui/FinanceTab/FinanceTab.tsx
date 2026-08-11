@@ -14,6 +14,8 @@ import {
 import { ChipRow } from '../DeptControls';
 import { KPIDashboard } from '../KPIDashboard';
 import type { MarketStateModel } from '../KPIDashboard';
+import { StoreWorthPair } from '../StoreWorth';
+import type { StoreWorthModel } from '../StoreWorth';
 import { compactMoney } from './financeModel';
 import type {
   FinanceDashboardModel,
@@ -24,6 +26,13 @@ import type {
 
 export interface FinanceTabProps {
   model: FinanceDashboardModel;
+  /**
+   * The store's position right now (#380) — cash on hand and what the store is
+   * worth. Its own prop rather than a field on `model`, because everything in
+   * `model` is a reading of the selected time *window* and this is a reading of
+   * this *moment*: changing the range chips must not appear to move it.
+   */
+  storeWorth: StoreWorthModel;
   /**
    * The market-state read-model (#179) — segment value pressure, active shocks,
    * inventory valuation, stale stock. It rides the same KPI block it always
@@ -55,6 +64,7 @@ export interface FinanceTabProps {
  */
 export function FinanceTab({
   model,
+  storeWorth,
   marketState,
   onSelectRange,
   onOpenHistory,
@@ -70,7 +80,20 @@ export function FinanceTab({
 
   return (
     <View testID="finance-tab">
-      <View testID="finance-region-range">
+      {/* #380: the position heads the room, before any windowed reading. What
+          the store *has* does not belong to a time range — the range chips
+          below select how the period graded, and this sits above them so
+          nothing suggests it moves when they do. */}
+      <View testID="finance-region-position">
+        <SectionHeader title="Where You Stand" />
+        <View style={{ marginTop: t.spacing.sm }}>
+          <Surface>
+            <StoreWorthPair model={storeWorth} testID="finance-store-worth" />
+          </Surface>
+        </View>
+      </View>
+
+      <View style={region} testID="finance-region-range">
         <SectionHeader title="Results" />
         <Text style={caption}>{model.rangeCaption}</Text>
         <View style={{ marginTop: t.spacing.sm }}>

@@ -20,6 +20,7 @@ import {
   type IconName,
   type IconBadgeTone,
 } from '../kit';
+import { StoreWorthLine } from '../StoreWorth';
 import type { DayLoopState } from '../../game/DayLoopController';
 import { GateStrip } from './GateStrip';
 import type { HomeDashboardModel, HomeStat, MiniCalDay } from './homeModel';
@@ -327,7 +328,7 @@ function Dashboard({
           <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
             <View style={cardCol}>
               <StatCard
-                label="Cash"
+                label={model.cash.label}
                 value={model.cash.value}
                 delta={model.cash.delta}
                 deltaContext={model.cash.deltaContext}
@@ -335,6 +336,23 @@ function Dashboard({
                 icon="cash"
                 iconTone="positive"
               />
+              {/* #380: what the store is WORTH, under the cash it holds. The
+                  headline number only ever falls once the tiers automate
+                  buying — the UCM sources the board, construction draws on a
+                  timer, the wire bills daily — and a falling headline with
+                  nothing beside it reads as decay. This is the line that says
+                  the money turned into cars. Deliberately secondary: cash is
+                  the constraint every gate and ending branches on. */}
+              <View
+                style={{
+                  borderTopWidth: 1,
+                  borderTopColor: t.colors.border,
+                  marginTop: t.spacing.md,
+                  paddingTop: t.spacing.md,
+                }}
+              >
+                <StoreWorthLine model={model.worth} testID="home-store-worth" />
+              </View>
             </View>
             <View style={cardDivider} />
             <View style={cardCol}>

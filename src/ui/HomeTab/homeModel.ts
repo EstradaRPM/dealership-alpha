@@ -1,4 +1,6 @@
 import type { TrendDirection } from '../kit';
+import { buildStoreWorth } from '../StoreWorth';
+import type { StoreWorthInputs, StoreWorthModel } from '../StoreWorth';
 import type { GateStripModel } from './gateStripModel';
 import csiBands from '../../../data/csi-bands.json';
 
@@ -39,7 +41,14 @@ export interface HomeDashboardInputs {
   tierLabel: string;
   /** Numeric tier (1-based). Used to key tier-specific hero art. Defaults to 1. */
   tier?: number;
-  cash: number;
+  /**
+   * The store's position (#380) — cash, the lot at cost, and their total, off
+   * the engine's one `getStoreWorth()`. The headline cash figure is read from
+   * `storeWorth.cash` rather than passed separately: two ways in for the same
+   * number is how a HUD starts stating a cash figure its own worth line
+   * disagrees with.
+   */
+  storeWorth: StoreWorthInputs;
   /** Vs-yesterday delta split (#255); null on the night before Day 1. */
   cashDelta: CashDeltaSplit | null;
   reputation: number;
@@ -145,7 +154,20 @@ export interface HomeDashboardModel {
   tierLabel: string;
   /** Numeric tier (1-based). Keyed to hero art in the banner. */
   tier: number;
-  cash: { value: string; delta?: string; deltaContext?: string; trend: TrendDirection };
+  cash: {
+    /** "Cash on Hand" — the shared label, so the HUD and Finance name it alike. */
+    label: string;
+    value: string;
+    delta?: string;
+    deltaContext?: string;
+    trend: TrendDirection;
+  };
+  /**
+   * The store's position (#380), formatted. Rendered under the cash card as the
+   * secondary reading: cash falling is a move, not a loss, and this is the
+   * figure that says so.
+   */
+  worth: StoreWorthModel;
   reputation: { score: number; csiLabel: string };
   calendar: HomeCalendarModel;
   stats: HomeStat[];
@@ -199,10 +221,6 @@ export function csiLabel(score: number): string {
   }
   // Bands cover through 100; the loop always returns. Defensive fallback only.
   return csiBands.bands[csiBands.bands.length - 1]?.label ?? '—';
-}
-
-function formatCash(cash: number): string {
-  return `$${Math.round(cash).toLocaleString()}`;
 }
 
 function formatSignedCash(amount: number): string {
@@ -305,15 +323,22 @@ export function buildHomeDashboard(input: HomeDashboardInputs): HomeDashboardMod
         ? 'up'
         : 'down';
 
+  // #380: one build of the pair. The cash headline reads its figure and its
+  // name out of the same model the worth line under it does, so the two can
+  // never be describing different money.
+  const worth = buildStoreWorth(input.storeWorth);
+
   return {
     businessName: input.businessName,
     tierLabel: input.tierLabel,
     tier: input.tier ?? 1,
     cash: {
-      value: formatCash(input.cash),
+      label: worth.cashLabel,
+      value: worth.cashValue,
       ...(input.cashDelta == null ? {} : formatDelta(input.cashDelta)),
       trend,
     },
+    worth,
     reputation: {
       score: Math.round(input.reputation),
       csiLabel: csiLabel(input.reputation),

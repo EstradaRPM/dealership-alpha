@@ -10,6 +10,7 @@ import {
   financeHasPriorWindow,
   type FinanceRangeId,
 } from '../../ui/FinanceTab';
+import { buildStoreWorth } from '../../ui/StoreWorth';
 import { buildMarketState } from '../config';
 
 export interface FinanceTabContainerProps {
@@ -58,6 +59,10 @@ export function FinanceTabContainer({ world, tabs }: FinanceTabContainerProps) {
   return (
     <FinanceTab
       model={model}
+      // #380: a POSITION, not a window — read off the engine's one getter, the
+      // same call the Home HUD's headline pair is built from, so the two rooms
+      // can never state two totals.
+      storeWorth={buildStoreWorth(world.getStoreWorth())}
       marketState={buildMarketState(world)}
       onSelectRange={setRangeId}
       onOpenHistory={() => tabs.navigate('dealHistory')}

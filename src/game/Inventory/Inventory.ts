@@ -108,6 +108,19 @@ export interface Inventory {
    */
   getLotOccupancy(): LotOccupancy;
   /**
+   * What the store has in its lot right now (#380) — every owned unit's cost
+   * basis (`purchasePrice + reconCost`) summed. The stock half of the store's
+   * worth; the composition root adds cash to it.
+   *
+   * **Cost basis, never the market book.** `bookValueFn` is an appraisal — what
+   * the lot might fetch — and it drifts with the used-car market, so a worth
+   * figure built on it would move on a day the player did nothing, which is the
+   * exact disconnection #380 exists to remove. Cost basis makes the rule one a
+   * player can check: an auction buy drops cash and raises stock by the same
+   * number, so what the store is worth does not move.
+   */
+  getStockValue(): number;
+  /**
    * Buy a listing outright. Throws when the lot has no space for it (#361) —
    * the cap is checked at the bid, so units already won this pass count.
    */
@@ -886,6 +899,12 @@ export function createInventory(deps: InventoryDeps): Inventory {
     },
 
     getLotOccupancy: lotOccupancy,
+
+    getStockValue() {
+      let total = 0;
+      for (const v of lotVehicles.values()) total += costBasisOf(v);
+      return total;
+    },
 
     getWholesaleQuote(vehicleId) {
       const v = lotVehicles.get(vehicleId);

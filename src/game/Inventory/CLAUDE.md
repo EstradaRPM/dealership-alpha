@@ -6,6 +6,7 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 - `createInventory()` → `Inventory`.
 - `loadVehicleData` — reads `data/vehicles.json`.
 - Types: `Inventory`, `InventoryDeps`, `AuctionListing`, `LotVehicle`, `LotOccupancy`, `WholesaleQuote`, `VehicleCondition`, `VehicleCategory`.
+- `getStockValue()` — the stock half of what the store is worth (#380).
 
 ## Events
 - **Emits:** `inventory:vehicle_purchased`, `inventory:vehicle_sold`,
@@ -212,6 +213,21 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
   never cost cash (the allowance settles inside the deal structure; opening stock is
   contributed capital). What a sold car cost the store is what the store gave up to have it,
   bank account or not.
+
+## What the lot is worth to the store (#380)
+
+- **`getStockValue()` sums every owned unit's `purchasePrice + reconCost`** — the same cost
+  basis `getWholesaleQuote` states — and nothing else. It is the stock half of
+  `World.getStoreWorth()`, which adds `economy.cash` and is the only place that addition
+  happens.
+- **Cost basis, never `bookValueFn`.** The book value is an appraisal that drifts with the
+  used-car market, so a worth figure built on it would move on a day the player did nothing —
+  the exact disconnection #380 exists to remove. On cost basis the rule is checkable: an
+  auction buy debits cash and raises stock by the same number, so the total does not move; a
+  retail close raises it by the front gross; a wholesale-out lowers it by the quote's `gain`.
+- A future session tempted to "improve" this to market value is changing what the figure
+  claims to be, and the surfaces label it for exactly what it sums today ("your cash plus what
+  the cars on your lot cost you"). Move the label with the rule or leave both alone.
 
 ## Frontline-hold on acquired units (#295)
 - Every `LotVehicle` carries `frontlineDay` — the first day it is offered to the

@@ -1,5 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
+import { buildStoreWorth } from '../src/ui/StoreWorth';
 import {
   FinanceTab,
   buildFinanceDashboard,
@@ -18,6 +19,10 @@ import type {
   PnLSummary,
   ProfitCenter,
 } from '../src/game/Economy';
+
+// #380: the room's position header. Fixed here — these suites are about the
+// windowed readings below it.
+const WORTH = buildStoreWorth({ cash: 120_000, stockValue: 80_000, total: 200_000 });
 
 /**
  * #376 — the P&L proper.
@@ -89,6 +94,7 @@ function renderTab(m: ReturnType<typeof buildFinanceDashboard>) {
   return render(
     <FinanceTab
       model={m}
+      storeWorth={WORTH}
       onSelectRange={() => {}}
       onOpenHistory={() => {}}
       onOpenMonthResults={() => {}}

@@ -1,10 +1,15 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
+import { buildStoreWorth } from '../src/ui/StoreWorth';
 import { FinanceTab, buildFinanceDashboard } from '../src/ui/FinanceTab';
 import type { FinanceDashboardInputs } from '../src/ui/FinanceTab';
 import { ZERO_KPI_SNAPSHOT } from '../src/game/KPIDashboard';
 import { DEPARTMENT_CENTERS } from '../src/game/Economy';
 import type { DepartmentPnLSummary, PnLSummary, ProfitCenter } from '../src/game/Economy';
+
+// #380: the room's position header. Fixed here — these suites are about the
+// windowed readings below it.
+const WORTH = buildStoreWorth({ cash: 120_000, stockValue: 80_000, total: 200_000 });
 
 /**
  * #375 — the Finance room's "Where the Gross Came From" panel. The store runs
@@ -61,6 +66,7 @@ function renderTab(m: ReturnType<typeof buildFinanceDashboard>) {
   return render(
     <FinanceTab
       model={m}
+      storeWorth={WORTH}
       onSelectRange={() => {}}
       onOpenHistory={() => {}}
       onOpenMonthResults={() => {}}

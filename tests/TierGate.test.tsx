@@ -407,7 +407,7 @@ function buildLiveGate() {
 const INPUTS: HomeDashboardInputs = {
   businessName: 'Summit Motors',
   tierLabel: 'Tier 1 — Gravel Yard',
-  cash: 50000,
+  storeWorth: { cash: 50000, stockValue: 0, total: 50000 },
   cashDelta: null,
   reputation: 70,
   currentDay: 5,

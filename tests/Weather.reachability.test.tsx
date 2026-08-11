@@ -206,7 +206,7 @@ const MANAGERIAL: DayLoopState = {
 const INPUTS: HomeDashboardInputs = {
   businessName: 'Summit Motors',
   tierLabel: 'Tier 2 — Paved Lot',
-  cash: 1_000_000,
+  storeWorth: { cash: 1_000_000, stockValue: 0, total: 1_000_000 },
   cashDelta: null,
   reputation: 80,
   currentDay: 42,

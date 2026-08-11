@@ -374,7 +374,9 @@ export function GameScreen({
     businessName: world.tierManager.businessName || `${profile.name}'s Lot`,
     tierLabel: `Tier ${world.tierManager.currentTier} — ${tierEntry.label}`,
     tier: world.tierManager.currentTier,
-    cash: world.economy.cash,
+    // #380: the position, off the engine's one getter — the HUD's cash headline
+    // and the worth line under it are two readings of this single call.
+    storeWorth: world.getStoreWorth(),
     cashDelta,
     reputation: world.reputation.reviewScore,
     currentDay: world.clock.currentDay,

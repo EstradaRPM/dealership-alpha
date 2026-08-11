@@ -166,6 +166,25 @@ import {
 
 export type StaffTaxonomy = ReturnType<typeof loadStaffTaxonomy>;
 
+/**
+ * The store's position at this moment (#380): the cash it holds and the cost
+ * basis of the cars it owns. `total` is `cash + stockValue` and is carried
+ * rather than left to the caller so two surfaces cannot compute two totals.
+ *
+ * Cash stays the constraint — every bankruptcy, tier gate and career-ending
+ * face branches on `economy.cash` — so `total` never replaces it. What the pair
+ * buys is the reading that cash falling was a *move*: a car bought drops `cash`
+ * and raises `stockValue` by the same number, and `total` sits still.
+ */
+export interface StoreWorth {
+  /** `economy.cash` — the money in the bank. */
+  readonly cash: number;
+  /** What the lot cost: every owned unit's `purchasePrice + reconCost`. */
+  readonly stockValue: number;
+  /** `cash + stockValue`. */
+  readonly total: number;
+}
+
 export interface World {
   masterSeed: number;
   clock: GameClock;
@@ -228,6 +247,21 @@ export interface World {
    * close uses, so a projection and a contract can never disagree.
    */
   getFniStructuringSkill(): number | null;
+  /**
+   * What the store has, right now: the cash in the bank and the cars on the lot
+   * (#380). A **position**, not a period reading — nothing here is windowed.
+   *
+   * Composed here because this is the only place that sees both halves, and it
+   * is one getter rather than two reads so no surface adds up its own total. The
+   * Home HUD and the Finance room state the same pair off this call; two sums
+   * would be two answers to "am I going backwards".
+   *
+   * The rule is deliberately two terms and no more. Facility has no dollar
+   * value in the engine (#358 counts built spaces), and floorplan is modeled as
+   * a daily carrying cost rather than a debt balance — including either would be
+   * a number the player cannot check by adding two figures the game shows them.
+   */
+  getStoreWorth(): StoreWorth;
   /**
    * How the COMING crowd would pay — the cash/finance split over every up, and
    * the credit-tier mix among the ones who would finance (#371). Derived in
@@ -963,6 +997,19 @@ export function createWorld(deps: {
   };
 
   /**
+   * The store's position right now (#380) — cash plus what the lot cost. Two
+   * reads and one addition, in the one place that can see both modules, so the
+   * Home HUD and the Finance room state the same total rather than each summing
+   * their own. Live, never memoized: the pair is read on every render, the way
+   * `economy.cash` already is.
+   */
+  const getStoreWorth = (): StoreWorth => {
+    const cash = economy.cash;
+    const stockValue = inventory.getStockValue();
+    return { cash, stockValue, total: cash + stockValue };
+  };
+
+  /**
    * The desk's `finance_structuring` as it is working today, or `null` for a
    * store with no finance office (#370). The one number the F&I posture peak
    * meter needs, resolved here through the very rules the close uses —
@@ -1668,6 +1715,7 @@ export function createWorld(deps: {
     facility,
     kpiDashboard,
     getFniStructuringSkill,
+    getStoreWorth,
     getCrowdFinanceMix,
     getFniMonthVerdict,
     tierGate,

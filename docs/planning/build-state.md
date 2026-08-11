@@ -42,8 +42,9 @@ stays a locked design; do not re-grill it.
 re-scope when reached"* was mostly right: the subtraction against the shipped app killed Growth's
 D1 scope entirely and left People with two items and Finance with three. Five issues filed,
 **#374–#378** (table below). **All five have landed as of 2026-08-11** — #378's sweep closed the
-phase's own scope. The out-of-phase **#379 landed 2026-08-11** too. What remains under the phase
-pointer is **#380** (filed later from a director question), which the next `/next` builds.
+phase's own scope. The out-of-phase **#379 landed 2026-08-11** too. **#380 landed 2026-08-11 as
+well — phase 10 is COMPLETE.** Nothing under this pointer is outstanding; the next `/next`
+advances to the next phase in `path-to-finished-product.md` §12.
 
 ### Phase 10 — D1 the three dashboards (re-scoped + filed 2026-08-08)
 
@@ -54,7 +55,7 @@ pointer is **#380** (filed later from a director question), which the next `/nex
 | ~~#376~~ | ~~the P&L proper — revenue/expenses/net over time + the gross→overhead→net ladder~~ **BUILT 2026-08-11** | #375 |
 | ~~#377~~ | ~~People — skill growth made visible, and what morale is costing~~ **BUILT 2026-08-11** | — |
 | ~~#378~~ | ~~closing sweep — delete the dead placeholder tab surface + the stale comments~~ **BUILT 2026-08-11** | — |
-| #380 | Cash on Hand + "What the Store Is Worth" — automated spending stops reading as decay (filed 2026-08-09 from a director question) | #376 for the Finance half only |
+| ~~#380~~ | ~~Cash on Hand + "What the Store Is Worth" — automated spending stops reading as decay~~ **BUILT 2026-08-11 — phase 10 COMPLETE** | #376 for the Finance half only |
 
 **Filed out of phase, from #374's tracing: ~~#379~~ — BUILT 2026-08-11.** A trade-in credited
 the store the full selling price in cash *and* landed the trade car free. `closeDeal` now takes
@@ -134,6 +135,30 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **The store's worth is COST BASIS + cash, and `getStoreWorth()` is the one place it is
+  added** (#380). `Inventory.getStockValue()` sums `purchasePrice + reconCost`, never
+  `bookValueFn` — a market appraisal would move the total on a day the player did nothing,
+  which is the disconnection the figure exists to remove. Swapping in market value silently
+  breaks all three checkable rules (a buy leaves the total flat, a close raises it by the front
+  gross, a wholesale-out lowers it by the quote's `gain`) and makes the shipped caption false.
+  Move the label with the rule or leave both alone. A surface that sums its own is the failure
+  the single getter prevents.
+- **Facility and floorplan are UNASKED, not omitted** (#380). Facility has no dollar value in
+  the engine (#358 counts built spaces) and floorplan is a daily carrying cost, not a debt
+  balance. Whether a built bay is a sellable asset is a design question nobody has put; until
+  it is ruled on, adding either term would be a rule the player cannot verify. The figure is
+  labeled for exactly what it sums, which is what keeps it honest in the meantime.
+- **Cash stays the PRIMARY figure on every surface** (#380). Every bankruptcy check, tier gate
+  and career-ending face branches on `economy.cash`; a bigger worth figure beside it would be a
+  lie of a different kind. The worth line is secondary by design, not by oversight.
+- **`HomeDashboardInputs.cash` is GONE and must not come back** (#380). The HUD takes
+  `storeWorth` and reads its headline figure *and* its "Cash on Hand" label out of the same
+  `buildStoreWorth` model the worth line under it uses. Re-adding a separate `cash` input is
+  how a headline starts disagreeing with the line beneath it.
+- **Finance takes `storeWorth` as its own PROP, never a field on `FinanceDashboardModel`**
+  (#380). Everything in that model is a reading of the selected time *window*; this is a
+  reading of this *moment*. Folding it in would make the position appear to move when the range
+  chips change.
 - **A nav tab with no composed room THROWS, and there is no stub to fall back to** (#378).
   `composeShellTabs` (AppShell barrel) is the one binding of `loadNavTabs()` to `tabContent`.
   Re-introducing a render-time fallback — even "just for a new tab being built" — recreates the
@@ -1035,6 +1060,59 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT #380** (Cash on Hand stops being the only number: the store also shows
+  what it is worth). The Home HUD's one big figure was Cash, and every automation the game
+  already ships makes it fall without the player touching anything — the UCM sources the board
+  (#293), construction draws on a timer (#359), a wire subscription bills daily (#178). A
+  headline that only goes down reads as decay. #374 had already taught the P&L that buying a car
+  converts cash into stock rather than losing it; the HUD did not know, and that was the gap.
+  **The stock half is COST BASIS, and that is the whole reason the figure is checkable.**
+  `Inventory.getStockValue()` sums `purchasePrice + reconCost` — the same basis
+  `getWholesaleQuote` states — never `bookValueFn`. Book value is an appraisal that drifts with
+  the used-car market, so a worth figure built on it would fall on a day the player did nothing,
+  which is the exact disconnection this exists to remove. On cost basis all three doors state one
+  rule: an auction buy debits cash and raises stock by the same number so the total sits still, a
+  retail close raises it by the front gross, and a wholesale-out lowers it by the quote's `gain`.
+  `tests/Economy.netWorth.test.ts` drives all three against a real world.
+  **`World.getStoreWorth()` is the one place the addition happens** — `{ cash, stockValue, total
+  }`, composed at the composition root because that is the only place that sees both modules, and
+  `total` is carried rather than left to the caller so two surfaces cannot compute two totals.
+  Live, never memoized, the way `economy.cash` already is. Facility and floorplan are deliberately
+  NOT in it: Facility has no dollar value in the engine (#358 counts built spaces) and floorplan
+  is modeled as a daily carrying cost, not a debt balance, so either would be a term the player
+  cannot check. Whether a built bay is a sellable asset is a design question that has never been
+  asked — it is not omitted, it is unasked, and the label says exactly what the figure sums.
+  **The caption names COST, departing from the issue's filed copy on the issue's own rule.**
+  Filed as *"your cash plus the cars on your lot"*; shipped as **"Your cash plus what the cars on
+  your lot cost you."** The Finance room renders a market Book Value a few inches below (the
+  #179 INVENTORY VALUATION panel), so the filed sentence would have invited the player to check
+  the addition against a number it does not use and find it does not work. #380's own instruction
+  is that the figure is labeled for exactly what it sums.
+  **`HomeDashboardInputs.cash` is GONE, replaced by `storeWorth`.** Two ways in for the same
+  number is how a HUD starts stating a cash figure its own worth line disagrees with; the
+  headline now reads its value AND its name ("Cash on Hand") out of the same `buildStoreWorth`
+  model the line under it does. Four test fixtures moved with it.
+  **One copy, two rooms: `src/ui/StoreWorth`.** `buildStoreWorth` owns the formatting and the
+  three strings; `StoreWorthLine` is the worth half alone (Home, under the existing #230 cash
+  StatCard and its #255 ops/stock delta) and `StoreWorthPair` is cash-plus-worth (Finance, which
+  had no cash figure at all). Finance takes it as its **own prop, not a field on
+  `FinanceDashboardModel`** — everything in that model is a reading of the selected time window
+  and this is a reading of this moment, so changing the range chips must not appear to move it.
+  It heads the room under "Where You Stand", above the chips.
+  **Cash stays primary on both surfaces**, deliberately: every bankruptcy, tier gate and
+  career-ending face branches on `economy.cash`, so a larger worth figure beside it would be a lie
+  of a different kind. What the pair buys is the reading that cash falling was a *move*.
+  **An empty lot is not an empty state** — the store is worth its cash. A dash there would read as
+  "unknown" on exactly the day a Tier-1 player has sold out and is about to restock.
+  **Nothing calibrated moved and nothing could** — the whole slice is a read. `#180` still reads
+  35.8% positive / 54.3% apathetic, closes=274. No snapshot field was added, so
+  `WORLD_SNAPSHOT_VERSION` stays **21** and there is no migration.
+  Verified on the web drive (T2 dev slot via Continue, day 39): Home reads `$167,361 Cash on
+  Hand` over `What the Store Is Worth $270,356` with the caption, and Finance's "Where You Stand"
+  states the identical pair — two rooms, one getter. 248 suites / 3107 tests green, typecheck
+  clean. The `Cannot create slot: max of 3 slots reached` error in the console is the documented
+  dev-slot blocker below, not this slice.
+
 - 2026-08-11 — **BUILT #379** (a trade-in was paid for twice — the store banked the full selling
   price *and* got the trade car free). `closeDeal` posted `agreedPrice` to cash while
   `Inventory.acquireFromTrade` materialized the customer's car onto the lot with no offsetting
@@ -1117,50 +1195,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   Growth each rendered their real surface, no console errors beyond that slot-cap message.
   Next: **BUILD #379** (a trade-in pays the store twice) — the lowest-numbered open, deps-met
   issue, and the one that moves the #286 bands. [It did — see the #379 entry above.]
-
-- 2026-08-11 — **BUILT #377** (People — skill growth made visible, and what morale is costing).
-  Both halves were already modelled in the engine and read by nobody. Model B (#294) holds
-  **three** numbers per axis — the roll at hire, the grown value, and a per-hire ceiling — and
-  `PeopleTabContainer` drew the middle one alone, so a rookie climbing and a veteran who had
-  topped out rendered as the same bar. `staffMorale.getMoraleMultiplier` scales what a person
-  produces on every dispatch (`createWorld.ts:977`, `StaffDispatch.ts:508/522`) and **no UI read
-  it at all**, so the morale meter stated a level and never a consequence.
-  **The ceiling is an engine read, because a surface cannot derive it.** The per-hire headroom is
-  rolled from `masterSeed` + the staff id inside `StaffFactory`, so a card computing its own
-  would name a limit the engine does not clamp to. `NPC.perHireSkillCap` is that clamp exposed on
-  its own (parallel in shape to `effectiveSkillValue`), and `StaffOrg.getSkillGrowth(staffId)` is
-  the one read a surface makes: `{ skillId, hiredAt, current, ceiling, cap, grows }` per axis,
-  sorted, throwing off the roster. Nothing is stored, so a save round trip re-derives the same
-  ceiling and there is **no migration** — `WORLD_SNAPSHOT_VERSION` stays 21.
-  **The axis stays SHARED and the ceiling dims the tail — it does NOT rescale the bar.** The
-  issue's shape line said "the per-hire cap as the end of the track", which read literally means
-  each person's bar rescaled to their own limit. That was rejected on inspection: a rookie capped
-  at 30 sitting at 30 would draw the same full bar as a veteran capped at 95 sitting at 95, and a
-  roster panel exists to compare people down the page. Instead the track keeps its 0…cap scale,
-  `ProgressBar.mark` puts a hairline where they were hired, and `ProgressBar.reach` scrims
-  everything past their ceiling. All three numbers are on the bar and two people are still
-  comparable. Do not "finish" this by rescaling.
-  **A static axis draws none of the furniture.** `grows` is `growth_counter != null` and is the
-  whole test; an axis experience never moves gets no start mark, no ceiling, and the sentence
-  *"Fixed at hire — experience doesn't move this one."* Drawing a marked-up track on it would
-  imply a bar that will fill. Under the shipped `data/staff-skills.json` that is **most** axes:
-  only `pricing`, `t_o_closing` and `condition_reading` carry a `growth_counter`, and all three
-  are manager axes — so a Tier-1 salesperson's card is honestly all-static, and the growth
-  reading first appears on a UCM. That is the data as filed (magnitudes are S14/#286), not
-  something this slice narrowed.
-  **The morale sentence is beside the money, never folded into it**, and it is a share of their
-  work rather than a temperature word: *"Morale is costing 22% of their work."* /
-  *"Morale is getting 17% more work out of them."* / at neutral, *"Morale is neither helping nor
-  holding them back."* — the neutral case **gets the line**, because an omitted sentence reads as
-  a surface that forgot, not as "no effect", and the player cannot tell those apart by looking.
-  **A candidate card carries no growth reading, deliberately.** Nobody has started yet, so there
-  is no distance to draw; "from 44 at hire" about somebody who has not been hired is a claim
-  about a career that has not happened. `candidateSkillReads` and `rosterSkillReads` are two
-  functions for that reason.
-  **No training lever was added** (`PeopleTab.tsx:288-294`'s refusal stands) and **no calibration
-  number could move** — both halves are reads of values the engine already computes.
-  Verified on the live web drive off the T2 fixture: the UCM's card reads
-  `From 71 at hire · can reach 94.` on condition reading, `From 69 at hire · can reach 88.` on
-  pricing, `From 81 at hire · can reach 94.` on T.O. closing, three `Fixed at hire` axes beside
-  them, and the morale line. Marks land at 71.2% / 69.1% / 81.4% with the scrim starting at
-  94.2% / 88.5% / 93.9%. `npm run typecheck` clean, `npm test` 245 suites / 3088 tests green.
