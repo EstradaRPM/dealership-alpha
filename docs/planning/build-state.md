@@ -1211,6 +1211,42 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT (director-directed, out of phase): a Reveal row is keyed by its BEAT, not
+  by what it stars.** Playing a Tier-2 career on the web target logged
+  *"Encountered two children with the same key, `crown-bestSingleDeal`"* every time a bite closed
+  — React's own warning that rows under a duplicate key "may be duplicated and/or omitted", i.e.
+  the feed could silently drop a crown the player earned.
+  **The id was the entity's, and an entity is not unique on a pooled feed.** `crown-<recordId>`
+  assumed one break per mark per window. Neither grain holds that: a bite pools several days of
+  `records:broken` (#381/#382), and `bestSingleDeal` settles inside `deal:closed`, so even a
+  single day with two fat deals breaks it twice — and `drama.crownBudget` is 2, so both are
+  crowned and both render. The same shape was live on the loss track: a follow-up brings a
+  customer back, so `walk-<customerId>` could repeat across a week too.
+  **Every drama reaction now carries its beat's arrival index — `crown-bestSingleDeal#3`.** The
+  new internal `FeedBeat` pairs a `DramaCandidate` with the position it arrived at in its own
+  track (`records`/`closes`/`walkOffs`), and it survives the eligibility filters and the ranking,
+  so the number is a property of the beat rather than of where the renderer happened to put it.
+  Per-track rather than per-feed because the id already names the track. The month verdict is the
+  one reaction with no beat number, and deliberately: a pool carries at most one, and two of them
+  would be two different months.
+  **Uniqueness is now by construction, not by argument.** The old key was only unique as long as
+  nobody could name a repeat — and two repeats existed the day it shipped. `rankDrama`'s public
+  shape is unchanged (it still returns candidates); `rankDramaPool` is what carries beats.
+  **The regression test renders the real component and reproduces the director's warning
+  verbatim.** `tests/Reveal.reachability.test.tsx` renders `<Reveal>` over a week that breaks one
+  mark twice with `console.error` captured; reverted to the old key it fails with the exact string
+  from the report, and both crown rows are asserted present. Plus per-grain unit cases (day and
+  week) and a whole-feed "every id is unique" guard at both grains.
+  Nothing persisted changed; `WORLD_SNAPSHOT_VERSION` stays **21**, and no drama weight, budget or
+  copy moved — a feed with no repeat in it reads exactly as before, one `#n` aside.
+  `npm run typecheck` clean, `npm test` **260 suites / 3611 tests** green (+5).
+  **Not verified on the web drive:** the Browser pane was not displayed in this session, and with
+  it hidden the page composites no frames, which parks every modal — the Reveal included — below
+  the fold (the trap `.claude/skills/verify` documents). The rendering evidence above is the real
+  component under RN Testing Library instead. The director's own tab on port 8082 is running the
+  pre-fix bundle and will keep warning until it reloads against this.
+  Next: **BUILD #384** — phase 11 is untouched by this.
+
 - 2026-08-11 — **BUILT (director-directed, out of phase): a save can actually be deleted.** The
   director could not get rid of a save from the built-in browser, was sitting at the 3-slot cap,
   and so could not start a new game either. The Delete button was not missing — it had been there
@@ -1302,42 +1338,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   feed of one truck sale and eight sedan walk-offs. The first week drew the fallback, which is the
   no-favorite branch doing its job.
   Next: **BUILD #384**.
-
-- 2026-08-11 — **BUILT #382** (the bigger the bite, the more the Reveal has to leave out).
-  A day's Reveal shows a handful of starred reactions out of a day's candidates. The week the
-  tracer shipped ran seven days through the **same** budget, so it threw away roughly seven times
-  as much — and threw it away **silently**, which is the failure: a player who sold their best
-  unit ever on day 4 of a quiet week finishes the week never told, and concludes the feed is
-  noise. This closes the engagement spine's last **"star budget per altitude"** STILL-OPEN item,
-  at the grain that forced it.
-  **The budget rides the BITE, and `tunables.reveal.drama.starBudget` was DELETED rather than
-  left beside it.** `starBudget` sits in `data/clock-bites.json` next to `days`, because it is a
-  property of the window the feed covers, not of the ranking — and one budget per grain is the
-  only shape with no second place to disagree about the same day. `biteStarBudget(biteId)` is the
-  one read, and **`buildReveal` takes the DAY bite's budget through it**: the day is a bite, so it
-  has no constant of its own. Shipped **5 / 9 / 14** against 1 / 7 / 30 days — **sub-linear on
-  purpose**, seven days of reactions at seven times the stars is a scroll, not a beat — and the
-  schema refuses a longer bite carrying a smaller budget.
-  **The day's 5 is the pre-#382 number, unmoved.** A day's Reveal is identical to before the
-  slice, in the test and on the drive, or the tracer's live reading would have changed for a
-  reason nobody filed.
-  **What the budget cut is STATED, not dropped** — one plain-language line at the foot of a bite's
-  feed (*"Plus 38 smaller moments over 7 days, too small to make the cut."*), never an expandable
-  list: the feed's job is the top of the pile, and a surface that can show everything is a report,
-  not a Reveal. It carries the bite's own span word for the same reason the pooled tally does.
-  **A crowned record is admitted BEFORE the budget is spent.** #330 weights crowns above the
-  win/loss axes, but weighting is not a guarantee. `rankDramaPool` reserves the crowned marks and
-  then fills the rest of the budget in drama order — the admitted set is still emitted in the
-  pool's own order, so reserving a slot cannot reorder the feed. `drama.crownBudget` still caps
-  how many crowns take slots; the reservation guarantees the ones that survive that cap, it does
-  not repeal it.
-  **No drama weight moved and nothing calibrated could move** — the whole slice is a read of
-  reactions the sim already emitted. `#180` still reads 35.8% positive / 54.3% apathetic,
-  closes=274, `costOverAsk` 1.026. `WORLD_SNAPSHOT_VERSION` stays **21**, nothing persisted.
-  `npm run typecheck` clean, `npm test` **256 suites / 3151 tests** green. Verified on the web
-  drive (T2 dev slot, covered desk): a full week's Reveal drew exactly **9** starred reactions —
-  two crowns at the top, then wins and walk-offs from across the days — followed by *"Plus 38
-  smaller moments over 7 days, too small to make the cut."*; the very next hand-driven day drew
-  exactly **5**, said *"gross today"*, and carried no leftover line.
-  Next: **BUILD #383**.
-

@@ -4,8 +4,13 @@ import { render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { DayRecap, type DayRecapModel } from '../src/ui/DayRecap';
-import { buildReveal, isCrownworthyRecord } from '../src/ui/Reveal';
-import type { ClosedSale, WalkOff, BrokenRecord } from '../src/ui/Reveal';
+import { Reveal, buildReveal, buildBiteReveal, isCrownworthyRecord } from '../src/ui/Reveal';
+import type {
+  BiteDayBeats,
+  ClosedSale,
+  WalkOff,
+  BrokenRecord,
+} from '../src/ui/Reveal';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // Anti-orphan (#319): the Reveal renderer must be reachable through the real
@@ -338,6 +343,28 @@ describe('#322 morning prep bet → verdict scoreline — reachable through the 
 describe('#330 crowned record reactions — reachable through the live records flow', () => {
   const RECORD_DAYS = 12;
 
+  /** One quiet closed day of a bite, carrying only the beats a case sets. */
+  function biteDay(overrides: Partial<BiteDayBeats> = {}): BiteDayBeats {
+    return {
+      funnel: {
+        potentialTraffic: 10,
+        walkedIn: 8,
+        gated: 0,
+        staffEngaged: 6,
+        sold: 1,
+        leakCause: 'engagement',
+      },
+      gross: 2_400,
+      matchTally: { strong: 1, matched: 1 },
+      closes: [],
+      walkOffs: [],
+      prepBet: null,
+      records: [],
+      fniVerdict: null,
+      ...overrides,
+    };
+  }
+
   it('a real broken mark produces a crown-* reaction on the day-close Reveal', () => {
     const bus = createEventBus();
     const world = createWorld({ bus, masterSeed: 7, characterProfile: PROFILE });
@@ -399,5 +426,32 @@ describe('#330 crowned record reactions — reachable through the live records f
     expect(src).toMatch(/bus\.subscribe\('records:broken', onRecordBroken\)/);
     expect(src).toMatch(/recordsRef\.current = \[\]/);
     expect(src).toMatch(/w\.getPrepBet\(\),\s*recordsRef\.current,/);
+  });
+
+  // The renderer keys each row by `reaction.id`, so a feed carrying the same
+  // mark twice used to render two rows under one key — React's "Encountered two
+  // children with the same key, `crown-bestSingleDeal`" on the live web target,
+  // fired every time a Tier-2 bite closed, with rows liable to be dropped. This
+  // is the symptom itself: the real component, the real model, no warning.
+  it('a window that breaks one mark twice renders two rows and warns about no key', () => {
+    const model = buildBiteReveal(
+      [
+        biteDay({ records: [{ kind: 'bestSingleDeal', value: 4_000, previousValue: 3_000 }] }),
+        biteDay({ records: [{ kind: 'bestSingleDeal', value: 6_500, previousValue: 4_000 }] }),
+      ],
+      { biteId: 'week', daysRequested: 7, haltSentence: null },
+    );
+    const errors: string[] = [];
+    const spy = jest.spyOn(console, 'error').mockImplementation((...args) => {
+      errors.push(args.map(String).join(' '));
+    });
+    try {
+      const screen = render(<Reveal model={model} />);
+      expect(screen.getByText(/\$4,000 front, beating \$3,000/)).toBeTruthy();
+      expect(screen.getByText(/\$6,500 front, beating \$4,000/)).toBeTruthy();
+    } finally {
+      spy.mockRestore();
+    }
+    expect(errors.filter((e) => /same key/i.test(e))).toEqual([]);
   });
 });

@@ -6,6 +6,44 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT #382** (the bigger the bite, the more the Reveal has to leave out).
+  A day's Reveal shows a handful of starred reactions out of a day's candidates. The week the
+  tracer shipped ran seven days through the **same** budget, so it threw away roughly seven times
+  as much — and threw it away **silently**, which is the failure: a player who sold their best
+  unit ever on day 4 of a quiet week finishes the week never told, and concludes the feed is
+  noise. This closes the engagement spine's last **"star budget per altitude"** STILL-OPEN item,
+  at the grain that forced it.
+  **The budget rides the BITE, and `tunables.reveal.drama.starBudget` was DELETED rather than
+  left beside it.** `starBudget` sits in `data/clock-bites.json` next to `days`, because it is a
+  property of the window the feed covers, not of the ranking — and one budget per grain is the
+  only shape with no second place to disagree about the same day. `biteStarBudget(biteId)` is the
+  one read, and **`buildReveal` takes the DAY bite's budget through it**: the day is a bite, so it
+  has no constant of its own. Shipped **5 / 9 / 14** against 1 / 7 / 30 days — **sub-linear on
+  purpose**, seven days of reactions at seven times the stars is a scroll, not a beat — and the
+  schema refuses a longer bite carrying a smaller budget.
+  **The day's 5 is the pre-#382 number, unmoved.** A day's Reveal is identical to before the
+  slice, in the test and on the drive, or the tracer's live reading would have changed for a
+  reason nobody filed.
+  **What the budget cut is STATED, not dropped** — one plain-language line at the foot of a bite's
+  feed (*"Plus 38 smaller moments over 7 days, too small to make the cut."*), never an expandable
+  list: the feed's job is the top of the pile, and a surface that can show everything is a report,
+  not a Reveal. It carries the bite's own span word for the same reason the pooled tally does.
+  **A crowned record is admitted BEFORE the budget is spent.** #330 weights crowns above the
+  win/loss axes, but weighting is not a guarantee. `rankDramaPool` reserves the crowned marks and
+  then fills the rest of the budget in drama order — the admitted set is still emitted in the
+  pool's own order, so reserving a slot cannot reorder the feed. `drama.crownBudget` still caps
+  how many crowns take slots; the reservation guarantees the ones that survive that cap, it does
+  not repeal it.
+  **No drama weight moved and nothing calibrated could move** — the whole slice is a read of
+  reactions the sim already emitted. `#180` still reads 35.8% positive / 54.3% apathetic,
+  closes=274, `costOverAsk` 1.026. `WORLD_SNAPSHOT_VERSION` stays **21**, nothing persisted.
+  `npm run typecheck` clean, `npm test` **256 suites / 3151 tests** green. Verified on the web
+  drive (T2 dev slot, covered desk): a full week's Reveal drew exactly **9** starred reactions —
+  two crowns at the top, then wins and walk-offs from across the days — followed by *"Plus 38
+  smaller moments over 7 days, too small to make the cut."*; the very next hand-driven day drew
+  exactly **5**, said *"gross today"*, and carried no leftover line.
+  Next: **BUILD #383**.
+
 - 2026-08-11 — **BUILT #381** (phase 11 tracer: the clock takes a bigger bite). The clock had
   exactly one verb — `nextDay()`, one day at a time. It now has a ladder: the player picks how
   big a bite of the calendar to run before they look again, and the size of the bite is the bet.

@@ -332,6 +332,30 @@ export type DramaCandidate =
   | { kind: 'record'; record: CrownedRecord }
   | { kind: 'fni'; verdict: FniMonthVerdict };
 
+/**
+ * One candidate plus the position it arrived at in its own track of the window
+ * — **the thing that makes a beat addressable, and the reason it exists**.
+ *
+ * A reaction's id is its React key, so it has to be unique across the feed. The
+ * entity behind a beat is NOT that identity: a window pools several days, and
+ * within one window the same entity can have two separate fates. A high-water
+ * mark is the clearest case — `bestSingleDeal` settles inside `deal:closed`, so
+ * two fat deals in one week (or in one day) break it twice and the feed carries
+ * two beats named `bestSingleDeal`. A returning customer who walks off twice in
+ * a week is the same shape. Keying off the entity therefore duplicated keys on
+ * the live feed; keying off the beat's arrival position cannot, because the
+ * track it arrived in is enumerated once.
+ *
+ * Per-TRACK, not per-feed: the id already carries the track (`crown-`/`win-`/
+ * `walk-`), so "the 3rd record of this window" is unique against every other
+ * reaction, and the number stays stable no matter what the ranking does with it.
+ */
+interface FeedBeat {
+  candidate: DramaCandidate;
+  /** Index in the window's own `records`/`closes`/`walkOffs` array. */
+  beat: number;
+}
+
 /** Per-day context the drama scorer measures a candidate against. */
 interface DramaContext {
   /** Running-norm gross across the day's closes — the baseline gross surprise is measured from. */
@@ -391,27 +415,27 @@ export function scoreDrama(candidate: DramaCandidate, ctx: DramaContext): number
 
 /** Score and sort drama-desc with a stable arrival-order tiebreak. */
 function sortByDrama(
-  candidates: readonly DramaCandidate[],
+  beats: readonly FeedBeat[],
   ctx: DramaContext,
-): readonly DramaCandidate[] {
-  return candidates
-    .map((candidate, index) => ({ candidate, index, drama: scoreDrama(candidate, ctx) }))
+): readonly FeedBeat[] {
+  return beats
+    .map((beat, index) => ({ beat, index, drama: scoreDrama(beat.candidate, ctx) }))
     .sort((a, b) => b.drama - a.drama || a.index - b.index)
-    .map((entry) => entry.candidate);
+    .map((entry) => entry.beat);
 }
 
 /** Score, sort drama-desc with a stable arrival-order tiebreak, take the top N. */
 function topByDrama(
-  candidates: readonly DramaCandidate[],
+  beats: readonly FeedBeat[],
   ctx: DramaContext,
   limit: number,
-): readonly DramaCandidate[] {
-  return sortByDrama(candidates, ctx).slice(0, limit);
+): readonly FeedBeat[] {
+  return sortByDrama(beats, ctx).slice(0, limit);
 }
 
 /** What the ranking admitted, and how much of the eligible pool it cut (#382). */
 export interface DramaPool {
-  top: readonly DramaCandidate[];
+  top: readonly FeedBeat[];
   /**
    * Eligible candidates the budget left out. A bite states this as one line
    * rather than dropping it silently — a player who sold their best unit ever
@@ -446,10 +470,13 @@ function rankDramaPool(
     ? closes.reduce((sum, c) => sum + c.gross, 0) / closes.length
     : 0;
   const ctx: DramaContext = { meanGross };
+  // Each beat keeps the index it arrived at in its OWN track, through the
+  // filters and through the ranking — that index is what its reaction is keyed
+  // by, so it must survive both (see `FeedBeat`).
   const crowns = topByDrama(
-    records
-      .filter(isCrownworthyRecord)
-      .map((record): DramaCandidate => ({ kind: 'record', record })),
+    records.flatMap((record, beat) =>
+      isCrownworthyRecord(record) ? [{ candidate: { kind: 'record', record }, beat }] : [],
+    ),
     ctx,
     loadTunables().reveal.drama.crownBudget,
   );
@@ -458,26 +485,30 @@ function rankDramaPool(
       // The month verdict leads the arrival order ahead of the crowns (#373):
       // on the one bite a month where it exists, it is the headline, and a tie
       // with a crown it arrived beside should read verdict-then-crown.
-      ...(fniVerdict ? [{ kind: 'fni', verdict: fniVerdict } as DramaCandidate] : []),
+      ...(fniVerdict
+        ? [{ candidate: { kind: 'fni', verdict: fniVerdict } as DramaCandidate, beat: 0 }]
+        : []),
       // Crowns lead the arrival order: the day's headline wins an exact tie.
       ...crowns,
-      ...closes.map((sale): DramaCandidate => ({ kind: 'win', sale })),
-      ...walkOffs
-        .filter((w) => isStarworthyWalkOff(w.reason))
-        .map((walkOff): DramaCandidate => ({ kind: 'loss', walkOff })),
+      ...closes.map((sale, beat): FeedBeat => ({ candidate: { kind: 'win', sale }, beat })),
+      ...walkOffs.flatMap((walkOff, beat): FeedBeat[] =>
+        isStarworthyWalkOff(walkOff.reason)
+          ? [{ candidate: { kind: 'loss', walkOff }, beat }]
+          : [],
+      ),
     ],
     ctx,
   );
   // Crowns first (capped by the budget itself — a feed cannot exceed its own
   // budget), then the rest of the pool in drama order until the budget is out.
-  const admitted = new Set<DramaCandidate>(
-    ordered.filter((c) => c.kind === 'record').slice(0, limit),
+  const admitted = new Set<FeedBeat>(
+    ordered.filter((b) => b.candidate.kind === 'record').slice(0, limit),
   );
-  for (const candidate of ordered) {
+  for (const beat of ordered) {
     if (admitted.size >= limit) break;
-    admitted.add(candidate);
+    admitted.add(beat);
   }
-  const top = ordered.filter((c) => admitted.has(c));
+  const top = ordered.filter((b) => admitted.has(b));
   return { top, remainder: ordered.length - top.length };
 }
 
@@ -495,28 +526,42 @@ export function rankDrama(
   limit: number,
   fniVerdict: FniMonthVerdict | null = null,
 ): readonly DramaCandidate[] {
-  return rankDramaPool(closes, walkOffs, records, limit, fniVerdict).top;
+  return rankDramaPool(closes, walkOffs, records, limit, fniVerdict).top.map(
+    (b) => b.candidate,
+  );
 }
 
-function winReaction(sale: ClosedSale): RevealReaction {
+/**
+ * A reaction's id: what it stars, then which beat of that track it was.
+ *
+ * The entity alone is not an identity on a pooled feed — see `FeedBeat`. The
+ * `#n` is the beat's arrival index in the window, so two breaks of the same
+ * mark (or two walk-offs by the same returning customer) are two rows the
+ * renderer can tell apart instead of one duplicate React key.
+ */
+function beatId(base: string, beat: number): string {
+  return `${base}#${beat}`;
+}
+
+function winReaction(sale: ClosedSale, beat: number): RevealReaction {
   return {
-    id: `win-${sale.customerId}`,
+    id: beatId(`win-${sale.customerId}`, beat),
     tone: 'positive',
     text: winReactionText(sale),
   };
 }
 
-function walkOffReaction(walkOff: WalkOff): RevealReaction {
+function walkOffReaction(walkOff: WalkOff, beat: number): RevealReaction {
   return {
-    id: `walk-${walkOff.customerId}`,
+    id: beatId(`walk-${walkOff.customerId}`, beat),
     tone: 'negative',
     text: walkOffReactionText(walkOff),
   };
 }
 
-function crownReaction(record: CrownedRecord): RevealReaction {
+function crownReaction(record: CrownedRecord, beat: number): RevealReaction {
   return {
-    id: `crown-${record.kind}`,
+    id: beatId(`crown-${record.kind}`, beat),
     tone: 'positive',
     text: crownReactionText(record),
   };
@@ -526,6 +571,10 @@ function crownReaction(record: CrownedRecord): RevealReaction {
  * The month verdict's reaction (#373). Tone follows the MIX read, not the money:
  * a month can earn well and still have been the wrong standing bet, and the
  * lesson the beat exists to teach is which crowd the dial was pointed at.
+ *
+ * The only drama reaction with no beat number, because the month IS its beat
+ * number: a pool carries at most one verdict (`poolBiteDays` keeps the last one
+ * told), and two of them would be two different months.
  */
 function fniVerdictReaction(verdict: FniMonthVerdict): RevealReaction {
   return {
@@ -535,15 +584,15 @@ function fniVerdictReaction(verdict: FniMonthVerdict): RevealReaction {
   };
 }
 
-/** The reaction for one drama candidate — win, loss or crown, by kind. */
-function dramaReaction(candidate: DramaCandidate): RevealReaction {
+/** The reaction for one beat on the feed — win, loss, crown or verdict, by kind. */
+function dramaReaction({ candidate, beat }: FeedBeat): RevealReaction {
   switch (candidate.kind) {
     case 'win':
-      return winReaction(candidate.sale);
+      return winReaction(candidate.sale, beat);
     case 'loss':
-      return walkOffReaction(candidate.walkOff);
+      return walkOffReaction(candidate.walkOff, beat);
     case 'record':
-      return crownReaction(candidate.record);
+      return crownReaction(candidate.record, beat);
     case 'fni':
       return fniVerdictReaction(candidate.verdict);
   }
@@ -699,13 +748,13 @@ export function buildReveal(
   // #382: the budget is the DAY bite's, read off `data/clock-bites.json` — the
   // same catalog every other grain reads its own from. The day is a bite, so it
   // has no separate constant of its own.
-  const topDrama = rankDrama(
+  const topDrama = rankDramaPool(
     closes,
     walkOffs,
     records,
     biteStarBudget('day'),
     fniVerdict,
-  );
+  ).top;
   return {
     scoreline,
     reactions: [matchReaction(matchTally, gross), ...topDrama.map(dramaReaction)],

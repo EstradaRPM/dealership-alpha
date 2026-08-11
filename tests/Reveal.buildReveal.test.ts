@@ -255,10 +255,12 @@ describe('#320 buildReveal — individual starred win reactions', () => {
       sale({ customerId: 'b', matchQuality: 0.4, gross: 500 }),
     ];
     const model = buildReveal(funnel(), 3_500, { strong: 1, matched: 2 }, closes);
+    // `#n` is the beat's arrival index in its track — the id is per-beat, not
+    // per-entity, so a pooled window can carry two fates for the same entity.
     expect(model.reactions.map((r) => r.id)).toEqual([
       'match-summary',
-      'win-a',
-      'win-b',
+      'win-a#0',
+      'win-b#1',
     ]);
     expect(model.reactions[1].tone).toBe('positive');
     expect(model.reactions[1].text).toBe(winReactionText(closes[0]));
@@ -344,8 +346,8 @@ describe('#328 buildReveal — wins and losses interleave on the unified feed', 
     // beats the mild win.
     expect(model.reactions.map((r) => r.id)).toEqual([
       'match-summary',
-      'walk-x',
-      'win-a',
+      'walk-x#0',
+      'win-a#0',
     ]);
     const loss = model.reactions[1];
     expect(loss.tone).toBe('negative');
@@ -360,8 +362,8 @@ describe('#328 buildReveal — wins and losses interleave on the unified feed', 
     const model = buildReveal(funnel(), 8_000, { strong: 1, matched: 1 }, closes, walkOffs);
     expect(model.reactions.map((r) => r.id)).toEqual([
       'match-summary',
-      'win-a',
-      'walk-x',
+      'win-a#0',
+      'walk-x#0',
     ]);
   });
 
@@ -472,7 +474,7 @@ describe('#322 buildReveal — the scoreline leads with the resolved bet', () =>
     expect(model.scoreline).toBe('Trucks filled your lot and your floor. Good match.');
     // The reactions feed is unchanged — the match summary still leads it.
     expect(model.reactions[0].id).toBe('match-summary');
-    expect(model.reactions.some((r) => r.id === 'win-a')).toBe(true);
+    expect(model.reactions.some((r) => r.id === 'win-a#0')).toBe(true);
   });
 
   it('resolves a mismatch off the crowd\'s actual wants (closes + walk-offs)', () => {
@@ -662,13 +664,13 @@ describe('#330 buildReveal — crowned reactions on the same feed', () => {
       null,
       [record()],
     );
-    const crown = model.reactions.find((r) => r.id === 'crown-bestDayGross');
+    const crown = model.reactions.find((r) => r.id === 'crown-bestDayGross#0');
     expect(crown).toBeTruthy();
     expect(crown?.tone).toBe('positive');
     expect(crown?.text).toBe('👑 Best day yet — $4,200 gross, beating $3,800.');
     // Still the same one feed — the match summary leads, the win still shows.
     expect(model.reactions[0].id).toBe('match-summary');
-    expect(model.reactions.some((r) => r.id === 'win-won')).toBe(true);
+    expect(model.reactions.some((r) => r.id === 'win-won#0')).toBe(true);
   });
 
   it('the crown outranks the day drama for its star slot', () => {
@@ -679,7 +681,7 @@ describe('#330 buildReveal — crowned reactions on the same feed', () => {
       record(),
     ]);
     // reactions[0] is the match summary; the crown leads the ranked feed.
-    expect(model.reactions[1].id).toBe('crown-bestDayGross');
+    expect(model.reactions[1].id).toBe('crown-bestDayGross#0');
     expect(model.reactions).toHaveLength(1 + STAR_BUDGET);
   });
 
@@ -697,5 +699,49 @@ describe('#330 buildReveal — crowned reactions on the same feed', () => {
       record({ previousValue: null }),
     ]);
     expect(model.reactions.some((r) => r.id.startsWith('crown-'))).toBe(false);
+  });
+
+  // A reaction's id is its React key, and the feed duplicated keys whenever one
+  // entity had two fates in the same window: `bestSingleDeal` settles inside
+  // `deal:closed`, so a day with two fat deals breaks it twice and both breaks
+  // are crowned (`drama.crownBudget` is 2). Keyed by the record id, those were
+  // one key on two rows.
+  it('two breaks of the same mark in one day are two rows with two keys', () => {
+    const model = buildReveal(
+      funnel(),
+      21_000,
+      { strong: 2, matched: 2 },
+      [sale({ customerId: 'a', gross: 9_000 }), sale({ customerId: 'b', gross: 12_000 })],
+      [],
+      null,
+      [
+        record({ kind: 'bestSingleDeal', value: 9_000, previousValue: 6_000 }),
+        record({ kind: 'bestSingleDeal', value: 12_000, previousValue: 9_000 }),
+      ],
+    );
+    const crowns = model.reactions.filter((r) => r.id.startsWith('crown-bestSingleDeal'));
+    expect(crowns).toHaveLength(2);
+    expect(new Set(crowns.map((r) => r.id)).size).toBe(2);
+    // Two DIFFERENT breaks, each stated in full — not the same row twice.
+    expect(crowns.map((r) => r.text).sort()).toEqual([
+      '👑 Fattest deal ever — $12,000 front, beating $9,000.',
+      '👑 Fattest deal ever — $9,000 front, beating $6,000.',
+    ]);
+  });
+
+  it('every reaction on a day feed carries a key of its own', () => {
+    const ids = buildReveal(
+      funnel(),
+      21_000,
+      { strong: 2, matched: 2 },
+      [sale({ customerId: 'a', gross: 9_000 }), sale({ customerId: 'b', gross: 12_000 })],
+      [walkOff({ customerId: 'x' }), walkOff({ customerId: 'y' })],
+      null,
+      [
+        record({ kind: 'bestSingleDeal', value: 9_000, previousValue: 6_000 }),
+        record({ kind: 'bestSingleDeal', value: 12_000, previousValue: 9_000 }),
+      ],
+    ).reactions.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

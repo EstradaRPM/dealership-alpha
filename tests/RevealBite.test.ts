@@ -32,12 +32,12 @@ function sale(id: string, gross = 2_400): ClosedSale {
   };
 }
 
-function walkOff(id: string): WalkOff {
+function walkOff(id: string, reason = 'price_gap'): WalkOff {
   return {
     customerId: id,
     archetypeLabel: 'Commuter',
     wantedCategory: 'sedan',
-    reason: 'price_gap',
+    reason,
   };
 }
 
@@ -148,6 +148,51 @@ describe('buildBiteReveal (#381)', () => {
     // The S4 bet→verdict scoreline, not the bite span clause.
     expect(model.scoreline).not.toContain('days run');
     expect(model.scoreline).toContain('Good match');
+  });
+
+  // The pooled window is where a reaction's id stopped being unique: a week
+  // holds several days' `records:broken` beats, so the same mark falling twice
+  // put two rows on the feed under one React key ("two children with the same
+  // key, `crown-bestSingleDeal`" — observed on a day-60 Tier-2 career). The id
+  // is now the beat's, not the entity's.
+  it('two breaks of the same mark in one week are two rows with two keys', () => {
+    const model = buildBiteReveal(
+      [
+        day({ records: [{ kind: 'bestSingleDeal', value: 4_000, previousValue: 3_000 }] }),
+        day(),
+        day({ records: [{ kind: 'bestSingleDeal', value: 6_500, previousValue: 4_000 }] }),
+      ],
+      { biteId: 'week', daysRequested: 7, haltSentence: null },
+    );
+    const crowns = model.reactions.filter((r) => r.id.startsWith('crown-bestSingleDeal'));
+    expect(crowns).toHaveLength(2);
+    expect(new Set(crowns.map((r) => r.id)).size).toBe(2);
+    // Both breaks are told in full — the week does not swallow the earlier one.
+    expect(crowns.map((r) => r.text).sort()).toEqual([
+      '👑 Fattest deal ever — $4,000 front, beating $3,000.',
+      '👑 Fattest deal ever — $6,500 front, beating $4,000.',
+    ]);
+  });
+
+  it('every reaction on a pooled week carries a key of its own', () => {
+    // Same customer walking twice in one week is the other repeat a pooled
+    // window can hold — a follow-up brings them back under the same id.
+    const ids = buildBiteReveal(
+      [
+        day({
+          closes: [sale('a', 9_000)],
+          walkOffs: [walkOff('returning', 'no_fit')],
+          records: [record('bestDayGross')],
+        }),
+        day({
+          closes: [sale('b', 3_000)],
+          walkOffs: [walkOff('returning', 'no_fit')],
+          records: [{ kind: 'bestDayGross', value: 9_100, previousValue: 4_200 }],
+        }),
+      ],
+      { biteId: 'week', daysRequested: 7, haltSentence: null },
+    ).reactions.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('a bite that ran no days states so rather than inventing a day', () => {
