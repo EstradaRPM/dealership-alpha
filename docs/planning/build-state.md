@@ -35,7 +35,8 @@ stays a locked design; do not re-grill it.
 **Phase 10 — D1 — is RE-SCOPED AND FILED as of 2026-08-08.** Its row's *"largely absorbed by 5c;
 re-scope when reached"* was mostly right: the subtraction against the shipped app killed Growth's
 D1 scope entirely and left People with two items and Finance with three. Five issues filed,
-**#374–#378** (table below). The next `/next` on this phase BUILDS **#376** (the P&L proper).
+**#374–#378** (table below). The next `/next` on this phase BUILDS **#377** (People — skill
+growth made visible, and what morale is costing).
 
 ### Phase 10 — D1 the three dashboards (re-scoped + filed 2026-08-08)
 
@@ -43,7 +44,7 @@ D1 scope entirely and left People with two items and Finance with three. Five is
 |---|---|---|
 | ~~#374~~ | ~~the P&L relieves inventory at the sale — Net Income becomes what the store *earned*~~ **BUILT 2026-08-09** | — |
 | ~~#375~~ | ~~**tracer** — `ProfitCenter` axis on the ledger + `getDepartmentPnL` + the Finance "Where the Gross Came From" panel~~ **BUILT 2026-08-09** | #374 |
-| #376 | the P&L proper — revenue/expenses/net over time + the gross→overhead→net ladder | #375 |
+| ~~#376~~ | ~~the P&L proper — revenue/expenses/net over time + the gross→overhead→net ladder~~ **BUILT 2026-08-11** | #375 |
 | #377 | People — skill growth made visible, and what morale is costing | — |
 | #378 | closing sweep — delete the dead placeholder tab surface + the stale comments | — |
 | #380 | Cash on Hand + "What the Store Is Worth" — automated spending stops reading as decay (filed 2026-08-09 from a director question) | #376 for the Finance half only |
@@ -128,6 +129,39 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **`BarChart` clamps negatives to zero and `LineChart` does not — pick by the data's sign**
+  (#376). `BarChart`'s `Math.max(0, d.value)` is deliberate; a signed series charted on it
+  reads as break-even. Anything that can go below zero (a P&L, a delta, an equity position)
+  uses `LineChart`, whose `signedDomain` always contains zero so the baseline is a real
+  position on the axis. Consequence for #375's department bars: a negative department gross
+  draws a zero-length bar with its negative `valueLabel` beside it. That is the existing
+  primitive's behavior, not a #376 regression.
+- **The Finance hero and the P&L trend share ONE `bucketDaily` call, deliberately** (#376).
+  Two computations that agree today is how the two charts stacked on one screen start
+  describing the same window on different clocks. Do not give the trend its own bucketing.
+- **`dailyPnL` reads `PnLSummary.entries`, and must not become an engine call per bucket**
+  (#376). Those entries *are* the set `getPnL`'s totals are computed from — accrual, with
+  `inventoryAcquisition` already dropped — and each is day-stamped. A second read path is how
+  a chart starts disagreeing with the Net Income printed above it.
+- **The statement rounds ONCE and the residue lands on OVERHEAD, never on the total** (#376).
+  A live 30-day window printed `$2,713 + $35,479 = $38,191` before this rule; each summed line
+  is now the sum of the already-rounded lines above it, and `deduction = netTotal −
+  departmentTotal`. Net Income is the figure stated by the headline card and by
+  `getDepartmentPnL`, so it is the one that must match everywhere — a balancing line absorbing
+  rounding is what a real statement does. Do not "fix" the overhead line back to
+  `money(-overhead)`; it can legitimately differ by a dollar from #375's caption above it.
+- **Headline sparkline series are NORMALIZED, and raw dollars is the bug that was there**
+  (#376). `Sparkline` takes [0,1] samples (`clamp01`), so the pre-#376 raw-dollar series drew
+  every figure over 1 at the top of the plot — a $2k day and a $6k day were the same height.
+  `normalizeSeries` maps against a zero-inclusive domain, which is also what puts Net Income's
+  negative days below where zero sits. A future series added to a `FinanceStat` must go
+  through it. PVR still carries **no** series, for its own documented reason (undefined on a
+  day with no units).
+- **A delta chip requires the prior window to fit ENTIRELY inside the career** (#376).
+  `financeHasPriorWindow` replaced `prior.toDay >= 1`, which let day 10's "7D" chip compare
+  seven days against the three that happened and report a collapse that was only the clamp.
+  A clamped prior window is a *different span*, and two different spans are not a
+  period-over-period move.
 - **`profitCenter` omitted means `store` OVERHEAD, and that default is load-bearing** (#375).
   It is what keeps every untagged post — pre-#375 saves, every harness, a call site somebody
   forgets — below the gross line instead of flattering a department. A future session that
@@ -919,6 +953,43 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT #376** (the P&L proper — the statement over time, and the gross→net
+  ladder). The room charted *gross* and printed Net Income as a bare number: it could say what
+  came in by revenue line and what went out by ledger label, and could not show the statement
+  those two sides make. `PnLSummary.totalRevenue`/`.totalExpenses` had been computed on every
+  read and rendered nowhere since #351.
+  **The trend needed a new kit primitive, and the axis is the whole reason.** `Sparkline` takes
+  samples the caller normalized and has no baseline, so it cannot say whether a dip crossed
+  zero; `BarChart` clamps negatives to zero by design (`Math.max(0, d.value)`). Charting a P&L
+  means charting a number that goes negative, so **`LineChart`** takes raw values and places
+  them in a `signedDomain` that **always contains zero** — the zero tick is drawn as an
+  emphasized rule and a losing bucket renders below it rather than at the plot floor. Geometry
+  went in `chartScale.ts` with the rest (`signedDomain`/`signedTicks`/`domainFraction`/
+  `linePoints`), so a wrong chart is an assertion on a path, not a screenshot.
+  **The two charts share ONE `bucketDaily` call**, not two computations that agree today. The
+  hero and the trend sit above each other; on different boundaries they would be two clocks.
+  **`dailyPnL` reads the per-day P&L off `PnLSummary.entries` — no new engine read.** Those
+  entries *are* the set the totals are computed from (accrual, `inventoryAcquisition` already
+  dropped) and each is day-stamped, so the chart cannot drift from the Net Income above it.
+  Asking Economy for one summary per bucket would be the same filter run thirteen times.
+  **The ladder's rounding rule was found on the live drive, not reasoned about.** A real
+  30-day window printed `$2,713 + $35,479 = $38,191`. Every figure now rounds to whole dollars
+  **once** and each summed line is the sum of the rounded lines above it; the residue lands on
+  the **overhead** line, never on the total, because Net Income is stated by the headline card
+  six inches above and by `getDepartmentPnL` itself. A balancing line absorbing rounding is how
+  a real statement handles it. Re-verified live: `$1,132 + $1,581 = $2,713`, less `$35,478`,
+  Net Income `$38,191`, matching the card.
+  **Two defects fell out of the criteria and were fixed rather than worked around.** (1) The
+  headline sparklines were being handed **raw dollars** — the kit clamps to [0,1], so every
+  figure over 1 drew at the top and a $2k day and a $6k day were the same height. That had
+  shipped since #351 and could not be left beside a correct new one. (2) `hasPriorWindow` was
+  `prior.toDay >= 1`, so day 10's "7D" chip compared seven days against the three that
+  happened and reported a collapse that was only the clamp; it is now
+  `financeHasPriorWindow` = the prior window fits **entirely** inside the career.
+  **Nothing calibrated moved and nothing could** — the whole slice is a read of a ledger it
+  never writes to. `#180` still reads 39.3% / 51.7%, closes=290.
+  Next: **BUILD #377** (People — skill growth made visible, and what morale is costing).
+
 - 2026-08-09 — **BUILT #375** (gross by department — the tracer for the D1 profit-center axis).
   The store has run four profit centers since #314 and nothing in the game could say which one
   made the money; a repo-wide search for a per-department gross getter returned zero engine
@@ -1049,62 +1120,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   it sums until that ruling exists. The one thing for the director to overrule is Home-vs-
   Finance-only.
   Next: **BUILD #375** (the `ProfitCenter` tracer), whose only dep was #374.
-
-- 2026-08-08 — **SLICED phase 10 (D1, the three dashboards) into #374–#378.** The phase row had
-  carried *"largely absorbed by 5c (#349/#350/#351); re-scope when reached"* since it was written,
-  and the subtraction against the app that actually ships is the unit. It was done by inventorying
-  the three rooms as rendered — not by re-reading the 5c slices' source — and the result is
-  asymmetric: **Growth survives nothing, People two items, Finance three.**
-  **Growth is complete.** All six D1-implied panels are live and its only remaining charter line
-  (courtship / brand portfolio) is explicitly T4, i.e. E1. A phase can close a room by finding
-  nothing left in it, and this one did.
-  **The find that changed the shape of the slice is in Finance, and it is an engine gap, not a UI
-  gap.** D1 names "per-department gross"; the game has no such number and no getter that could
-  build one — `departmentGross|grossByDepartment|deptGross|serviceGross|bodyShopGross` returns
-  **zero engine hits**. The store can run four profit centers (sales, F&I, service, body shop) and
-  cannot answer which one made the money. Finance's existing "What the Gross Was Made Of" splits
-  by *revenue line*, which is a different axis, and the department pages show demand and health
-  and no money at all. So #375 is a real vertical tracer — a `ProfitCenter` tag on the ledger in
-  the exact idiom `ExpenseCategory` already established (**omitted ⇒ `store` overhead**, which is
-  what keeps every existing harness honest), `getDepartmentPnL`, and the panel that reads it.
-  **Writing that tracer surfaced a prerequisite nobody had filed, so it became #374.**
-  `Economy.getPnL` is pure cash-basis: an auction purchase is charged as an operating expense on
-  the day of the buy, while that unit's revenue arrives weeks later. At Tier 1, where a six-space
-  lot is bought out in two or three days, that is not a rounding artifact — it is most of the
-  number, and it means **a month spent stocking reports a loss the store did not make.** The model
-  is already half-built: #255's `category: 'inventoryAcquisition'` exists to say "cash converted
-  into stock, NOT operating spend", and the P&L simply never acts on the tag. #374 makes it
-  accrual — inventory relieved at the sale, cash untouched — which needs one new concept, a
-  **non-cash ledger entry**, because posting the relief through `postExpense` would debit the store
-  twice for one car. It relieves `purchasePrice` **only**: recon and carrying are already expensed
-  when incurred, which is what that same category boundary says, so relieving the full cost basis
-  would double-charge recon. Filed before #375 because without it gross-by-department and Net
-  Income are two numbers that do not add up — the exact defect the #365 reserve-posting note exists
-  about.
-  **#374's blast radius was checked rather than assumed.** `getPnL` has four consumers, all four
-  Finance UI; `scripts/` has zero hits for `getPnL` or `netIncome`; every monitor and gate face
-  branches on `economy.cash`. So a change to what Net Income *means* moves no calibration number —
-  which is the difference between this being a one-slice fix and a C2-class gate.
-  **Payroll stays in overhead, deliberately.** Techs and advisors draw a flat daily wage, not
-  flat-rate, and payroll posts as one aggregate (`StaffOrg.ts:621`); splitting it across
-  departments would need a second wage model nobody asked for. Gross is revenue less cost of sale,
-  and the ladder **departmental gross → less store overhead → net** is #376's statement. That is
-  also the classic dealership month-end reading, so it is one rule, not a compromise.
-  **People's two survivors are both engine values with no surface.** Skill growth (#294 Model B) is
-  invisible — the card renders `effectiveSkills` alone, never against the hire-time base or the
-  per-hire cap, so a rookie who is climbing and a veteran who has topped out draw identically, and
-  the counters accruing overnight produce no visible event. And `getMoraleMultiplier` scales what a
-  person actually produces (`createWorld.ts:977`, `StaffDispatch.ts:508/522`) and **no UI reads
-  it**, so the morale bar states a level and never a consequence — the "dead control with no
-  explanation" case the plain-language rule exists to prevent. #377 adds no lever: the deliberate
-  refusal to ship a training section (`PeopleTab.tsx:288-294`) stands.
-  **#378 is the phase's closing act and it is not just a deletion.** `StrategicTab.tsx:40` still
-  renders "This surface is coming in a later slice" and `navTabs.ts:9` still calls the three rooms
-  placeholders; both are false and the component is **unreachable** (its `GameScreen.tsx:464`
-  fallback cannot fire, since all five tab keys exist). The substantive half of the slice is
-  replacing that silent render-time fallback with a composition-time failure, so this class of stub
-  cannot grow back. A stale "coming soon" is worse than no surface — it is what makes the next
-  session re-derive a phase that is already done.
-  All five bodies carry EARS acceptance criteria with named tests per the `pre-issue-criteria`
-  hook. No code changed this session.
-  Next: **BUILD #374**.

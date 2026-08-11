@@ -6,6 +6,65 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-08 — **SLICED phase 10 (D1, the three dashboards) into #374–#378.** The phase row had
+  carried *"largely absorbed by 5c (#349/#350/#351); re-scope when reached"* since it was written,
+  and the subtraction against the app that actually ships is the unit. It was done by inventorying
+  the three rooms as rendered — not by re-reading the 5c slices' source — and the result is
+  asymmetric: **Growth survives nothing, People two items, Finance three.**
+  **Growth is complete.** All six D1-implied panels are live and its only remaining charter line
+  (courtship / brand portfolio) is explicitly T4, i.e. E1. A phase can close a room by finding
+  nothing left in it, and this one did.
+  **The find that changed the shape of the slice is in Finance, and it is an engine gap, not a UI
+  gap.** D1 names "per-department gross"; the game has no such number and no getter that could
+  build one — `departmentGross|grossByDepartment|deptGross|serviceGross|bodyShopGross` returns
+  **zero engine hits**. The store can run four profit centers (sales, F&I, service, body shop) and
+  cannot answer which one made the money. Finance's existing "What the Gross Was Made Of" splits
+  by *revenue line*, which is a different axis, and the department pages show demand and health
+  and no money at all. So #375 is a real vertical tracer — a `ProfitCenter` tag on the ledger in
+  the exact idiom `ExpenseCategory` already established (**omitted ⇒ `store` overhead**, which is
+  what keeps every existing harness honest), `getDepartmentPnL`, and the panel that reads it.
+  **Writing that tracer surfaced a prerequisite nobody had filed, so it became #374.**
+  `Economy.getPnL` is pure cash-basis: an auction purchase is charged as an operating expense on
+  the day of the buy, while that unit's revenue arrives weeks later. At Tier 1, where a six-space
+  lot is bought out in two or three days, that is not a rounding artifact — it is most of the
+  number, and it means **a month spent stocking reports a loss the store did not make.** The model
+  is already half-built: #255's `category: 'inventoryAcquisition'` exists to say "cash converted
+  into stock, NOT operating spend", and the P&L simply never acts on the tag. #374 makes it
+  accrual — inventory relieved at the sale, cash untouched — which needs one new concept, a
+  **non-cash ledger entry**, because posting the relief through `postExpense` would debit the store
+  twice for one car. It relieves `purchasePrice` **only**: recon and carrying are already expensed
+  when incurred, which is what that same category boundary says, so relieving the full cost basis
+  would double-charge recon. Filed before #375 because without it gross-by-department and Net
+  Income are two numbers that do not add up — the exact defect the #365 reserve-posting note exists
+  about.
+  **#374's blast radius was checked rather than assumed.** `getPnL` has four consumers, all four
+  Finance UI; `scripts/` has zero hits for `getPnL` or `netIncome`; every monitor and gate face
+  branches on `economy.cash`. So a change to what Net Income *means* moves no calibration number —
+  which is the difference between this being a one-slice fix and a C2-class gate.
+  **Payroll stays in overhead, deliberately.** Techs and advisors draw a flat daily wage, not
+  flat-rate, and payroll posts as one aggregate (`StaffOrg.ts:621`); splitting it across
+  departments would need a second wage model nobody asked for. Gross is revenue less cost of sale,
+  and the ladder **departmental gross → less store overhead → net** is #376's statement. That is
+  also the classic dealership month-end reading, so it is one rule, not a compromise.
+  **People's two survivors are both engine values with no surface.** Skill growth (#294 Model B) is
+  invisible — the card renders `effectiveSkills` alone, never against the hire-time base or the
+  per-hire cap, so a rookie who is climbing and a veteran who has topped out draw identically, and
+  the counters accruing overnight produce no visible event. And `getMoraleMultiplier` scales what a
+  person actually produces (`createWorld.ts:977`, `StaffDispatch.ts:508/522`) and **no UI reads
+  it**, so the morale bar states a level and never a consequence — the "dead control with no
+  explanation" case the plain-language rule exists to prevent. #377 adds no lever: the deliberate
+  refusal to ship a training section (`PeopleTab.tsx:288-294`) stands.
+  **#378 is the phase's closing act and it is not just a deletion.** `StrategicTab.tsx:40` still
+  renders "This surface is coming in a later slice" and `navTabs.ts:9` still calls the three rooms
+  placeholders; both are false and the component is **unreachable** (its `GameScreen.tsx:464`
+  fallback cannot fire, since all five tab keys exist). The substantive half of the slice is
+  replacing that silent render-time fallback with a composition-time failure, so this class of stub
+  cannot grow back. A stale "coming soon" is worse than no surface — it is what makes the next
+  session re-derive a phase that is already done.
+  All five bodies carry EARS acceptance criteria with named tests per the `pre-issue-criteria`
+  hook. No code changed this session.
+  Next: **BUILD #374**.
+
 - 2026-08-08 — **BUILT #373** (the monthly F&I verdict — phase 9 COMPLETE). The posture (#366)
   is a bet the player places once and leaves standing; every tooth on it bites one deal at a
   time, which is a grain the bet was never placed at. This is the Reveal resolving it at the
