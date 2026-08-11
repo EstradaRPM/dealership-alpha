@@ -28,6 +28,12 @@ held its shape (0.5% positive for a green operator, so the progression still has
 the balance harness went from "bankrupts before Tier 2" to **90 of 100 seeds reaching T2** with
 a median survival of the full 360 days.
 
+**#286's bands were re-measured on 2026-08-11 and MOVED, by #379.** The store had been paid
+twice for every trade-in, so those bands were partly funded by money it was never handed. The
+current reading is **69 of 100 seeds reaching T2, median survival 203 days** — see the #379 log
+entry for the full before/after and for why the `FAILED:` percentage *falling* is not an
+improvement. **A retune against the honest cash is C2's, and is not yet done.**
+
 **Phase 9 is COMPLETE as of 2026-08-08** — all twelve B2 slices have landed (#151, #153, #365,
 #152, #366, #367, #368, #369, #370, #371, #372, #373). `docs/planning/fni-mechanics-grill-state.md`
 stays a locked design; do not re-grill it.
@@ -36,9 +42,8 @@ stays a locked design; do not re-grill it.
 re-scope when reached"* was mostly right: the subtraction against the shipped app killed Growth's
 D1 scope entirely and left People with two items and Finance with three. Five issues filed,
 **#374–#378** (table below). **All five have landed as of 2026-08-11** — #378's sweep closed the
-phase's own scope. What remains under the phase pointer is #380 (filed later from a director
-question) and the out-of-phase #379; the next `/next` builds **#379**, which is lower-numbered
-and deps-met.
+phase's own scope. The out-of-phase **#379 landed 2026-08-11** too. What remains under the phase
+pointer is **#380** (filed later from a director question), which the next `/next` builds.
 
 ### Phase 10 — D1 the three dashboards (re-scoped + filed 2026-08-08)
 
@@ -51,13 +56,11 @@ and deps-met.
 | ~~#378~~ | ~~closing sweep — delete the dead placeholder tab surface + the stale comments~~ **BUILT 2026-08-11** | — |
 | #380 | Cash on Hand + "What the Store Is Worth" — automated spending stops reading as decay (filed 2026-08-09 from a director question) | #376 for the Finance half only |
 
-**Filed out of phase, from #374's tracing: #379** — a trade-in credits the store the full
-selling price in cash *and* lands the trade car free (`DealEngine.ts:205` vs
-`StaffDispatch.ts:736/744`; `acquireFromTrade` posts no offsetting expense, and the lien
-`payoff` never leaves the bank). At a 42.1% trade rate over 290 closes it is a standing cash
-faucet, so **fixing it will move the #286 balance bands** — that is expected, and the issue
-says to state the new numbers rather than tune others back to the old ones. It is a **cash**
-defect only; the accrual P&L is already right on a trade deal and stays right.
+**Filed out of phase, from #374's tracing: ~~#379~~ — BUILT 2026-08-11.** A trade-in credited
+the store the full selling price in cash *and* landed the trade car free. `closeDeal` now takes
+`tradeAllowance` and debits it once, as `inventoryAcquisition` so the accrual P&L does not move.
+It **did** move the #286 bands, as filed — the numbers are in the log entry, and re-tuning them
+back is C2's call, not this slice's.
 
 **What the subtraction actually found** (do not re-derive it; this is the record):
 
@@ -263,9 +266,48 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
   An old save's historical months read more profitable than they were, because their
   acquisitions have no matching relief. The ledger records what was posted; the rule governs
   how it is read. Synthesizing relief entries would be inventing history the store never had.
-- **#379 is a KNOWN, FILED cash defect that #374 deliberately did not touch** — a trade-in is
-  paid for twice. Do not treat a cash balance that looks generous on a trade-heavy run as a
-  new bug, and do not fold the fix into an unrelated slice: it moves calibration.
+- **A trade is settled by ONE debit of the whole ALLOWANCE, not two of equity and payoff**
+  (#379). The two halves the issue names — the equity the customer never hands over, and the
+  lien payoff wired out — come out of the same pocket and sum to the allowance, which is also
+  the number `Inventory.acquireFromTrade` books as the unit's `purchasePrice`. One number
+  describes both sides, so splitting it into two ledger lines would be one economic event
+  written twice, and two numbers that can disagree about what a trade cost.
+- **The trade allowance is `inventoryAcquisition`, and that is what keeps net income still**
+  (#379). It is cash converted into a car, exactly like an auction buy: the accrual P&L drops
+  it whole and the cost returns as the `postCostOfSale` relief when that trade unit resells.
+  A plain `postExpense` would have charged the store for the same car twice — once as a deal
+  expense now and once as relief later — and would have shown up as a five-figure phantom loss
+  on a trade-heavy month. It also lands the allowance in the Home cash-delta's "into stock"
+  column, which is where it belongs.
+- **It is `forceDebit`, not `postExpense`, on purpose** (#379). By the time it fires, revenue is
+  posted and the unit is off the lot; the lienholder is paid whether the store can afford it or
+  not. A solvency throw there would abort a deal that had already half-happened. A store that
+  takes a trade it cannot cover legitimately goes negative — that is the honest outcome, and
+  the bankruptcy machinery already reads `economy.cash`.
+- **Revenue stays the full `agreedPrice` and must never be netted** (#379). Front gross, PVR and
+  every gross reading in the game are built on the selling price. The correction is on the cash
+  side only, which is exactly why it was filed apart from #374.
+- **`TradeSettlement { equity, allowance }` travels to the close as one object** (#379). Two
+  positional numbers that differ by the payoff is the shape the original defect lived in; the
+  equity shrinks what the store *collects*, the allowance is what the store *pays*. Do not
+  collapse them at the StaffDispatch seam.
+- **A pre-#379 save is NEVER swept for un-offset trades** (#379). `restore` reads cash verbatim.
+  Its balance is generous by the allowances it never paid, the same way a pre-#374 ledger's
+  months read more profitable than they were: the ledger records what was posted, and the rule
+  governs what happens from here. Synthesizing corrective debits would invent payments the store
+  never made.
+- **The #286 bands MOVED and must not be tuned back inside this slice** (#379). Same command,
+  same 100 seeds, before → after: T2 reached **91 → 69**, median survival **360 → 203 days**,
+  bankrupt **28% → 60%**, completed **59 → 16**, search score **0.4320 → 0.3218**. **The
+  `FAILED:` percentage FELL, 92% → 83%, and that is not an improvement** — the median failure
+  day fell with it (118 → 90) because a run that goes broke early stops accruing the miss
+  streaks and forced contractions that scored the old cohort as failed. It is the same trap the
+  recipe warns about, pointing the other way: read the causes, not the percentage.
+- **#180 moved and #181 did not** (#379). Live calibration: positive **39.3% → 35.8%**,
+  apathetic **51.7% → 54.3%**, closes **290 → 274**, trades **122 → 113** (trade rate 42.1% →
+  41.2%), `costOverAsk` **1.113 → 1.026** — a store with an honest bank stocks cheaper metal.
+  The #181 early-game floor is **byte-identical** (1.0% positive, closes=39): the green-operator
+  run barely trades at all, so there was nothing there to be paid twice for.
 - **#363 and #364 are both BUILT (2026-08-07).** The two out-of-phase live defects are closed.
 - **Phase 9 is DONE — all twelve B2 slices landed.** Nothing in it is outstanding.
 - **`bestFniPvr` is a MONTH mark with no volume floor, and that is not an oversight** (#373).
@@ -993,6 +1035,56 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT #379** (a trade-in was paid for twice — the store banked the full selling
+  price *and* got the trade car free). `closeDeal` posted `agreedPrice` to cash while
+  `Inventory.acquireFromTrade` materialized the customer's car onto the lot with no offsetting
+  debit, and the lien `payoff` never left the bank. At a **42.1% trade rate over 290 closes**
+  that was a standing cash faucet on two deals in five, and every bankruptcy, tier gate and
+  career-ending face in the game branches on `economy.cash`.
+  **One debit of the whole ALLOWANCE, not two.** The issue names two movements — the equity the
+  customer never hands over (it is credit against the purchase) and the payoff wired to their
+  lienholder — but they come out of the same pocket, sum to the allowance, and the allowance is
+  already the number `acquireFromTrade` books as the unit's `purchasePrice`. One economic event,
+  one line: `CloseDealParams.tradeAllowance`. Splitting it would be two numbers that can
+  disagree about what a trade cost, which is the shape the defect lived in.
+  **Categorized `inventoryAcquisition`, which is what keeps the P&L still.** Cash converted into
+  a car, exactly like an auction buy: #374 drops it whole from the statement and the cost comes
+  back as the cost-of-sale relief when that trade unit resells. Net income on a trade deal does
+  not move by a dollar — a plain `postExpense` would have charged the store for the same car
+  twice and printed a phantom five-figure loss on a trade-heavy month. It also puts the allowance
+  in the Home cash-delta's "into stock" column, where it belongs.
+  **`forceDebit`, not `postExpense`, and not in `Inventory`.** By the time it fires the revenue
+  is posted and the unit is off the lot; the lienholder gets paid whether the store can afford it
+  or not, so a solvency throw would abort a deal that had already half-happened. And the offset
+  lives at the close because the close is the only place that sees both halves — a second
+  `Inventory` debit could only ever disagree with it. **Revenue stays the full `agreedPrice`**:
+  netting it would wreck front gross, PVR and every gross reading built on the selling price,
+  which is exactly why this was filed apart from #374.
+  **The #286 bands MOVED, as the issue said they would.** Same command, same 100 seeds, measured
+  before and after rather than against the recorded figure: T2 reached **91 → 69**, median
+  survival **360 → 203 days**, bankrupt **28% → 60%** (modeled 27 → 52, hard throw 1 → 8),
+  completed **59 → 16**, T3 reached **16 → 7**, search score **0.4320 → 0.3218**. Median final
+  tier is still 1.0 and verdict pass rate is unchanged at 21%. **The `FAILED:` line FELL, 92% →
+  83%, and that is not an improvement** — the median failure day fell with it (118 → 90), because
+  a run that goes broke early stops accruing the miss streaks and forced contractions that scored
+  the old cohort as failed (43/49 → 39/38, with 6 new insolvency failures). It is the recipe's
+  own "bankruptcy rate is misleading" trap pointing the other way: read the causes, not the
+  percentage. **Nothing was tuned back.** A retune against honest cash is C2's.
+  **#180 moved and #181 did not.** Live calibration: positive **39.3% → 35.8%**, apathetic
+  **51.7% → 54.3%**, closes **290 → 274**, trades **122 → 113** (rate 42.1% → 41.2%),
+  `costOverAsk` **1.113 → 1.026** — a store with an honest bank stocks cheaper metal, and both
+  bands stayed inside their windows. The #181 early-game floor is **byte-identical** (1.0%
+  positive, closes=39, days=184): the green-operator run barely trades, so it had nothing to be
+  paid twice for.
+  **The docs that hid it were corrected, not just supplemented.** `Inventory/CLAUDE.md` and
+  `StaffDispatch/CLAUDE.md` both asserted the allowance "is offset against deal cash in the close
+  structure (#169)". It was not — that offset did not exist — and the confident sentence is what
+  kept the defect invisible through six slices that read those files.
+  `npm run typecheck` clean, `npm test` **246 suites / 3098 tests** green. No web drive: the
+  slice adds no surface, and the 100-seed harness drives the real `createWorld` →
+  `DayLoopController` for 360 days apiece, which is stronger evidence than a hand-driven day.
+  Next: **BUILD #380** (Cash on Hand + "What the Store Is Worth").
+
 - 2026-08-11 — **BUILT #378** (D1's closing sweep — the placeholder tab surface is gone, and a
   tab with no room is now a composition error). `StrategicTab` rendered *"This surface is coming
   in a later slice."* and had been **unreachable since #351**: `GameScreen` fell back to it only
@@ -1024,7 +1116,7 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   hits the documented 3-slot cap; `Continue` loaded fine): Home, Operations, People, Finance and
   Growth each rendered their real surface, no console errors beyond that slot-cap message.
   Next: **BUILD #379** (a trade-in pays the store twice) — the lowest-numbered open, deps-met
-  issue, and the one that moves the #286 bands.
+  issue, and the one that moves the #286 bands. [It did — see the #379 entry above.]
 
 - 2026-08-11 — **BUILT #377** (People — skill growth made visible, and what morale is costing).
   Both halves were already modelled in the engine and read by nobody. Model B (#294) holds
@@ -1072,40 +1164,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   pricing, `From 81 at hire · can reach 94.` on T.O. closing, three `Fixed at hire` axes beside
   them, and the morale line. Marks land at 71.2% / 69.1% / 81.4% with the scrim starting at
   94.2% / 88.5% / 93.9%. `npm run typecheck` clean, `npm test` 245 suites / 3088 tests green.
-
-- 2026-08-11 — **BUILT #376** (the P&L proper — the statement over time, and the gross→net
-  ladder). The room charted *gross* and printed Net Income as a bare number: it could say what
-  came in by revenue line and what went out by ledger label, and could not show the statement
-  those two sides make. `PnLSummary.totalRevenue`/`.totalExpenses` had been computed on every
-  read and rendered nowhere since #351.
-  **The trend needed a new kit primitive, and the axis is the whole reason.** `Sparkline` takes
-  samples the caller normalized and has no baseline, so it cannot say whether a dip crossed
-  zero; `BarChart` clamps negatives to zero by design (`Math.max(0, d.value)`). Charting a P&L
-  means charting a number that goes negative, so **`LineChart`** takes raw values and places
-  them in a `signedDomain` that **always contains zero** — the zero tick is drawn as an
-  emphasized rule and a losing bucket renders below it rather than at the plot floor. Geometry
-  went in `chartScale.ts` with the rest (`signedDomain`/`signedTicks`/`domainFraction`/
-  `linePoints`), so a wrong chart is an assertion on a path, not a screenshot.
-  **The two charts share ONE `bucketDaily` call**, not two computations that agree today. The
-  hero and the trend sit above each other; on different boundaries they would be two clocks.
-  **`dailyPnL` reads the per-day P&L off `PnLSummary.entries` — no new engine read.** Those
-  entries *are* the set the totals are computed from (accrual, `inventoryAcquisition` already
-  dropped) and each is day-stamped, so the chart cannot drift from the Net Income above it.
-  Asking Economy for one summary per bucket would be the same filter run thirteen times.
-  **The ladder's rounding rule was found on the live drive, not reasoned about.** A real
-  30-day window printed `$2,713 + $35,479 = $38,191`. Every figure now rounds to whole dollars
-  **once** and each summed line is the sum of the rounded lines above it; the residue lands on
-  the **overhead** line, never on the total, because Net Income is stated by the headline card
-  six inches above and by `getDepartmentPnL` itself. A balancing line absorbing rounding is how
-  a real statement handles it. Re-verified live: `$1,132 + $1,581 = $2,713`, less `$35,478`,
-  Net Income `$38,191`, matching the card.
-  **Two defects fell out of the criteria and were fixed rather than worked around.** (1) The
-  headline sparklines were being handed **raw dollars** — the kit clamps to [0,1], so every
-  figure over 1 drew at the top and a $2k day and a $6k day were the same height. That had
-  shipped since #351 and could not be left beside a correct new one. (2) `hasPriorWindow` was
-  `prior.toDay >= 1`, so day 10's "7D" chip compared seven days against the three that
-  happened and reported a collapse that was only the clamp; it is now
-  `financeHasPriorWindow` = the prior window fits **entirely** inside the career.
-  **Nothing calibrated moved and nothing could** — the whole slice is a read of a ledger it
-  never writes to. `#180` still reads 39.3% / 51.7%, closes=290.
-  Next: **BUILD #377** (People — skill growth made visible, and what morale is costing).

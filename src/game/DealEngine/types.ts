@@ -188,6 +188,23 @@ export interface CloseDealParams {
    * simply sit outside the book rather than claiming a tier they never had.
    */
   creditTier?: CreditTier;
+  /**
+   * What the store agreed to give for the customer's trade (#379) — the whole
+   * allowance, not the equity. It is what the store pays for that car, and
+   * `Inventory.acquireFromTrade` books it as the unit's `purchasePrice`, so the
+   * two halves of a trade deal are described by ONE number.
+   *
+   * It moves **cash only**. The allowance is settled in two directions — the
+   * equity (`allowance − payoff`) is credit the customer never hands over, and
+   * the `payoff` leaves the bank to the lienholder — and both come out of the
+   * same pocket, so the close debits their sum once. Revenue stays the full
+   * `agreedPrice`: netting it would wreck front gross, PVR and every reading
+   * built on the selling price.
+   *
+   * Omitted ⇒ 0 ⇒ no trade, which is every cash-only close and every pre-#379
+   * harness.
+   */
+  tradeAllowance?: number;
 }
 
 /** @see CloseDealParams.salesQuality */

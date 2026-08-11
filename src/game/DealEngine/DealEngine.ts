@@ -80,7 +80,14 @@ export interface DealEngineDeps {
   postureConfig?: FniPostureConfig;
   bus?: EventBus;
   inventory?: Pick<Inventory, 'getLotVehicle' | 'sellVehicle'>;
-  economy?: Pick<Economy, 'postRevenue'>;
+  /**
+   * `forceDebit` is what settles a trade allowance (#379). It bypasses the
+   * solvency check deliberately: the close has already banked the selling price
+   * and taken the customer's car, and the lienholder gets paid whether or not
+   * the store can afford it. A throw here would abort a deal that had already
+   * posted revenue and sold the unit off the lot.
+   */
+  economy?: Pick<Economy, 'postRevenue' | 'forceDebit'>;
   /**
    * Live current-day getter (#271). Only consumed by the lemon-law exposure
    * emit below, which stamps `day` onto `regulatory:lemon_law_incident`.
@@ -187,6 +194,7 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
       buyRate,
       salesQuality,
       creditTier,
+      tradeAllowance = 0,
     }) {
       // A caller that names no buy rate quoted no spread, so it earns no
       // reserve — the behavior-neutral default for every pre-#365 harness.
@@ -203,6 +211,27 @@ export function createDealEngine(deps: DealEngineDeps = {}): DealEngine {
 
       inventory.sellVehicle(vehicleId, agreedPrice);
       economy.postRevenue(agreedPrice, `Vehicle sale: ${vehicleId}`, { profitCenter: 'sales' });
+
+      // The trade the customer drove in on (#379). Revenue above is the whole
+      // selling price — that is what the store sold the car for — but the
+      // customer never handed over that much money: the trade equity was credit
+      // against the purchase, and the payoff went to their lienholder. Both come
+      // out of the store's pocket and both sum to the allowance, so the close
+      // debits it ONCE, here, where it knows both halves. Before this the store
+      // banked the full price AND took the car for free, on 42% of its deals.
+      //
+      // Categorized as stock acquisition for the same reason an auction buy is
+      // (#255/#374): this is cash converted into a car, not operating spend. The
+      // accrual P&L drops it whole and the cost comes back as `postCostOfSale`
+      // relief on the day that trade unit resells — which is why net income on a
+      // trade deal does not move by a dollar. It also puts the allowance in the
+      // Home cash-delta's "into stock" column, where it belongs.
+      if (tradeAllowance > 0) {
+        economy.forceDebit(tradeAllowance, `Trade allowance: ${vehicleId}`, {
+          category: 'inventoryAcquisition',
+          profitCenter: 'sales',
+        });
+      }
 
       // Lemon-law exposure (#271, IndictmentMonitor severe-event producer).
       // Retailing a unit whose hidden recon landed in a severe tail bucket

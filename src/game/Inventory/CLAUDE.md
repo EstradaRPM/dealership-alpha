@@ -104,9 +104,18 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 ## Trade acquisition (#171)
 - `acquireFromTrade(acquisition) → LotVehicle` materializes a customer's
   accepted trade-in onto the lot. Driven by the `trade:resolved` subscription;
-  exposed for direct/test use. Cost basis = `agreedAllowance`, **non-cash** — no
-  Economy expense is posted (the allowance is offset against deal cash in the
-  close structure, #169). Emits `inventory:vehicle_acquired_via_trade`; the unit
+  exposed for direct/test use. Cost basis = `agreedAllowance`, and **Inventory
+  posts nothing** — `DealEngine.closeDeal` pays for the car, as
+  `CloseDealParams.tradeAllowance` (#379). The close is the one place that sees
+  both halves of the settlement (the equity credited against the purchase and
+  the lien payoff wired out), so a second debit here could only disagree with
+  it. **This line used to claim the allowance was "offset against deal cash in
+  the close structure (#169)". It was not — that offset did not exist**, so the
+  store banked the full selling price and got the trade unit for free on 42% of
+  its deals; the wrong sentence is what made the defect invisible. The debit is
+  categorized `inventoryAcquisition`, so it moves cash without touching the
+  accrual P&L and comes back as the cost-of-sale relief when this unit resells,
+  exactly like an auction buy. Emits `inventory:vehicle_acquired_via_trade`; the unit
   is on the lot immediately and then flows through the normal recon →
   carrying-cost → listing → sale path.
 - Recon estimate = the condition-tier baseline (`conditionTiers[condition].reconCost`,

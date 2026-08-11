@@ -221,6 +221,29 @@ describe('Economy — P&L correctness', () => {
     expect(pnl.totalExpenses).toBe(1_200);
     expect(pnl.netIncome).toBe(12_800);
   });
+
+  it('a pre-existing balance is not retro-corrected (#379)', () => {
+    const { economy } = makeSetup();
+
+    // A career saved before the trade-cash fix banked the full selling price on
+    // every trade deal. Restore reads what was posted, verbatim: the ledger is
+    // the record of what happened, and the rule governs how it is read from
+    // here. Sweeping the old balance for un-offset trades would be inventing a
+    // history of payments the store never made.
+    economy.restore({
+      schemaVersion: 1,
+      cash: 88_000,
+      inventoryAcquisitionSpend: 9_000,
+      ledger: [
+        { day: 1, type: 'expense', amount: 9_000, label: 'Auction purchase: L1', category: 'inventoryAcquisition' },
+        // The pre-#379 shape: a trade deal's revenue with no allowance beside it.
+        { day: 2, type: 'revenue', amount: 20_000, label: 'Vehicle sale: L1' },
+      ],
+    });
+
+    expect(economy.cash).toBe(88_000);
+    expect(economy.snapshot().ledger).toHaveLength(2);
+  });
 });
 
 // ── Overnight recurring expenses ──────────────────────────────────────────────

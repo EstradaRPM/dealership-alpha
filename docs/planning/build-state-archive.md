@@ -6,6 +6,43 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT #376** (the P&L proper — the statement over time, and the gross→net
+  ladder). The room charted *gross* and printed Net Income as a bare number: it could say what
+  came in by revenue line and what went out by ledger label, and could not show the statement
+  those two sides make. `PnLSummary.totalRevenue`/`.totalExpenses` had been computed on every
+  read and rendered nowhere since #351.
+  **The trend needed a new kit primitive, and the axis is the whole reason.** `Sparkline` takes
+  samples the caller normalized and has no baseline, so it cannot say whether a dip crossed
+  zero; `BarChart` clamps negatives to zero by design (`Math.max(0, d.value)`). Charting a P&L
+  means charting a number that goes negative, so **`LineChart`** takes raw values and places
+  them in a `signedDomain` that **always contains zero** — the zero tick is drawn as an
+  emphasized rule and a losing bucket renders below it rather than at the plot floor. Geometry
+  went in `chartScale.ts` with the rest (`signedDomain`/`signedTicks`/`domainFraction`/
+  `linePoints`), so a wrong chart is an assertion on a path, not a screenshot.
+  **The two charts share ONE `bucketDaily` call**, not two computations that agree today. The
+  hero and the trend sit above each other; on different boundaries they would be two clocks.
+  **`dailyPnL` reads the per-day P&L off `PnLSummary.entries` — no new engine read.** Those
+  entries *are* the set the totals are computed from (accrual, `inventoryAcquisition` already
+  dropped) and each is day-stamped, so the chart cannot drift from the Net Income above it.
+  Asking Economy for one summary per bucket would be the same filter run thirteen times.
+  **The ladder's rounding rule was found on the live drive, not reasoned about.** A real
+  30-day window printed `$2,713 + $35,479 = $38,191`. Every figure now rounds to whole dollars
+  **once** and each summed line is the sum of the rounded lines above it; the residue lands on
+  the **overhead** line, never on the total, because Net Income is stated by the headline card
+  six inches above and by `getDepartmentPnL` itself. A balancing line absorbing rounding is how
+  a real statement handles it. Re-verified live: `$1,132 + $1,581 = $2,713`, less `$35,478`,
+  Net Income `$38,191`, matching the card.
+  **Two defects fell out of the criteria and were fixed rather than worked around.** (1) The
+  headline sparklines were being handed **raw dollars** — the kit clamps to [0,1], so every
+  figure over 1 drew at the top and a $2k day and a $6k day were the same height. That had
+  shipped since #351 and could not be left beside a correct new one. (2) `hasPriorWindow` was
+  `prior.toDay >= 1`, so day 10's "7D" chip compared seven days against the three that
+  happened and reported a collapse that was only the clamp; it is now
+  `financeHasPriorWindow` = the prior window fits **entirely** inside the career.
+  **Nothing calibrated moved and nothing could** — the whole slice is a read of a ledger it
+  never writes to. `#180` still reads 39.3% / 51.7%, closes=290.
+  Next: **BUILD #377** (People — skill growth made visible, and what morale is costing).
+
 - 2026-08-09 — **BUILT #375** (gross by department — the tracer for the D1 profit-center axis).
   The store has run four profit centers since #314 and nothing in the game could say which one
   made the money; a repo-wide search for a per-department gross getter returned zero engine

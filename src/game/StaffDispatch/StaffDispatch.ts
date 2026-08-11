@@ -718,10 +718,27 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       deps.salesProcessDeps,
     );
 
+    /**
+     * What a settled trade does to the deal (#379). Two numbers, because they
+     * do two different jobs and differ by the lien payoff:
+     *
+     * - `equity` (`allowance − payoff`) is credit against the purchase. It
+     *   shrinks the cash down payment or the note, so it is money the store
+     *   never collects.
+     * - `allowance` is what the store agreed to pay for the customer's car. It
+     *   leaves cash — partly as that uncollected credit, partly as the payoff
+     *   wired to the lienholder — and becomes the acquired unit's cost basis.
+     *
+     * Treating them as one number is exactly how the store came to bank the
+     * full selling price and get the trade for free.
+     */
+    type TradeSettlement = { equity: number; allowance: number };
+
     const closeDealAtPrice = (
       agreedPrice: number,
-      tradeEquity: number,
+      trade: TradeSettlement | null,
     ): ResolveResult => {
+      const tradeEquity = trade?.equity ?? 0;
       const unlockedRoles =
         deps.unlockedRolesFn?.() ??
         Array.from(new Set(staffOrg.currentRoster.map(s => s.role_id)));
@@ -774,6 +791,10 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         // above to quote the customer, so the book records the credit mix it
         // was actually written at instead of inferring one later.
         creditTier: tierId,
+        // #379: what the store pays for the car it just took in. Revenue is
+        // still the whole selling price; this is the cash half, and DealEngine
+        // is the one place that sees both.
+        tradeAllowance: trade?.allowance ?? 0,
         // #363: the buyer's read on the visit, off the resolution and close
         // that actually ran against the unit they were shown. CustomerPool
         // publishes this straight onto `customer:resolved`; without it, it
@@ -826,7 +847,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
       // a grabbable exception). An underwater allowance / manager-declined trade
       // abandons. Requires the book provider; without it (legacy/test harness) a
       // `hasTrade` visit just closes without a trade.
-      let tradeEquity = 0;
+      let trade: TradeSettlement | null = null;
       if (
         visit.hasTrade &&
         person.currentVehicle &&
@@ -902,7 +923,10 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
                   hadCounter,
                   staffConfidence: tradeConditionRead?.confidence ?? 0,
                 });
-                closeDealAtPrice(agreedPrice, agreedAllowance - review.payoff);
+                closeDealAtPrice(agreedPrice, {
+                  equity: agreedAllowance - review.payoff,
+                  allowance: agreedAllowance,
+                });
                 return { status: 'closed', agreedAllowance };
               };
 
@@ -969,7 +993,10 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
           );
           return 'resolved';
         }
-        tradeEquity = tradeRes.tradeEquity;
+        trade = {
+          equity: tradeRes.tradeEquity,
+          allowance: tradeRes.agreedAllowance,
+        };
         bus.publish('trade:resolved', {
           customerId,
           currentVehicle: person.currentVehicle,
@@ -980,7 +1007,7 @@ function makeSalesResolver(deps: StaffDispatchDeps) {
         });
       }
 
-      return closeDealAtPrice(agreedPrice, tradeEquity);
+      return closeDealAtPrice(agreedPrice, trade);
     };
 
     if (close.outcome !== 'buy') {

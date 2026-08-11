@@ -64,7 +64,14 @@ to the real machinery. Per customer (after exception roll + hold-floor):
    (`getTradeEscalationOverride`). Outcomes:
    - `resolved` (routine *or* manager-approved) → emit `trade:resolved` and net
      `tradeEquity` into the structure (cash: less cash down; finance: smaller
-     note); continue to close.
+     note); continue to close. **Both halves of the settlement travel to the
+     close as one `TradeSettlement { equity, allowance }`** (#379). They are two
+     numbers because they do two different jobs and differ by the lien payoff:
+     `equity` is credit against the purchase, so it shrinks what the store
+     *collects*; `allowance` is what the store *pays* for the customer's car, so
+     it leaves cash (as `CloseDealParams.tradeAllowance`) and becomes the
+     acquired unit's cost basis. Treating them as one number is exactly how the
+     store came to bank the full selling price and get the trade for free.
    - `abandoned` → `no_sale`/`trade_negative_equity` (underwater) or
      `no_sale`/`trade_manager_declined` (manager refused at the extended range).
    - `player_review` → emit `trade:escalated` (full overlay payload) and return
@@ -100,9 +107,11 @@ to the real machinery. Per customer (after exception roll + hold-floor):
 It carries `staffConfidence` (the UCM condition-read confidence behind the
 appraisal) so the downstream acquisition reads the same figure. Inventory
 consumes it (#171) to materialize the acquired trade onto the lot
-(`acquireFromTrade`) as a non-cash unit — the allowance is offset against deal
-cash here, never posted as a separate expense; #169 nets the equity into the
-deal structure.
+(`acquireFromTrade`), and **Inventory posts nothing for it** — the store pays
+for that car at the close, as `CloseDealParams.tradeAllowance` (#379). #169 nets
+the equity into the deal structure; the allowance leaves cash. (This paragraph
+used to say the allowance was "offset against deal cash here". It was not, and
+the claim is what hid the double-payment.)
 
 **A `no_sale` is a customer resolution, and `CustomerPool` bridges it** (#363).
 It subscribes to this event and publishes `customer:resolved` with

@@ -9,6 +9,7 @@ Cash movement and P&L effect are orthogonal, and the ledger now carries both axe
 | Entry | Moves cash | Hits the P&L |
 |---|---|---|
 | Auction purchase (`category: 'inventoryAcquisition'`) | yes | **no** |
+| Trade allowance (`category: 'inventoryAcquisition'`, #379) | yes | **no** |
 | Cost of a vehicle sold (`postCostOfSale`, `nonCash: true`) | **no** | yes |
 | Everything else (rent, payroll, recon, carrying, service revenue, …) | yes | yes |
 
@@ -25,6 +26,12 @@ Cash movement and P&L effect are orthogonal, and the ledger now carries both axe
 - **Why it exists:** cash-basis charged an auction buy on the day of the buy while that
   unit's revenue arrived weeks later. At Tier 1 a six-space lot is bought out in two or three
   days, so a month spent stocking reported a loss the store did not make.
+- **A trade allowance is stock spend, not a deal expense (#379).** `closeDeal` debits it
+  through `forceDebit` with the acquisition category, so it moves cash and leaves net income
+  alone — the store paid for a car and now owns one. It is `forceDebit` rather than
+  `postExpense` because the close has already banked the selling price and taken the
+  customer's car: the lienholder gets paid whether or not the store can afford it, and a
+  throw there would abort a deal that already sold a unit off the lot.
 - **Only `Inventory` relieves**, at the two doors a unit leaves by (retail sale and
   wholesale-out), and it relieves `purchasePrice` **only** — recon/inspection/carrying are
   already operating spend on the days they were incurred.

@@ -3,6 +3,7 @@ import { createGameClock } from '../src/game/GameClock';
 import { createEconomy } from '../src/game/Economy';
 import type { LedgerEntry } from '../src/game/Economy';
 import { createInventory, loadVehicleData } from '../src/game/Inventory';
+import { createDealEngine } from '../src/game/DealEngine';
 
 /**
  * #374 — the P&L is accrual. A car's cost sits in stock until the car leaves,
@@ -106,6 +107,32 @@ describe('Economy — accrual P&L (#374)', () => {
     const relief = reliefEntries(store.economy.getPnL(1, 99).entries);
     expect(relief).toHaveLength(1);
     expect(relief[0].amount).toBe(listing.askingPrice);
+  });
+
+  it("a trade deal's net income does not move", () => {
+    const store = makeStore();
+    const { listing, vehicle } = buyOne(store);
+    const dealEngine = createDealEngine({
+      bus: store.bus,
+      inventory: store.inventory,
+      economy: store.economy,
+    });
+    const agreedPrice = 20_000;
+
+    // #379 settles the trade allowance as CASH ONLY. The store is out the money
+    // and holds a car worth it, so the statement must read exactly as it would
+    // have on the same deal with no trade — the allowance comes back as the
+    // cost-of-sale relief on the day that trade unit resells, not now.
+    dealEngine.closeDeal({
+      customerId: 'c1',
+      vehicleId: vehicle.id,
+      agreedPrice,
+      tradeAllowance: 8_000,
+    });
+
+    const pnl = store.economy.getPnL(1, 99);
+    expect(pnl.netIncome).toBe(agreedPrice - listing.askingPrice);
+    expect(pnl.entries.some((e) => e.label.startsWith('Trade allowance'))).toBe(false);
   });
 
   it('unsold stock costs the P&L nothing', () => {
