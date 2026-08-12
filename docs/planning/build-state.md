@@ -19,6 +19,10 @@ than duplicated** (the #151–#153 precedent). **F3 produced no issue — it was
 closed.** The next `/next` is BUILD #213 (deps-met once #386 lands) — in practice **#386, the
 tracer, is the lowest deps-met issue and is built first.**
 
+**#386, the tracer, is BUILT as of 2026-08-12.** The next `/next` is **BUILD #387**. It also filed
+**#396 out of phase** — the sourcing-lean dial that #385 declared as a standing desk order and that
+has no rendered control anywhere in `src/ui/**`.
+
 The one thing a future session must not re-derive: **the backstory picks are mechanically
 identical today.** `day1Modifier` is read by nothing in `src/`, so F2 is a wiring job (#390) plus
 two new mechanics — a borrowing facility for `startingCreditLine` (#392/#393) and a starting
@@ -28,7 +32,7 @@ reputation deficit for `grudgesFlag` (#391) — not a copy job.
 
 | # | Slice | Deps |
 |---|---|---|
-| #386 | **tracer** — the teaching cell (`teaching:<id>`, minted in `SlotStore.ts`) + `data/hints.json` registry + retire-on-use + "Show hints again"; three real hints ship with it | — |
+| ~~#386~~ | ~~**tracer** — the teaching cell (`teaching:<id>`, minted in `SlotStore.ts`) + `data/hints.json` registry + retire-on-use + "Show hints again"; three real hints ship with it~~ **BUILT 2026-08-12** | — |
 | #387 | D3-R1 — `money`/`compactMoney` onto the kit barrel + the compact-when-ambient / exact-when-acting rule + the no-leak scan | — |
 | #388 | D3-R2 — the consequence-hint copy pass over every live control, completeness asserted by a mount scan | #386, #387 |
 | #389 | D3 — plain-language labels + every empty state written + `tests/PlainLanguage.test.tsx` | #387 |
@@ -183,6 +187,34 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **`sourcingLean` is a standing desk order with NO control, and #396 is the fix** (found by
+  #386). `data/desk-orders.json` declares it as one of three orders a named desk carries out, and
+  #385 halts a multi-day bite when nobody can hold it — but `handleSetSourcingLean`
+  (`useLevers.ts:167`) has zero call sites outside its own hook and nothing under `src/ui/**`
+  mentions the lean. A player can be stopped mid-run by an instruction they were never able to
+  give, and every store sources at `DEFAULT_SOURCING_LEAN` forever. `sourcing_lean` is therefore
+  **absent from `data/hints.json`** rather than declared blind, and `tests/HintCopy.test.ts` pins
+  that: every declared hint's `control` must be a testID some surface actually renders.
+- **The retire fires from `useLevers`, never from the surface** (#386). "Used" means the lever
+  actually changed — the hook's fact, the surface's report. One `onControlUsed` seam injected at
+  the composition root, so a coachmark or a beat that calls a handler teaches exactly what a tap
+  does. Moving the mark into the components would be three copies of one rule, and the fourth
+  caller would forget.
+- **`teaching:<id>` is NOT world state and `WORLD_SNAPSHOT_VERSION` stays 21** (#386). It records
+  the *player's* progress, not the store's. `resetAll()` (re-arm, keep the cell) and `clear()`
+  (wipe it, what `deleteSlot` calls) are deliberately separate methods, and the reset is per-slot —
+  two careers learn independently. A corrupt cell reads as "nothing taught" rather than throwing:
+  the failure mode of a teaching surface is showing the player too much, never crashing the career
+  it is attached to.
+- **`teachingStore()` returning `null` means every hint DRAWS** (#386). No slot selected is a real
+  answer, not a failure — a hint the store cannot answer for is shown, not hidden. Using a control
+  with no cell to write to is also not an error; the line simply goes for that session.
+- **`HintLine` is presentation only and must not become pressable** (#386). Whether a hint is owed
+  is `useHints`'s read; the surface omits the element when the answer is no. A pressable hint would
+  also break the exact-pressable-count assertions the lever smoke tests carry.
+- **Hint copy is DATA and `tests/HintCopy.test.ts` scans all of `src/` for it** (#386). The scan
+  matches on a 40-char fragment of each catalog string, so a component that inlines one fails by
+  name. Do not quote hint copy in a comment.
 - **The month is the SAME runner — there is no batch mode and there must not be one** (#385).
   Thirty days through `runBite`, halting on the same seams a week does.
   `tests/ClockBite.month.test.ts` pins thirty runner-driven days against thirty hand-driven
@@ -1334,6 +1366,54 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-12 — **BUILT #386** (phase 12's tracer — a hint draws until you use the control, then it
+  is gone). The one teaching mechanism the rest of the phase hangs off, built vertically:
+  `data/hints.json` behind `parseData`, the `teaching:<id>` cell, the retire-on-use rule, the
+  re-arm switch, and three real hints on three real dials.
+  **The catalog refuses an id with no copy, and a hint that points at nothing.** The first is
+  `data/desk-orders.json`'s completeness `.refine` reused verbatim. The second is new and is what
+  caught the finding below: `tests/HintCopy.test.ts` asserts every declared hint's `control` is a
+  testID some surface under `src/` actually renders. A hint attached to a control that does not
+  exist teaches nothing, and now cannot ship.
+  **The issue asked for the three #385 desk dials and only two of them exist.** `sourcingLean` has
+  **no rendered control anywhere in `src/ui/**`** — `handleSetSourcingLean` (`useLevers.ts:167`)
+  has zero call sites outside the hook that declares it, and the comment at `:109-112` says so
+  ("the dial UI is the mockup pass"). So a player can be halted mid-bite by a standing order they
+  were never able to set. The third hint went on **trade policy** — a rendered standing dial with a
+  real consequence — and the missing dial is filed as **#396**, which carries the `sourcing_lean`
+  hint in its own scope. Substituting silently, or declaring the hint blind, were the two ways to
+  lose this.
+  **The retire fires from `useLevers`, not from the surface.** "Used" means the lever actually
+  changed, which is the hook's fact and the surface's report. One `onControlUsed` seam at the
+  composition root, so a future caller of a handler — a coachmark, a beat, a fixture — teaches
+  exactly what a tap does. A surface-side retire would have been three copies of the rule.
+  **`teaching:<id>` is minted in `SlotStore.ts` and wiped by `deleteSlot` with the other three.**
+  The delete-a-save lesson applied *before* it could bite a second time. It is **not world state** —
+  it records the player's progress, not the store's — so `WORLD_SNAPSHOT_VERSION` stays **21** and
+  there is no migration. `resetAll()` (re-arm, keep the cell) and `clear()` (wipe it) are separate
+  for exactly that reason, and two careers learn independently. A corrupt cell reads as "nothing
+  taught" rather than throwing: the failure mode of a teaching surface is showing too much, never
+  crashing the career it is attached to.
+  **`HintLine` is presentation only and deliberately not pressable.** Whether a hint is still owed
+  is `useHints`'s read of the cell and the surface omits the element when the answer is no — which
+  is also what keeps the lever surfaces' exact-pressable-count assertions honest.
+  **No slot selected ⇒ every hint draws.** `teachingStore()` returning `null` is a real answer, not
+  a failure: a hint the store cannot answer for is shown, not hidden.
+  `npm run typecheck` clean, `npm test` **266 suites / 4096 tests** green. The #180 live calibration
+  is **byte-identical** (35.8% / 54.3%, closes=274, `costOverAsk` 1.026) — a teaching surface moves
+  no number, checked rather than assumed.
+  **Web drive (T2 dev fixture, day 31):** both Prep hints drew verbatim from the catalog under their
+  dials; pressing "More per deal" retired the F&I line and left the trade line standing; IndexedDB
+  held `teaching:slot-1 => {"v":1,"taught":["fni_posture"]}`; "Show hints again" emptied it and the
+  line came back with **no reload** and with the player's posture untouched; the Lot room carried
+  the pricing hint.
+  Two deviations from the issue as filed, both recorded on it: the third hint (above), and the
+  `deleteSlot` criterion landing in `tests/SaveStore.slots.test.ts` rather than a new
+  `tests/SlotStore.test.ts` — that file is where every other per-cell delete assertion lives, and a
+  near-duplicate beside it is the second place they can disagree.
+  Next: **BUILD #387** (D3-R1 — `money`/`compactMoney` onto the kit barrel), the lowest deps-met
+  issue in the phase.
+
 - 2026-08-12 — **SLICED phase 12** into eleven issues: **#386–#395 filed new, and #213 rewritten in
   place** rather than duplicated (the #151–#153 precedent — its number stays, its body now carries
   the grown scope from §8 F1 and its dep on the tracer). **F3 produced no issue**: it was ruled NONE
@@ -1428,59 +1508,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   only **G1, G2 and G4** remain unadopted.
   No code changed, so nothing calibrated moved and no test count moved.
   Next: **SLICE phase 12** — F1 (#213, scope grown since filing) + the five rulings above.
-
-- 2026-08-12 — **BUILT #385** (the month rung — and phase 11 is complete). **Closes #124**, filed
-  back in June against the channel-desk manager model; the four slices before this one built the
-  ladder underneath it, and what was left is what only matters at the top of it.
-  **The month is the SAME runner.** Thirty days through `runBite`, halting on the same seams a
-  week does. `tests/ClockBite.month.test.ts` drives thirty runner days against thirty hand-driven
-  ones and compares the FloorSim surface day for day (the #122 controller-scoped idiom, never a
-  `snapshotWorld` re-run). A separate "batch" implementation is how the month grain starts
-  behaving differently from the week for a reason nobody can find later — and its absence is why
-  nothing calibrated moved: `#180` still reads **35.8% / 54.3%, closes=274, costOverAsk 1.026**,
-  byte-identical.
-  **The GM is the DOOR; the desks earn the silence — demonstrated, not asserted.** That was
-  #124's attribution claim and the thing a reviewer has to agree is *true*. The gate reads the GM
-  because a staffed GM implies the covered desks beneath it, but what makes the drain return
-  `escalated: 0` is the UCM's `t_o_closing` clearing its act threshold. The test runs the same
-  below-floor up four ways — sharp desk / green desk × with GM / without — and the escalation
-  count follows the desk every time. A GM standing beside a green desk suppresses **nothing** and
-  the month still halts.
-  **The gate is written over a SET of stores.** `resolveStoreCovers` → `coverageAcrossStores`: a
-  fact holds only if **every** store holds it, so one uncovered lot shuts the door for the whole
-  group — which is right, because the uncovered lot is exactly where the owner would be needed.
-  One store today ⇒ the identical answer; phase 16 adds members to that list rather than
-  rewriting the rule. An **empty** set covers nothing, deliberately not the `every`-over-nothing
-  answer that would read "every store is covered" and quietly open the month. `DEALERSHIP_ID`
-  moved onto the DayLoopController barrel so the ladder and the demand slip cannot identify the
-  same store by two different strings.
-  **#124's second must-handle class is now real: a standing order no desk can carry out.** A bite
-  runs the store on the policy you left standing — that is literally what the stakes copy wagers
-  — so an order nobody can execute is the run proceeding for up to thirty days on a policy that
-  is not in force, silently. `data/desk-orders.json` + `src/app/deskOrders.ts`, the **#384 shape
-  exactly**: registration not enumeration, one `desk_order` halt id, the moment riding the
-  `{subject}` slot, cadence written once in `data/clock-bites.json` and who-could-not-do-what
-  once beside the thing that raised it.
-  **An order counts only once the dial is OFF its default**, and that is what keeps it a
-  consequence of a choice rather than a tax on the ladder: the default *is* "no instruction"
-  (market pricing is the suggestion an intake already gets, a flat lean expresses no preference,
-  Balanced makes no bet on the mix). **Only levers a named desk performs are declared** — three
-  of five. Hours-of-op is the owner's own, and the trade policy is a multiplier inside the
-  appraisal math, in force whoever is standing at the desk, so it cannot go uncarried-out;
-  omitting both is the rule working, the same call #384 made about a moment that only reports.
-  **The check is a read and the floor latch is asked first** — a thing that happened today
-  outranks a standing condition that was already true when the run began — which is also what
-  stops a run on the day a poached manager's orders go dead. One dead order is stated, in
-  declaration order: a run stops at one thing and states one sentence.
-  Nothing is persisted; `WORLD_SNAPSHOT_VERSION` stays **21**. `npm run typecheck` clean,
-  `npm test` **262 suites / 3639 tests** green.
-  **Web drive (T2 dev slot, day 31):** setting the F&I posture to "More per deal" with no finance
-  manager halted the week at **1 of 7 days run** over *"You have no finance manager to hold the
-  F&I posture you set, so the run stopped there."* — span clause in front, pooled feed intact.
-  Putting the dial back to Balanced ran the identical week the full **7 days / $24,471 gross**,
-  so the halt is the dead order and not a blanket break. The month rung showed locked with its
-  stated door. **The 30-day run itself was not drivable**: a GM is `hireTier` 6 and the only dev
-  fixture is Tier 2, so that half rests on `tests/ClockBite.month.test.ts` and the world-level
-  unlock test (tier forced to 6, GM hired, month unlocked). Driving the top rung needs a
-  higher-tier fixture first.
-  Next: **phase 12** — the pointer advances on the next `/next`.

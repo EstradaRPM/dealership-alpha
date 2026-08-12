@@ -6,6 +6,62 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-12 — **BUILT #385** (the month rung — and phase 11 is complete). **Closes #124**, filed
+  back in June against the channel-desk manager model; the four slices before this one built the
+  ladder underneath it, and what was left is what only matters at the top of it.
+  **The month is the SAME runner.** Thirty days through `runBite`, halting on the same seams a
+  week does. `tests/ClockBite.month.test.ts` drives thirty runner days against thirty hand-driven
+  ones and compares the FloorSim surface day for day (the #122 controller-scoped idiom, never a
+  `snapshotWorld` re-run). A separate "batch" implementation is how the month grain starts
+  behaving differently from the week for a reason nobody can find later — and its absence is why
+  nothing calibrated moved: `#180` still reads **35.8% / 54.3%, closes=274, costOverAsk 1.026**,
+  byte-identical.
+  **The GM is the DOOR; the desks earn the silence — demonstrated, not asserted.** That was
+  #124's attribution claim and the thing a reviewer has to agree is *true*. The gate reads the GM
+  because a staffed GM implies the covered desks beneath it, but what makes the drain return
+  `escalated: 0` is the UCM's `t_o_closing` clearing its act threshold. The test runs the same
+  below-floor up four ways — sharp desk / green desk × with GM / without — and the escalation
+  count follows the desk every time. A GM standing beside a green desk suppresses **nothing** and
+  the month still halts.
+  **The gate is written over a SET of stores.** `resolveStoreCovers` → `coverageAcrossStores`: a
+  fact holds only if **every** store holds it, so one uncovered lot shuts the door for the whole
+  group — which is right, because the uncovered lot is exactly where the owner would be needed.
+  One store today ⇒ the identical answer; phase 16 adds members to that list rather than
+  rewriting the rule. An **empty** set covers nothing, deliberately not the `every`-over-nothing
+  answer that would read "every store is covered" and quietly open the month. `DEALERSHIP_ID`
+  moved onto the DayLoopController barrel so the ladder and the demand slip cannot identify the
+  same store by two different strings.
+  **#124's second must-handle class is now real: a standing order no desk can carry out.** A bite
+  runs the store on the policy you left standing — that is literally what the stakes copy wagers
+  — so an order nobody can execute is the run proceeding for up to thirty days on a policy that
+  is not in force, silently. `data/desk-orders.json` + `src/app/deskOrders.ts`, the **#384 shape
+  exactly**: registration not enumeration, one `desk_order` halt id, the moment riding the
+  `{subject}` slot, cadence written once in `data/clock-bites.json` and who-could-not-do-what
+  once beside the thing that raised it.
+  **An order counts only once the dial is OFF its default**, and that is what keeps it a
+  consequence of a choice rather than a tax on the ladder: the default *is* "no instruction"
+  (market pricing is the suggestion an intake already gets, a flat lean expresses no preference,
+  Balanced makes no bet on the mix). **Only levers a named desk performs are declared** — three
+  of five. Hours-of-op is the owner's own, and the trade policy is a multiplier inside the
+  appraisal math, in force whoever is standing at the desk, so it cannot go uncarried-out;
+  omitting both is the rule working, the same call #384 made about a moment that only reports.
+  **The check is a read and the floor latch is asked first** — a thing that happened today
+  outranks a standing condition that was already true when the run began — which is also what
+  stops a run on the day a poached manager's orders go dead. One dead order is stated, in
+  declaration order: a run stops at one thing and states one sentence.
+  Nothing is persisted; `WORLD_SNAPSHOT_VERSION` stays **21**. `npm run typecheck` clean,
+  `npm test` **262 suites / 3639 tests** green.
+  **Web drive (T2 dev slot, day 31):** setting the F&I posture to "More per deal" with no finance
+  manager halted the week at **1 of 7 days run** over *"You have no finance manager to hold the
+  F&I posture you set, so the run stopped there."* — span clause in front, pooled feed intact.
+  Putting the dial back to Balanced ran the identical week the full **7 days / $24,471 gross**,
+  so the halt is the dead order and not a blanket break. The month rung showed locked with its
+  stated door. **The 30-day run itself was not drivable**: a GM is `hireTier` 6 and the only dev
+  fixture is Tier 2, so that half rests on `tests/ClockBite.month.test.ts` and the world-level
+  unlock test (tier forced to 6, GM hired, month unlocked). Driving the top rung needs a
+  higher-tier fixture first.
+  Next: **phase 12** — the pointer advances on the next `/next`.
+
 - 2026-08-11 — **BUILT #384** (a week stops for the one thing only you can answer). The tracer
   halted a run on things that happen **on the floor**. The game's other class of "a moment you
   play" fires **between** days, in the overnight window — and inside a run every one of those was
