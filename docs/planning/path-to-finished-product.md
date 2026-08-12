@@ -289,11 +289,29 @@ Run it once after A1+B3 land (the loop is finally whole at T1–T3), and again a
   visible home (grows into the T5 BDC page in E2).
 - Hero-art header backdrop `[#252]` and any remaining neo-skeuo paint-pass residue.
 
-### D3. Session ergonomics + plain-language audit `[NEW]`
-A casual player pass over every live surface: every number formatted ($12.4k not 12400), every label
-plain-language (the no-temperature-words rule enforced everywhere), every empty state written
-("No cars on the lot — visit the auction"), every control with a one-line consequence hint. Cheap,
-huge legibility payoff, and it's the polish the mockups promise.
+### D3. Session ergonomics + plain-language audit `[ADOPTED + RULED 2026-08-12]`
+A casual player pass over every live surface: every number formatted, every label plain-language
+(the no-temperature-words rule enforced everywhere), every empty state written ("No cars on the
+lot — visit the auction"), every control with a one-line consequence hint. Cheap, huge legibility
+payoff, and it's the polish the mockups promise.
+
+**R1 — the money rule: compact when ambient, exact when the player is about to act.** `$12.4k`
+for the HUD headline, store worth, month gross and chart axes; exact dollars for prices,
+allowances, payments, wages and bids — anything the player is committing money against. One rule,
+stated once in the kit, not a per-surface judgment. Rationale: the Reveal and the HUD read better
+compact, but the game's whole spine is figures the player can check, and the #381 lesson (a pooled
+feed shipping a wrong "today" number is the one thing the feed cannot do) says a number you are
+about to act on must be exact. **Rejected:** exact-everywhere (wide headline figures on a phone,
+and the axis ticks still can't fit it) and a flat "compact above $10k" threshold (rounds a bid).
+
+**R2 — a consequence hint shows until the control has been used once, then retires.** One line of
+muted text under a control; after the player uses that control it stops drawing, and a "show hints
+again" switch in the InGameMenu brings them all back. It shares **one hint registry and one
+per-slot storage cell with F1's progressive disclosure**, so the two halves of phase 12 are one
+mechanic rather than two that can disagree about what the player has been taught. Screens get
+quieter as the player learns them. **Rejected:** always-visible (permanent vertical cost on every
+screen, for every player, forever) and on-demand-only (a player who doesn't know a control exists
+never learns what it does).
 
 ### D4. Accessibility screen `[FILED #268]`
 Text scale, reduced motion, haptics toggle (G1), colorblind-safe heat palettes. A premium title ships this.
@@ -352,14 +370,48 @@ later"), parts pars, channel posture. Design as **progressive disclosure tied to
 the moment a thing first matters (first service advisor hire triggers the service tutorial beat), not
 as a front-loaded tour. Include a persistent "What should I do?" hint entry in the InGameMenu.
 
-### F2. Backstory + difficulty legibility `[NEW]`
-Character creation's backstory picks have Day-1 mechanical effects that are never explained — say
-what each choice does. Consider surfacing the tier-1 failure stakes ("bankruptcy ends your career at
-this tier") the first time cash goes low, so the failure model is learned before it's experienced.
+### F2. Backstory + difficulty legibility `[ADOPTED + RULED 2026-08-12]`
 
-### F3. Notifications-permission moment `[NEW, small]`
-If any OS-level notification is ever used (e.g., "your month closed"), ask at a moment of value, not
-at boot. If none: explicitly decide none, and the item closes.
+**The finding that reframed this gate: the backstory picks do not have Day-1 effects — they have
+Day-1 effects that are never *applied*.** `data/backstories.json` declares four levers and
+`day1Modifier` is read by **nothing** in `src/`; the only construction site is
+`scripts/balance-harness/runner.ts:31`. `characterProfile` reaches `createWorld.ts:1110` solely to
+hand `EndCardManager` a name and a flavor string. All three backstories are mechanically
+identical today. Do not re-derive this — it was checked, not assumed.
+
+**R1 — wire all four levers as declared, and state each one on the card.** Every lever the data
+file already declares becomes real; the card says what the pick does in plain language instead of
+implying an edge that isn't there. Where each lands:
+
+| Lever | Where it plugs in |
+|---|---|
+| `startingCapitalBonus` (25k, Inheritor) | `startingCash` is hardcoded at `createWorld.ts:566` — the bonus is added there |
+| `reconJudgmentBonus` (0.15, Ex-Mechanic) | `rollRecon` (`Inventory.ts:549`) already takes a per-appraisal confidence; the owner's eye is a permanent floor under it, shrinking the hidden-lemon tail |
+| `startingCreditLine` (50k, Ex-Banker) | **no engine home yet** — becomes a real borrowing facility: draw against a limit, interest accrues daily, the balance shows on the Finance statement |
+| `grudgesFlag` (Inheritor) | **no engine home yet** — becomes a starting reputation deficit with the town's regulars |
+
+So the player gets three genuinely different openings: a sharper eye, more money now, or money you
+can reach for later at a cost. **Rejected:** re-cutting the three picks onto levers that already
+exist and deleting `startingCreditLine`/`grudgesFlag` from the data and schema (deletes declared
+design to save a slice), and making backstory pure flavor by dropping `day1Modifier` entirely.
+Applying the modifiers is **`createWorld`'s job** — no module learns what a backstory is.
+
+**R2 — the tier-1 failure stakes are stated once, the first time cash goes low.** Plain language,
+naming the actual consequence (running out ends the career at this tier, and what that does to the
+save), fired once per career off the same per-slot hint cell D3's hints use. A new player learns
+the failure model from a warning rather than from an EndCard. **Rejected:** teaching it at
+character creation (read before it means anything) and striking it (discovery by bankruptcy).
+
+### F3. Notifications-permission moment `[RULED 2026-08-12 — NONE. This item is CLOSED.]`
+The game never asks for OS notification permission and never sends one. **The clock only moves
+when the player taps** — nothing simulates in the background, so a notification would have nothing
+true to say. There is nothing to build and nothing to un-build: `package.json` has no notification
+dependency and `src/` has zero hits for one, which was verified at the ruling, not assumed.
+**Rejected:** one notification offered after the first month-close Reveal — it would need
+`expo-notifications`, a permission moment and a toggle on the #268 screen, all to announce
+something that by construction can only happen while the app is already open. A future session
+that wants to reopen this needs a background simulation first; until one exists, this section is
+the answer.
 
 ---
 
@@ -459,3 +511,6 @@ teach → climb the ladder → polish → ship. Fun-critical work front-loaded; 
 
 Items marked `[NEW]` (A2, D3, F2, F3, G1, G2, G4) are this audit's proposals from the end-user seat —
 adopt, reshape, or strike them explicitly; everything else is already agreed design or filed work.
+**A2 was adopted 2026-08-03** (§3 A2), and **D3, F2 and F3 were adopted 2026-08-12** at the phase-12
+gate — D3 and F2 with rulings written into their sections, F3 struck as "none" and closed. The
+remaining unadopted proposals are **G1, G2 and G4**, all at the phase-19/21 gates.

@@ -6,6 +6,41 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT (director-directed, out of phase): a Reveal row is keyed by its BEAT, not
+  by what it stars.** Playing a Tier-2 career on the web target logged
+  *"Encountered two children with the same key, `crown-bestSingleDeal`"* every time a bite closed
+  — React's own warning that rows under a duplicate key "may be duplicated and/or omitted", i.e.
+  the feed could silently drop a crown the player earned.
+  **The id was the entity's, and an entity is not unique on a pooled feed.** `crown-<recordId>`
+  assumed one break per mark per window. Neither grain holds that: a bite pools several days of
+  `records:broken` (#381/#382), and `bestSingleDeal` settles inside `deal:closed`, so even a
+  single day with two fat deals breaks it twice — and `drama.crownBudget` is 2, so both are
+  crowned and both render. The same shape was live on the loss track: a follow-up brings a
+  customer back, so `walk-<customerId>` could repeat across a week too.
+  **Every drama reaction now carries its beat's arrival index — `crown-bestSingleDeal#3`.** The
+  new internal `FeedBeat` pairs a `DramaCandidate` with the position it arrived at in its own
+  track (`records`/`closes`/`walkOffs`), and it survives the eligibility filters and the ranking,
+  so the number is a property of the beat rather than of where the renderer happened to put it.
+  Per-track rather than per-feed because the id already names the track. The month verdict is the
+  one reaction with no beat number, and deliberately: a pool carries at most one, and two of them
+  would be two different months.
+  **Uniqueness is now by construction, not by argument.** The old key was only unique as long as
+  nobody could name a repeat — and two repeats existed the day it shipped. `rankDrama`'s public
+  shape is unchanged (it still returns candidates); `rankDramaPool` is what carries beats.
+  **The regression test renders the real component and reproduces the director's warning
+  verbatim.** `tests/Reveal.reachability.test.tsx` renders `<Reveal>` over a week that breaks one
+  mark twice with `console.error` captured; reverted to the old key it fails with the exact string
+  from the report, and both crown rows are asserted present. Plus per-grain unit cases (day and
+  week) and a whole-feed "every id is unique" guard at both grains.
+  Nothing persisted changed; `WORLD_SNAPSHOT_VERSION` stays **21**, and no drama weight, budget or
+  copy moved — a feed with no repeat in it reads exactly as before, one `#n` aside.
+  `npm run typecheck` clean, `npm test` **260 suites / 3611 tests** green (+5).
+  **Not verified on the web drive:** the Browser pane was not displayed in this session, and with
+  it hidden the page composites no frames, which parks every modal — the Reveal included — below
+  the fold (the trap `.claude/skills/verify` documents). The rendering evidence above is the real
+  component under RN Testing Library instead. The director's own tab on port 8082 is running the
+  pre-fix bundle and will keep warning until it reloads against this.
+  Next: **BUILD #384** — phase 11 is untouched by this.
 - 2026-08-11 — **BUILT (director-directed, out of phase): a save can actually be deleted.** The
   director could not get rid of a save from the built-in browser, was sitting at the 3-slot cap,
   and so could not start a new game either. The Delete button was not missing — it had been there

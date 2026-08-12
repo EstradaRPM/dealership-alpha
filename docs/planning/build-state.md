@@ -10,16 +10,24 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Current phase
 
-**Phase 11 — B4 drive-the-clock — is SLICED AND FILED as of 2026-08-11: #381–#385 (table
-below), and the bite-unlock gate is RULED (see the log entry; recorded in
-`engagement-spine.md` + `gates.md` Settled).** Nothing in the phase is un-filed. **#381, the tracer, LANDED
-2026-08-11** — the ladder, the runner, the halt, the picker and the bite-grain Reveal are all
-standing. **#382 LANDED 2026-08-11** — the star budget rides the bite and what it cuts is stated.
-**#383 LANDED 2026-08-11** — the bite is a placed bet: the picker states the stake and the Reveal
-settles it. **#384 LANDED 2026-08-11** — the overnight interrupt channel: a moment that asks the
-owner a question stops the run and the Reveal names who. **#385 LANDED 2026-08-12 — the top
-rung, and phase 11 is COMPLETE.** #124 closed with it. Nothing under phase 11 is outstanding;
-the next `/next` advances the pointer to phase 12 and picks its unit.
+**Phase 12 — F1 onboarding (#213) + F2 + F3 + D3 — is the ACTIVE phase as of 2026-08-12, and its
+ADJUDICATE gate is CLOSED.** Five rulings, recorded in `path-to-finished-product.md` §6 D3, §8 F2
+and §8 F3 (and summarized in `gates.md` Settled) — see the log entry for the reasoning and the
+rejected options. **Nothing in the phase is sliced yet: the next `/next` is SLICE phase 12.**
+
+The one thing a slicing session must not re-derive: **the backstory picks are mechanically
+identical today.** `day1Modifier` is read by nothing in `src/`, so F2 is a wiring job plus two new
+mechanics (a borrowing facility for `startingCreditLine`, a starting reputation deficit for
+`grudgesFlag`), not a copy job. **#213 is the only filed issue in the phase and its scope has
+grown since filing** — the slice must pull from §8 F1 as well as from the issue body.
+
+**Phase 11 — B4 drive-the-clock — is COMPLETE as of 2026-08-12: #381–#385 all built** (table
+below), and its bite-unlock gate was RULED 2026-08-11 (`engagement-spine.md` + `gates.md`
+Settled). **#381, the tracer** — the ladder, the runner, the halt, the picker and the bite-grain
+Reveal. **#382** — the star budget rides the bite and what it cuts is stated. **#383** — the bite
+is a placed bet: the picker states the stake and the Reveal settles it. **#384** — the overnight
+interrupt channel: a moment that asks the owner a question stops the run and the Reveal names who.
+**#385** — the month rung, which closed **#124** with it. Nothing under phase 11 is outstanding.
 
 ### Phase 11 — B4 drive-the-clock (sliced + filed 2026-08-11)
 
@@ -1290,8 +1298,8 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 8 | C2 calibration campaign (#286 + #180/#181) | — | done — all three built |
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | **COMPLETE 2026-08-08** — all twelve slices built (#151, #153, #365, #152, #366–#373) |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | **COMPLETE 2026-08-11** — re-scoped by subtraction, filed as #374–#378 + #380 (and #379 out of phase); all built |
-| 11 | B4 drive-the-clock (absorbs #124) | **RULED 2026-08-11 — `engagement-spine.md`** (bite unlock = the cover your people give you) | **active** — sliced + filed as #381–#385; next is #381 |
-| 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **ADJUDICATE [NEW]: F2, F3, D3** | pending |
+| 11 | B4 drive-the-clock (absorbs #124) | **RULED 2026-08-11 — `engagement-spine.md`** (bite unlock = the cover your people give you) | **COMPLETE 2026-08-12** — #381–#385 all built; closed #124 |
+| 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **RULED 2026-08-12 — `path-to-finished-product.md` §6 D3, §8 F2, §8 F3** (5 rulings; F3 = none, CLOSED) | **active** — gate closed, nothing sliced yet; next is SLICE |
 | 13 | H1 fictional brands (#246) | — | pending |
 | 14 | E1 Tier 4 — OEM engine, courtship, NCM, brand archetypes | — | pending |
 | 15 | E2 Tier 5 — BDC | **ADJUDICATE fixed-ops-manager fork** | pending |
@@ -1306,6 +1314,67 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-12 — **RULED the phase-12 gate** (F2 backstory legibility · F3 notifications · D3
+  plain-language pass). Five rulings, recorded in `path-to-finished-product.md` §6 D3, §8 F2 and
+  §8 F3 — each section's `[NEW]` replaced by its ruling, each with its rejected options and their
+  reasons. The pointer advanced from phase 11 (complete) to phase 12 in the same session.
+  **The gate's premise was wrong, and that is the finding.** F2 was filed as "the backstory picks
+  have Day-1 mechanical effects that are never explained." They have Day-1 effects that are never
+  **applied**: `data/backstories.json` declares four levers, `day1Modifier` is read by **nothing**
+  in `src/` (the only construction site is `scripts/balance-harness/runner.ts:31`), and
+  `characterProfile` reaches `createWorld.ts:1110` solely to hand `EndCardManager` a name and a
+  flavor string. All three backstories are mechanically identical today. Checked, not assumed —
+  do not re-derive it.
+  **F2-R1 — wire all four levers as declared and state each on the card.** `startingCapitalBonus`
+  lands on the hardcoded `startingCash` at `createWorld.ts:566`; `reconJudgmentBonus` becomes a
+  permanent floor under the per-appraisal confidence `rollRecon` already takes
+  (`Inventory.ts:549`), shrinking the hidden-lemon tail; `startingCreditLine` becomes a real
+  borrowing facility (draw against a limit, daily interest, the balance on the Finance statement);
+  `grudgesFlag` becomes a starting reputation deficit. Two of the four have no engine home yet and
+  are therefore new mechanics, which is the honest cost of the pick and was presented as such.
+  **Rejected:** re-cutting the picks onto levers that already exist and deleting the other two
+  from data + schema, and dropping `day1Modifier` to make backstory pure flavor. Both delete
+  declared design to save a slice. The modifiers are applied in **`createWorld`** — no module
+  learns what a backstory is.
+  **F2-R2 — the tier-1 failure stakes are stated once, the first time cash goes low**, naming the
+  actual consequence rather than raising a vague alarm. This was the section's *second* `[NEW]`
+  proposal and was **put to the director separately rather than folded into R1** — an unadopted
+  audit proposal absorbed into a ruling it was not part of is exactly the smuggling
+  `feedback-no-smuggled-mechanics` names. **Rejected:** teaching it at character creation (read
+  before it means anything), striking it (discovery by bankruptcy).
+  **F3 is NONE, and the item is CLOSED.** The clock only moves when the player taps; nothing
+  simulates in the background, so an OS notification would have nothing true to say. Verified at
+  the ruling: no notification dependency in `package.json`, zero hits in `src/`. Reopening it
+  requires a background simulation to exist first.
+  **D3-R1 — money is compact when ambient, exact when the player is about to act.** `$12.4k` for
+  the HUD headline, store worth, month gross and chart axes; exact dollars for prices, allowances,
+  payments, wages and bids. The reasoning is the **#381 lesson pointed at every surface**: a
+  number the player can check and find wrong is the one thing these surfaces cannot ship, so
+  anything being committed against stays exact. **Rejected:** exact-everywhere (axis ticks still
+  can't fit it) and a flat "compact above $10k" (rounds a bid).
+  **D3-R2 — a consequence hint shows until its control has been used once, then retires**, with a
+  "show hints again" switch in the InGameMenu. It shares **one hint registry and one per-slot
+  storage cell with F1's progressive disclosure**, which is what makes the two halves of phase 12
+  one mechanic instead of two that can disagree about what the player has been taught.
+  **Rejected:** always-visible (permanent vertical cost on every screen forever) and
+  on-demand-only (a player who doesn't know a control exists never learns what it does).
+  **Internal calls stated for veto, not adjudication** (`feedback-hitl-single-decision`):
+  `money`/`compactMoney` move off `src/ui/FinanceTab/financeModel.ts:256` onto the **kit barrel**
+  as the one number-formatting surface, guarded by a scan test in the `tests/kit.noleak.test.ts`
+  idiom; teaching/empty-state/hint copy are `data/` catalogs behind `parseData`, never literals in
+  components; hint + onboarding progress is a **per-slot cell minted in `SlotStore.ts`** (the
+  delete-a-save lesson), so **`WORLD_SNAPSHOT_VERSION` stays 21**; F1's coachmarks hang off events
+  the app already publishes rather than a new tutorial state machine; a
+  `tests/PlainLanguage.test.tsx` source scan enforces the no-temperature-words rule across
+  `src/ui/**`.
+  `gates.md`: the phase-12 row moved to **Settled**, and the **stale `path-to-finished-product.md`
+  line refs on all three remaining rows were corrected** in the same commit (E2 `:223`→`:339`, G1
+  `:270`→`:420`, G2 `:279`→`:429`, G4 `:288`→`:438`) — they had drifted by 100+ lines and would
+  have sent the next `/decide` into the wrong section. §12's `[NEW]` footnote now records that
+  only **G1, G2 and G4** remain unadopted.
+  No code changed, so nothing calibrated moved and no test count moved.
+  Next: **SLICE phase 12** — F1 (#213, scope grown since filing) + the five rulings above.
 
 - 2026-08-12 — **BUILT #385** (the month rung — and phase 11 is complete). **Closes #124**, filed
   back in June against the channel-desk manager model; the four slices before this one built the
@@ -1405,38 +1474,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   put the shipped prompt on Roscoe's People card (*Needs an answer · Grade 5 · Paid at grade 4 ·
   Asking for $970/day*), and **Pay it** cleared it and moved daily payroll $1,280 → $1,540.
   Next: **BUILD #385**.
-- 2026-08-11 — **BUILT (director-directed, out of phase): a Reveal row is keyed by its BEAT, not
-  by what it stars.** Playing a Tier-2 career on the web target logged
-  *"Encountered two children with the same key, `crown-bestSingleDeal`"* every time a bite closed
-  — React's own warning that rows under a duplicate key "may be duplicated and/or omitted", i.e.
-  the feed could silently drop a crown the player earned.
-  **The id was the entity's, and an entity is not unique on a pooled feed.** `crown-<recordId>`
-  assumed one break per mark per window. Neither grain holds that: a bite pools several days of
-  `records:broken` (#381/#382), and `bestSingleDeal` settles inside `deal:closed`, so even a
-  single day with two fat deals breaks it twice — and `drama.crownBudget` is 2, so both are
-  crowned and both render. The same shape was live on the loss track: a follow-up brings a
-  customer back, so `walk-<customerId>` could repeat across a week too.
-  **Every drama reaction now carries its beat's arrival index — `crown-bestSingleDeal#3`.** The
-  new internal `FeedBeat` pairs a `DramaCandidate` with the position it arrived at in its own
-  track (`records`/`closes`/`walkOffs`), and it survives the eligibility filters and the ranking,
-  so the number is a property of the beat rather than of where the renderer happened to put it.
-  Per-track rather than per-feed because the id already names the track. The month verdict is the
-  one reaction with no beat number, and deliberately: a pool carries at most one, and two of them
-  would be two different months.
-  **Uniqueness is now by construction, not by argument.** The old key was only unique as long as
-  nobody could name a repeat — and two repeats existed the day it shipped. `rankDrama`'s public
-  shape is unchanged (it still returns candidates); `rankDramaPool` is what carries beats.
-  **The regression test renders the real component and reproduces the director's warning
-  verbatim.** `tests/Reveal.reachability.test.tsx` renders `<Reveal>` over a week that breaks one
-  mark twice with `console.error` captured; reverted to the old key it fails with the exact string
-  from the report, and both crown rows are asserted present. Plus per-grain unit cases (day and
-  week) and a whole-feed "every id is unique" guard at both grains.
-  Nothing persisted changed; `WORLD_SNAPSHOT_VERSION` stays **21**, and no drama weight, budget or
-  copy moved — a feed with no repeat in it reads exactly as before, one `#n` aside.
-  `npm run typecheck` clean, `npm test` **260 suites / 3611 tests** green (+5).
-  **Not verified on the web drive:** the Browser pane was not displayed in this session, and with
-  it hidden the page composites no frames, which parks every modal — the Reveal included — below
-  the fold (the trap `.claude/skills/verify` documents). The rendering evidence above is the real
-  component under RN Testing Library instead. The director's own tab on port 8082 is running the
-  pre-fix bundle and will keep warning until it reloads against this.
-  Next: **BUILD #384** — phase 11 is untouched by this.
