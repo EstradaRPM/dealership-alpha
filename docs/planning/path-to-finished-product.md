@@ -289,7 +289,7 @@ Run it once after A1+B3 land (the loop is finally whole at T1–T3), and again a
   visible home (grows into the T5 BDC page in E2).
 - Hero-art header backdrop `[#252]` and any remaining neo-skeuo paint-pass residue.
 
-### D3. Session ergonomics + plain-language audit `[ADOPTED + RULED 2026-08-12]`
+### D3. Session ergonomics + plain-language audit `[RULED + SLICED 2026-08-12 — #386, #387, #388, #389]`
 A casual player pass over every live surface: every number formatted, every label plain-language
 (the no-temperature-words rule enforced everywhere), every empty state written ("No cars on the
 lot — visit the auction"), every control with a one-line consequence hint. Cheap, huge legibility
@@ -363,14 +363,14 @@ Face activation ladder per §12.4 (T4+ runs all five faces), harness pacing per 
 
 ## 8. Workstream F — First-session experience (the casual player's front door)
 
-### F1. Onboarding `[FILED #213 — scope grown since filing]`
+### F1. Onboarding `[SLICED 2026-08-12 — #213 (rewritten in place), #395]`
 The filed coachmark flow (read demand → stock to match → START DAY → Reveal) is the spine of it, but
 the game has grown more to teach: the morning bet, service annuity ("sell well now, service pays you
 later"), parts pars, channel posture. Design as **progressive disclosure tied to unlocks** — teach at
 the moment a thing first matters (first service advisor hire triggers the service tutorial beat), not
 as a front-loaded tour. Include a persistent "What should I do?" hint entry in the InGameMenu.
 
-### F2. Backstory + difficulty legibility `[ADOPTED + RULED 2026-08-12]`
+### F2. Backstory + difficulty legibility `[RULED + SLICED 2026-08-12 — #390, #391, #392, #393, #394]`
 
 **The finding that reframed this gate: the backstory picks do not have Day-1 effects — they have
 Day-1 effects that are never *applied*.** `data/backstories.json` declares four levers and

@@ -6,6 +6,50 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT #384** (a week stops for the one thing only you can answer). The tracer
+  halted a run on things that happen **on the floor**. The game's other class of "a moment you
+  play" fires **between** days, in the overnight window — and inside a run every one of those was
+  being raised and cleared with nobody there to answer. A rival's offer expires in three days; a
+  week driven past it lost you the person without ever putting the choice in front of you. That is
+  the store auto-answering by silence, and it is now impossible.
+  **One channel, not a second list.** `createOwnerInterruptChannel` (`src/app/ownerInterrupts.ts`)
+  latches into the **same** `biteHaltRef` the floor signals do, and `BiteRunDeps.checkHalt` now
+  returns a `BiteHalt` (`{ id, subject? }`) rather than a bare id — so a floor escalation and an
+  overnight ask are one question asked once, and "the first signal of a run is the one that stopped
+  the clock" is one rule over both. A second `checkInterrupt` dep would have been exactly the
+  parallel list #124 was filed to avoid.
+  **Registration, not enumeration.** A moment is declared once, with the event that raises it and
+  the read that names who needs the owner. The runner learns **no** event names; `useDayLoop` learns
+  only "the channel raised something". `owner_interrupt` is **one** halt id and the moment rides the
+  sentence's `{subject}` slot — the halt cadence written once in `data/clock-bites.json`
+  (*"{subject}, so the run stopped there."*, matching the other three verbatim), who needed you once
+  in `data/owner-interrupts.json`. A fifth overnight prompt next year needs a declaration and a line
+  of copy, and nothing else.
+  **The test is a DECISION, not notability.** A finished construction job and a published headline
+  are deliberately **not** declared — they ride the Reveal like any other beat. Halting on
+  everything notable turns a week into seven days with extra steps. `slots` returning `null` is the
+  one "this is not it" answer there is, and it does double duty: it splits the raise from the poach
+  (same event family, #357, two sentences) and it refuses to stop a run for somebody it cannot name.
+  **The bite ends AFTER the day the moment landed on, and that is load-bearing.**
+  `staff:raise_requested` fires on `clock:day_started`, inside `nextDay()` — so the store plays that
+  day and stops, the same rule the floor halts follow. Stopping *between* the overnight and the
+  floor would leave the run on an open, un-played day: not MANAGERIAL, so #381's single closing
+  write would have no state to write, and the next tap would skip a day nobody played. Nothing is
+  lost by playing it — the poach deadline is three days out.
+  **The channel is a pure read**: it answers nothing, clears nothing and publishes nothing, so the
+  raise stays outstanding on `StaffOrg` and the People card presents it exactly as it does in
+  day-by-day play. No second copy of any prompt exists in this slice. Nothing calibrated moved and
+  nothing could — `#180` still reads 35.8% positive / 54.3% apathetic, closes=274. Nothing is
+  persisted; `WORLD_SNAPSHOT_VERSION` stays **21**.
+  `npm run typecheck` clean, `npm test` **261 suites / 3622 tests** green (re-run after rebasing
+  onto the out-of-phase Reveal-key fix, twice, both clean). Verified on the web drive
+  (T2 dev slot, day 31, covered desk): the first week ran all seven days and reported no halt; the
+  second stopped at **4 of 7 days run** over *"Roscoe Stelmach asked you for a raise, so the run
+  stopped there."* — first reaction in the feed, span clause in front of it. Dismissing the Reveal
+  put the shipped prompt on Roscoe's People card (*Needs an answer · Grade 5 · Paid at grade 4 ·
+  Asking for $970/day*), and **Pay it** cleared it and moved daily payroll $1,280 → $1,540.
+  Next: **BUILD #385**.
+
 - 2026-08-11 — **BUILT (director-directed, out of phase): a Reveal row is keyed by its BEAT, not
   by what it stars.** Playing a Tier-2 career on the web target logged
   *"Encountered two children with the same key, `crown-bestSingleDeal`"* every time a bite closed

@@ -10,16 +10,35 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Current phase
 
-**Phase 12 — F1 onboarding (#213) + F2 + F3 + D3 — is the ACTIVE phase as of 2026-08-12, and its
-ADJUDICATE gate is CLOSED.** Five rulings, recorded in `path-to-finished-product.md` §6 D3, §8 F2
-and §8 F3 (and summarized in `gates.md` Settled) — see the log entry for the reasoning and the
-rejected options. **Nothing in the phase is sliced yet: the next `/next` is SLICE phase 12.**
+**Phase 12 — F1 onboarding (#213) + F2 + F3 + D3 — is the ACTIVE phase as of 2026-08-12. Its
+ADJUDICATE gate is CLOSED and it is now SLICED AND FILED (2026-08-12).** Five rulings, recorded in
+`path-to-finished-product.md` §6 D3, §8 F2 and §8 F3 (and summarized in `gates.md` Settled) — see
+the 2026-08-12 gate log entry for the reasoning and the rejected options. **Eleven slices: ten new
+issues #386–#395 plus #213, whose scope had grown since filing and was rewritten in place rather
+than duplicated** (the #151–#153 precedent). **F3 produced no issue — it was ruled NONE and is
+closed.** The next `/next` is BUILD #213 (deps-met once #386 lands) — in practice **#386, the
+tracer, is the lowest deps-met issue and is built first.**
 
-The one thing a slicing session must not re-derive: **the backstory picks are mechanically
-identical today.** `day1Modifier` is read by nothing in `src/`, so F2 is a wiring job plus two new
-mechanics (a borrowing facility for `startingCreditLine`, a starting reputation deficit for
-`grudgesFlag`), not a copy job. **#213 is the only filed issue in the phase and its scope has
-grown since filing** — the slice must pull from §8 F1 as well as from the issue body.
+The one thing a future session must not re-derive: **the backstory picks are mechanically
+identical today.** `day1Modifier` is read by nothing in `src/`, so F2 is a wiring job (#390) plus
+two new mechanics — a borrowing facility for `startingCreditLine` (#392/#393) and a starting
+reputation deficit for `grudgesFlag` (#391) — not a copy job.
+
+### Phase 12 — F1 + F2 + D3 (sliced + filed 2026-08-12)
+
+| # | Slice | Deps |
+|---|---|---|
+| #386 | **tracer** — the teaching cell (`teaching:<id>`, minted in `SlotStore.ts`) + `data/hints.json` registry + retire-on-use + "Show hints again"; three real hints ship with it | — |
+| #387 | D3-R1 — `money`/`compactMoney` onto the kit barrel + the compact-when-ambient / exact-when-acting rule + the no-leak scan | — |
+| #388 | D3-R2 — the consequence-hint copy pass over every live control, completeness asserted by a mount scan | #386, #387 |
+| #389 | D3 — plain-language labels + every empty state written + `tests/PlainLanguage.test.tsx` | #387 |
+| #390 | F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in `createWorld`, each pick stated on the card | — |
+| #391 | F2-R1 — `grudgesFlag` becomes a starting reputation deficit | #390 |
+| #392 | F2-R1 — `startingCreditLine` becomes a real borrowing facility, `src/game/CreditFacility/` (**bumps `WORLD_SNAPSHOT_VERSION` 21 → 22**) | #390 |
+| #393 | F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the drawn balance | #392, #387 |
+| #394 | F2-R2 — the failure stakes, stated once the first time cash goes low | #386, #392 |
+| #213 | F1 — the first-run spine coachmarks + the "What should I do?" InGameMenu entry **[rewritten in place]** | #386 |
+| #395 | F1 — progressive disclosure: a teaching beat fires when its mechanic first matters | #213 |
 
 **Phase 11 — B4 drive-the-clock — is COMPLETE as of 2026-08-12: #381–#385 all built** (table
 below), and its bite-unlock gate was RULED 2026-08-11 (`engagement-spine.md` + `gates.md`
@@ -1315,6 +1334,40 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-12 — **SLICED phase 12** into eleven issues: **#386–#395 filed new, and #213 rewritten in
+  place** rather than duplicated (the #151–#153 precedent — its number stays, its body now carries
+  the grown scope from §8 F1 and its dep on the tracer). **F3 produced no issue**: it was ruled NONE
+  and the section is the answer.
+  **The tracer is the teaching cell, and that is the whole shape of the phase.** D3-R2's ruling said
+  the hint registry and F1's progressive disclosure share **one registry and one per-slot cell**, so
+  the slice order falls out of it: #386 mints `teaching:<id>` in `SlotStore.ts` (the delete-a-save
+  lesson — every per-slot key is minted there or `deleteSlot` cannot reach it), ships the
+  `data/hints.json` catalog behind `parseData`, the retire-on-use rule, the "Show hints again"
+  switch, and **three real hints on the three #385 desk dials** so the tracer is vertical. Everything
+  else that teaches — the hint copy pass (#388), the failure-stakes beat (#394), the first-run spine
+  (#213) and the unlock beats (#395) — writes taught marks into that one cell and is re-armed by that
+  one switch. It is **not world state**: `WORLD_SNAPSHOT_VERSION` stays 21 for all of it.
+  **F2 is one wiring slice and two new mechanics, filed as such.** #390 takes the two levers with an
+  engine home (`startingCapitalBonus` → the hardcoded `startingCash` at `createWorld.ts:566`;
+  `reconJudgmentBonus` → a permanent floor under the per-appraisal `sourceReliability` `rollRecon`
+  already takes) and states each pick on the card. #391 and #392/#393 build the two that have none.
+  The modifiers are applied in **`createWorld`** and #390 carries a source scan for it — no module
+  learns what a backstory is; Inventory takes a number.
+  **The borrowing facility is split engine/surface, and the surface half carries a correction to
+  #380.** `getStoreWorth()` must **subtract the drawn balance**: #380 left debt unasked because its
+  only candidate was floorplan, which is a daily carrying cost rather than a balance — a drawn credit
+  line *is* one, and a worth figure that rose $50k the moment the player borrowed $50k breaks all
+  three of #380's checkable rules at once. The test is #380's own idiom: a draw leaves the store's
+  worth flat. **#392 is the one slice in the phase that bumps the envelope** — a new module key ⇒
+  `WORLD_SNAPSHOT_VERSION` 21 → 22 with a migration, per `docs/save-migration-recipe.md`.
+  **Two completeness scans replace two checklists.** #388's coverage test mounts each tab and fails
+  on an interactive control with no hint id (the `Composition.completeness` idiom), so the seventh
+  control added next year cannot ship silent; #395 declares beats in `data/teaching-beats.json` with
+  the schema refusing an event nobody publishes, the #384/#385 registration-not-enumeration shape, so
+  a beat added later needs a declaration and a line of copy and no runner edit.
+  No code changed, so nothing calibrated moved and no test count moved.
+  Next: **BUILD #386** (the tracer — the lowest deps-met issue in the phase).
+
 - 2026-08-12 — **RULED the phase-12 gate** (F2 backstory legibility · F3 notifications · D3
   plain-language pass). Five rulings, recorded in `path-to-finished-product.md` §6 D3, §8 F2 and
   §8 F3 — each section's `[NEW]` replaced by its ruling, each with its rejected options and their
@@ -1431,46 +1484,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   unlock test (tier forced to 6, GM hired, month unlocked). Driving the top rung needs a
   higher-tier fixture first.
   Next: **phase 12** — the pointer advances on the next `/next`.
-- 2026-08-11 — **BUILT #384** (a week stops for the one thing only you can answer). The tracer
-  halted a run on things that happen **on the floor**. The game's other class of "a moment you
-  play" fires **between** days, in the overnight window — and inside a run every one of those was
-  being raised and cleared with nobody there to answer. A rival's offer expires in three days; a
-  week driven past it lost you the person without ever putting the choice in front of you. That is
-  the store auto-answering by silence, and it is now impossible.
-  **One channel, not a second list.** `createOwnerInterruptChannel` (`src/app/ownerInterrupts.ts`)
-  latches into the **same** `biteHaltRef` the floor signals do, and `BiteRunDeps.checkHalt` now
-  returns a `BiteHalt` (`{ id, subject? }`) rather than a bare id — so a floor escalation and an
-  overnight ask are one question asked once, and "the first signal of a run is the one that stopped
-  the clock" is one rule over both. A second `checkInterrupt` dep would have been exactly the
-  parallel list #124 was filed to avoid.
-  **Registration, not enumeration.** A moment is declared once, with the event that raises it and
-  the read that names who needs the owner. The runner learns **no** event names; `useDayLoop` learns
-  only "the channel raised something". `owner_interrupt` is **one** halt id and the moment rides the
-  sentence's `{subject}` slot — the halt cadence written once in `data/clock-bites.json`
-  (*"{subject}, so the run stopped there."*, matching the other three verbatim), who needed you once
-  in `data/owner-interrupts.json`. A fifth overnight prompt next year needs a declaration and a line
-  of copy, and nothing else.
-  **The test is a DECISION, not notability.** A finished construction job and a published headline
-  are deliberately **not** declared — they ride the Reveal like any other beat. Halting on
-  everything notable turns a week into seven days with extra steps. `slots` returning `null` is the
-  one "this is not it" answer there is, and it does double duty: it splits the raise from the poach
-  (same event family, #357, two sentences) and it refuses to stop a run for somebody it cannot name.
-  **The bite ends AFTER the day the moment landed on, and that is load-bearing.**
-  `staff:raise_requested` fires on `clock:day_started`, inside `nextDay()` — so the store plays that
-  day and stops, the same rule the floor halts follow. Stopping *between* the overnight and the
-  floor would leave the run on an open, un-played day: not MANAGERIAL, so #381's single closing
-  write would have no state to write, and the next tap would skip a day nobody played. Nothing is
-  lost by playing it — the poach deadline is three days out.
-  **The channel is a pure read**: it answers nothing, clears nothing and publishes nothing, so the
-  raise stays outstanding on `StaffOrg` and the People card presents it exactly as it does in
-  day-by-day play. No second copy of any prompt exists in this slice. Nothing calibrated moved and
-  nothing could — `#180` still reads 35.8% positive / 54.3% apathetic, closes=274. Nothing is
-  persisted; `WORLD_SNAPSHOT_VERSION` stays **21**.
-  `npm run typecheck` clean, `npm test` **261 suites / 3622 tests** green (re-run after rebasing
-  onto the out-of-phase Reveal-key fix, twice, both clean). Verified on the web drive
-  (T2 dev slot, day 31, covered desk): the first week ran all seven days and reported no halt; the
-  second stopped at **4 of 7 days run** over *"Roscoe Stelmach asked you for a raise, so the run
-  stopped there."* — first reaction in the feed, span clause in front of it. Dismissing the Reveal
-  put the shipped prompt on Roscoe's People card (*Needs an answer · Grade 5 · Paid at grade 4 ·
-  Asking for $970/day*), and **Pay it** cleared it and moved daily payroll $1,280 → $1,540.
-  Next: **BUILD #385**.
