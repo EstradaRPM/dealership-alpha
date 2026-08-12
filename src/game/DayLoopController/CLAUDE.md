@@ -110,6 +110,11 @@ a later slice); `floor:day_complete` clears the cell.
 - `createDayLoopController({ bus, seed, clock, demandSource?, decisionSink? })`.
 - `checkpoint()` / `resume(cp)` (#122); type `ReplayAction`.
 - `createStubDemandSource()` / `createNullDecisionSink()` — current stubs.
+- `DEALERSHIP_ID` — the single dealership the career runs today, i.e. the ONE
+  definition of the reserved `dealershipId` key (#125 d9). The clock-bite gate
+  reads it too (#385, multi-store): a store the ladder identifies by a different
+  string than the demand slip stamps is a group whose stores silently stop
+  lining up.
 - Types: `DayLoopController`, `DayLoopState`, `LifecyclePhase`,
   `FloorSeamProvider`, `DemandSource`, `DecisionSink`, `DayDecision`,
   `DayOutcome`, `DemandContext` (+ its component types).

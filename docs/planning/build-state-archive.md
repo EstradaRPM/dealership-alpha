@@ -6,6 +6,54 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT (director-directed, out of phase): a save can actually be deleted.** The
+  director could not get rid of a save from the built-in browser, was sitting at the 3-slot cap,
+  and so could not start a new game either. The Delete button was not missing — it had been there
+  since #195 — it was **dead**. `Alert.alert` is a literal no-op on react-native-web
+  (`class Alert { static alert() {} }`), so **every destructive confirmation in the app did
+  nothing at all on the web target the game is played and driven from**: delete a save, roll a
+  save back, clear the playtest log, reset the run, and the dev-fixture failure notice. Five call
+  sites, all silently inert. The console errors already sitting in the live tab
+  (`Dev tier-fixture launch failed … max of 3 slots reached`, four of them) are that failure
+  reporting itself to nobody.
+  **The fix is one confirmation surface, `ConfirmDialog` + `useConfirm` on the kit barrel**, and
+  all five call sites now go through it. `useConfirm()` holds the "what is being asked" state so a
+  surface is two lines (`const { ask, dialog } = useConfirm()`, then `{dialog}`) — one place owns
+  the pattern, so nothing can quietly re-invent it as a dead `Alert.alert`.
+  **`tests/ConfirmDialog.test.tsx` scans every file under `src/` for the call.** It compiles,
+  type-checks and runs everywhere; it just does nothing on web, so nothing but a source scan
+  catches its return. `tests/SettingsScreen.smoke.test.tsx`'s rollback case was **rewritten** — it
+  had been mocking `Alert.alert` and asserting the app called it, which passed for the whole time
+  the shipped button did nothing.
+  **The dialog closes BEFORE `onConfirm` runs** (the handlers are async — a question left on
+  screen while its answer runs reads as a press that did not land). **`cancelLabel: null` is the
+  notice form**, one acknowledging button, which is why the message-only alert needed no second
+  component. **`tone` defaults to `primary`**; red is the four destructive sites opting in, and
+  `Button` gained the matching `variant="danger"`.
+  **Delete now rides the LOAD list, not only the New Game one.** LOAD GAME is where a player looks
+  at their saves; a delete reachable only from the screen you go to when you want a *new* game is
+  a delete most players never find.
+  **Found while verifying, and fixed here: `deleteSlot` was leaking a third of the save.** Reading
+  IndexedDB after the two live deletes showed `snapshot:slot-2` and `snapshot:slot-3` still
+  sitting there. The weekly-snapshot cell was minted in the composition root
+  (`src/app/services.ts`), so the slot store could not see it — a deleted career left its whole
+  6-week snapshot window behind, unreachable and un-deletable. **Every per-slot cell key is now
+  minted inside `SlotStore.ts` and nowhere else** (`slot:` / `checkpoint:` / `snapshot:`),
+  `MultiSlotSaveStore.snapshotStore()` joined the interface, and `services.ts` delegates. A new
+  per-slot cell goes in that file, beside the delete that has to wipe it. Nothing is persisted
+  differently and no envelope moved: `WORLD_SNAPSHOT_VERSION` stays **21**.
+  **The pre-fix orphans are NOT swept.** `snapshot:slot-2` / `snapshot:slot-3` are still in the
+  director's browser storage; nothing in the app can address them. Synthesizing a cleanup pass
+  over cells whose slots no longer exist would be the same "invent history" move #374/#379 refused
+  — the rule governs what happens from here.
+  `npm run typecheck` clean, `npm test` **260 suites / 3606 tests** green. Verified on the web
+  drive: the DELETE SAVE dialog rendered over LOAD GAME, Cancel left all three slots intact, and
+  confirming removed Day 31 and then Day 37 from the list **and from IndexedDB** (`index` down to
+  one slot, `slot:slot-2` / `slot:slot-3` gone). The surviving Day 60 career reloaded and Settings
+  still listed its four weekly snapshots through the delegated `snapshotStore()`, with ROLLBACK
+  SAVE opening and cancelling cleanly.
+  Next: **BUILD #384** — phase 11 is untouched by this.
+
 - 2026-08-11 — **BUILT #383** (the bite stops being a bet only in spirit — it is placed, and it
   is settled). After the tracer, picking a week ran seven days and reported what happened; nothing
   ever said what the player was *wagering* by picking it, so nothing resolved. Both halves are now

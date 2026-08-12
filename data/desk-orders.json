@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "_doc": "B4 S5 (#385) — the standing instructions the player leaves for a DESK to carry out, and what the halt says when the desk cannot carry one out. #124's second must-handle class: a bite runs the store on your standing orders, so an order nobody can execute is the run proceeding on a policy that is not actually in force. That is a decision — put the dial back, or hire/grow the desk — and a decision is what stops a run.\n\nAn order only counts when the player has moved the dial OFF its default: the default IS 'no instruction' (market pricing is the honest suggestion the store already stamps, a flat lean expresses no preference, and the default posture makes no bet on the mix). A player who never touched a dial is never halted, which is what keeps this a consequence of a choice rather than a tax on the ladder.\n\nWhich desk executes which order lives in code (`src/app/deskOrders.ts`), against the SAME act-gate reads `buildManagerStatus` owns — the #371 lesson: a capability boolean that lives in two places is two places to disagree.",
+
+  "_ordersDoc": "`subject` fills the `{subject}` slot of the `desk_order` halt in `data/clock-bites.json`, so the halt's cadence is written once there and who-could-not-do-what once here. Each sentence names the desk and the dial, because those are the two things the player can act on.",
+  "orders": [
+    {
+      "id": "pricing_strategy",
+      "subject": "Nobody on your used desk can hold the pricing strategy you set"
+    },
+    {
+      "id": "sourcing_lean",
+      "subject": "Nobody on your used desk can stock to the sourcing lean you set"
+    },
+    {
+      "id": "fni_posture",
+      "subject": "You have no finance manager to hold the F&I posture you set"
+    }
+  ]
+}

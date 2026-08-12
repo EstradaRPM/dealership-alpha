@@ -42,7 +42,7 @@
     }
   ],
 
-  "_haltsDoc": "A bite stops at the first moment the store needs a human, and the bite is OVER — the player picks again from wherever the clock now sits. There is no queued remainder and no auto-resume: a run that silently continued past the thing that interrupted it would be the bite making the player's decision for them. Each sentence is stated verbatim by the Reveal. `owner_interrupt` (B4 S4, #384) is the one halt that names WHO stopped the run: its `{subject}` slot is filled from the raised moment's own copy in `data/owner-interrupts.json`, so the halt cadence is written once here and the subject once there.",
+  "_haltsDoc": "A bite stops at the first moment the store needs a human, and the bite is OVER — the player picks again from wherever the clock now sits. There is no queued remainder and no auto-resume: a run that silently continued past the thing that interrupted it would be the bite making the player's decision for them. Each sentence is stated verbatim by the Reveal. `owner_interrupt` (B4 S4, #384) and `desk_order` (B4 S5, #385) are the two halts that name WHO or WHAT stopped the run: their `{subject}` slots are filled from the raising moment's own copy — `data/owner-interrupts.json` and `data/desk-orders.json` respectively — so the halt cadence is written once here and the subject once beside the thing that raised it.",
   "halts": [
     {
       "id": "escalation",
@@ -58,6 +58,10 @@
     },
     {
       "id": "owner_interrupt",
+      "sentence": "{subject}, so the run stopped there."
+    },
+    {
+      "id": "desk_order",
       "sentence": "{subject}, so the run stopped there."
     }
   ]

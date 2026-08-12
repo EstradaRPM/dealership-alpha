@@ -2,6 +2,7 @@ export {
   createDayLoopController,
   createStubDemandSource,
   createNullDecisionSink,
+  DEALERSHIP_ID,
 } from './DayLoopController';
 export type {
   DayLoopController,

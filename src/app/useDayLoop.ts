@@ -50,6 +50,16 @@ export interface DayLoopDeps {
     overrides?: SaveState,
     worldSnapshot?: WorldSnapshot,
   ) => Promise<SaveState>;
+  /**
+   * The player's standing desk orders, asked after each day of a bite (#385) —
+   * `null` when every order they left is actually in force.
+   *
+   * Injected rather than read here because the dials live on the levers cluster
+   * and the desks live on the world, and this hook holds only the second.
+   * Omitted ⇒ no desk-order halts (test harnesses that drive a bite with no
+   * levers at all).
+   */
+  deskOrderHalt?: () => BiteHalt | null;
 }
 
 export interface DayLoop {
@@ -101,6 +111,7 @@ export function useDayLoop({
   eventSeq,
   bump,
   buildCurrentSaveState,
+  deskOrderHalt,
 }: DayLoopDeps): DayLoop {
   const { bus, saveStore, slotStore, snapshotStoreForActiveSlot } = services;
   // Today's gross (front + back) for the FLOOR-OPEN HUD / stat grid (#116).
@@ -266,7 +277,14 @@ export function useDayLoop({
         // in `biteDaysRef` before the next iteration clears the refs.
         floor.runDay();
       },
-      checkHalt: () => biteHaltRef.current,
+      // ONE seam, three classes (#381/#384/#385). The latch answers "did
+      // something happen today that needs you" and is asked first, because a
+      // thing that happened outranks a standing condition that was already
+      // true when the run began. The desk-order read answers "is the store
+      // still running on the orders you left" — it is a read rather than a
+      // latch precisely so a manager poached away mid-month stops the run on
+      // the day their orders went dead, not only on the day they left.
+      checkHalt: () => biteHaltRef.current ?? deskOrderHalt?.() ?? null,
     });
     const days = biteDaysRef.current ?? [];
     // Back to hand-driven mode BEFORE anything below can re-enter the handler.

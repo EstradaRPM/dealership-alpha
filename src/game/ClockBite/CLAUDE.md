@@ -32,6 +32,11 @@ persisted counter, and the player has to infer why the button came and went).
 - `availableBites(coverage, config?) → readonly BiteOption[]` — every bite,
   always all three; a locked one carries its `lockedReason` sentence rather than
   being dropped.
+- `coverageAcrossStores(covers) → readonly CoverageFactId[]` (#385) — the cover
+  the ladder gates on across a **set** of `StoreCover`s: a fact holds only if
+  every store holds it, and an **empty** set covers nothing (deliberately not
+  the `every`-over-nothing answer, which would read "every store is covered"
+  and quietly open the month).
 - `runBite(biteId, { advanceOneDay, checkHalt }, config?) → BiteRun` — runs the
   bite headless and synchronously. `checkHalt` returns a `BiteHalt`
   (`{ id, subject? }`) — **one seam for every class of halt** (#384).
@@ -95,6 +100,7 @@ run:
 | `insolvent` | `career:bankruptcy_terminal` / `career:bankruptcy_contraction` |
 | `gate_verdict` | `tierGate:month_verdict` |
 | `owner_interrupt` | the overnight channel — `src/app/ownerInterrupts.ts` (#384) |
+| `desk_order` | a standing order no desk can carry out — `src/app/deskOrders.ts` (#385) |
 
 `tierGate:month_verdict` fires unconditionally on every `clock:month_ended`
 (`TierGate.ts`), so **a bite that crosses a month boundary always halts there**.
@@ -161,13 +167,79 @@ bet is the one standing when the run began. It is **read back off
 about what was wagered, and nothing new is persisted. A halted bite is scored on
 the days it ran; a run whose days named no favorite is not scored at all.
 
+## The month rung (#385, closing #124)
+
+The top rung is **the same runner**, asked for thirty days instead of seven.
+There is no batch mode and there must not be one — a second code path is how the
+month grain starts behaving differently from the week for a reason nobody can
+find later. `tests/ClockBite.month.test.ts` pins thirty runner-driven days
+against thirty hand-driven ones, surface for surface.
+
+- **The GM is the door; the DESKS earn the silence.** A GM cannot be staffed
+  without the used desk beneath it, so reading the GM in `resolveBiteCoverage`
+  is reading the *implication*. What actually makes the floor drain return
+  `escalated: 0` is the at-threshold UCM (`t_o_closing` for discounts,
+  `condition_reading` for trades). A GM standing beside a green desk suppresses
+  nothing and the month still halts on the escalation — demonstrated, not
+  asserted, in `tests/ClockBite.month.test.ts`.
+- **The gate is written over a SET of stores.** `resolveStoreCovers`
+  (`src/app/config.ts`) returns one `StoreCover` per store and
+  `coverageAcrossStores` trips if **any** store lacks the cover. One store today
+  ⇒ the same answer as reading it directly; the T6 dealer-group layer (phase 16)
+  adds members to that list and the rule is unchanged rather than rewritten.
+  `DEALERSHIP_ID` (DayLoopController barrel) is the one definition of the
+  reserved `dealershipId` — the ladder and the demand slip must not identify the
+  same store by two different strings.
+
+## Standing desk orders (#385)
+
+`data/desk-orders.json` + `src/app/deskOrders.ts` — #124's **second** must-handle
+class, beside the floor halts and the overnight channel.
+
+A bite runs the store on the player's standing orders; that is literally what
+the stakes copy wagers. So an order that **no desk can carry out** is the run
+proceeding on a policy that is not actually in force, silently, for up to thirty
+days. That is a decision the owner has to make — put the dial back, or hire/grow
+the desk — and a decision is what stops a run.
+
+- **An order only counts once the dial is off its DEFAULT.** The default *is*
+  "no instruction": market pricing is the honest suggestion the store already
+  stamps on an intake, a flat lean expresses no preference, and the default F&I
+  posture makes no bet on the payment mix. A player who never touched a dial is
+  never halted by this, which is what keeps it a consequence of a choice rather
+  than a tax on the ladder.
+- **Only levers a NAMED DESK performs are declared.** Three of the five per-slot
+  levers qualify: `pricingStrategy` (UCM `pricing` act gate), `sourcingLean`
+  (UCM `condition_reading` act gate) and `fniPosture` (an `f&i-manager` presence
+  test, not a threshold). Hours-of-op is the owner's own; the **trade policy** is
+  a multiplier inside the appraisal math and is in force whoever is standing at
+  the desk, so there is no state in which it goes uncarried-out. Not declaring
+  those two is the answer, the same way #384 does not declare a moment that only
+  reports.
+- **Registration, not enumeration**, exactly like the overnight channel. A
+  fourth standing lever needs a declaration and a line of copy — no new halt id,
+  no runner edit.
+- **The executability read comes from `buildManagerStatus`**, the same act-gate
+  reads the engine gates on and the same source `resolveBiteCoverage` derives
+  from. A second read here is how the halt and the desk start disagreeing about
+  what the desk is doing (#371's deleted `hasDeskManager` boolean).
+- **It is a READ, not a latch, and the latch is asked FIRST.** A thing that
+  happened today outranks a standing condition that was already true when the
+  run began. Being a read is also what makes a manager poached away mid-month
+  stop the run on the day their orders went dead.
+- **ONE dead order is stated, in declaration order.** A run stops at one thing
+  and states one sentence; listing the rest would be a report. Fix that one, run
+  again, and the next surfaces.
+
 ## Data
 
 `data/clock-bites.json` — `coverage[]` (the facts and their missing-sentences),
 `bites[]` (`{ id, label, days, starBudget, stakes?, requires }`) and `halts[]`
 (`{ id, sentence }`). `data/owner-interrupts.json` carries the per-moment
-`subject` copy that fills the `owner_interrupt` halt's `{subject}` slot — the
-halt's cadence is written once here, who needed you once there.
+`subject` copy that fills the `owner_interrupt` halt's `{subject}` slot, and
+`data/desk-orders.json` does the same for `desk_order` (#385) — the halt's
+cadence is written once here, who or what needed you once beside the thing that
+raised it.
 Loaded through `parseData` + `ClockBitesConfigSchema`. Every nested object is
 `.strict()`; the top level is not, so the file's `_doc` annotations survive
 review and are stripped at load.

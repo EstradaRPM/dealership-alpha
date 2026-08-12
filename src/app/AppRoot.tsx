@@ -8,6 +8,7 @@ import type {
   MidDayCheckpoint,
 } from '../game/SaveStore';
 import { createWorld } from '../createWorld';
+import { findDeadDeskOrder, readDeskOrders } from './deskOrders';
 import {
   restoreWorld,
   type PersistedWorldSnapshot,
@@ -124,6 +125,22 @@ export function DealershipApp({
     eventSeq,
     bump,
     buildCurrentSaveState,
+    // #385: the second must-handle class. A bite runs the store on the policy
+    // the player left standing, so an order no desk can carry out stops the run
+    // the same way a floor escalation does. Read off the lever REFS, not the
+    // state, so a dial changed in the same tick the run starts is the dial the
+    // run is judged against.
+    deskOrderHalt: () => {
+      const w = worldRef.current;
+      if (!w) return null;
+      return findDeadDeskOrder(
+        readDeskOrders(w, {
+          pricingStrategyId: levers.pricingStrategyIdRef.current,
+          sourcingLean: levers.sourcingLeanRef.current,
+          fniPostureId: levers.fniPostureIdRef.current,
+        }),
+      );
+    },
   });
 
   // The live clock (#121). Drives the owned FloorSim's step() at a tunable

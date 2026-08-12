@@ -30,6 +30,11 @@ export const HALT_REASON_IDS = [
   // through its `{subject}` slot, so a fifth overnight prompt built next year
   // needs no new halt id and no edit to the runner.
   'owner_interrupt',
+  // #385: a standing instruction the player left for a desk that the desk
+  // cannot carry out. Same shape as the interrupt above — ONE reason, and the
+  // `{subject}` slot names which order — so a fourth standing lever added later
+  // needs a line of copy and no new halt id.
+  'desk_order',
 ] as const;
 export type HaltReasonId = (typeof HALT_REASON_IDS)[number];
 

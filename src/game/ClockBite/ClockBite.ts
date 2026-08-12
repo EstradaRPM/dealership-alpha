@@ -1,4 +1,5 @@
 import {
+  COVERAGE_FACT_IDS,
   loadClockBites,
   type BiteId,
   type ClockBitesConfig,
@@ -102,6 +103,42 @@ function biteDef(config: ClockBitesConfig, biteId: BiteId) {
   // programming error rather than a data one.
   if (!bite) throw new Error(`ClockBite: unknown bite "${biteId}"`);
   return bite;
+}
+
+/**
+ * What ONE store covers without the player (#385).
+ *
+ * The ladder's gate is written over a **set** of stores from the start. With
+ * the single store the game has today the answer is identical to reading that
+ * store directly, and when the T6 dealer-group layer adds members to the set
+ * the rule below is unchanged rather than rewritten — which is the whole point
+ * of writing it this way now. `dealershipId` is the key already reserved
+ * through the #99/#125 seams.
+ */
+export interface StoreCover {
+  readonly dealershipId: string;
+  readonly facts: readonly CoverageFactId[];
+}
+
+/**
+ * The cover the ladder gates on, across every store the player owns: a fact
+ * holds only if **every** store holds it (#385/#124's multi-store criterion).
+ *
+ * A group where one lot has no covered used desk cannot be left for a month on
+ * the strength of the other lots — the uncovered store is exactly where the
+ * player would be needed, so one store short shuts the door for all of them.
+ *
+ * An **empty** set covers nothing. That is deliberate rather than the natural
+ * `every`-over-nothing answer: "no stores" must not read as "every store is
+ * covered" and quietly open the top rung.
+ */
+export function coverageAcrossStores(
+  covers: readonly StoreCover[],
+): readonly CoverageFactId[] {
+  if (covers.length === 0) return [];
+  return COVERAGE_FACT_IDS.filter((id) =>
+    covers.every((store) => store.facts.includes(id)),
+  );
 }
 
 /**

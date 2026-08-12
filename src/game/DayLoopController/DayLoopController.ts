@@ -163,6 +163,16 @@ function stubStream(headcount: number): DemandStream {
 }
 
 /**
+ * The single dealership the career runs today — the reserved `dealershipId`
+ * key (#99/#125 decision 9) that the future dealer-group layer partitions on.
+ *
+ * One definition, because #385's clock-bite gate reads it too: a store the
+ * ladder identifies by a different string than the demand slip stamps is a
+ * group whose stores silently stop lining up.
+ */
+export const DEALERSHIP_ID = 'stub-dealership';
+
+/**
  * Dumb stub provider. Fills every #125 field with neutral placeholders so
  * #111/#114 build against the stable contract while the real economy is
  * deliberately downstream. Sales is the only `pipelineActive` department
@@ -188,7 +198,7 @@ export function createStubDemandSource(): DemandSource {
       season: 'spring',
       brands: [{ brandId: 'stub-brand', volumeBias: 0.5, segmentBias: 0.5 }],
       stores: [{ storeId: 'stub-store' }],
-      dealershipId: 'stub-dealership',
+      dealershipId: DEALERSHIP_ID,
     }),
   };
 }

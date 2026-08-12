@@ -17,7 +17,9 @@ below), and the bite-unlock gate is RULED (see the log entry; recorded in
 standing. **#382 LANDED 2026-08-11** — the star budget rides the bite and what it cuts is stated.
 **#383 LANDED 2026-08-11** — the bite is a placed bet: the picker states the stake and the Reveal
 settles it. **#384 LANDED 2026-08-11** — the overnight interrupt channel: a moment that asks the
-owner a question stops the run and the Reveal names who. The next `/next` builds **#385**.
+owner a question stops the run and the Reveal names who. **#385 LANDED 2026-08-12 — the top
+rung, and phase 11 is COMPLETE.** #124 closed with it. Nothing under phase 11 is outstanding;
+the next `/next` advances the pointer to phase 12 and picks its unit.
 
 ### Phase 11 — B4 drive-the-clock (sliced + filed 2026-08-11)
 
@@ -27,7 +29,7 @@ owner a question stops the run and the Reveal names who. The next `/next` builds
 | ~~#382~~ | ~~the star budget scales with the bite; what the feed leaves out is stated, not dropped~~ **BUILT 2026-08-11** | #381 |
 | ~~#383~~ | ~~the bite is a bet — `PrepBet` captured at the bite's start, scored over the days that ran~~ **BUILT 2026-08-11** | #381 |
 | ~~#384~~ | ~~the overnight interrupt channel — a moment that asks the owner a question stops the run~~ **BUILT 2026-08-11** | #381 |
-| #385 | the month rung — GM-gated, the desks earn the silence, multi-store safe **[HITL]**, closes #124 | #381, #384 |
+| ~~#385~~ | ~~the month rung — GM-gated, the desks earn the silence, multi-store safe **[HITL]**, closes #124~~ **BUILT 2026-08-12 — phase 11 COMPLETE** | #381, #384 |
 
 **Phase 5 — #74 round-1 playtest (HITL). The script is prepared, verified and HANDED OVER
 as of 2026-08-06.** It now sits with the director; nothing in the repo blocks it.
@@ -154,6 +156,61 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **The month is the SAME runner — there is no batch mode and there must not be one** (#385).
+  Thirty days through `runBite`, halting on the same seams a week does.
+  `tests/ClockBite.month.test.ts` pins thirty runner-driven days against thirty hand-driven
+  ones surface for surface (the #122 controller-scoped idiom, never a `snapshotWorld` re-run).
+  A second "bulk" implementation is how the month grain starts behaving differently from the
+  week for a reason nobody can find later — and it is why nothing calibrated moved: the live
+  `#180` read is byte-identical at 35.8% / 54.3%, closes=274, `costOverAsk` 1.026.
+- **The GM is the DOOR; the at-threshold desks earn the silence** (#385, #124's attribution
+  claim). `resolveStoreCover` reads the GM as a presence test because a staffed GM *implies*
+  the covered desks beneath it — but what makes the floor drain return `escalated: 0` is the
+  UCM's `t_o_closing` / `condition_reading` clearing their act thresholds. A GM standing beside
+  a green desk suppresses **nothing**: `tests/ClockBite.month.test.ts` runs the same below-floor
+  up with and without a GM on the roster and the escalation count follows the desk both times.
+  A future session reading the GM as the suppressor has the causation backwards.
+- **The bite gate is written over a SET of stores, and trips if ANY store lacks the cover**
+  (#385). `resolveStoreCovers` → `coverageAcrossStores`; one store today ⇒ the same answer as
+  reading it directly, and phase 16's dealer-group layer adds members to that list rather than
+  rewriting the rule. An **empty** set covers nothing — deliberately not the natural
+  `every`-over-nothing answer, which reads "every store is covered" and quietly opens the month.
+  `DEALERSHIP_ID` moved onto the DayLoopController barrel so the ladder and the demand slip
+  cannot identify the same store by two different strings.
+- **A standing desk order counts only once the dial is OFF its default** (#385). The default
+  *is* "no instruction": market pricing is the honest suggestion an intake already gets, a flat
+  lean expresses no preference, and Balanced makes no bet on the payment mix. So a player who
+  never touched a dial is never halted, and the halt is a consequence of a choice rather than a
+  tax on the ladder. Making it fire on the defaults would halt every run on day 1 forever.
+- **Only levers a NAMED DESK performs are declared, and the two omissions are the rule working**
+  (#385). Hours-of-op is the owner's own. The **trade policy** is a multiplier inside the
+  appraisal math — in force whoever is standing at the desk — so there is no state in which it
+  goes uncarried-out. Declaring either would be dead weight, the same call #384 made about a
+  moment that only reports. The three that qualify: `pricingStrategy` (UCM `pricing` gate),
+  `sourcingLean` (UCM `condition_reading` gate), `fniPosture` (an `f&i-manager` **presence**
+  test, not a threshold).
+- **The desk-order check is a READ, and the floor latch is asked FIRST** (#385).
+  `checkHalt: () => biteHaltRef.current ?? deskOrderHalt?.() ?? null`. A thing that happened
+  today outranks a standing condition that was already true when the run began. Being a read
+  rather than a latch is also what stops a run on the day a poached manager's orders went dead,
+  not only on the day they left — and it is why nothing about #385 is persisted and
+  `WORLD_SNAPSHOT_VERSION` stays 21.
+- **ONE dead order is stated, in declaration order** (#385). A run stops at one thing and states
+  one sentence, the same rule the floor halts and the overnight channel follow. Listing the rest
+  would be a report, not the moment the run stopped; fix that one, run again, the next surfaces.
+- **`desk_order` is ONE halt id riding the `{subject}` slot** (#385), the #384 shape exactly.
+  Cadence written once in `data/clock-bites.json`, who-could-not-do-what once in
+  `data/desk-orders.json`. A fourth standing lever added next year needs a declaration and a
+  line of copy — no new halt id, no runner edit, no new sentence shape.
+- **The #385 web drive proved the halt and its counterfactual; the 30-day month itself was NOT
+  drivable.** On the T2 dev fixture: setting the F&I posture to "More per deal" with no finance
+  manager halted the week bite on day 1 with *"You have no finance manager to hold the F&I
+  posture you set, so the run stopped there."*, span clause in front and the pooled feed intact;
+  putting the dial back to Balanced ran the identical week the full **7 days / $24,471 gross**.
+  The month rung showed locked with its stated door. A **staffed GM is `hireTier` 6 and the only
+  dev fixture is Tier 2**, so an actual 30-day run is covered by `tests/ClockBite.month.test.ts`
+  + `tests/ClockBite.unlock.test.ts` (real world, tier forced to 6, GM hired) rather than by the
+  drive. A future session wanting to drive the top rung needs a higher-tier fixture first.
 - **An overnight interrupt ends the bite AFTER the day it was raised on, not before that day
   runs** (#384). `staff:raise_requested` is published on `clock:day_started`, which fires inside
   `nextDay()` — so the store plays that day and then stops, exactly the way a floor escalation
@@ -1250,6 +1307,61 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-12 — **BUILT #385** (the month rung — and phase 11 is complete). **Closes #124**, filed
+  back in June against the channel-desk manager model; the four slices before this one built the
+  ladder underneath it, and what was left is what only matters at the top of it.
+  **The month is the SAME runner.** Thirty days through `runBite`, halting on the same seams a
+  week does. `tests/ClockBite.month.test.ts` drives thirty runner days against thirty hand-driven
+  ones and compares the FloorSim surface day for day (the #122 controller-scoped idiom, never a
+  `snapshotWorld` re-run). A separate "batch" implementation is how the month grain starts
+  behaving differently from the week for a reason nobody can find later — and its absence is why
+  nothing calibrated moved: `#180` still reads **35.8% / 54.3%, closes=274, costOverAsk 1.026**,
+  byte-identical.
+  **The GM is the DOOR; the desks earn the silence — demonstrated, not asserted.** That was
+  #124's attribution claim and the thing a reviewer has to agree is *true*. The gate reads the GM
+  because a staffed GM implies the covered desks beneath it, but what makes the drain return
+  `escalated: 0` is the UCM's `t_o_closing` clearing its act threshold. The test runs the same
+  below-floor up four ways — sharp desk / green desk × with GM / without — and the escalation
+  count follows the desk every time. A GM standing beside a green desk suppresses **nothing** and
+  the month still halts.
+  **The gate is written over a SET of stores.** `resolveStoreCovers` → `coverageAcrossStores`: a
+  fact holds only if **every** store holds it, so one uncovered lot shuts the door for the whole
+  group — which is right, because the uncovered lot is exactly where the owner would be needed.
+  One store today ⇒ the identical answer; phase 16 adds members to that list rather than
+  rewriting the rule. An **empty** set covers nothing, deliberately not the `every`-over-nothing
+  answer that would read "every store is covered" and quietly open the month. `DEALERSHIP_ID`
+  moved onto the DayLoopController barrel so the ladder and the demand slip cannot identify the
+  same store by two different strings.
+  **#124's second must-handle class is now real: a standing order no desk can carry out.** A bite
+  runs the store on the policy you left standing — that is literally what the stakes copy wagers
+  — so an order nobody can execute is the run proceeding for up to thirty days on a policy that
+  is not in force, silently. `data/desk-orders.json` + `src/app/deskOrders.ts`, the **#384 shape
+  exactly**: registration not enumeration, one `desk_order` halt id, the moment riding the
+  `{subject}` slot, cadence written once in `data/clock-bites.json` and who-could-not-do-what
+  once beside the thing that raised it.
+  **An order counts only once the dial is OFF its default**, and that is what keeps it a
+  consequence of a choice rather than a tax on the ladder: the default *is* "no instruction"
+  (market pricing is the suggestion an intake already gets, a flat lean expresses no preference,
+  Balanced makes no bet on the mix). **Only levers a named desk performs are declared** — three
+  of five. Hours-of-op is the owner's own, and the trade policy is a multiplier inside the
+  appraisal math, in force whoever is standing at the desk, so it cannot go uncarried-out;
+  omitting both is the rule working, the same call #384 made about a moment that only reports.
+  **The check is a read and the floor latch is asked first** — a thing that happened today
+  outranks a standing condition that was already true when the run began — which is also what
+  stops a run on the day a poached manager's orders go dead. One dead order is stated, in
+  declaration order: a run stops at one thing and states one sentence.
+  Nothing is persisted; `WORLD_SNAPSHOT_VERSION` stays **21**. `npm run typecheck` clean,
+  `npm test` **262 suites / 3639 tests** green.
+  **Web drive (T2 dev slot, day 31):** setting the F&I posture to "More per deal" with no finance
+  manager halted the week at **1 of 7 days run** over *"You have no finance manager to hold the
+  F&I posture you set, so the run stopped there."* — span clause in front, pooled feed intact.
+  Putting the dial back to Balanced ran the identical week the full **7 days / $24,471 gross**,
+  so the halt is the dead order and not a blanket break. The month rung showed locked with its
+  stated door. **The 30-day run itself was not drivable**: a GM is `hireTier` 6 and the only dev
+  fixture is Tier 2, so that half rests on `tests/ClockBite.month.test.ts` and the world-level
+  unlock test (tier forced to 6, GM hired, month unlocked). Driving the top rung needs a
+  higher-tier fixture first.
+  Next: **phase 12** — the pointer advances on the next `/next`.
 - 2026-08-11 — **BUILT #384** (a week stops for the one thing only you can answer). The tracer
   halted a run on things that happen **on the floor**. The game's other class of "a moment you
   play" fires **between** days, in the overnight window — and inside a run every one of those was
@@ -1327,52 +1439,4 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   the fold (the trap `.claude/skills/verify` documents). The rendering evidence above is the real
   component under RN Testing Library instead. The director's own tab on port 8082 is running the
   pre-fix bundle and will keep warning until it reloads against this.
-  Next: **BUILD #384** — phase 11 is untouched by this.
-
-- 2026-08-11 — **BUILT (director-directed, out of phase): a save can actually be deleted.** The
-  director could not get rid of a save from the built-in browser, was sitting at the 3-slot cap,
-  and so could not start a new game either. The Delete button was not missing — it had been there
-  since #195 — it was **dead**. `Alert.alert` is a literal no-op on react-native-web
-  (`class Alert { static alert() {} }`), so **every destructive confirmation in the app did
-  nothing at all on the web target the game is played and driven from**: delete a save, roll a
-  save back, clear the playtest log, reset the run, and the dev-fixture failure notice. Five call
-  sites, all silently inert. The console errors already sitting in the live tab
-  (`Dev tier-fixture launch failed … max of 3 slots reached`, four of them) are that failure
-  reporting itself to nobody.
-  **The fix is one confirmation surface, `ConfirmDialog` + `useConfirm` on the kit barrel**, and
-  all five call sites now go through it. `useConfirm()` holds the "what is being asked" state so a
-  surface is two lines (`const { ask, dialog } = useConfirm()`, then `{dialog}`) — one place owns
-  the pattern, so nothing can quietly re-invent it as a dead `Alert.alert`.
-  **`tests/ConfirmDialog.test.tsx` scans every file under `src/` for the call.** It compiles,
-  type-checks and runs everywhere; it just does nothing on web, so nothing but a source scan
-  catches its return. `tests/SettingsScreen.smoke.test.tsx`'s rollback case was **rewritten** — it
-  had been mocking `Alert.alert` and asserting the app called it, which passed for the whole time
-  the shipped button did nothing.
-  **The dialog closes BEFORE `onConfirm` runs** (the handlers are async — a question left on
-  screen while its answer runs reads as a press that did not land). **`cancelLabel: null` is the
-  notice form**, one acknowledging button, which is why the message-only alert needed no second
-  component. **`tone` defaults to `primary`**; red is the four destructive sites opting in, and
-  `Button` gained the matching `variant="danger"`.
-  **Delete now rides the LOAD list, not only the New Game one.** LOAD GAME is where a player looks
-  at their saves; a delete reachable only from the screen you go to when you want a *new* game is
-  a delete most players never find.
-  **Found while verifying, and fixed here: `deleteSlot` was leaking a third of the save.** Reading
-  IndexedDB after the two live deletes showed `snapshot:slot-2` and `snapshot:slot-3` still
-  sitting there. The weekly-snapshot cell was minted in the composition root
-  (`src/app/services.ts`), so the slot store could not see it — a deleted career left its whole
-  6-week snapshot window behind, unreachable and un-deletable. **Every per-slot cell key is now
-  minted inside `SlotStore.ts` and nowhere else** (`slot:` / `checkpoint:` / `snapshot:`),
-  `MultiSlotSaveStore.snapshotStore()` joined the interface, and `services.ts` delegates. A new
-  per-slot cell goes in that file, beside the delete that has to wipe it. Nothing is persisted
-  differently and no envelope moved: `WORLD_SNAPSHOT_VERSION` stays **21**.
-  **The pre-fix orphans are NOT swept.** `snapshot:slot-2` / `snapshot:slot-3` are still in the
-  director's browser storage; nothing in the app can address them. Synthesizing a cleanup pass
-  over cells whose slots no longer exist would be the same "invent history" move #374/#379 refused
-  — the rule governs what happens from here.
-  `npm run typecheck` clean, `npm test` **260 suites / 3606 tests** green. Verified on the web
-  drive: the DELETE SAVE dialog rendered over LOAD GAME, Cancel left all three slots intact, and
-  confirming removed Day 31 and then Day 37 from the list **and from IndexedDB** (`index` down to
-  one slot, `slot:slot-2` / `slot:slot-3` gone). The surviving Day 60 career reloaded and Settings
-  still listed its four weekly snapshots through the delegated `snapshotStore()`, with ROLLBACK
-  SAVE opening and cancelling cleanly.
   Next: **BUILD #384** — phase 11 is untouched by this.

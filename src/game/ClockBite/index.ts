@@ -1,10 +1,17 @@
-export { availableBites, runBite, haltReason, biteStarBudget } from './ClockBite';
+export {
+  availableBites,
+  runBite,
+  haltReason,
+  biteStarBudget,
+  coverageAcrossStores,
+} from './ClockBite';
 export type {
   BiteOption,
   BiteRun,
   BiteRunDeps,
   BiteHalt,
   HaltReason,
+  StoreCover,
 } from './ClockBite';
 export {
   loadClockBites,

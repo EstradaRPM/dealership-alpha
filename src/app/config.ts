@@ -27,7 +27,9 @@ import {
   type SourcingLean,
 } from '../game/MarketEconomy';
 import { isDiscountDeskingUnlocked } from '../game/StaffDispatch';
-import type { CoverageFactId } from '../game/ClockBite';
+import { coverageAcrossStores } from '../game/ClockBite';
+import type { CoverageFactId, StoreCover } from '../game/ClockBite';
+import { DEALERSHIP_ID } from '../game/DayLoopController';
 import { isServiceFunctionAutomated } from '../game/ServiceDispatch';
 import { isBodyShopFunctionAutomated } from '../bodyShopManager';
 import { loadRegulatoryTunables } from '../game/Reputation';
@@ -689,6 +691,26 @@ export function buildManagerStatus(world: World): ManagerStatusModel {
  * disagreeing about who is covering what.
  */
 export function resolveBiteCoverage(world: World): readonly CoverageFactId[] {
+  return coverageAcrossStores(resolveStoreCovers(world));
+}
+
+/**
+ * The cover, store by store (#385).
+ *
+ * One store today — but the gate above is written over the **set** from the
+ * start, and trips if any member lacks the cover. With a single store that is
+ * the same answer it always was; when the T6 dealer-group layer (phase 16)
+ * returns one entry per store here, the rule stays `coverageAcrossStores` and
+ * nothing about the ladder is rewritten. That is what "multi-store safe, single
+ * store today" buys, and it is why the reserved `dealershipId` is carried now
+ * rather than bolted on later.
+ */
+export function resolveStoreCovers(world: World): readonly StoreCover[] {
+  return [{ dealershipId: DEALERSHIP_ID, facts: resolveStoreCover(world) }];
+}
+
+/** What ONE store covers without the player. */
+function resolveStoreCover(world: World): readonly CoverageFactId[] {
   const status = buildManagerStatus(world);
   const delegated = (axis: string) =>
     status.ucm.find((f) => f.axis === axis)?.delegated === true;
@@ -696,7 +718,11 @@ export function resolveBiteCoverage(world: World): readonly CoverageFactId[] {
   if (delegated('t_o_closing')) facts.push('discount_desking');
   if (delegated('condition_reading')) facts.push('trade_approval');
   // The GM is a presence test, not a skill threshold: the role IS the cover
-  // (#124's filed rule — the top-rung specifics are #385).
+  // (#124's filed rule). And the GM is only the DOOR — what actually suppresses
+  // floor escalations is the at-threshold UCM desk above, which a GM cannot be
+  // hired without. Reading the GM here is reading the implication; the two
+  // `delegated` lines are the mechanism (#385, demonstrated in
+  // `tests/ClockBite.month.test.ts`).
   if (world.staffOrg.currentRoster.some((s) => s.role_id === 'gm')) {
     facts.push('general_manager');
   }
