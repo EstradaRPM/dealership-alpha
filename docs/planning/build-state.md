@@ -1285,7 +1285,8 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   day-by-day play. No second copy of any prompt exists in this slice. Nothing calibrated moved and
   nothing could — `#180` still reads 35.8% positive / 54.3% apathetic, closes=274. Nothing is
   persisted; `WORLD_SNAPSHOT_VERSION` stays **21**.
-  `npm run typecheck` clean, `npm test` **261 suites / 3617 tests** green. Verified on the web drive
+  `npm run typecheck` clean, `npm test` **261 suites / 3622 tests** green (re-run after rebasing
+  onto the out-of-phase Reveal-key fix, twice, both clean). Verified on the web drive
   (T2 dev slot, day 31, covered desk): the first week ran all seven days and reported no halt; the
   second stopped at **4 of 7 days run** over *"Roscoe Stelmach asked you for a raise, so the run
   stopped there."* — first reaction in the feed, span clause in front of it. Dismissing the Reveal
