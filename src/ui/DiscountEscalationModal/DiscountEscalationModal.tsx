@@ -1,5 +1,6 @@
 import React from 'react';
 import { colors } from '../theme';
+import { money, grouped } from '../kit';
 import {
   Modal,
   View,
@@ -83,7 +84,9 @@ interface Props {
   vehicleSold?: boolean;
 }
 
-const dollars = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
+// The figure being answered is stated **exactly** (issue 387) — this modal is
+// the moment the player commits to it.
+const dollars = money;
 const pct = (p: number): string => `${Math.round(p * 100)}%`;
 
 export function DiscountEscalationModal({
@@ -110,7 +113,7 @@ export function DiscountEscalationModal({
     parsedCounter >= (review?.minimumAcceptablePrice ?? 0);
 
   const vehicleSummary = review
-    ? `${review.vehicle.year} ${review.vehicle.make} ${review.vehicle.model} · ${review.vehicle.mileage.toLocaleString('en-US')} mi`
+    ? `${review.vehicle.year} ${review.vehicle.make} ${review.vehicle.model} · ${grouped(review.vehicle.mileage)} mi`
     : '-';
 
   // Patience: pips total = counterAttempts; the haggle drains them, and each

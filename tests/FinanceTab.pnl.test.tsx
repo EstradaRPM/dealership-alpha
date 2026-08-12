@@ -5,11 +5,16 @@ import {
   FinanceTab,
   buildFinanceDashboard,
   financeHasPriorWindow,
-  compactMoney,
   dailyPnL,
 } from '../src/ui/FinanceTab';
 import type { FinanceDashboardInputs } from '../src/ui/FinanceTab';
-import { LineChart, signedDomain, signedTicks, linePoints } from '../src/ui/kit';
+import {
+  LineChart,
+  signedDomain,
+  signedTicks,
+  linePoints,
+  compactMoney,
+} from '../src/ui/kit';
 import { ZERO_KPI_SNAPSHOT } from '../src/game/KPIDashboard';
 import type { KPIDayTotals } from '../src/game/KPIDashboard';
 import { DEPARTMENT_CENTERS } from '../src/game/Economy';

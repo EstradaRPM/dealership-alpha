@@ -1,3 +1,4 @@
+import { money } from '../kit';
 import type {
   ConstructionJob,
   FacilityBuildOption,
@@ -39,7 +40,8 @@ const KIND_UNIT: Record<FacilityCapacityKind, { one: string; many: string }> = {
   bodyBays: { one: 'bay', many: 'bays' },
 };
 
-const money = (n: number) => `$${n.toLocaleString()}`;
+// Build costs are stated **exactly** (issue 387): this is a price the player
+// presses a button to pay.
 
 function units(kind: FacilityCapacityKind, n: number) {
   const noun = KIND_UNIT[kind];

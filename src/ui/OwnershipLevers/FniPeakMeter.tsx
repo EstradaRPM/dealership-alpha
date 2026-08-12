@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
-import { ProgressBar } from '../kit';
+import { ProgressBar, money } from '../kit';
 
 /** One posture as the meter draws it — all money already resolved by the caller. */
 export interface FniPeakBar {
@@ -28,7 +28,9 @@ export interface FniPeakMeterProps {
   dealsRead: number;
 }
 
-const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
+// Per-deal figures are **exact** (issue 387): they are the reason the player
+// moves the posture dial, and they live in the low hundreds where a compact
+// string would round the whole signal away.
 const percent = (n: number) => `${Math.round(n * 100)}%`;
 
 /**

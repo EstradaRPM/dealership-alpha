@@ -9,6 +9,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { colors } from '../theme';
+import { money } from '../kit';
 import type { PricePosition, IntelPrecision } from '../../game/MarketEconomy';
 
 /** Static per-vehicle facts the screen renders. The vehicle doesn't change
@@ -83,9 +84,11 @@ const POSITION_META: Record<PricePosition, { label: string; color: string }> = {
   wishful: { label: 'Wishful', color: colors.danger },
 };
 
-function money(n: number): string {
-  return `$${Math.round(n).toLocaleString()}`;
-}
+/**
+ * Every figure on this screen is **exact** (issue 387) — an asking price is the
+ * transaction anchor the player is setting, and the band around it is what they
+ * are setting it against.
+ */
 
 /**
  * Surface a point estimate as a precision-scaled band. A wide `pct` (coarse, no

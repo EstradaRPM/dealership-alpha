@@ -8,6 +8,7 @@ import type {
   TrendFaceProgress,
 } from '../../game/TierGate';
 import type { ProgressTone, TrendDirection } from '../kit';
+import { compactMoney } from '../kit';
 
 /**
  * Pure read-model builder for the Home **monthly gate-progress strip** (S3b,
@@ -144,10 +145,16 @@ function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));
 }
 
-/** Money for the gross face; bare rounded integer otherwise. */
+/**
+ * Money for the gross face; bare rounded integer otherwise.
+ *
+ * **Compact** (issue 387): the strip is the HUD's ambient read of where the
+ * month stands, and its figures are pace and target rather than anything the
+ * player commits against. It is also the widest reading on the Home tab — a
+ * flow face states current, target and projection on one row.
+ */
 function fmt(id: string, n: number): string {
-  const rounded = Math.round(n);
-  return id === 'gross' ? `$${rounded.toLocaleString()}` : `${rounded}`;
+  return id === 'gross' ? compactMoney(n) : `${Math.round(n)}`;
 }
 
 function buildFlowView(f: FlowFaceProgress, today: number): FlowFaceView {
@@ -166,7 +173,7 @@ function buildFlowView(f: FlowFaceProgress, today: number): FlowFaceView {
   } else {
     const rate =
       f.id === 'gross'
-        ? `$${Math.round(f.onPaceRateNeeded).toLocaleString()}/day`
+        ? `${compactMoney(f.onPaceRateNeeded)}/day`
         : `${f.onPaceRateNeeded.toFixed(1)}/day`;
     paceLabel = `Need ${rate} · proj ${proj}`;
   }
@@ -190,8 +197,8 @@ function buildLevelView(f: LevelFaceProgress): LevelFaceView {
     kind: 'level',
     label: f.label,
     fill: f.threshold > 0 ? clamp01(f.avgLevel / f.threshold) : 0,
-    valueLabel: `Avg $${Math.round(f.avgLevel).toLocaleString()}`,
-    thresholdLabel: `vs $${Math.round(f.threshold).toLocaleString()}`,
+    valueLabel: `Avg ${compactMoney(f.avgLevel)}`,
+    thresholdLabel: `vs ${compactMoney(f.threshold)}`,
     trend: gateTrendToDirection(f.trend),
     tone: f.meetsThreshold ? 'positive' : 'danger',
     meets: f.meetsThreshold,

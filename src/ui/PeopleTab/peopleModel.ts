@@ -1,3 +1,4 @@
+import { money } from '../kit';
 import type { PeopleDepartmentId } from './departments';
 
 /**
@@ -146,7 +147,7 @@ export interface PeopleSlotRow {
 
 /** `$340/day` — the wage grammar shared by every card on this surface. */
 export function wageText(dailyWage: number): string {
-  return `$${dailyWage.toLocaleString()}/day`;
+  return `${money(dailyWage)}/day`;
 }
 
 /**

@@ -10,13 +10,14 @@ import {
   DonutChart,
   LineChart,
   Button,
+  compactMoney,
+  money,
 } from '../kit';
 import { ChipRow } from '../DeptControls';
 import { KPIDashboard } from '../KPIDashboard';
 import type { MarketStateModel } from '../KPIDashboard';
 import { StoreWorthPair } from '../StoreWorth';
 import type { StoreWorthModel } from '../StoreWorth';
-import { compactMoney } from './financeModel';
 import type {
   FinanceDashboardModel,
   FinanceRangeId,
@@ -147,7 +148,7 @@ export function FinanceTab({
               centerLabel={model.grossMix.centerLabel}
               emptyLabel={model.grossMix.emptyLabel}
               formatShare={(value, fraction) =>
-                `${Math.round(fraction * 100)}% · $${Math.round(value).toLocaleString('en-US')}`
+                `${Math.round(fraction * 100)}% · ${money(value)}`
               }
               testID="finance-mix-donut"
             />

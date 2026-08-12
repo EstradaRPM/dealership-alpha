@@ -84,7 +84,7 @@ describe('#319 buildReveal — pure Reveal read-model', () => {
     );
     expect(model.reactions[0].tone).toBe('positive');
     expect(model.reactions[0].text).toMatch(/6 of 8 stuck/);
-    expect(model.reactions[0].text).toMatch(/\$14,200/);
+    expect(model.reactions[0].text).toMatch(/\$14\.2k/);
   });
 
   it('reads "Slow day" under the threshold and stars a losing verdict when the match rate is weak', () => {
@@ -110,7 +110,7 @@ describe('#319 buildReveal — pure Reveal read-model', () => {
       strong: 0,
       matched: 0,
     });
-    expect(model.reactions[0].text).toMatch(/-\$1,200/);
+    expect(model.reactions[0].text).toMatch(/-\$1\.2k/);
   });
 
   it('exactly one reaction ships with no closes — the match summary', () => {

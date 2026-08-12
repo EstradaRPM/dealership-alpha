@@ -15,6 +15,10 @@ import type {
 import type { EventBus } from '../../game/EventBus';
 import type { ConditionRead } from '../../game/StaffOrg';
 import { colors } from '../theme';
+// Every dollar figure on this screen is **exact** (issue 387): a bid, an asking
+// price, an inspection fee and the recon estimate under them are the numbers the
+// player commits cash against.
+import { money, grouped } from '../kit';
 
 export interface ListingValuation {
   readonly bookValue: number;
@@ -43,7 +47,7 @@ function formatConfidence(c: number): string {
 }
 
 function formatRange(low: number, high: number): string {
-  return `$${Math.round(low).toLocaleString()}–$${Math.round(high).toLocaleString()}`;
+  return `${money(low)}–${money(high)}`;
 }
 
 interface DetailModalProps {
@@ -96,11 +100,11 @@ function DetailModal({
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Mileage</Text>
-            <Text style={styles.detailValue}>{listing.mileage.toLocaleString()} mi</Text>
+            <Text style={styles.detailValue}>{grouped(listing.mileage)} mi</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Asking Price</Text>
-            <Text style={styles.detailValue}>${listing.askingPrice.toLocaleString()}</Text>
+            <Text style={styles.detailValue}>{money(listing.askingPrice)}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Retail Range Est.</Text>
@@ -115,7 +119,7 @@ function DetailModal({
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Est. Recon Cost</Text>
             <Text style={[styles.detailValue, styles.reconValue]}>
-              ${listing.reconCost.toLocaleString()}
+              {money(listing.reconCost)}
             </Text>
           </View>
           {conditionRead && (
@@ -168,7 +172,7 @@ function DetailModal({
                 : atCapacity
                   ? 'No Spaces Open'
                   : canAfford
-                    ? `Buy for $${listing.askingPrice.toLocaleString()}`
+                    ? `Buy for ${money(listing.askingPrice)}`
                     : 'Insufficient Funds'}
             </Text>
           </TouchableOpacity>
@@ -186,7 +190,7 @@ function DetailModal({
                   !canInspect && styles.inspectBtnTextDisabled,
                 ]}
               >
-                Request Inspection (${inspectionCost.toLocaleString()})
+                Request Inspection ({money(inspectionCost)})
               </Text>
             </TouchableOpacity>
           )}
@@ -219,7 +223,7 @@ function ListingRow({ listing, valuation, sourceLabel, onPress }: ListingRowProp
           {listing.year} {listing.make} {listing.model}
         </Text>
         <Text style={styles.rowSub}>
-          {listing.trim} · {listing.mileage.toLocaleString()} mi
+          {listing.trim} · {grouped(listing.mileage)} mi
         </Text>
         <Text style={styles.rowSource}>{sourceLabel}</Text>
         {listing.inspectionStatus === 'pending' && (
@@ -233,7 +237,7 @@ function ListingRow({ listing, valuation, sourceLabel, onPress }: ListingRowProp
         <Text style={[styles.rowCondition, conditionColor(listing.condition)]}>
           {listing.condition}
         </Text>
-        <Text style={styles.rowPrice}>${listing.askingPrice.toLocaleString()}</Text>
+        <Text style={styles.rowPrice}>{money(listing.askingPrice)}</Text>
         <Text style={styles.rowRange}>
           {formatRange(valuation.bookValue, valuation.marketPrice)}
         </Text>
@@ -344,7 +348,7 @@ export function AuctionMenu({
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.title}>Auction Lane</Text>
-          <Text style={styles.cashLabel}>Cash: ${cash.toLocaleString()}</Text>
+          <Text style={styles.cashLabel}>Cash: {money(cash)}</Text>
           <Text
             style={
               lotOccupancy.atCapacity
@@ -389,12 +393,12 @@ export function AuctionMenu({
                     {v.year} {v.make} {v.model}
                   </Text>
                   <Text style={styles.rowSub}>
-                    {v.trim} · {v.mileage.toLocaleString()} mi
+                    {v.trim} · {grouped(v.mileage)} mi
                   </Text>
                 </View>
                 <View style={styles.rowRight}>
                   <Text style={styles.diiLabel}>{v.daysInInventory}d on lot</Text>
-                  <Text style={styles.reconSmall}>Recon: ${v.reconCost.toLocaleString()}</Text>
+                  <Text style={styles.reconSmall}>Recon: {money(v.reconCost)}</Text>
                 </View>
               </View>
             ))}

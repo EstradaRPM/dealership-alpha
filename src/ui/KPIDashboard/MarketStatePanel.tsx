@@ -14,6 +14,7 @@ import {
   StatCard,
   Badge,
   Icon,
+  money,
   type BadgeTone,
   type BadgeVariant,
   type IconName,
@@ -25,10 +26,10 @@ import type {
   ValueBand,
 } from './marketState';
 
-function fmt$(n: number): string {
-  const rounded = Math.round(n);
-  return `${rounded < 0 ? '−' : ''}$${Math.abs(rounded).toLocaleString()}`;
-}
+// Exact (issue 387). One formatter for the whole app means one sign glyph too:
+// the ASCII hyphen the kit writes, not the typographic minus this panel used to
+// carry alone.
+const fmt$ = money;
 
 /** Signed whole-percent, e.g. +8% / −5% / 0% (uses a real minus glyph). */
 function fmtSignedPct(fraction: number): string {

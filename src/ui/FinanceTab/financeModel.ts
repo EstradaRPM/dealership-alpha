@@ -1,7 +1,7 @@
 import type { DayRange, KPIDayTotals, KPISnapshot } from '../../game/KPIDashboard';
 import { PROFIT_CENTER_LABELS } from '../../game/Economy';
 import type { DepartmentPnLSummary, LedgerEntry, PnLSummary } from '../../game/Economy';
-import { domainFraction, signedDomain } from '../kit';
+import { compactMoney, domainFraction, money, signedDomain } from '../kit';
 import type { BarDatum, DonutDatum, LineSeries, TrendDirection } from '../kit';
 
 /**
@@ -252,34 +252,6 @@ export interface FinanceDashboardInputs {
 }
 
 const EMPTY_VALUE = '—';
-
-export function money(n: number): string {
-  const rounded = Math.round(n);
-  const sign = rounded < 0 ? '-' : '';
-  return `${sign}$${Math.abs(rounded).toLocaleString('en-US')}`;
-}
-
-/**
- * Money short enough for a chart's axis gutter (#376) — "$12k", "-$1.4k".
- *
- * A value axis has ~52px for its widest tick, and `money()` at five figures
- * blows straight through it; the #365 label-clipping lesson is that a
- * half-rendered label is worse than a shorter one. The sign is kept because a
- * P&L axis runs below zero, which is the whole point of charting it.
- */
-export function compactMoney(n: number): string {
-  const sign = n < 0 ? '-' : '';
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `${sign}$${trimTenth(abs / 1_000_000)}M`;
-  if (abs >= 1_000) return `${sign}$${trimTenth(abs / 1_000)}k`;
-  return `${sign}$${Math.round(abs)}`;
-}
-
-/** One decimal, and none at all when it would be a trailing zero. */
-function trimTenth(v: number): string {
-  const rounded = Math.round(v * 10) / 10;
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
-}
 
 function pct(n: number): string {
   return `${Math.round(n * 100)}%`;

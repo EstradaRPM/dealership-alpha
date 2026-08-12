@@ -17,8 +17,6 @@ export {
   dailyPnL,
   normalizeSeries,
   groupExpenses,
-  money,
-  compactMoney,
   FINANCE_RANGES,
 } from './financeModel';
 export type {

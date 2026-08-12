@@ -58,6 +58,9 @@ export {
   arcPath,
 } from './chartScale';
 export type { Point, BarBand, DonutSegment, ValueDomain } from './chartScale';
+// The app's one number-formatting surface (issue 387): compact when the figure
+// is ambient, exact when the player is about to act on it.
+export { money, compactMoney, grouped } from './money';
 export { SectionHeader } from './SectionHeader';
 export type { SectionHeaderProps } from './SectionHeader';
 export { Collapsible } from './Collapsible';

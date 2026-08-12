@@ -2,7 +2,7 @@ import type { GateBand, GateMonthVerdict } from '../../game/TierGate';
 import type { KPISnapshot } from '../../game/KPIDashboard';
 import type { PnLSummary } from '../../game/Economy';
 import type { BadgeTone } from '../kit';
-import { money } from './financeModel';
+import { money } from '../kit';
 
 /**
  * Month-close results (#351) — the career's closed months, newest first.

@@ -2,7 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { FunnelLeakCause } from '../../game/CapacityManager';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader, StatCard, IconBadge } from '../kit';
+/**
+ * The recap's gross is **compact** (issue 387) — an ambient close-of-day
+ * reading, stated the same way the Reveal scoreline directly above it states
+ * the same window.
+ */
+import { Surface, SectionHeader, StatCard, IconBadge, compactMoney } from '../kit';
 import { Reveal, type RevealModel } from '../Reveal';
 
 /**
@@ -32,11 +37,6 @@ export interface DayRecapModel {
   matchedSales: number;
   /** The Reveal scoreline + starred reactions for this day (#319). */
   reveal: RevealModel;
-}
-
-function money(n: number): string {
-  const sign = n < 0 ? '-' : '';
-  return `${sign}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
 }
 
 function leakCallout(m: DayRecapModel): string {
@@ -129,7 +129,7 @@ export function DayRecap({ model }: { model: DayRecapModel }) {
         <View style={styles.statCell}>
           <StatCard
             label="Gross"
-            value={money(model.gross)}
+            value={compactMoney(model.gross)}
             align="center"
             icon="cash"
             iconTone="reward"

@@ -84,11 +84,11 @@ describe('#380 both numbers are mounted in the live app', () => {
     // Cash stays the primary figure — it is the constraint every gate, ending
     // and bankruptcy check branches on, so the worth line never displaces it.
     expect(getByText('Cash on Hand')).toBeTruthy();
-    expect(getByText('$177,803')).toBeTruthy();
+    expect(getByText('$177.8k')).toBeTruthy();
 
     expect(getByTestId('home-store-worth')).toBeTruthy();
     expect(getByText('What the Store Is Worth')).toBeTruthy();
-    expect(getByText('$213,455')).toBeTruthy();
+    expect(getByText('$213.5k')).toBeTruthy();
     // The rule, stated where it is read: the total names what it sums.
     expect(getByText(/cost you/)).toBeTruthy();
   });
@@ -112,14 +112,14 @@ describe('#380 both numbers are mounted in the live app', () => {
     expect(getByTestId('finance-store-worth')).toBeTruthy();
     expect(getByText('Cash on Hand')).toBeTruthy();
     expect(getByText('What the Store Is Worth')).toBeTruthy();
-    expect(getByText('$213,455')).toBeTruthy();
+    expect(getByText('$213.5k')).toBeTruthy();
   });
 
   it('a store with no cars is worth its cash, not an empty state', () => {
     const empty = buildStoreWorth({ cash: 41_200, stockValue: 0, total: 41_200 });
     // Not a dash and not a blank card: a sold-out Tier-1 lot is a normal
     // morning, and "—" there would read as "unknown" on the day it matters.
-    expect(empty.worthValue).toBe('$41,200');
+    expect(empty.worthValue).toBe('$41.2k');
     expect(empty.worthValue).toBe(empty.cashValue);
 
     const model = buildHomeDashboard({
@@ -131,7 +131,7 @@ describe('#380 both numbers are mounted in the live app', () => {
       <HomeTab state={MANAGERIAL} dashboard={model} onOpenOperations={jest.fn()} />,
     );
     // Both figures render the same number — cash and worth, twice.
-    expect(getAllByText('$41,200')).toHaveLength(2);
+    expect(getAllByText('$41.2k')).toHaveLength(2);
   });
 
   it('both rooms build the pair off the engine getter, never their own sum', () => {

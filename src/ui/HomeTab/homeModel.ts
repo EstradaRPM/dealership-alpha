@@ -1,4 +1,5 @@
 import type { TrendDirection } from '../kit';
+import { compactMoney } from '../kit';
 import { buildStoreWorth } from '../StoreWorth';
 import type { StoreWorthInputs, StoreWorthModel } from '../StoreWorth';
 import type { GateStripModel } from './gateStripModel';
@@ -223,9 +224,15 @@ export function csiLabel(score: number): string {
   return csiBands.bands[csiBands.bands.length - 1]?.label ?? '—';
 }
 
+/**
+ * The HUD's cash move, **compact** (issue 387) — it is an ambient reading of
+ * the day's direction, not a figure anything is committed against. The kit
+ * formatter already carries a negative sign outside the symbol; the leading `+`
+ * is this surface's own, because a delta with no sign reads as a level.
+ */
 function formatSignedCash(amount: number): string {
-  const sign = amount >= 0 ? '+' : '-';
-  return `${sign}$${Math.abs(Math.round(amount)).toLocaleString()}`;
+  const lead = amount >= 0 ? '+' : '';
+  return `${lead}${compactMoney(amount)}`;
 }
 
 /**
@@ -241,7 +248,7 @@ function formatDelta(delta: CashDeltaSplit): { delta: string; deltaContext: stri
   }
   return {
     delta: `${formatSignedCash(delta.ops)} ops`,
-    deltaContext: `-$${Math.abs(Math.round(delta.stock)).toLocaleString()} into stock`,
+    deltaContext: `${compactMoney(-Math.abs(delta.stock))} into stock`,
   };
 }
 

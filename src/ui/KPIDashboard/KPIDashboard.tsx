@@ -2,13 +2,13 @@ import React from 'react';
 import { View, Text, type TextStyle } from 'react-native';
 import type { KPISnapshot } from '../../game/KPIDashboard';
 import { useTheme } from '../theme';
-import { SectionHeader } from '../kit';
+import { SectionHeader, money } from '../kit';
 import { MarketStatePanel } from './MarketStatePanel';
 import type { MarketStateModel } from './marketState';
 
-function fmt$(n: number): string {
-  return `$${Math.round(n).toLocaleString('en-US')}`;
-}
+// Exact (issue 387). These rows sit inside the Finance room, where every figure
+// has to reconcile with the statement below it.
+const fmt$ = money;
 
 function KPIRow({ label, value }: { label: string; value: string }) {
   const t = useTheme();

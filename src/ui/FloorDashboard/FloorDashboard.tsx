@@ -1,5 +1,13 @@
 import React from 'react';
 import { colors } from '../theme';
+/**
+ * Every currency figure on this HUD is **compact** (issue 387). Cash, the day's
+ * running gross and the floored value are ambient readings of a day in progress
+ * — watched, not committed against — and the HUD row is the tightest horizontal
+ * space in the app. The prices the player actually acts on are stated to the
+ * dollar in the rooms where they are acted on.
+ */
+import { compactMoney } from '../kit';
 import {
   View,
   Text,
@@ -133,11 +141,6 @@ interface Props {
   onOpenGameMenu?: () => void;
 }
 
-function money(n: number): string {
-  const sign = n < 0 ? '-' : '';
-  return `${sign}$${Math.abs(Math.round(n)).toLocaleString()}`;
-}
-
 /**
  * Representative open-hours wall clock from the logical tick fraction. Pure
  * presentation — game logic stays wall-clock-free; this only maps
@@ -251,12 +254,12 @@ export function FloorDashboard({
         <Text style={styles.hudCell} testID="floor-time-to-close">
           {timeToCloseLabel(tick, ticksPerDay, openHour, closeHour)}
         </Text>
-        <Text style={styles.hudCell}>{money(cash)}</Text>
+        <Text style={styles.hudCell}>{compactMoney(cash)}</Text>
         {regulatoryPressure ? (
           <RegulatoryGauge model={regulatoryPressure} />
         ) : null}
         <Text style={styles.hudCell}>
-          {sold}U · {money(gross)}
+          {sold}U · {compactMoney(gross)}
         </Text>
         {onOpenGameMenu ? (
           <TouchableOpacity
@@ -319,7 +322,7 @@ export function FloorDashboard({
           <Stat label="UPS" value={String(ups)} />
           <Stat label="SOLD" value={String(sold)} />
           <Stat label="PENDING-WARM" value={String(pendingWarm)} />
-          <Stat label="GROSS" value={money(gross)} />
+          <Stat label="GROSS" value={compactMoney(gross)} />
         </View>
 
         {/* Impressionistic staff strip */}
@@ -346,7 +349,7 @@ export function FloorDashboard({
         <Text style={styles.sectionLabel}>INVENTORY</Text>
         <View style={styles.grid}>
           <Stat label="ON LOT" value={String(inventory.unitsOnLot)} />
-          <Stat label="FLOORED" value={money(inventory.flooredValue)} />
+          <Stat label="FLOORED" value={compactMoney(inventory.flooredValue)} />
           <Stat
             label="AVG DAYS"
             value={String(Math.round(inventory.avgDaysInInventory))}

@@ -47,13 +47,13 @@ describe('#230 buildHomeDashboard — pure model math', () => {
 
   it('formats cash + a signed vs-yesterday delta with a trend', () => {
     const m = buildHomeDashboard(INPUTS);
-    expect(m.cash.value).toBe('$1,247,503');
-    expect(m.cash.delta).toBe('+$32,490');
+    expect(m.cash.value).toBe('$1.2M');
+    expect(m.cash.delta).toBe('+$32.5k');
     expect(m.cash.deltaContext).toBe('vs yesterday');
     expect(m.cash.trend).toBe('up');
 
     const down = buildHomeDashboard({ ...INPUTS, cashDelta: { ops: -1500, stock: 0 } });
-    expect(down.cash.delta).toBe('-$1,500');
+    expect(down.cash.delta).toBe('-$1.5k');
     expect(down.cash.deltaContext).toBe('vs yesterday');
     expect(down.cash.trend).toBe('down');
 
@@ -70,8 +70,8 @@ describe('#230 buildHomeDashboard — pure model math', () => {
       ...INPUTS,
       cashDelta: { ops: 12_490, stock: 38_000 },
     });
-    expect(m.cash.delta).toBe('+$12,490 ops');
-    expect(m.cash.deltaContext).toBe('-$38,000 into stock');
+    expect(m.cash.delta).toBe('+$12.5k ops');
+    expect(m.cash.deltaContext).toBe('-$38k into stock');
     expect(m.cash.trend).toBe('up');
 
     // Ops loss alongside a buy still trends down — the split is honest, it
@@ -80,8 +80,8 @@ describe('#230 buildHomeDashboard — pure model math', () => {
       ...INPUTS,
       cashDelta: { ops: -2_000, stock: 38_000 },
     });
-    expect(opsLoss.cash.delta).toBe('-$2,000 ops');
-    expect(opsLoss.cash.deltaContext).toBe('-$38,000 into stock');
+    expect(opsLoss.cash.delta).toBe('-$2k ops');
+    expect(opsLoss.cash.deltaContext).toBe('-$38k into stock');
     expect(opsLoss.cash.trend).toBe('down');
   });
 
@@ -117,7 +117,7 @@ describe('#230 Home dashboard — reachable through the live pipeline', () => {
     expect(getByTestId('home-dashboard')).toBeTruthy();
     // Identity (name + tier) now lives in the AppShell header, not the
     // dashboard body (#238); the dashboard leads with the cash card.
-    expect(getByText('$1,247,503')).toBeTruthy();
+    expect(getByText('$1.2M')).toBeTruthy();
     expect(getByText('Very Good')).toBeTruthy(); // CSI band
     // The day now renders as the skeuo calendar-page badge (#240): a "DAY"
     // header strip over the number, not a single "Day 42" text run.

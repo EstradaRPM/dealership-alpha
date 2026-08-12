@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../theme';
+import { money, grouped } from '../kit';
 import type { CurrentVehicle } from '../../game/NPC';
 
 /**
@@ -50,12 +51,12 @@ export function CustomerCard({ model }: Props) {
             {cv.year} {cv.make} {cv.model}
           </Text>
           <Text style={styles.detailLine}>
-            {cv.mileage.toLocaleString()} mi · {CONDITION_LABEL[cv.condition]}
+            {grouped(cv.mileage)} mi · {CONDITION_LABEL[cv.condition]}
           </Text>
           <Text style={styles.payoffLine}>
             {cv.loanPayoff === null
               ? 'Owned outright'
-              : `Loan payoff: $${cv.loanPayoff.toLocaleString()}`}
+              : `Loan payoff: ${money(cv.loanPayoff)}`}
           </Text>
         </>
       )}

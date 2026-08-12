@@ -1,5 +1,6 @@
 import React from 'react';
 import { colors } from '../theme';
+import { money, grouped } from '../kit';
 import {
   Modal,
   View,
@@ -88,7 +89,9 @@ interface Props {
   vehicleSold?: boolean;
 }
 
-const dollars = (n: number): string => `$${Math.round(n).toLocaleString('en-US')}`;
+// The figure being answered is stated **exactly** (issue 387) — this modal is
+// the moment the player commits to it.
+const dollars = money;
 
 export function TradeEscalationModal({
   visible,
@@ -112,14 +115,14 @@ export function TradeEscalationModal({
 
   const cv = review?.currentVehicle;
   const vehicleSummary = cv
-    ? `${cv.year} ${cv.make} ${cv.model} · ${cv.mileage.toLocaleString('en-US')} mi · ${cv.condition}`
+    ? `${cv.year} ${cv.make} ${cv.model} · ${grouped(cv.mileage)} mi · ${cv.condition}`
     : '—';
 
   // The unit off our lot the deal is on (#364) — named on every state, because
   // once it sells to someone else the prompt still has to say which car it was.
   const dv = review?.vehicle;
   const dealUnitSummary = dv
-    ? `${dv.year} ${dv.make} ${dv.model} · ${dv.mileage.toLocaleString('en-US')} mi`
+    ? `${dv.year} ${dv.make} ${dv.model} · ${grouped(dv.mileage)} mi`
     : '—';
 
   // The honest "why the ask is high" signal (#283): how far the lien exceeds

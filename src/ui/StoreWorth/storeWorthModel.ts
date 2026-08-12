@@ -9,6 +9,8 @@
  * owns the sum, and this only decides how it reads.
  */
 
+import { compactMoney } from '../kit';
+
 /** The engine's `StoreWorth`, restated with no game-logic import. */
 export interface StoreWorthInputs {
   readonly cash: number;
@@ -43,11 +45,14 @@ const WORTH_LABEL = 'What the Store Is Worth';
  */
 const WORTH_CAPTION = 'Your cash plus what the cars on your lot cost you.';
 
-function money(n: number): string {
-  const rounded = Math.round(n);
-  const sign = rounded < 0 ? '-' : '';
-  return `${sign}$${Math.abs(rounded).toLocaleString('en-US')}`;
-}
+/**
+ * Both figures are **compact** (issue 387). Cash on hand and the store's worth
+ * are the HUD's ambient position — nothing is committed against either, the
+ * reading is the magnitude, and both are wide enough that exact dollars crowd
+ * the headline they sit in. Anything the player commits cash against — a bid, a
+ * build, a wage — states its own figure to the dollar in the room where it is
+ * committed.
+ */
 
 /**
  * An empty lot is **not** an empty state: the store is worth its cash, and a
@@ -57,9 +62,9 @@ function money(n: number): string {
 export function buildStoreWorth(input: StoreWorthInputs): StoreWorthModel {
   return {
     cashLabel: CASH_LABEL,
-    cashValue: money(input.cash),
+    cashValue: compactMoney(input.cash),
     worthLabel: WORTH_LABEL,
-    worthValue: money(input.total),
+    worthValue: compactMoney(input.total),
     worthCaption: WORTH_CAPTION,
   };
 }

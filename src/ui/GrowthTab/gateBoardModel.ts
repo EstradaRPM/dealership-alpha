@@ -5,6 +5,7 @@ import type {
   TierRequirements,
 } from '../../game/TierGate';
 import type { ProgressTone, TrendDirection } from '../kit';
+import { compactMoney } from '../kit';
 
 /**
  * Pure read-model builder for the Growth **tier-gate detail board** (#349).
@@ -88,9 +89,10 @@ const MONEY_FACES: ReadonlySet<string> = new Set(['gross', 'cash']);
 function fmtValue(id: string, n: number, decimals = 0): string {
   const rounded =
     decimals > 0 ? Number(n.toFixed(decimals)) : Math.round(n);
-  return MONEY_FACES.has(id)
-    ? `$${Math.round(n).toLocaleString()}`
-    : `${rounded.toLocaleString()}`;
+  // Compact (issue 387): the board is an ambient read of where the store stands
+  // against its gate, the same reading the Home strip states — nothing here is
+  // committed against.
+  return MONEY_FACES.has(id) ? compactMoney(n) : `${rounded}`;
 }
 
 function clamp01(x: number): number {

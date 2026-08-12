@@ -24,7 +24,7 @@ import { SALES_ARCHETYPES } from '../../game/CustomerPool';
 import type { PlaytestLog } from '../../game/PlaytestLog';
 import { exportMarkdown } from '../../game/PlaytestLog';
 import { CustomerCard } from '../CustomerCard';
-import { useConfirm } from '../kit';
+import { useConfirm, money } from '../kit';
 import { colors } from '../theme';
 
 interface Props {
@@ -106,7 +106,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
     if (amount === null) { setStatus('enter a valid amount'); return; }
     economy.postRevenue(amount, 'Admin cash injection');
     setCash(economy.cash);
-    setStatus(`injected $${amount.toLocaleString()} → balance $${economy.cash.toLocaleString()}`);
+    setStatus(`injected ${money(amount)} → balance ${money(economy.cash)}`);
   };
 
   const resetCash = () => {
@@ -119,7 +119,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
       economy.forceDebit(-delta, 'Admin cash reset');
     }
     setCash(economy.cash);
-    setStatus(`balance set to $${economy.cash.toLocaleString()}`);
+    setStatus(`balance set to ${money(economy.cash)}`);
   };
 
   const advanceDays = () => {
@@ -264,7 +264,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
                 Day {currentDay} · {clock.currentSeason}
               </Text>
               <Text style={styles.statLine}>
-                Cash: ${cash.toLocaleString()}
+                Cash: {money(cash)}
               </Text>
               <Text style={styles.statLine}>
                 Telemetry: {telemetry.isEnabled() ? 'recording' : 'off'} · {eventCount} events buffered

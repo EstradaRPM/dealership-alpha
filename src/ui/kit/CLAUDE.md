@@ -89,6 +89,44 @@ Uncontrolled by default (`defaultExpanded`); pass `expanded` + `onToggle` when
 the parent must drive it. `variant` + `bodyPadded` let a panel host a card
 instead of raw content without nesting two raised slabs.
 
+## Stating a number
+
+`money` · `compactMoney` · `grouped` (issue 387) are the app's **one**
+number-formatting surface. One rule decides which:
+
+**Compact when the figure is ambient, exact when the player is about to act on
+it.**
+
+- **`compactMoney`** — `$12.4k`, `$1.2M`, exact below $1,000. The Home HUD
+  headline and its cash delta, the store's worth, the gate strip's month gross
+  and pace, the Growth gate board, the live-floor HUD, the day recap's gross, a
+  chart's axis ticks, the Reveal **scoreline**.
+- **`money`** — `$12,431`. An asking price, an auction bid, a trade allowance, a
+  monthly payment, a wage, a hire fee, a build cost, a wholesale offer, a credit
+  draw — and the whole Finance room, whose statement, department bars and
+  headline cards have to reconcile with each other on screen. A figure the
+  player can check against another figure counts as acting on it.
+- **`grouped`** — `84,000`, no symbol, for the counts that sit beside money
+  (odometers).
+
+Two rules the formatters are built on:
+
+- **The sign goes outside the symbol** — `-$1,400`, never `$-1,400`. A negative
+  position must not read as a positive one at a glance. One formatter also means
+  one sign glyph: the ASCII hyphen, not the typographic minus one panel used to
+  carry alone.
+- **No `Intl`, ever.** Hermes ships without full `Intl`, so
+  `toLocaleString('en-US')` silently renders an ungrouped run of digits on the
+  platforms the game ships to while reading correctly on the web target an agent
+  drives. Grouping is done by hand, once, in `money.ts`.
+
+`tests/MoneyFormat.noleak.test.ts` fails the build over `toLocaleString`, a
+`` $${ `` template, or a hand-rolled grouping regex anywhere under `src/ui/**`
+(outside the kit) or `src/app/**` — the guard is absolute rather than
+currency-only, because the Hermes gap is a property of the grouping. `src/game/**`
+is not scanned: the engine may not import from `src/ui/**`, so it physically
+cannot reach this barrel.
+
 ## Asking the player to confirm something
 
 **`Alert.alert` is a no-op on web and must never come back.** react-native-web

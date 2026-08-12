@@ -107,13 +107,13 @@ describe('buildGateBoard — the faces, spelled out', () => {
   it('renders money faces as money and score faces bare', () => {
     const board = buildGateBoard(PROGRESS, null);
     const cash = board.faces.find((f) => f.id === 'cash')!;
-    expect(cash.valueLabel).toBe('Avg $52,400');
+    expect(cash.valueLabel).toBe('Avg $52.4k');
     expect(cash.statusLabel).toBe('Under the bar');
     expect(cash.tone).toBe('danger');
     expect(cash.trend).toBe('down');
     const cashDetails = Object.fromEntries(cash.details.map((d) => [d.label, d.value]));
-    expect(cashDetails['Bar to clear']).toBe('$60,000');
-    expect(cashDetails['Right now']).toBe('$48,300');
+    expect(cashDetails['Bar to clear']).toBe('$60k');
+    expect(cashDetails['Right now']).toBe('$48.3k');
     expect(cashDetails['Direction']).toBe('Sliding');
 
     const csi = board.faces.find((f) => f.id === 'csi')!;
@@ -198,8 +198,8 @@ describe('buildGateBoard — the climb', () => {
     expect(climb.streakLabel).toBe('Track record: month 1 of 2');
     expect(climb.requirements).toEqual([
       { label: 'Retail Units', value: '15 a month' },
-      { label: 'Gross Profit', value: '$30,000 a month' },
-      { label: 'Cash on Hand', value: '$150,000' },
+      { label: 'Gross Profit', value: '$30k a month' },
+      { label: 'Cash on Hand', value: '$150k' },
     ]);
   });
 

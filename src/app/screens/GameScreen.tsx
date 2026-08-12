@@ -1,4 +1,5 @@
 import React from 'react';
+import { money } from '../../ui/kit';
 import type { World } from '../../createWorld';
 import type { CharacterProfile } from '../../game/CareerProgression';
 import type { LotVehicle } from '../../game/Inventory';
@@ -296,7 +297,7 @@ export function GameScreen({
         id: o.id,
         label: o.label,
         blurb: o.blurb,
-        costLabel: o.dailyCost > 0 ? `$${o.dailyCost.toLocaleString()}/day` : undefined,
+        costLabel: o.dailyCost > 0 ? `${money(o.dailyCost)}/day` : undefined,
       })),
       selectedId: world.demandControls.getAdvertisingCampaignId(),
       onSelect: levers.handleSelectAdvertisingCampaign,

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../theme';
-import { Collapsible, Button, Badge, Meter } from '../kit';
+import { Collapsible, Button, Badge, Meter, money } from '../kit';
 import {
   wageText,
   skillGrowthText,
@@ -331,7 +331,7 @@ export function CandidateCard({
         // same desk quote different fees — it is a number to compare, not a
         // constant to skim past.
         <PayColumn
-          primary={`$${candidate.hiringCost.toLocaleString()}`}
+          primary={money(candidate.hiringCost)}
           caption="to sign"
           testID={`people-candidate-fee-${candidate.id}`}
         />
@@ -348,7 +348,7 @@ export function CandidateCard({
               roleFull
                 ? 'No desk open for this job'
                 : affordable
-                  ? `Hire — $${candidate.hiringCost.toLocaleString()}`
+                  ? `Hire — ${money(candidate.hiringCost)}`
                   : "Can't afford"
             }
             onPress={blocked ? undefined : onHire}

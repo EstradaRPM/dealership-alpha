@@ -4,6 +4,7 @@ import type { DayFunnel } from '../../game/CapacityManager';
 import type { PrepBet, PrepCategory } from '../../game/PrepBet';
 import type { RecordKind } from '../../game/Records';
 import type { FniMonthVerdict } from '../../game/DealEngine';
+import { compactMoney, money } from '../kit';
 
 /**
  * Pure read-model builder for **The Reveal** (#319, design record
@@ -111,10 +112,14 @@ export interface BrokenRecord {
 /** A record that beat a standing mark — the only kind that earns a crown. */
 export type CrownedRecord = BrokenRecord & { previousValue: number };
 
-function money(n: number): string {
-  const sign = n < 0 ? '-' : '';
-  return `${sign}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
-}
+/**
+ * The scoreline states a window's gross **compactly** and every reaction states
+ * its own figure **exactly** (issue 387). The scoreline is the ambient tally at
+ * the top of the feed — the reading is the magnitude — while a reaction names
+ * one deal or one standing mark, and "beating $4.9k" is a claim the player
+ * cannot check against the record it just broke.
+ */
+
 
 const CATEGORY_PHRASE: Record<ClosedSale['vehicleCategory'], string> = {
   sedan: 'a sedan',
@@ -640,7 +645,7 @@ function matchReaction(
     return {
       id: 'match-summary',
       tone: 'neutral',
-      text: `No sales closed ${span}. ${money(gross)} gross.`,
+      text: `No sales closed ${span}. ${compactMoney(gross)} gross.`,
     };
   }
   const strong = majorityStrong(tally);
@@ -650,7 +655,7 @@ function matchReaction(
   return {
     id: 'match-summary',
     tone: strong ? 'positive' : 'negative',
-    text: `${tally.strong} of ${tally.matched} stuck — ${verdict}. ${money(gross)} gross ${span}.`,
+    text: `${tally.strong} of ${tally.matched} stuck — ${verdict}. ${compactMoney(gross)} gross ${span}.`,
   };
 }
 

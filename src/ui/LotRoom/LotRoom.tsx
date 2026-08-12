@@ -11,7 +11,10 @@ import {
 } from 'react-native';
 import type { LotOccupancy, WholesaleQuote } from '../../game/Inventory';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader, Badge, Button, HintLine } from '../kit';
+// Every dollar in this room is **exact** (issue 387): an asking price, a
+// wholesale offer, what the store has in a car and what a day on the lot costs
+// are all figures the player either sets or presses a button to accept.
+import { Surface, SectionHeader, Badge, Button, HintLine, money } from '../kit';
 import { ChipRow } from '../DeptControls';
 // The app chrome's floating bottom band is the shell's to describe; a pushed
 // room clears the same band rather than guessing at a second number.
@@ -92,8 +95,8 @@ export interface LotRoomProps {
 
 /** "$3,100 loss" / "$400 gain" / "break-even" — never a bare signed number. */
 function resultLine(gain: number): string {
-  if (gain < 0) return `$${Math.abs(gain).toLocaleString()} loss`;
-  if (gain > 0) return `$${gain.toLocaleString()} gain`;
+  if (gain < 0) return `${money(Math.abs(gain))} loss`;
+  if (gain > 0) return `${money(gain)} gain`;
   return 'break-even';
 }
 
@@ -127,12 +130,12 @@ function WholesaleConfirm({
           <View style={s.modalLine}>
             <Text style={s.modalLabel}>A wholesale buyer pays</Text>
             <Text style={s.modalValue} testID="lot-wholesale-proceeds">
-              {`$${proceeds.toLocaleString()}`}
+              {money(proceeds)}
             </Text>
           </View>
           <View style={s.modalLine}>
             <Text style={s.modalLabel}>You have in it</Text>
-            <Text style={s.modalValue}>{`$${costBasis.toLocaleString()}`}</Text>
+            <Text style={s.modalValue}>{money(costBasis)}</Text>
           </View>
           <View style={s.modalLine}>
             <Text style={s.modalLabel}>You take</Text>
@@ -211,12 +214,11 @@ function StockRow({
           )}
         </View>
         <Text style={s.rowSuggested}>
-          Suggested ${vehicle.suggestedRetail.toLocaleString()} · Tune ›
+          Suggested {money(vehicle.suggestedRetail)} · Tune ›
         </Text>
         <Text style={carry}>
-          {vehicle.daysInInventory}d on lot · carry $
-          {vehicle.carryingCostToDate.toLocaleString()} · $
-          {vehicle.dailyCarryingCost.toLocaleString()}/day
+          {vehicle.daysInInventory}d on lot · carry {money(vehicle.carryingCostToDate)} ·{' '}
+          {money(vehicle.dailyCarryingCost)}/day
         </Text>
       </TouchableOpacity>
       <View style={s.rowRight}>
@@ -234,7 +236,7 @@ function StockRow({
             wholesale buyer would pay for it. The proceeds are on the button so
             the offer is readable before you ever open the confirmation. */}
         <Button
-          label={`Wholesale $${vehicle.wholesale.proceeds.toLocaleString()}`}
+          label={`Wholesale ${money(vehicle.wholesale.proceeds)}`}
           variant="ghost"
           onPress={onWholesale}
           testID={`lot-wholesale-button-${vehicle.id}`}

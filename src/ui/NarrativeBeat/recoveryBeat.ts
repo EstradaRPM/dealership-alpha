@@ -28,6 +28,8 @@
  */
 
 /** The four survivable recovery events, keyed by their EventBus name tail. */
+import { money as kitMoney } from '../kit';
+
 export type RecoveryEventKind =
   | 'bankruptcy_contraction'
   | 'indictment_contraction'
@@ -89,10 +91,15 @@ export interface RecoveryMonitorSnapshot {
   suspensionDaysRemaining: number;
 }
 
-/** `$1,234` — deterministic thousands grouping, no Intl dependency (Hermes). */
+/**
+ * The beat's figures are **exact** (issue 387): an outstanding debt and a
+ * suspension are things the player owes and pays, not ambient readings. The kit
+ * formatter carries the same Intl-free grouping this file used to roll itself,
+ * so the copy is unchanged; the clamp at zero stays here because a recovery beat
+ * never states a negative debt.
+ */
 function money(n: number): string {
-  const whole = Math.max(0, Math.round(n));
-  return '$' + String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return kitMoney(Math.max(0, n));
 }
 
 /** Number of days worded for copy ("1 day" / "12 days"). */
