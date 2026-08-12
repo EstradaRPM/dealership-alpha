@@ -62,5 +62,7 @@ export { SectionHeader } from './SectionHeader';
 export type { SectionHeaderProps } from './SectionHeader';
 export { Collapsible } from './Collapsible';
 export type { CollapsibleProps } from './Collapsible';
+export { HintLine } from './HintLine';
+export type { HintLineProps } from './HintLine';
 export { ConfirmDialog, useConfirm } from './ConfirmDialog';
 export type { ConfirmDialogProps, ConfirmRequest, Confirm } from './ConfirmDialog';

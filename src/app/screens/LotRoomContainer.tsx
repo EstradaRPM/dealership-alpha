@@ -13,6 +13,8 @@ export interface LotRoomContainerProps {
   lotVehicles: readonly LotVehicle[];
   pricingStrategyId: string;
   onSelectPricingStrategy: (id: string) => void;
+  /** The strategy dial's consequence hint (#386), null once it has retired. */
+  pricingStrategyHint: string | null;
   persistCurrentSave: () => void;
   setLotVehicles: (v: readonly LotVehicle[]) => void;
 }
@@ -30,6 +32,7 @@ export function LotRoomContainer({
   lotVehicles,
   pricingStrategyId,
   onSelectPricingStrategy,
+  pricingStrategyHint,
   persistCurrentSave,
   setLotVehicles,
 }: LotRoomContainerProps) {
@@ -66,6 +69,7 @@ export function LotRoomContainer({
         pricingStrategyOptions={PRICING_STRATEGY_OPTIONS}
         pricingStrategyId={pricingStrategyId}
         onSelectPricingStrategy={onSelectPricingStrategy}
+        pricingStrategyHint={pricingStrategyHint}
         // #285 (spine S13): the strategy is a standing auto-pricing policy once
         // a UCM is on staff — the same roster signal the pricing screen reads.
         autoPricingActive={world.staffOrg.currentRoster.some(

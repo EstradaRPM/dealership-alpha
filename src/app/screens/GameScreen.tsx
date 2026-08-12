@@ -42,6 +42,7 @@ import type {
 } from '../../ui/DemandReadout';
 import type { FloorEvent } from '../../ui/FloorDashboard';
 import type { Levers } from '../useLevers';
+import type { Hints } from '../useHints';
 import {
   HERO_BY_TIER,
   RENDER_LOOP,
@@ -75,6 +76,8 @@ export interface GameScreenProps {
   cashDelta: CashDeltaSplit | null;
   floorLoop: FloorRenderLoop;
   levers: Levers;
+  /** The teaching cluster (#386) — which consequence hints are still owed. */
+  hints: Hints;
   /** Per-tab navigation stacks (#348): the active tab AND its stack position.
    *  One owner for "which tab, and where inside it" — this retired the lifted
    *  `shellTab` workaround the old unmount-the-shell pattern needed. */
@@ -110,6 +113,7 @@ export function GameScreen({
   cashDelta,
   floorLoop,
   levers,
+  hints,
   tabs,
   stackScreen,
   lastRecap,
@@ -233,6 +237,11 @@ export function GameScreen({
     })),
     fniPostureId: levers.fniPostureId,
     onSelectFniPosture: levers.handleSelectFniPosture,
+    // Consequence hints (#386). Resolved here, not in the block: what a hint
+    // says is `data/hints.json`'s, and whether it is still owed is the slot's
+    // teaching cell — neither is something a lever surface should decide.
+    tradePolicyHint: hints.hintFor('trade_policy'),
+    fniPostureHint: hints.hintFor('fni_posture'),
     fniDeskStaffed: world.staffOrg.currentRoster.some(
       (s) => s.role_id === 'f&i-manager',
     ),

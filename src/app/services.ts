@@ -24,6 +24,7 @@ import type {
   DriverFactory,
   LegacyStore,
   SnapshotStore,
+  TeachingStore,
 } from '../game/SaveStore';
 import type { WorldSnapshot } from '../worldSnapshot';
 
@@ -39,6 +40,8 @@ export interface AppServices {
    */
   playtestLog: PlaytestLog;
   snapshotStoreForActiveSlot(): Promise<SnapshotStore | null>;
+  /** The active slot's teaching progress (#386) — retired hints and beats. */
+  teachingStoreForActiveSlot(): Promise<TeachingStore | null>;
 }
 
 export function createAppServices(driverFactory: DriverFactory): AppServices {
@@ -78,5 +81,6 @@ export function createAppServices(driverFactory: DriverFactory): AppServices {
     // so that deleting a slot can wipe all of them; a `snapshot:<id>` cell
     // created at this layer outlived the slot it belonged to.
     snapshotStoreForActiveSlot: () => slotStore.snapshotStore(),
+    teachingStoreForActiveSlot: () => slotStore.teachingStore(),
   };
 }

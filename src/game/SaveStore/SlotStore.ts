@@ -1,5 +1,6 @@
 import { createSaveStore } from './SaveStore';
 import { createSnapshotStore } from './SnapshotStore';
+import { createTeachingStore } from './TeachingStore';
 import type {
   DriverFactory,
   MidDayCheckpoint,
@@ -38,6 +39,14 @@ function checkpointKey(id: string): string {
 // forever with nothing able to address them again.
 function snapshotKey(id: string): string {
   return `snapshot:${id}`;
+}
+
+// What the player has been taught in this slot (issue 386) — the retired
+// consequence hints and, above them, every teaching beat that writes into the
+// same cell. Per-slot because two careers learn independently, and minted here
+// for the same reason the snapshot key now is: `deleteSlot` has to reach it.
+function teachingKey(id: string): string {
+  return `teaching:${id}`;
 }
 
 export interface MultiSlotOptions {
@@ -110,13 +119,15 @@ export function createMultiSlotSaveStore(
     async deleteSlot(id) {
       const index = await readIndex();
       if (!index.slots.some((s) => s.id === id)) return;
-      // Wipe every cell this slot owns — blob, checkpoint and weekly-snapshot
-      // window. Other slots use independent drivers, so siblings are untouched.
-      // A delete that left one of the three behind would leave storage holding
-      // a career the player asked to be rid of, unreachable and un-deletable.
+      // Wipe every cell this slot owns — blob, checkpoint, weekly-snapshot
+      // window and teaching progress. Other slots use independent drivers, so
+      // siblings are untouched. A delete that left one of the four behind would
+      // leave storage holding part of a career the player asked to be rid of,
+      // unreachable and un-deletable.
       await createSaveStore(driverFactory(slotKey(id))).clear();
       await driverFactory(checkpointKey(id)).clear();
       await createSnapshotStore(driverFactory(snapshotKey(id))).clear();
+      await createTeachingStore(driverFactory(teachingKey(id))).clear();
       const slots = index.slots.filter((s) => s.id !== id);
       await writeIndex({
         ...index,
@@ -183,6 +194,12 @@ export function createMultiSlotSaveStore(
       const index = await readIndex();
       if (index.activeSlotId === null) return null;
       return createSnapshotStore(driverFactory(snapshotKey(index.activeSlotId)));
+    },
+
+    async teachingStore() {
+      const index = await readIndex();
+      if (index.activeSlotId === null) return null;
+      return createTeachingStore(driverFactory(teachingKey(index.activeSlotId)));
     },
   };
 }

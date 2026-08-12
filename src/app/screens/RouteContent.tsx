@@ -29,6 +29,7 @@ import {
 import type { WorldState } from '../useWorldState';
 import type { SaveSlots } from '../useSaveSlots';
 import type { Levers } from '../useLevers';
+import type { Hints } from '../useHints';
 import type { DayLoop } from '../useDayLoop';
 import { TIER_FIXTURES, type TierFixture } from '../devFixtures';
 
@@ -42,6 +43,8 @@ export interface RouteContentProps {
   worldState: WorldState;
   saveSlots: SaveSlots;
   levers: Levers;
+  /** The teaching cluster (#386) — which consequence hints are still owed. */
+  hints: Hints;
   dayLoop: DayLoop;
   floorLoop: FloorRenderLoop;
   loadActiveSlotIntoGame: () => Promise<void>;
@@ -65,6 +68,7 @@ export function RouteContent({
   worldState,
   saveSlots,
   levers,
+  hints,
   dayLoop,
   floorLoop,
   loadActiveSlotIntoGame,
@@ -163,6 +167,10 @@ export function RouteContent({
           onLoadSlot={(slotId) => void saveSlots.handleInGameLoadSlot(slotId)}
           onReturnToMainMenu={() => void saveSlots.handleReturnToMainMenu()}
           onSettings={saveSlots.openSettings}
+          // #386: re-arm every retired hint for this career. The menu is where
+          // it lives because it is the one surface reachable from anywhere in
+          // the game without giving up where the player was standing.
+          onShowHintsAgain={hints.resetHints}
         />
       </>
     );
@@ -194,6 +202,7 @@ export function RouteContent({
           cashDelta={dayLoop.cashDelta}
           floorLoop={floorLoop}
           levers={levers}
+          hints={hints}
           tabs={tabs}
           // The active tab's pushed sub-screen, rendered by the shell with the
           // tab bar still up (#348). Null at a tab's root, where the tab's own
@@ -205,6 +214,7 @@ export function RouteContent({
                 world={world}
                 bus={bus}
                 levers={levers}
+                hints={hints}
                 lotVehicles={lotVehicles}
                 cash={cash}
                 persistCurrentSave={persistCurrentSave}

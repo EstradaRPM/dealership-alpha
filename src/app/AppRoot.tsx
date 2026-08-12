@@ -26,6 +26,7 @@ import type { TierFixture } from './devFixtures';
 import { useWorldState } from './useWorldState';
 import { useSaveSlots } from './useSaveSlots';
 import { useLevers } from './useLevers';
+import { useHints } from './useHints';
 import { useModals } from './useModals';
 import { useDayLoop } from './useDayLoop';
 import { AppOverlays } from './screens/AppOverlays';
@@ -105,7 +106,17 @@ export function DealershipApp({
   });
   const { buildCurrentSaveState, persistCurrentSave } = saveSlots;
 
-  const levers = useLevers({ worldRef, persistCurrentSave, bump });
+  // The teaching cluster (#386). Built before the levers because every dial a
+  // hint hangs under retires it through `onControlUsed` — one seam, so a hint
+  // cannot survive the control it teaches being used.
+  const hints = useHints({ slotStore });
+
+  const levers = useLevers({
+    worldRef,
+    persistCurrentSave,
+    bump,
+    onControlUsed: hints.markUsed,
+  });
 
   const modals = useModals({
     bus,
@@ -249,6 +260,9 @@ export function DealershipApp({
     // modal does not auto-pop on load — it pops only on an actual day close.
     dayLoop.setLastRecap((state.lastRecap as DayRecapModel | undefined) ?? null);
     dayLoop.setRecapModalOpen(false);
+    // Re-read the loaded slot's teaching cell (#386) — the mount-time read
+    // answered for whatever slot was active then, which is not this one.
+    hints.refresh();
     setLotVehicles(w.inventory.getLotVehicles());
     setProfile(character);
     nav.reset('game');
@@ -312,6 +326,10 @@ export function DealershipApp({
     // Fresh game → no recap yet; Home shows honest pre-Day-1 copy (#253).
     dayLoop.setLastRecap(null);
     dayLoop.setRecapModalOpen(false);
+    // Re-read the new slot's teaching cell (#386). A career started in the same
+    // session as another one must not inherit its retired hints — the cell is
+    // per-slot, so the only thing that can go stale is this in-memory read.
+    hints.refresh();
     setProfile(p);
     nav.reset('game');
   };
@@ -444,6 +462,7 @@ export function DealershipApp({
               worldState={worldState}
               saveSlots={saveSlots}
               levers={levers}
+              hints={hints}
               dayLoop={dayLoop}
               floorLoop={floorLoop}
               loadActiveSlotIntoGame={loadActiveSlotIntoGame}

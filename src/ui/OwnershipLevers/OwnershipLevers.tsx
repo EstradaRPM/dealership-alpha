@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader } from '../kit';
+import { Surface, SectionHeader, HintLine } from '../kit';
 import { ChipRow } from '../DeptControls';
 import { FniPeakMeter, type FniPeakMeterProps } from './FniPeakMeter';
 
@@ -55,6 +55,13 @@ export interface OwnershipLeversProps {
    * than a guess. Omit and the block renders the dial alone.
    */
   fniPeak?: FniPeakMeterProps;
+  /**
+   * Consequence hints (#386), each null once the player has used that dial. The
+   * copy is `data/hints.json`'s and arrives already resolved — this surface
+   * never decides what a hint says or whether it is still owed.
+   */
+  tradePolicyHint?: string | null;
+  fniPostureHint?: string | null;
 }
 
 /**
@@ -84,6 +91,8 @@ export function OwnershipLevers({
   onSelectFniPosture,
   fniDeskStaffed,
   fniPeak,
+  tradePolicyHint,
+  fniPostureHint,
 }: OwnershipLeversProps) {
   const t = useTheme();
   const selectedPolicy =
@@ -145,6 +154,9 @@ export function OwnershipLevers({
             {selectedPolicy && (
               <Text style={blurb}>{selectedPolicy.blurb}</Text>
             )}
+            {tradePolicyHint && (
+              <HintLine text={tradePolicyHint} testID="hint-trade-policy" />
+            )}
           </Surface>
         </View>
 
@@ -171,6 +183,9 @@ export function OwnershipLevers({
                 No finance manager on staff — nobody is working the rate, so this
                 setting does nothing until you hire one.
               </Text>
+            )}
+            {fniPostureHint && (
+              <HintLine text={fniPostureHint} testID="hint-fni-posture" />
             )}
             {fniPeak && <FniPeakMeter {...fniPeak} />}
           </Surface>

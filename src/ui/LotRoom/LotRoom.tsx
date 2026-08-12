@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import type { LotOccupancy, WholesaleQuote } from '../../game/Inventory';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader, Badge, Button } from '../kit';
+import { Surface, SectionHeader, Badge, Button, HintLine } from '../kit';
 import { ChipRow } from '../DeptControls';
 // The app chrome's floating bottom band is the shell's to describe; a pushed
 // room clears the same band rather than guessing at a second number.
@@ -68,6 +68,12 @@ export interface LotRoomProps {
   pricingStrategyOptions: readonly LotPricingStrategyOption[];
   pricingStrategyId: string;
   onSelectPricingStrategy: (id: string) => void;
+  /**
+   * The strategy's consequence hint (#386), null once the player has used the
+   * dial. The copy is `data/hints.json`'s and arrives already resolved — this
+   * room never decides what it says or whether it is still owed.
+   */
+  pricingStrategyHint?: string | null;
   /**
    * Standing auto-pricing policy active (#285, spine S13). True once a UCM is
    * on staff — the strategy then auto-prices incoming inventory to its
@@ -271,6 +277,7 @@ export function LotRoom({
   pricingStrategyOptions,
   pricingStrategyId,
   onSelectPricingStrategy,
+  pricingStrategyHint,
   autoPricingActive,
   onOpenAuction,
   onWholesale,
@@ -360,6 +367,12 @@ export function LotRoom({
                 ? `Auto-pricing on — incoming inventory lists at your ${selectedStrategy?.label ?? 'chosen'} target. Override any unit above.`
                 : 'Suggestion only — hire a Used-Car Manager to auto-price incoming inventory.'}
             </Text>
+            {pricingStrategyHint && (
+              <HintLine
+                text={pricingStrategyHint}
+                testID="hint-pricing-strategy"
+              />
+            )}
           </Surface>
         </View>
 

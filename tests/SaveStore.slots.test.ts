@@ -329,3 +329,39 @@ describe('MultiSlotSaveStore weekly snapshots', () => {
     ).toEqual([{ keep: true }]);
   });
 });
+
+/**
+ * Teaching progress is the slot's fourth cell (#386). It is minted in
+ * `SlotStore.ts` beside the other three for exactly the reason the snapshot
+ * window had to be moved there: a per-slot key created anywhere else outlives
+ * the slot it belongs to.
+ */
+describe('MultiSlotSaveStore teaching cell', () => {
+  it('deleteSlot wipes the teaching cell too — the whole slot goes', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    const a = await store.createSlot('Alice');
+    await (await store.teachingStore())?.markTaught('fni_posture');
+    await store.deleteSlot(a.id);
+
+    const recreated = await store.createSlot('Alice2');
+    await store.selectSlot(recreated.id);
+    expect(await (await store.teachingStore())?.listTaught()).toEqual([]);
+  });
+
+  it('deleting one slot leaves a sibling career taught', async () => {
+    const store = createMultiSlotSaveStore(createInMemoryDriverFactory());
+    const a = await store.createSlot('Alice');
+    const b = await store.createSlot('Bob');
+
+    await store.selectSlot(a.id);
+    await (await store.teachingStore())?.markTaught('pricing_strategy');
+    await store.selectSlot(b.id);
+    await (await store.teachingStore())?.markTaught('trade_policy');
+
+    await store.deleteSlot(b.id);
+    await store.selectSlot(a.id);
+    expect(await (await store.teachingStore())?.listTaught()).toEqual([
+      'pricing_strategy',
+    ]);
+  });
+});

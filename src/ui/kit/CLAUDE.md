@@ -53,7 +53,14 @@ function MyScreen() {
 tile holding an `Icon`; `solid`·`soft`, rounded·circle) · `ProgressBar` ·
 `Meter` (labeled gauge, optional `caption` under the bar) · `StatCard` (value·label·trend delta, optional leading
 `icon`) · `SectionHeader` · `Collapsible` (headed panel that opens and shuts) ·
+`HintLine` (one muted consequence hint under a control) ·
 the chart primitives below.
+
+`HintLine` is presentation only and never pressable. Whether a hint is still
+owed is the app layer's read of the slot's teaching cell (`useHints`, issue 386)
+— the surface omits the element when the answer is no. Its `text` always comes
+from `data/hints.json`; `tests/HintCopy.test.ts` fails the build over a hint
+string written as a literal under `src/`.
 
 `ProgressBar` carries three optional readings beyond the fill, and they are not
 interchangeable. `tick` is a **second segment** appended after the fill (a

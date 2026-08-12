@@ -18,6 +18,12 @@ interface Props {
   onLoadSlot: (slotId: string) => void;
   onReturnToMainMenu: () => void;
   onSettings?: () => void;
+  /**
+   * Re-arm every consequence hint for this career (#386). A one-shot action,
+   * not a toggle: hints retire one at a time as their controls get used, so
+   * there is no "off" state to switch back to — only "show them all again".
+   */
+  onShowHintsAgain?: () => void;
 }
 
 function formatLastPlayed(iso: string): string {
@@ -34,6 +40,7 @@ export function InGameMenu({
   onLoadSlot,
   onReturnToMainMenu,
   onSettings,
+  onShowHintsAgain,
 }: Props) {
   return (
     <View style={styles.root}>
@@ -79,6 +86,15 @@ export function InGameMenu({
           </TouchableOpacity>
         ) : null}
 
+        {onShowHintsAgain ? (
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            accessibilityRole="button"
+            onPress={onShowHintsAgain}
+          >
+            <Text style={styles.secondaryText}>Show hints again</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {status ? <Text style={styles.status}>{status}</Text> : null}
 

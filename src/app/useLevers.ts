@@ -13,12 +13,22 @@ import {
   DEFAULT_SOURCING_LEAN,
 } from './config';
 import type { SourcingLean } from '../game/MarketEconomy';
+import type { HintId } from './hints';
 
 export interface LeversDeps {
   worldRef: React.MutableRefObject<World | null>;
   /** Merge-with-existing persist of the current save (from useSaveSlots). */
   persistCurrentSave: (overrides?: import('../game/SaveStore').SaveState) => void;
   bump: () => void;
+  /**
+   * The player moved a dial that carries a consequence hint (#386) — retire it.
+   *
+   * It hangs off the handler rather than off the control because "used" means
+   * the lever actually changed, which is a fact this hook owns and the surface
+   * only reports. That also keeps every future caller of a handler (a coachmark,
+   * a beat, a fixture) teaching the same thing as a tap does.
+   */
+  onControlUsed?: (id: HintId) => void;
 }
 
 export interface Levers {
@@ -65,6 +75,7 @@ export function useLevers({
   worldRef,
   persistCurrentSave,
   bump,
+  onControlUsed,
 }: LeversDeps): Levers {
   // Hours-of-op lever selection (#120/#207). The ref keeps the getter reading
   // the current selection without rebuilding the world; the lever is greyed
@@ -127,6 +138,7 @@ export function useLevers({
     tradePolicyIdRef.current = id;
     setTradePolicyId(id);
     persistCurrentSave({ tradePolicy: id });
+    onControlUsed?.('trade_policy');
   };
 
   // Persist the F&I posture into the active slot (#366) — one id beside the
@@ -137,6 +149,7 @@ export function useLevers({
     fniPostureIdRef.current = id;
     setFniPostureId(id);
     persistCurrentSave({ fniPosture: id });
+    onControlUsed?.('fni_posture');
   };
 
   const handleSelectAdvertisingCampaign = (id: string) => {
@@ -154,6 +167,7 @@ export function useLevers({
     pricingStrategyIdRef.current = id;
     setPricingStrategyId(id);
     persistCurrentSave({ pricingStrategy: id });
+    onControlUsed?.('pricing_strategy');
   };
 
   const handleSelectHours = (id: string) => {

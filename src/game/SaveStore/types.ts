@@ -38,6 +38,25 @@ export interface SnapshotStore {
 }
 
 /**
+ * What the player has been taught, for one slot (issue 386).
+ *
+ * Deliberately NOT world state: it records something about the *player's*
+ * progress through the game's teaching, not about the store. It therefore
+ * lives in its own per-slot cell rather than in the world snapshot, and
+ * `WORLD_SNAPSHOT_VERSION` is untouched by anything that writes here.
+ *
+ * `resetAll()` re-arms this slot's hints (the "Show hints again" switch) and
+ * keeps the cell; `clear()` wipes the cell itself, and is what `deleteSlot`
+ * calls. Two careers learn independently — neither is a global reset.
+ */
+export interface TeachingStore {
+  markTaught(id: string): Promise<void>;
+  listTaught(): Promise<readonly string[]>;
+  resetAll(): Promise<void>;
+  clear(): Promise<void>;
+}
+
+/**
  * Per-slot metadata surfaced to slot-picker UI. The game-state blob itself
  * lives behind the slot's own SaveStore; this is just the index entry.
  */
@@ -111,6 +130,14 @@ export interface MultiSlotSaveStore {
    * belonged to, and nothing could ever reach it again.
    */
   snapshotStore(): Promise<SnapshotStore | null>;
+  /**
+   * The active slot's teaching cell, or null if no slot is selected (386).
+   *
+   * Null is a real answer, not a failure: with no slot the game cannot know
+   * what this player has been taught, and a hint the store cannot answer for
+   * is *shown* rather than hidden.
+   */
+  teachingStore(): Promise<TeachingStore | null>;
 }
 
 export interface LegacyEntry {

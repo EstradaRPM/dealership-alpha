@@ -1,5 +1,6 @@
 export { createSaveStore } from './SaveStore';
 export { createSnapshotStore } from './SnapshotStore';
+export { createTeachingStore } from './TeachingStore';
 export { createLegacyStore } from './LegacyStore';
 export { createMultiSlotSaveStore } from './SlotStore';
 export type { MultiSlotOptions } from './SlotStore';
@@ -29,6 +30,7 @@ export type {
   MidDayCheckpoint,
   CheckpointAction,
   SnapshotStore,
+  TeachingStore,
   WeeklySnapshot,
   LegacyStore,
   LegacyEntry,

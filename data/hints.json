@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Phase 12 D3-R2 (#386) — consequence hints. One line of muted text under a control, saying what happens to the store if you move it. It draws until the player uses that control, then retires; the InGameMenu's 'Show hints again' re-arms every one of them for the active slot. Retire-on-USE, not on 'seen once': a player who reads a hint and does nothing has not been taught anything yet.",
+  "_copyDoc": "`text` is player-facing copy and lives HERE, never as a literal in a component — tests/HintCopy.test.ts scans src/ for it. It obeys the .claude/rules/ui.md plain-language rule: name the axis the control moves along, state the cost on both ends, never a temperature word.",
+  "_controlDoc": "`surface` is the room the control lives in and `control` is that control's testID, so a hint and the thing it teaches can be joined without reading the component. The tracer ships the standing desk dials a player leaves running while the store plays itself — the three levers set once and then obeyed for days. `sourcing_lean` is the fourth such lever and is deliberately ABSENT: it has no rendered control anywhere in src/ui (persist-only since #293), so a hint for it would point at nothing. The rest of the live controls are #388's copy pass.",
+  "hints": [
+    {
+      "id": "pricing_strategy",
+      "surface": "lot",
+      "control": "lot-pricing-strategy",
+      "text": "List above market and units sit, costing you carrying cost every day they don't sell. List below it and they move quickly on thinner gross."
+    },
+    {
+      "id": "trade_policy",
+      "surface": "operations",
+      "control": "prep-trade-policy",
+      "text": "A bigger allowance wins deals you would otherwise lose, but you own that trade at the number you gave — you make it back on the resale or you don't."
+    },
+    {
+      "id": "fni_posture",
+      "surface": "operations",
+      "control": "prep-fni-posture",
+      "text": "Marking the rate up harder pays more on every financed deal, right up to where buyers walk and the lender sends the contract back."
+    }
+  ]
+}

@@ -25,12 +25,15 @@ import {
   buildBodyShopControlsModel,
 } from '../config';
 import type { Levers } from '../useLevers';
+import type { Hints } from '../useHints';
 
 export interface TabStackContentProps {
   tabs: TabStacks<ShellTabKey>;
   world: World;
   bus: EventBus;
   levers: Levers;
+  /** The teaching cluster (#386) — which consequence hints are still owed. */
+  hints: Hints;
   lotVehicles: readonly LotVehicle[];
   cash: number;
   persistCurrentSave: () => void;
@@ -53,6 +56,7 @@ export function TabStackContent({
   world,
   bus,
   levers,
+  hints,
   lotVehicles,
   cash,
   persistCurrentSave,
@@ -98,6 +102,7 @@ export function TabStackContent({
         lotVehicles={lotVehicles}
         pricingStrategyId={levers.pricingStrategyId}
         onSelectPricingStrategy={levers.handleSelectPricingStrategy}
+        pricingStrategyHint={hints.hintFor('pricing_strategy')}
         persistCurrentSave={persistCurrentSave}
         setLotVehicles={setLotVehicles}
       />
