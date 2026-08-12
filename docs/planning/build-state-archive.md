@@ -6,6 +6,67 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-12 — **RULED the phase-12 gate** (F2 backstory legibility · F3 notifications · D3
+  plain-language pass). Five rulings, recorded in `path-to-finished-product.md` §6 D3, §8 F2 and
+  §8 F3 — each section's `[NEW]` replaced by its ruling, each with its rejected options and their
+  reasons. The pointer advanced from phase 11 (complete) to phase 12 in the same session.
+  **The gate's premise was wrong, and that is the finding.** F2 was filed as "the backstory picks
+  have Day-1 mechanical effects that are never explained." They have Day-1 effects that are never
+  **applied**: `data/backstories.json` declares four levers, `day1Modifier` is read by **nothing**
+  in `src/` (the only construction site is `scripts/balance-harness/runner.ts:31`), and
+  `characterProfile` reaches `createWorld.ts:1110` solely to hand `EndCardManager` a name and a
+  flavor string. All three backstories are mechanically identical today. Checked, not assumed —
+  do not re-derive it.
+  **F2-R1 — wire all four levers as declared and state each on the card.** `startingCapitalBonus`
+  lands on the hardcoded `startingCash` at `createWorld.ts:566`; `reconJudgmentBonus` becomes a
+  permanent floor under the per-appraisal confidence `rollRecon` already takes
+  (`Inventory.ts:549`), shrinking the hidden-lemon tail; `startingCreditLine` becomes a real
+  borrowing facility (draw against a limit, daily interest, the balance on the Finance statement);
+  `grudgesFlag` becomes a starting reputation deficit. Two of the four have no engine home yet and
+  are therefore new mechanics, which is the honest cost of the pick and was presented as such.
+  **Rejected:** re-cutting the picks onto levers that already exist and deleting the other two
+  from data + schema, and dropping `day1Modifier` to make backstory pure flavor. Both delete
+  declared design to save a slice. The modifiers are applied in **`createWorld`** — no module
+  learns what a backstory is.
+  **F2-R2 — the tier-1 failure stakes are stated once, the first time cash goes low**, naming the
+  actual consequence rather than raising a vague alarm. This was the section's *second* `[NEW]`
+  proposal and was **put to the director separately rather than folded into R1** — an unadopted
+  audit proposal absorbed into a ruling it was not part of is exactly the smuggling
+  `feedback-no-smuggled-mechanics` names. **Rejected:** teaching it at character creation (read
+  before it means anything), striking it (discovery by bankruptcy).
+  **F3 is NONE, and the item is CLOSED.** The clock only moves when the player taps; nothing
+  simulates in the background, so an OS notification would have nothing true to say. Verified at
+  the ruling: no notification dependency in `package.json`, zero hits in `src/`. Reopening it
+  requires a background simulation to exist first.
+  **D3-R1 — money is compact when ambient, exact when the player is about to act.** `$12.4k` for
+  the HUD headline, store worth, month gross and chart axes; exact dollars for prices, allowances,
+  payments, wages and bids. The reasoning is the **#381 lesson pointed at every surface**: a
+  number the player can check and find wrong is the one thing these surfaces cannot ship, so
+  anything being committed against stays exact. **Rejected:** exact-everywhere (axis ticks still
+  can't fit it) and a flat "compact above $10k" (rounds a bid).
+  **D3-R2 — a consequence hint shows until its control has been used once, then retires**, with a
+  "show hints again" switch in the InGameMenu. It shares **one hint registry and one per-slot
+  storage cell with F1's progressive disclosure**, which is what makes the two halves of phase 12
+  one mechanic instead of two that can disagree about what the player has been taught.
+  **Rejected:** always-visible (permanent vertical cost on every screen forever) and
+  on-demand-only (a player who doesn't know a control exists never learns what it does).
+  **Internal calls stated for veto, not adjudication** (`feedback-hitl-single-decision`):
+  `money`/`compactMoney` move off `src/ui/FinanceTab/financeModel.ts:256` onto the **kit barrel**
+  as the one number-formatting surface, guarded by a scan test in the `tests/kit.noleak.test.ts`
+  idiom; teaching/empty-state/hint copy are `data/` catalogs behind `parseData`, never literals in
+  components; hint + onboarding progress is a **per-slot cell minted in `SlotStore.ts`** (the
+  delete-a-save lesson), so **`WORLD_SNAPSHOT_VERSION` stays 21**; F1's coachmarks hang off events
+  the app already publishes rather than a new tutorial state machine; a
+  `tests/PlainLanguage.test.tsx` source scan enforces the no-temperature-words rule across
+  `src/ui/**`.
+  `gates.md`: the phase-12 row moved to **Settled**, and the **stale `path-to-finished-product.md`
+  line refs on all three remaining rows were corrected** in the same commit (E2 `:223`→`:339`, G1
+  `:270`→`:420`, G2 `:279`→`:429`, G4 `:288`→`:438`) — they had drifted by 100+ lines and would
+  have sent the next `/decide` into the wrong section. §12's `[NEW]` footnote now records that
+  only **G1, G2 and G4** remain unadopted.
+  No code changed, so nothing calibrated moved and no test count moved.
+  Next: **SLICE phase 12** — F1 (#213, scope grown since filing) + the five rulings above.
+
 - 2026-08-12 — **BUILT #385** (the month rung — and phase 11 is complete). **Closes #124**, filed
   back in June against the channel-desk manager model; the four slices before this one built the
   ladder underneath it, and what was left is what only matters at the top of it.

@@ -19,9 +19,11 @@ than duplicated** (the #151–#153 precedent). **F3 produced no issue — it was
 closed.** The next `/next` is BUILD #213 (deps-met once #386 lands) — in practice **#386, the
 tracer, is the lowest deps-met issue and is built first.**
 
-**#386, the tracer, is BUILT as of 2026-08-12.** The next `/next` is **BUILD #387**. It also filed
-**#396 out of phase** — the sourcing-lean dial that #385 declared as a standing desk order and that
-has no rendered control anywhere in `src/ui/**`.
+**#386, the tracer, is BUILT as of 2026-08-12.** It also filed **#396 out of phase** — the
+sourcing-lean dial that #385 declared as a standing desk order and that has no rendered control
+anywhere in `src/ui/**`.
+
+**#387 is BUILT as of 2026-08-12.** The next `/next` is **BUILD #388** (deps #386 + #387 both met).
 
 The one thing a future session must not re-derive: **the backstory picks are mechanically
 identical today.** `day1Modifier` is read by nothing in `src/`, so F2 is a wiring job (#390) plus
@@ -33,7 +35,7 @@ reputation deficit for `grudgesFlag` (#391) — not a copy job.
 | # | Slice | Deps |
 |---|---|---|
 | ~~#386~~ | ~~**tracer** — the teaching cell (`teaching:<id>`, minted in `SlotStore.ts`) + `data/hints.json` registry + retire-on-use + "Show hints again"; three real hints ship with it~~ **BUILT 2026-08-12** | — |
-| #387 | D3-R1 — `money`/`compactMoney` onto the kit barrel + the compact-when-ambient / exact-when-acting rule + the no-leak scan | — |
+| ~~#387~~ | ~~D3-R1 — `money`/`compactMoney` onto the kit barrel + the compact-when-ambient / exact-when-acting rule + the no-leak scan~~ **BUILT 2026-08-12** | — |
 | #388 | D3-R2 — the consequence-hint copy pass over every live control, completeness asserted by a mount scan | #386, #387 |
 | #389 | D3 — plain-language labels + every empty state written + `tests/PlainLanguage.test.tsx` | #387 |
 | #390 | F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in `createWorld`, each pick stated on the card | — |
@@ -187,6 +189,29 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **The money rule has a SECOND clause, and the Finance room is what it is for** (#387).
+  "Compact when ambient, exact when the player is about to act" would, read alone, compact the
+  Finance headline cards — and #376's rule is that the headline Net Income and the statement's Net
+  Income line **must match everywhere**. So a figure the player can check against another figure on
+  the same surface counts as acting on it, and the whole Finance room stays exact except its chart
+  axis ticks. A future session compacting those cards "for consistency with the HUD" is breaking
+  the reconciliation the statement exists to be. The issue's *"month gross"* compact case is the
+  Home gate strip and the Growth gate board, which is where the HUD actually states one.
+- **The Reveal splits: compact scoreline, exact reactions** (#387). A beat names one deal or one
+  standing mark, and *"beating $4.9k"* is a claim the player cannot check against the record it
+  just broke. Only the match-summary scoreline — the ambient tally at the top of the feed — is
+  compact. Do not "finish" this by making the feed uniform.
+- **`toLocaleString` is banned outright under `src/ui/**` and `src/app/**`, not just for currency**
+  (#387). Hermes ships without full `Intl`: it renders an ungrouped run of digits on iOS/Android
+  while reading correctly on the web target an agent drives, so the defect is a property of the
+  **grouping**, not of the dollar sign. That is why `grouped()` is on the barrel beside the two
+  money formatters — the six odometers had the same bug, and an allowlist for "the non-currency
+  ones" would have left them broken and made the guard permanently conditional.
+  `tests/MoneyFormat.noleak.test.ts` is absolute and names the file and line; it was proved against
+  an injected probe rather than trusted. **`src/game/**` is deliberately unscanned** — game logic
+  may not import from `src/ui/**`, so the engine cannot reach this barrel, and consolidating the
+  strings it formats itself (HistoryLog, the trade rationale, the playtest export) is a question
+  about where engine-owned display copy lives, not about this rule.
 - **`sourcingLean` is a standing desk order with NO control, and #396 is the fix** (found by
   #386). `data/desk-orders.json` declares it as one of three orders a named desk carries out, and
   #385 halts a multi-day bite when nobody can hold it — but `handleSetSourcingLean`
@@ -1366,6 +1391,50 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-12 — **BUILT #387** (D3-R1 — one money rule, stated once in the kit). `money` /
+  `compactMoney` moved off `FinanceTab/financeModel.ts` onto the kit barrel, and every currency
+  call site under `src/ui/**` and `src/app/**` was audited against the rule: **compact when the
+  figure is ambient, exact when the player is about to act on it.**
+  **Nine formatters became one.** Five hand-rolled `money`/`dollars`/`fmt$` helpers, **two
+  different sign glyphs** (`MarketStatePanel` alone carried the typographic minus), and a dozen
+  inline `` `$${n.toLocaleString()}` `` templates that had diverged on rounding. Two UI modules
+  were importing a *Finance model file* for a string formatter, which is what the barrel move ends.
+  **The rule has a second clause the issue implied and the audit forced: a figure the player can
+  check against another figure on the same surface counts as acting on it.** That is why the whole
+  Finance room stays exact — #376's own rule is that the headline Net Income and the statement's
+  Net Income line must match everywhere, and compacting either breaks the reconciliation the
+  statement exists to be. Compacting the Finance headline cards "for consistency with the HUD" is
+  reversing that. The issue's *"month gross"* compact case landed where the HUD actually states a
+  month gross: the Home gate strip and the Growth gate board.
+  **The Reveal splits, deliberately.** The scoreline is compact (the ambient tally at the top of
+  the feed); every reaction under it stays exact, because a beat names one deal or one standing
+  mark and *"beating $4.9k"* is a claim the player cannot check against the record it just broke.
+  **No `Intl`, anywhere — and that is a shipping-platform fix, not a style choice.** Hermes ships
+  without full `Intl`, so `toLocaleString('en-US')` renders an ungrouped run of digits on iOS and
+  Android while reading correctly on the web target an agent drives. Two files
+  (`PlaytestLog/exportMarkdown`, `NarrativeBeat/recoveryBeat`) had already worked around it by
+  hand and left comments saying so; now one place does it and every surface inherits it.
+  **One deviation from the issue as filed, recorded on it: `grouped()` is on the barrel too.** Six
+  odometers were formatting themselves, and the Hermes gap is a property of the *grouping*, not of
+  the dollar sign — so an allowlist for "the non-currency ones" would have left them broken on the
+  shipping platforms and made the guard permanently conditional. With `grouped()` the scan is
+  absolute: `tests/MoneyFormat.noleak.test.ts` fails the build over `toLocaleString`, a `` $${ ``
+  template, or a hand-rolled grouping regex anywhere under `src/ui/**` (outside the kit) or
+  `src/app/**`, and names the file and line. **Proved against an injected probe**, not assumed.
+  `src/game/**` is deliberately unscanned: game logic may not import from `src/ui/**`, so the
+  engine physically cannot reach this barrel.
+  `npm run typecheck` clean, `npm test` **269 suites / 4117 tests** green. The #180 live
+  calibration is **byte-identical** (35.8% / 54.3%, closes=274, `costOverAsk` 1.026) — a
+  formatting slice moves no number, checked rather than assumed.
+  **Web drive (T2 dev fixture, day 31):** floor HUD `$222.7k` cash / `$50.6k` floored; Home
+  `$231.3k` cash, `+$8.6k` delta, `$273.7k` worth; gate strip `$2.5k / $30k · Ahead by $1.5k ·
+  proj $74.3k`; Reveal `$363 gross today` (**sub-$1k stays exact — the threshold working live**);
+  Finance `$1,200 + $79 = $1,279` reconciling with the `$1,279` headline card above a
+  `$0 / $2.5k / $5k / $7.5k / $10k` axis; pricing screen `$14,100` asking against `$10,555 book ·
+  $14,144 market`; People `$1,280/day` payroll and `$1,700` to sign; Growth `$3,000 each` to build.
+  Next: **BUILD #388** (D3-R2 — the consequence-hint copy pass over every live control, its
+  completeness asserted by a mount scan); its deps #386 and #387 are both met.
+
 - 2026-08-12 — **BUILT #386** (phase 12's tracer — a hint draws until you use the control, then it
   is gone). The one teaching mechanism the rest of the phase hangs off, built vertically:
   `data/hints.json` behind `parseData`, the `teaching:<id>` cell, the retire-on-use rule, the
@@ -1447,64 +1516,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   a beat added later needs a declaration and a line of copy and no runner edit.
   No code changed, so nothing calibrated moved and no test count moved.
   Next: **BUILD #386** (the tracer — the lowest deps-met issue in the phase).
-
-- 2026-08-12 — **RULED the phase-12 gate** (F2 backstory legibility · F3 notifications · D3
-  plain-language pass). Five rulings, recorded in `path-to-finished-product.md` §6 D3, §8 F2 and
-  §8 F3 — each section's `[NEW]` replaced by its ruling, each with its rejected options and their
-  reasons. The pointer advanced from phase 11 (complete) to phase 12 in the same session.
-  **The gate's premise was wrong, and that is the finding.** F2 was filed as "the backstory picks
-  have Day-1 mechanical effects that are never explained." They have Day-1 effects that are never
-  **applied**: `data/backstories.json` declares four levers, `day1Modifier` is read by **nothing**
-  in `src/` (the only construction site is `scripts/balance-harness/runner.ts:31`), and
-  `characterProfile` reaches `createWorld.ts:1110` solely to hand `EndCardManager` a name and a
-  flavor string. All three backstories are mechanically identical today. Checked, not assumed —
-  do not re-derive it.
-  **F2-R1 — wire all four levers as declared and state each on the card.** `startingCapitalBonus`
-  lands on the hardcoded `startingCash` at `createWorld.ts:566`; `reconJudgmentBonus` becomes a
-  permanent floor under the per-appraisal confidence `rollRecon` already takes
-  (`Inventory.ts:549`), shrinking the hidden-lemon tail; `startingCreditLine` becomes a real
-  borrowing facility (draw against a limit, daily interest, the balance on the Finance statement);
-  `grudgesFlag` becomes a starting reputation deficit. Two of the four have no engine home yet and
-  are therefore new mechanics, which is the honest cost of the pick and was presented as such.
-  **Rejected:** re-cutting the picks onto levers that already exist and deleting the other two
-  from data + schema, and dropping `day1Modifier` to make backstory pure flavor. Both delete
-  declared design to save a slice. The modifiers are applied in **`createWorld`** — no module
-  learns what a backstory is.
-  **F2-R2 — the tier-1 failure stakes are stated once, the first time cash goes low**, naming the
-  actual consequence rather than raising a vague alarm. This was the section's *second* `[NEW]`
-  proposal and was **put to the director separately rather than folded into R1** — an unadopted
-  audit proposal absorbed into a ruling it was not part of is exactly the smuggling
-  `feedback-no-smuggled-mechanics` names. **Rejected:** teaching it at character creation (read
-  before it means anything), striking it (discovery by bankruptcy).
-  **F3 is NONE, and the item is CLOSED.** The clock only moves when the player taps; nothing
-  simulates in the background, so an OS notification would have nothing true to say. Verified at
-  the ruling: no notification dependency in `package.json`, zero hits in `src/`. Reopening it
-  requires a background simulation to exist first.
-  **D3-R1 — money is compact when ambient, exact when the player is about to act.** `$12.4k` for
-  the HUD headline, store worth, month gross and chart axes; exact dollars for prices, allowances,
-  payments, wages and bids. The reasoning is the **#381 lesson pointed at every surface**: a
-  number the player can check and find wrong is the one thing these surfaces cannot ship, so
-  anything being committed against stays exact. **Rejected:** exact-everywhere (axis ticks still
-  can't fit it) and a flat "compact above $10k" (rounds a bid).
-  **D3-R2 — a consequence hint shows until its control has been used once, then retires**, with a
-  "show hints again" switch in the InGameMenu. It shares **one hint registry and one per-slot
-  storage cell with F1's progressive disclosure**, which is what makes the two halves of phase 12
-  one mechanic instead of two that can disagree about what the player has been taught.
-  **Rejected:** always-visible (permanent vertical cost on every screen forever) and
-  on-demand-only (a player who doesn't know a control exists never learns what it does).
-  **Internal calls stated for veto, not adjudication** (`feedback-hitl-single-decision`):
-  `money`/`compactMoney` move off `src/ui/FinanceTab/financeModel.ts:256` onto the **kit barrel**
-  as the one number-formatting surface, guarded by a scan test in the `tests/kit.noleak.test.ts`
-  idiom; teaching/empty-state/hint copy are `data/` catalogs behind `parseData`, never literals in
-  components; hint + onboarding progress is a **per-slot cell minted in `SlotStore.ts`** (the
-  delete-a-save lesson), so **`WORLD_SNAPSHOT_VERSION` stays 21**; F1's coachmarks hang off events
-  the app already publishes rather than a new tutorial state machine; a
-  `tests/PlainLanguage.test.tsx` source scan enforces the no-temperature-words rule across
-  `src/ui/**`.
-  `gates.md`: the phase-12 row moved to **Settled**, and the **stale `path-to-finished-product.md`
-  line refs on all three remaining rows were corrected** in the same commit (E2 `:223`→`:339`, G1
-  `:270`→`:420`, G2 `:279`→`:429`, G4 `:288`→`:438`) — they had drifted by 100+ lines and would
-  have sent the next `/decide` into the wrong section. §12's `[NEW]` footnote now records that
-  only **G1, G2 and G4** remain unadopted.
-  No code changed, so nothing calibrated moved and no test count moved.
-  Next: **SLICE phase 12** — F1 (#213, scope grown since filing) + the five rulings above.
