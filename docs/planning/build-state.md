@@ -16,7 +16,8 @@ below), and the bite-unlock gate is RULED (see the log entry; recorded in
 2026-08-11** — the ladder, the runner, the halt, the picker and the bite-grain Reveal are all
 standing. **#382 LANDED 2026-08-11** — the star budget rides the bite and what it cuts is stated.
 **#383 LANDED 2026-08-11** — the bite is a placed bet: the picker states the stake and the Reveal
-settles it. The next `/next` builds **#384**.
+settles it. **#384 LANDED 2026-08-11** — the overnight interrupt channel: a moment that asks the
+owner a question stops the run and the Reveal names who. The next `/next` builds **#385**.
 
 ### Phase 11 — B4 drive-the-clock (sliced + filed 2026-08-11)
 
@@ -25,7 +26,7 @@ settles it. The next `/next` builds **#384**.
 | ~~#381~~ | ~~**tracer** — `data/clock-bites.json` + `src/game/ClockBite/` headless multi-day runner + halt + the Home bite picker + the bite-grain Reveal~~ **BUILT 2026-08-11** | — |
 | ~~#382~~ | ~~the star budget scales with the bite; what the feed leaves out is stated, not dropped~~ **BUILT 2026-08-11** | #381 |
 | ~~#383~~ | ~~the bite is a bet — `PrepBet` captured at the bite's start, scored over the days that ran~~ **BUILT 2026-08-11** | #381 |
-| #384 | the overnight interrupt channel — a moment that asks the owner a question stops the run | #381 |
+| ~~#384~~ | ~~the overnight interrupt channel — a moment that asks the owner a question stops the run~~ **BUILT 2026-08-11** | #381 |
 | #385 | the month rung — GM-gated, the desks earn the silence, multi-store safe **[HITL]**, closes #124 | #381, #384 |
 
 **Phase 5 — #74 round-1 playtest (HITL). The script is prepared, verified and HANDED OVER
@@ -153,6 +154,44 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **An overnight interrupt ends the bite AFTER the day it was raised on, not before that day
+  runs** (#384). `staff:raise_requested` is published on `clock:day_started`, which fires inside
+  `nextDay()` — so the store plays that day and then stops, exactly the way a floor escalation
+  stops it. Halting between `nextDay()` and `floor.runDay()` would leave the run sitting on an
+  open, un-played day: **not MANAGERIAL, so #381's single closing write has no state to write**,
+  and the next tap would advance the clock past a day nobody played. Nothing is lost by playing
+  it — a rival's `deadlineDays` is 3, so the offer is still live when the player is handed it.
+  The EARS "before the next day begins" is satisfied: the day after the halting one never runs.
+- **`BiteRunDeps.checkHalt` returns a `BiteHalt`, and it is the ONE seam every class of halt
+  arrives through** (#384). The floor latches and the overnight channel write the same
+  `biteHaltRef`, so "the first signal of a run is the one that stopped the clock" is one rule
+  over both classes rather than two lists with an ordering between them. A second
+  `checkInterrupt` dep would be exactly the "second list beside the floor halts" the slice was
+  filed to avoid.
+- **`owner_interrupt` is ONE halt id and the moment rides the `{subject}` slot** (#384). The
+  halt's cadence is written once in `data/clock-bites.json` (*"{subject}, so the run stopped
+  there."*, matching the other three verbatim) and who needed you once in
+  `data/owner-interrupts.json`. A fifth overnight prompt built next year needs **no new halt
+  id, no runner edit and no new sentence shape** — only a declaration and a line of copy.
+  `haltReason(id, config, subject?)` leaves an unfilled slot literal, the industry-wire rule.
+- **A moment that only REPORTS is not declared, and that is the whole registry rule** (#384).
+  `facility:capacity_built` and `news:headline_published` are notable and ask nothing; they ride
+  the Reveal like any other beat. The test is whether the player has a *decision*. Declaring
+  them with an `asksOwner: () => false` would be dead weight; **not declaring them is the
+  answer**, and `tests/OwnerInterrupt.test.ts` publishes both through a whole week to pin it.
+- **`slots` returning `null` is the ONE "this is not it" answer** (#384). It covers both "this
+  raise is really a poach" (the two declarations share `staff:raise_requested` and split on
+  `rivalName`) and "the subject cannot be named". A halt sentence naming nobody is worse than no
+  halt, so a person no longer on the roster does not stop a run. One method, no second predicate
+  path.
+- **The channel is a PURE READ — it answers nothing, clears nothing, publishes nothing** (#384).
+  The raise stays outstanding on `StaffOrg` and the People card presents it exactly as it does
+  in day-by-day play. There is no second copy of any prompt in this slice, which is why "the
+  interrupted prompt is the shipped prompt" is asserted as *the bus saw only the publish the
+  test made*.
+- **Nothing about #384 is persisted and `WORLD_SNAPSHOT_VERSION` stays 21.** A halted bite ends
+  MANAGERIAL, which is where the save already writes from; the latch lives for one synchronous
+  run.
 - **`Alert.alert` is DEAD on web and must never come back** (delete-a-save session, 2026-08-11).
   react-native-web ships `class Alert { static alert() {} }`. It compiles, type-checks and runs,
   and does nothing — so every confirmation routed through it was inert on the target the game is
@@ -1211,6 +1250,48 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-11 — **BUILT #384** (a week stops for the one thing only you can answer). The tracer
+  halted a run on things that happen **on the floor**. The game's other class of "a moment you
+  play" fires **between** days, in the overnight window — and inside a run every one of those was
+  being raised and cleared with nobody there to answer. A rival's offer expires in three days; a
+  week driven past it lost you the person without ever putting the choice in front of you. That is
+  the store auto-answering by silence, and it is now impossible.
+  **One channel, not a second list.** `createOwnerInterruptChannel` (`src/app/ownerInterrupts.ts`)
+  latches into the **same** `biteHaltRef` the floor signals do, and `BiteRunDeps.checkHalt` now
+  returns a `BiteHalt` (`{ id, subject? }`) rather than a bare id — so a floor escalation and an
+  overnight ask are one question asked once, and "the first signal of a run is the one that stopped
+  the clock" is one rule over both. A second `checkInterrupt` dep would have been exactly the
+  parallel list #124 was filed to avoid.
+  **Registration, not enumeration.** A moment is declared once, with the event that raises it and
+  the read that names who needs the owner. The runner learns **no** event names; `useDayLoop` learns
+  only "the channel raised something". `owner_interrupt` is **one** halt id and the moment rides the
+  sentence's `{subject}` slot — the halt cadence written once in `data/clock-bites.json`
+  (*"{subject}, so the run stopped there."*, matching the other three verbatim), who needed you once
+  in `data/owner-interrupts.json`. A fifth overnight prompt next year needs a declaration and a line
+  of copy, and nothing else.
+  **The test is a DECISION, not notability.** A finished construction job and a published headline
+  are deliberately **not** declared — they ride the Reveal like any other beat. Halting on
+  everything notable turns a week into seven days with extra steps. `slots` returning `null` is the
+  one "this is not it" answer there is, and it does double duty: it splits the raise from the poach
+  (same event family, #357, two sentences) and it refuses to stop a run for somebody it cannot name.
+  **The bite ends AFTER the day the moment landed on, and that is load-bearing.**
+  `staff:raise_requested` fires on `clock:day_started`, inside `nextDay()` — so the store plays that
+  day and stops, the same rule the floor halts follow. Stopping *between* the overnight and the
+  floor would leave the run on an open, un-played day: not MANAGERIAL, so #381's single closing
+  write would have no state to write, and the next tap would skip a day nobody played. Nothing is
+  lost by playing it — the poach deadline is three days out.
+  **The channel is a pure read**: it answers nothing, clears nothing and publishes nothing, so the
+  raise stays outstanding on `StaffOrg` and the People card presents it exactly as it does in
+  day-by-day play. No second copy of any prompt exists in this slice. Nothing calibrated moved and
+  nothing could — `#180` still reads 35.8% positive / 54.3% apathetic, closes=274. Nothing is
+  persisted; `WORLD_SNAPSHOT_VERSION` stays **21**.
+  `npm run typecheck` clean, `npm test` **261 suites / 3617 tests** green. Verified on the web drive
+  (T2 dev slot, day 31, covered desk): the first week ran all seven days and reported no halt; the
+  second stopped at **4 of 7 days run** over *"Roscoe Stelmach asked you for a raise, so the run
+  stopped there."* — first reaction in the feed, span clause in front of it. Dismissing the Reveal
+  put the shipped prompt on Roscoe's People card (*Needs an answer · Grade 5 · Paid at grade 4 ·
+  Asking for $970/day*), and **Pay it** cleared it and moved daily payroll $1,280 → $1,540.
+  Next: **BUILD #385**.
 - 2026-08-11 — **BUILT (director-directed, out of phase): a Reveal row is keyed by its BEAT, not
   by what it stars.** Playing a Tier-2 career on the web target logged
   *"Encountered two children with the same key, `crown-bestSingleDeal`"* every time a bite closed
@@ -1294,47 +1375,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   still listed its four weekly snapshots through the delegated `snapshotStore()`, with ROLLBACK
   SAVE opening and cancelling cleanly.
   Next: **BUILD #384** — phase 11 is untouched by this.
-
-- 2026-08-11 — **BUILT #383** (the bite stops being a bet only in spirit — it is placed, and it
-  is settled). After the tracer, picking a week ran seven days and reported what happened; nothing
-  ever said what the player was *wagering* by picking it, so nothing resolved. Both halves are now
-  real: the picker states the stake **before** the tap, and the Reveal settles it after.
-  **The bite bet is the FIRST day's captured `PrepBet`, READ BACK off the run's first
-  `BiteDayBeats` — not copied into a second slot.** A bite is the day bet held longer: you wagered
-  that the lot you had stocked when you tapped carries the store for N days. The per-day capture
-  keeps running inside the run (day 4 recaptures against day 4's lot — that is what feeds each
-  day's own beat into the pooled feed), and `biteBetVerdictScoreline` reads `days[0].prepBet`
-  itself rather than taking one, so **no caller can hand it day four's**. Two grains, one module,
-  one copy of the fact. A run whose first day had no lean states no verdict even if a later day
-  does — adopting the first non-null bet down the run would invent a wager out of a mid-week
-  restock.
-  **The verdict counts DAYS, not units.** The bet being settled is a bet about days, so the
-  scoreline reads *"You went in leaning on trucks; the crowd asked for sedans on 3 of 7 days. Poor
-  match."* A count of units would let one busy Saturday speak for a week the store was wrong
-  about. The crowd is named with the **same `dominantCrowdWant` rule the day grain uses** — the
-  bite learns no second rule — and `null` (nothing ever asked, or the run named no favorite) falls
-  back to the tracer's span scoreline rather than inventing a verdict. A bet nobody can settle is
-  not scored.
-  **A halted bite is scored on the days it ran, by construction** — `days` *is* what ran — and the
-  span clause stays in front of the verdict, because it is what states that a 3-day run was a
-  shorter bet than the seven that were placed. The verdict must not silently absorb that.
-  **`matchClause` now takes its window too.** The fallback path this slice routes through was
-  still printing *"nothing closed today"* over a week — the same defect #381's drive caught in
-  `matchReaction`, one function over.
-  **The stakes sentence is DATA, and the schema refuses a bite above the day that omits it.**
-  `stakes` rides `data/clock-bites.json` beside `days`, is stated verbatim under the control, and
-  the picker words nothing. The day carries none and is the only bite allowed to: it is the live
-  floor, watched as it happens, so there is nothing to state in advance — which is also why the
-  field is optional-with-a-refine rather than required-and-unread (the dead `tagline` #378 had to
-  delete).
-  **Nothing calibrated moved and nothing is persisted.** Capture and scoring are reads of values
-  the sim already computes; the bite bet lives for one synchronous run that ends MANAGERIAL, so
-  `WORLD_SNAPSHOT_VERSION` stays **21** and `prepBet` is still the one persisted wager.
-  `npm run typecheck` clean, `npm test` **258 suites / 3165 tests** green. Verified on the web
-  drive (T2 dev slot, covered desk): the Home footer states *"Seven days run without you unless
-  something needs you. The lot you stocked and the policy you set have to carry them."* under Run
-  the Week while the month stays locked stating its door; the second week ran to *"7 days run —
-  You went in leaning on trucks; the crowd asked for sedans on 3 of 7 days. Poor match."* over a
-  feed of one truck sale and eight sedan walk-offs. The first week drew the fallback, which is the
-  no-favorite branch doing its job.
-  Next: **BUILD #384**.

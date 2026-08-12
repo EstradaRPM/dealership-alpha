@@ -123,6 +123,26 @@ describe('buildBiteReveal (#381)', () => {
     expect(model.reactions[1].text).toContain('gross over 2 days');
   });
 
+  it('the week says who needed the owner', () => {
+    // #384: an overnight interrupt gets the same plain-language sentence a floor
+    // halt gets, and it NAMES the person. The Reveal states it verbatim — the
+    // subject is filled where the moment was raised, not worded here.
+    const model = buildBiteReveal(
+      [day({ closes: [sale('a')] }), day(), day()],
+      {
+        biteId: 'week',
+        daysRequested: 7,
+        haltSentence:
+          'Marcus Webb asked you for a raise, so the run stopped there.',
+      },
+    );
+    expect(model.scoreline).toContain('3 of 7 days run');
+    expect(model.reactions[0].id).toBe('bite-halt');
+    expect(model.reactions[0].text).toBe(
+      'Marcus Webb asked you for a raise, so the run stopped there.',
+    );
+  });
+
   it('a completed run states no halt', () => {
     const model = buildBiteReveal([day(), day()], {
       biteId: 'week',

@@ -52,6 +52,20 @@ export interface HaltReason {
   sentence: string;
 }
 
+/**
+ * What the composition root hands back when a run has to stop (#384).
+ *
+ * One seam carries every class of halt. `subject` fills the `{subject}` slot in
+ * the reason's catalog sentence and is how the overnight channel names the
+ * person or the thing that needs the owner — the halt cadence is written once,
+ * in `data/clock-bites.json`, and the subject once, beside the moment that
+ * raised it. A reason whose sentence carries no slot ignores it.
+ */
+export interface BiteHalt {
+  id: HaltReasonId;
+  subject?: string;
+}
+
 export interface BiteRunDeps {
   /**
    * Advance the clock exactly one day and exhaust it — the composition root's
@@ -63,10 +77,15 @@ export interface BiteRunDeps {
    */
   advanceOneDay: () => void;
   /**
-   * Asked once after each day. A non-null reason ends the bite at that day.
+   * Asked once after each day. A non-null halt ends the bite at that day.
    * The day still counts — it happened.
+   *
+   * This is the ONE seam every class of halt arrives through (#384): a floor
+   * escalation and an overnight moment that needs the owner are the same
+   * question — "does the store need a human now?" — and a second list beside
+   * this one is how the two answers start disagreeing about which came first.
    */
-  checkHalt: () => HaltReasonId | null;
+  checkHalt: () => BiteHalt | null;
 }
 
 export interface BiteRun {
@@ -142,9 +161,9 @@ export function runBite(
   for (let i = 0; i < bite.days; i += 1) {
     deps.advanceOneDay();
     daysRun += 1;
-    const reason = deps.checkHalt();
-    if (reason) {
-      halt = haltReason(reason, config);
+    const signal = deps.checkHalt();
+    if (signal) {
+      halt = haltReason(signal.id, config, signal.subject);
       break;
     }
   }
@@ -166,12 +185,25 @@ export function biteStarBudget(
   return biteDef(config, biteId).starBudget;
 }
 
-/** The plain-language sentence for a halt, off the catalog. */
+/**
+ * The plain-language sentence for a halt, off the catalog.
+ *
+ * `subject` fills the reason's `{subject}` slot (#384) — the overnight channel
+ * names who needed the owner, and the halt's own cadence stays written once in
+ * `data/clock-bites.json`. An unfilled slot is left literal, the same way the
+ * industry-wire and weekly-report fillers leave one, so a missing subject shows
+ * up as a visibly wrong sentence rather than a silently truncated one.
+ */
 export function haltReason(
   id: HaltReasonId,
   config: ClockBitesConfig = loadClockBites(),
+  subject?: string,
 ): HaltReason {
   const halt = config.halts.find((h) => h.id === id);
   if (!halt) throw new Error(`ClockBite: unknown halt reason "${id}"`);
-  return { id: halt.id, sentence: halt.sentence };
+  const sentence =
+    subject == null
+      ? halt.sentence
+      : halt.sentence.replace(/\{subject\}/g, subject);
+  return { id: halt.id, sentence };
 }

@@ -17,7 +17,11 @@ import {
   type WalkOff,
   type BrokenRecord,
 } from '../ui/Reveal';
-import { runBite, type BiteId, type HaltReasonId } from '../game/ClockBite';
+import { runBite, type BiteId, type BiteHalt, type HaltReasonId } from '../game/ClockBite';
+import {
+  createOwnerInterruptChannel,
+  type OwnerInterrupt,
+} from './ownerInterrupts';
 import type { FniMonthVerdict } from '../game/DealEngine';
 import type { CashDeltaSplit } from '../ui/HomeTab';
 import { buildRecoveryBeat, type RecoveryBeat } from '../ui/NarrativeBeat';
@@ -186,7 +190,11 @@ export function useDayLoop({
   // Latched halt signals, cleared at the start of every run. The composition
   // root is the only thing that knows what "a moment the player is needed"
   // looks like in this app, which is why ClockBite takes no EventBus.
-  const biteHaltRef = useRef<HaltReasonId | null>(null);
+  //
+  // #384: the floor halts and the overnight interrupt channel latch the SAME
+  // ref, so "the first signal of a run is the one that stopped the clock" is one
+  // rule over both classes rather than two lists with an ordering between them.
+  const biteHaltRef = useRef<BiteHalt | null>(null);
   // Did any day inside the run land on the 7-day history-snapshot cadence? The
   // per-day autosave is skipped during a bite (seven `void async` writes racing
   // for one slot is how the last write ends up stale), so the run's single
@@ -621,16 +629,40 @@ export function useDayLoop({
     // signal of a run is kept: it is the one that stopped the clock, and the
     // day it landed on is where the player picks up. `runBite` clears the latch
     // at the start of every run, so nothing carries between bites.
-    const latchHalt = (id: HaltReasonId) => () => {
+    const latch = (halt: BiteHalt) => {
       if (biteDaysRef.current && biteHaltRef.current === null) {
-        biteHaltRef.current = id;
+        biteHaltRef.current = halt;
       }
     };
+    const latchHalt = (id: HaltReasonId) => () => latch({ id });
     const onTradeEscalated = latchHalt('escalation');
     const onDiscountEscalated = latchHalt('escalation');
     const onBankruptTerminal = latchHalt('insolvent');
     const onBankruptContraction = latchHalt('insolvent');
     const onGateVerdict = latchHalt('gate_verdict');
+
+    // --- the overnight interrupt channel (#384) ----------------------------
+    // The floor halts above stop a run on things that happen while the doors
+    // are open. This is the other class: a moment raised in the overnight
+    // managerial window that puts a DECISION in front of the owner. It lands on
+    // the same latch, so the two are one channel and the first signal of a run
+    // still wins.
+    //
+    // The bite ends after the day the moment was raised on — `clock:day_started`
+    // is inside `nextDay()`, so the store plays that day and then stops, exactly
+    // the way a floor escalation stops it. That is what keeps a bite ending
+    // MANAGERIAL with one closing write; halting with a day open and un-played
+    // would leave the run in a state the save layer has no shape for.
+    const onOwnerInterrupt = (interrupt: OwnerInterrupt) =>
+      latch({ id: 'owner_interrupt', subject: interrupt.subject });
+    const interrupts = createOwnerInterruptChannel(bus, onOwnerInterrupt, {
+      // The person is on the roster at the moment they ask — StaffOrg publishes
+      // the request for one of its own members — so this resolves. A moment it
+      // cannot name is not raised at all rather than stated about nobody.
+      staffName: (staffId) =>
+        worldRef.current?.staffOrg.currentRoster.find((s) => s.id === staffId)
+          ?.name ?? null,
+    });
 
     bus.subscribe('floor:day_complete', onDayComplete);
     bus.subscribe('trade:escalated', onTradeEscalated);
@@ -665,6 +697,7 @@ export function useDayLoop({
       bus.unsubscribe('deal:closed', onDealClosed);
       bus.unsubscribe('staff:auto_resolved', onAutoResolved);
       bus.unsubscribe('records:broken', onRecordBroken);
+      interrupts.dispose();
     };
   }, []);
 

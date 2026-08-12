@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "_doc": "B4 S4 (#384) — the overnight interrupt channel. A bite runs the store without you, and the tracer (#381) stopped it on the things that happen ON THE FLOOR. The game's other class of 'a moment you play' fires BETWEEN days, in the overnight managerial window, and inside a multi-day run every one of those would be raised and cleared with nobody there to answer — the store auto-answering by silence. Each entry here is a moment that puts a DECISION in front of the owner. The test is whether the player has a decision, not whether something notable happened: a finished construction job and a news beat with no choice attached ride the Reveal like any other beat and are deliberately absent from this file. The copy lives HERE; which event raises it, and whether a given instance actually asks anything, live in code (`src/app/ownerInterrupts.ts`) — the same split as the clock-bite doors and the industry-wire templates, because an event name is a typed fact and a sentence is not.",
+
+  "_subjectDoc": "`subject` fills the `{subject}` slot of the `owner_interrupt` halt sentence in `data/clock-bites.json`, so the halt's cadence is written once there and who needed you once here. Its own slots — `{person}`, `{rival}` — are filled at raise time off the moment's payload and the live roster.",
+  "interrupts": [
+    {
+      "id": "raise_demand",
+      "subject": "{person} asked you for a raise"
+    },
+    {
+      "id": "rival_offer",
+      "subject": "{rival} made {person} an offer"
+    }
+  ]
+}

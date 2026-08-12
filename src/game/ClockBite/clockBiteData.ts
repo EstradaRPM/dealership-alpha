@@ -21,7 +21,16 @@ export const COVERAGE_FACT_IDS = [
 /** A capability the store has handed to somebody other than the player. */
 export type CoverageFactId = (typeof COVERAGE_FACT_IDS)[number];
 
-export const HALT_REASON_IDS = ['escalation', 'insolvent', 'gate_verdict'] as const;
+export const HALT_REASON_IDS = [
+  'escalation',
+  'insolvent',
+  'gate_verdict',
+  // #384: the overnight channel. Every moment that asks the owner a question
+  // between days lands on this ONE reason — the sentence names which one
+  // through its `{subject}` slot, so a fifth overnight prompt built next year
+  // needs no new halt id and no edit to the runner.
+  'owner_interrupt',
+] as const;
 export type HaltReasonId = (typeof HALT_REASON_IDS)[number];
 
 const BiteIdSchema = z.enum(BITE_IDS);

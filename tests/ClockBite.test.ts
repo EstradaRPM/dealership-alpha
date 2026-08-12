@@ -8,7 +8,7 @@ function driver(haltOn?: { day: number; reason: HaltReasonId }) {
     deps: {
       advanceOneDay: () => ran.push(ran.length + 1),
       checkHalt: () =>
-        haltOn && ran.length === haltOn.day ? haltOn.reason : null,
+        haltOn && ran.length === haltOn.day ? { id: haltOn.reason } : null,
     },
   };
 }

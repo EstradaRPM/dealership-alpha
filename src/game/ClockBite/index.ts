@@ -1,5 +1,11 @@
 export { availableBites, runBite, haltReason, biteStarBudget } from './ClockBite';
-export type { BiteOption, BiteRun, BiteRunDeps, HaltReason } from './ClockBite';
+export type {
+  BiteOption,
+  BiteRun,
+  BiteRunDeps,
+  BiteHalt,
+  HaltReason,
+} from './ClockBite';
 export {
   loadClockBites,
   ClockBitesConfigSchema,

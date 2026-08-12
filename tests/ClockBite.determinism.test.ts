@@ -80,7 +80,8 @@ describe('ClockBite determinism (#381)', () => {
       advanceOneDay: () => {
         driven.nextDay().runDay();
       },
-      checkHalt: () => (driven.state().day >= 3 ? 'escalation' : null),
+      checkHalt: () =>
+        driven.state().day >= 3 ? { id: 'escalation' as const } : null,
     });
     expect(run.daysRun).toBe(3);
     expect(driven.state().day).toBe(3);

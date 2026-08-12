@@ -33,9 +33,11 @@ persisted counter, and the player has to infer why the button came and went).
   always all three; a locked one carries its `lockedReason` sentence rather than
   being dropped.
 - `runBite(biteId, { advanceOneDay, checkHalt }, config?) → BiteRun` — runs the
-  bite headless and synchronously.
-- `haltReason(id, config?) → HaltReason` — the plain-language sentence for a
-  halt, off the catalog.
+  bite headless and synchronously. `checkHalt` returns a `BiteHalt`
+  (`{ id, subject? }`) — **one seam for every class of halt** (#384).
+- `haltReason(id, config?, subject?) → HaltReason` — the plain-language sentence
+  for a halt, off the catalog, with `{subject}` filled when the reason names
+  one.
 - `biteStarBudget(biteId, config?) → number` (#382) — how many individual
   reactions the Reveal covering this bite may surface. Read by
   `src/ui/Reveal/buildReveal.ts` at **both** grains: the day bite's budget is
@@ -92,11 +94,42 @@ run:
 | `escalation` | `trade:escalated` / `discount:escalated` |
 | `insolvent` | `career:bankruptcy_terminal` / `career:bankruptcy_contraction` |
 | `gate_verdict` | `tierGate:month_verdict` |
+| `owner_interrupt` | the overnight channel — `src/app/ownerInterrupts.ts` (#384) |
 
 `tierGate:month_verdict` fires unconditionally on every `clock:month_ended`
 (`TierGate.ts`), so **a bite that crosses a month boundary always halts there**.
 That is the design, not an oversight: the month's grade is the moment you must
 look, and it is what syncs the month bite to the calendar after its first run.
+
+## The overnight interrupt channel (#384)
+
+The three halts above stop a run on things that happen **on the floor**. The
+game's other class of "a moment you play" fires **between** days, in the
+overnight managerial window: somebody asks for a raise, a rival makes one of
+your people an offer. Inside a run every one of those would be raised and
+cleared with nobody there to answer — the store auto-answering by silence.
+
+- **One channel, not a second list.** `createOwnerInterruptChannel`
+  (`src/app/ownerInterrupts.ts`) latches into the **same** `biteHaltRef` the
+  floor signals do, so "the first signal of a run is the one that stopped the
+  clock" is one rule over both classes. `owner_interrupt` is the single halt id;
+  which moment it was is carried by the `{subject}` slot.
+- **Registration, not enumeration.** A moment is declared once, with the event
+  that raises it and the read that names who needs the owner. The runner learns
+  no event names, and `useDayLoop` learns only "the channel raised something".
+- **The test is a DECISION, not notability.** A finished construction job and a
+  published headline are deliberately **not** declared: they ride the Reveal
+  like any other beat. Halting on everything notable turns a week into seven
+  days with extra steps.
+- **The bite ends after the day the moment was raised on**, exactly like a floor
+  halt. `clock:day_started` fires inside `nextDay()`, so the store plays that
+  day and then stops — which is what keeps a run ending MANAGERIAL with one
+  closing write. Stopping with a day open and un-played is a state the save
+  layer has no shape for, and the deadline on a rival's offer is days out, so
+  nothing is lost by playing the day.
+- **Nothing is presented twice.** The channel answers nothing and publishes
+  nothing; the raise stays outstanding on `StaffOrg` and the People surface
+  presents it exactly as it does in day-by-day play.
 
 ## Events
 
@@ -132,7 +165,9 @@ the days it ran; a run whose days named no favorite is not scored at all.
 
 `data/clock-bites.json` — `coverage[]` (the facts and their missing-sentences),
 `bites[]` (`{ id, label, days, starBudget, stakes?, requires }`) and `halts[]`
-(`{ id, sentence }`).
+(`{ id, sentence }`). `data/owner-interrupts.json` carries the per-moment
+`subject` copy that fills the `owner_interrupt` halt's `{subject}` slot — the
+halt's cadence is written once here, who needed you once there.
 Loaded through `parseData` + `ClockBitesConfigSchema`. Every nested object is
 `.strict()`; the top level is not, so the file's `_doc` annotations survive
 review and are stripped at load.

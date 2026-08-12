@@ -6,6 +6,49 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-11 — **BUILT #383** (the bite stops being a bet only in spirit — it is placed, and it
+  is settled). After the tracer, picking a week ran seven days and reported what happened; nothing
+  ever said what the player was *wagering* by picking it, so nothing resolved. Both halves are now
+  real: the picker states the stake **before** the tap, and the Reveal settles it after.
+  **The bite bet is the FIRST day's captured `PrepBet`, READ BACK off the run's first
+  `BiteDayBeats` — not copied into a second slot.** A bite is the day bet held longer: you wagered
+  that the lot you had stocked when you tapped carries the store for N days. The per-day capture
+  keeps running inside the run (day 4 recaptures against day 4's lot — that is what feeds each
+  day's own beat into the pooled feed), and `biteBetVerdictScoreline` reads `days[0].prepBet`
+  itself rather than taking one, so **no caller can hand it day four's**. Two grains, one module,
+  one copy of the fact. A run whose first day had no lean states no verdict even if a later day
+  does — adopting the first non-null bet down the run would invent a wager out of a mid-week
+  restock.
+  **The verdict counts DAYS, not units.** The bet being settled is a bet about days, so the
+  scoreline reads *"You went in leaning on trucks; the crowd asked for sedans on 3 of 7 days. Poor
+  match."* A count of units would let one busy Saturday speak for a week the store was wrong
+  about. The crowd is named with the **same `dominantCrowdWant` rule the day grain uses** — the
+  bite learns no second rule — and `null` (nothing ever asked, or the run named no favorite) falls
+  back to the tracer's span scoreline rather than inventing a verdict. A bet nobody can settle is
+  not scored.
+  **A halted bite is scored on the days it ran, by construction** — `days` *is* what ran — and the
+  span clause stays in front of the verdict, because it is what states that a 3-day run was a
+  shorter bet than the seven that were placed. The verdict must not silently absorb that.
+  **`matchClause` now takes its window too.** The fallback path this slice routes through was
+  still printing *"nothing closed today"* over a week — the same defect #381's drive caught in
+  `matchReaction`, one function over.
+  **The stakes sentence is DATA, and the schema refuses a bite above the day that omits it.**
+  `stakes` rides `data/clock-bites.json` beside `days`, is stated verbatim under the control, and
+  the picker words nothing. The day carries none and is the only bite allowed to: it is the live
+  floor, watched as it happens, so there is nothing to state in advance — which is also why the
+  field is optional-with-a-refine rather than required-and-unread (the dead `tagline` #378 had to
+  delete).
+  **Nothing calibrated moved and nothing is persisted.** Capture and scoring are reads of values
+  the sim already computes; the bite bet lives for one synchronous run that ends MANAGERIAL, so
+  `WORLD_SNAPSHOT_VERSION` stays **21** and `prepBet` is still the one persisted wager.
+  `npm run typecheck` clean, `npm test` **258 suites / 3165 tests** green. Verified on the web
+  drive (T2 dev slot, covered desk): the Home footer states *"Seven days run without you unless
+  something needs you. The lot you stocked and the policy you set have to carry them."* under Run
+  the Week while the month stays locked stating its door; the second week ran to *"7 days run —
+  You went in leaning on trucks; the crowd asked for sedans on 3 of 7 days. Poor match."* over a
+  feed of one truck sale and eight sedan walk-offs. The first week drew the fallback, which is the
+  no-favorite branch doing its job.
+  Next: **BUILD #384**.
 - 2026-08-11 — **BUILT #382** (the bigger the bite, the more the Reveal has to leave out).
   A day's Reveal shows a handful of starred reactions out of a day's candidates. The week the
   tracer shipped ran seven days through the **same** budget, so it threw away roughly seven times
@@ -43,7 +86,10 @@ session start — open it on demand when a past slice's rationale needs recoveri
   smaller moments over 7 days, too small to make the cut."*; the very next hand-driven day drew
   exactly **5**, said *"gross today"*, and carried no leftover line.
   Next: **BUILD #383**.
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1176c60 (feat(clock): a week stops for the one thing only you can answer (#384))
 - 2026-08-11 — **BUILT #381** (phase 11 tracer: the clock takes a bigger bite). The clock had
   exactly one verb — `nextDay()`, one day at a time. It now has a ladder: the player picks how
   big a bite of the calendar to run before they look again, and the size of the bite is the bet.
