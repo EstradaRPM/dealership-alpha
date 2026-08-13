@@ -10,8 +10,16 @@ Cash movement and P&L effect are orthogonal, and the ledger now carries both axe
 |---|---|---|
 | Auction purchase (`category: 'inventoryAcquisition'`) | yes | **no** |
 | Trade allowance (`category: 'inventoryAcquisition'`, #379) | yes | **no** |
+| Credit-line draw / repayment (`category: 'financing'`, #392) | yes | **no** |
 | Cost of a vehicle sold (`postCostOfSale`, `nonCash: true`) | **no** | yes |
-| Everything else (rent, payroll, recon, carrying, service revenue, …) | yes | yes |
+| Everything else (rent, payroll, recon, carrying, credit interest, …) | yes | yes |
+
+**A CATEGORY names a balance-sheet movement — cash that changed form rather than money
+earned or spent** (#392). That is the one rule `getPnL` reads: categorized ⇒ dropped whole,
+uncategorized ⇒ the P&L. It was already true of the lone `inventoryAcquisition` member the
+filter used to name by hand, and reading the axis instead of the member is what let
+`financing` join it without a second exclusion list that could drift from the first.
+Behaviour is unchanged for every entry written before #392.
 
 - **`postCostOfSale(amount, label)`** writes a `nonCash` expense entry and does not touch
   cash. Posting the relief through `postExpense` would debit the store twice for one car.
@@ -67,9 +75,13 @@ come from.
   single line by StaffOrg. Splitting it across departments would need a second wage model
   nobody asked for, so payroll sits in overhead with rent: departmental gross → less store
   overhead → net income, the classic statement.
-- **The tag arrives as a named object** (`PostTag` / `ExpenseTag`), not as trailing
-  positional arguments — a site that wants only a profit center should not write `undefined`
-  in the category slot, and the next axis added there changes no existing call site.
+- **The tag arrives as a named object** (`PostTag`), not as trailing positional arguments —
+  a site that wants only a profit center should not write `undefined` in the category slot,
+  and the next axis added there changes no existing call site. It is **one** tag type for
+  both directions since #392: the separate `ExpenseTag` existed only while `category` could
+  mean nothing but "cash converted into stock", and stock is only ever bought. Now that a
+  category names a balance-sheet movement, a *receipt* can be one too (a credit draw is cash
+  in against a debt), and two near-identical tag types would be two places to state one axis.
 - Who tags what: `sales` = the vehicle sale, its cost-of-sale relief, wholesale proceeds,
   recon / inspection / carrying, the auction buy. `fni` = product and reserve. `service` /
   `bodyshop` = the ticket posting (via `DeptDispatchProfile.profitCenter`, so the one shared
@@ -82,12 +94,12 @@ come from.
 - `getDepartmentPnL(fromDay, toDay)` — the departmental axis (above).
 - `DEPARTMENT_CENTERS` (the four earning centers, in reporting order) and
   `PROFIT_CENTER_LABELS` (how each reads on a surface).
-- Types: `Economy`, `EconomyDeps`, `EconomyConfig`, `ExpenseCategory`, `LedgerEntry`,
-  `PnLSummary`, `ProfitCenter`, `PostTag`, `ExpenseTag`, `DepartmentPnL`,
-  `DepartmentPnLSummary`.
-- `postExpense`/`forceDebit` take an optional `ExpenseCategory`
+- Types: `Economy`, `EconomyDeps`, `EconomyConfig`, `LedgerCategory`, `LedgerEntry`,
+  `PnLSummary`, `ProfitCenter`, `PostTag`, `DepartmentPnL`, `DepartmentPnLSummary`.
+- Every post takes an optional `LedgerCategory`
   (`'inventoryAcquisition'` = cash converted into stock, i.e. auction purchase
-  price; inspection/recon/carrying stay uncategorized = operating). The lifetime
+  price; `'financing'` = a credit-line draw or repayment;
+  inspection/recon/carrying/interest stay uncategorized = operating). The lifetime
   `inventoryAcquisitionSpend` accumulator backs the Home cash-delta ops/stock
   split (#255) — cumulative, never reset; consumers diff it across day closes
   like they diff `cash`. Persisted in the snapshot (pre-#255 snapshots restore

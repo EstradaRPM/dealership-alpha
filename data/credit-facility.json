@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Phase 12 F2-R1 (#392) — the borrowing facility standing behind the store. A limit set once at career start, a drawn balance that only the player moves, and interest on whatever is standing. ONE rule for the cost: every morning, the balance the day opens with is charged a day's interest at `apr / daysPerYear`, rounded to whole dollars and posted as a plain operating expense on the store profit center. Money drawn today therefore first costs tomorrow morning, and money repaid today stops costing tomorrow morning — there is no intra-day proration and no second rule to learn. `apr` is unsecured personal credit and is deliberately dearer than the secured floorplan rate in `tunables.json#inventory.carrying` (0.09 baseline): borrowing against the store's inventory is cheap, borrowing against your name is not, which is what stops the line being free money. `daysPerYear` is declared here rather than taken from the clock's 364-day calendar because it is the lender's day-count convention, not the game's calendar — a retune moves the price of money without touching the seasons. Placeholder magnitude owed to a #286-class calibration pass.",
+  "apr": 0.14,
+  "daysPerYear": 365
+}

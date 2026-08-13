@@ -79,6 +79,10 @@ const EXPECTED_MODULE_FIELDS: ReadonlyArray<keyof World> = [
   'competitorMarket',
   'demandShaper',
   'demandControls',
+  // #392 — always composed, whatever the founder picked. A limit of zero is a
+  // facility that cannot be drawn, so "the ex-mechanic has no facility" is
+  // never a shape this list has to allow for.
+  'creditFacility',
 ];
 
 // Composition-root seams exposed as functions (the player-decision overlays).

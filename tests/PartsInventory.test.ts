@@ -4,7 +4,7 @@ import {
   type PartsInventory,
   type PartsInventoryConfig,
 } from '../src/game/PartsInventory';
-import type { ExpenseTag, PostTag } from '../src/game/Economy';
+import type { PostTag } from '../src/game/Economy';
 
 /**
  * PartsInventory isolation tests (#299, parent #297). Exercise the public
@@ -20,12 +20,12 @@ import type { ExpenseTag, PostTag } from '../src/game/Economy';
  * so folding it in would double-count every part.
  */
 function createEconomySpy() {
-  const expenses: { amount: number; label: string; tag?: ExpenseTag }[] = [];
+  const expenses: { amount: number; label: string; tag?: PostTag }[] = [];
   const relief: { amount: number; label: string; tag?: PostTag }[] = [];
   return {
     expenses,
     relief,
-    postExpense(amount: number, label: string, tag?: ExpenseTag) {
+    postExpense(amount: number, label: string, tag?: PostTag) {
       expenses.push({ amount, label, tag });
     },
     postCostOfSale(amount: number, label: string, tag?: PostTag) {

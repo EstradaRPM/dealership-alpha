@@ -31,13 +31,18 @@ anywhere in `src/ui/**`.
 
 **#390 is BUILT as of 2026-08-13.**
 
-**#391 is BUILT as of 2026-08-13.** The next `/next` is **BUILD #392** (dep #390, met).
+**#391 is BUILT as of 2026-08-13.**
+
+**#392 is BUILT as of 2026-08-13.** The next `/next` is **BUILD #393** (deps #392, #387 — both
+met). **`WORLD_SNAPSHOT_VERSION` is now 22.**
 
 The one thing a future session must not re-derive: **the backstory picks WERE mechanically
-identical, and #390/#391 ended three quarters of that.** `day1Modifier` is read in `createWorld`
-for three wired levers now; the one that remains is a new mechanic, not a copy job — a borrowing
-facility for `startingCreditLine` (#392/#393). **It is already stated on the character card**, so
-that slice is what makes the card true rather than what adds the sentence.
+identical, and #390/#391/#392 ended all of it.** All four `day1Modifier` levers are read in
+`createWorld` and every one of them is wired to a mechanic. **The character card is now true** —
+`data/backstories.json`'s `effect` sentences all describe something the engine does. What remains
+of F2-R1 is #393, the *surface* for the facility #392 built (the Finance statement panel, and
+`getStoreWorth()` netting the drawn balance off what the store is worth) — the engine half is
+done and the money already moves.
 
 ### Phase 12 — F1 + F2 + D3 (sliced + filed 2026-08-12)
 
@@ -49,7 +54,7 @@ that slice is what makes the card true rather than what adds the sentence.
 | ~~#389~~ | ~~D3 — plain-language labels + every empty state written + `tests/PlainLanguage.test.tsx`~~ **BUILT 2026-08-13** | #387 |
 | ~~#390~~ | ~~F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in `createWorld`, each pick stated on the card~~ **BUILT 2026-08-13** | — |
 | ~~#391~~ | ~~F2-R1 — `grudgesFlag` becomes a starting reputation deficit~~ **BUILT 2026-08-13** | #390 |
-| #392 | F2-R1 — `startingCreditLine` becomes a real borrowing facility, `src/game/CreditFacility/` (**bumps `WORLD_SNAPSHOT_VERSION` 21 → 22**) | #390 |
+| ~~#392~~ | ~~F2-R1 — `startingCreditLine` becomes a real borrowing facility, `src/game/CreditFacility/` (**bumps `WORLD_SNAPSHOT_VERSION` 21 → 22**)~~ **BUILT 2026-08-13** | #390 |
 | #393 | F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the drawn balance | #392, #387 |
 | #394 | F2-R2 — the failure stakes, stated once the first time cash goes low | #386, #392 |
 | #213 | F1 — the first-run spine coachmarks + the "What should I do?" InGameMenu entry **[rewritten in place]** | #386 |
@@ -198,6 +203,55 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **The credit facility has ONE cost rule, and the issue's Notes line describes a second one
+  that was deliberately not built** (#392). The rule: every morning, the balance the day opens
+  with is charged a day's interest. #392's Notes said *"a same-day draw-and-repay costs a day's
+  interest and no more"* — under the shipped rule it costs **nothing**, because the balance never
+  stood at a morning. Making it cost one day needs a charge levied at draw time *on top of* the
+  morning charge, i.e. two rules the player must hold to predict one number, which the one-rule
+  ruling forbids. Nothing is exploitable by the free intraday float: an auction unit takes two
+  days to land, so there is no same-day use for borrowed cash. A future session "fixing" this is
+  adding the second rule, not completing the first.
+- **The ledger's category axis IS the balance-sheet axis, and `getPnL` now reads the axis rather
+  than naming a member** (#392). `pnlEntries` filters `e.category === undefined`; a *categorized*
+  entry moves cash and has no P&L effect. That was always what `inventoryAcquisition` meant (cash
+  → stock), and `financing` is the same fact in the other direction (cash ↔ debt), so the change
+  is **behaviour-identical for every entry written before #392**. A third category added next year
+  needs no edit to the filter and no second exclusion list to keep in step. Adding a category for
+  something that IS operating spend would silently drop it off the statement — that is the one way
+  to misuse this axis.
+- **`ExpenseTag` is deleted; `PostTag` carries `category` for both directions** (#392). The split
+  existed only while a category could mean nothing but "cash converted into stock", and stock is
+  only ever bought. A credit draw is a *receipt* that is a balance-sheet movement, so re-splitting
+  the type would be two places to state one axis. `ExpenseCategory` was renamed `LedgerCategory`
+  for the same reason.
+- **A draw goes through `postRevenue` and a repayment through `postExpense`, and neither reaches
+  the P&L** (#392). `LedgerEntry.type` is the *direction* of the cash; the category is what kind
+  of movement it is. Interest is the only part that is a real cost, and it posts uncategorized on
+  the `store` profit center through **`forceDebit`** — the lender is owed it whether or not the
+  store can pay, so a `postExpense` throw would abort the day over the bill. A store that cannot
+  cover it goes negative, which the bankruptcy machinery already reads (the #379 call).
+- **The v21→v22 migration deliberately omits `limit`, and that is what makes it different from
+  the #358 step** (#392). A facility's ceiling is not derivable from anything in `modules` — it
+  comes off the character profile in SaveStore — but `restoreWorld` rehydrates onto a freshly
+  built World that has *already* resolved it. `createDefaultCreditFacilitySnapshot()` therefore
+  returns `{ schemaVersion: 1, drawn: 0, interestPaidToDate: 0 }` with **no** limit, and
+  `CreditFacility.restore` reads `snap.limit ?? limit`. Materializing a synthetic `0` there would
+  silently strip the facility from every banker's career saved before the module existed.
+  `snapshot()` always writes the field, so only the migration path takes that branch.
+- **A limit of zero is a facility that cannot be drawn, not an absent facility** (#392). One code
+  path: `available` reads 0, every draw is refused `over-limit` by the same rule that governs a
+  banker's, and the module is composed / snapshotted / restored identically. #393's surface must
+  not add a "does this store have a facility" branch — there is no such state.
+- **A draw past the limit is refused WHOLE, never clamped to the headroom** (#392). A control that
+  quietly hands you less than you asked for is a second rule; `getFacility().available` and
+  `.maxRepayment` are stated on the read precisely so a surface never re-derives either bound.
+  `dailyInterest` is on the same read for the same reason — the previewed charge and the posted
+  one come out of the one `dailyInterestOn` function.
+- **#392 cannot move a pacing band until someone draws on it, and that was checked** (#392). The
+  `#180` live calibration is byte-identical after the slice: 35.8% / 54.3%, closes=274,
+  `costOverAsk` 1.026. The harness founder declares `startingCreditLine: 0` (the #390 rule that
+  the harness measures the store, not the founder), so no automated run ever borrows.
 - **The grudge moves BOTH standing scalars, and the review-only version would have been a
   fortnight's inconvenience** (#391). `reviewDriftRate` is 0.1, so the review score chases
   satisfaction at 10% a night: a deficit applied to the review alone is handed back inside two
@@ -1573,6 +1627,55 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-13 — **BUILT #392** (F2-R1 — `startingCreditLine` becomes a real borrowing facility).
+  The Ex-Banker's $50,000 was a number in `data/backstories.json` that nothing read. It is now
+  `src/game/CreditFacility/` — a limit, a drawn balance, and interest every morning on whatever
+  is standing. **Envelope v21 → v22.**
+  **ONE rule for the cost, and it is the whole cost model.** Every morning, the balance the day
+  opens with is charged a day's interest at `apr / daysPerYear`, rounded to whole dollars. Money
+  drawn today first costs tomorrow morning; money repaid today stops costing tomorrow morning. No
+  intra-day proration, no compounding schedule, no minimum payment. The issue's Notes line said "a
+  same-day draw-and-repay costs a day's interest and no more" — under this rule it costs
+  **nothing**, because the balance never stood at a morning. Making it cost one day would have
+  needed a *second* rule (a charge levied at draw time on top of the morning one), and the
+  one-rule version is the ruling that governs. There is no intra-day use for the float — an
+  auction unit takes two days to land — so nothing is exploitable by it.
+  **A draw is not income and a repayment is not an expense, and holding that line is what
+  widened the ledger's category axis.** `getPnL` used to drop `category !== 'inventoryAcquisition'`
+  by naming the member. It now drops **any categorized entry**, because the rule was always "a
+  category names a BALANCE-SHEET movement — cash that changed form rather than money earned or
+  spent". `inventoryAcquisition` is cash → stock; `financing` (new) is cash ↔ debt. Reading the
+  axis rather than the member is what let the second member join without a second exclusion list
+  that could drift from the first, and it is **behaviour-identical** for every entry written
+  before today. Booking a draw as revenue would have flattered Net Income by the size of the loan
+  — the one thing #374's statement cannot do.
+  **`ExpenseTag` is GONE; `PostTag` carries the category for both directions.** The split existed
+  only while a category could mean nothing but "cash converted into stock", and stock is only ever
+  bought. A *receipt* can be a balance-sheet movement too, so two near-identical tag types would
+  have been two places to state one axis.
+  **Only the interest is a real cost**, and it lands uncategorized on the `store` profit center —
+  plain overhead. Posted through `forceDebit`, not `postExpense`: the lender is owed it whether or
+  not the store can pay, so a throw there would abort the day over the bill. A store that cannot
+  cover it goes negative, which the bankruptcy machinery already reads — the #379 call about a
+  trade the store cannot cover.
+  **A limit of zero is a facility that cannot be drawn, not an absent facility.** One code path,
+  so no surface and no test branches on which founder the player picked; `available` reads 0 and
+  every draw is refused `over-limit` by the same rule that governs a banker's.
+  **The migration's default deliberately omits `limit`, and that is what separates it from the
+  #358 step.** A facility's ceiling is not derivable from anything in `modules` — it comes off the
+  character profile in SaveStore — but `restoreWorld` rehydrates onto a freshly built World that
+  has *already* resolved it. Stamping a synthetic 0 would have silently stripped the facility from
+  every banker's career saved before today. `restore` reads `snap.limit ?? limit`; `snapshot()`
+  always writes the field, so only the migration path takes that branch.
+  Verified: `npm run typecheck` clean, **275 suites / 5566 tests green**, and the `#180` live
+  calibration is byte-identical at 35.8% / 54.3%, closes=274, `costOverAsk` 1.026 — the facility
+  cannot move a pacing band until someone draws on it. Fixture `data/fixtures/tier-2.json`
+  re-stamped by migrating it in place through the real funnel (6-line diff), per the
+  `pre-save-envelope` ritual. No runtime surface in this slice, so no web drive: #393 is the
+  Finance-statement half.
+  Next: **BUILD #393** (F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the
+  drawn balance); both deps (#392, #387) are now met.
+
 - 2026-08-13 — **BUILT #391** (F2-R1 — `grudgesFlag` becomes a starting reputation deficit). The
   Inheritor's town is now a mechanic instead of a paragraph: the store opens **10 points below**
   the standing a stranger gets, on both `customerSatisfaction` and `reviewScore`.
@@ -1670,50 +1773,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   reason to leave a drivable surface undriven.
   Next: **BUILD #391** (F2-R1 — `grudgesFlag` becomes a starting reputation deficit); its dep
   #390 is now met.
-
-- 2026-08-13 — **BUILT #389** (D3 — plain-language labels + every empty state written). The
-  casual-player pass over every live surface, and the third of phase 12's four teaching slices.
-  **Every empty-state string in the game is now one catalog entry.** `data/empty-states.json` (53
-  ids) behind `parseData`, loaded by `src/ui/copy/`, consumed as `emptyState(id, slots?)`. The
-  shape is `data/hints.json`'s verbatim — closed id union, completeness `.refine`, non-strict top
-  level so the `_doc` annotations survive — plus one refine of its own: **every string must end in
-  `.`/`!`/`?`**, because "None" and "No data" tell a new player nothing they could not already see.
-  `tests/EmptyStates.test.tsx` fails any file under `src/` containing a 40-char fragment of one,
-  and it was **proved against an injected probe**, not trusted.
-  **It is a plain read, not a hook, and that is the one design call worth not re-deriving.** A
-  hint's answer is a read of the slot's teaching cell, so `useHints` has to be injected. An
-  empty-state sentence is identical for every slot, tier and day — so prop-drilling fifty static
-  strings through the composition root would be injection's ceremony with none of its reason. The
-  kit's new `EmptyState` still takes `text` and never reaches the catalog.
-  **Home and Growth had hand-rolled the same `EmptyNote` twice**; it is now one kit primitive, which
-  is how two pages stop looking different about the same fact.
-  **The temperature scan judges what is RENDERED.** `tests/PlainLanguage.test.tsx` strips comments,
-  then reads copy-carrying keys/props and JSX text nodes — so `'hot' | 'warm' | 'cold'` as an
-  internal band-id union is untouched while a label is not. Widening it to every string literal
-  would have flagged the three `DEMAND_BAND` maps whose whole job is to turn a band id into "High
-  demand". The `data/` half names its files: `recon-surprise-events.json`'s "cold start" is a
-  mechanical description, not a scale position.
-  **Two real defects the scan and the audit found.** `PENDING-WARM` on the live floor was the one
-  temperature word actually on screen — it is `walkedIn - staffEngaged`, so the model field was
-  renamed `waiting` along with the label rather than papering over the label alone. And the
-  auction's "UCM Recon Read: $400–$1,200 (Medium)" stated a magnitude of nothing; it is now
-  "Manager's Repair Estimate … (fairly sure)". `BARE_MAGNITUDE` in the test is what stops a scale
-  end going back to a naked "High"/"Low".
-  **Every chart call site outside the kit now passes `emptyLabel`, enforced by a counting scan.**
-  `ChartEmpty` returns `null` without one, so `FinanceTab`'s headline sparkline had been drawing a
-  blank box on an empty window — the exact failure the primitive exists to prevent.
-  Boundary stated rather than smuggled: **Finance keeps its DMS idiom** (PVR / PPRU / carrying
-  cost). That tab's charter is locked as the backward-looking judgment numbers in honest DMS idiom;
-  rewording them is a charter question, not a copy pass. The jargon audit fixed the labels with no
-  expansion anywhere on the surface, which was the auction read.
-  `npm run typecheck` clean, `npm test` **272 suites / 5044 tests** green (up 6 suites / 948 tests).
-  Ten existing tests asserted the old literals and now assert `emptyState(id)` — a test pinning a
-  literal is the drift the catalog exists to end.
-  **Web drive (T2 dev fixture, day 37):** Home's market band drew *"No campaign running —
-  advertising in Growth brings a different crowd through the door."*; Growth drew the locked
-  finance-mix note and *"This kind of space opens up at a higher tier."* on body-shop bays; the live
-  floor's TODAY grid reads **WAITING**. The auction's manager read needs a UCM (Tier 3) and so is
-  covered by typecheck + the source scan rather than by the drive, the same limit #385's month rung
-  hit.
-  Next: **BUILD #390** (F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in
-  `createWorld`), the lowest deps-met issue in the phase.

@@ -836,6 +836,20 @@ export interface EventMap {
     day: number;
   };
 
+  // ── Credit facility (#392) ─────────────────────────────────────────────────
+  // The borrowing facility standing behind the store: the player draws against
+  // a limit and repays out of cash, and the balance costs interest every
+  // morning until it is gone. Both payloads carry the balance AFTER the move
+  // and the limit it was measured against, so a consumer never has to add or to
+  // ask the module back for its state.
+  //
+  // The morning interest charge publishes NOTHING of its own: it is a plain
+  // operating expense, and `economy:expense_posted` already announces it. A
+  // second event for money the player did not move would be a beat about
+  // nothing happening.
+  'credit:drawn': { day: number; amount: number; drawn: number; limit: number };
+  'credit:repaid': { day: number; amount: number; drawn: number; limit: number };
+
   // CareerProgression — bankruptcy outcomes (tier-aware per issue #30).
   //   terminal: Tier 1 game-over; routes to end-card flow.
   //   contraction: Tier 2 forced back to Tier 1 with debt overhang.

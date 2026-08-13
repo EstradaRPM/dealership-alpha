@@ -117,6 +117,10 @@ import {
   type CharacterProfile,
 } from './game/CareerProgression';
 import { createFacility, type Facility } from './game/Facility';
+import {
+  createCreditFacility,
+  type CreditFacility,
+} from './game/CreditFacility';
 import { createEndCardManager, type EndCardManager } from './game/EndCard';
 import {
   createRegulatoryMeter,
@@ -240,6 +244,11 @@ export interface World {
   /** #358 built physical capacity — lot spaces + service/body bays — and the
    *  current tier's ceiling over each. */
   facility: Facility;
+  /** #392 the borrowing facility standing behind the store: a limit, a drawn
+   *  balance, and interest every morning on whatever is standing. Always
+   *  composed — a founder with no line of credit has a facility with a limit of
+   *  zero, not an absent one. */
+  creditFacility: CreditFacility;
   kpiDashboard: KPIDashboard;
   /**
    * The F&I desk's `finance_structuring` as it is working today, or `null` when
@@ -622,6 +631,19 @@ export function createWorld(deps: {
     bus,
     getTier: () => tierManager.currentTier,
     economy,
+    getCurrentDay: () => clock.currentDay,
+  });
+  // #392: the borrowing facility. Built right after Economy (it banks through
+  // it) and after the clock (every morning it charges a day's interest on the
+  // standing balance). The ceiling is resolved HERE from the founder's line of
+  // credit and handed down as a plain number — the module never learns a
+  // backstory exists. A founder with no credit gets a facility with a limit of
+  // zero, which is byte-identical to the pre-#392 world: nothing can be drawn,
+  // so nothing is ever posted.
+  const creditFacility = createCreditFacility({
+    bus,
+    economy,
+    limit: day1.startingCreditLine,
     getCurrentDay: () => clock.currentDay,
   });
   const regulatoryMeter = createRegulatoryMeter({ bus, economy, tierManager });
@@ -1742,6 +1764,7 @@ export function createWorld(deps: {
     records,
     marketIntel,
     facility,
+    creditFacility,
     kpiDashboard,
     getFniStructuringSkill,
     getStoreWorth,

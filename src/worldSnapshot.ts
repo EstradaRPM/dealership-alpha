@@ -80,11 +80,15 @@ import {
   createDefaultFacilitySnapshot,
   type AnyFacilitySnapshot,
 } from './game/Facility';
+import {
+  createDefaultCreditFacilitySnapshot,
+  type CreditFacilitySnapshot,
+} from './game/CreditFacility';
 
 /** Envelope-shape version. Bumped only when module keys are added/restructured
  *  in a way that needs migration (#196), not when a module bumps its own
  *  `schemaVersion`. */
-export const WORLD_SNAPSHOT_VERSION = 21;
+export const WORLD_SNAPSHOT_VERSION = 22;
 
 // A `type` (not `interface`) so the concrete envelope stays assignable to the
 // loose `PersistedWorldSnapshot` below — interfaces lack the implicit index
@@ -163,6 +167,11 @@ export type WorldSnapshot = {
     // module's own `schemaVersion` 1 → 2 and needs no envelope bump; the union
     // is what lets a v21 save written before construction still type as itself.
     readonly facility: AnyFacilitySnapshot;
+    // #392 The borrowing facility: the limit, what is drawn against it and the
+    // interest it has cost to date. The limit is written on every save but is
+    // OPTIONAL in the type, because the v21→v22 migration deliberately omits it
+    // — see `CreditFacilitySnapshot.limit`.
+    readonly creditFacility: CreditFacilitySnapshot;
     // Later #186 slices add keys here
     // — each a module's own self-versioned snapshot.
   };
@@ -433,6 +442,26 @@ export const WORLD_SNAPSHOT_MIGRATIONS: Record<number, WorldSnapshotMigration> =
         ),
       },
     }),
+    21: (snap) => ({
+      version: 22,
+      modules: {
+        ...snap.modules,
+        // #392 added CreditFacility — the borrowing line behind the store.
+        // Behavior-neutral: a career that predates the module never borrowed,
+        // so it restores with nothing drawn and nothing paid in interest.
+        //
+        // The default deliberately carries NO `limit`, which is the one thing
+        // that separates this step from the #358 one above. A facility's
+        // ceiling is not derivable from anything in `modules` — it comes from
+        // the founder's line of credit, which lives on the character profile in
+        // SaveStore, not in this envelope. But `restoreWorld` rehydrates onto a
+        // freshly built World that has ALREADY resolved it, so the honest
+        // default is to leave that limit alone rather than stamp a synthetic 0
+        // over it and silently strip the facility from every banker's career
+        // saved before today. `CreditFacility.restore` reads `limit ?? limit`.
+        creditFacility: createDefaultCreditFacilitySnapshot(),
+      },
+    }),
   };
 
 /**
@@ -504,6 +533,7 @@ export function snapshotWorld(world: World): WorldSnapshot {
       records: world.records.snapshot(),
       marketIntel: world.marketIntel.snapshot(),
       facility: world.facility.snapshot(),
+      creditFacility: world.creditFacility.snapshot(),
     },
   };
 }
@@ -551,4 +581,5 @@ export function restoreWorld(
   world.marketIntel.restore(snap.modules.marketIntel);
   world.records.restore(snap.modules.records);
   world.facility.restore(snap.modules.facility);
+  world.creditFacility.restore(snap.modules.creditFacility);
 }

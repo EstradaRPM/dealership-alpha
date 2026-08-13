@@ -6,7 +6,6 @@ import { DEPARTMENT_CENTERS } from './types';
 import type {
   DepartmentPnL,
   DepartmentPnLSummary,
-  ExpenseTag,
   LedgerEntry,
   PnLSummary,
   PostTag,
@@ -48,7 +47,7 @@ export interface Economy {
    */
   readonly inventoryAcquisitionSpend: number;
   postRevenue(amount: number, label: string, tag?: PostTag): void;
-  postExpense(amount: number, label: string, tag?: ExpenseTag): void;
+  postExpense(amount: number, label: string, tag?: PostTag): void;
   /**
    * Relieve the cost of a unit that just left the lot (#374). Writes a
    * `nonCash` expense entry and **does not touch cash** — the money for that
@@ -62,7 +61,7 @@ export interface Economy {
   postCostOfSale(amount: number, label: string, tag?: PostTag): void;
   // Bypass the solvency check. Used by failure paths (bankruptcy debt service,
   // compliance fees) where cash legitimately goes negative.
-  forceDebit(amount: number, label: string, tag?: ExpenseTag): void;
+  forceDebit(amount: number, label: string, tag?: PostTag): void;
   getPnL(fromDay: number, toDay: number): PnLSummary;
   /**
    * The same window, cut by profit center (#375). Reads the same entries
@@ -117,7 +116,7 @@ export function createEconomy(deps: EconomyDeps): Economy {
     day: number,
     amount: number,
     label: string,
-    tag?: ExpenseTag,
+    tag?: PostTag,
   ): void {
     cash -= amount;
     if (tag?.category === 'inventoryAcquisition') inventoryAcquisitionSpend += amount;
@@ -130,7 +129,7 @@ export function createEconomy(deps: EconomyDeps): Economy {
    * `undefined` values, so an untagged entry snapshots byte-identical to a
    * pre-#255/#375 one and a `toEqual` against a plain object still holds.
    */
-  function tagFields(tag?: ExpenseTag): Partial<LedgerEntry> {
+  function tagFields(tag?: PostTag): Partial<LedgerEntry> {
     return {
       ...(tag?.category ? { category: tag.category } : {}),
       ...(tag?.profitCenter ? { profitCenter: tag.profitCenter } : {}),
@@ -139,14 +138,21 @@ export function createEconomy(deps: EconomyDeps): Economy {
 
   /**
    * The window's entries as the P&L sees them — the ONE filter both reads
-   * share (#375). `inventoryAcquisition` entries are dropped whole (see
-   * `getPnL`); if the department cut ever applied a different filter, its four
-   * grosses would stop adding up to the Net Income printed beside them, which
-   * is the exact defect the panel exists to close.
+   * share (#375). If the department cut ever applied a different filter, its
+   * four grosses would stop adding up to the Net Income printed beside them,
+   * which is the exact defect the panel exists to close.
+   *
+   * **A CATEGORIZED entry is dropped whole** (#392). The category axis names a
+   * balance-sheet movement — cash that changed form rather than money earned or
+   * spent — so "categorized" and "no P&L effect" are the same fact, stated
+   * once. That was already true of the single `inventoryAcquisition` member
+   * this filter used to name by hand; reading the axis instead of the member is
+   * what let `financing` join it without a second exclusion list that could
+   * drift. Behavior is unchanged for every entry written before #392.
    */
   function pnlEntries(fromDay: number, toDay: number): readonly LedgerEntry[] {
     return ledger.filter(
-      (e) => e.day >= fromDay && e.day <= toDay && e.category !== 'inventoryAcquisition',
+      (e) => e.day >= fromDay && e.day <= toDay && e.category === undefined,
     );
   }
 
@@ -187,13 +193,15 @@ export function createEconomy(deps: EconomyDeps): Economy {
      * The P&L, and since #374 an ACCRUAL one: it reports what the window
      * earned, not what its bank account did.
      *
-     * `inventoryAcquisition` entries are dropped whole — from the totals AND
-     * from `entries`. Buying a car converts cash into stock; it is a cash
-     * movement with no P&L effect, and the cost comes back as the `nonCash`
-     * relief on the day that car sells. Leaving them in `entries` would put
-     * "Auction purchase" on the expense breakdown under a Net Income that does
-     * not count it — two numbers on one screen that cannot be added up, which
-     * is the exact defect this read exists to close.
+     * **Categorized entries are dropped whole** — from the totals AND from
+     * `entries` — because a category names a balance-sheet movement. Buying a
+     * car converts cash into stock, and the cost comes back as the `nonCash`
+     * relief on the day that car sells; drawing on the credit line (#392)
+     * converts a debt into cash, and it costs what the interest costs.
+     * Leaving either in `entries` would put a line on the expense breakdown
+     * under a Net Income that does not count it — two numbers on one screen
+     * that cannot be added up, which is the exact defect this read exists to
+     * close.
      */
     getPnL(fromDay, toDay) {
       const entries = pnlEntries(fromDay, toDay);

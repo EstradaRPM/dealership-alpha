@@ -6,8 +6,7 @@ export { DEPARTMENT_CENTERS, PROFIT_CENTER_LABELS } from './types';
 export type {
   DepartmentPnL,
   DepartmentPnLSummary,
-  ExpenseCategory,
-  ExpenseTag,
+  LedgerCategory,
   LedgerEntry,
   PnLSummary,
   PostTag,

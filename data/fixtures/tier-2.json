@@ -1,6 +1,6 @@
 {
   "world": {
-    "version": 21,
+    "version": 22,
     "modules": {
       "gameClock": {
         "schemaVersion": 1,
@@ -2867,6 +2867,11 @@
           "serviceBays": 4,
           "bodyBays": 0
         }
+      },
+      "creditFacility": {
+        "schemaVersion": 1,
+        "drawn": 0,
+        "interestPaidToDate": 0
       }
     }
   },

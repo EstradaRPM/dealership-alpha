@@ -6,6 +6,53 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-13 — **BUILT #389** (D3 — plain-language labels + every empty state written). The
+  casual-player pass over every live surface, and the third of phase 12's four teaching slices.
+  **Every empty-state string in the game is now one catalog entry.** `data/empty-states.json` (53
+  ids) behind `parseData`, loaded by `src/ui/copy/`, consumed as `emptyState(id, slots?)`. The
+  shape is `data/hints.json`'s verbatim — closed id union, completeness `.refine`, non-strict top
+  level so the `_doc` annotations survive — plus one refine of its own: **every string must end in
+  `.`/`!`/`?`**, because "None" and "No data" tell a new player nothing they could not already see.
+  `tests/EmptyStates.test.tsx` fails any file under `src/` containing a 40-char fragment of one,
+  and it was **proved against an injected probe**, not trusted.
+  **It is a plain read, not a hook, and that is the one design call worth not re-deriving.** A
+  hint's answer is a read of the slot's teaching cell, so `useHints` has to be injected. An
+  empty-state sentence is identical for every slot, tier and day — so prop-drilling fifty static
+  strings through the composition root would be injection's ceremony with none of its reason. The
+  kit's new `EmptyState` still takes `text` and never reaches the catalog.
+  **Home and Growth had hand-rolled the same `EmptyNote` twice**; it is now one kit primitive, which
+  is how two pages stop looking different about the same fact.
+  **The temperature scan judges what is RENDERED.** `tests/PlainLanguage.test.tsx` strips comments,
+  then reads copy-carrying keys/props and JSX text nodes — so `'hot' | 'warm' | 'cold'` as an
+  internal band-id union is untouched while a label is not. Widening it to every string literal
+  would have flagged the three `DEMAND_BAND` maps whose whole job is to turn a band id into "High
+  demand". The `data/` half names its files: `recon-surprise-events.json`'s "cold start" is a
+  mechanical description, not a scale position.
+  **Two real defects the scan and the audit found.** `PENDING-WARM` on the live floor was the one
+  temperature word actually on screen — it is `walkedIn - staffEngaged`, so the model field was
+  renamed `waiting` along with the label rather than papering over the label alone. And the
+  auction's "UCM Recon Read: $400–$1,200 (Medium)" stated a magnitude of nothing; it is now
+  "Manager's Repair Estimate … (fairly sure)". `BARE_MAGNITUDE` in the test is what stops a scale
+  end going back to a naked "High"/"Low".
+  **Every chart call site outside the kit now passes `emptyLabel`, enforced by a counting scan.**
+  `ChartEmpty` returns `null` without one, so `FinanceTab`'s headline sparkline had been drawing a
+  blank box on an empty window — the exact failure the primitive exists to prevent.
+  Boundary stated rather than smuggled: **Finance keeps its DMS idiom** (PVR / PPRU / carrying
+  cost). That tab's charter is locked as the backward-looking judgment numbers in honest DMS idiom;
+  rewording them is a charter question, not a copy pass. The jargon audit fixed the labels with no
+  expansion anywhere on the surface, which was the auction read.
+  `npm run typecheck` clean, `npm test` **272 suites / 5044 tests** green (up 6 suites / 948 tests).
+  Ten existing tests asserted the old literals and now assert `emptyState(id)` — a test pinning a
+  literal is the drift the catalog exists to end.
+  **Web drive (T2 dev fixture, day 37):** Home's market band drew *"No campaign running —
+  advertising in Growth brings a different crowd through the door."*; Growth drew the locked
+  finance-mix note and *"This kind of space opens up at a higher tier."* on body-shop bays; the live
+  floor's TODAY grid reads **WAITING**. The auction's manager read needs a UCM (Tier 3) and so is
+  covered by typecheck + the source scan rather than by the drive, the same limit #385's month rung
+  hit.
+  Next: **BUILD #390** (F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in
+  `createWorld`), the lowest deps-met issue in the phase.
+
 - 2026-08-12 — **BUILT #388** (D3-R2 — the consequence-hint pass over every live control). The
   catalog went from #386's three dials to **21 lessons**, and the completeness guard went from a
   scan of source strings to a scan of the **rendered app**.

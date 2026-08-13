@@ -1,11 +1,23 @@
 /**
- * Structural expense tag (#255). Labels stay the human-readable grouping for
- * the KPI dashboard; the category is for machine consumers (the Home cash-delta
- * ops/stock split). `inventoryAcquisition` = cash converted into stock (auction
- * purchase price) — NOT diligence/process costs around the buy (inspection,
- * recon, carrying), which remain operating spend.
+ * Structural ledger tag (#255, widened by #392). Labels stay the human-readable
+ * grouping for the KPI dashboard; the category is for machine consumers.
+ *
+ * **A category names a BALANCE-SHEET movement — cash that changed form rather
+ * than money the store earned or spent.** That is the whole rule, and it is
+ * what `getPnL` reads: a categorized entry moves cash and has no P&L effect, an
+ * uncategorized one is the P&L. Both members are that same fact:
+ *
+ * - `inventoryAcquisition` — cash converted into stock (auction purchase price,
+ *   a trade allowance). **NOT** the diligence/process costs around the buy
+ *   (inspection, recon, carrying), which are real operating spend.
+ * - `financing` — cash borrowed against, or repaid to, the credit facility
+ *   (#392). A draw is not income and a repayment is not an expense; the
+ *   *interest* is, and carries no category at all.
+ *
+ * Only `inventoryAcquisition` feeds the lifetime `inventoryAcquisitionSpend`
+ * accumulator behind the Home cash-delta ops/stock split.
  */
-export type ExpenseCategory = 'inventoryAcquisition';
+export type LedgerCategory = 'inventoryAcquisition' | 'financing';
 
 /**
  * Which profit center a post belongs to (#375) — the departmental axis of the
@@ -48,14 +60,17 @@ export const PROFIT_CENTER_LABELS: Readonly<Record<ProfitCenter, string>> = {
  * trailing positional arguments: a post site that wants only a profit center
  * should not have to write `undefined` in the category slot, and the next axis
  * added here changes no existing call site.
+ *
+ * ONE tag type for both directions (#392). It was split into a `PostTag` for
+ * revenue and an `ExpenseTag` for expenses while `category` could only mean
+ * "cash converted into stock" — and stock is only ever bought. Now that the
+ * category names a balance-sheet movement, a *receipt* can be one too (a credit
+ * draw is cash in against a debt), and two near-identical tag types would be
+ * two places to state one axis.
  */
 export interface PostTag {
   profitCenter?: ProfitCenter;
-}
-
-/** A `PostTag` plus the structural expense category (#255). */
-export interface ExpenseTag extends PostTag {
-  category?: ExpenseCategory;
+  category?: LedgerCategory;
 }
 
 export interface LedgerEntry {
@@ -63,7 +78,7 @@ export interface LedgerEntry {
   type: 'revenue' | 'expense';
   amount: number;
   label: string;
-  category?: ExpenseCategory;
+  category?: LedgerCategory;
   /**
    * Departmental attribution (#375). Optional and omitted for `store`, so a
    * pre-#375 ledger restores byte-identical and reads as overhead — which is

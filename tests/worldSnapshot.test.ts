@@ -25,6 +25,7 @@ import {
   ceilingsAtTier,
   loadFacilityData,
 } from '../src/game/Facility';
+import { createDefaultCreditFacilitySnapshot } from '../src/game/CreditFacility';
 
 // #188 — the save/load tracer: the world-serialization seam proven end to end
 // with the two smallest stateful values (GameClock.day + Economy.cash). Locks
@@ -37,6 +38,24 @@ const PROFILE: CharacterProfile = {
     backstoryId: 'ex-mechanic',
     reconJudgmentBonus: 0.15,
     startingCreditLine: 0,
+    startingCapitalBonus: 0,
+    grudgesFlag: false,
+  },
+};
+
+/**
+ * The one founder who opens with a line of credit (#392). Declared here because
+ * a facility's ceiling is the one piece of persisted-adjacent state that does
+ * NOT live in the envelope — it comes off the character profile — so the
+ * migration cases can only be stated against a founder who has one.
+ */
+const BANKER: CharacterProfile = {
+  name: 'Dana Whitfield',
+  backstoryId: 'ex-banker',
+  day1Modifier: {
+    backstoryId: 'ex-banker',
+    reconJudgmentBonus: 0,
+    startingCreditLine: 50_000,
     startingCapitalBonus: 0,
     grudgesFlag: false,
   },
@@ -998,11 +1017,13 @@ describe('world-snapshot versioning + migrations (#196)', () => {
   it('the chosen bite is not snapshot state (#381)', () => {
     // The picker's default is the day, EVERY time. A remembered bite is a
     // standing instruction to skip, which is the opposite of a bet you place
-    // each time — so ClockBite persists nothing, the envelope is untouched
-    // (version stays 21), and there is no migration to look for.
+    // each time — so ClockBite persists nothing, the envelope is untouched, and
+    // there is no migration to look for. Asserted against the live constant
+    // rather than the literal it was written at: the claim is "this slice added
+    // no key", not "the envelope never moves again".
     const { world } = build(42);
     const snap = snapshotWorld(world);
-    expect(snap.version).toBe(21);
+    expect(snap.version).toBe(WORLD_SNAPSHOT_VERSION);
     expect(Object.keys(snap.modules)).not.toContain('clockBite');
     expect(JSON.stringify(snap)).not.toContain('bite');
   });
@@ -1014,7 +1035,7 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     // `prepBet` stays the one persisted World-level wager it already was.
     const { world } = build(42);
     const snap = snapshotWorld(world);
-    expect(snap.version).toBe(21);
+    expect(snap.version).toBe(WORLD_SNAPSHOT_VERSION);
     expect(Object.keys(snap.modules)).toContain('prepBet');
     expect(JSON.stringify(snap)).not.toContain('biteBet');
   });
@@ -1139,6 +1160,75 @@ describe('world-snapshot versioning + migrations (#196)', () => {
     );
     // …and every pre-existing blob rides through untouched.
     expect(migrated.modules.gameClock).toEqual(current.modules.gameClock);
+  });
+
+  it('round-trips the credit facility (#392)', () => {
+    const { world } = build(392);
+    // A banker's world: the composition root has already resolved the limit off
+    // the character profile, so the facility is drawable before anything is
+    // restored onto it.
+    const bankerBus = createEventBus();
+    const banker = createWorld({
+      bus: bankerBus,
+      masterSeed: 392,
+      characterProfile: BANKER,
+    });
+    expect(banker.creditFacility.getFacility().limit).toBe(50_000);
+    expect(banker.creditFacility.draw(20_000).ok).toBe(true);
+    bankerBus.publish('clock:day_started', { day: 2 });
+    const before = banker.creditFacility.getFacility();
+    expect(before.interestPaidToDate).toBeGreaterThan(0);
+
+    const persisted = JSON.parse(
+      JSON.stringify(snapshotWorld(banker)),
+    ) as PersistedWorldSnapshot;
+    restoreWorld(persisted, world);
+
+    // The limit, the standing balance and the lifetime interest all ride
+    // through — a reload must not hand the debt back or forgive it.
+    expect(world.creditFacility.getFacility()).toEqual(before);
+  });
+
+  it('migrates a v21 snapshot to an undrawn facility (#392)', () => {
+    const { world } = build(3921);
+    const current = snapshotWorld(world);
+    const { creditFacility, ...legacyModules } = current.modules;
+    expect(creditFacility.schemaVersion).toBe(1);
+
+    const persisted: PersistedWorldSnapshot = { version: 21, modules: legacyModules };
+    const migrated = migrateWorldSnapshot(persisted);
+
+    expect(migrated.version).toBe(WORLD_SNAPSHOT_VERSION);
+    expect(WORLD_SNAPSHOT_VERSION).toBe(22);
+    // Behavior-neutral: a career that predates the module never borrowed.
+    expect(migrated.modules.creditFacility).toEqual(
+      createDefaultCreditFacilitySnapshot(),
+    );
+    // …and every pre-existing blob rides through untouched.
+    expect(migrated.modules.gameClock).toEqual(current.modules.gameClock);
+    expect(migrated.modules.facility).toEqual(current.modules.facility);
+  });
+
+  it('a migrated v21 save keeps the limit its founder is owed (#392)', () => {
+    // The one thing that separates this step from the #358 one: a facility's
+    // ceiling is not in the envelope at all — it comes from the character
+    // profile, which `createWorld` has already read by the time `restoreWorld`
+    // runs. Stamping a synthetic 0 over it would strip the facility from every
+    // banker's career saved before the module existed.
+    const bus = createEventBus();
+    const banker = createWorld({
+      bus,
+      masterSeed: 3922,
+      characterProfile: BANKER,
+    });
+    const current = snapshotWorld(banker);
+    const { creditFacility: _dropped, ...legacyModules } = current.modules;
+
+    restoreWorld({ version: 21, modules: legacyModules }, banker);
+
+    expect(banker.creditFacility.getFacility().limit).toBe(50_000);
+    expect(banker.creditFacility.getFacility().drawn).toBe(0);
+    expect(banker.creditFacility.draw(50_000).ok).toBe(true);
   });
 
   // The AC round-trip: write a save at version N, bump the runtime to N+1 with a
