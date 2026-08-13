@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, type ViewStyle, type TextStyle } from 'react-native';
 import type { DemandTrend } from '../../game/DemandShaper';
 import { useTheme } from '../theme';
+import { emptyState } from '../copy';
 import {
   Surface,
   SectionHeader,
@@ -358,7 +359,7 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
         {hasHeat && <SectionHeader title="Who's Been Walking In" />}
         <View style={hasHeat ? { marginTop: t.spacing.sm } : undefined}>
           {model.totalObserved === 0 ? (
-            <Text style={empty}>No traffic yet — open the lot to see what buyers want.</Text>
+            <Text style={empty}>{emptyState('demand_readout')}</Text>
           ) : (
             model.entries.map((entry) => (
               <DemandRow key={entry.segment} entry={entry} />
@@ -417,7 +418,7 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
               <TargetingLeverRow key={lever.id} lever={lever} />
             ))
           ) : (
-            <Text style={empty}>No active targeting levers.</Text>
+            <Text style={empty}>{emptyState('demand_targeting_levers')}</Text>
           )}
         </View>
       </View>

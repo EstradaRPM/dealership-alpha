@@ -9,6 +9,7 @@ import {
   IconBadge,
   HintLine,
 } from '../kit';
+import { emptyState } from '../copy';
 import { ChipRow } from '../DeptControls';
 import { ManagerStatusCard } from './ManagerStatusCard';
 import { RosterCard, CandidateCard } from './peopleCards';
@@ -205,7 +206,7 @@ function DepartmentPanel({
       />
       {members.length === 0 ? (
         <Text style={s.hint} testID={`people-dept-empty-${dept}`}>
-          {`Nobody in ${meta.label} yet. ${meta.blurb}`}
+          {`${emptyState('people_department_roster', { department: meta.label })} ${meta.blurb}`}
         </Text>
       ) : (
         members.map((member) => (
@@ -273,10 +274,10 @@ function HiringPanel({
         testID={`people-hiring-roles-${dept}`}
       />
       {!shopping ? (
-        <Text style={s.hint}>Pick a job to see who is applying for it.</Text>
+        <Text style={s.hint}>{emptyState('people_hiring_no_role')}</Text>
       ) : applicants.length === 0 ? (
         <Text style={s.hint} testID="people-hiring-empty">
-          Nobody is applying for this job today.
+          {emptyState('people_hiring_no_applicants')}
         </Text>
       ) : (
         applicants.map((c) => (
@@ -396,9 +397,9 @@ export function PeopleTab({
         />
         <Text style={s.hint}>
           {roster.length === 0
-            ? 'Nobody on payroll — you are working the floor alone.'
+            ? emptyState('people_roster_empty')
             : everyDeskFilled
-              ? 'Every desk the store has room for is filled.'
+              ? emptyState('people_roster_full')
               : 'Everyone drawing a paycheck from this store, by department.'}
         </Text>
         {teamDepts.map((dept) => (
@@ -453,7 +454,7 @@ export function PeopleTab({
           summary={
             managerStatus.ucmPresent || managerStatus.departments.some((d) => d.present)
               ? 'Which decisions your managers make without asking you.'
-              : 'No managers on staff — every decision still comes to your desk.'
+              : emptyState('people_no_managers')
           }
           leading={<IconBadge name="people" tone="primary" variant="soft" size="sm" />}
         >

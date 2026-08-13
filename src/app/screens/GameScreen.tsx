@@ -154,7 +154,7 @@ export function GameScreen({
         cash: world.economy.cash,
         ups: funnel.walkedIn,
         sold: funnel.sold,
-        pendingWarm: Math.max(0, funnel.walkedIn - funnel.staffEngaged),
+        waiting: Math.max(0, funnel.walkedIn - funnel.staffEngaged),
         gross: grossToday,
         regulatoryPressure,
         staff: world.staffOrg.currentRoster.map((s) => ({

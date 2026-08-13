@@ -17,9 +17,11 @@ import {
   GaugeArc,
   GradientSurface,
   ProgressBar,
+  EmptyState,
   type IconName,
   type IconBadgeTone,
 } from '../kit';
+import { emptyState } from '../copy';
 import { StoreWorthLine } from '../StoreWorth';
 import type { DayLoopState } from '../../game/DayLoopController';
 import { GateStrip } from './GateStrip';
@@ -120,7 +122,7 @@ export function HomeTab({
           ) : (
             // No day has closed yet — honest pre-Day-1 copy, never a "Night
             // before Day 1" string stamped onto a Day-15 save (#253).
-            <EmptyNote icon="calendar">Your first day hasn&apos;t opened yet.</EmptyNote>
+            <EmptyState icon="calendar" text={emptyState('home_today')} />
           )}
         </View>
       </View>
@@ -136,9 +138,7 @@ export function HomeTab({
           {marketGlance ? (
             <MarketGlance glance={marketGlance} onOpen={onOpenGrowth} />
           ) : (
-            <EmptyNote icon="storefront">
-              Open the lot to build the demand readout.
-            </EmptyNote>
+            <EmptyState icon="storefront" text={emptyState('demand_readout')} />
           )}
         </View>
       </View>
@@ -188,45 +188,6 @@ function MarketGlance({
         </View>
       </Surface>
     </Pressable>
-  );
-}
-
-/**
- * A region with nothing in it yet, rendered as a REAL contained note rather
- * than a bare grey sentence floating under a tracked-caps eyebrow. Every other
- * band on this page is a card; an un-contained line of muted text in that stack
- * is what makes the lower half read as an unfinished wireframe even when the
- * copy itself is honest and correct. Same words, given a surface to sit on and
- * a muted glyph to say which region is waiting.
- */
-function EmptyNote({
-  icon,
-  children,
-}: {
-  icon: IconName;
-  children: React.ReactNode;
-}) {
-  const t = useTheme();
-  return (
-    <Surface
-      variant="inset"
-      padded={false}
-      style={{
-        padding: t.spacing.lg,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: t.spacing.md,
-      }}
-    >
-      <IconBadge name={icon} tone="muted" variant="soft" size="sm" />
-      {/* Calm and muted, NOT italic — the italic one-liners read as wireframe
-          placeholder filler (#265). Informative, not apologetic. */}
-      <Text
-        style={{ ...t.typography.caption, color: t.colors.textMuted, flex: 1 }}
-      >
-        {children}
-      </Text>
-    </Surface>
   );
 }
 

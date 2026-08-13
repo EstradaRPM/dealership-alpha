@@ -1,5 +1,6 @@
 import type { DemandReadoutModel } from '../DemandReadout';
 import type { HomeMarketGlance } from './HomeTab';
+import { emptyState } from '../copy';
 
 /**
  * Pure read-model builder for the Home **market glance** (#349).
@@ -18,7 +19,7 @@ export function buildMarketGlance(demand: DemandReadoutModel): HomeMarketGlance 
   const topLabel = hottest?.label ?? observedTop?.label;
   const headline = topLabel
     ? `Buyers want ${topLabel} most`
-    : 'Demand is still settling';
+    : emptyState('home_glance_demand');
 
   const running = demand.advertising?.options.find(
     (o) => o.id === demand.advertising?.selectedId,
@@ -26,7 +27,7 @@ export function buildMarketGlance(demand: DemandReadoutModel): HomeMarketGlance 
   const campaignLabel =
     running && running.costLabel
       ? `Running ${running.label} · ${running.costLabel}`
-      : 'No campaign running';
+      : emptyState('home_glance_campaign');
 
   return { headline, campaignLabel };
 }

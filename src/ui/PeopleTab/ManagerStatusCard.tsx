@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../theme';
 import { Surface, SectionHeader, Badge, Meter, type BadgeTone } from '../kit';
+import { emptyState } from '../copy';
 import type {
   ManagerStatusModel,
   UcmCapabilityFact,
@@ -158,7 +159,7 @@ function DeptRow({ fact }: { fact: DeptManagerFact }) {
 
   const summary = fact.present
     ? 'Runs the fixed-ops floor for you — each function switches on as their skill clears its gate.'
-    : 'No manager on staff — you run the shop by hand.';
+    : emptyState('people_manager_absent');
 
   return (
     <View

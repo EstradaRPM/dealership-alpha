@@ -64,7 +64,7 @@ describe('#205 condition indicators - reachable through the live pipeline', () =
       cash: world.economy.cash,
       ups: 0,
       sold: 0,
-      pendingWarm: 0,
+      waiting: 0,
       gross: 0,
       regulatoryPressure,
       staff: world.staffOrg.currentRoster.map((s) => ({

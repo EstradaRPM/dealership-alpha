@@ -6,6 +6,7 @@ import type {
 } from '../../game/TierGate';
 import type { ProgressTone, TrendDirection } from '../kit';
 import { compactMoney } from '../kit';
+import { emptyState } from '../copy';
 
 /**
  * Pure read-model builder for the Growth **tier-gate detail board** (#349).
@@ -236,7 +237,7 @@ function buildClimb(
       ? streak.dossierReady
         ? 'Track record ready — franchise courtship coming'
         : `Track record: month ${streak.current} of ${streak.required}`
-      : 'No months banked yet.',
+      : emptyState('growth_gate_streak'),
   };
 }
 

@@ -6,6 +6,7 @@
  * the panel has exactly two states — open, or a locked row that names every
  * way in. The tease is the mechanic.
  */
+import { emptyState } from '../copy';
 
 /** One way into the lane, stated in the player's words. */
 export interface FinanceMixDoorInput {
@@ -46,8 +47,7 @@ export interface FinanceMixModel {
 
 const OPEN_NOTE =
   'How the people about to walk in intend to pay. Set your finance posture against it.';
-const LOCKED_NOTE =
-  'Nobody here reads how the crowd is paying yet, so next month’s finance posture is a guess.';
+const LOCKED_NOTE = emptyState('growth_finance_mix_locked');
 const CREDIT_HEADING = 'Credit of the ones who would finance';
 
 function percent(share: number): string {

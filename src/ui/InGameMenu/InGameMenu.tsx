@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import type { SlotMetadata } from '../../game/SaveStore';
 import { colors } from '../theme';
+import { emptyState } from '../copy';
 
 interface Props {
   slots: readonly SlotMetadata[];
@@ -100,7 +101,7 @@ export function InGameMenu({
 
         <Text style={styles.sectionLabel}>LOAD A SAVE</Text>
         {slots.length === 0 ? (
-          <Text style={styles.emptyText}>No saved games found.</Text>
+          <Text style={styles.emptyText}>{emptyState('no_saved_games')}</Text>
         ) : (
           slots.map((slot) => {
             const active = slot.id === activeSlotId;

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import type { LotOccupancy, WholesaleQuote } from '../../game/Inventory';
 import { useTheme } from '../theme';
+import { emptyState } from '../copy';
 // Every dollar in this room is **exact** (issue 387): an asking price, a
 // wholesale offer, what the store has in a car and what a day on the lot costs
 // are all figures the player either sets or presses a button to accept.
@@ -331,14 +332,12 @@ export function LotRoom({
           </Text>
           <Text style={s.hint}>
             {vehicles.length === 0
-              ? 'Nothing in stock yet.'
+              ? emptyState('lot_stock_count')
               : `${vehicles.length} unit${vehicles.length === 1 ? '' : 's'}` +
                 (aging > 0 ? ` · ${aging} sitting too long` : '')}
           </Text>
           {vehicles.length === 0 ? (
-            <Text style={s.empty}>
-              Buy something at the auction and it lands here.
-            </Text>
+            <Text style={s.empty}>{emptyState('lot_stock_list')}</Text>
           ) : (
             vehicles.map((v) => (
               <StockRow
@@ -395,7 +394,7 @@ export function LotRoom({
             <SectionHeader title="Buy Inventory" />
             <Text style={s.hint}>
               {occupancy.atCapacity
-                ? 'No spaces open — sell a unit before you buy another.'
+                ? emptyState('lot_no_spaces')
                 : 'The wholesale auction — where the next unit on this lot comes from.'}
             </Text>
             <View style={s.actionRow}>

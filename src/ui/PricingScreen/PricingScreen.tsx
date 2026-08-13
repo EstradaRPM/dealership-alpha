@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { colors } from '../theme';
 import { money, HintLine } from '../kit';
+import { emptyState } from '../copy';
 import type { PricePosition, IntelPrecision } from '../../game/MarketEconomy';
 
 /** Static per-vehicle facts the screen renders. The vehicle doesn't change
@@ -412,7 +413,7 @@ export function PricingScreen({
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Competitor comparables</Text>
           {comps.length === 0 ? (
-            <Text style={styles.empty}>No competitor data.</Text>
+            <Text style={styles.empty}>{emptyState('pricing_comps')}</Text>
           ) : (
             comps.map((c) => {
               const delta = c.price - ask;

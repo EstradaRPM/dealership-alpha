@@ -5,6 +5,7 @@ import type { GateBoardModel } from '../src/ui/GrowthTab';
 import type { DemandReadoutModel } from '../src/ui/DemandReadout';
 import { HomeTab } from '../src/ui/HomeTab';
 import { OperationsTab } from '../src/ui/OperationsTab';
+import { emptyState } from '../src/ui/copy';
 
 // #349 — Growth stops being a placeholder card. Two things get a home: the
 // demand console (with the advertising lever evicted from Operations → Prep in
@@ -217,7 +218,7 @@ describe('#359 the Growth tab carries the facility build surface', () => {
     // Built out to what the tier allows…
     expect(getByText('Built out to the tier limit')).toBeTruthy();
     // …is a different sentence from a kind this tier does not have yet.
-    expect(getByText('Not available at this tier')).toBeTruthy();
+    expect(getByText(emptyState('growth_facility_at_ceiling'))).toBeTruthy();
     expect(getByTestId('facility-build-serviceBays').props.accessibilityState).toMatchObject({
       disabled: true,
     });

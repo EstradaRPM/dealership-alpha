@@ -8,6 +8,7 @@ import { colors } from '../theme';
  * dollar in the rooms where they are acted on.
  */
 import { compactMoney } from '../kit';
+import { emptyState } from '../copy';
 import {
   View,
   Text,
@@ -42,7 +43,7 @@ export interface FloorDashboardModel {
   /** Closed deals today (funnel sold). */
   sold: number;
   /** Walked-in but not yet engaged — still-warm prospects. */
-  pendingWarm: number;
+  waiting: number;
   /** Running gross today (front + back, summed from closed deals). */
   gross: number;
   /** Regulatory pressure readout for the live-floor HUD. */
@@ -231,7 +232,7 @@ export function FloorDashboard({
     cash,
     ups,
     sold,
-    pendingWarm,
+    waiting,
     gross,
     regulatoryPressure,
     staff,
@@ -321,14 +322,14 @@ export function FloorDashboard({
         <View style={styles.grid}>
           <Stat label="UPS" value={String(ups)} />
           <Stat label="SOLD" value={String(sold)} />
-          <Stat label="PENDING-WARM" value={String(pendingWarm)} />
+          <Stat label="WAITING" value={String(waiting)} />
           <Stat label="GROSS" value={compactMoney(gross)} />
         </View>
 
         {/* Impressionistic staff strip */}
         <Text style={styles.sectionLabel}>FLOOR</Text>
         {staff.length === 0 ? (
-          <Text style={styles.emptyLine}>No staff on the roster.</Text>
+          <Text style={styles.emptyLine}>{emptyState('floor_roster')}</Text>
         ) : (
           <View style={styles.staffStrip}>
             {staff.map((s) => (
@@ -397,7 +398,7 @@ export function FloorDashboard({
         {/* Scrolling event log */}
         <Text style={styles.sectionLabel}>EVENT LOG</Text>
         {recentEvents.length === 0 ? (
-          <Text style={styles.emptyLine}>Quiet so far today.</Text>
+          <Text style={styles.emptyLine}>{emptyState('floor_recent_events')}</Text>
         ) : (
           recentEvents.map((e) =>
             e.kind === 'match' ? (

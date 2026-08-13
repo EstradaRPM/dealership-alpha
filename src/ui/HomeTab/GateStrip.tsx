@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
+import { emptyState } from '../copy';
 import {
   Surface,
   SectionHeader,
@@ -249,7 +250,7 @@ function TrendFace({ face }: { face: TrendFaceView }) {
           same trend face at detail scale, so the shape lives in one place. */}
       <Sparkline
         values={face.sparkline}
-        emptyLabel="Trend builds over the month."
+        emptyLabel={emptyState('gate_trend')}
         testID="gate-csi-sparkline"
       />
     </View>

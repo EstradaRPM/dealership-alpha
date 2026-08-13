@@ -25,7 +25,9 @@ anywhere in `src/ui/**`.
 
 **#387 is BUILT as of 2026-08-12.**
 
-**#388 is BUILT as of 2026-08-12.** The next `/next` is **BUILD #389** (dep #387 met).
+**#388 is BUILT as of 2026-08-12.**
+
+**#389 is BUILT as of 2026-08-13.** The next `/next` is **BUILD #390** (no deps).
 
 The one thing a future session must not re-derive: **the backstory picks are mechanically
 identical today.** `day1Modifier` is read by nothing in `src/`, so F2 is a wiring job (#390) plus
@@ -39,7 +41,7 @@ reputation deficit for `grudgesFlag` (#391) — not a copy job.
 | ~~#386~~ | ~~**tracer** — the teaching cell (`teaching:<id>`, minted in `SlotStore.ts`) + `data/hints.json` registry + retire-on-use + "Show hints again"; three real hints ship with it~~ **BUILT 2026-08-12** | — |
 | ~~#387~~ | ~~D3-R1 — `money`/`compactMoney` onto the kit barrel + the compact-when-ambient / exact-when-acting rule + the no-leak scan~~ **BUILT 2026-08-12** | — |
 | ~~#388~~ | ~~D3-R2 — the consequence-hint copy pass over every live control, completeness asserted by a mount scan~~ **BUILT 2026-08-12** | #386, #387 |
-| #389 | D3 — plain-language labels + every empty state written + `tests/PlainLanguage.test.tsx` | #387 |
+| ~~#389~~ | ~~D3 — plain-language labels + every empty state written + `tests/PlainLanguage.test.tsx`~~ **BUILT 2026-08-13** | #387 |
 | #390 | F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in `createWorld`, each pick stated on the card | — |
 | #391 | F2-R1 — `grudgesFlag` becomes a starting reputation deficit | #390 |
 | #392 | F2-R1 — `startingCreditLine` becomes a real borrowing facility, `src/game/CreditFacility/` (**bumps `WORLD_SNAPSHOT_VERSION` 21 → 22**) | #390 |
@@ -190,6 +192,61 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 (Phase 4 B3 closed 2026-07-22 — #176, #177, #178; #179 landed earlier in A4.)
 
 ## Blockers
+
+- **Empty-state copy is DATA and `tests/EmptyStates.test.tsx` scans all of `src/` for it** (#389).
+  `data/empty-states.json` + `src/ui/copy/` behind `parseData`, the `data/hints.json` shape exactly:
+  closed id union, completeness `.refine`, plus a refine of its own that every string end in
+  `.`/`!`/`?`. The leak scan matches on a 40-char fragment (cut at the first `{slot}`), so a
+  component that inlines one fails **by name**. Do not quote empty-state copy in a comment.
+- **The catalog is a plain read, NOT a hook — that is the difference from `useHints`** (#389). A
+  hint's answer is a read of the slot's teaching cell, so it has to be injected; an empty-state
+  sentence is the same for every slot, tier and day, so `emptyState(id)` is a module-level memo the
+  surface calls directly. Prop-drilling fifty static strings through the composition root would be
+  the ceremony of injection with none of its reason. The **kit** `EmptyState` still takes `text`
+  and never reaches the catalog — presentation stays presentation.
+- **Five ids are drawn from TWO places on purpose** (#389). `demand_readout` (Home's market band +
+  Growth's console), `lot_no_spaces` (the Lot's sourcing block + the auction's bidding notice),
+  `parts_coverage` (Service + Body Shop), `gate_trend` (Home's gate strip + Growth's gate board),
+  `no_saved_games` (main menu + in-game load list). Splitting one back into two gives the player two
+  wordings of one fact and two entries that can drift — the rule `data/hints.json`'s `places` array
+  is built on.
+- **The temperature scan judges what is RENDERED, and that is why it can be broad** (#389).
+  `tests/PlainLanguage.test.tsx` strips comments, then matches copy-carrying keys/props
+  (`label`/`title`/`caption`/`emptyLabel`/…) and JSX text nodes. `'hot' | 'warm' | 'cold'` as an
+  internal band-id union, an object key or a palette name is untouched — the rule was never "the
+  word must not appear in the file". Widening it to every string literal would flag the three
+  `DEMAND_BAND` maps, whose whole job is to turn a band id into "High demand". It was proved
+  against an injected probe, not trusted.
+- **The `data/` half of that scan names its files, and `recon-surprise-events.json` is deliberately
+  not one of them** (#389). "Engine smokes on cold start" is a mechanical event description, not a
+  position on a scale. `COPY_CATALOGS` is the set whose strings are labels the player reads off a
+  control or a region.
+- **`PENDING-WARM` was the one temperature word actually on screen, and the field was renamed with
+  it** (#389). It is `walkedIn - staffEngaged` — people who came in and have nobody working them —
+  so `FloorDashboardModel.pendingWarm` is now `waiting` and the live-floor stat reads `WAITING`.
+  Renaming only the label would have left the next reader of the model believing there is a
+  lead-heat model behind it. There is a second `WAITING` in the SERVICE strip (cars, not people);
+  the section headers are the disambiguator, the same way `AVG WAIT` already sits under SERVICE.
+- **The auction's condition read stated a magnitude of nothing** (#389). "UCM Recon Read:
+  $400–$1,200 (Medium)" — medium *what*. It is now "Manager's Repair Estimate … (fairly sure)": the
+  confidence words name how far the manager will stand behind the number. `BARE_MAGNITUDE` in the
+  plain-language test is what stops a scale end being a naked "High"/"Low" again.
+- **Every chart call site outside the kit must pass `emptyLabel`, and a scan enforces it** (#389).
+  `ChartEmpty` returns `null` on an absent label, so a chart without one renders a blank box on an
+  empty window — which is exactly what `FinanceTab`'s headline sparkline was doing. The scan counts
+  what it saw first, so it cannot pass by matching nothing.
+- **Finance keeps its DMS idiom and that is a boundary, not an omission** (#389). PVR / PPRU /
+  carrying cost stay as they are: the tab's charter (locked IA §1/§4) is "the backward-looking
+  judgment numbers, in honest DMS idiom", and re-wording them is a charter question rather than a
+  copy pass. The jargon audit fixed the labels a first-time player cannot decode with **no
+  expansion anywhere on the surface** — the auction read was the one that qualified.
+- **Two empty states are unreachable in the shipped composition, and that is correct** (#389). A
+  People department panel renders no roster note when the store has neither desks nor people in that
+  department (locked IA rule 3 — a mechanic that does not exist renders NOTHING), and
+  `people_hiring_no_role` only draws in a department that is not the one being shopped, because
+  `shoppingDept` falls back to the first hiring panel. `tests/EmptyStates.test.tsx` drives the
+  second through the header press a player would make. Do not "fix" either by forcing a panel to
+  render.
 
 - **`data/hints.json` classifies EVERY control, and `viewOnly` is the half that carries no copy**
   (#388). A coverage scan cannot see the difference between a control that changes the store and
@@ -1418,7 +1475,7 @@ to jump one early); it loads the gate rather than re-deriving it.
 | 9 | B2 F&I plug-in #2 (+#151–#153) | **LOCKED 2026-08-07 — `fni-mechanics-grill-state.md`** (grill CLOSED, Q1–Q10 + 9 internal calls) | **COMPLETE 2026-08-08** — all twelve slices built (#151, #153, #365, #152, #366–#373) |
 | 10 | D1 People + Finance + Growth dashboards (chart kit first) | — | **COMPLETE 2026-08-11** — re-scoped by subtraction, filed as #374–#378 + #380 (and #379 out of phase); all built |
 | 11 | B4 drive-the-clock (absorbs #124) | **RULED 2026-08-11 — `engagement-spine.md`** (bite unlock = the cover your people give you) | **COMPLETE 2026-08-12** — #381–#385 all built; closed #124 |
-| 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **RULED 2026-08-12 — `path-to-finished-product.md` §6 D3, §8 F2, §8 F3** (5 rulings; F3 = none, CLOSED) | **active** — gate closed, nothing sliced yet; next is SLICE |
+| 12 | F1 onboarding (#213) + F2 + F3 + D3 plain-language pass | **RULED 2026-08-12 — `path-to-finished-product.md` §6 D3, §8 F2, §8 F3** (5 rulings; F3 = none, CLOSED) | **active** — sliced as #386–#395 + #213; #386–#389 built, next is #390 |
 | 13 | H1 fictional brands (#246) | — | pending |
 | 14 | E1 Tier 4 — OEM engine, courtship, NCM, brand archetypes | — | pending |
 | 15 | E2 Tier 5 — BDC | **ADJUDICATE fixed-ops-manager fork** | pending |
@@ -1433,6 +1490,53 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+
+- 2026-08-13 — **BUILT #389** (D3 — plain-language labels + every empty state written). The
+  casual-player pass over every live surface, and the third of phase 12's four teaching slices.
+  **Every empty-state string in the game is now one catalog entry.** `data/empty-states.json` (53
+  ids) behind `parseData`, loaded by `src/ui/copy/`, consumed as `emptyState(id, slots?)`. The
+  shape is `data/hints.json`'s verbatim — closed id union, completeness `.refine`, non-strict top
+  level so the `_doc` annotations survive — plus one refine of its own: **every string must end in
+  `.`/`!`/`?`**, because "None" and "No data" tell a new player nothing they could not already see.
+  `tests/EmptyStates.test.tsx` fails any file under `src/` containing a 40-char fragment of one,
+  and it was **proved against an injected probe**, not trusted.
+  **It is a plain read, not a hook, and that is the one design call worth not re-deriving.** A
+  hint's answer is a read of the slot's teaching cell, so `useHints` has to be injected. An
+  empty-state sentence is identical for every slot, tier and day — so prop-drilling fifty static
+  strings through the composition root would be injection's ceremony with none of its reason. The
+  kit's new `EmptyState` still takes `text` and never reaches the catalog.
+  **Home and Growth had hand-rolled the same `EmptyNote` twice**; it is now one kit primitive, which
+  is how two pages stop looking different about the same fact.
+  **The temperature scan judges what is RENDERED.** `tests/PlainLanguage.test.tsx` strips comments,
+  then reads copy-carrying keys/props and JSX text nodes — so `'hot' | 'warm' | 'cold'` as an
+  internal band-id union is untouched while a label is not. Widening it to every string literal
+  would have flagged the three `DEMAND_BAND` maps whose whole job is to turn a band id into "High
+  demand". The `data/` half names its files: `recon-surprise-events.json`'s "cold start" is a
+  mechanical description, not a scale position.
+  **Two real defects the scan and the audit found.** `PENDING-WARM` on the live floor was the one
+  temperature word actually on screen — it is `walkedIn - staffEngaged`, so the model field was
+  renamed `waiting` along with the label rather than papering over the label alone. And the
+  auction's "UCM Recon Read: $400–$1,200 (Medium)" stated a magnitude of nothing; it is now
+  "Manager's Repair Estimate … (fairly sure)". `BARE_MAGNITUDE` in the test is what stops a scale
+  end going back to a naked "High"/"Low".
+  **Every chart call site outside the kit now passes `emptyLabel`, enforced by a counting scan.**
+  `ChartEmpty` returns `null` without one, so `FinanceTab`'s headline sparkline had been drawing a
+  blank box on an empty window — the exact failure the primitive exists to prevent.
+  Boundary stated rather than smuggled: **Finance keeps its DMS idiom** (PVR / PPRU / carrying
+  cost). That tab's charter is locked as the backward-looking judgment numbers in honest DMS idiom;
+  rewording them is a charter question, not a copy pass. The jargon audit fixed the labels with no
+  expansion anywhere on the surface, which was the auction read.
+  `npm run typecheck` clean, `npm test` **272 suites / 5044 tests** green (up 6 suites / 948 tests).
+  Ten existing tests asserted the old literals and now assert `emptyState(id)` — a test pinning a
+  literal is the drift the catalog exists to end.
+  **Web drive (T2 dev fixture, day 37):** Home's market band drew *"No campaign running —
+  advertising in Growth brings a different crowd through the door."*; Growth drew the locked
+  finance-mix note and *"This kind of space opens up at a higher tier."* on body-shop bays; the live
+  floor's TODAY grid reads **WAITING**. The auction's manager read needs a UCM (Tier 3) and so is
+  covered by typecheck + the source scan rather than by the drive, the same limit #385's month rung
+  hit.
+  Next: **BUILD #390** (F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in
+  `createWorld`), the lowest deps-met issue in the phase.
 
 - 2026-08-12 — **BUILT #388** (D3-R2 — the consequence-hint pass over every live control). The
   catalog went from #386's three dials to **21 lessons**, and the completeness guard went from a
@@ -1528,51 +1632,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   $14,144 market`; People `$1,280/day` payroll and `$1,700` to sign; Growth `$3,000 each` to build.
   Next: **BUILD #388** (D3-R2 — the consequence-hint copy pass over every live control, its
   completeness asserted by a mount scan); its deps #386 and #387 are both met.
-
-- 2026-08-12 — **BUILT #386** (phase 12's tracer — a hint draws until you use the control, then it
-  is gone). The one teaching mechanism the rest of the phase hangs off, built vertically:
-  `data/hints.json` behind `parseData`, the `teaching:<id>` cell, the retire-on-use rule, the
-  re-arm switch, and three real hints on three real dials.
-  **The catalog refuses an id with no copy, and a hint that points at nothing.** The first is
-  `data/desk-orders.json`'s completeness `.refine` reused verbatim. The second is new and is what
-  caught the finding below: `tests/HintCopy.test.ts` asserts every declared hint's `control` is a
-  testID some surface under `src/` actually renders. A hint attached to a control that does not
-  exist teaches nothing, and now cannot ship.
-  **The issue asked for the three #385 desk dials and only two of them exist.** `sourcingLean` has
-  **no rendered control anywhere in `src/ui/**`** — `handleSetSourcingLean` (`useLevers.ts:167`)
-  has zero call sites outside the hook that declares it, and the comment at `:109-112` says so
-  ("the dial UI is the mockup pass"). So a player can be halted mid-bite by a standing order they
-  were never able to set. The third hint went on **trade policy** — a rendered standing dial with a
-  real consequence — and the missing dial is filed as **#396**, which carries the `sourcing_lean`
-  hint in its own scope. Substituting silently, or declaring the hint blind, were the two ways to
-  lose this.
-  **The retire fires from `useLevers`, not from the surface.** "Used" means the lever actually
-  changed, which is the hook's fact and the surface's report. One `onControlUsed` seam at the
-  composition root, so a future caller of a handler — a coachmark, a beat, a fixture — teaches
-  exactly what a tap does. A surface-side retire would have been three copies of the rule.
-  **`teaching:<id>` is minted in `SlotStore.ts` and wiped by `deleteSlot` with the other three.**
-  The delete-a-save lesson applied *before* it could bite a second time. It is **not world state** —
-  it records the player's progress, not the store's — so `WORLD_SNAPSHOT_VERSION` stays **21** and
-  there is no migration. `resetAll()` (re-arm, keep the cell) and `clear()` (wipe it) are separate
-  for exactly that reason, and two careers learn independently. A corrupt cell reads as "nothing
-  taught" rather than throwing: the failure mode of a teaching surface is showing too much, never
-  crashing the career it is attached to.
-  **`HintLine` is presentation only and deliberately not pressable.** Whether a hint is still owed
-  is `useHints`'s read of the cell and the surface omits the element when the answer is no — which
-  is also what keeps the lever surfaces' exact-pressable-count assertions honest.
-  **No slot selected ⇒ every hint draws.** `teachingStore()` returning `null` is a real answer, not
-  a failure: a hint the store cannot answer for is shown, not hidden.
-  `npm run typecheck` clean, `npm test` **266 suites / 4096 tests** green. The #180 live calibration
-  is **byte-identical** (35.8% / 54.3%, closes=274, `costOverAsk` 1.026) — a teaching surface moves
-  no number, checked rather than assumed.
-  **Web drive (T2 dev fixture, day 31):** both Prep hints drew verbatim from the catalog under their
-  dials; pressing "More per deal" retired the F&I line and left the trade line standing; IndexedDB
-  held `teaching:slot-1 => {"v":1,"taught":["fni_posture"]}`; "Show hints again" emptied it and the
-  line came back with **no reload** and with the player's posture untouched; the Lot room carried
-  the pricing hint.
-  Two deviations from the issue as filed, both recorded on it: the third hint (above), and the
-  `deleteSlot` criterion landing in `tests/SaveStore.slots.test.ts` rather than a new
-  `tests/SlotStore.test.ts` — that file is where every other per-cell delete assertion lives, and a
-  near-duplicate beside it is the second place they can disagree.
-  Next: **BUILD #387** (D3-R1 — `money`/`compactMoney` onto the kit barrel), the lowest deps-met
-  issue in the phase.

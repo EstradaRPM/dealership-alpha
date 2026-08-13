@@ -3,6 +3,7 @@ import { Text } from 'react-native';
 import { render, fireEvent } from '@testing-library/react-native';
 import { DepartmentScreen } from '../src/ui/DepartmentScreen';
 import type { QueueItem } from '../src/game/DepartmentQueue';
+import { emptyState } from '../src/ui/copy';
 
 const items: QueueItem[] = [
   { id: 'q-1', type: 'routine', dept: 'office', label: 'Receptionist phone question', createdDay: 1 },
@@ -32,7 +33,7 @@ describe('DepartmentScreen smoke tests', () => {
         onClose={() => {}}
       />,
     );
-    expect(getByText('Nothing waiting in Lot.')).toBeTruthy();
+    expect(getByText(emptyState('department_queue', { queue: 'Lot' }))).toBeTruthy();
   });
 
   it('tapping a row resolves that item by id', () => {

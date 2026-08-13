@@ -6,6 +6,7 @@ import type {
   LotOccupancy,
   LotVehicle,
 } from '../src/game/Inventory';
+import { emptyState } from '../src/ui/copy';
 
 // #361: the lane spends spaces as well as cash. Room to buy is the default for
 // every pre-existing case; the cap gets its own describe below.
@@ -145,7 +146,7 @@ describe('AuctionMenu — smoke', () => {
         onClose={jest.fn()}
       />,
     );
-    expect(getByText('No vehicles available today.')).toBeTruthy();
+    expect(getByText(emptyState('auction_no_listings'))).toBeTruthy();
   });
 
   it('shows cash balance in header', () => {

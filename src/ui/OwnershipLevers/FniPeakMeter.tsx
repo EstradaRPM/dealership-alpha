@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
 import { ProgressBar, money } from '../kit';
+import { emptyState } from '../copy';
 
 /** One posture as the meter draws it — all money already resolved by the caller. */
 export interface FniPeakBar {
@@ -77,8 +78,7 @@ export function FniPeakMeter({
     return (
       <View style={root} testID="fni-peak-meter">
         <Text style={caption} testID="fni-peak-empty">
-          You haven&apos;t financed a car yet. Once the store writes some loan
-          contracts, this shows what each setting is worth on your own deals.
+          {emptyState('fni_peak_meter')}
         </Text>
       </View>
     );

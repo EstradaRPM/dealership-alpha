@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-nati
 import type { HistoryEntry, HistoryEntryKind } from '../../game/HistoryLog';
 import { useTheme } from '../theme';
 import { Surface, Badge, type BadgeTone } from '../kit';
+import { emptyState } from '../copy';
 import { actionFooterClearance } from '../AppShell';
 
 const KIND_LABEL: Record<HistoryEntryKind, string> = {
@@ -57,10 +58,7 @@ export function HistoryScreen({ entries, onClose }: HistoryScreenProps) {
       </View>
       {entries.length === 0 ? (
         <View style={s.emptyWrap}>
-          <Text style={s.emptyText}>
-            No history yet. Notable events — sales, escalations, market shifts,
-            promotions — will appear here as they happen.
-          </Text>
+          <Text style={s.emptyText}>{emptyState('history_log')}</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={s.body}>

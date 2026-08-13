@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme';
-import { Surface, SectionHeader, IconBadge, type IconName } from '../kit';
+import { SectionHeader, EmptyState } from '../kit';
+import { emptyState } from '../copy';
 import { DemandReadout, type DemandReadoutModel } from '../DemandReadout';
 import { FacilityBuild } from './FacilityBuild';
 import type { FacilityBuildModel } from './facilityBuildModel';
@@ -91,9 +92,7 @@ export function GrowthTab({
           {demandReadout ? (
             <DemandReadout model={demandReadout} />
           ) : (
-            <EmptyNote icon="storefront">
-              Open the lot to build the demand readout.
-            </EmptyNote>
+            <EmptyState icon="storefront" text={emptyState('demand_readout')} />
           )}
         </View>
       </View>
@@ -104,9 +103,7 @@ export function GrowthTab({
           {weeklyReport ? (
             <WeeklyMarketReportCard model={weeklyReport} />
           ) : (
-            <EmptyNote icon="newspaper">
-              The first weekly report comes out after your first full week.
-            </EmptyNote>
+            <EmptyState icon="newspaper" text={emptyState('growth_weekly_report')} />
           )}
         </View>
       </View>
@@ -121,9 +118,7 @@ export function GrowthTab({
               subscriptionHint={subscriptionHint}
             />
           ) : (
-            <EmptyNote icon="newspaper">
-              The wire starts up when your first day opens.
-            </EmptyNote>
+            <EmptyState icon="newspaper" text={emptyState('growth_wire')} />
           )}
         </View>
       </View>
@@ -134,9 +129,7 @@ export function GrowthTab({
           {financeMix ? (
             <FinanceMixPanel model={financeMix} />
           ) : (
-            <EmptyNote icon="people">
-              The read on how buyers are paying shows up once the store opens.
-            </EmptyNote>
+            <EmptyState icon="people" text={emptyState('growth_finance_mix')} />
           )}
         </View>
       </View>
@@ -151,9 +144,7 @@ export function GrowthTab({
               hint={facilityBuildHint}
             />
           ) : (
-            <EmptyNote icon="business">
-              Your lot and bays show up here once the store opens.
-            </EmptyNote>
+            <EmptyState icon="business" text={emptyState('growth_facility')} />
           )}
         </View>
       </View>
@@ -165,9 +156,7 @@ export function GrowthTab({
           <>
             <SectionHeader title="This Month" />
             <View style={regionBody}>
-              <EmptyNote icon="time">
-                The month&apos;s targets light up when your first day opens.
-              </EmptyNote>
+              <EmptyState icon="time" text={emptyState('growth_gate_board')} />
             </View>
           </>
         )}
@@ -176,25 +165,3 @@ export function GrowthTab({
   );
 }
 
-/** A region with nothing in it yet, given a surface to sit on — the same
- *  contained note idiom Home uses, so an empty band never reads as wireframe. */
-function EmptyNote({ icon, children }: { icon: IconName; children: React.ReactNode }) {
-  const t = useTheme();
-  return (
-    <Surface
-      variant="inset"
-      padded={false}
-      style={{
-        padding: t.spacing.lg,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: t.spacing.md,
-      }}
-    >
-      <IconBadge name={icon} tone="muted" variant="soft" size="sm" />
-      <Text style={{ ...t.typography.caption, color: t.colors.textMuted, flex: 1 }}>
-        {children}
-      </Text>
-    </Surface>
-  );
-}

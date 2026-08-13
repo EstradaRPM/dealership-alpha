@@ -6,6 +6,54 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-12 — **BUILT #386** (phase 12's tracer — a hint draws until you use the control, then it
+  is gone). The one teaching mechanism the rest of the phase hangs off, built vertically:
+  `data/hints.json` behind `parseData`, the `teaching:<id>` cell, the retire-on-use rule, the
+  re-arm switch, and three real hints on three real dials.
+  **The catalog refuses an id with no copy, and a hint that points at nothing.** The first is
+  `data/desk-orders.json`'s completeness `.refine` reused verbatim. The second is new and is what
+  caught the finding below: `tests/HintCopy.test.ts` asserts every declared hint's `control` is a
+  testID some surface under `src/` actually renders. A hint attached to a control that does not
+  exist teaches nothing, and now cannot ship.
+  **The issue asked for the three #385 desk dials and only two of them exist.** `sourcingLean` has
+  **no rendered control anywhere in `src/ui/**`** — `handleSetSourcingLean` (`useLevers.ts:167`)
+  has zero call sites outside the hook that declares it, and the comment at `:109-112` says so
+  ("the dial UI is the mockup pass"). So a player can be halted mid-bite by a standing order they
+  were never able to set. The third hint went on **trade policy** — a rendered standing dial with a
+  real consequence — and the missing dial is filed as **#396**, which carries the `sourcing_lean`
+  hint in its own scope. Substituting silently, or declaring the hint blind, were the two ways to
+  lose this.
+  **The retire fires from `useLevers`, not from the surface.** "Used" means the lever actually
+  changed, which is the hook's fact and the surface's report. One `onControlUsed` seam at the
+  composition root, so a future caller of a handler — a coachmark, a beat, a fixture — teaches
+  exactly what a tap does. A surface-side retire would have been three copies of the rule.
+  **`teaching:<id>` is minted in `SlotStore.ts` and wiped by `deleteSlot` with the other three.**
+  The delete-a-save lesson applied *before* it could bite a second time. It is **not world state** —
+  it records the player's progress, not the store's — so `WORLD_SNAPSHOT_VERSION` stays **21** and
+  there is no migration. `resetAll()` (re-arm, keep the cell) and `clear()` (wipe it) are separate
+  for exactly that reason, and two careers learn independently. A corrupt cell reads as "nothing
+  taught" rather than throwing: the failure mode of a teaching surface is showing too much, never
+  crashing the career it is attached to.
+  **`HintLine` is presentation only and deliberately not pressable.** Whether a hint is still owed
+  is `useHints`'s read of the cell and the surface omits the element when the answer is no — which
+  is also what keeps the lever surfaces' exact-pressable-count assertions honest.
+  **No slot selected ⇒ every hint draws.** `teachingStore()` returning `null` is a real answer, not
+  a failure: a hint the store cannot answer for is shown, not hidden.
+  `npm run typecheck` clean, `npm test` **266 suites / 4096 tests** green. The #180 live calibration
+  is **byte-identical** (35.8% / 54.3%, closes=274, `costOverAsk` 1.026) — a teaching surface moves
+  no number, checked rather than assumed.
+  **Web drive (T2 dev fixture, day 31):** both Prep hints drew verbatim from the catalog under their
+  dials; pressing "More per deal" retired the F&I line and left the trade line standing; IndexedDB
+  held `teaching:slot-1 => {"v":1,"taught":["fni_posture"]}`; "Show hints again" emptied it and the
+  line came back with **no reload** and with the player's posture untouched; the Lot room carried
+  the pricing hint.
+  Two deviations from the issue as filed, both recorded on it: the third hint (above), and the
+  `deleteSlot` criterion landing in `tests/SaveStore.slots.test.ts` rather than a new
+  `tests/SlotStore.test.ts` — that file is where every other per-cell delete assertion lives, and a
+  near-duplicate beside it is the second place they can disagree.
+  Next: **BUILD #387** (D3-R1 — `money`/`compactMoney` onto the kit barrel), the lowest deps-met
+  issue in the phase.
+
 - 2026-08-12 — **SLICED phase 12** into eleven issues: **#386–#395 filed new, and #213 rewritten in
   place** rather than duplicated (the #151–#153 precedent — its number stays, its body now carries
   the grown scope from §8 F1 and its dep on the tracer). **F3 produced no issue**: it was ruled NONE

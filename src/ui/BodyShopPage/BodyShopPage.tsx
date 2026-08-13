@@ -9,6 +9,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useTheme } from '../theme';
+import { emptyState } from '../copy';
 import {
   Surface,
   SectionHeader,
@@ -361,7 +362,7 @@ export function BodyShopPage({ model, controls, onClose }: BodyShopPageProps) {
             What collision work is coming in — stock and staff to it.
           </Text>
           {model.demandHeat.length === 0 ? (
-            <Text style={empty}>No collision work yet.</Text>
+            <Text style={empty}>{emptyState('body_shop_demand_heat')}</Text>
           ) : (
             model.demandHeat.map((row) => (
               <DemandHeatRow key={row.category} row={row} />
@@ -376,7 +377,7 @@ export function BodyShopPage({ model, controls, onClose }: BodyShopPageProps) {
               Recent demand against the collision parts you have on hand.
             </Text>
             {model.coverage.length === 0 ? (
-              <Text style={empty}>No parts demand to cover yet.</Text>
+              <Text style={empty}>{emptyState('parts_coverage')}</Text>
             ) : (
               model.coverage.map((row) => (
                 <CoverageRow key={row.category} row={row} />

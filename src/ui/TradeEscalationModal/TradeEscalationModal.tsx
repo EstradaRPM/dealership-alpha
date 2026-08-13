@@ -1,6 +1,7 @@
 import React from 'react';
 import { colors } from '../theme';
 import { money, grouped } from '../kit';
+import { emptyState } from '../copy';
 import {
   Modal,
   View,
@@ -150,7 +151,7 @@ export function TradeEscalationModal({
           </Text>
 
           {review == null ? (
-            <Text style={styles.muted}>No trade in review.</Text>
+            <Text style={styles.muted}>{emptyState('trade_review_empty')}</Text>
           ) : vehicleSold ? (
             // #364: another customer bought this car while the review sat open.
             // No accept, no counter — the only honest move left is to send them

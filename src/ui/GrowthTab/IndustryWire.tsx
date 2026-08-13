@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
+import { emptyState } from '../copy';
 import { Surface, Badge, Button, Icon, HintLine, type BadgeTone } from '../kit';
 import type { IndustryWireModel, WireReliability } from './industryWireModel';
 
@@ -113,9 +114,7 @@ export function IndustryWire({
   if (model.headlines.length === 0) {
     return (
       <Surface testID="industry-wire">
-        <Text style={caption}>
-          Nothing on the wire yet. Reports start coming in as the market moves.
-        </Text>
+        <Text style={caption}>{emptyState('growth_wire_headlines')}</Text>
         {unlocksFooter}
       </Surface>
     );

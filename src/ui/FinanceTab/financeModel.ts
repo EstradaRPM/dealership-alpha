@@ -3,6 +3,7 @@ import { PROFIT_CENTER_LABELS } from '../../game/Economy';
 import type { DepartmentPnLSummary, LedgerEntry, PnLSummary } from '../../game/Economy';
 import { compactMoney, domainFraction, money, signedDomain } from '../kit';
 import type { BarDatum, DonutDatum, LineSeries, TrendDirection } from '../kit';
+import { emptyState } from '../copy';
 
 /**
  * Finance's pure read-model (#351).
@@ -437,7 +438,7 @@ export function buildFinanceDashboard(
   // card and the chart beside it cannot disagree about the same window.
   const pnlDays = dailyPnL(pnl.entries, daily.map((d) => d.day));
 
-  const noDeals = 'No deals closed in this window.';
+  const noDeals = emptyState('finance_no_deals');
   const headline: readonly FinanceStat[] = [
     stat('units', 'Units Retailed', kpi.unitsRetailed, priorKpi.unitsRetailed, (n) => String(n), {
       hasPrior: hasPriorWindow,
@@ -461,7 +462,7 @@ export function buildFinanceDashboard(
       hasPrior: hasPriorWindow,
       rangeId,
       empty: !hasLedger,
-      emptyNote: 'Nothing has been posted to the books in this window.',
+      emptyNote: emptyState('finance_no_postings'),
       series: normalizeSeries(pnlDays.map((d) => d.net)),
     }),
     // PVR carries no sparkline on purpose: it is undefined on a day with no
@@ -484,7 +485,7 @@ export function buildFinanceDashboard(
       value: b.days.reduce((s, d) => s + d.gross, 0),
       valueLabel: money(b.days.reduce((s, d) => s + d.gross, 0)),
     })),
-    emptyLabel: 'No gross written in this window.',
+    emptyLabel: emptyState('finance_no_gross'),
   };
 
   const grossMix: FinanceDonut = {
@@ -536,7 +537,7 @@ export function buildFinanceDashboard(
         value: d.gross,
         valueLabel: money(d.gross),
       })),
-    emptyLabel: 'No department has posted to the books in this window.',
+    emptyLabel: emptyState('finance_no_departments'),
   };
 
   // #376: the statement over time. Bucketed off the SAME `buckets` the hero
@@ -579,7 +580,7 @@ export function buildFinanceDashboard(
           },
         ]
       : [],
-    emptyLabel: 'Nothing has been posted to the books in this window.',
+    emptyLabel: emptyState('finance_no_postings'),
   };
 
   // #376: the ladder. Departmental gross → less store overhead → what was left.
@@ -647,7 +648,7 @@ export function buildFinanceDashboard(
           },
         ]
       : [],
-    emptyLabel: 'Nothing has been posted to the books in this window.',
+    emptyLabel: emptyState('finance_no_postings'),
   };
 
   // #152: the back end per car, by how much of the price the customer borrowed.
@@ -701,7 +702,7 @@ export function buildFinanceDashboard(
       value: g.amount,
       valueLabel: money(g.amount),
     })),
-    emptyLabel: 'Nothing was spent in this window.',
+    emptyLabel: emptyState('finance_no_spend'),
   };
 
   const window = financeRangeWindow(rangeId, currentDay);

@@ -5,6 +5,7 @@ import {
   type BodyShopPageModel,
   type BodyShopControls,
 } from '../src/ui/BodyShopPage';
+import { emptyState } from '../src/ui/copy';
 
 const MODEL: BodyShopPageModel = {
   demandHeat: [
@@ -92,7 +93,7 @@ describe('BodyShopPage smoke', () => {
     const { getByText } = render(
       <BodyShopPage model={empty} onClose={() => {}} />,
     );
-    expect(getByText('No collision work yet.')).toBeTruthy();
+    expect(getByText(emptyState('body_shop_demand_heat'))).toBeTruthy();
   });
 
   it('dispatches onClose from the back button', () => {

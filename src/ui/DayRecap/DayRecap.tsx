@@ -8,6 +8,7 @@ import { useTheme } from '../theme';
  * the same window.
  */
 import { Surface, SectionHeader, StatCard, IconBadge, compactMoney } from '../kit';
+import { emptyState } from '../copy';
 import { Reveal, type RevealModel } from '../Reveal';
 
 /**
@@ -53,8 +54,8 @@ function leakCallout(m: DayRecapModel): string {
     case 'none':
     default:
       return m.potentialTraffic <= 0
-        ? 'No traffic today — nothing to recap.'
-        : 'Clean funnel — no single stage leaked today.';
+        ? emptyState('day_recap_no_traffic')
+        : emptyState('day_recap_clean_funnel');
   }
 }
 

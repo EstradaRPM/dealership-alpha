@@ -54,6 +54,7 @@ tile holding an `Icon`; `solid`·`soft`, rounded·circle) · `ProgressBar` ·
 `Meter` (labeled gauge, optional `caption` under the bar) · `StatCard` (value·label·trend delta, optional leading
 `icon`) · `SectionHeader` · `Collapsible` (headed panel that opens and shuts) ·
 `HintLine` (one muted consequence hint under a control) ·
+`EmptyState` (a region with nothing in it yet, as a contained note) ·
 the chart primitives below.
 
 `HintLine` is presentation only and never pressable. Whether a hint is still
@@ -62,7 +63,20 @@ owed is the app layer's read of the slot's teaching cell (`useHints`, issue 386)
 from `data/hints.json`; `tests/HintCopy.test.ts` fails the build over a hint
 string written as a literal under `src/`.
 
-It takes `{ id, text }` and **mints its own testID** — `hint-<id>` with the
+`EmptyState` is the same shape of rule for the other half of the teaching
+surface (#389). It is presentation only and takes `{ text, icon?, testID? }`;
+the caller resolves the sentence through `emptyState(id)` off
+`src/ui/copy` and hands it over, so the component never reaches the catalog.
+The copy itself lives in `data/empty-states.json` and
+`tests/EmptyStates.test.tsx` fails the build over an empty-state string written
+as a literal under `src/`. Home and Growth each hand-rolled this note before it
+came onto the barrel — two copies of one idiom, which is how two pages start
+looking different about the same fact. A region with nothing in it is what a
+brand-new career meets first, so the note is a **contained** card rather than a
+bare grey line: an un-contained sentence in a stack of cards reads as an
+unfinished wireframe even when the copy is honest.
+
+`HintLine` takes `{ id, text }` and **mints its own testID** — `hint-<id>` with the
 underscores spelled as dashes (#388). There is no `testID` prop: twenty-odd
 surfaces draw one of these, and a passed-in id is one typo away from a line
 nobody can address. The `id` is the catalog's, so a hint, its control and its

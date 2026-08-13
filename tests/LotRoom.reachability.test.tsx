@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { LotRoom, type LotRoomProps } from '../src/ui/LotRoom';
 import { readAppCompositionSource } from './helpers/appComposition';
+import { emptyState } from '../src/ui/copy';
 
 // #346 — the locked IA §4 gives the Lot the whole stock pipeline as ONE room:
 // stock list · pricing · sourcing (the auction lives here). Before this slice
@@ -166,7 +167,7 @@ describe('#361 Lot room — occupied of built spaces', () => {
     expect(lineOf(getByTestId('lot-occupancy'))).toBe(
       '12 of 12 spaces taken · no spaces open',
     );
-    expect(getByText(/No spaces open — sell a unit/)).toBeTruthy();
+    expect(getByText(emptyState('lot_no_spaces'))).toBeTruthy();
   });
 
   it('says the lot is over, not merely full — a trade always lands', () => {

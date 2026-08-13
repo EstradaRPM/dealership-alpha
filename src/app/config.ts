@@ -7,6 +7,7 @@
 // editing the 1.8k-line App.tsx.
 import { type ImageSourcePropType } from 'react-native';
 import { loadTunables } from '../game/data';
+import { emptyState } from '../ui/copy';
 import {
   loadTradePolicyConfig,
   loadFniPostureConfig,
@@ -149,7 +150,7 @@ export function buildDepartmentDock(world: World): DeptTile[] {
       hero: true,
       status:
         units.length === 0
-          ? 'Nothing in stock. Go buy something.'
+          ? emptyState('dock_lot_empty')
           : `${units.length} in stock` + (aging > 0 ? ` · ${aging} aging` : ''),
     },
     {

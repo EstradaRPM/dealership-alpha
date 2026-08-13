@@ -3,6 +3,7 @@ import type { KPISnapshot } from '../../game/KPIDashboard';
 import type { PnLSummary } from '../../game/Economy';
 import type { BadgeTone } from '../kit';
 import { money } from '../kit';
+import { emptyState } from '../copy';
 
 /**
  * Month-close results (#351) — the career's closed months, newest first.
@@ -123,7 +124,6 @@ export function buildMonthResults(
 
   return {
     rows,
-    emptyNote:
-      'No month has closed yet. Every month the books close, the result lands here — the grade and the numbers behind it.',
+    emptyNote: emptyState('finance_month_results'),
   };
 }

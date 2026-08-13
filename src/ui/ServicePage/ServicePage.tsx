@@ -9,6 +9,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useTheme } from '../theme';
+import { emptyState } from '../copy';
 import {
   Surface,
   SectionHeader,
@@ -373,7 +374,7 @@ export function ServicePage({ model, controls, onClose }: ServicePageProps) {
             What your bays are being asked for — stock and staff to it.
           </Text>
           {model.demandHeat.length === 0 ? (
-            <Text style={empty}>No service traffic yet.</Text>
+            <Text style={empty}>{emptyState('service_demand_heat')}</Text>
           ) : (
             model.demandHeat.map((row) => (
               <DemandHeatRow key={row.category} row={row} />
@@ -388,7 +389,7 @@ export function ServicePage({ model, controls, onClose }: ServicePageProps) {
               Recent demand against the parts you have on hand.
             </Text>
             {model.coverage.length === 0 ? (
-              <Text style={empty}>No parts demand to cover yet.</Text>
+              <Text style={empty}>{emptyState('parts_coverage')}</Text>
             ) : (
               model.coverage.map((row) => (
                 <CoverageRow key={row.category} row={row} />

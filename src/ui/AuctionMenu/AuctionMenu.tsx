@@ -15,6 +15,7 @@ import type {
 import type { EventBus } from '../../game/EventBus';
 import type { ConditionRead } from '../../game/StaffOrg';
 import { colors } from '../theme';
+import { emptyState } from '../copy';
 // Every dollar figure on this screen is **exact** (issue 387): a bid, an asking
 // price, an inspection fee and the recon estimate under them are the numbers the
 // player commits cash against.
@@ -39,11 +40,19 @@ export type SourceLabelFor = (sourceId: string) => string;
  */
 export type ConditionReadFor = (vehicle: AuctionListing) => ConditionRead | null;
 
+/**
+ * How sure the manager is of the estimate, in words (#389).
+ *
+ * It used to read "High" / "Medium" / "Low", which states a magnitude and
+ * never says magnitude of WHAT — a first-time player reads "(Medium)" beside a
+ * dollar range and cannot tell whether it grades the car or the estimate. These
+ * name the axis: how much the manager is willing to stand behind the number.
+ */
 function formatConfidence(c: number): string {
-  if (c >= 0.75) return 'High';
-  if (c >= 0.5) return 'Medium';
-  if (c >= 0.25) return 'Low';
-  return 'Very Low';
+  if (c >= 0.75) return 'confident';
+  if (c >= 0.5) return 'fairly sure';
+  if (c >= 0.25) return 'rough guess';
+  return 'little more than a guess';
 }
 
 function formatRange(low: number, high: number): string {
@@ -132,7 +141,7 @@ function DetailModal({
           </View>
           {conditionRead && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>UCM Recon Read</Text>
+              <Text style={styles.detailLabel}>Manager&apos;s Repair Estimate</Text>
               <Text style={styles.detailValue}>
                 {formatRange(conditionRead.estimatedReconLow, conditionRead.estimatedReconHigh)}
                 {'  '}
@@ -397,12 +406,13 @@ export function AuctionMenu({
       <ScrollView style={styles.list} contentContainerStyle={styles.listInner}>
         {lotOccupancy.atCapacity && (
           <Text style={styles.closedBanner} testID="auction-bidding-closed">
-            No spaces open — sell a unit before you buy another. Bidding is
-            closed until you are back under {lotOccupancy.built} spaces.
+            {`${emptyState('lot_no_spaces')} ${emptyState('auction_bidding_closed', {
+              spaces: String(lotOccupancy.built),
+            })}`}
           </Text>
         )}
         {listings.length === 0 ? (
-          <Text style={styles.empty}>No vehicles available today.</Text>
+          <Text style={styles.empty}>{emptyState('auction_no_listings')}</Text>
         ) : (
           listings.map((l) => (
             <ListingRow

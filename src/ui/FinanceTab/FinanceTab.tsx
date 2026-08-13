@@ -13,6 +13,7 @@ import {
   compactMoney,
   money,
 } from '../kit';
+import { emptyState } from '../copy';
 import { ChipRow } from '../DeptControls';
 import { KPIDashboard } from '../KPIDashboard';
 import type { MarketStateModel } from '../KPIDashboard';
@@ -368,6 +369,10 @@ function HeadlineCard({ stat }: { stat: FinanceStat }) {
             values={stat.series}
             tone={stat.trend === 'down' ? 'danger' : 'primary'}
             size="sm"
+            // Every chart in the app states its own no-data sentence (#389). A
+            // headline card that ships a series can still be handed an empty
+            // one on day 1, and a blank plot reads as a broken card.
+            emptyLabel={emptyState('finance_stat_trend')}
             testID={`finance-spark-${stat.id}`}
           />
         </View>

@@ -13,6 +13,7 @@ import { EndCard } from '../EndCard';
 import type { EndCardData, EndCardReason } from '../../game/EndCard';
 import { END_CARD_OUTCOME } from '../../game/EndCard';
 import { colors } from '../theme';
+import { emptyState } from '../copy';
 
 const REASON_LABELS: Record<string, string> = {
   bankruptcy: 'Bankruptcy',
@@ -94,7 +95,7 @@ export function LegacyWallView({ visible, legacies, onClose }: Props) {
 
         {legacies.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No careers completed yet.</Text>
+            <Text style={styles.emptyText}>{emptyState('legacy_wall')}</Text>
           </View>
         ) : (
           <FlatList

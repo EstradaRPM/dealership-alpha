@@ -7,6 +7,7 @@ import type { CharacterProfile } from '../src/game/CareerProgression';
 import type { TabStacks } from '../src/ui/Navigator';
 import type { ShellTabKey } from '../src/ui/AppShell';
 import { readAppCompositionSource } from './helpers/appComposition';
+import { emptyState } from '../src/ui/copy';
 
 // Anti-orphan (#351): Finance was one of the two placeholder tabs, and the KPI
 // readout + history log were full-screen routes behind the in-game menu that
@@ -123,14 +124,14 @@ describe('#351 the Finance tab is mounted on the live world', () => {
     );
     // "Today" is day 3 — nothing traded, so the card is empty, not a zero.
     expect(
-      within(getByTestId('finance-stat-units')).getByText('No deals closed in this window.'),
+      within(getByTestId('finance-stat-units')).getByText(emptyState('finance_no_deals')),
     ).toBeTruthy();
     expect(queryByTestId('finance-spark-units')).toBeNull();
 
     fireEvent.press(getByText('7D'));
     // The same card now reads the day-1 deal the wider window covers.
     expect(
-      within(getByTestId('finance-stat-units')).queryByText('No deals closed in this window.'),
+      within(getByTestId('finance-stat-units')).queryByText(emptyState('finance_no_deals')),
     ).toBeNull();
     expect(within(getByTestId('finance-stat-units')).getByText('1')).toBeTruthy();
     expect(getByTestId('finance-spark-units')).toBeTruthy();

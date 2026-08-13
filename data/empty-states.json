@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 1,
+  "_doc": "Phase 12 D3 (#389) — the empty-state catalog. Every list, panel and chart in the game that can have nothing to show draws its sentence from here. A region with nothing in it is the surface a new player meets FIRST, and a blank box is indistinguishable from a broken one, so each of these says what is missing AND what the player can do about it.",
+  "_copyDoc": "`text` is player-facing copy and lives HERE, never as a literal in a component — tests/EmptyStates.test.tsx scans src/ for it, the same guard tests/HintCopy.test.ts puts on hint copy. It obeys the .claude/rules/ui.md plain-language rule: plain words a layperson reads right on the first pass, and never a temperature word. Every entry is a full sentence naming a next action; tests/PlainLanguage.test.tsx enforces both. An entry that states a tier gate is naming a real next action, not apologizing for a missing feature.",
+  "_slotDoc": "A `{slot}` is filled by the caller through `emptyState(id, slots)`. An unfilled slot is left literal, the industry-wire rule — a missing fill shows up as a visibly wrong sentence rather than a silently truncated one. Three exist: {department} on the People roster panels, {queue} on a department queue screen, and {spaces} on the auction's capacity notice.",
+  "_sharedDoc": "Some ids are drawn from two places on purpose — the same region reachable from two rooms. `demand_readout` is Home's market band and Growth's demand console; `lot_no_spaces` is the Lot's sourcing block and the auction's bidding notice; `parts_coverage` is Service and the Body Shop; `gate_trend` is the Home gate strip and the Growth gate board; `no_saved_games` is the main menu and the in-game load list. Splitting one of these gives the player two wordings of one fact and two entries that can drift.",
+  "states": [
+    {
+      "id": "home_today",
+      "surface": "home",
+      "text": "Your first day hasn't opened yet — run a day and how it went shows up here."
+    },
+    {
+      "id": "demand_readout",
+      "surface": "home / growth",
+      "text": "Open the lot for a day and the readout fills in with what buyers actually asked for."
+    },
+    {
+      "id": "home_glance_demand",
+      "surface": "home",
+      "text": "Demand is still settling — run a day and the crowd's favorite shows up here."
+    },
+    {
+      "id": "home_glance_campaign",
+      "surface": "home",
+      "text": "No campaign running — advertising in Growth brings a different crowd through the door."
+    },
+    {
+      "id": "gate_trend",
+      "surface": "home / growth",
+      "text": "The trend builds over the month, so give it a few more days."
+    },
+    {
+      "id": "growth_weekly_report",
+      "surface": "growth",
+      "text": "The first weekly report comes out after your first full week of trading."
+    },
+    {
+      "id": "growth_wire",
+      "surface": "growth",
+      "text": "The wire starts up when your first day opens."
+    },
+    {
+      "id": "growth_wire_headlines",
+      "surface": "growth",
+      "text": "Nothing on the wire yet — reports start coming in as the market moves."
+    },
+    {
+      "id": "growth_finance_mix",
+      "surface": "growth",
+      "text": "The read on how buyers are paying shows up once the store opens."
+    },
+    {
+      "id": "growth_finance_mix_locked",
+      "surface": "growth",
+      "text": "Nobody here reads how the crowd is paying yet, so next month's finance posture is a guess — subscribe to the wire or put a manager on the desk."
+    },
+    {
+      "id": "growth_facility",
+      "surface": "growth",
+      "text": "Your lot and bays show up here once the store opens."
+    },
+    {
+      "id": "growth_facility_at_ceiling",
+      "surface": "growth",
+      "text": "This kind of space opens up at a higher tier."
+    },
+    {
+      "id": "growth_gate_board",
+      "surface": "growth",
+      "text": "The month's targets light up when your first day opens."
+    },
+    {
+      "id": "growth_gate_faces",
+      "surface": "growth",
+      "text": "No targets are set at this tier — keep trading and the next tier brings its own."
+    },
+    {
+      "id": "growth_gate_streak",
+      "surface": "growth",
+      "text": "No months banked yet — clear a month's targets and it counts toward the climb."
+    },
+    {
+      "id": "finance_no_deals",
+      "surface": "finance",
+      "text": "No cars sold in this window — widen the range or run more days."
+    },
+    {
+      "id": "finance_no_gross",
+      "surface": "finance",
+      "text": "No gross written in this window — widen the range or run more days."
+    },
+    {
+      "id": "finance_no_departments",
+      "surface": "finance",
+      "text": "No department has posted to the books in this window."
+    },
+    {
+      "id": "finance_no_postings",
+      "surface": "finance",
+      "text": "Nothing has been posted to the books in this window — widen the range or run more days."
+    },
+    {
+      "id": "finance_no_spend",
+      "surface": "finance",
+      "text": "Nothing was spent in this window."
+    },
+    {
+      "id": "finance_stat_trend",
+      "surface": "finance",
+      "text": "The trend line needs a few days of trading behind it."
+    },
+    {
+      "id": "finance_month_results",
+      "surface": "finance",
+      "text": "No month has closed yet. Every month the books close, the result lands here — the grade and the numbers behind it."
+    },
+    {
+      "id": "people_department_roster",
+      "surface": "people",
+      "text": "Nobody in {department} yet."
+    },
+    {
+      "id": "people_hiring_no_role",
+      "surface": "people",
+      "text": "Pick a job to see who is applying for it."
+    },
+    {
+      "id": "people_hiring_no_applicants",
+      "surface": "people",
+      "text": "Nobody is applying for this job today — run a day and check back."
+    },
+    {
+      "id": "people_roster_empty",
+      "surface": "people",
+      "text": "Nobody on payroll — you are working the floor alone until you hire someone."
+    },
+    {
+      "id": "people_roster_full",
+      "surface": "people",
+      "text": "Every desk the store has room for is filled — build more space to open another."
+    },
+    {
+      "id": "people_no_managers",
+      "surface": "people",
+      "text": "No managers on staff — every decision still comes to your desk."
+    },
+    {
+      "id": "people_manager_absent",
+      "surface": "people",
+      "text": "No manager on staff — you run the shop by hand until you hire one."
+    },
+    {
+      "id": "lot_stock_count",
+      "surface": "lot",
+      "text": "Nothing in stock yet."
+    },
+    {
+      "id": "lot_stock_list",
+      "surface": "lot",
+      "text": "Buy something at the auction and it lands here."
+    },
+    {
+      "id": "lot_no_spaces",
+      "surface": "lot / auction",
+      "text": "No spaces open — sell or wholesale a unit before you buy another."
+    },
+    {
+      "id": "auction_bidding_closed",
+      "surface": "auction",
+      "text": "Bidding is closed until you are back under {spaces} spaces."
+    },
+    {
+      "id": "auction_no_listings",
+      "surface": "auction",
+      "text": "No cars on the block today — run a day and a fresh run comes through."
+    },
+    {
+      "id": "service_demand_heat",
+      "surface": "service",
+      "text": "No service traffic yet — the cars you sell come back for work as they age."
+    },
+    {
+      "id": "body_shop_demand_heat",
+      "surface": "body shop",
+      "text": "No collision work yet — jobs come in as the market sends them."
+    },
+    {
+      "id": "parts_coverage",
+      "surface": "service / body shop",
+      "text": "No parts demand to cover yet — the par levels start to matter once work comes in."
+    },
+    {
+      "id": "demand_targeting_levers",
+      "surface": "growth",
+      "text": "Nothing is steering who walks in — run a campaign to pull a different crowd."
+    },
+    {
+      "id": "market_state_segments",
+      "surface": "market state",
+      "text": "No read on the segments yet — run a day and the market states itself."
+    },
+    {
+      "id": "market_state_shocks",
+      "surface": "market state",
+      "text": "Nothing is moving the market right now."
+    },
+    {
+      "id": "floor_roster",
+      "surface": "live floor",
+      "text": "Nobody is working the floor — hire someone in People or you take every customer yourself."
+    },
+    {
+      "id": "floor_recent_events",
+      "surface": "live floor",
+      "text": "Quiet so far today — the feed fills in as customers walk in."
+    },
+    {
+      "id": "fni_peak_meter",
+      "surface": "operations",
+      "text": "You haven't financed a car yet. Once the store writes some loan contracts, this shows what each setting is worth on your own deals."
+    },
+    {
+      "id": "department_queue",
+      "surface": "department",
+      "text": "Nothing waiting in {queue} — work comes in as the day runs."
+    },
+    {
+      "id": "pricing_comps",
+      "surface": "pricing",
+      "text": "Nothing comparable on a rival lot right now, so this price is yours to set."
+    },
+    {
+      "id": "history_log",
+      "surface": "history",
+      "text": "No history yet. Notable events — sales, escalations, market shifts, promotions — will appear here as they happen."
+    },
+    {
+      "id": "legacy_wall",
+      "surface": "legacy wall",
+      "text": "No careers finished yet — play one to the end and it is recorded here."
+    },
+    {
+      "id": "settings_snapshots",
+      "surface": "settings",
+      "text": "No snapshots yet — one is saved at the end of each week you play."
+    },
+    {
+      "id": "no_saved_games",
+      "surface": "main menu / in-game menu",
+      "text": "No saved games yet — start a new career to make one."
+    },
+    {
+      "id": "dock_lot_empty",
+      "surface": "department dock",
+      "text": "Nothing in stock — go buy something at the auction."
+    },
+    {
+      "id": "day_recap_no_traffic",
+      "surface": "day recap",
+      "text": "No traffic today, so there is nothing to recap."
+    },
+    {
+      "id": "day_recap_clean_funnel",
+      "surface": "day recap",
+      "text": "Clean funnel — no single stage leaked today."
+    },
+    {
+      "id": "trade_review_empty",
+      "surface": "trade escalation",
+      "text": "No trade is waiting on your answer."
+    },
+    {
+      "id": "discount_review_empty",
+      "surface": "discount escalation",
+      "text": "No discount is waiting on your answer."
+    }
+  ]
+}

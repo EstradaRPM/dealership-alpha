@@ -67,5 +67,7 @@ export { Collapsible } from './Collapsible';
 export type { CollapsibleProps } from './Collapsible';
 export { HintLine } from './HintLine';
 export type { HintLineProps } from './HintLine';
+export { EmptyState } from './EmptyState';
+export type { EmptyStateProps } from './EmptyState';
 export { ConfirmDialog, useConfirm } from './ConfirmDialog';
 export type { ConfirmDialogProps, ConfirmRequest, Confirm } from './ConfirmDialog';

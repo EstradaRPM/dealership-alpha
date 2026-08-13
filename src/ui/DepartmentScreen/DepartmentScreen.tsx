@@ -9,6 +9,7 @@ import {
 import type { QueueItem } from '../../game/DepartmentQueue';
 import { colors } from '../theme';
 import { HintLine } from '../kit';
+import { emptyState } from '../copy';
 
 /**
  * Generic resolve-list for a single department (#76). One component drives
@@ -77,7 +78,9 @@ export function DepartmentScreen({
       <ScrollView contentContainerStyle={styles.list}>
         {hint && <HintLine id="resolve_queue_item" text={hint} />}
         {items.length === 0 ? (
-          <Text style={styles.empty}>Nothing waiting in {title}.</Text>
+          <Text style={styles.empty}>
+            {emptyState('department_queue', { queue: title })}
+          </Text>
         ) : (
           items.map((item) =>
             renderItem != null ? (

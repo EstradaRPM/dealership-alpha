@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import type { WeeklySnapshot } from '../../game/SaveStore';
 import { useConfirm } from '../kit';
+import { emptyState } from '../copy';
 import { colors } from '../theme';
 
 interface Props {
@@ -49,7 +50,7 @@ export function SettingsScreen({ snapshots, onRollback, onClose }: Props) {
         <Text style={styles.sectionLabel}>WEEKLY SNAPSHOTS</Text>
 
         {snapshots.length === 0 ? (
-          <Text style={styles.emptyText}>No snapshots yet. One is saved at the end of each week.</Text>
+          <Text style={styles.emptyText}>{emptyState('settings_snapshots')}</Text>
         ) : (
           snapshots.map((snap, i) => (
             <TouchableOpacity

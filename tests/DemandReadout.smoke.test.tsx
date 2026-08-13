@@ -7,6 +7,7 @@ import {
   type DemandReadoutModel,
   type HeatBandThresholds,
 } from '../src/ui/DemandReadout';
+import { emptyState } from '../src/ui/copy';
 
 const THRESHOLDS: HeatBandThresholds = {
   hot: 1.15,
@@ -129,6 +130,6 @@ describe('DemandReadout smoke', () => {
     const { getByText } = render(
       <DemandReadout model={{ totalObserved: 0, entries: MODEL.entries }} />,
     );
-    expect(getByText('No traffic yet — open the lot to see what buyers want.')).toBeTruthy();
+    expect(getByText(emptyState('demand_readout'))).toBeTruthy();
   });
 });

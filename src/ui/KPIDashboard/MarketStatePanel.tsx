@@ -8,6 +8,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { useTheme } from '../theme';
+import { emptyState } from '../copy';
 import {
   Surface,
   SectionHeader,
@@ -166,7 +167,7 @@ export function MarketStatePanel({ model }: { model: MarketStateModel }) {
           the factor breakdown.
         </Text>
         {model.segmentHeat.length === 0 ? (
-          <Text style={empty}>No segment data yet.</Text>
+          <Text style={empty}>{emptyState('market_state_segments')}</Text>
         ) : (
           model.segmentHeat.map((cell) => <SegmentHeatRow key={cell.segment} cell={cell} />)
         )}
@@ -176,7 +177,7 @@ export function MarketStatePanel({ model }: { model: MarketStateModel }) {
         <SectionHeader title="Active Market Shocks" />
         <View style={{ marginTop: t.spacing.sm }}>
           {model.activeShocks.length === 0 ? (
-            <Text style={empty}>No active market shocks.</Text>
+            <Text style={empty}>{emptyState('market_state_shocks')}</Text>
           ) : (
             model.activeShocks.map((shock) => <ShockRow key={shock.instanceId} shock={shock} />)
           )}

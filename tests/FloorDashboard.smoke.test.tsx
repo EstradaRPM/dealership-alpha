@@ -14,7 +14,7 @@ const MODEL: FloorDashboardModel = {
   cash: 48_250,
   ups: 9,
   sold: 2,
-  pendingWarm: 3,
+  waiting: 3,
   gross: 5_400,
   staff: [
     { id: 's1', role: 'Salesperson', department: 'sales' },

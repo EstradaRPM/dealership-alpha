@@ -1,4 +1,5 @@
 import { money } from '../kit';
+import { emptyState } from '../copy';
 import type {
   ConstructionJob,
   FacilityBuildOption,
@@ -93,7 +94,7 @@ function actionLabelFor(o: FacilityBuildOption): string {
     // have — the Body Shop before Tier 3. Saying "built out" there would read
     // as an achievement instead of a lock.
     return o.ceiling === 0
-      ? 'Not available at this tier'
+      ? emptyState('growth_facility_at_ceiling')
       : 'Built out to the tier limit';
   }
   return `Build ${units(o.kind, o.units)} — ${money(o.cost)}`;

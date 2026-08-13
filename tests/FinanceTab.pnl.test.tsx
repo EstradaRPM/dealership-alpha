@@ -24,6 +24,7 @@ import type {
   PnLSummary,
   ProfitCenter,
 } from '../src/game/Economy';
+import { emptyState } from '../src/ui/copy';
 
 // #380: the room's position header. Fixed here — these suites are about the
 // windowed readings below it.
@@ -198,7 +199,7 @@ describe('Finance — the P&L over time (#376)', () => {
     const { getAllByText } = renderTab(m);
     // Both halves say so rather than drawing a flat line at zero, which is a
     // claim the store traded and broke even.
-    expect(getAllByText('Nothing has been posted to the books in this window.').length)
+    expect(getAllByText(emptyState('finance_no_postings')).length)
       .toBeGreaterThanOrEqual(2);
   });
 });

@@ -155,7 +155,7 @@ describe('#199 match-payoff beat — reachable through the live pipeline', () =>
       cash: 40_000,
       ups: 6,
       sold: 1,
-      pendingWarm: 2,
+      waiting: 2,
       gross: 3_000,
       staff: [],
       events: [

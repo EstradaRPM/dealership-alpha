@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
+import { emptyState } from '../copy';
 import {
   Surface,
   SectionHeader,
@@ -51,7 +52,7 @@ export function GateBoard({ model }: { model: GateBoardModel }) {
                 marginTop: t.spacing.md,
               }}
             >
-              No gate faces are lit at this tier yet.
+              {emptyState('growth_gate_faces')}
             </Text>
           ) : (
             model.faces.map((face) => (
@@ -152,7 +153,7 @@ function FaceBlock({ face }: { face: GateBoardFace }) {
             values={face.sparkline ?? []}
             size="md"
             tone={face.tone}
-            emptyLabel="Trend builds over the month."
+            emptyLabel={emptyState('gate_trend')}
             testID={`gate-board-spark-${face.id}`}
           />
         )}

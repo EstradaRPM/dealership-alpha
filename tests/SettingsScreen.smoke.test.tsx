@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SettingsScreen } from '../src/ui/SettingsScreen';
 import type { WeeklySnapshot } from '../src/game/SaveStore';
+import { emptyState } from '../src/ui/copy';
 
 const SNAPSHOTS: WeeklySnapshot[] = [
   { day: 14, tier: 2, state: { cash: 62_000 } },
@@ -21,7 +22,7 @@ describe('SettingsScreen smoke', () => {
 
     expect(getByText('SETTINGS')).toBeTruthy();
     expect(
-      getByText('No snapshots yet. One is saved at the end of each week.'),
+      getByText(emptyState('settings_snapshots')),
     ).toBeTruthy();
 
     fireEvent.press(getByText('Close'));

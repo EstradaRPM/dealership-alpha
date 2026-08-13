@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import type { MultiSlotSaveStore, SlotMetadata } from '../../game/SaveStore';
 import { useConfirm } from '../kit';
+import { emptyState } from '../copy';
 import { colors } from '../theme';
 
 type Mode = 'menu' | 'new' | 'load';
@@ -187,7 +188,7 @@ export function MainMenu({
         <Text style={styles.sectionLabel}>SAVE SLOTS</Text>
 
         {slots.length === 0 ? (
-          <Text style={styles.emptyText}>No saved games yet.</Text>
+          <Text style={styles.emptyText}>{emptyState('no_saved_games')}</Text>
         ) : (
           slots.map((slot) => (
             <View key={slot.id} style={styles.slotRow}>
