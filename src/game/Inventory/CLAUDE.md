@@ -322,6 +322,24 @@ Lot vehicles + the auction generator that supplies them. Owns purchase/sale of v
 - `bookValueFn` is an optional dep; the default mirror is
   `purchasePrice + reconCost` (the static stub shape).
 
+## The owner's eye on a car (#390)
+
+- Optional `reconJudgmentBonus: number` dep — added to the source reliability
+  every recon roll is taken against, clamped at 1
+  (`MarketEconomy.applyReconJudgment`). Omit ⇒ 0, the pre-#390 behavior.
+- **A plain number, never a backstory id.** The composition root resolves the
+  founder's lever; Inventory only ever sees "this appraisal reads 0.15 better".
+- Applied in **two** places, both on the roll's *input* and never on its seed:
+  `buildAcquiredVehicle` (so an auction buy and a customer trade get the same
+  owner looking at the car) and `rollListingRealizedRecon` (so a paid inspection
+  reports the roll the buy will actually realize — the two share
+  `deriveReconSeed`). Same seed + same founder ⇒ the same board and the same
+  rolls, which is what keeps the balance harness comparable.
+- The effect is **banded**, because #162's model is: `sourceReliabilityFactors`
+  is keyed low/mid/high with boundaries at 0.50 and 0.70, so the lift bites when
+  it carries a source across one. That is why the lever is worth 0.15 and not
+  0.02.
+
 ## Paid inspection (#164)
 - `requestInspection(listingId)` pays `tunables.inventory.inspection.cost`
   via Economy, marks the listing `inspectionStatus='pending'`, and stashes it

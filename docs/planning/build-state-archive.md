@@ -6,6 +6,50 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-12 — **BUILT #387** (D3-R1 — one money rule, stated once in the kit). `money` /
+  `compactMoney` moved off `FinanceTab/financeModel.ts` onto the kit barrel, and every currency
+  call site under `src/ui/**` and `src/app/**` was audited against the rule: **compact when the
+  figure is ambient, exact when the player is about to act on it.**
+  **Nine formatters became one.** Five hand-rolled `money`/`dollars`/`fmt$` helpers, **two
+  different sign glyphs** (`MarketStatePanel` alone carried the typographic minus), and a dozen
+  inline `` `$${n.toLocaleString()}` `` templates that had diverged on rounding. Two UI modules
+  were importing a *Finance model file* for a string formatter, which is what the barrel move ends.
+  **The rule has a second clause the issue implied and the audit forced: a figure the player can
+  check against another figure on the same surface counts as acting on it.** That is why the whole
+  Finance room stays exact — #376's own rule is that the headline Net Income and the statement's
+  Net Income line must match everywhere, and compacting either breaks the reconciliation the
+  statement exists to be. Compacting the Finance headline cards "for consistency with the HUD" is
+  reversing that. The issue's *"month gross"* compact case landed where the HUD actually states a
+  month gross: the Home gate strip and the Growth gate board.
+  **The Reveal splits, deliberately.** The scoreline is compact (the ambient tally at the top of
+  the feed); every reaction under it stays exact, because a beat names one deal or one standing
+  mark and *"beating $4.9k"* is a claim the player cannot check against the record it just broke.
+  **No `Intl`, anywhere — and that is a shipping-platform fix, not a style choice.** Hermes ships
+  without full `Intl`, so `toLocaleString('en-US')` renders an ungrouped run of digits on iOS and
+  Android while reading correctly on the web target an agent drives. Two files
+  (`PlaytestLog/exportMarkdown`, `NarrativeBeat/recoveryBeat`) had already worked around it by
+  hand and left comments saying so; now one place does it and every surface inherits it.
+  **One deviation from the issue as filed, recorded on it: `grouped()` is on the barrel too.** Six
+  odometers were formatting themselves, and the Hermes gap is a property of the *grouping*, not of
+  the dollar sign — so an allowlist for "the non-currency ones" would have left them broken on the
+  shipping platforms and made the guard permanently conditional. With `grouped()` the scan is
+  absolute: `tests/MoneyFormat.noleak.test.ts` fails the build over `toLocaleString`, a `` $${ ``
+  template, or a hand-rolled grouping regex anywhere under `src/ui/**` (outside the kit) or
+  `src/app/**`, and names the file and line. **Proved against an injected probe**, not assumed.
+  `src/game/**` is deliberately unscanned: game logic may not import from `src/ui/**`, so the
+  engine physically cannot reach this barrel.
+  `npm run typecheck` clean, `npm test` **269 suites / 4117 tests** green. The #180 live
+  calibration is **byte-identical** (35.8% / 54.3%, closes=274, `costOverAsk` 1.026) — a
+  formatting slice moves no number, checked rather than assumed.
+  **Web drive (T2 dev fixture, day 31):** floor HUD `$222.7k` cash / `$50.6k` floored; Home
+  `$231.3k` cash, `+$8.6k` delta, `$273.7k` worth; gate strip `$2.5k / $30k · Ahead by $1.5k ·
+  proj $74.3k`; Reveal `$363 gross today` (**sub-$1k stays exact — the threshold working live**);
+  Finance `$1,200 + $79 = $1,279` reconciling with the `$1,279` headline card above a
+  `$0 / $2.5k / $5k / $7.5k / $10k` axis; pricing screen `$14,100` asking against `$10,555 book ·
+  $14,144 market`; People `$1,280/day` payroll and `$1,700` to sign; Growth `$3,000 each` to build.
+  Next: **BUILD #388** (D3-R2 — the consequence-hint copy pass over every live control, its
+  completeness asserted by a mount scan); its deps #386 and #387 are both met.
+
 - 2026-08-12 — **BUILT #386** (phase 12's tracer — a hint draws until you use the control, then it
   is gone). The one teaching mechanism the rest of the phase hangs off, built vertically:
   `data/hints.json` behind `parseData`, the `teaching:<id>` cell, the retire-on-use rule, the

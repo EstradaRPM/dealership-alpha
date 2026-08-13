@@ -24,13 +24,22 @@ import type {
 
 /** A fixed, balance-neutral founder so every run starts from the same place —
  *  the only thing that varies across runs is the masterSeed and the policy.
- *  Exported so the #248 fixture generator captures worlds from the same founder. */
+ *  Exported so the #248 fixture generator captures worlds from the same founder.
+ *
+ *  **Every lever is ZERO on purpose (#390).** This profile carried the
+ *  ex-mechanic's declared `reconJudgmentBonus: 0.15` while `day1Modifier` was
+ *  read by nothing, so it was neutral by accident; the moment the lever went
+ *  live it would have handed the bot a permanent edge and moved every pacing
+ *  number with it. The harness measures the STORE, not the founder's advantage —
+ *  a backstory retune must not be able to move a pacing reading. Measuring a
+ *  specific founder's career is a different run, and it would declare its own
+ *  profile. */
 export const PROFILE: CharacterProfile = {
   name: 'Harness Bot',
   backstoryId: 'ex-mechanic',
   day1Modifier: {
     backstoryId: 'ex-mechanic',
-    reconJudgmentBonus: 0.15,
+    reconJudgmentBonus: 0,
     startingCreditLine: 0,
     startingCapitalBonus: 0,
     grudgesFlag: false,

@@ -13,11 +13,18 @@ const BackstoryEntrySchema = z.object({
   id: z.enum(['ex-mechanic', 'ex-banker', 'inheritor']),
   label: z.string().min(1),
   flavor: z.string().min(1),
+  /**
+   * What the pick MECHANICALLY does, in plain language (#390). Required, and a
+   * sentence — the character-creation card reads it verbatim, so a backstory
+   * whose levers changed without its description changing fails to load rather
+   * than quietly telling the player something that is no longer true.
+   */
+  effect: z.string().min(1).regex(/[.!?]$/, 'effect must be a sentence'),
   modifier: BackstoryModifierSchema,
 });
 
 const BackstoryCatalogSchema = z.object({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   backstories: z.array(BackstoryEntrySchema).min(1),
 });
 

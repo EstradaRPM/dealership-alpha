@@ -91,13 +91,15 @@ const MAX_DAYS = 400;
  */
 const GREEN = { effectiveness: 0.35, trustworthiness: 0.4 } as const;
 
-/** Balance-neutral founder — the same one #180 and the #247 harness run. */
+/** Balance-neutral founder — the same one #180 and the #247 harness run. Every
+ *  lever is zero on purpose (#390): this test pins the progression FLOOR, and a
+ *  founder's edge is the opposite of a floor. */
 const PROFILE: CharacterProfile = {
   name: 'Early Game Bot',
   backstoryId: 'ex-mechanic',
   day1Modifier: {
     backstoryId: 'ex-mechanic',
-    reconJudgmentBonus: 0.15,
+    reconJudgmentBonus: 0,
     startingCreditLine: 0,
     startingCapitalBonus: 0,
     grudgesFlag: false,

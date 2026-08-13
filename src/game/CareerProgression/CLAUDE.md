@@ -10,6 +10,31 @@ Player tier (currently 1 → 3) + backstory-driven Day 1 modifiers + branding re
 - `loadTierConfig`, `loadFailureTunables`, `loadIndictmentTunables`, `loadEndingsTunables` — data loaders.
 - Types: `TierManager`, `TierManagerState`, `TierManagerSnapshot`, `TierConfig`, `TierEntry`, `TierThreshold`, `AccentOption`, `FontOption`, `BackstoryId`, `Day1Modifier`, `BackstoryEntry`, `CharacterProfile`, `BankruptcyMonitor*`, `IndictmentMonitor*`, `CareerEndingsMonitor*`, `PESelloutOffer`, `EndingsTunables`.
 
+## Day 1 modifiers — what a backstory actually does (#390)
+
+- `data/backstories.json` is **schemaVersion 2**: each entry adds `effect`, the
+  plain-language sentence the character-creation card states about the pick. It
+  lives in the same declaration as the lever it describes so a retune cannot
+  leave the copy behind, and the schema requires it to end in `.`/`!`/`?`.
+- **The modifier is resolved in `createWorld` and nowhere else.** Two levers are
+  live: `startingCapitalBonus` is added to the store's opening cash, and
+  `reconJudgmentBonus` is handed to `Inventory` as a plain number
+  (`reconJudgmentBonus`) plus applied to the #163 UCM condition-read seam, so the
+  desk reads the same car the lot will realize. **No module under `src/game/**`
+  learns what a backstory is** — `tests/BackstoryModifiers.test.ts` scans for it
+  and names the offending file.
+- Two modules are declared readers of the **id** (never the modifier), and both
+  read it for something other than a mechanic: `EndCard` picks the sentence a
+  career ends on, and `SaveStore`'s persisted profile carries it because a
+  reloaded career is the same person.
+- `startingCreditLine` (#392/#393) and `grudgesFlag` (#391) are new mechanics
+  with no engine home yet; the cards already state them, and those slices make
+  them true.
+- **The balance harness's founder declares every lever at zero on purpose.**
+  `scripts/balance-harness/runner.ts` PROFILE and the two calibration tests
+  measure the *store*; a founder's edge measured as the engine's is how a
+  backstory retune silently moves a pacing band.
+
 ## Tier advancement (#250 — streak-based, locked macro-loop-spine §12)
 - Advancement is driven by the monthly tier-gate verdict streak, NOT an
   instantaneous threshold. `TierManager` consumes `tierGate:month_verdict`

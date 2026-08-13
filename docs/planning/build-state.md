@@ -27,12 +27,16 @@ anywhere in `src/ui/**`.
 
 **#388 is BUILT as of 2026-08-12.**
 
-**#389 is BUILT as of 2026-08-13.** The next `/next` is **BUILD #390** (no deps).
+**#389 is BUILT as of 2026-08-13.**
 
-The one thing a future session must not re-derive: **the backstory picks are mechanically
-identical today.** `day1Modifier` is read by nothing in `src/`, so F2 is a wiring job (#390) plus
-two new mechanics — a borrowing facility for `startingCreditLine` (#392/#393) and a starting
-reputation deficit for `grudgesFlag` (#391) — not a copy job.
+**#390 is BUILT as of 2026-08-13.** The next `/next` is **BUILD #391** (dep #390, now met).
+
+The one thing a future session must not re-derive: **the backstory picks WERE mechanically
+identical, and #390 ended half of that.** `day1Modifier` is now read in `createWorld` for its two
+wired levers; the two that remain are new mechanics, not a copy job — a borrowing facility for
+`startingCreditLine` (#392/#393) and a starting reputation deficit for `grudgesFlag` (#391).
+**Both are already stated on the character card**, so those two slices are what make the card
+true rather than what adds the sentence.
 
 ### Phase 12 — F1 + F2 + D3 (sliced + filed 2026-08-12)
 
@@ -42,7 +46,7 @@ reputation deficit for `grudgesFlag` (#391) — not a copy job.
 | ~~#387~~ | ~~D3-R1 — `money`/`compactMoney` onto the kit barrel + the compact-when-ambient / exact-when-acting rule + the no-leak scan~~ **BUILT 2026-08-12** | — |
 | ~~#388~~ | ~~D3-R2 — the consequence-hint copy pass over every live control, completeness asserted by a mount scan~~ **BUILT 2026-08-12** | #386, #387 |
 | ~~#389~~ | ~~D3 — plain-language labels + every empty state written + `tests/PlainLanguage.test.tsx`~~ **BUILT 2026-08-13** | #387 |
-| #390 | F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in `createWorld`, each pick stated on the card | — |
+| ~~#390~~ | ~~F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in `createWorld`, each pick stated on the card~~ **BUILT 2026-08-13** | — |
 | #391 | F2-R1 — `grudgesFlag` becomes a starting reputation deficit | #390 |
 | #392 | F2-R1 — `startingCreditLine` becomes a real borrowing facility, `src/game/CreditFacility/` (**bumps `WORLD_SNAPSHOT_VERSION` 21 → 22**) | #390 |
 | #393 | F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the drawn balance | #392, #387 |
@@ -193,6 +197,49 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **The founder's eye is a BANDED effect, and that is #162's model, not a weak lever** (#390).
+  `data/recon-variance.json` keys `sourceReliabilityFactors` low/mid/high with boundaries at 0.50
+  and 0.70, so `applyReconJudgment` (`min(1, reliability + bonus)`) changes nothing inside a band
+  and a great deal across one — a repo lane at 0.40 goes low→mid, halving its minor factor and
+  cutting catastrophic 2.5 → 1.0. That is why the lever is 0.15 and not 0.02, and why it is a
+  **lift with a ceiling** rather than a `Math.max` floor: every configured source already sits
+  above 0.15, so a floor at the bonus would have been inert. A future session "fixing" the
+  banding is redesigning the recon model.
+- **The eye rides `rollRecon`'s INPUT and three call sites, not one** (#390).
+  `buildAcquiredVehicle` (both acquisition lanes), `rollListingRealizedRecon` (the paid
+  inspection, which shares `deriveReconSeed` with the buy) and `createWorld`'s `realizedReconFor`
+  (#163's UCM condition read). The UCM seam exists to target *the truth the player will realize
+  on purchase* — leaving the founder's edge out of it would have the desk reading a different car
+  than the one that lands on the lot. Never applied to the seed: same seed + same founder ⇒ the
+  same board and the same rolls.
+- **The harness founder now declares every lever at ZERO, on purpose** (#390).
+  `scripts/balance-harness/runner.ts` PROFILE, `MarketEconomy.calibration` and
+  `MarketEconomy.earlyGameFloor` all called themselves "balance-neutral founder" while carrying
+  the ex-mechanic's real `reconJudgmentBonus: 0.15` — neutral only by accident, because nothing
+  read it. Wiring the lever would have handed the bot a permanent edge and moved every pacing
+  band with it. **The harness measures the store, not the founder**; measuring a specific
+  founder's career is a different run that declares its own profile. Nothing calibrated moved:
+  the live `#180` read is byte-identical at 35.8% / 54.3%, closes=274, `costOverAsk` 1.026.
+- **`day1Modifier: {} as CharacterProfile` was a lying fixture and is now a NaN** (#390). Two
+  reachability tests (Growth, Finance) declared an empty modifier behind an `as` cast; it was
+  harmless while nothing read it and became `50_000 + undefined` the moment the bonus reached
+  `createEconomy`. Both now declare the modifier in full. A new world fixture that omits it does
+  not fail loudly at construction — it produces a NaN balance, so declare it.
+- **Two modules read the backstory ID and are DECLARED, and neither reads the modifier** (#390).
+  `EndCard` picks the sentence a career ends on; `SaveStore`'s persisted profile carries the id
+  because a reloaded career is the same person. `tests/BackstoryModifiers.test.ts` scans all of
+  `src/game/**` and names the offending file — a *fourth* module appearing there is a mechanic
+  being written against the pick, which is the thing the ruling forbids. The modifier scan is
+  narrower on purpose: `reconJudgmentBonus` is deliberately absent from it, because it is the one
+  lever with a meaning of its own (a number added to an appraisal's reliability) and `Inventory`
+  declares it as exactly that.
+- **The card states all four levers, and two of them are not true until #391/#392** (#390).
+  `data/backstories.json` is schemaVersion **2** — each entry now carries `effect`, the sentence
+  the card reads verbatim, living in the same declaration as the lever so a retune cannot leave
+  the copy behind. The Ex-Banker's `$50,000` line of credit and the Inheritor's town-with-an-
+  opinion are the copy for mechanics #392 and #391 build; the flavor text already promised both
+  before this slice. `tests/CharacterCreation.test.tsx` derives the dollar strings from the
+  modifier, so a retune that leaves the sentence behind fails there.
 - **Empty-state copy is DATA and `tests/EmptyStates.test.tsx` scans all of `src/` for it** (#389).
   `data/empty-states.json` + `src/ui/copy/` behind `parseData`, the `data/hints.json` shape exactly:
   closed id union, completeness `.refine`, plus a refine of its own that every string end in
@@ -1491,6 +1538,59 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-13 — **BUILT #390** (F2-R1 — the two Day 1 levers that had an engine home, and the card
+  that states what a pick does). The finding the issue was filed on held exactly: `day1Modifier`
+  was read by **nothing** in `src/`, so all three backstories were mechanically identical and the
+  character card offered three flavor paragraphs and no claim. Two levers are now live.
+  **`startingCapitalBonus` lands in `createEconomy`** — the Inheritor opens $25,000 ahead of an
+  otherwise identical store, asserted as a delta between two same-seed worlds rather than against
+  a round 75,000, because `createWorld` plays the cold-start prep tick and a fresh store has
+  already carried a day of floorplan on its #296 seed units.
+  **`reconJudgmentBonus` is a plain number all the way down.** `MarketEconomy.applyReconJudgment`
+  (`min(1, reliability + bonus)`) is the one rule, and it is applied at **three** call sites, not
+  one: `Inventory.buildAcquiredVehicle` (so an auction buy and a customer trade get the same owner
+  looking at the car), `rollListingRealizedRecon` (the paid inspection shares `deriveReconSeed`
+  with the buy, so an un-lifted inspection would have reported an honest read of a car this owner
+  never gets), and `createWorld`'s `realizedReconFor` — the #163 UCM condition read, whose entire
+  job is to target the truth the player realizes on purchase. Leaving that third one out would
+  have had the desk reading a different car than the one that lands on the lot.
+  **A lift with a ceiling, not a `Math.max` floor**, and the difference is not cosmetic: every
+  configured auction source already sits above 0.15, so a floor at the bonus would have been
+  inert. The effect is **banded** — `sourceReliabilityFactors` is keyed low/mid/high at 0.50 and
+  0.70 — so the lever bites when it carries a source across a boundary (a repo lane at 0.40 goes
+  low→mid: minor factor 2.0 → 1.0, catastrophic 2.5 → 1.0) and does nothing inside one. That is a
+  property of #162's model and it is why the lever is worth 0.15.
+  **Applied to the roll's input, never to its seed** — the same seed and the same founder produce
+  the same board and the same rolls, which is what keeps the balance harness comparable across
+  runs. `tests/BackstoryModifiers.test.ts` proves it directly: every unit that did not change
+  bucket realized the identical cost.
+  **The card is DATA.** `data/backstories.json` is schemaVersion **2**, each entry carrying
+  `effect` beside the modifier it describes so the two cannot drift; the schema requires it to end
+  in a sentence, and `tests/CharacterCreation.test.tsx` derives the dollar figures from the lever
+  rather than quoting them. The Ex-Banker's `$50,000` credit line and the Inheritor's town with an
+  opinion are stated now and become true in **#392** and **#391** — the flavor paragraph already
+  promised both before this slice, so those two are what make the card honest rather than what
+  adds the claim.
+  **The `as CharacterProfile` fixtures were lying, and the lever made them say so.** Two
+  reachability tests declared `day1Modifier: {}` behind a cast; harmless while nothing read it,
+  `50_000 + undefined` afterwards. Both now declare the modifier in full — a new world fixture
+  that omits it produces a NaN opening balance rather than failing loudly.
+  **The harness founder is now zero on every lever, on purpose.** `scripts/balance-harness/
+  runner.ts`, `MarketEconomy.calibration` and `MarketEconomy.earlyGameFloor` each called
+  themselves "balance-neutral founder" while declaring the ex-mechanic's real 0.15 — neutral by
+  accident. The harness measures the *store*; a founder's edge measured as the engine's is how a
+  backstory retune silently moves a pacing band. **Nothing calibrated moved and it was checked,
+  not assumed:** the live `#180` read is byte-identical at 35.8% / 54.3%, closes=274,
+  `costOverAsk` 1.026.
+  `npm run typecheck` clean, `npm test` **274 suites / 5519 tests** green.
+  **Web drive: the card itself was NOT reached.** The composed new-game path opens the slot list,
+  and all three of the director's save slots are full (`[DEV] Tier 2` ×3), so character creation
+  sits behind deleting one of them — which a build session does not do to a director's saves. The
+  card render is covered by `tests/CharacterCreation.test.tsx` driving the real component tree,
+  and the two levers by `tests/BackstoryModifiers.test.ts` driving real `createWorld` worlds.
+  Next: **BUILD #391** (F2-R1 — `grudgesFlag` becomes a starting reputation deficit); its dep
+  #390 is now met.
+
 - 2026-08-13 — **BUILT #389** (D3 — plain-language labels + every empty state written). The
   casual-player pass over every live surface, and the third of phase 12's four teaching slices.
   **Every empty-state string in the game is now one catalog entry.** `data/empty-states.json` (53
@@ -1588,47 +1688,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   35.8% / 54.3%, closes=274, `costOverAsk` 1.026. 271 suites / 4256 tests green.
   Next: **BUILD #389** (D3 — plain-language labels + every empty state written), the lowest
   deps-met issue in the phase.
-
-- 2026-08-12 — **BUILT #387** (D3-R1 — one money rule, stated once in the kit). `money` /
-  `compactMoney` moved off `FinanceTab/financeModel.ts` onto the kit barrel, and every currency
-  call site under `src/ui/**` and `src/app/**` was audited against the rule: **compact when the
-  figure is ambient, exact when the player is about to act on it.**
-  **Nine formatters became one.** Five hand-rolled `money`/`dollars`/`fmt$` helpers, **two
-  different sign glyphs** (`MarketStatePanel` alone carried the typographic minus), and a dozen
-  inline `` `$${n.toLocaleString()}` `` templates that had diverged on rounding. Two UI modules
-  were importing a *Finance model file* for a string formatter, which is what the barrel move ends.
-  **The rule has a second clause the issue implied and the audit forced: a figure the player can
-  check against another figure on the same surface counts as acting on it.** That is why the whole
-  Finance room stays exact — #376's own rule is that the headline Net Income and the statement's
-  Net Income line must match everywhere, and compacting either breaks the reconciliation the
-  statement exists to be. Compacting the Finance headline cards "for consistency with the HUD" is
-  reversing that. The issue's *"month gross"* compact case landed where the HUD actually states a
-  month gross: the Home gate strip and the Growth gate board.
-  **The Reveal splits, deliberately.** The scoreline is compact (the ambient tally at the top of
-  the feed); every reaction under it stays exact, because a beat names one deal or one standing
-  mark and *"beating $4.9k"* is a claim the player cannot check against the record it just broke.
-  **No `Intl`, anywhere — and that is a shipping-platform fix, not a style choice.** Hermes ships
-  without full `Intl`, so `toLocaleString('en-US')` renders an ungrouped run of digits on iOS and
-  Android while reading correctly on the web target an agent drives. Two files
-  (`PlaytestLog/exportMarkdown`, `NarrativeBeat/recoveryBeat`) had already worked around it by
-  hand and left comments saying so; now one place does it and every surface inherits it.
-  **One deviation from the issue as filed, recorded on it: `grouped()` is on the barrel too.** Six
-  odometers were formatting themselves, and the Hermes gap is a property of the *grouping*, not of
-  the dollar sign — so an allowlist for "the non-currency ones" would have left them broken on the
-  shipping platforms and made the guard permanently conditional. With `grouped()` the scan is
-  absolute: `tests/MoneyFormat.noleak.test.ts` fails the build over `toLocaleString`, a `` $${ ``
-  template, or a hand-rolled grouping regex anywhere under `src/ui/**` (outside the kit) or
-  `src/app/**`, and names the file and line. **Proved against an injected probe**, not assumed.
-  `src/game/**` is deliberately unscanned: game logic may not import from `src/ui/**`, so the
-  engine physically cannot reach this barrel.
-  `npm run typecheck` clean, `npm test` **269 suites / 4117 tests** green. The #180 live
-  calibration is **byte-identical** (35.8% / 54.3%, closes=274, `costOverAsk` 1.026) — a
-  formatting slice moves no number, checked rather than assumed.
-  **Web drive (T2 dev fixture, day 31):** floor HUD `$222.7k` cash / `$50.6k` floored; Home
-  `$231.3k` cash, `+$8.6k` delta, `$273.7k` worth; gate strip `$2.5k / $30k · Ahead by $1.5k ·
-  proj $74.3k`; Reveal `$363 gross today` (**sub-$1k stays exact — the threshold working live**);
-  Finance `$1,200 + $79 = $1,279` reconciling with the `$1,279` headline card above a
-  `$0 / $2.5k / $5k / $7.5k / $10k` axis; pricing screen `$14,100` asking against `$10,555 book ·
-  $14,144 market`; People `$1,280/day` payroll and `$1,700` to sign; Growth `$3,000 each` to build.
-  Next: **BUILD #388** (D3-R2 — the consequence-hint copy pass over every live control, its
-  completeness asserted by a mount scan); its deps #386 and #387 are both met.

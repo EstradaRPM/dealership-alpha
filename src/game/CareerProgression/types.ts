@@ -12,6 +12,8 @@ export interface BackstoryEntry {
   id: BackstoryId;
   label: string;
   flavor: string;
+  /** Plain-language statement of what the pick does to the store (#390). */
+  effect: string;
   modifier: Omit<Day1Modifier, 'backstoryId'>;
 }
 

@@ -134,6 +134,13 @@ Design record: issue **#182** (locked). Read that before working any slice.
   screen's days-range/confidence/suggestion-band, so the whole read sharpens
   together. MarketEconomy stays decoupled from StaffOrg — it only ever sees the
   pricing skill. Config: `data/intel-precision.json`.
+- `applyReconJudgment(sourceReliability, judgmentBonus)` → the effective
+  reliability a recon roll is taken against (#390). Pure, two plain numbers,
+  `min(1, a + b)`. A **lift with a ceiling**, not a `Math.max` floor — every
+  configured auction source already sits above the 0.15 the Ex-Mechanic carries,
+  so a floor at the bonus would do nothing. Applied to `rollRecon`'s *input*,
+  never to its seed. The founder's lever is resolved in `createWorld`; this
+  function and everything downstream of it see numbers only.
 - `createCompHistory(deps?)` — rolling-window comp store with snapshot/restore.
 - `createSegmentHeat(deps)` — composer for `personality + drift + shock`.
 - Five typed loaders + Zod schemas under `./schemas.ts`.

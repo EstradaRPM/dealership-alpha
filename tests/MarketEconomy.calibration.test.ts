@@ -58,13 +58,15 @@ const TARGET_RESOLUTIONS = 600;
  */
 const MAX_DAYS = 600;
 
-/** Balance-neutral founder — the same one the #247 harness runs. */
+/** Balance-neutral founder — the same one the #247 harness runs. Every lever is
+ *  zero on purpose (#390): the bands below measure the engine, and a founder's
+ *  edge would be measured as the engine's. */
 const PROFILE: CharacterProfile = {
   name: 'Calibration Bot',
   backstoryId: 'ex-mechanic',
   day1Modifier: {
     backstoryId: 'ex-mechanic',
-    reconJudgmentBonus: 0.15,
+    reconJudgmentBonus: 0,
     startingCreditLine: 0,
     startingCapitalBonus: 0,
     grudgesFlag: false,

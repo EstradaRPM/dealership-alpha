@@ -15,11 +15,19 @@ import { emptyState } from '../src/ui/copy';
 // range chips actually re-read the engine, and that the two sibling records are
 // reachable from inside the tab.
 
+// Declared in full (#390) — an empty modifier behind an `as` cast becomes a NaN
+// opening balance now that `startingCapitalBonus` reaches `createEconomy`.
 const PROFILE: CharacterProfile = {
   name: 'Ray Estrada',
   backstoryId: 'ex-mechanic',
-  day1Modifier: {},
-} as CharacterProfile;
+  day1Modifier: {
+    backstoryId: 'ex-mechanic',
+    reconJudgmentBonus: 0,
+    startingCreditLine: 0,
+    startingCapitalBonus: 0,
+    grudgesFlag: false,
+  },
+};
 
 function freshWorld(masterSeed = 351): World {
   return createWorld({ bus: createEventBus(), masterSeed, characterProfile: PROFILE });

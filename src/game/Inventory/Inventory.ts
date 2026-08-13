@@ -2,6 +2,7 @@ import type { EventBus } from '../EventBus';
 import type { Economy } from '../Economy';
 import {
   rollRecon,
+  applyReconJudgment,
   pickSurpriseTemplate,
   deriveReconSeed,
   deriveReconSurpriseSeed,
@@ -276,6 +277,14 @@ export interface InventoryDeps {
   reconVariance?: ReconVarianceConfig;
   reconSurprises?: ReconSurpriseEventsConfig;
   auctionSourceReliability?: AuctionSourceReliability;
+  /**
+   * The owner's own eye on a car (#390) — a plain number added to the
+   * source-reliability every recon roll is taken against, clamped at 1. It is a
+   * **number**, never a backstory id: the composition root resolves the founder's
+   * `reconJudgmentBonus` and Inventory never learns what a backstory is. Omit
+   * (test harnesses, a founder with no such edge) ⇒ 0, the pre-#390 behavior.
+   */
+  reconJudgmentBonus?: number;
   inventoryConfig?: InventoryConfig;
 }
 
@@ -288,6 +297,7 @@ export function createInventory(deps: InventoryDeps): Inventory {
     deps.auctionSourceReliability ??
     rollAuctionSourceReliability(masterSeed, loadAuctionSourcesConfig());
   const inventoryConfig = deps.inventoryConfig ?? loadInventoryConfig();
+  const reconJudgmentBonus = deps.reconJudgmentBonus ?? 0;
   const getTier = deps.getTier ?? (() => 1);
   // #361: no Facility wired ⇒ no cap. Test harnesses that never build a store
   // keep the pre-cap behavior rather than being silently frozen at zero spaces.
@@ -551,7 +561,11 @@ export function createInventory(deps: InventoryDeps): Inventory {
         estimate: listing.reconCost,
         condition: listing.condition,
         mileage: listing.mileage,
-        sourceReliability: reliability,
+        // The paid inspection reports the SAME roll the buy will realize
+        // (#164's shared `deriveReconSeed` namespace), so the founder's eye has
+        // to be in this input too — otherwise the inspection band would be an
+        // honest read of a car this owner never gets.
+        sourceReliability: applyReconJudgment(reliability, reconJudgmentBonus),
       },
       deriveReconSeed(masterSeed, listing.id),
       reconVariance,
@@ -588,7 +602,15 @@ export function createInventory(deps: InventoryDeps): Inventory {
         estimate: args.reconEstimate,
         condition: args.condition,
         mileage: args.mileage,
-        sourceReliability: args.sourceReliability,
+        // The founder's eye is applied HERE — the one place both acquisition
+        // lanes pass through — so an auction buy and a customer trade get the
+        // same owner looking at the car. The lanes still differ in what they
+        // start from (the source's hidden reliability vs. the appraiser's
+        // confidence); the edge is what the owner adds on top of either.
+        sourceReliability: applyReconJudgment(
+          args.sourceReliability,
+          reconJudgmentBonus,
+        ),
       },
       deriveReconSeed(masterSeed, args.id),
       reconVariance,

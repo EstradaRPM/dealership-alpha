@@ -56,6 +56,7 @@ import {
   loadAuctionSourcesConfig,
   loadReconVarianceConfig,
   rollRecon,
+  applyReconJudgment,
   deriveReconSeed,
   resolveIntakeAsk,
   isAutoPricingUnlocked,
@@ -561,9 +562,15 @@ export function createWorld(deps: {
   // The clock owns the day; Economy stamps every ledger entry with it (#351)
   // rather than shadowing it off the bus, which drifted by a day during trading
   // and read 1 for the rest of a session resumed from a save.
+  // #390: the founder's Day 1 levers are resolved HERE and nowhere else. Every
+  // module downstream takes a plain number, so no game module learns what a
+  // backstory is — the picks cannot leak into the engine.
+  const day1 = characterProfile.day1Modifier;
   const economy = createEconomy({
     bus,
-    startingCash: 50_000,
+    // The Inheritor opens on the money they were left. A zero bonus (every other
+    // founder today) is byte-identical to the pre-#390 world.
+    startingCash: 50_000 + day1.startingCapitalBonus,
     getCurrentDay: () => clock.currentDay,
   });
   // Per-save auction-source reliability rolled once + shared between Inventory
@@ -693,6 +700,10 @@ export function createWorld(deps: {
     economy,
     auctionSourceReliability,
     reconVariance: reconVarianceCfg,
+    // #390: the Ex-Mechanic's eye, as a plain number. Inventory adds it to the
+    // reliability every recon roll is taken against — the roll's input, never
+    // its seed, so the same save still rolls the same cars.
+    reconJudgmentBonus: day1.reconJudgmentBonus,
     // #173: floorplan APR follows the dealership tier — a diegetic
     // progression reward read live so a mid-game tier-up cheapens carry.
     getTier: () => tierManager.currentTier,
@@ -943,7 +954,16 @@ export function createWorld(deps: {
           estimate: v.reconEstimate,
           condition: v.condition,
           mileage: v.mileage,
-          sourceReliability: reliability,
+          // The founder's eye rides this read too (#390). The whole point of
+          // this seam is that the UCM's condition read targets the truth the
+          // player will actually realize on purchase — so it has to be taken
+          // against the same reliability `Inventory.buildAcquiredVehicle` will
+          // use, or the desk would be reading a different car than the one that
+          // lands on the lot.
+          sourceReliability: applyReconJudgment(
+            reliability,
+            day1.reconJudgmentBonus,
+          ),
         },
         deriveReconSeed(masterSeed, v.id),
         reconVarianceCfg,

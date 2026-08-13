@@ -16,11 +16,21 @@ import { readAppCompositionSource } from './helpers/appComposition';
 // mounted on the LIVE world, that its campaign lever writes through
 // `world.demandControls`, and that the composition root actually renders it.
 
+// The modifier is declared in full (#390): `day1Modifier: {} as CharacterProfile`
+// used to be harmless because nothing read it, and became a NaN opening balance
+// the moment `startingCapitalBonus` reached `createEconomy`. Zeroed, not
+// ex-mechanic's real levers — this test measures a campaign's daily bill.
 const PROFILE: CharacterProfile = {
   name: 'Ray Estrada',
   backstoryId: 'ex-mechanic',
-  day1Modifier: {},
-} as CharacterProfile;
+  day1Modifier: {
+    backstoryId: 'ex-mechanic',
+    reconJudgmentBonus: 0,
+    startingCreditLine: 0,
+    startingCapitalBonus: 0,
+    grudgesFlag: false,
+  },
+};
 
 function freshWorld(masterSeed = 349): World {
   const bus = createEventBus();

@@ -176,6 +176,9 @@ describe('no temperature word reaches a player-facing label (#389)', () => {
  */
 const COPY_CATALOGS = [
   'hints.json',
+  // #390 — `effect` made this a copy catalog: the sentence the character card
+  // states about each pick lives beside the lever it describes.
+  'backstories.json',
   'empty-states.json',
   'pricing-strategies.json',
   'nav-tabs.json',

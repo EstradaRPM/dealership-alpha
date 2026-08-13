@@ -73,6 +73,12 @@ export function CharacterCreation({ saveStore, masterSeed, onComplete }: Props) 
               {b.label}
             </Text>
             <Text style={styles.backstoryFlavor}>{b.flavor}</Text>
+            {/* What the pick DOES (#390) — read from the same declaration as
+                the lever it describes, never written here, so a retune of the
+                modifier and the sentence describing it move together. */}
+            <Text style={styles.backstoryEffect} testID={`backstory-effect-${b.id}`}>
+              {b.effect}
+            </Text>
           </TouchableOpacity>
         );
       })}
@@ -141,6 +147,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textMuted,
     lineHeight: 20,
+  },
+  // The mechanical statement sits under the flavor and reads brighter than it:
+  // the flavor is who you were, this is what it costs or buys you.
+  backstoryEffect: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginTop: 8,
   },
   error: {
     color: colors.danger,

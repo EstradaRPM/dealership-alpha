@@ -125,6 +125,7 @@ export type {
 
 export {
   rollRecon,
+  applyReconJudgment,
   pickSurpriseTemplate,
   bucketProbabilities,
   reliabilityBand,

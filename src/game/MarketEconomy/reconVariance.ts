@@ -38,6 +38,32 @@ export function reliabilityBand(
   return 'low';
 }
 
+/**
+ * The owner's own eye on a car, as an input to the recon roll (#390).
+ *
+ * `rollRecon` already takes a per-appraisal `sourceReliability` — how much the
+ * person handing you the car can be trusted about it. A founder who spent years
+ * under the hood does not make the seller more honest; they make the *read* less
+ * dependent on the seller, which is the same thing to the tail: a higher
+ * effective reliability band throws fewer major/catastrophic surprises.
+ *
+ * It is a **lift with a ceiling**, not a `Math.max` floor: 0.15 applied as a
+ * floor would do nothing at all (every configured source already sits above it),
+ * which is why the clamp is at 1 — the top of the reliability scale — rather
+ * than at the bonus.
+ *
+ * Applied to the roll's INPUT, never to the RNG stream: same seed + same
+ * founder ⇒ the same rolls, which is what keeps the balance harness comparable
+ * across runs. Pure, and it takes two plain numbers — no module downstream of
+ * this ever learns what a backstory is.
+ */
+export function applyReconJudgment(
+  sourceReliability: number,
+  judgmentBonus: number,
+): number {
+  return Math.min(1, sourceReliability + judgmentBonus);
+}
+
 export function mileageBand(
   mileage: number,
   cfg: ReconVarianceConfig = loadReconVarianceConfig(),
