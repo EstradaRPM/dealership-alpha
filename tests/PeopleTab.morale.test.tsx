@@ -9,6 +9,7 @@ import { moraleEffectText } from '../src/ui/PeopleTab/peopleModel';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld, type World } from '../src/createWorld';
 import { PeopleTabContainer } from '../src/app/screens/PeopleTabContainer';
+import { stubHints } from './helpers/hints';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // #377 — `staffMorale.getMoraleMultiplier` scales what a person actually
@@ -90,6 +91,7 @@ function renderPeople(world: World) {
       selectedHiringRoleId="salesperson"
       setSelectedHiringRoleId={() => {}}
       setCash={() => {}}
+      hints={stubHints()}
       bump={() => {}}
     />,
   );
@@ -193,6 +195,7 @@ describe('#377 the morale meter states its consequence', () => {
         selectedHiringRoleId="salesperson"
         setSelectedHiringRoleId={() => {}}
         setCash={() => {}}
+        hints={stubHints()}
         bump={() => {}}
       />,
     );

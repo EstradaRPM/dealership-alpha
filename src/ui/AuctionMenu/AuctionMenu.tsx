@@ -18,7 +18,7 @@ import { colors } from '../theme';
 // Every dollar figure on this screen is **exact** (issue 387): a bid, an asking
 // price, an inspection fee and the recon estimate under them are the numbers the
 // player commits cash against.
-import { money, grouped } from '../kit';
+import { money, grouped, HintLine } from '../kit';
 
 export interface ListingValuation {
   readonly bookValue: number;
@@ -59,6 +59,8 @@ interface DetailModalProps {
   sourceLabel: string;
   conditionRead: ConditionRead | null;
   inspectionCost: number;
+  buyHint?: string | null;
+  inspectionHint?: string | null;
   onBuy: () => void;
   onRequestInspection: () => void;
   onClose: () => void;
@@ -72,6 +74,8 @@ function DetailModal({
   sourceLabel,
   conditionRead,
   inspectionCost,
+  buyHint,
+  inspectionHint,
   onBuy,
   onRequestInspection,
   onClose,
@@ -84,7 +88,11 @@ function DetailModal({
     <Modal transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalCard}>
-          <TouchableOpacity onPress={onClose} style={styles.modalClose}>
+          <TouchableOpacity
+            onPress={onClose}
+            testID="auction-detail-close"
+            style={styles.modalClose}
+          >
             <Text style={styles.modalCloseText}>✕</Text>
           </TouchableOpacity>
 
@@ -159,10 +167,12 @@ function DetailModal({
             <Text style={styles.reportText}>{listing.conditionReport}</Text>
           </View>
 
+          {buyHint && <HintLine id="auction_buy" text={buyHint} />}
           <TouchableOpacity
             style={[styles.buyBtn, !canAfford && styles.buyBtnDisabled]}
             onPress={canAfford ? onBuy : undefined}
             disabled={!canAfford}
+            testID="auction-buy"
             accessibilityRole="button"
             accessibilityState={{ disabled: !canAfford }}
           >
@@ -176,11 +186,15 @@ function DetailModal({
                     : 'Insufficient Funds'}
             </Text>
           </TouchableOpacity>
+          {listing.inspectionStatus === 'none' && inspectionHint && (
+            <HintLine id="auction_inspection" text={inspectionHint} />
+          )}
           {listing.inspectionStatus === 'none' && (
             <TouchableOpacity
               style={[styles.inspectBtn, !canInspect && styles.inspectBtnDisabled]}
               onPress={canInspect ? onRequestInspection : undefined}
               disabled={!canInspect}
+              testID="auction-inspect"
               accessibilityRole="button"
               accessibilityState={{ disabled: !canInspect }}
             >
@@ -217,7 +231,12 @@ interface ListingRowProps {
 
 function ListingRow({ listing, valuation, sourceLabel, onPress }: ListingRowProps) {
   return (
-    <TouchableOpacity style={styles.row} onPress={onPress} accessibilityRole="button">
+    <TouchableOpacity
+      style={styles.row}
+      onPress={onPress}
+      testID={`auction-listing-${listing.id}`}
+      accessibilityRole="button"
+    >
       <View style={styles.rowMain}>
         <Text style={styles.rowTitle}>
           {listing.year} {listing.make} {listing.model}
@@ -286,6 +305,13 @@ export interface AuctionMenuProps {
    * Defaults to 0 → the button is rendered disabled if not wired (tests).
    */
   inspectionCost?: number;
+  /**
+   * Consequence hints (#388) for the two commitments this lane offers, each
+   * null once used. They sit in the detail modal because that is where the
+   * money is actually spent; resolved copy, never worded here.
+   */
+  buyHint?: string | null;
+  inspectionHint?: string | null;
   onBuy: (listingId: string) => void;
   /**
    * Pay for a pre-purchase inspection on this listing (#164). Optional —
@@ -305,6 +331,8 @@ export function AuctionMenu({
   conditionReadFor,
   bus,
   inspectionCost = 0,
+  buyHint,
+  inspectionHint,
   onBuy,
   onRequestInspection,
   onClose,
@@ -343,7 +371,11 @@ export function AuctionMenu({
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={onClose}
+          testID="auction-back"
+          style={styles.backBtn}
+        >
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -415,6 +447,8 @@ export function AuctionMenu({
           sourceLabel={sourceName(selected.sourceId)}
           conditionRead={readFor(selected)}
           inspectionCost={inspectionCost}
+          buyHint={buyHint}
+          inspectionHint={inspectionHint}
           onBuy={handleBuy}
           onRequestInspection={handleRequestInspection}
           onClose={() => setSelected(null)}

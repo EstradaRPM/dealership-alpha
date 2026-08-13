@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { useTheme } from '../theme';
-import { Button, Icon } from '../kit';
+import { Button, Icon, HintLine } from '../kit';
 import type { BiteOption } from '../../game/ClockBite';
 
 /**
@@ -26,11 +26,18 @@ export function BitePicker({
   options,
   onRun,
   disabled,
+  hint,
 }: {
   options: readonly BiteOption[];
   onRun: (biteId: BiteOption['id']) => void;
   /** The floor is open / an overlay is up — a bite can't start from here. */
   disabled?: boolean;
+  /**
+   * What handing the store days costs (#388), null once a bite has been run.
+   * ONE line under the whole ladder, not one per rung: the lesson is what a
+   * bite IS, and it is the same lesson at every grain.
+   */
+  hint?: string | null;
 }) {
   const t = useTheme();
   const bigger = options.filter((o) => o.days > 1);
@@ -86,6 +93,7 @@ export function BitePicker({
           </View>
         ),
       )}
+      {hint && <HintLine id="run_bite" text={hint} />}
     </View>
   );
 }

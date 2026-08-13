@@ -8,6 +8,7 @@ import {
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld, type World } from '../src/createWorld';
 import { PeopleTabContainer } from '../src/app/screens/PeopleTabContainer';
+import { stubHints } from './helpers/hints';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // #377 — Model B (#294) holds THREE numbers per axis: where a person started,
@@ -128,6 +129,7 @@ function renderPeople(world: World) {
       selectedHiringRoleId="used-car-manager"
       setSelectedHiringRoleId={() => {}}
       setCash={() => {}}
+      hints={stubHints()}
       bump={() => {}}
     />,
   );
@@ -284,6 +286,7 @@ describe('#377 skill growth is visible on a roster card', () => {
         selectedHiringRoleId="used-car-manager"
         setSelectedHiringRoleId={() => {}}
         setCash={() => {}}
+        hints={stubHints()}
         bump={() => {}}
       />,
     );

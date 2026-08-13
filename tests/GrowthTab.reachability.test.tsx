@@ -3,6 +3,7 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld, type World } from '../src/createWorld';
 import { GrowthTabContainer } from '../src/app/screens/GrowthTabContainer';
+import { stubHints } from './helpers/hints';
 import { buildHeatConsole, resolvePricingIntel, SEGMENT_LABELS } from '../src/app/config';
 import { buildMarketGlance } from '../src/ui/HomeTab';
 import type { DemandReadoutModel } from '../src/ui/DemandReadout';
@@ -57,6 +58,7 @@ describe('#349 the Growth tab is mounted on the live world', () => {
     const { getByTestId } = render(
       <GrowthTabContainer
         world={world}
+        hints={stubHints()}
         demandReadout={demandModel(world, () => {})}
         bump={() => {}}
         setCash={() => {}}
@@ -78,6 +80,7 @@ describe('#349 the Growth tab is mounted on the live world', () => {
     const { getByText } = render(
       <GrowthTabContainer
         world={world}
+        hints={stubHints()}
         demandReadout={demandModel(world, (id) =>
           world.demandControls.setAdvertisingCampaign(id),
         )}
@@ -191,6 +194,7 @@ describe('#349 the Growth tab is mounted on the live world', () => {
     const view = render(
       <GrowthTabContainer
         world={world}
+        hints={stubHints()}
         demandReadout={demandModel(world, () => {})}
         bump={() => {}}
         setCash={(n) => {
@@ -216,6 +220,7 @@ describe('#349 the Growth tab is mounted on the live world', () => {
     view.rerender(
       <GrowthTabContainer
         world={world}
+        hints={stubHints()}
         demandReadout={demandModel(world, () => {})}
         bump={() => {}}
         setCash={() => {}}

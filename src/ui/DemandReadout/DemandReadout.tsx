@@ -8,6 +8,7 @@ import {
   ProgressBar,
   Icon,
   Badge,
+  HintLine,
   type BadgeTone,
   type IconName,
   type IconProps,
@@ -146,6 +147,8 @@ export interface DemandAdvertisingControl {
   options: readonly DemandAdvertisingOption[];
   selectedId: string;
   onSelect: (id: string) => void;
+  /** What running a campaign costs and changes (#388), null once used. */
+  hint?: string | null;
 }
 
 export interface DemandCoverageGap {
@@ -378,6 +381,12 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
               selectedId={model.advertising.selectedId}
               onSelect={model.advertising.onSelect}
             />
+            {model.advertising.hint && (
+              <HintLine
+                id="advertising_campaign"
+                text={model.advertising.hint}
+              />
+            )}
             <Text style={{ ...empty, marginTop: t.spacing.sm }}>
               {model.advertising.options.find(
                 (o) => o.id === model.advertising!.selectedId,

@@ -14,7 +14,15 @@ import {
 import { Image } from 'expo-image';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { useTheme } from '../theme';
-import { Button, Icon, Gradient, Pill, type IconName, type BadgeTone } from '../kit';
+import {
+  Button,
+  Icon,
+  Gradient,
+  Pill,
+  HintLine,
+  type IconName,
+  type BadgeTone,
+} from '../kit';
 
 /**
  * The canonical bottom-tab IA (#215). Five enduring tabs across the whole game;
@@ -101,6 +109,11 @@ export interface AppShellProps {
      * stays generic and never imports a tab's surface.
      */
     picker?: React.ReactNode;
+    /**
+     * The day verb's consequence hint (#388), null once the player has run a
+     * day. Resolved copy from `data/hints.json` — the shell never words it.
+     */
+    hint?: string | null;
   };
   /**
    * Optional persistent status strip pinned above the primary-action footer,
@@ -417,6 +430,7 @@ export function AppShell({
           <Pressable
             key={tab.key}
             style={tabStyle}
+            testID={`shell-tab-${tab.key}`}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             accessibilityLabel={tab.label}
@@ -679,6 +693,7 @@ export function AppShell({
           {onOpenGameMenu ? (
             <Pressable
               style={menuBtn}
+              testID="shell-menu"
               accessibilityRole="button"
               accessibilityLabel="Open game menu"
               onPress={onOpenGameMenu}
@@ -704,7 +719,14 @@ export function AppShell({
             size="hero"
             icon={primaryAction.icon ?? 'flag-checkered'}
             trailingIcon="arrow-forward"
+            testID="shell-primary-action"
           />
+          {/* #388: the day verb is the one control every other decision is
+              spent through, so its consequence line sits under it rather than
+              on a room the player may never open. */}
+          {primaryAction.hint && (
+            <HintLine id="run_day" text={primaryAction.hint} />
+          )}
         </View>
       )}
 

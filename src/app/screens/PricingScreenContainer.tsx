@@ -16,12 +16,15 @@ import {
   AGED_THRESHOLD_DAYS,
   resolvePricingIntel,
 } from '../config';
+import type { Hints } from '../useHints';
 
 export interface PricingScreenContainerProps {
   world: World;
   tabs: TabStacks<ShellTabKey>;
   vehicleId: string;
   pricingStrategyId: string;
+  /** The teaching cluster (#386/#388) — resolved here, marked on the commit. */
+  hints: Hints;
   persistCurrentSave: () => void;
   setLotVehicles: (v: readonly LotVehicle[]) => void;
 }
@@ -33,6 +36,7 @@ export function PricingScreenContainer({
   tabs,
   vehicleId,
   pricingStrategyId,
+  hints,
   persistCurrentSave,
   setLotVehicles,
 }: PricingScreenContainerProps) {
@@ -102,8 +106,10 @@ export function PricingScreenContainer({
           })
         }
         enabled={world.dayLoop.state().ownershipUnlocked}
+        askingPriceHint={hints.hintFor('asking_price')}
         onCommit={(price) => {
           world.inventory.setAskingPrice(v.id, price);
+          hints.markUsed('asking_price');
           setLotVehicles(world.inventory.getLotVehicles());
           persistCurrentSave();
         }}

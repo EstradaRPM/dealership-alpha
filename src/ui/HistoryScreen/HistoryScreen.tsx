@@ -46,6 +46,7 @@ export function HistoryScreen({ entries, onClose }: HistoryScreenProps) {
       <View style={s.header}>
         <TouchableOpacity
           onPress={onClose}
+          testID="history-back"
           accessibilityRole="button"
           accessibilityLabel="Back"
           style={s.backBtn}

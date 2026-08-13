@@ -3,6 +3,7 @@ import type { World } from '../../createWorld';
 import type { DemandReadoutModel } from '../../ui/DemandReadout';
 import { GrowthTab, buildGateBoard, buildFacilityBuild } from '../../ui/GrowthTab';
 import { buildIndustryWire, buildWeeklyReport, buildFinanceMix } from '../config';
+import type { Hints } from '../useHints';
 
 export interface GrowthTabContainerProps {
   world: World;
@@ -12,6 +13,8 @@ export interface GrowthTabContainerProps {
    * selections — the same handler the rest of the pre-open levers run through.
    */
   demandReadout: DemandReadoutModel;
+  /** The teaching cluster (#386/#388) — resolved here, marked on each write. */
+  hints: Hints;
   /** Force a re-render after a world write the EventBus doesn't announce. */
   bump: () => void;
   /**
@@ -33,6 +36,7 @@ export interface GrowthTabContainerProps {
 export function GrowthTabContainer({
   world,
   demandReadout,
+  hints,
   bump,
   setCash,
 }: GrowthTabContainerProps) {
@@ -57,8 +61,11 @@ export function GrowthTabContainer({
         // daily), so the toggle writes through the module and the shell
         // re-renders off the same `bump` the wire's publish uses.
         world.marketIntel.setSubscribed(id, on);
+        hints.markUsed('wire_subscription');
         bump();
       }}
+      subscriptionHint={hints.hintFor('wire_subscription')}
+      facilityBuildHint={hints.hintFor('facility_build')}
       gateBoard={gateBoard}
       facilityBuild={buildFacilityBuild(world.facility.getBuildOptions())}
       onBuildFacility={(kind) => {
@@ -66,6 +73,7 @@ export function GrowthTabContainer({
         // ceiling, the price, whether the cash is there — so this commits and
         // re-reads rather than guarding first. A refusal simply changes nothing.
         world.facility.build(kind);
+        hints.markUsed('facility_build');
         setCash(world.economy.cash);
         bump();
       }}

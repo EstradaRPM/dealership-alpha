@@ -28,7 +28,10 @@ assumptions.
   - `conquest: BodyShopConquestHealthModel` — `{ windowTickets, intakePerDay,
     intakeTrend, retailShare, insuranceShare, retailTrend }`.
 - `BodyShopControls` (#318) — `{ model: BodyShopControlsModel, onSetReorderPoint,
-  onSetTarget, onSetSupplierTier, onSetChannelPosture }`. The model carries the
+  onSetTarget, onSetSupplierTier, onSetChannelPosture, hints? }`. `hints` (#388)
+  is `{ parts, channelPosture }` — one resolved consequence line per control
+  block, null once used. `parts` is the **same catalog entry the Service page
+  draws** (`parts_policy`): one lesson, two rooms, retired once. The model carries the
   live values + option lists:
   - `par: DeptParControl[]` — per collision category `{ category, label,
     reorderPoint, target, tier, onHand }` (PartsInventory procurement policy).

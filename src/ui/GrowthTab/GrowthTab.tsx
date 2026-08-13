@@ -32,6 +32,13 @@ export interface GrowthTabProps {
   facilityBuild?: FacilityBuildModel;
   /** Commit the next block of capacity (#359). */
   onBuildFacility?: (kind: FacilityCapacityKind) => void;
+  /**
+   * Consequence hints (#388), each null once the player has used that control.
+   * The advertising one rides `demandReadout.advertising.hint` because the
+   * console owns that lever; these two are Growth's own.
+   */
+  subscriptionHint?: string | null;
+  facilityBuildHint?: string | null;
 }
 
 /**
@@ -69,6 +76,8 @@ export function GrowthTab({
   gateBoard,
   facilityBuild,
   onBuildFacility,
+  subscriptionHint,
+  facilityBuildHint,
 }: GrowthTabProps) {
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
@@ -106,7 +115,11 @@ export function GrowthTab({
         <SectionHeader title="Industry Wire" />
         <View style={regionBody}>
           {industryWire ? (
-            <IndustryWire model={industryWire} onToggleSubscription={onToggleSubscription} />
+            <IndustryWire
+              model={industryWire}
+              onToggleSubscription={onToggleSubscription}
+              subscriptionHint={subscriptionHint}
+            />
           ) : (
             <EmptyNote icon="newspaper">
               The wire starts up when your first day opens.
@@ -132,7 +145,11 @@ export function GrowthTab({
         <SectionHeader title="Build Out" />
         <View style={regionBody}>
           {facilityBuild ? (
-            <FacilityBuild model={facilityBuild} onBuild={onBuildFacility} />
+            <FacilityBuild
+              model={facilityBuild}
+              onBuild={onBuildFacility}
+              hint={facilityBuildHint}
+            />
           ) : (
             <EmptyNote icon="business">
               Your lot and bays show up here once the store opens.

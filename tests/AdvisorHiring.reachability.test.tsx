@@ -4,6 +4,7 @@ import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { createDefaultFacilitySnapshot } from '../src/game/Facility';
 import { PeopleTabContainer } from '../src/app/screens/PeopleTabContainer';
+import { stubHints } from './helpers/hints';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // #323 — Service (T2) and Body Shop (T3) throughput is `min(bays, advisors)`. The
@@ -65,6 +66,7 @@ function hireThroughUi(world: World, roleId: string): void {
     <PeopleTabContainer
       world={world}
       selectedHiringRoleId={roleId}
+      hints={stubHints()}
       setSelectedHiringRoleId={() => {}}
       setCash={() => {}}
       bump={() => {}}

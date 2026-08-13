@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
-import { Surface, Badge, Button, Icon, type BadgeTone } from '../kit';
+import { Surface, Badge, Button, Icon, HintLine, type BadgeTone } from '../kit';
 import type { IndustryWireModel, WireReliability } from './industryWireModel';
 
 /**
@@ -22,6 +22,8 @@ export interface IndustryWireProps {
    * the hints still say what would open each lane.
    */
   onToggleSubscription?: (id: string, on: boolean) => void;
+  /** What opening or closing a lane costs and buys (#388), null once used. */
+  subscriptionHint?: string | null;
 }
 
 /**
@@ -36,7 +38,11 @@ export interface IndustryWireProps {
  * absence behind it. The footer names each closed door and, for a subscription
  * the player's tier already sells them, buys it right there.
  */
-export function IndustryWire({ model, onToggleSubscription }: IndustryWireProps) {
+export function IndustryWire({
+  model,
+  onToggleSubscription,
+  subscriptionHint,
+}: IndustryWireProps) {
   const t = useTheme();
   const [legendOpen, setLegendOpen] = React.useState(false);
 
@@ -57,6 +63,9 @@ export function IndustryWire({ model, onToggleSubscription }: IndustryWireProps)
         >
           {model.unlocksHeading}
         </Text>
+        {subscriptionHint && (
+          <HintLine id="wire_subscription" text={subscriptionHint} />
+        )}
         {model.unlocks.map((u) => (
           <View
             key={u.id}

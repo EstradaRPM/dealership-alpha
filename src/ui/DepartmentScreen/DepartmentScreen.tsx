@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import type { QueueItem } from '../../game/DepartmentQueue';
 import { colors } from '../theme';
+import { HintLine } from '../kit';
 
 /**
  * Generic resolve-list for a single department (#76). One component drives
@@ -28,6 +29,12 @@ export interface DepartmentScreenProps {
   items: readonly QueueItem[];
   /** Resolve one item by id. The caller owns the queue + badge decrement. */
   onResolve: (id: string) => void;
+  /**
+   * The consequence hint for working an item (#388), null once it has retired.
+   * Resolved copy from `data/hints.json` — this screen never decides what it
+   * says or whether it is still owed.
+   */
+  hint?: string | null;
   /** Back out of the screen. */
   onClose: () => void;
   /** Optional custom row renderer. Default: a label + "Resolve" affordance. */
@@ -40,6 +47,7 @@ export function DepartmentScreen({
   title,
   items,
   onResolve,
+  hint,
   onClose,
   renderItem,
   background,
@@ -55,6 +63,7 @@ export function DepartmentScreen({
       <View style={styles.header}>
         <TouchableOpacity
           onPress={onClose}
+          testID="dept-back"
           accessibilityRole="button"
           accessibilityLabel="Back"
           style={styles.backBtn}
@@ -66,6 +75,7 @@ export function DepartmentScreen({
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>
+        {hint && <HintLine id="resolve_queue_item" text={hint} />}
         {items.length === 0 ? (
           <Text style={styles.empty}>Nothing waiting in {title}.</Text>
         ) : (
@@ -78,6 +88,7 @@ export function DepartmentScreen({
               <TouchableOpacity
                 key={item.id}
                 style={styles.row}
+                testID={`dept-queue-resolve-${item.id}`}
                 onPress={() => onResolve(item.id)}
                 accessibilityRole="button"
                 accessibilityLabel={`Resolve: ${item.label}`}

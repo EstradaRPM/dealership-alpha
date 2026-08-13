@@ -14,6 +14,7 @@ import {
   SectionHeader,
   Badge,
   Icon,
+  HintLine,
   type BadgeTone,
   type IconName,
   type IconProps,
@@ -117,6 +118,18 @@ export interface BodyShopControls {
   onSetTarget: (category: string, value: number) => void;
   onSetSupplierTier: (category: string, tier: BodyShopSupplierTierId) => void;
   onSetChannelPosture: (value: number) => void;
+  /**
+   * Consequence hints (#388), each null once the player has used that block's
+   * control. The parts line is the SAME lesson the Service page teaches, from
+   * the one catalog entry — stocking policy is one mechanic reachable from two
+   * rooms, and it retires once.
+   */
+  hints?: BodyShopControlHints;
+}
+
+export interface BodyShopControlHints {
+  parts?: string | null;
+  channelPosture?: string | null;
 }
 
 // Plain-language DEMAND-axis labels — the internal band is hot/warm/cold; the
@@ -331,6 +344,7 @@ export function BodyShopPage({ model, controls, onClose }: BodyShopPageProps) {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={onClose}
+          testID="body-shop-back"
           accessibilityRole="button"
           accessibilityLabel="Back"
           style={styles.backBtn}
@@ -421,6 +435,9 @@ export function BodyShopPage({ model, controls, onClose }: BodyShopPageProps) {
                     onSetSupplierTier={controls.onSetSupplierTier}
                   />
                 ))}
+                {controls.hints?.parts && (
+                  <HintLine id="parts_policy" text={controls.hints.parts} />
+                )}
               </Surface>
             </View>
 
@@ -436,6 +453,12 @@ export function BodyShopPage({ model, controls, onClose }: BodyShopPageProps) {
                   value={controls.model.channelPosture}
                   onChange={controls.onSetChannelPosture}
                 />
+                {controls.hints?.channelPosture && (
+                  <HintLine
+                    id="body_shop_channel_posture"
+                    text={controls.hints.channelPosture}
+                  />
+                )}
               </Surface>
             </View>
           </>

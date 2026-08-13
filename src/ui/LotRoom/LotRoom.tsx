@@ -77,6 +77,10 @@ export interface LotRoomProps {
    * room never decides what it says or whether it is still owed.
    */
   pricingStrategyHint?: string | null;
+  /** What setting one unit's own asking price costs and buys (#388). */
+  askingPriceHint?: string | null;
+  /** What wholesaling a unit out costs and buys (#388), shown on the confirm. */
+  wholesaleHint?: string | null;
   /**
    * Standing auto-pricing policy active (#285, spine S13). True once a UCM is
    * on staff — the strategy then auto-prices incoming inventory to its
@@ -108,10 +112,12 @@ function resultLine(gain: number): string {
  */
 function WholesaleConfirm({
   vehicle,
+  hint,
   onConfirm,
   onCancel,
 }: {
   vehicle: LotRoomVehicle;
+  hint?: string | null;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -155,6 +161,8 @@ function WholesaleConfirm({
             The unit leaves today and its space opens up. Wholesale is what a
             buyer pays to resell it — always under what you could retail it for.
           </Text>
+
+          {hint && <HintLine id="wholesale_unit" text={hint} />}
 
           <View style={s.modalActions}>
             <Button
@@ -202,6 +210,7 @@ function StockRow({
       <TouchableOpacity
         style={s.stockInfo}
         onPress={onOpen}
+        testID={`lot-open-pricing-${vehicle.id}`}
         accessibilityRole="button"
         accessibilityLabel={`Open pricing for ${vehicle.year} ${vehicle.make} ${vehicle.model}`}
       >
@@ -280,6 +289,8 @@ export function LotRoom({
   pricingStrategyId,
   onSelectPricingStrategy,
   pricingStrategyHint,
+  askingPriceHint,
+  wholesaleHint,
   autoPricingActive,
   onOpenAuction,
   onWholesale,
@@ -302,6 +313,7 @@ export function LotRoom({
       <View style={s.header}>
         <TouchableOpacity
           onPress={onClose}
+          testID="lot-back"
           accessibilityRole="button"
           accessibilityLabel="Back"
           style={s.backBtn}
@@ -338,6 +350,9 @@ export function LotRoom({
               />
             ))
           )}
+          {askingPriceHint && (
+            <HintLine id="asking_price" text={askingPriceHint} />
+          )}
         </Surface>
 
         <View style={s.region}>
@@ -370,10 +385,7 @@ export function LotRoom({
                 : 'Suggestion only — hire a Used-Car Manager to auto-price incoming inventory.'}
             </Text>
             {pricingStrategyHint && (
-              <HintLine
-                text={pricingStrategyHint}
-                testID="hint-pricing-strategy"
-              />
+              <HintLine id="pricing_strategy" text={pricingStrategyHint} />
             )}
           </Surface>
         </View>
@@ -401,6 +413,7 @@ export function LotRoom({
       {pending && (
         <WholesaleConfirm
           vehicle={pending}
+          hint={wholesaleHint}
           onCancel={() => setWholesaling(null)}
           onConfirm={() => {
             setWholesaling(null);

@@ -27,6 +27,7 @@ export function MonthResultsScreen({ model, onClose }: MonthResultsScreenProps) 
       <View style={s.header}>
         <TouchableOpacity
           onPress={onClose}
+          testID="month-results-back"
           accessibilityRole="button"
           accessibilityLabel="Back"
           style={s.backBtn}

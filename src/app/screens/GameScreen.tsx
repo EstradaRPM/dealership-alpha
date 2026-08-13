@@ -241,6 +241,7 @@ export function GameScreen({
     // Consequence hints (#386). Resolved here, not in the block: what a hint
     // says is `data/hints.json`'s, and whether it is still owed is the slot's
     // teaching cell — neither is something a lever surface should decide.
+    hoursHint: hints.hintFor('hours_of_operation'),
     tradePolicyHint: hints.hintFor('trade_policy'),
     fniPostureHint: hints.hintFor('fni_posture'),
     fniDeskStaffed: world.staffOrg.currentRoster.some(
@@ -301,6 +302,7 @@ export function GameScreen({
       })),
       selectedId: world.demandControls.getAdvertisingCampaignId(),
       onSelect: levers.handleSelectAdvertisingCampaign,
+      hint: hints.hintFor('advertising_campaign'),
     },
     coverageGap: buildCoverageGap(demandEntries, lotVehicles),
   };
@@ -452,6 +454,7 @@ export function GameScreen({
         world={world}
         selectedHiringRoleId={levers.selectedHiringRoleId}
         setSelectedHiringRoleId={levers.setSelectedHiringRoleId}
+        hints={hints}
         setCash={setCash}
         bump={bump}
       />
@@ -469,6 +472,7 @@ export function GameScreen({
       <GrowthTabContainer
         world={world}
         demandReadout={demandReadout}
+        hints={hints}
         bump={bump}
         setCash={setCash}
       />
@@ -511,6 +515,7 @@ export function GameScreen({
         // No "→" in the label — the shell's CTA draws the onward arrow itself.
         label: loopState.hasRecap ? 'Next Day' : 'Open Floor',
         onPress: handleNextDay,
+        hint: hints.hintFor('run_day'),
         // The clock-zoom ladder (#381), pinned above the day verb in the same
         // footer. The doors are resolved from the live roster with the same
         // act-gate predicates the engine gates on — you can skip ahead exactly
@@ -519,6 +524,7 @@ export function GameScreen({
           <BitePicker
             options={availableBites(resolveBiteCoverage(world))}
             onRun={handleRunBite}
+            hint={hints.hintFor('run_bite')}
           />
         ),
       }}

@@ -86,6 +86,7 @@ function SegmentHeatRow({ cell }: { cell: SegmentHeatCell }) {
     <View>
       <TouchableOpacity
         style={row}
+        testID={`finance-segment-heat-${cell.segment}`}
         accessibilityRole="button"
         accessibilityLabel={`${cell.label} used values ${band.label}, ${fmtSignedPct(
           cell.heat,

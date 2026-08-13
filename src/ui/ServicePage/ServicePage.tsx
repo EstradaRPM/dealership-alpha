@@ -14,6 +14,7 @@ import {
   SectionHeader,
   Badge,
   Icon,
+  HintLine,
   type BadgeTone,
   type IconName,
   type IconProps,
@@ -135,6 +136,19 @@ export interface ServiceControls {
   onSetPricingPosture: (value: number) => void;
   onSetRetention: (id: string) => void;
   onSetConquest: (category: string) => void;
+  /**
+   * Consequence hints (#388), each null once the player has used that block's
+   * control. They ride the controls because they teach the controls: a
+   * read-only page has nothing to warn about. Copy is `data/hints.json`'s and
+   * arrives resolved — this page never decides what a hint says.
+   */
+  hints?: ServiceControlHints;
+}
+
+export interface ServiceControlHints {
+  parts?: string | null;
+  pricingPosture?: string | null;
+  marketing?: string | null;
 }
 
 // Plain-language DEMAND-axis labels. The internal band is hot/warm/cold; the
@@ -342,6 +356,7 @@ export function ServicePage({ model, controls, onClose }: ServicePageProps) {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={onClose}
+          testID="service-back"
           accessibilityRole="button"
           accessibilityLabel="Back"
           style={styles.backBtn}
@@ -429,6 +444,9 @@ export function ServicePage({ model, controls, onClose }: ServicePageProps) {
                     onSetSupplierTier={controls.onSetSupplierTier}
                   />
                 ))}
+                {controls.hints?.parts && (
+                  <HintLine id="parts_policy" text={controls.hints.parts} />
+                )}
               </Surface>
             </View>
 
@@ -443,6 +461,12 @@ export function ServicePage({ model, controls, onClose }: ServicePageProps) {
                   value={controls.model.pricingPosture}
                   onChange={controls.onSetPricingPosture}
                 />
+                {controls.hints?.pricingPosture && (
+                  <HintLine
+                    id="service_pricing_posture"
+                    text={controls.hints.pricingPosture}
+                  />
+                )}
               </Surface>
             </View>
 
@@ -467,6 +491,12 @@ export function ServicePage({ model, controls, onClose }: ServicePageProps) {
                   selectedId={controls.model.conquestCategory}
                   onSelect={controls.onSetConquest}
                 />
+                {controls.hints?.marketing && (
+                  <HintLine
+                    id="service_marketing"
+                    text={controls.hints.marketing}
+                  />
+                )}
               </Surface>
             </View>
           </>

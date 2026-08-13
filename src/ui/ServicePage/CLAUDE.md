@@ -19,7 +19,12 @@ optional `ServiceControls`) assembled by the composition root and dispatches onl
     returns/day + trend, defections/day + churn trend.
 - `ServiceControls` (#309) — `{ model: ServiceControlsModel, onSetReorderPoint,
   onSetTarget, onSetSupplierTier, onSetPricingPosture, onSetRetention,
-  onSetConquest }`. The model carries the live values + option lists:
+  onSetConquest, hints? }`. `hints` (#388) is `{ parts, pricingPosture,
+  marketing }` — one resolved consequence line per control block, null once the
+  player has used it. It rides `controls` rather than the page because it
+  teaches the controls: a read-only page has nothing to warn about. The `parts`
+  line is the **same catalog entry the Body Shop draws** — stocking policy is
+  one mechanic reachable from two rooms, and it retires once. The model carries the live values + option lists:
   - `par: ServiceParControl[]` — per parts category `{ category, label,
     reorderPoint, target, tier, onHand }` (PartsInventory procurement policy).
   - `tierOptions: ServiceTierOption[]` — the supplier tiers.

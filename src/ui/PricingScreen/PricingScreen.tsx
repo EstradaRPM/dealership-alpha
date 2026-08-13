@@ -9,7 +9,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { colors } from '../theme';
-import { money } from '../kit';
+import { money, HintLine } from '../kit';
 import type { PricePosition, IntelPrecision } from '../../game/MarketEconomy';
 
 /** Static per-vehicle facts the screen renders. The vehicle doesn't change
@@ -71,6 +71,12 @@ export interface PricingScreenProps {
   enabled: boolean;
   /** Persist the chosen ask (Inventory.setAskingPrice). */
   onCommit: (price: number) => void;
+  /**
+   * What moving this one car's price costs and buys (#388), null once used.
+   * Same catalog entry the Lot room's stock list draws — one lesson, two
+   * places, retired once.
+   */
+  askingPriceHint?: string | null;
   onClose: () => void;
 }
 
@@ -178,6 +184,7 @@ function PriceSlider({
         style={styles.track}
         onLayout={onLayout}
         {...responder.panHandlers}
+        testID="pricing-ask-slider"
         accessibilityRole="adjustable"
         accessibilityValue={{ min, max, now: value }}
       >
@@ -216,6 +223,7 @@ export function PricingScreen({
   classifyPosition,
   enabled,
   onCommit,
+  askingPriceHint,
   onClose,
 }: PricingScreenProps) {
   const { min, max } = useMemo(() => {
@@ -269,7 +277,12 @@ export function PricingScreen({
         <Text style={styles.title} numberOfLines={1}>
           {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.trim}
         </Text>
-        <TouchableOpacity onPress={onClose} accessibilityRole="button" style={styles.close}>
+        <TouchableOpacity
+          onPress={onClose}
+          testID="pricing-close"
+          accessibilityRole="button"
+          style={styles.close}
+        >
           <Text style={styles.closeText}>✕</Text>
         </TouchableOpacity>
       </View>
@@ -314,6 +327,7 @@ export function PricingScreen({
               setAsk(v);
               onCommit(v);
             }}
+            testID="pricing-ask-down"
             accessibilityRole="button"
             accessibilityLabel="Lower asking price"
           >
@@ -330,12 +344,17 @@ export function PricingScreen({
               setAsk(v);
               onCommit(v);
             }}
+            testID="pricing-ask-up"
             accessibilityRole="button"
             accessibilityLabel="Raise asking price"
           >
             <Text style={styles.stepBtnText}>+ {money(STEP)}</Text>
           </TouchableOpacity>
         </View>
+
+        {askingPriceHint && (
+          <HintLine id="asking_price" text={askingPriceHint} />
+        )}
 
         {/* Predicted days-to-sell + projected gross */}
         <View style={styles.dualRow}>
@@ -374,6 +393,7 @@ export function PricingScreen({
               style={[styles.applyBtn, !enabled && styles.disabled]}
               disabled={!enabled}
               onPress={applySuggestion}
+              testID="pricing-ask-apply"
               accessibilityRole="button"
             >
               <Text style={styles.applyBtnText}>Apply</Text>

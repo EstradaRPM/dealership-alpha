@@ -3,6 +3,7 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld, type World } from '../src/createWorld';
 import { PeopleTabContainer } from '../src/app/screens/PeopleTabContainer';
+import { stubHints } from './helpers/hints';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 import { readAppCompositionSource } from './helpers/appComposition';
 
@@ -32,6 +33,7 @@ function renderPeople(world: World) {
   return render(
     <PeopleTabContainer
       world={world}
+      hints={stubHints()}
       selectedHiringRoleId="salesperson"
       setSelectedHiringRoleId={() => {}}
       setCash={() => {}}
@@ -59,6 +61,7 @@ describe('#347 the People tab is mounted on the live world', () => {
     rerender(
       <PeopleTabContainer
         world={world}
+        hints={stubHints()}
         selectedHiringRoleId="salesperson"
         setSelectedHiringRoleId={() => {}}
         setCash={() => {}}
@@ -114,6 +117,7 @@ describe('#347 the People tab is mounted on the live world', () => {
     rerender(
       <PeopleTabContainer
         world={world}
+        hints={stubHints()}
         selectedHiringRoleId="salesperson"
         setSelectedHiringRoleId={() => {}}
         setCash={() => {}}
@@ -163,6 +167,7 @@ describe('#347 the People tab is mounted on the live world', () => {
     rerender(
       <PeopleTabContainer
         world={world}
+        hints={stubHints()}
         selectedHiringRoleId="salesperson"
         setSelectedHiringRoleId={() => {}}
         setCash={() => {}}
@@ -252,6 +257,7 @@ describe('#347 the People tab is mounted on the live world', () => {
     rerender(
       <PeopleTabContainer
         world={world}
+        hints={stubHints()}
         selectedHiringRoleId="salesperson"
         setSelectedHiringRoleId={() => {}}
         setCash={() => {}}
@@ -343,6 +349,7 @@ describe('#347 the People tab is mounted on the live world', () => {
     rerender(
       <PeopleTabContainer
         world={world}
+        hints={stubHints()}
         selectedHiringRoleId="salesperson"
         setSelectedHiringRoleId={() => {}}
         setCash={() => {}}

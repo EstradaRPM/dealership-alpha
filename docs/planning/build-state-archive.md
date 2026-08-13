@@ -6,6 +6,40 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-12 — **SLICED phase 12** into eleven issues: **#386–#395 filed new, and #213 rewritten in
+  place** rather than duplicated (the #151–#153 precedent — its number stays, its body now carries
+  the grown scope from §8 F1 and its dep on the tracer). **F3 produced no issue**: it was ruled NONE
+  and the section is the answer.
+  **The tracer is the teaching cell, and that is the whole shape of the phase.** D3-R2's ruling said
+  the hint registry and F1's progressive disclosure share **one registry and one per-slot cell**, so
+  the slice order falls out of it: #386 mints `teaching:<id>` in `SlotStore.ts` (the delete-a-save
+  lesson — every per-slot key is minted there or `deleteSlot` cannot reach it), ships the
+  `data/hints.json` catalog behind `parseData`, the retire-on-use rule, the "Show hints again"
+  switch, and **three real hints on the three #385 desk dials** so the tracer is vertical. Everything
+  else that teaches — the hint copy pass (#388), the failure-stakes beat (#394), the first-run spine
+  (#213) and the unlock beats (#395) — writes taught marks into that one cell and is re-armed by that
+  one switch. It is **not world state**: `WORLD_SNAPSHOT_VERSION` stays 21 for all of it.
+  **F2 is one wiring slice and two new mechanics, filed as such.** #390 takes the two levers with an
+  engine home (`startingCapitalBonus` → the hardcoded `startingCash` at `createWorld.ts:566`;
+  `reconJudgmentBonus` → a permanent floor under the per-appraisal `sourceReliability` `rollRecon`
+  already takes) and states each pick on the card. #391 and #392/#393 build the two that have none.
+  The modifiers are applied in **`createWorld`** and #390 carries a source scan for it — no module
+  learns what a backstory is; Inventory takes a number.
+  **The borrowing facility is split engine/surface, and the surface half carries a correction to
+  #380.** `getStoreWorth()` must **subtract the drawn balance**: #380 left debt unasked because its
+  only candidate was floorplan, which is a daily carrying cost rather than a balance — a drawn credit
+  line *is* one, and a worth figure that rose $50k the moment the player borrowed $50k breaks all
+  three of #380's checkable rules at once. The test is #380's own idiom: a draw leaves the store's
+  worth flat. **#392 is the one slice in the phase that bumps the envelope** — a new module key ⇒
+  `WORLD_SNAPSHOT_VERSION` 21 → 22 with a migration, per `docs/save-migration-recipe.md`.
+  **Two completeness scans replace two checklists.** #388's coverage test mounts each tab and fails
+  on an interactive control with no hint id (the `Composition.completeness` idiom), so the seventh
+  control added next year cannot ship silent; #395 declares beats in `data/teaching-beats.json` with
+  the schema refusing an event nobody publishes, the #384/#385 registration-not-enumeration shape, so
+  a beat added later needs a declaration and a line of copy and no runner edit.
+  No code changed, so nothing calibrated moved and no test count moved.
+  Next: **BUILD #386** (the tracer — the lowest deps-met issue in the phase).
+
 - 2026-08-12 — **RULED the phase-12 gate** (F2 backstory legibility · F3 notifications · D3
   plain-language pass). Five rulings, recorded in `path-to-finished-product.md` §6 D3, §8 F2 and
   §8 F3 — each section's `[NEW]` replaced by its ruling, each with its rejected options and their

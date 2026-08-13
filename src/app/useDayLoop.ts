@@ -60,6 +60,13 @@ export interface DayLoopDeps {
    * levers at all).
    */
   deskOrderHalt?: () => BiteHalt | null;
+  /**
+   * The teaching mark (#386/#388) — the clock's two controls retire their hints
+   * from HERE, the handler layer, not from the footer that draws them. Anything
+   * that runs a day or a bite (a coachmark, a beat, a future auto-advance)
+   * therefore teaches exactly what a tap does. Omitted ⇒ nothing is marked.
+   */
+  onControlUsed?: (id: 'run_day' | 'run_bite') => void;
 }
 
 export interface DayLoop {
@@ -112,6 +119,7 @@ export function useDayLoop({
   bump,
   buildCurrentSaveState,
   deskOrderHalt,
+  onControlUsed,
 }: DayLoopDeps): DayLoop {
   const { bus, saveStore, slotStore, snapshotStoreForActiveSlot } = services;
   // Today's gross (front + back) for the FLOOR-OPEN HUD / stat grid (#116).
@@ -243,6 +251,7 @@ export function useDayLoop({
     // stocking lean vs. the demand-heat read), so the day-close Reveal can
     // resolve it. Post-nextDay: the clock now sits on the day being played.
     w.captureDayStartPrepBet();
+    onControlUsed?.('run_day');
     bump();
   };
 
@@ -262,6 +271,7 @@ export function useDayLoop({
     biteHaltRef.current = null;
     biteCrossedSnapshotDayRef.current = false;
     biteCashRef.current = null;
+    onControlUsed?.('run_bite');
     const run = runBite(biteId, {
       advanceOneDay: () => {
         setFloorEvents([]);

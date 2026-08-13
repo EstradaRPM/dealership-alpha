@@ -1,7 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useTheme } from '../theme';
-import { SectionHeader, Surface, Collapsible, Badge, IconBadge } from '../kit';
+import {
+  SectionHeader,
+  Surface,
+  Collapsible,
+  Badge,
+  IconBadge,
+  HintLine,
+} from '../kit';
 import { ChipRow } from '../DeptControls';
 import { ManagerStatusCard } from './ManagerStatusCard';
 import { RosterCard, CandidateCard } from './peopleCards';
@@ -52,6 +59,18 @@ export interface PeopleTabProps {
   onAcceptRaise: (staffId: string) => void;
   /** Turn the demand down (#356) — the wage holds, morale doesn't. */
   onRefuseRaise: (staffId: string) => void;
+  /**
+   * Consequence hints (#388), each null once the player has used that block's
+   * controls. Three lessons, one per region: what a hire costs, what moving or
+   * losing someone does, and what answering a wage demand costs either way.
+   */
+  hints?: PeopleTabHints;
+}
+
+export interface PeopleTabHints {
+  hiring?: string | null;
+  staffMoves?: string | null;
+  raise?: string | null;
 }
 
 /** Bucket a list by department, keeping each department's incoming order. */
@@ -143,6 +162,7 @@ function DepartmentPanel({
   onFire,
   onAcceptRaise,
   onRefuseRaise,
+  raiseHint,
 }: {
   dept: PeopleDepartmentId;
   slots: readonly PeopleSlotRow[];
@@ -153,6 +173,7 @@ function DepartmentPanel({
   onFire: (staffId: string) => void;
   onAcceptRaise: (staffId: string) => void;
   onRefuseRaise: (staffId: string) => void;
+  raiseHint?: string | null;
 }) {
   const t = useTheme();
   const s = makeStyles(t);
@@ -191,6 +212,7 @@ function DepartmentPanel({
           <RosterCard
             key={member.id}
             member={member}
+            raiseHint={raiseHint}
             onPromote={(toRoleId) => onPromote(member.id, toRoleId)}
             onFire={() => onFire(member.id)}
             onAcceptRaise={() => onAcceptRaise(member.id)}
@@ -308,6 +330,7 @@ export function PeopleTab({
   onFire,
   onAcceptRaise,
   onRefuseRaise,
+  hints,
 }: PeopleTabProps) {
   const t = useTheme();
   const s = makeStyles(t);
@@ -390,8 +413,12 @@ export function PeopleTab({
             onFire={onFire}
             onAcceptRaise={onAcceptRaise}
             onRefuseRaise={onRefuseRaise}
+            raiseHint={hints?.raise}
           />
         ))}
+        {hints?.staffMoves && (
+          <HintLine id="staff_moves" text={hints.staffMoves} />
+        )}
       </View>
 
       <View style={s.region} testID="people-region-hiring">
@@ -411,6 +438,7 @@ export function PeopleTab({
             onHire={onHire}
           />
         ))}
+        {hints?.hiring && <HintLine id="hire_candidate" text={hints.hiring} />}
       </View>
 
       <View style={s.region} testID="people-region-managers">

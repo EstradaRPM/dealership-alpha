@@ -596,6 +596,7 @@ function QuickStatStrip({
               {s.deepLink && onOpenOperations ? (
                 <Pressable
                   style={{ flex: 1 }}
+                  testID={`home-quick-stat-${s.key}`}
                   accessibilityRole="button"
                   accessibilityLabel={`${s.label} — open Operations`}
                   onPress={onOpenOperations}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../theme';
-import { Collapsible, Button, Badge, Meter, money } from '../kit';
+import { Collapsible, Button, Badge, Meter, HintLine, money } from '../kit';
 import {
   wageText,
   skillGrowthText,
@@ -154,10 +154,13 @@ function PayColumn({
  */
 function RaisePrompt({
   member,
+  hint,
   onAccept,
   onRefuse,
 }: {
   member: PeopleRosterMember;
+  /** What answering costs either way (#388), null once the player has answered. */
+  hint?: string | null;
   onAccept: () => void;
   onRefuse: () => void;
 }) {
@@ -179,6 +182,7 @@ function RaisePrompt({
           {`They leave on day ${raise.deadlineDay} unless you match.`}
         </Text>
       )}
+      {hint && <HintLine id="raise_answer" text={hint} />}
       <View style={s.actionRow}>
         <Button
           label={rival ? 'Match' : 'Pay it'}
@@ -217,12 +221,15 @@ function RaisePrompt({
  */
 export function RosterCard({
   member,
+  raiseHint,
   onPromote,
   onFire,
   onAcceptRaise,
   onRefuseRaise,
 }: {
   member: PeopleRosterMember;
+  /** The raise-answer hint (#388) — drawn on the prompt, which is the moment. */
+  raiseHint?: string | null;
   onPromote: (toRoleId: string) => void;
   onFire: () => void;
   onAcceptRaise: () => void;
@@ -262,7 +269,12 @@ export function RosterCard({
             {payLine}
           </Text>
           {asking && (
-            <RaisePrompt member={member} onAccept={onAcceptRaise} onRefuse={onRefuseRaise} />
+            <RaisePrompt
+              member={member}
+              hint={raiseHint}
+              onAccept={onAcceptRaise}
+              onRefuse={onRefuseRaise}
+            />
           )}
         </View>
       }

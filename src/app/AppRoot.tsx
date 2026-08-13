@@ -152,6 +152,9 @@ export function DealershipApp({
         }),
       );
     },
+    // #388: the clock's two controls retire their hints from the handler, the
+    // same seam `useLevers` uses for the dials — never from the footer button.
+    onControlUsed: hints.markUsed,
   });
 
   // The live clock (#121). Drives the owned FloorSim's step() at a tunable

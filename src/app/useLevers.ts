@@ -158,6 +158,7 @@ export function useLevers({
     w.demandControls.setAdvertisingCampaign(id);
     bump();
     persistCurrentSave();
+    onControlUsed?.('advertising_campaign');
   };
 
   // Persist the list-price strategy choice into the active slot (#154). The ref
@@ -173,6 +174,7 @@ export function useLevers({
   const handleSelectHours = (id: string) => {
     setHoursOfOpId(id);
     persistCurrentSave({ hoursOfOp: id });
+    onControlUsed?.('hours_of_operation');
   };
 
   // Persist the sourcing lean into the active slot (#293). The ref updates

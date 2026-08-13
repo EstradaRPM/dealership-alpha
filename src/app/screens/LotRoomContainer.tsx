@@ -6,6 +6,7 @@ import type { ShellTabKey } from '../../ui/AppShell';
 import type { LotVehicle } from '../../game/Inventory';
 import { LotRoom } from '../../ui/LotRoom';
 import { PRICING_STRATEGY_OPTIONS } from '../config';
+import type { Hints } from '../useHints';
 
 export interface LotRoomContainerProps {
   world: World;
@@ -13,8 +14,13 @@ export interface LotRoomContainerProps {
   lotVehicles: readonly LotVehicle[];
   pricingStrategyId: string;
   onSelectPricingStrategy: (id: string) => void;
-  /** The strategy dial's consequence hint (#386), null once it has retired. */
-  pricingStrategyHint: string | null;
+  /**
+   * The teaching cluster (#386/#388). The room takes resolved copy and this
+   * container decides what is still owed — a surface never reads the slot's
+   * teaching cell, and the mark fires from the write path here so anything that
+   * calls the same handler teaches exactly what a tap does.
+   */
+  hints: Hints;
   persistCurrentSave: () => void;
   setLotVehicles: (v: readonly LotVehicle[]) => void;
 }
@@ -32,7 +38,7 @@ export function LotRoomContainer({
   lotVehicles,
   pricingStrategyId,
   onSelectPricingStrategy,
-  pricingStrategyHint,
+  hints,
   persistCurrentSave,
   setLotVehicles,
 }: LotRoomContainerProps) {
@@ -62,6 +68,7 @@ export function LotRoomContainer({
         occupancy={world.inventory.getLotOccupancy()}
         onSetAskingPrice={(vehicleId, price) => {
           world.inventory.setAskingPrice(vehicleId, price);
+          hints.markUsed('asking_price');
           setLotVehicles(world.inventory.getLotVehicles());
           persistCurrentSave();
         }}
@@ -69,7 +76,9 @@ export function LotRoomContainer({
         pricingStrategyOptions={PRICING_STRATEGY_OPTIONS}
         pricingStrategyId={pricingStrategyId}
         onSelectPricingStrategy={onSelectPricingStrategy}
-        pricingStrategyHint={pricingStrategyHint}
+        pricingStrategyHint={hints.hintFor('pricing_strategy')}
+        askingPriceHint={hints.hintFor('asking_price')}
+        wholesaleHint={hints.hintFor('wholesale_unit')}
         // #285 (spine S13): the strategy is a standing auto-pricing policy once
         // a UCM is on staff — the same roster signal the pricing screen reads.
         autoPricingActive={world.staffOrg.currentRoster.some(
@@ -82,6 +91,7 @@ export function LotRoomContainer({
         // auction reads occupancy live.
         onWholesale={(vehicleId) => {
           world.inventory.wholesaleVehicle(vehicleId);
+          hints.markUsed('wholesale_unit');
           setLotVehicles(world.inventory.getLotVehicles());
           persistCurrentSave();
         }}

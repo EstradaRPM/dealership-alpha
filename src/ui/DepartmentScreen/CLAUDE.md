@@ -7,7 +7,10 @@ badge decrement.
 
 ## Public API (`index.ts`)
 - `DepartmentScreen` — the component.
-- `DepartmentScreenProps` — `{ title, items, onResolve, onClose, renderItem?, background? }`.
+- `DepartmentScreenProps` — `{ title, items, onResolve, hint?, onClose, renderItem?, background? }`.
+  `hint` (#388) is the resolved consequence line for working an item, null once
+  the player has worked one. Each row carries `dept-queue-resolve-<id>`, which is
+  how the hint catalog joins to it.
 
 ## Scope
 - Drives **Service / BDC / Office / Lot**. Sales is NOT a resolve-list — the

@@ -236,6 +236,7 @@ export function AdminConsole({ bus, clock, economy, inventory, saveStore, teleme
           { bottom: Math.max(insets.bottom, 16) + 56, right: insets.right + 8 },
         ]}
         hitSlop={4}
+        testID="admin-console-fab"
         onPress={() => setOpen(true)}
       >
         <Text style={styles.fabLabel}>DEV</Text>

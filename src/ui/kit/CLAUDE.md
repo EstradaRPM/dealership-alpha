@@ -62,6 +62,12 @@ owed is the app layer's read of the slot's teaching cell (`useHints`, issue 386)
 from `data/hints.json`; `tests/HintCopy.test.ts` fails the build over a hint
 string written as a literal under `src/`.
 
+It takes `{ id, text }` and **mints its own testID** — `hint-<id>` with the
+underscores spelled as dashes (#388). There is no `testID` prop: twenty-odd
+surfaces draw one of these, and a passed-in id is one typo away from a line
+nobody can address. The `id` is the catalog's, so a hint, its control and its
+rendered line all join on one string.
+
 `ProgressBar` carries three optional readings beyond the fill, and they are not
 interchangeable. `tick` is a **second segment** appended after the fill (a
 daily contribution riding a pace bar). `mark` is a **hairline reference point**

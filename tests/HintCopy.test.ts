@@ -50,19 +50,49 @@ describe('hint copy is data, never a literal under src/', () => {
   });
 });
 
+/**
+ * Does this source file render `control`, or something the control owns?
+ *
+ * Three forms count, and they are the same ownership rule `controlOwns` applies
+ * at runtime: the exact literal testID, a literal built from it (`pricing-ask`
+ * owns `pricing-ask-slider`), and a template built from it
+ * (`` testID={`bite-run-${id}`} ``).
+ */
+function rendersControl(src: string, control: string): boolean {
+  return (
+    src.includes(`testID="${control}"`) ||
+    src.includes(`testID="${control}-`) ||
+    src.includes(`testID={\`${control}-`)
+  );
+}
+
 describe('every hint names a control that exists', () => {
   const config = loadHints();
 
-  it.each(config.hints.map((h) => [h.id, h.control] as const))(
-    '%s points at a rendered control (testID %s)',
-    (_id, control) => {
+  const places = config.hints.flatMap((h) =>
+    h.places.map((p) => [h.id, p.surface, p.control] as const),
+  );
+  const sources = files.map((f) => fs.readFileSync(f, 'utf8'));
+
+  it.each(places)(
+    '%s is taught on %s, at a rendered control (testID %s)',
+    (_id, _surface, control) => {
       // The join between a hint and the thing it teaches. A hint whose control
       // is not rendered anywhere teaches nothing — which is precisely why
       // `sourcing_lean` is absent from the catalog rather than declared blind.
-      const mounted = files.some((f) =>
-        fs.readFileSync(f, 'utf8').includes(`testID="${control}"`),
-      );
-      expect(mounted).toBe(true);
+      //
+      // Both forms count: a literal testID, and a templated one built from the
+      // control as its prefix (`bite-run-${id}`, `facility-build-${kind}`) —
+      // which is the same ownership rule `controlOwns` applies at runtime.
+      expect(sources.some((src) => rendersControl(src, control))).toBe(true);
     },
   );
+
+  // The scan above proves a hint's control exists. This one proves the reverse
+  // for the view-only half: a testID declared as "teaches nothing" that nothing
+  // renders is a stale declaration, and a stale declaration is how a real
+  // control later gets silently absorbed by it.
+  it.each(config.viewOnly)('view-only control %s is rendered', (control) => {
+    expect(sources.some((src) => rendersControl(src, control))).toBe(true);
+  });
 });

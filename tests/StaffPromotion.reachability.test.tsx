@@ -3,6 +3,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { createEventBus } from '../src/game/EventBus';
 import { createWorld } from '../src/createWorld';
 import { PeopleTabContainer } from '../src/app/screens/PeopleTabContainer';
+import { stubHints } from './helpers/hints';
 import type { CharacterProfile } from '../src/game/CareerProgression';
 
 // #324 — promotion path reachability. `NPC.promoteStaff` was engine-only with
@@ -47,6 +48,7 @@ it('promotes a lot-porter to salesperson through the roster UI', () => {
   const { getByTestId } = render(
     <PeopleTabContainer
       world={world}
+      hints={stubHints()}
       selectedHiringRoleId="salesperson"
       setSelectedHiringRoleId={() => {}}
       setCash={() => {}}

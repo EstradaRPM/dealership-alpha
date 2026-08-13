@@ -7,6 +7,7 @@ import type { EventBus } from '../../game/EventBus';
 import type { LotVehicle } from '../../game/Inventory';
 import { AuctionMenu } from '../../ui/AuctionMenu';
 import { INSPECTION_COST } from '../config';
+import type { Hints } from '../useHints';
 
 export interface AuctionScreenProps {
   world: World;
@@ -14,6 +15,8 @@ export interface AuctionScreenProps {
   bus: EventBus;
   lotVehicles: readonly LotVehicle[];
   cash: number;
+  /** The teaching cluster (#386/#388) — resolved here, marked on the write. */
+  hints: Hints;
   persistCurrentSave: () => void;
   setCash: (n: number) => void;
 }
@@ -25,6 +28,7 @@ export function AuctionScreen({
   bus,
   lotVehicles,
   cash,
+  hints,
   persistCurrentSave,
   setCash,
 }: AuctionScreenProps) {
@@ -51,12 +55,16 @@ export function AuctionScreen({
         }
         bus={bus}
         inspectionCost={INSPECTION_COST}
+        buyHint={hints.hintFor('auction_buy')}
+        inspectionHint={hints.hintFor('auction_inspection')}
         onBuy={(listingId) => {
           world.inventory.buyFromAuction(listingId);
+          hints.markUsed('auction_buy');
           persistCurrentSave();
         }}
         onRequestInspection={(listingId) => {
           world.inventory.requestInspection(listingId);
+          hints.markUsed('auction_inspection');
           setCash(world.economy.cash);
           persistCurrentSave();
         }}

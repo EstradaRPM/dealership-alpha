@@ -1,26 +1,155 @@
 {
   "schemaVersion": 1,
-  "_doc": "Phase 12 D3-R2 (#386) — consequence hints. One line of muted text under a control, saying what happens to the store if you move it. It draws until the player uses that control, then retires; the InGameMenu's 'Show hints again' re-arms every one of them for the active slot. Retire-on-USE, not on 'seen once': a player who reads a hint and does nothing has not been taught anything yet.",
-  "_copyDoc": "`text` is player-facing copy and lives HERE, never as a literal in a component — tests/HintCopy.test.ts scans src/ for it. It obeys the .claude/rules/ui.md plain-language rule: name the axis the control moves along, state the cost on both ends, never a temperature word.",
-  "_controlDoc": "`surface` is the room the control lives in and `control` is that control's testID, so a hint and the thing it teaches can be joined without reading the component. The tracer ships the standing desk dials a player leaves running while the store plays itself — the three levers set once and then obeyed for days. `sourcing_lean` is the fourth such lever and is deliberately ABSENT: it has no rendered control anywhere in src/ui (persist-only since #293), so a hint for it would point at nothing. The rest of the live controls are #388's copy pass.",
+  "_doc": "Phase 12 D3-R2 (#386 mechanism, #388 the full pass) — consequence hints. One line of muted text under a control, saying what happens to the store if you move it. It draws until the player uses that control, then retires; the InGameMenu's 'Show hints again' re-arms every one of them for the active slot. Retire-on-USE, not on 'seen once': a player who reads a hint and does nothing has not been taught anything yet.",
+  "_copyDoc": "`text` is player-facing copy and lives HERE, never as a literal in a component — tests/HintCopy.test.ts scans src/ for it. It obeys the .claude/rules/ui.md plain-language rule: name the axis the control moves along, state the cost on both ends, never a temperature word. It names the CONSEQUENCE, never the control — 'sell fewer of them', not 'sets the price'. Nothing here quotes a figure: a hint is written once and read against every store, so a number in it would be a claim the player can check and find wrong.",
+  "_controlDoc": "`places[].control` is the testID of the control GROUP the line sits under, and every pressable inside that group belongs to it — a chip row's chips, a modal's two buttons, a per-row button built from the control as its testID prefix. Two places means one lesson reachable from two rooms (a unit's price from the Lot list and from the pricing screen; the parts par levels from Service and from the Body Shop), retired once. `sourcing_lean` is deliberately ABSENT: it has no rendered control anywhere in src/ui (persist-only since #293, filed as #396), so a hint for it would point at nothing.",
+  "_viewOnlyDoc": "`viewOnly` is the other half of the classification the coverage scan demands: controls that change nothing about the store — a tab, a back arrow, a fold, a reporting window, and the three developer instruments (the two playtest-capture buttons and the DEV console's opener), which are addressed to the director and not to the player. They carry no copy because they teach no consequence — and the DEV console's own contents are not player-facing controls at all, which is why only its opener is named. A control inside a hinted group needs no entry here; it already belongs to that group's lesson. This list is what makes the guard work: a control added next year either gets a line of copy above or gets named here, and cannot ship silent.",
   "hints": [
     {
+      "id": "hours_of_operation",
+      "places": [{ "surface": "operations", "control": "prep-hours" }],
+      "text": "A longer day gives your people the clock to work each customer all the way through; on a short day the ones still being worked when you close walk out unsold."
+    },
+    {
       "id": "pricing_strategy",
-      "surface": "lot",
-      "control": "lot-pricing-strategy",
+      "places": [{ "surface": "lot", "control": "lot-pricing-strategy" }],
       "text": "List above market and units sit, costing you carrying cost every day they don't sell. List below it and they move quickly on thinner gross."
     },
     {
       "id": "trade_policy",
-      "surface": "operations",
-      "control": "prep-trade-policy",
+      "places": [{ "surface": "operations", "control": "prep-trade-policy" }],
       "text": "A bigger allowance wins deals you would otherwise lose, but you own that trade at the number you gave — you make it back on the resale or you don't."
     },
     {
       "id": "fni_posture",
-      "surface": "operations",
-      "control": "prep-fni-posture",
+      "places": [{ "surface": "operations", "control": "prep-fni-posture" }],
       "text": "Marking the rate up harder pays more on every financed deal, right up to where buyers walk and the lender sends the contract back."
+    },
+    {
+      "id": "asking_price",
+      "places": [
+        { "surface": "lot", "control": "lot-stock-list" },
+        { "surface": "pricing", "control": "pricing-ask" }
+      ],
+      "text": "This one car's price is what it sells for and how long it waits. Ask more and you keep more on the day it sells, while it eats carrying cost until then."
+    },
+    {
+      "id": "wholesale_unit",
+      "places": [{ "surface": "lot", "control": "lot-wholesale" }],
+      "text": "Wholesaling ends the carrying cost today and frees the space for something that sells, at a price under what a retail buyer would have paid."
+    },
+    {
+      "id": "auction_buy",
+      "places": [{ "surface": "auction", "control": "auction-buy" }],
+      "text": "The cash leaves now and comes back weeks later when the car sells — and it holds one of your lot spaces the whole time it waits."
+    },
+    {
+      "id": "auction_inspection",
+      "places": [{ "surface": "auction", "control": "auction-inspect" }],
+      "text": "An inspection tells you what the repairs will really cost before you own the car, and the listing may be gone by the time the report comes back."
+    },
+    {
+      "id": "hire_candidate",
+      "places": [{ "surface": "people", "control": "people-region-hiring" }],
+      "text": "A hire costs a fee today and a wage every day after, and only earns it back if there is enough work coming through the door to keep them busy."
+    },
+    {
+      "id": "staff_moves",
+      "places": [{ "surface": "people", "control": "people-region-roster" }],
+      "text": "Promoting someone fills the higher desk and empties the one they came from, at a bigger wage; letting someone go stops their wage tomorrow and leaves that desk unmanned."
+    },
+    {
+      "id": "raise_answer",
+      "places": [{ "surface": "people", "control": "people-raise" }],
+      "text": "Paying it keeps them and raises your payroll for good. Turning it down saves the money and they may leave for whoever asked."
+    },
+    {
+      "id": "advertising_campaign",
+      "places": [{ "surface": "growth", "control": "demand-advertising" }],
+      "text": "A campaign bills you every day it runs, whether or not anyone buys, and changes both how many shoppers come and what they are shopping for."
+    },
+    {
+      "id": "wire_subscription",
+      "places": [{ "surface": "growth", "control": "wire-unlock" }],
+      "text": "An open lane charges you every day and shows you readings you would otherwise be guessing at. Close it and those readings go dark again."
+    },
+    {
+      "id": "facility_build",
+      "places": [{ "surface": "growth", "control": "facility-build" }],
+      "text": "Building takes the cash today and the space is unusable until the job finishes — but it raises the ceiling on how much work you can hold at once."
+    },
+    {
+      "id": "parts_policy",
+      "places": [
+        { "surface": "service", "control": "service-parts-controls" },
+        { "surface": "bodyshop", "control": "body-shop-parts-controls" }
+      ],
+      "text": "Stocking deeper keeps jobs moving instead of waiting on a part, and a quicker supplier costs more for the same part. Everything on the shelf is cash you have already spent."
+    },
+    {
+      "id": "service_pricing_posture",
+      "places": [{ "surface": "service", "control": "service-pricing-controls" }],
+      "text": "Charging more earns more on every ticket you write and sends the price-shoppers to the shop down the road."
+    },
+    {
+      "id": "service_marketing",
+      "places": [
+        { "surface": "service", "control": "service-marketing-controls" }
+      ],
+      "text": "Retention brings your own past customers back in; a conquest special buys first visits from people who have never used you. Both bill you daily while they run."
+    },
+    {
+      "id": "body_shop_channel_posture",
+      "places": [
+        { "surface": "bodyshop", "control": "body-shop-channel-controls" }
+      ],
+      "text": "Leaning toward insurance work keeps the bays full at the rates the carrier will pay; leaning toward retail pays better per job and you have to find each one."
+    },
+    {
+      "id": "resolve_queue_item",
+      "places": [{ "surface": "department", "control": "dept-queue-resolve" }],
+      "text": "Working an item takes it off the desk. Anything you leave sits there and the customer behind it waits."
+    },
+    {
+      "id": "run_day",
+      "places": [{ "surface": "shell", "control": "shell-primary-action" }],
+      "text": "The day plays out on the prices, people and standing orders you have set right now — you cannot change them again until it closes."
+    },
+    {
+      "id": "run_bite",
+      "places": [{ "surface": "shell", "control": "bite-run" }],
+      "text": "The store runs these days without you and stops early only when something needs an owner — so you are betting the setup you have now holds up the whole way."
     }
+  ],
+  "viewOnly": [
+    "shell-tab",
+    "shell-menu",
+    "playtest-flag-fab",
+    "playtest-guide-fab",
+    "admin-console-fab",
+    "home-recap-chip",
+    "home-market-glance",
+    "home-calendar-toggle",
+    "home-quick-stat",
+    "home-gate-strip-open",
+    "dept-tile",
+    "lot-back",
+    "lot-open-pricing",
+    "lot-auction-button",
+    "auction-back",
+    "auction-listing",
+    "auction-detail-close",
+    "pricing-close",
+    "finance-range-chips",
+    "finance-open-history",
+    "finance-open-month-results",
+    "finance-segment-heat",
+    "people-delegation",
+    "wire-legend-toggle",
+    "service-back",
+    "body-shop-back",
+    "dept-back",
+    "history-back",
+    "month-results-back"
   ]
 }

@@ -23,7 +23,9 @@ tracer, is the lowest deps-met issue and is built first.**
 sourcing-lean dial that #385 declared as a standing desk order and that has no rendered control
 anywhere in `src/ui/**`.
 
-**#387 is BUILT as of 2026-08-12.** The next `/next` is **BUILD #388** (deps #386 + #387 both met).
+**#387 is BUILT as of 2026-08-12.**
+
+**#388 is BUILT as of 2026-08-12.** The next `/next` is **BUILD #389** (dep #387 met).
 
 The one thing a future session must not re-derive: **the backstory picks are mechanically
 identical today.** `day1Modifier` is read by nothing in `src/`, so F2 is a wiring job (#390) plus
@@ -36,7 +38,7 @@ reputation deficit for `grudgesFlag` (#391) — not a copy job.
 |---|---|---|
 | ~~#386~~ | ~~**tracer** — the teaching cell (`teaching:<id>`, minted in `SlotStore.ts`) + `data/hints.json` registry + retire-on-use + "Show hints again"; three real hints ship with it~~ **BUILT 2026-08-12** | — |
 | ~~#387~~ | ~~D3-R1 — `money`/`compactMoney` onto the kit barrel + the compact-when-ambient / exact-when-acting rule + the no-leak scan~~ **BUILT 2026-08-12** | — |
-| #388 | D3-R2 — the consequence-hint copy pass over every live control, completeness asserted by a mount scan | #386, #387 |
+| ~~#388~~ | ~~D3-R2 — the consequence-hint copy pass over every live control, completeness asserted by a mount scan~~ **BUILT 2026-08-12** | #386, #387 |
 | #389 | D3 — plain-language labels + every empty state written + `tests/PlainLanguage.test.tsx` | #387 |
 | #390 | F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in `createWorld`, each pick stated on the card | — |
 | #391 | F2-R1 — `grudgesFlag` becomes a starting reputation deficit | #390 |
@@ -189,6 +191,47 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **`data/hints.json` classifies EVERY control, and `viewOnly` is the half that carries no copy**
+  (#388). A coverage scan cannot see the difference between a control that changes the store and
+  one that only moves the view, so the author states it. A pressable that matches neither array
+  fails `tests/Hints.coverage.test.tsx` **by name**. Do not "fix" a failure by widening a
+  `viewOnly` entry into a prefix that swallows a real control — the loader's own refine already
+  refuses one declared control being a prefix of another, and that refine is the reason the two
+  arrays cannot quietly overlap.
+- **A hint is owned by a control GROUP, and every pressable inside it belongs to that lesson**
+  (#388). `controlOwns(control, testID)` — exact match, or the declared id followed by `-` — is
+  the one ownership rule, shared by the runtime scan and `HintCopy`'s source scan. The consequence
+  a future session must not miss: **adding a control inside an already-hinted block is deemed
+  taught by that block's line.** That is the right default (it is the same teaching block) but it
+  is a default, so a genuinely new decision belongs in its own group with its own line.
+- **The hint draws where the decision is made, NOT on every button that reaches it** (#388). The
+  wholesale line lives on the confirmation sheet, not on twelve stock rows; the auction's two live
+  inside the listing modal; People's promote/fire share one region line while the raise answer
+  draws on the prompt itself. A hint repeated per row is the noise retire-on-use exists to
+  prevent, and "completeness" is never a reason to repeat one.
+- **`places` is an ARRAY because one lesson can be reachable from two rooms** (#388). Asking price
+  = the Lot's stock list + the pricing screen; `parts_policy` = Service + Body Shop. Both places
+  draw the same string and using either retires both. Splitting one of these back into two ids
+  gives the player the same lesson twice and gives the catalog two entries that can drift.
+- **Containers take `hints: Hints` as a REQUIRED dep** (#388), so a surface cannot be composed
+  without someone deciding what it teaches. Tests about the mechanic under the control pass
+  `stubHints()` (`tests/helpers/hints.ts`); a test about the hints drives the real `useHints`.
+  Making the dep optional would restore exactly the silence the coverage scan was built to end.
+- **`HintLine` mints its own testID and there is no `testID` prop** (#388). `hint-<id>`,
+  underscores as dashes, so the catalog id, the control it teaches and the rendered line all join
+  on one string across twenty-odd surfaces.
+- **A hint quotes NO figure, and `tests/PlainLanguage.test.tsx` enforces it** (#388). The money
+  rule (#387) is "exact when the player is about to act" — and a hint cannot be exact about
+  anything, because it is written once and read against every store, tier and day. A dollar
+  amount in one is a claim the player can check against their own screen and find wrong; a compact
+  one would be an inexact claim about money they are about to commit. That file is also the seam
+  #389 extends to labels and empty states — it is the one copy-review surface, which is why
+  #388's two copy criteria live there rather than beside the mount scan.
+- **The three DEV instruments are declared `viewOnly` and the DEV console's contents are not**
+  (#388). `playtest-flag-fab`, `playtest-guide-fab` and `admin-console-fab` are addressed to the
+  director, not the player; only the console's *opener* is named, because what is behind it is not
+  a player-facing control at all. A future session finding the console's buttons undeclared should
+  not declare them — the scan simply never opens it.
 - **The money rule has a SECOND clause, and the Finance room is what it is for** (#387).
   "Compact when ambient, exact when the player is about to act" would, read alone, compact the
   Finance headline cards — and #376's rule is that the headline Net Income and the statement's Net
@@ -1391,6 +1434,57 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-12 — **BUILT #388** (D3-R2 — the consequence-hint pass over every live control). The
+  catalog went from #386's three dials to **21 lessons**, and the completeness guard went from a
+  scan of source strings to a scan of the **rendered app**.
+  **The mechanism the pass needed, and did not have: one classification, stated in data.** A
+  coverage scan cannot tell "sets the store's asking price" from "goes back a screen" by looking,
+  so `data/hints.json` now carries a second array — `viewOnly`, the controls that change nothing
+  about the store. `tests/Hints.coverage.test.tsx` drives the real app through all five tabs and
+  every room they open, takes every rendered pressable, and resolves it to the nearest declared
+  control above it. **A pressable that resolves to nothing fails the suite by name.** That is the
+  whole guard: the seventh control added next year either gets a line of copy or gets named
+  `viewOnly`, and it cannot ship silent.
+  **Resolution is by ANCESTRY, and that is a decision, not a convenience.** A hint sits under a
+  control *group* — a chip row, a par block, a modal's two buttons, a per-row button built from
+  the group's testID as its prefix — and every press inside that group belongs to the lesson
+  drawn beneath it. `controlOwns(control, testID)` is the one ownership rule (exact match, or the
+  declared id followed by `-`), shared by the runtime scan and `HintCopy`'s source scan. Requiring
+  one declaration per pressable would put twelve entries where a surface teaches one thing once.
+  **`control: string` became `places: [{ surface, control }]` for one real reason.** A unit's
+  asking price is reachable from the Lot's stock list *and* the pricing screen; the parts par
+  levels from Service *and* the Body Shop. That is **one lesson retired once**, not two entries
+  with a way to drift apart. Both places draw the same line; using either retires both.
+  **Hints render where the money is spent, not where the button is repeated.** The wholesale line
+  is on the confirmation sheet (one per decision), never on twelve stock rows; the auction's two
+  are inside the listing modal; People's four are three region lines plus one on the raise prompt
+  itself, because a raise prompt *is* the moment. A hint under every repeated row would be the
+  noise the retire-on-use rule exists to prevent.
+  **The mark still fires from the handler, never the surface** (#386's rule, extended to 18 more
+  controls). `useLevers` gained the hours + advertising marks; `useDayLoop` gained an
+  `onControlUsed` dep for the clock's two; the rest fire from the containers that own the write
+  (`LotRoomContainer`, `AuctionScreen`, `PricingScreenContainer`, `PeopleTabContainer`,
+  `GrowthTabContainer`, `TabStackContent`). Containers take `hints: Hints` as a **required** dep —
+  a surface cannot be composed without someone deciding what it teaches — and `tests/helpers/hints.ts`
+  `stubHints()` is what the mechanic-under-test suites pass.
+  **`HintLine` mints its own testID and no longer accepts one.** `hint-<id>` with underscores as
+  dashes. Twenty-odd surfaces draw one; a passed-in id is one typo from a line nobody can address.
+  **`tests/PlainLanguage.test.tsx` is new and #389 extends it** — it is the one copy-review
+  surface, and #388 seeded it with four rules over the catalog, each failing by entry id: no
+  temperature word, no opening on a control-naming verb (`Sets…`/`Chooses…`/`Opens…`), **no `$`
+  at all**, and a complete sentence. The money rule (#387) is "exact when the player is about to
+  act" and a hint cannot be exact about anything — it is written once and read against every
+  store, tier and day, so a figure in it is a claim the player can check and find wrong.
+  **Web drive on the T2 fixture proved it live**: the shell's two lines under the day CTA and the
+  bite picker, Operations' three, the Lot's two, and the wholesale sheet's. A stray click ran a
+  **week bite** mid-drive, which turned out to be the best evidence in the session —
+  `hint-run-bite` vanished from the DOM and `hint-run-day` stayed, i.e. retire-on-use is per-hint,
+  in the live app, off the real teaching cell.
+  **Nothing calibrated moved and nothing could**: the live `#180` read is byte-identical at
+  35.8% / 54.3%, closes=274, `costOverAsk` 1.026. 271 suites / 4256 tests green.
+  Next: **BUILD #389** (D3 — plain-language labels + every empty state written), the lowest
+  deps-met issue in the phase.
+
 - 2026-08-12 — **BUILT #387** (D3-R1 — one money rule, stated once in the kit). `money` /
   `compactMoney` moved off `FinanceTab/financeModel.ts` onto the kit barrel, and every currency
   call site under `src/ui/**` and `src/app/**` was audited against the rule: **compact when the
@@ -1482,37 +1576,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   near-duplicate beside it is the second place they can disagree.
   Next: **BUILD #387** (D3-R1 — `money`/`compactMoney` onto the kit barrel), the lowest deps-met
   issue in the phase.
-
-- 2026-08-12 — **SLICED phase 12** into eleven issues: **#386–#395 filed new, and #213 rewritten in
-  place** rather than duplicated (the #151–#153 precedent — its number stays, its body now carries
-  the grown scope from §8 F1 and its dep on the tracer). **F3 produced no issue**: it was ruled NONE
-  and the section is the answer.
-  **The tracer is the teaching cell, and that is the whole shape of the phase.** D3-R2's ruling said
-  the hint registry and F1's progressive disclosure share **one registry and one per-slot cell**, so
-  the slice order falls out of it: #386 mints `teaching:<id>` in `SlotStore.ts` (the delete-a-save
-  lesson — every per-slot key is minted there or `deleteSlot` cannot reach it), ships the
-  `data/hints.json` catalog behind `parseData`, the retire-on-use rule, the "Show hints again"
-  switch, and **three real hints on the three #385 desk dials** so the tracer is vertical. Everything
-  else that teaches — the hint copy pass (#388), the failure-stakes beat (#394), the first-run spine
-  (#213) and the unlock beats (#395) — writes taught marks into that one cell and is re-armed by that
-  one switch. It is **not world state**: `WORLD_SNAPSHOT_VERSION` stays 21 for all of it.
-  **F2 is one wiring slice and two new mechanics, filed as such.** #390 takes the two levers with an
-  engine home (`startingCapitalBonus` → the hardcoded `startingCash` at `createWorld.ts:566`;
-  `reconJudgmentBonus` → a permanent floor under the per-appraisal `sourceReliability` `rollRecon`
-  already takes) and states each pick on the card. #391 and #392/#393 build the two that have none.
-  The modifiers are applied in **`createWorld`** and #390 carries a source scan for it — no module
-  learns what a backstory is; Inventory takes a number.
-  **The borrowing facility is split engine/surface, and the surface half carries a correction to
-  #380.** `getStoreWorth()` must **subtract the drawn balance**: #380 left debt unasked because its
-  only candidate was floorplan, which is a daily carrying cost rather than a balance — a drawn credit
-  line *is* one, and a worth figure that rose $50k the moment the player borrowed $50k breaks all
-  three of #380's checkable rules at once. The test is #380's own idiom: a draw leaves the store's
-  worth flat. **#392 is the one slice in the phase that bumps the envelope** — a new module key ⇒
-  `WORLD_SNAPSHOT_VERSION` 21 → 22 with a migration, per `docs/save-migration-recipe.md`.
-  **Two completeness scans replace two checklists.** #388's coverage test mounts each tab and fails
-  on an interactive control with no hint id (the `Composition.completeness` idiom), so the seventh
-  control added next year cannot ship silent; #395 declares beats in `data/teaching-beats.json` with
-  the schema refusing an event nobody publishes, the #384/#385 registration-not-enumeration shape, so
-  a beat added later needs a declaration and a line of copy and no runner edit.
-  No code changed, so nothing calibrated moved and no test count moved.
-  Next: **BUILD #386** (the tracer — the lowest deps-met issue in the phase).

@@ -3,9 +3,15 @@ import { Text, type TextStyle } from 'react-native';
 import { useTheme } from '../theme';
 
 export interface HintLineProps {
+  /**
+   * The hint's id, exactly as `data/hints.json` declares it. It is the whole
+   * testID: `hint-<id>` with the underscores spelled as dashes, minted here so
+   * one line cannot be addressed by two names across the twenty-odd surfaces
+   * that draw one.
+   */
+  id: string;
   /** The hint's copy. Always from `data/hints.json`, never a literal here. */
   text: string;
-  testID?: string;
 }
 
 /**
@@ -18,7 +24,7 @@ export interface HintLineProps {
  * pressable-count assertions on the lever surfaces honest: a hint adds text to
  * a control, never another thing to tap.
  */
-export function HintLine({ text, testID }: HintLineProps) {
+export function HintLine({ id, text }: HintLineProps) {
   const t = useTheme();
   const line: TextStyle = {
     ...t.typography.caption,
@@ -26,7 +32,7 @@ export function HintLine({ text, testID }: HintLineProps) {
     marginTop: t.spacing.sm,
   };
   return (
-    <Text style={line} testID={testID}>
+    <Text style={line} testID={`hint-${id.replace(/_/g, '-')}`}>
       {text}
     </Text>
   );

@@ -20,12 +20,15 @@ import {
   staffTaxonomy,
   DEFAULT_HIRING_ROLE_ID,
 } from '../config';
+import type { Hints } from '../useHints';
 
 export interface PeopleTabContainerProps {
   world: World;
   /** Which job the player is currently shopping for. */
   selectedHiringRoleId: string;
   setSelectedHiringRoleId: (id: string) => void;
+  /** The teaching cluster (#386/#388) — resolved here, marked on each write. */
+  hints: Hints;
   /** Keep the app-level cash mirror in step with a hire's expense. */
   setCash: (n: number) => void;
   /** Force a re-render after a world write the EventBus doesn't announce. */
@@ -92,6 +95,7 @@ export function PeopleTabContainer({
   world,
   selectedHiringRoleId,
   setSelectedHiringRoleId,
+  hints,
   setCash,
   bump,
 }: PeopleTabContainerProps) {
@@ -197,18 +201,29 @@ export function PeopleTabContainer({
         candidates,
         cash: world.economy.cash,
       }}
+      // Consequence hints (#388). Resolved here, marked on the write path —
+      // so anything that calls the same handler teaches exactly what a tap
+      // does, and no card decides for itself what it has already said.
+      hints={{
+        hiring: hints.hintFor('hire_candidate'),
+        staffMoves: hints.hintFor('staff_moves'),
+        raise: hints.hintFor('raise_answer'),
+      }}
       onSelectHiringRole={setSelectedHiringRoleId}
       onHire={(candidateId) => {
         world.staffOrg.hire(candidateId);
+        hints.markUsed('hire_candidate');
         setCash(world.economy.cash);
         bump();
       }}
       onPromote={(staffId, toRoleId) => {
         world.staffOrg.promote(staffId, toRoleId);
+        hints.markUsed('staff_moves');
         bump();
       }}
       onFire={(staffId) => {
         world.staffOrg.fire(staffId);
+        hints.markUsed('staff_moves');
         bump();
       }}
       // A raise costs nothing today — the new wage is charged by the overnight

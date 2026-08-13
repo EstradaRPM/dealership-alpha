@@ -60,6 +60,7 @@ export interface OwnershipLeversProps {
    * copy is `data/hints.json`'s and arrives already resolved — this surface
    * never decides what a hint says or whether it is still owed.
    */
+  hoursHint?: string | null;
   tradePolicyHint?: string | null;
   fniPostureHint?: string | null;
 }
@@ -91,6 +92,7 @@ export function OwnershipLevers({
   onSelectFniPosture,
   fniDeskStaffed,
   fniPeak,
+  hoursHint,
   tradePolicyHint,
   fniPostureHint,
 }: OwnershipLeversProps) {
@@ -134,6 +136,7 @@ export function OwnershipLevers({
             onSelect={onSelectHours}
             disabled={!enabled}
           />
+          {hoursHint && <HintLine id="hours_of_operation" text={hoursHint} />}
         </Surface>
 
         <View style={region}>
@@ -155,7 +158,7 @@ export function OwnershipLevers({
               <Text style={blurb}>{selectedPolicy.blurb}</Text>
             )}
             {tradePolicyHint && (
-              <HintLine text={tradePolicyHint} testID="hint-trade-policy" />
+              <HintLine id="trade_policy" text={tradePolicyHint} />
             )}
           </Surface>
         </View>
@@ -185,7 +188,7 @@ export function OwnershipLevers({
               </Text>
             )}
             {fniPostureHint && (
-              <HintLine text={fniPostureHint} testID="hint-fni-posture" />
+              <HintLine id="fni_posture" text={fniPostureHint} />
             )}
             {fniPeak && <FniPeakMeter {...fniPeak} />}
           </Surface>

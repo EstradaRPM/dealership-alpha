@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { useTheme } from '../theme';
-import { Surface, Button, ProgressBar, Pill } from '../kit';
+import { Surface, Button, ProgressBar, Pill, HintLine } from '../kit';
 import type { FacilityBuildModel, FacilityBuildRow } from './facilityBuildModel';
 import type { FacilityCapacityKind } from '../../game/Facility';
 
@@ -9,6 +9,8 @@ export interface FacilityBuildProps {
   model: FacilityBuildModel;
   /** Commit the next block for this kind. Absent ⇒ read-only. */
   onBuild?: (kind: FacilityCapacityKind) => void;
+  /** What committing to a build costs and buys (#388), null once used. */
+  hint?: string | null;
 }
 
 /**
@@ -26,7 +28,7 @@ export interface FacilityBuildProps {
  *
  * Presentation only; every value arrives formatted from `buildFacilityBuild`.
  */
-export function FacilityBuild({ model, onBuild }: FacilityBuildProps) {
+export function FacilityBuild({ model, onBuild, hint }: FacilityBuildProps) {
   const t = useTheme();
   return (
     <View testID="growth-facility-build">
@@ -36,6 +38,7 @@ export function FacilityBuild({ model, onBuild }: FacilityBuildProps) {
             <BuildRow row={row} onBuild={onBuild} />
           </View>
         ))}
+        {hint && <HintLine id="facility_build" text={hint} />}
       </Surface>
     </View>
   );

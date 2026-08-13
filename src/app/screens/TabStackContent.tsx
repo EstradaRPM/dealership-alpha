@@ -76,6 +76,7 @@ export function TabStackContent({
         bus={bus}
         lotVehicles={lotVehicles}
         cash={cash}
+        hints={hints}
         persistCurrentSave={persistCurrentSave}
         setCash={setCash}
       />
@@ -89,6 +90,7 @@ export function TabStackContent({
         tabs={tabs}
         vehicleId={vehicleId}
         pricingStrategyId={levers.pricingStrategyId}
+        hints={hints}
         persistCurrentSave={persistCurrentSave}
         setLotVehicles={setLotVehicles}
       />
@@ -102,7 +104,7 @@ export function TabStackContent({
         lotVehicles={lotVehicles}
         pricingStrategyId={levers.pricingStrategyId}
         onSelectPricingStrategy={levers.handleSelectPricingStrategy}
-        pricingStrategyHint={hints.hintFor('pricing_strategy')}
+        hints={hints}
         persistCurrentSave={persistCurrentSave}
         setLotVehicles={setLotVehicles}
       />
@@ -155,8 +157,10 @@ export function TabStackContent({
         <DepartmentScreen
           title={DEPT_TITLES[dept]}
           items={world.departmentQueue.getQueue(dept)}
+          hint={hints.hintFor('resolve_queue_item')}
           onResolve={(id) => {
             world.departmentQueue.resolveItem(id);
+            hints.markUsed('resolve_queue_item');
             bump();
           }}
           onClose={() => tabs.back()}
@@ -182,36 +186,47 @@ export function TabStackContent({
           model={buildServicePageModel(world)}
           controls={{
             model: buildServiceControlsModel(world),
+            hints: {
+              parts: hints.hintFor('parts_policy'),
+              pricingPosture: hints.hintFor('service_pricing_posture'),
+              marketing: hints.hintFor('service_marketing'),
+            },
             onSetReorderPoint: (category, value) => {
               world.partsInventory.setPolicy(category as PartCategory, {
                 reorderPoint: value,
               });
+              hints.markUsed('parts_policy');
               apply();
             },
             onSetTarget: (category, value) => {
               world.partsInventory.setPolicy(category as PartCategory, {
                 target: value,
               });
+              hints.markUsed('parts_policy');
               apply();
             },
             onSetSupplierTier: (category, tier) => {
               world.partsInventory.setPolicy(category as PartCategory, {
                 tier: tier as SupplierTier,
               });
+              hints.markUsed('parts_policy');
               apply();
             },
             onSetPricingPosture: (value) => {
               world.setServicePricingPosture(value);
+              hints.markUsed('service_pricing_posture');
               apply();
             },
             onSetRetention: (id) => {
               world.serviceMarketing.setRetentionCampaign(id);
+              hints.markUsed('service_marketing');
               apply();
             },
             onSetConquest: (category) => {
               world.serviceMarketing.setConquestSpecial(
                 category as ConquestSelection,
               );
+              hints.markUsed('service_marketing');
               apply();
             },
           }}
@@ -232,26 +247,34 @@ export function TabStackContent({
         model={buildBodyShopPageModel(world)}
         controls={{
           model: buildBodyShopControlsModel(world),
+          hints: {
+            parts: hints.hintFor('parts_policy'),
+            channelPosture: hints.hintFor('body_shop_channel_posture'),
+          },
           onSetReorderPoint: (category, value) => {
             world.partsInventory.setPolicy(category as PartCategory, {
               reorderPoint: value,
             });
+            hints.markUsed('parts_policy');
             apply();
           },
           onSetTarget: (category, value) => {
             world.partsInventory.setPolicy(category as PartCategory, {
               target: value,
             });
+            hints.markUsed('parts_policy');
             apply();
           },
           onSetSupplierTier: (category, tier) => {
             world.partsInventory.setPolicy(category as PartCategory, {
               tier: tier as SupplierTier,
             });
+            hints.markUsed('parts_policy');
             apply();
           },
           onSetChannelPosture: (value) => {
             world.setBodyShopChannelPosture(value);
+            hints.markUsed('body_shop_channel_posture');
             apply();
           },
         }}
