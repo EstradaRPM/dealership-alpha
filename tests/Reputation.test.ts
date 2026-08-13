@@ -19,6 +19,7 @@ const npcDeps = {
 const CONFIG: ReputationConfig = {
   startingSatisfaction: 70,
   startingReviewScore: 60,
+  startingStandingPenalty: 10,
   satisfactionMin: 0,
   satisfactionMax: 100,
   closedDealSatisfactionBonus: 3,

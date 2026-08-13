@@ -6,7 +6,7 @@ export type {
   ReputationSnapshot,
   ReputationSnapshotV1,
 } from './Reputation';
-export { loadReputationConfig } from './reputationData';
+export { loadReputationConfig, withOpeningPenalty } from './reputationData';
 export type { ReputationConfig } from './reputationData';
 export { createRegulatoryMeter } from './RegulatoryMeter';
 export type {

@@ -10,6 +10,11 @@ import {
   bucketProbabilities,
   loadReconVarianceConfig,
 } from '../src/game/MarketEconomy';
+import {
+  createReputation,
+  loadReputationConfig,
+  withOpeningPenalty,
+} from '../src/game/Reputation';
 import { createWorld } from '../src/createWorld';
 import { getDay1Modifier } from '../src/game/CareerProgression';
 import type { BackstoryId, CharacterProfile } from '../src/game/CareerProgression';
@@ -192,6 +197,133 @@ describe('a zero lever is the pre-#390 world (#390)', () => {
       characterProfile: NEUTRAL,
     });
     expect(banker.economy.cash).toBe(neutral.economy.cash);
+  });
+});
+
+// ── The Inheritor's town ─────────────────────────────────────────────────────
+
+const REP_CONFIG = loadReputationConfig();
+
+/**
+ * A standing opened straight off a config — no world, no floor, no drift, so
+ * what moves it is only what this test publishes.
+ */
+function openStanding(grudged: boolean) {
+  const bus = createEventBus();
+  const config = grudged ? withOpeningPenalty(REP_CONFIG) : REP_CONFIG;
+  return { bus, reputation: createReputation({ bus, config }) };
+}
+
+function closeADeal(bus: ReturnType<typeof createEventBus>): void {
+  bus.publish('deal:closed', {
+    customerId: 'c1',
+    vehicleId: 'v1',
+    agreedPrice: 25_000,
+    frontGross: 2_000,
+    backGross: 800,
+    productGross: 800,
+    reserveGross: 0,
+    daysInInventory: 0,
+    paymentMethod: 'cash',
+    downPayment: 25_000,
+    loanAmount: 0,
+    term: 0,
+    apr: 0,
+  });
+}
+
+function walkAnUp(bus: ReturnType<typeof createEventBus>): void {
+  bus.publish('customer:resolved', {
+    customerId: 'c1',
+    outcome: 'walk',
+    receptivity: 0,
+    satisfaction: 0,
+    retentionSeed: 0,
+    heat: 0,
+    agreedPrice: 0,
+    frontGross: 0,
+  });
+}
+
+describe("the inheritor opens under the town's grudge (#391)", () => {
+  it("the inheritor opens with the town's grudge", () => {
+    const seed = 7_391;
+    const neutral = createWorld({
+      bus: createEventBus(),
+      masterSeed: seed,
+      characterProfile: NEUTRAL,
+    });
+    const inheritor = createWorld({
+      bus: createEventBus(),
+      masterSeed: seed,
+      characterProfile: profileFor('inheritor'),
+    });
+    expect(getDay1Modifier('inheritor').grudgesFlag).toBe(true);
+    expect(REP_CONFIG.startingStandingPenalty).toBeGreaterThan(0);
+    // Read as a delta between two same-seed worlds rather than against the raw
+    // tunable: the claim is that this founder opens BEHIND an otherwise
+    // identical store, which is what the player feels — fewer people walk in,
+    // because `getDailyDemand` scales on the review score.
+    expect(neutral.reputation.reviewScore - inheritor.reputation.reviewScore).toBeCloseTo(
+      REP_CONFIG.startingStandingPenalty,
+      6,
+    );
+    expect(
+      neutral.reputation.customerSatisfaction - inheritor.reputation.customerSatisfaction,
+    ).toBeGreaterThan(0);
+  });
+
+  it('a clean backstory opens neutral', () => {
+    const seed = 7_392;
+    for (const id of ['ex-mechanic', 'ex-banker'] as const) {
+      expect(getDay1Modifier(id).grudgesFlag).toBe(false);
+      const world = createWorld({
+        bus: createEventBus(),
+        masterSeed: seed,
+        characterProfile: profileFor(id),
+      });
+      expect(world.reputation.reviewScore).toBe(REP_CONFIG.startingReviewScore);
+      expect(world.reputation.customerSatisfaction).toBe(REP_CONFIG.startingSatisfaction);
+    }
+  });
+
+  it('the same good month moves both careers equally', () => {
+    // The deficit is an opening POSITION. Nothing above it is scaled, so the
+    // same month of trading has to move both stores by the same amount — and
+    // the gap between them can only close, never widen.
+    const clean = openStanding(false);
+    const grudged = openStanding(true);
+    const opening = clean.reputation.reviewScore - grudged.reputation.reviewScore;
+    expect(opening).toBeCloseTo(REP_CONFIG.startingStandingPenalty, 6);
+
+    // A month a T1 store actually has: eight units out, and the ups that
+    // walked — deliberately not thirty straight closes, which would drive the
+    // clean store into the 100 ceiling and have the clamp, rather than the
+    // mechanic, be what the assertion sees.
+    let gap = opening;
+    for (let day = 1; day <= 30; day += 1) {
+      const before = [clean.reputation.reviewScore, grudged.reputation.reviewScore] as const;
+      for (const store of [clean, grudged]) {
+        if (day % 4 === 0) closeADeal(store.bus);
+        walkAnUp(store.bus);
+        walkAnUp(store.bus);
+      }
+      // The day moved both by the identical amount — no multiplier rides on
+      // the grudge.
+      expect(clean.reputation.reviewScore - before[0]).toBeCloseTo(
+        grudged.reputation.reviewScore - before[1],
+        10,
+      );
+      clean.bus.publish('clock:overnight_reputation_drift', { day });
+      grudged.bus.publish('clock:overnight_reputation_drift', { day });
+      const next = clean.reputation.reviewScore - grudged.reputation.reviewScore;
+      expect(next).toBeLessThanOrEqual(gap + 1e-9);
+      gap = next;
+    }
+    // A month of the same trading has the grudged store climbing out of it,
+    // not carrying it.
+    expect(gap).toBeLessThan(opening);
+    expect(gap).toBeGreaterThan(0);
   });
 });
 

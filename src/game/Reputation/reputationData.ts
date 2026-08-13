@@ -44,12 +44,44 @@ const ReputationConfigSchema = z.object({
   demandReviewSlope: z.number(),
   marketingSaturation: z.number().positive(),
   marketingMaxBoost: z.number().nonnegative(),
+  /**
+   * Points the store opens BELOW its default standing when it opens under a
+   * cloud — a founder who inherited one, today (#391). Reputation is handed a
+   * standing and never a reason: whether this applies is the composition root's
+   * call, so no rule in this module branches on who the owner is.
+   *
+   * An OPENING position and nothing more. Every rule above it — the close bonus,
+   * the walk penalty, the overnight drift — is the one every founder gets, so a
+   * store that has climbed out is indistinguishable from one that never fell.
+   */
+  startingStandingPenalty: z.number().nonnegative(),
   brandReputation: BrandReputationSchema,
   seasonDemandMultiplier: z.record(z.string(), z.number().nonnegative()),
   dayOfWeekDemandMultiplier: z.record(z.string(), z.number().nonnegative()),
 });
 
 export type ReputationConfig = z.infer<typeof ReputationConfigSchema>;
+
+/**
+ * The same config, opening `startingStandingPenalty` points below default on
+ * BOTH standing scalars (#391) — the whole of what it means to open under a
+ * cloud.
+ *
+ * Both, not just the review score: `reviewDriftRate` pulls the review toward
+ * satisfaction every night, so a deficit applied to the review alone would be
+ * handed back inside two weeks with no play involved. The town's opinion is
+ * what people feel about the store *and* what is written about it.
+ *
+ * Whether this applies is the composition root's decision — this function takes
+ * a config and returns a config, and knows nothing about who the owner is.
+ */
+export function withOpeningPenalty(config: ReputationConfig): ReputationConfig {
+  return {
+    ...config,
+    startingSatisfaction: config.startingSatisfaction - config.startingStandingPenalty,
+    startingReviewScore: config.startingReviewScore - config.startingStandingPenalty,
+  };
+}
 
 export function loadReputationConfig(): ReputationConfig {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

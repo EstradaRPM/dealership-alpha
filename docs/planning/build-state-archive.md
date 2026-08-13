@@ -6,6 +6,57 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-12 — **BUILT #388** (D3-R2 — the consequence-hint pass over every live control). The
+  catalog went from #386's three dials to **21 lessons**, and the completeness guard went from a
+  scan of source strings to a scan of the **rendered app**.
+  **The mechanism the pass needed, and did not have: one classification, stated in data.** A
+  coverage scan cannot tell "sets the store's asking price" from "goes back a screen" by looking,
+  so `data/hints.json` now carries a second array — `viewOnly`, the controls that change nothing
+  about the store. `tests/Hints.coverage.test.tsx` drives the real app through all five tabs and
+  every room they open, takes every rendered pressable, and resolves it to the nearest declared
+  control above it. **A pressable that resolves to nothing fails the suite by name.** That is the
+  whole guard: the seventh control added next year either gets a line of copy or gets named
+  `viewOnly`, and it cannot ship silent.
+  **Resolution is by ANCESTRY, and that is a decision, not a convenience.** A hint sits under a
+  control *group* — a chip row, a par block, a modal's two buttons, a per-row button built from
+  the group's testID as its prefix — and every press inside that group belongs to the lesson
+  drawn beneath it. `controlOwns(control, testID)` is the one ownership rule (exact match, or the
+  declared id followed by `-`), shared by the runtime scan and `HintCopy`'s source scan. Requiring
+  one declaration per pressable would put twelve entries where a surface teaches one thing once.
+  **`control: string` became `places: [{ surface, control }]` for one real reason.** A unit's
+  asking price is reachable from the Lot's stock list *and* the pricing screen; the parts par
+  levels from Service *and* the Body Shop. That is **one lesson retired once**, not two entries
+  with a way to drift apart. Both places draw the same line; using either retires both.
+  **Hints render where the money is spent, not where the button is repeated.** The wholesale line
+  is on the confirmation sheet (one per decision), never on twelve stock rows; the auction's two
+  are inside the listing modal; People's four are three region lines plus one on the raise prompt
+  itself, because a raise prompt *is* the moment. A hint under every repeated row would be the
+  noise the retire-on-use rule exists to prevent.
+  **The mark still fires from the handler, never the surface** (#386's rule, extended to 18 more
+  controls). `useLevers` gained the hours + advertising marks; `useDayLoop` gained an
+  `onControlUsed` dep for the clock's two; the rest fire from the containers that own the write
+  (`LotRoomContainer`, `AuctionScreen`, `PricingScreenContainer`, `PeopleTabContainer`,
+  `GrowthTabContainer`, `TabStackContent`). Containers take `hints: Hints` as a **required** dep —
+  a surface cannot be composed without someone deciding what it teaches — and `tests/helpers/hints.ts`
+  `stubHints()` is what the mechanic-under-test suites pass.
+  **`HintLine` mints its own testID and no longer accepts one.** `hint-<id>` with underscores as
+  dashes. Twenty-odd surfaces draw one; a passed-in id is one typo from a line nobody can address.
+  **`tests/PlainLanguage.test.tsx` is new and #389 extends it** — it is the one copy-review
+  surface, and #388 seeded it with four rules over the catalog, each failing by entry id: no
+  temperature word, no opening on a control-naming verb (`Sets…`/`Chooses…`/`Opens…`), **no `$`
+  at all**, and a complete sentence. The money rule (#387) is "exact when the player is about to
+  act" and a hint cannot be exact about anything — it is written once and read against every
+  store, tier and day, so a figure in it is a claim the player can check and find wrong.
+  **Web drive on the T2 fixture proved it live**: the shell's two lines under the day CTA and the
+  bite picker, Operations' three, the Lot's two, and the wholesale sheet's. A stray click ran a
+  **week bite** mid-drive, which turned out to be the best evidence in the session —
+  `hint-run-bite` vanished from the DOM and `hint-run-day` stayed, i.e. retire-on-use is per-hint,
+  in the live app, off the real teaching cell.
+  **Nothing calibrated moved and nothing could**: the live `#180` read is byte-identical at
+  35.8% / 54.3%, closes=274, `costOverAsk` 1.026. 271 suites / 4256 tests green.
+  Next: **BUILD #389** (D3 — plain-language labels + every empty state written), the lowest
+  deps-met issue in the phase.
+
 - 2026-08-12 — **BUILT #387** (D3-R1 — one money rule, stated once in the kit). `money` /
   `compactMoney` moved off `FinanceTab/financeModel.ts` onto the kit barrel, and every currency
   call site under `src/ui/**` and `src/app/**` was audited against the rule: **compact when the

@@ -122,6 +122,7 @@ import {
   createRegulatoryMeter,
   createReputation,
   loadReputationConfig,
+  withOpeningPenalty,
   type RegulatoryMeter,
   type Reputation,
 } from './game/Reputation';
@@ -589,7 +590,15 @@ export function createWorld(deps: {
   // off the monthly tier-gate verdict streak (#250), not an instantaneous check.
   // Loaded here rather than left to the module default because the match seam
   // below needs the same file's `brandReputation.matchWeight` (#151).
-  const reputationConfig = loadReputationConfig();
+  // #391: the Inheritor's town already has an opinion, so the store opens below
+  // the standing a stranger gets. A STARTING POSITION, not a permanent drag —
+  // `withOpeningPenalty` moves two opening numbers and nothing else, so once the
+  // career has climbed out it behaves exactly like anyone else's. Reputation is
+  // handed a standing; it never learns there was a backstory.
+  const baseReputationConfig = loadReputationConfig();
+  const reputationConfig = day1.grudgesFlag
+    ? withOpeningPenalty(baseReputationConfig)
+    : baseReputationConfig;
   const reputation = createReputation({ bus, economy, config: reputationConfig });
   // #250 — the per-tier advancement streak lengths live in tier-gate.json's
   // `streak` field (composition root reads the shared tunable and injects it, so

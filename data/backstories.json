@@ -30,7 +30,7 @@
       "id": "inheritor",
       "label": "Inheritor",
       "flavor": "You got the keys — and the debts, the grudges, and the regulars who remember your father.",
-      "effect": "You open with $25,000 more cash than anyone else, and a town that already has an opinion about your family.",
+      "effect": "You open with $25,000 more cash than anyone else, but the town remembers your father, so fewer people walk in until you have won them back.",
       "modifier": {
         "reconJudgmentBonus": 0,
         "startingCreditLine": 0,

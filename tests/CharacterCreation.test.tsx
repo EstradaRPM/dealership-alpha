@@ -50,6 +50,24 @@ describe('character creation states each pick (#390)', () => {
     }
   });
 
+  it('the inheritor card names the grudge', () => {
+    const { getByTestId } = render(
+      <CharacterCreation saveStore={stubSaveStore()} masterSeed={1} onComplete={jest.fn()} />,
+    );
+    const grudged = loadBackstories().filter((b) => b.modifier.grudgesFlag);
+    expect(grudged.length).toBeGreaterThan(0);
+    for (const b of grudged) {
+      // The one lever with no figure to derive the claim from (#391), so what
+      // is asserted is that the sentence carries a SECOND clause — a card that
+      // states only the money is a card hiding half of what the pick does. The
+      // deficit's own magnitude is deliberately not quoted: it is a standing,
+      // not a number the player can check against a screen.
+      expect(b.effect).toMatch(/\btown\b/i);
+      expect(b.effect).toMatch(/\bfewer\b/i);
+      expect(getByTestId(`backstory-effect-${b.id}`).props.children).toBe(b.effect);
+    }
+  });
+
   it('renders without crashing', () => {
     expect(() =>
       render(

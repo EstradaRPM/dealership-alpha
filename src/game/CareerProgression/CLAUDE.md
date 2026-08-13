@@ -27,9 +27,12 @@ Player tier (currently 1 → 3) + backstory-driven Day 1 modifiers + branding re
   read it for something other than a mechanic: `EndCard` picks the sentence a
   career ends on, and `SaveStore`'s persisted profile carries it because a
   reloaded career is the same person.
-- `startingCreditLine` (#392/#393) and `grudgesFlag` (#391) are new mechanics
-  with no engine home yet; the cards already state them, and those slices make
-  them true.
+- `grudgesFlag` (#391) is live: a founder carrying one opens the store
+  `reputation.startingStandingPenalty` points below the standing a stranger
+  gets, applied through `withOpeningPenalty` on the config `createWorld` hands
+  `createReputation`. A **starting position**, not a permanent drag — see
+  `Reputation/CLAUDE.md`. `startingCreditLine` (#392/#393) is the one lever left
+  with no engine home; the card already states it, and that slice makes it true.
 - **The balance harness's founder declares every lever at zero on purpose.**
   `scripts/balance-harness/runner.ts` PROFILE and the two calibration tests
   measure the *store*; a founder's edge measured as the engine's is how a

@@ -29,14 +29,15 @@ anywhere in `src/ui/**`.
 
 **#389 is BUILT as of 2026-08-13.**
 
-**#390 is BUILT as of 2026-08-13.** The next `/next` is **BUILD #391** (dep #390, now met).
+**#390 is BUILT as of 2026-08-13.**
+
+**#391 is BUILT as of 2026-08-13.** The next `/next` is **BUILD #392** (dep #390, met).
 
 The one thing a future session must not re-derive: **the backstory picks WERE mechanically
-identical, and #390 ended half of that.** `day1Modifier` is now read in `createWorld` for its two
-wired levers; the two that remain are new mechanics, not a copy job — a borrowing facility for
-`startingCreditLine` (#392/#393) and a starting reputation deficit for `grudgesFlag` (#391).
-**Both are already stated on the character card**, so those two slices are what make the card
-true rather than what adds the sentence.
+identical, and #390/#391 ended three quarters of that.** `day1Modifier` is read in `createWorld`
+for three wired levers now; the one that remains is a new mechanic, not a copy job — a borrowing
+facility for `startingCreditLine` (#392/#393). **It is already stated on the character card**, so
+that slice is what makes the card true rather than what adds the sentence.
 
 ### Phase 12 — F1 + F2 + D3 (sliced + filed 2026-08-12)
 
@@ -47,7 +48,7 @@ true rather than what adds the sentence.
 | ~~#388~~ | ~~D3-R2 — the consequence-hint copy pass over every live control, completeness asserted by a mount scan~~ **BUILT 2026-08-12** | #386, #387 |
 | ~~#389~~ | ~~D3 — plain-language labels + every empty state written + `tests/PlainLanguage.test.tsx`~~ **BUILT 2026-08-13** | #387 |
 | ~~#390~~ | ~~F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in `createWorld`, each pick stated on the card~~ **BUILT 2026-08-13** | — |
-| #391 | F2-R1 — `grudgesFlag` becomes a starting reputation deficit | #390 |
+| ~~#391~~ | ~~F2-R1 — `grudgesFlag` becomes a starting reputation deficit~~ **BUILT 2026-08-13** | #390 |
 | #392 | F2-R1 — `startingCreditLine` becomes a real borrowing facility, `src/game/CreditFacility/` (**bumps `WORLD_SNAPSHOT_VERSION` 21 → 22**) | #390 |
 | #393 | F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the drawn balance | #392, #387 |
 | #394 | F2-R2 — the failure stakes, stated once the first time cash goes low | #386, #392 |
@@ -197,6 +198,40 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **The grudge moves BOTH standing scalars, and the review-only version would have been a
+  fortnight's inconvenience** (#391). `reviewDriftRate` is 0.1, so the review score chases
+  satisfaction at 10% a night: a deficit applied to the review alone is handed back inside two
+  weeks with no play involved. Lowering satisfaction with it is what makes the climb-out real —
+  the satisfaction gap decays at `satisfactionDriftRate` 0.02 and the review gap chases *it*.
+  Measured: the review gap runs 10.0 → 9.7 (day 7) → 6.7 (day 30) → 2.0 (day 90), i.e. **13%
+  fewer walk-ins on day 1, still 8.8% down at the end of month 1, ~2.7% by month 3.**
+- **`startingStandingPenalty` is 10 because that opens the grudged store at exactly the
+  demand-neutral review score** (#391). `getDailyDemand`'s `repMult` is `1 + (review - 50) ×
+  0.015`, so a default 60 is a **1.15** on arrivals and the grudged 50 is a flat **1.00**: the
+  town gives you no benefit of the doubt where it gives a stranger some. That reading is what the
+  magnitude was picked against, and it is the one thing a C2 retune should re-derive rather than
+  nudging the number blind.
+- **The penalty applies at construction ONLY, which is what "starting position, not a permanent
+  drag" means mechanically** (#391). `withOpeningPenalty` returns a config with two opening
+  numbers moved; every rule above it — close bonus, walk penalty, overnight drift — is the one
+  every founder gets. `tests/BackstoryModifiers.test.ts` drives a real month (8 closes, 2 walks a
+  day, 30 nights of drift) through both stores and asserts the day's movement is identical and the
+  gap only ever closes. A future session adding a multiplier keyed on the flag is building a
+  second mechanic nobody ruled on.
+- **That test deliberately does NOT close thirty deals in thirty days** (#391). `closedDealReviewBonus`
+  is +1 and the ceiling is 100, so a straight month of closes puts the clean store on the clamp
+  while the grudged one is still climbing — the assertion would then be watching `Math.min`, not
+  the mechanic. Eight units and the ups that walked is both the honest T1 month and the version
+  that keeps both stores off the ceiling.
+- **Reputation is handed a standing, never a reason** (#391). The tunable is
+  `reputation.startingStandingPenalty` — no backstory word anywhere in `src/game/Reputation/**` —
+  and `createWorld` is the only place that decides it applies. That is why the #390 leak scan
+  still passes with `grudgesFlag` in its `THE_MODIFIER` pattern: the flag is read at the
+  composition root and nothing below it learns there was a pick.
+- **The T3 CSI gate reads the same scalar and is NOT tightened by this** (#391).
+  `data/tier-gate.json` asks `csi: 75` at tier 3 only, off `reputation.reviewScore`; by the time a
+  career is gating on T3 the opening gap has decayed to a couple of points. A C2 pass that raises
+  the penalty materially should re-check that gate rather than assume it stayed clear.
 - **The founder's eye is a BANDED effect, and that is #162's model, not a weak lever** (#390).
   `data/recon-variance.json` keys `sourceReliabilityFactors` low/mid/high with boundaries at 0.50
   and 0.70, so `applyReconJudgment` (`min(1, reliability + bonus)`) changes nothing inside a band
@@ -1538,6 +1573,48 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-13 — **BUILT #391** (F2-R1 — `grudgesFlag` becomes a starting reputation deficit). The
+  Inheritor's town is now a mechanic instead of a paragraph: the store opens **10 points below**
+  the standing a stranger gets, on both `customerSatisfaction` and `reviewScore`.
+  **One new tunable and one pure function, and Reputation never learns why.**
+  `reputation.startingStandingPenalty` in `data/tunables.json`, and
+  `withOpeningPenalty(config)` on the Reputation barrel — a config in, a config out. `createWorld`
+  is the only place that decides it applies (`day1.grudgesFlag ? withOpeningPenalty(base) :
+  base`), which is the #390 rule held: the modifier is resolved at the composition root and every
+  module below it takes plain numbers. The leak scan still passes with `grudgesFlag` in its
+  pattern.
+  **Both scalars, not just the review — and that is the difference between a mechanic and a
+  fortnight's inconvenience.** `reviewDriftRate` is 0.1, so a review-only deficit is handed back
+  inside two weeks with nothing asked of the player. With satisfaction moved too, the gap decays
+  on `satisfactionDriftRate` 0.02 and the review chases it: **10.0 → 9.7 (day 7) → 6.7 (day 30) →
+  2.0 (day 90)**.
+  **The magnitude has a reading, not a vibe.** `getDailyDemand`'s `repMult` is `1 + (review − 50)
+  × 0.015`, so the default 60 is a 1.15 on arrivals and the grudged 50 is a flat **1.00** — the
+  town gives you no benefit of the doubt where a stranger gets some. That is **13% fewer walk-ins
+  on day 1, 8.8% down at the end of month 1, ~2.7% by month 3.** C2 retunes against that reading
+  rather than nudging the number.
+  **A starting position, not a permanent drag, asserted as such.** `tests/BackstoryModifiers.test.ts`
+  runs a real T1 month — eight closes, two walks a day, thirty nights of drift — through a clean
+  store and a grudged one and pins that each day moves both by the *identical* amount and the gap
+  only ever closes. Deliberately not thirty straight closes: at +1 review a close, the clean store
+  hits the 100 ceiling and the assertion would be watching `Math.min` instead of the mechanic.
+  **Nothing persisted, nothing calibrated moved.** It is an opening value, so `ReputationSnapshot`
+  is untouched, a save restores its stored standing verbatim and `WORLD_SNAPSHOT_VERSION` stays
+  21. The harness founder declares `grudgesFlag: false` (as #390 left it), so the pacing bands
+  cannot have moved.
+  **The card was rewritten to state it**: *"You open with $25,000 more cash than anyone else, but
+  the town remembers your father, so fewer people walk in until you have won them back."* — the
+  old sentence said the town "has an opinion" without saying what it costs. No temperature word
+  (`tests/PlainLanguage.test.tsx` scans `backstories.json`) and no figure for the deficit itself:
+  a standing is not a number the player can check against a screen.
+  `npm run typecheck` clean, `npm test` **274 suites / 5523 tests** green.
+  **Web drive (new game → Inheritor → Day 1):** the card renders the new sentence and Home opens
+  on **Reputation 50 / 100 · Fair** beside **$74.9k Cash on Hand** — the two Inheritor levers on
+  one screen, one of them a handicap. A stranger's 60 is asserted in-test (`a clean backstory
+  opens neutral`, a real `createWorld`) rather than by burning a second save slot.
+  Next: **BUILD #392** (F2-R1 — `startingCreditLine` becomes a real borrowing facility,
+  `src/game/CreditFacility/`, bumps `WORLD_SNAPSHOT_VERSION` 21 → 22).
+
 - 2026-08-13 — **BUILT #390** (F2-R1 — the two Day 1 levers that had an engine home, and the card
   that states what a pick does). The finding the issue was filed on held exactly: `day1Modifier`
   was read by **nothing** in `src/`, so all three backstories were mechanically identical and the
@@ -1640,54 +1717,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   hit.
   Next: **BUILD #390** (F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in
   `createWorld`), the lowest deps-met issue in the phase.
-
-- 2026-08-12 — **BUILT #388** (D3-R2 — the consequence-hint pass over every live control). The
-  catalog went from #386's three dials to **21 lessons**, and the completeness guard went from a
-  scan of source strings to a scan of the **rendered app**.
-  **The mechanism the pass needed, and did not have: one classification, stated in data.** A
-  coverage scan cannot tell "sets the store's asking price" from "goes back a screen" by looking,
-  so `data/hints.json` now carries a second array — `viewOnly`, the controls that change nothing
-  about the store. `tests/Hints.coverage.test.tsx` drives the real app through all five tabs and
-  every room they open, takes every rendered pressable, and resolves it to the nearest declared
-  control above it. **A pressable that resolves to nothing fails the suite by name.** That is the
-  whole guard: the seventh control added next year either gets a line of copy or gets named
-  `viewOnly`, and it cannot ship silent.
-  **Resolution is by ANCESTRY, and that is a decision, not a convenience.** A hint sits under a
-  control *group* — a chip row, a par block, a modal's two buttons, a per-row button built from
-  the group's testID as its prefix — and every press inside that group belongs to the lesson
-  drawn beneath it. `controlOwns(control, testID)` is the one ownership rule (exact match, or the
-  declared id followed by `-`), shared by the runtime scan and `HintCopy`'s source scan. Requiring
-  one declaration per pressable would put twelve entries where a surface teaches one thing once.
-  **`control: string` became `places: [{ surface, control }]` for one real reason.** A unit's
-  asking price is reachable from the Lot's stock list *and* the pricing screen; the parts par
-  levels from Service *and* the Body Shop. That is **one lesson retired once**, not two entries
-  with a way to drift apart. Both places draw the same line; using either retires both.
-  **Hints render where the money is spent, not where the button is repeated.** The wholesale line
-  is on the confirmation sheet (one per decision), never on twelve stock rows; the auction's two
-  are inside the listing modal; People's four are three region lines plus one on the raise prompt
-  itself, because a raise prompt *is* the moment. A hint under every repeated row would be the
-  noise the retire-on-use rule exists to prevent.
-  **The mark still fires from the handler, never the surface** (#386's rule, extended to 18 more
-  controls). `useLevers` gained the hours + advertising marks; `useDayLoop` gained an
-  `onControlUsed` dep for the clock's two; the rest fire from the containers that own the write
-  (`LotRoomContainer`, `AuctionScreen`, `PricingScreenContainer`, `PeopleTabContainer`,
-  `GrowthTabContainer`, `TabStackContent`). Containers take `hints: Hints` as a **required** dep —
-  a surface cannot be composed without someone deciding what it teaches — and `tests/helpers/hints.ts`
-  `stubHints()` is what the mechanic-under-test suites pass.
-  **`HintLine` mints its own testID and no longer accepts one.** `hint-<id>` with underscores as
-  dashes. Twenty-odd surfaces draw one; a passed-in id is one typo from a line nobody can address.
-  **`tests/PlainLanguage.test.tsx` is new and #389 extends it** — it is the one copy-review
-  surface, and #388 seeded it with four rules over the catalog, each failing by entry id: no
-  temperature word, no opening on a control-naming verb (`Sets…`/`Chooses…`/`Opens…`), **no `$`
-  at all**, and a complete sentence. The money rule (#387) is "exact when the player is about to
-  act" and a hint cannot be exact about anything — it is written once and read against every
-  store, tier and day, so a figure in it is a claim the player can check and find wrong.
-  **Web drive on the T2 fixture proved it live**: the shell's two lines under the day CTA and the
-  bite picker, Operations' three, the Lot's two, and the wholesale sheet's. A stray click ran a
-  **week bite** mid-drive, which turned out to be the best evidence in the session —
-  `hint-run-bite` vanished from the DOM and `hint-run-day` stayed, i.e. retire-on-use is per-hint,
-  in the live app, off the real teaching cell.
-  **Nothing calibrated moved and nothing could**: the live `#180` read is byte-identical at
-  35.8% / 54.3%, closes=274, `costOverAsk` 1.026. 271 suites / 4256 tests green.
-  Next: **BUILD #389** (D3 — plain-language labels + every empty state written), the lowest
-  deps-met issue in the phase.
