@@ -6,6 +6,55 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-13 — **BUILT #392** (F2-R1 — `startingCreditLine` becomes a real borrowing facility).
+  The Ex-Banker's $50,000 was a number in `data/backstories.json` that nothing read. It is now
+  `src/game/CreditFacility/` — a limit, a drawn balance, and interest every morning on whatever
+  is standing. **Envelope v21 → v22.**
+  **ONE rule for the cost, and it is the whole cost model.** Every morning, the balance the day
+  opens with is charged a day's interest at `apr / daysPerYear`, rounded to whole dollars. Money
+  drawn today first costs tomorrow morning; money repaid today stops costing tomorrow morning. No
+  intra-day proration, no compounding schedule, no minimum payment. The issue's Notes line said "a
+  same-day draw-and-repay costs a day's interest and no more" — under this rule it costs
+  **nothing**, because the balance never stood at a morning. Making it cost one day would have
+  needed a *second* rule (a charge levied at draw time on top of the morning one), and the
+  one-rule version is the ruling that governs. There is no intra-day use for the float — an
+  auction unit takes two days to land — so nothing is exploitable by it.
+  **A draw is not income and a repayment is not an expense, and holding that line is what
+  widened the ledger's category axis.** `getPnL` used to drop `category !== 'inventoryAcquisition'`
+  by naming the member. It now drops **any categorized entry**, because the rule was always "a
+  category names a BALANCE-SHEET movement — cash that changed form rather than money earned or
+  spent". `inventoryAcquisition` is cash → stock; `financing` (new) is cash ↔ debt. Reading the
+  axis rather than the member is what let the second member join without a second exclusion list
+  that could drift from the first, and it is **behaviour-identical** for every entry written
+  before today. Booking a draw as revenue would have flattered Net Income by the size of the loan
+  — the one thing #374's statement cannot do.
+  **`ExpenseTag` is GONE; `PostTag` carries the category for both directions.** The split existed
+  only while a category could mean nothing but "cash converted into stock", and stock is only ever
+  bought. A *receipt* can be a balance-sheet movement too, so two near-identical tag types would
+  have been two places to state one axis.
+  **Only the interest is a real cost**, and it lands uncategorized on the `store` profit center —
+  plain overhead. Posted through `forceDebit`, not `postExpense`: the lender is owed it whether or
+  not the store can pay, so a throw there would abort the day over the bill. A store that cannot
+  cover it goes negative, which the bankruptcy machinery already reads — the #379 call about a
+  trade the store cannot cover.
+  **A limit of zero is a facility that cannot be drawn, not an absent facility.** One code path,
+  so no surface and no test branches on which founder the player picked; `available` reads 0 and
+  every draw is refused `over-limit` by the same rule that governs a banker's.
+  **The migration's default deliberately omits `limit`, and that is what separates it from the
+  #358 step.** A facility's ceiling is not derivable from anything in `modules` — it comes off the
+  character profile in SaveStore — but `restoreWorld` rehydrates onto a freshly built World that
+  has *already* resolved it. Stamping a synthetic 0 would have silently stripped the facility from
+  every banker's career saved before today. `restore` reads `snap.limit ?? limit`; `snapshot()`
+  always writes the field, so only the migration path takes that branch.
+  Verified: `npm run typecheck` clean, **275 suites / 5566 tests green**, and the `#180` live
+  calibration is byte-identical at 35.8% / 54.3%, closes=274, `costOverAsk` 1.026 — the facility
+  cannot move a pacing band until someone draws on it. Fixture `data/fixtures/tier-2.json`
+  re-stamped by migrating it in place through the real funnel (6-line diff), per the
+  `pre-save-envelope` ritual. No runtime surface in this slice, so no web drive: #393 is the
+  Finance-statement half.
+  Next: **BUILD #393** (F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the
+  drawn balance); both deps (#392, #387) are now met.
+
 - 2026-08-13 — **BUILT #391** (F2-R1 — `grudgesFlag` becomes a starting reputation deficit). The
   Inheritor's town is now a mechanic instead of a paragraph: the store opens **10 points below**
   the standing a stranger gets, on both `customerSatisfaction` and `reviewScore`.

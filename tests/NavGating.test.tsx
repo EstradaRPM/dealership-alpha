@@ -105,6 +105,12 @@ describe('App.tsx wiring', () => {
     // #348: the active tab moved from a lifted useState into TabStacks, which
     // owns the tab AND that tab's stack position.
     expect(src).toMatch(/activeTabKey=\{tabs\.activeTab\}/);
-    expect(src).toMatch(/onTabChange=\{tabs\.setActiveTab\}/);
+    // #213 named the handler so a tab press into Growth also finishes the
+    // spine's read-the-market step. The guard is what it was for: the shell
+    // reports the tap and `tabs` still owns which tab is active.
+    expect(src).toMatch(/onTabChange=\{changeTab\}/);
+    expect(src).toMatch(
+      /const changeTab = \(key: ShellTabKey\) => \{[\s\S]*?tabs\.setActiveTab\(key\);/,
+    );
   });
 });

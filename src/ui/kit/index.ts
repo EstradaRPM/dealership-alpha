@@ -67,6 +67,10 @@ export { Collapsible } from './Collapsible';
 export type { CollapsibleProps } from './Collapsible';
 export { HintLine } from './HintLine';
 export type { HintLineProps } from './HintLine';
+// The first-run spine's coachmark (issue 213). Same contract as HintLine: the
+// copy and the "is this still owed?" read both arrive as a resolved prop.
+export { Coachmark } from './Coachmark';
+export type { CoachmarkModel } from './Coachmark';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 export { ConfirmDialog, useConfirm } from './ConfirmDialog';

@@ -31,10 +31,13 @@ import {
 import { AdminConsole } from '../../ui/AdminConsole';
 import type { Modals } from '../useModals';
 import type { DayLoop } from '../useDayLoop';
+import type { Spine } from '../useSpine';
 
 export interface AppOverlaysProps {
   modals: Modals;
   dayLoop: DayLoop;
+  /** The first-run spine (#213) — the recap is its closing step. */
+  spine: Spine;
   world: World | null;
   profile: CharacterProfile | null;
   bus: EventBus;
@@ -53,6 +56,7 @@ export interface AppOverlaysProps {
 export function AppOverlays({
   modals,
   dayLoop,
+  spine,
   world,
   profile,
   bus,
@@ -264,7 +268,13 @@ export function AppOverlays({
       <DayRecapModal
         visible={recapModalOpen}
         model={lastRecap}
-        onDismiss={() => setRecapModalOpen(false)}
+        // #213: the spine's last step is READING this card, so closing it is
+        // the only honest signal that it has been read.
+        coachmark={spine.coachmarkFor('day-recap-modal')}
+        onDismiss={() => {
+          spine.complete('spine_read_the_reveal');
+          setRecapModalOpen(false);
+        }}
       />
       {monthClose != null && world && (
         <MonthCloseInterstitial

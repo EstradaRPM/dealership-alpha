@@ -18,6 +18,8 @@ import {
   GradientSurface,
   ProgressBar,
   EmptyState,
+  Coachmark,
+  type CoachmarkModel,
   type IconName,
   type IconBadgeTone,
 } from '../kit';
@@ -55,6 +57,12 @@ export interface HomeTabProps {
   marketGlance?: HomeMarketGlance;
   /** Deep-link into the Growth demand console — the market glance's press. */
   onOpenGrowth?: () => void;
+  /**
+   * The first-run spine's opening step (#213), drawn under the market glance
+   * it is about. Null/absent ⇒ this is not the step the player owes, and
+   * nothing renders — the coachmark is anchored by composition, never floated.
+   */
+  coachmark?: CoachmarkModel | null;
 }
 
 /** The market glance's content — what's selling, and what you're paying for. */
@@ -82,6 +90,7 @@ export function HomeTab({
   recapChip,
   marketGlance,
   onOpenGrowth,
+  coachmark,
 }: HomeTabProps) {
   const t = useTheme();
   const region: ViewStyle = { marginTop: t.spacing.xl };
@@ -140,6 +149,7 @@ export function HomeTab({
           ) : (
             <EmptyState icon="storefront" text={emptyState('demand_readout')} />
           )}
+          {coachmark ? <Coachmark model={coachmark} /> : null}
         </View>
       </View>
     </View>

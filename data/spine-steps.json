@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "_doc": "The first-run SPINE (#213): the five moves that make one day of this game, taught in order, once per career. A hint (data/hints.json) is a muted line under a control the player is about to press. A beat (data/teaching-beats.json) is a moment the game stops and states something. A spine step is the third thing in the same teaching cell: a numbered coachmark that draws ON the surface where the next move is made, and retires when that move is made. All three retire off the per-slot `teaching:<id>` cell #386 minted, so 'Show hints again' re-arms every one of them together.",
+  "_anchorDoc": "`anchor` is the testID of the region the coachmark draws inside. It is the whole anti-orphan rule: the coachmark is rendered BY that surface, so a step whose anchor is not mounted renders nothing at all rather than floating an overlay pointing at a room the player is not standing in.",
+  "_completedByDoc": "`completedBy` names the HINT whose control performs this step. A step with one is done the moment that hint retires — the same cell, one fact, never a second copy of 'the player has bought a car'. A step without one is a READING step: it is done when the player says they have read it, which is the only honest signal a reading can give.",
+  "_copyDoc": "Copy is DATA, and held to the same plain-language rule as every other catalog: name the axis, no temperature words, and NO figures. A step is written once and read against every store, so a number in one would be a claim the player can check and find wrong (#387/#388). Every string is a sentence.",
+  "_adviceDoc": "The 'What should I do?' ladder, read top to bottom, first true entry wins. It answers only once the spine is finished — before that the answer is the next unfinished step, because a player mid-spine has already been told what to do and does not need a second opinion. `run_the_day` is the floor of the ladder and is always true, so the entry can never go dead.",
+  "steps": [
+    {
+      "id": "spine_read_demand",
+      "surface": "Home — the Market region",
+      "anchor": "home-region-market",
+      "title": "Start by reading the market.",
+      "text": "Open the market card to see what the people walking in have been shopping for. Every car you buy and every price you set is an answer to that."
+    },
+    {
+      "id": "spine_cover_the_gap",
+      "surface": "Growth — the demand console",
+      "anchor": "demand-readout",
+      "title": "Find the gap between what they want and what you have.",
+      "text": "The lot-coverage line at the bottom names the kind of vehicle recent buyers asked for that you have none of on the ground. That gap is the one thing worth fixing today."
+    },
+    {
+      "id": "spine_stock_to_match",
+      "surface": "The Lot room — sourcing",
+      "anchor": "lot-sourcing",
+      "completedBy": "auction_buy",
+      "title": "Stock to match the gap.",
+      "text": "Go to the auction and buy a unit of the kind they have been asking for. A lot that covers what the town wants sells more of it, and sells it sooner."
+    },
+    {
+      "id": "spine_run_the_day",
+      "surface": "The day-action footer",
+      "anchor": "app-shell-action-footer",
+      "completedBy": "run_day",
+      "title": "Now run the day.",
+      "text": "Your people work the floor on the prices, the stock and the standing orders you have set. Open the floor and let it play out."
+    },
+    {
+      "id": "spine_read_the_reveal",
+      "surface": "The day-close recap",
+      "anchor": "day-recap-modal",
+      "title": "Read what the day gave back.",
+      "text": "This is the day's score: what sold, who walked out unsold, and whether the stocking bet you made paid. Read it, then set tomorrow up against it."
+    }
+  ],
+  "advice": [
+    {
+      "id": "cash_low",
+      "text": "Cash is the thing that ends careers, and yours is running short. Turn stock back into money before you spend on anything else: cut the price on whatever has sat longest, or wholesale an aged unit for what it will bring today."
+    },
+    {
+      "id": "coverage_gap",
+      "text": "Recent buyers wanted a kind of vehicle you have none of. Open the demand console to see which one, then buy one at the auction before you run another day."
+    },
+    {
+      "id": "lot_has_room",
+      "text": "You have empty spaces on the lot, and an empty space earns nothing while it waits. Read the demand console, then buy to what it says buyers are shopping for."
+    },
+    {
+      "id": "run_the_day",
+      "text": "Your lot covers what the town has been asking for and the bills are paid. Run the day, then read the recap to see what that setup was worth."
+    }
+  ]
+}

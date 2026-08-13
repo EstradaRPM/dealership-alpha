@@ -37,9 +37,12 @@ anywhere in `src/ui/**`.
 
 **#393 is BUILT as of 2026-08-13 — F2-R1 is COMPLETE.**
 
-**#394 is BUILT as of 2026-08-13 — F2 is COMPLETE.** The next `/next` is **BUILD #213**
-(dep #386, met). It also filed **#397 out of phase** — four `data/` loaders still load as raw
-casts, the defect #394 fixed in `failureData.ts`.
+**#394 is BUILT as of 2026-08-13 — F2 is COMPLETE.** It also filed **#397 out of phase** — four
+`data/` loaders still load as raw casts, the defect #394 fixed in `failureData.ts`.
+
+**#213 is BUILT as of 2026-08-13.** The next `/next` is **BUILD #395** (dep #213, met) — the last
+slice in phase 12. `WORLD_SNAPSHOT_VERSION` stays 22: the spine writes into the per-slot
+`teaching:<id>` cell and nothing else.
 
 The one thing a future session must not re-derive: **the backstory picks WERE mechanically
 identical, and #390/#391/#392/#393 ended all of it.** All four `day1Modifier` levers are read in
@@ -60,7 +63,7 @@ describe something the engine does. F2-R1 is closed; nothing under it is outstan
 | ~~#392~~ | ~~F2-R1 — `startingCreditLine` becomes a real borrowing facility, `src/game/CreditFacility/` (**bumps `WORLD_SNAPSHOT_VERSION` 21 → 22**)~~ **BUILT 2026-08-13** | #390 |
 | ~~#393~~ | ~~F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the drawn balance~~ **BUILT 2026-08-13 — F2-R1 COMPLETE** | #392, #387 |
 | ~~#394~~ | ~~F2-R2 — the failure stakes, stated once the first time cash goes low~~ **BUILT 2026-08-13 — F2 COMPLETE** | #386, #392 |
-| #213 | F1 — the first-run spine coachmarks + the "What should I do?" InGameMenu entry **[rewritten in place]** | #386 |
+| ~~#213~~ | ~~F1 — the first-run spine coachmarks + the "What should I do?" InGameMenu entry **[rewritten in place]**~~ **BUILT 2026-08-13** | #386 |
 | #395 | F1 — progressive disclosure: a teaching beat fires when its mechanic first matters | #213 |
 
 **Phase 11 — B4 drive-the-clock — is COMPLETE as of 2026-08-12: #381–#385 all built** (table
@@ -206,6 +209,40 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **A coachmark is anchored by COMPOSITION and there is no measurement code — do not add any**
+  (#213). The surface that owns a region renders `spine.coachmarkFor(anchor)`'s model, so a step
+  whose region is not mounted draws nothing. That is not a shortcut standing in for a "real"
+  spotlight overlay: an overlay would need `measure()`, absolute positioning and a rule for what to
+  do when the target is off-screen, scrolled, inside a modal or inside a `stackScreen` — four
+  states this app has all four of. `tests/Onboarding.test.tsx` pins the skip **and** that the step
+  was skipped rather than consumed (walk to the anchor and it is still there).
+- **The spine introduces NO state, and the two completion routes are one fact each** (#213). A step
+  is done because its own id is in the `teaching:<id>` cell, or because the hint named in its
+  `completedBy` has retired into that same cell. `useSpine` has no `useState`/`useRef` — the test
+  scans the hook's source for them — because a cursor beside the cell would be a second copy of
+  "has this player stocked to match yet?". `WORLD_SNAPSHOT_VERSION` stays 22.
+- **`TaughtId` is ONE id space with three catalogs feeding it** (#213). `hints.json` (a control's
+  consequence line), `teaching-beats.json` (a one-shot moment), `spine-steps.json` (a first-run
+  coachmark). The #394 ruling — one in-memory taught set, in `useHints` — is why `hasTaught`/
+  `markTaught` were *widened* rather than a `useSpineProgress` hook added beside them. A fourth kind
+  of teaching needs a catalog and a union member, and nothing else.
+- **Completion is per-step; the ORDER only decides which unfinished step draws** (#213). A player
+  who runs a day before stocking has run a day, and the spine does not go back and teach it. A
+  future session "fixing" the out-of-order case by gating later steps on earlier ones would be
+  re-teaching something the player has already done.
+- **Every door to the demand console finishes step 1 — the glance, the gate strip AND the tab bar**
+  (#213, found on the web drive). `changeTab` routes a Growth tab press through `openGrowth`. With
+  only the glance wired, a player who used the tab bar stood on the console with an instruction on
+  Home telling them to go to the console. The step is "go and read the market", never "use this
+  particular control", and `tests/Onboarding.test.tsx` pins the tab-bar door explicitly.
+- **The advice ladder's last rung is unconditionally true, and that is what keeps the menu entry
+  alive** (#213). `nextAdviceId` reads three live World facts (`bankruptcyMonitor.isCashLow`, a live
+  `buildCoverageGap`, `getLotOccupancy().spacesOpen`) and falls through to `run_the_day`. A rung
+  added later goes **above** the fallback, never below it. `buildDemandEntries` exists in
+  `config.ts` so the coverage question has one answer for both the console and the menu.
+- **`coachmark` and `menu-advice` are `viewOnly` in `data/hints.json`, and that is a real
+  classification rather than an exemption** (#213). Teaching commits the store to nothing. The #388
+  coverage scan would have failed by name otherwise — which is the guard working, not a nuisance.
 - **The stakes beat is TIER 1 ONLY, and that gate is honesty rather than narrowing** (#394).
   Running out at T1 ends the career; at T2 it contracts you back a tier and at T3+ it buys a
   compliance bill — and the #326 recovery beat already states both when they land. The beat's
@@ -1713,6 +1750,56 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+- 2026-08-13 — **BUILT #213** (F1 — the first-run spine: five numbered coachmarks that teach one
+  day of this game). A new career opened on a full console with no idea which of five tabs mattered
+  first. It now opens on *"Step 1 of 5 — start by reading the market"*, and walks: read the market →
+  find the coverage gap → stock to match it → run the day → read what the day gave back.
+  **The spine adds NO state, and that is the load-bearing decision.** A step is done because its own
+  id sits in the slot's `teaching:<id>` cell (#386), **or** because the hint whose control performs
+  it has already retired into that same cell. `data/spine-steps.json` says which:
+  `completedBy: 'auction_buy'` on the stocking step, `completedBy: 'run_day'` on the day step. So
+  "the player has bought a car at the auction" is one fact stored once, and `useSpine` holds no
+  `useState`, no cursor and nothing persisted (`tests/Onboarding.test.tsx` asserts the absence by
+  scanning the hook). `WORLD_SNAPSHOT_VERSION` stays 22. "Show hints again" re-arms the spine with
+  everything else because there is nothing else to re-arm.
+  **Anchored by COMPOSITION, never floated — this is why there is no measurement code.** The
+  surface that owns a region renders its coachmark (`spine.coachmarkFor(anchor)` → a
+  `CoachmarkModel`, the `hint` idiom exactly), so a step whose region is not mounted produces
+  **nothing at all**. The EARS "skip rather than render an unanchored overlay" is satisfied
+  structurally: there was never an overlay to place. Five anchors, each its own region, enforced by
+  a loader refine — `home-region-market`, `demand-readout`, `lot-sourcing`,
+  `app-shell-action-footer`, `day-recap-modal`. A future session reaching for `measure()` and an
+  absolute-positioned spotlight is rebuilding the failure mode this shape avoids.
+  **Completion is per-step; ORDER only decides which unfinished step draws.** A player who runs a
+  day before stocking has genuinely run a day, and the spine does not go back and teach it to them.
+  **Every door to the console counts, and the web drive is what found that.** The step is "go and
+  read the market", not "use this particular control" — Home's market glance, the gate strip and the
+  **tab bar** all reach the demand console, so `changeTab` routes a Growth tab press through
+  `openGrowth`. Driving it on web with only the glance wired left a player who used the tab bar
+  staring at an instruction they had already followed.
+  **"What should I do?" is a LADDER, not a tutorial leftover.** While the spine runs, the answer is
+  the next unfinished step. After it, `nextAdviceId` reads three live facts off the World —
+  `bankruptcyMonitor.isCashLow`, a live `buildCoverageGap`, `getLotOccupancy().spacesOpen` — and the
+  last rung (`run_the_day`) is unconditionally true, which is what stops the entry going dead.
+  `buildDemandEntries` was extracted in `config.ts` so the coverage question has ONE answer rather
+  than the console's mapping and a second copy for the menu.
+  **`TaughtId = TeachingBeatId | SpineStepId`, over the one in-memory set in `useHints`.** The #394
+  ruling forbids a second progress store; a `useSpineProgress` hook beside `useHints` would have
+  been exactly that. Widening the two methods is the honest statement that the cell is one id space
+  with three catalogs feeding it (`hints.json`, `teaching-beats.json`, `spine-steps.json`).
+  **The acknowledgment is classified `viewOnly`, and so is the menu fold.** `coachmark` and
+  `menu-advice` are named in `data/hints.json` because teaching commits the store to nothing — the
+  #388 coverage scan demands every rendered pressable be one thing or the other, and it would have
+  failed by name otherwise.
+  **Web drive: all five anchors, live, on a fresh T1 career.** Step 1 on Home's Market region at
+  open; the Growth tab press retiring it and step 2 drawing under the coverage line; step 2's "Got
+  it" retiring it and step 3 drawing **nothing** on Growth (its anchor is the Lot) then appearing
+  under "Go to the Auction" once there; step 4 in the footer above the bite ladder; step 5 inside
+  the day-close recap after a skip-to-close. The menu answered *"Now run the day"* mid-spine and,
+  once finished, *"You have empty spaces on the lot…"* — the live ladder's `lot_has_room` rung on a
+  3-of-6 lot. Two nav guards (`NavGating`, `InTabNavigation`) were updated from the literal
+  `onTabChange={tabs.setActiveTab}` to the named handler plus its delegation; the contract they
+  guard — the shell reports the tap, `tabs` owns the state — is unchanged.
 
 - 2026-08-13 — **BUILT #394** (F2-R2 — the tier-1 failure stakes, stated once the first time cash
   goes low). A new player used to learn the failure model from the EndCard: the first time they
@@ -1807,53 +1894,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   verification run again.**
   Next: **BUILD #394** (F2-R2 — the failure stakes, stated once the first time cash goes low);
   its deps #386 and #392 are met.
-
-- 2026-08-13 — **BUILT #392** (F2-R1 — `startingCreditLine` becomes a real borrowing facility).
-  The Ex-Banker's $50,000 was a number in `data/backstories.json` that nothing read. It is now
-  `src/game/CreditFacility/` — a limit, a drawn balance, and interest every morning on whatever
-  is standing. **Envelope v21 → v22.**
-  **ONE rule for the cost, and it is the whole cost model.** Every morning, the balance the day
-  opens with is charged a day's interest at `apr / daysPerYear`, rounded to whole dollars. Money
-  drawn today first costs tomorrow morning; money repaid today stops costing tomorrow morning. No
-  intra-day proration, no compounding schedule, no minimum payment. The issue's Notes line said "a
-  same-day draw-and-repay costs a day's interest and no more" — under this rule it costs
-  **nothing**, because the balance never stood at a morning. Making it cost one day would have
-  needed a *second* rule (a charge levied at draw time on top of the morning one), and the
-  one-rule version is the ruling that governs. There is no intra-day use for the float — an
-  auction unit takes two days to land — so nothing is exploitable by it.
-  **A draw is not income and a repayment is not an expense, and holding that line is what
-  widened the ledger's category axis.** `getPnL` used to drop `category !== 'inventoryAcquisition'`
-  by naming the member. It now drops **any categorized entry**, because the rule was always "a
-  category names a BALANCE-SHEET movement — cash that changed form rather than money earned or
-  spent". `inventoryAcquisition` is cash → stock; `financing` (new) is cash ↔ debt. Reading the
-  axis rather than the member is what let the second member join without a second exclusion list
-  that could drift from the first, and it is **behaviour-identical** for every entry written
-  before today. Booking a draw as revenue would have flattered Net Income by the size of the loan
-  — the one thing #374's statement cannot do.
-  **`ExpenseTag` is GONE; `PostTag` carries the category for both directions.** The split existed
-  only while a category could mean nothing but "cash converted into stock", and stock is only ever
-  bought. A *receipt* can be a balance-sheet movement too, so two near-identical tag types would
-  have been two places to state one axis.
-  **Only the interest is a real cost**, and it lands uncategorized on the `store` profit center —
-  plain overhead. Posted through `forceDebit`, not `postExpense`: the lender is owed it whether or
-  not the store can pay, so a throw there would abort the day over the bill. A store that cannot
-  cover it goes negative, which the bankruptcy machinery already reads — the #379 call about a
-  trade the store cannot cover.
-  **A limit of zero is a facility that cannot be drawn, not an absent facility.** One code path,
-  so no surface and no test branches on which founder the player picked; `available` reads 0 and
-  every draw is refused `over-limit` by the same rule that governs a banker's.
-  **The migration's default deliberately omits `limit`, and that is what separates it from the
-  #358 step.** A facility's ceiling is not derivable from anything in `modules` — it comes off the
-  character profile in SaveStore — but `restoreWorld` rehydrates onto a freshly built World that
-  has *already* resolved it. Stamping a synthetic 0 would have silently stripped the facility from
-  every banker's career saved before today. `restore` reads `snap.limit ?? limit`; `snapshot()`
-  always writes the field, so only the migration path takes that branch.
-  Verified: `npm run typecheck` clean, **275 suites / 5566 tests green**, and the `#180` live
-  calibration is byte-identical at 35.8% / 54.3%, closes=274, `costOverAsk` 1.026 — the facility
-  cannot move a pacing band until someone draws on it. Fixture `data/fixtures/tier-2.json`
-  re-stamped by migrating it in place through the real funnel (6-line diff), per the
-  `pre-save-envelope` ritual. No runtime surface in this slice, so no web drive: #393 is the
-  Finance-statement half.
-  Next: **BUILD #393** (F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the
-  drawn balance); both deps (#392, #387) are now met.
-

@@ -7,6 +7,7 @@ import type { LotVehicle } from '../../game/Inventory';
 import { LotRoom } from '../../ui/LotRoom';
 import { PRICING_STRATEGY_OPTIONS } from '../config';
 import type { Hints } from '../useHints';
+import type { Spine } from '../useSpine';
 
 export interface LotRoomContainerProps {
   world: World;
@@ -21,6 +22,13 @@ export interface LotRoomContainerProps {
    * calls the same handler teaches exactly what a tap does.
    */
   hints: Hints;
+  /**
+   * The first-run spine (#213). Its stock-to-match step anchors on the sourcing
+   * block below, and it is finished by the auction buy itself — the step names
+   * the `auction_buy` hint as the control that performs it, so there is nothing
+   * to mark here.
+   */
+  spine: Spine;
   persistCurrentSave: () => void;
   setLotVehicles: (v: readonly LotVehicle[]) => void;
 }
@@ -39,6 +47,7 @@ export function LotRoomContainer({
   pricingStrategyId,
   onSelectPricingStrategy,
   hints,
+  spine,
   persistCurrentSave,
   setLotVehicles,
 }: LotRoomContainerProps) {
@@ -85,6 +94,7 @@ export function LotRoomContainer({
           (s) => s.role_id === 'used-car-manager',
         )}
         onOpenAuction={() => tabs.navigate('auction')}
+        sourcingCoachmark={spine.coachmarkFor('lot-sourcing')}
         // #362: the release valve. Cash lands via Economy (the shell's revenue
         // subscription picks it up), the unit comes off the lot here, and the
         // freed space reopens buying with no further player action because the

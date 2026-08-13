@@ -30,7 +30,9 @@ import type { WorldState } from '../useWorldState';
 import type { SaveSlots } from '../useSaveSlots';
 import type { Levers } from '../useLevers';
 import type { Hints } from '../useHints';
+import type { Spine } from '../useSpine';
 import type { DayLoop } from '../useDayLoop';
+import { buildSpineReading, NO_SPINE_READING } from '../config';
 import { TIER_FIXTURES, type TierFixture } from '../devFixtures';
 
 export interface RouteContentProps {
@@ -45,6 +47,8 @@ export interface RouteContentProps {
   levers: Levers;
   /** The teaching cluster (#386) — which consequence hints are still owed. */
   hints: Hints;
+  /** The first-run spine (#213) — which coachmark is owed, and the menu's answer. */
+  spine: Spine;
   dayLoop: DayLoop;
   floorLoop: FloorRenderLoop;
   loadActiveSlotIntoGame: () => Promise<void>;
@@ -69,6 +73,7 @@ export function RouteContent({
   saveSlots,
   levers,
   hints,
+  spine,
   dayLoop,
   floorLoop,
   loadActiveSlotIntoGame,
@@ -171,6 +176,12 @@ export function RouteContent({
           // it lives because it is the one surface reachable from anywhere in
           // the game without giving up where the player was standing.
           onShowHintsAgain={hints.resetHints}
+          // #213 "What should I do?": the next unfinished spine step while the
+          // spine is running, and the best next action off the live store once
+          // it is finished — so the entry never goes dead after onboarding.
+          advice={spine.advice(
+            world ? buildSpineReading(world, lotVehicles) : NO_SPINE_READING,
+          )}
         />
       </>
     );
@@ -203,6 +214,7 @@ export function RouteContent({
           floorLoop={floorLoop}
           levers={levers}
           hints={hints}
+          spine={spine}
           tabs={tabs}
           // The active tab's pushed sub-screen, rendered by the shell with the
           // tab bar still up (#348). Null at a tab's root, where the tab's own
@@ -215,6 +227,7 @@ export function RouteContent({
                 bus={bus}
                 levers={levers}
                 hints={hints}
+                spine={spine}
                 lotVehicles={lotVehicles}
                 cash={cash}
                 persistCurrentSave={persistCurrentSave}

@@ -25,6 +25,14 @@ interface Props {
    * there is no "off" state to switch back to — only "show them all again".
    */
   onShowHintsAgain?: () => void;
+  /**
+   * The answer to "What should I do?" (#213) — one sentence, resolved by the
+   * app layer against the live store. The menu never words it and never decides
+   * whether it applies: while the first-run spine is unfinished this is its next
+   * step, and after that it is the best next action, so the entry is always
+   * worth opening.
+   */
+  advice?: string;
 }
 
 function formatLastPlayed(iso: string): string {
@@ -42,7 +50,9 @@ export function InGameMenu({
   onReturnToMainMenu,
   onSettings,
   onShowHintsAgain,
+  advice,
 }: Props) {
+  const [adviceOpen, setAdviceOpen] = React.useState(false);
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -85,6 +95,24 @@ export function InGameMenu({
           >
             <Text style={styles.secondaryText}>Settings</Text>
           </TouchableOpacity>
+        ) : null}
+
+        {advice ? (
+          <View>
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              accessibilityRole="button"
+              testID="menu-advice"
+              onPress={() => setAdviceOpen((open) => !open)}
+            >
+              <Text style={styles.secondaryText}>What should I do?</Text>
+            </TouchableOpacity>
+            {adviceOpen ? (
+              <Text style={styles.advice} testID="menu-advice-answer">
+                {advice}
+              </Text>
+            ) : null}
+          </View>
         ) : null}
 
         {onShowHintsAgain ? (
@@ -200,6 +228,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '700',
+  },
+  advice: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 19,
+    paddingHorizontal: 4,
+    paddingTop: 10,
   },
   status: {
     color: colors.reward,

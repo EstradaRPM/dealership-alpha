@@ -27,6 +27,7 @@ import { useWorldState } from './useWorldState';
 import { useSaveSlots } from './useSaveSlots';
 import { useLevers } from './useLevers';
 import { useHints } from './useHints';
+import { useSpine } from './useSpine';
 import { useModals } from './useModals';
 import { useDayLoop } from './useDayLoop';
 import { AppOverlays } from './screens/AppOverlays';
@@ -110,6 +111,11 @@ export function DealershipApp({
   // hint hangs under retires it through `onControlUsed` — one seam, so a hint
   // cannot survive the control it teaches being used.
   const hints = useHints({ slotStore });
+
+  // The first-run spine (#213). Built off the teaching cluster and holding no
+  // store of its own — a step is done because the cell says so, or because the
+  // hint whose control performs it has already retired into that same cell.
+  const spine = useSpine({ hints });
 
   const levers = useLevers({
     worldRef,
@@ -471,6 +477,7 @@ export function DealershipApp({
               saveSlots={saveSlots}
               levers={levers}
               hints={hints}
+              spine={spine}
               dayLoop={dayLoop}
               floorLoop={floorLoop}
               loadActiveSlotIntoGame={loadActiveSlotIntoGame}
@@ -483,6 +490,7 @@ export function DealershipApp({
           <AppOverlays
             modals={modals}
             dayLoop={dayLoop}
+            spine={spine}
             world={world}
             profile={profile}
             bus={bus}

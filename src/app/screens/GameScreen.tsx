@@ -44,6 +44,7 @@ import type {
 import type { FloorEvent } from '../../ui/FloorDashboard';
 import type { Levers } from '../useLevers';
 import type { Hints } from '../useHints';
+import type { Spine } from '../useSpine';
 import {
   HERO_BY_TIER,
   RENDER_LOOP,
@@ -55,11 +56,11 @@ import {
   PRICING_STRATEGY_OPTIONS,
   DAYS_PER_MONTH,
   BODY_SHOP_MIN_TIER,
-  SEGMENT_LABELS,
   humanizeRole,
   staffTaxonomy,
   buildTargetingLevers,
   buildCoverageGap,
+  buildDemandEntries,
   buildHeatConsole,
   resolvePricingIntel,
   buildManagerStatus,
@@ -79,6 +80,8 @@ export interface GameScreenProps {
   levers: Levers;
   /** The teaching cluster (#386) — which consequence hints are still owed. */
   hints: Hints;
+  /** The first-run spine (#213) — which region owes the next coachmark. */
+  spine: Spine;
   /** Per-tab navigation stacks (#348): the active tab AND its stack position.
    *  One owner for "which tab, and where inside it" — this retired the lifted
    *  `shellTab` workaround the old unmount-the-shell pattern needed. */
@@ -115,6 +118,7 @@ export function GameScreen({
   floorLoop,
   levers,
   hints,
+  spine,
   tabs,
   stackScreen,
   lastRecap,
@@ -270,13 +274,7 @@ export function GameScreen({
   // layers the active influence producers and the lot-coverage gap onto the
   // same read model so the mechanic stays reachable in the live flow.
   const observed = world.demandShaper.getObservedMix();
-  const demandEntries: DemandReadoutEntry[] = observed.map((e) => ({
-    segment: e.segment,
-    label: SEGMENT_LABELS[e.segment] ?? e.segment,
-    share: e.share,
-    count: e.count,
-    trend: e.trend,
-  }));
+  const demandEntries: DemandReadoutEntry[] = buildDemandEntries(world);
   const demandReadout: DemandReadoutModel = {
     // Forward heat console (#280): the live spawn-driving heat vector — the
     // signal the player stocks and prices to. Distinct from the trailing
@@ -305,6 +303,23 @@ export function GameScreen({
       hint: hints.hintFor('advertising_campaign'),
     },
     coverageGap: buildCoverageGap(demandEntries, lotVehicles),
+    // The spine's second step (#213) draws under the coverage line it is about.
+    // Null unless this is the step the player currently owes — the console
+    // itself decides nothing.
+    coachmark: spine.coachmarkFor('demand-readout'),
+  };
+  // The spine's first step is finished by GOING to the console, which is an
+  // action the app already publishes. Every door counts — Home's market glance,
+  // the gate strip (#349) and the tab bar are three ways to do the one thing the
+  // step asks for, and a step that only one of them satisfied would leave a
+  // player who used the tab bar staring at an instruction they had followed.
+  const openGrowth = () => {
+    spine.complete('spine_read_demand');
+    tabs.setActiveTab('growth');
+  };
+  const changeTab = (key: ShellTabKey) => {
+    if (key === 'growth') return openGrowth();
+    tabs.setActiveTab(key);
   };
   // Live-clock speed/pause controls (#121), wired into the floor MODE.
   const floorControls: FloorControls | undefined = floor
@@ -436,7 +451,10 @@ export function GameScreen({
         // the very same console model, and both it and the gate strip route
         // there (locked IA rule 4 — Home never renders detail).
         marketGlance={buildMarketGlance(demandReadout)}
-        onOpenGrowth={() => tabs.setActiveTab('growth')}
+        onOpenGrowth={openGrowth}
+        // The spine's opening step (#213): a fresh career lands on Home, so the
+        // Market region is where the flow starts.
+        coachmark={spine.coachmarkFor('home-region-market')}
       />
     ),
     operations: (
@@ -514,7 +532,7 @@ export function GameScreen({
       onOpenGameMenu={openInGameMenu}
       tabs={shellTabs}
       activeTabKey={tabs.activeTab}
-      onTabChange={tabs.setActiveTab}
+      onTabChange={changeTab}
       // A pushed sub-screen renders in the shell's body with the tab bar still
       // up (#348, locked IA §3) — walking into a room never unmounts the
       // console. The live floor below is the one carve-out.
@@ -524,6 +542,9 @@ export function GameScreen({
         label: loopState.hasRecap ? 'Next Day' : 'Open Floor',
         onPress: handleNextDay,
         hint: hints.hintFor('run_day'),
+        // The spine's fourth step (#213). The footer is on every tab, so the
+        // step is reachable from wherever the player finished stocking.
+        coachmark: spine.coachmarkFor('app-shell-action-footer'),
         // The clock-zoom ladder (#381), pinned above the day verb in the same
         // footer. The doors are resolved from the live roster with the same
         // act-gate predicates the engine gates on — you can skip ahead exactly

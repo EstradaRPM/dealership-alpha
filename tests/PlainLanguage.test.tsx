@@ -184,6 +184,10 @@ const COPY_CATALOGS = [
   // fills are ONE store's own figures at the moment the beat fires), and held
   // to the same plain-language rule as every other thing the player reads.
   'teaching-beats.json',
+  // #213 — the first-run spine's coachmarks and the "What should I do?" ladder.
+  // Written once against every store, so it quotes no figure and is held to the
+  // same plain-language rule as the hints it sits beside.
+  'spine-steps.json',
   'pricing-strategies.json',
   'nav-tabs.json',
   'career-endings.json',

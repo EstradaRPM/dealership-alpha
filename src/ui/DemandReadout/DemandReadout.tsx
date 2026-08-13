@@ -10,6 +10,8 @@ import {
   Icon,
   Badge,
   HintLine,
+  Coachmark,
+  type CoachmarkModel,
   type BadgeTone,
   type IconName,
   type IconProps,
@@ -172,6 +174,11 @@ export interface DemandReadoutModel {
   /** The advertising campaign the player is running (#212 / #346). */
   advertising?: DemandAdvertisingControl;
   coverageGap?: DemandCoverageGap | null;
+  /**
+   * The first-run spine's coverage-gap step (#213), drawn under the line it is
+   * teaching the player to read. Null/absent ⇒ not the step the player owes.
+   */
+  coachmark?: CoachmarkModel | null;
 }
 
 // Plain-language DEMAND-axis labels + glyph for each band. The internal model
@@ -431,6 +438,8 @@ export function DemandReadout({ model }: { model: DemandReadoutModel }) {
           </Text>
         </View>
       )}
+
+      {model.coachmark && <Coachmark model={model.coachmark} />}
     </Surface>
   );
 }

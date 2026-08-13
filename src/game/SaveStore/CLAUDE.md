@@ -18,6 +18,7 @@ Persistence layer. The **only** module that touches storage drivers (SQLite or i
   - `teachingStore()` → `TeachingStore | null` — the active slot's teaching progress (#386). `null` when no slot is selected, and that is a real answer: the caller shows every hint rather than hiding what the store cannot answer for.
 - `createTeachingStore(driver)` → `TeachingStore` — the set of hint/teaching ids this player has retired, in the slot's own `teaching:<id>` cell.
   - `markTaught(id)` (idempotent) / `listTaught()` → `readonly string[]` / `resetAll()` (re-arm this slot's hints, keep the cell) / `clear()` (wipe the cell — what `deleteSlot` calls).
+  - **One cell, three catalogs.** The ids in here come from `data/hints.json` (a control's consequence line, #386/#388), `data/teaching-beats.json` (a one-shot moment, #394) and `data/spine-steps.json` (a first-run coachmark, #213). It stays a bare id list precisely so a new kind of teaching needs a catalog and no change here — and so "Show hints again" re-arms all three with one `resetAll()`.
   - **Not world state.** It records the *player's* progress through the game's teaching, not the store's, so it lives in its own cell and `WORLD_SNAPSHOT_VERSION` is untouched by anything written here. `resetAll()` is per-slot: two careers learn independently.
   - A corrupt cell reads as "nothing taught yet" instead of throwing — the failure mode of a teaching surface is showing too much, never crashing the career.
   - `save(state, { day, tier })` / `load()` — addresses the active slot and refreshes its metadata.

@@ -3,7 +3,7 @@
   "_doc": "Phase 12 D3-R2 (#386 mechanism, #388 the full pass) — consequence hints. One line of muted text under a control, saying what happens to the store if you move it. It draws until the player uses that control, then retires; the InGameMenu's 'Show hints again' re-arms every one of them for the active slot. Retire-on-USE, not on 'seen once': a player who reads a hint and does nothing has not been taught anything yet.",
   "_copyDoc": "`text` is player-facing copy and lives HERE, never as a literal in a component — tests/HintCopy.test.ts scans src/ for it. It obeys the .claude/rules/ui.md plain-language rule: name the axis the control moves along, state the cost on both ends, never a temperature word. It names the CONSEQUENCE, never the control — 'sell fewer of them', not 'sets the price'. Nothing here quotes a figure: a hint is written once and read against every store, so a number in it would be a claim the player can check and find wrong.",
   "_controlDoc": "`places[].control` is the testID of the control GROUP the line sits under, and every pressable inside that group belongs to it — a chip row's chips, a modal's two buttons, a per-row button built from the control as its testID prefix. Two places means one lesson reachable from two rooms (a unit's price from the Lot list and from the pricing screen; the parts par levels from Service and from the Body Shop), retired once. `sourcing_lean` is deliberately ABSENT: it has no rendered control anywhere in src/ui (persist-only since #293, filed as #396), so a hint for it would point at nothing.",
-  "_viewOnlyDoc": "`viewOnly` is the other half of the classification the coverage scan demands: controls that change nothing about the store — a tab, a back arrow, a fold, a reporting window, and the three developer instruments (the two playtest-capture buttons and the DEV console's opener), which are addressed to the director and not to the player. They carry no copy because they teach no consequence — and the DEV console's own contents are not player-facing controls at all, which is why only its opener is named. A control inside a hinted group needs no entry here; it already belongs to that group's lesson. This list is what makes the guard work: a control added next year either gets a line of copy above or gets named here, and cannot ship silent.",
+  "_viewOnlyDoc": "`viewOnly` is the other half of the classification the coverage scan demands: controls that change nothing about the store — a tab, a back arrow, a fold, a reporting window, the first-run spine's acknowledgment and the menu's 'What should I do?' fold (#213 — both teach, and teaching commits the store to nothing), and the three developer instruments (the two playtest-capture buttons and the DEV console's opener), which are addressed to the director and not to the player. They carry no copy because they teach no consequence — and the DEV console's own contents are not player-facing controls at all, which is why only its opener is named. A control inside a hinted group needs no entry here; it already belongs to that group's lesson. This list is what makes the guard work: a control added next year either gets a line of copy above or gets named here, and cannot ship silent.",
   "hints": [
     {
       "id": "hours_of_operation",
@@ -129,6 +129,8 @@
   "viewOnly": [
     "shell-tab",
     "shell-menu",
+    "coachmark",
+    "menu-advice",
     "playtest-flag-fab",
     "playtest-guide-fab",
     "admin-console-fab",

@@ -36,6 +36,7 @@ import { isBodyShopFunctionAutomated } from '../bodyShopManager';
 import { loadRegulatoryTunables } from '../game/Reputation';
 import { loadTierConfig } from '../game/CareerProgression';
 import type { World } from '../createWorld';
+import type { SpineReading } from './spine';
 import type { DeptKey } from '../game/DepartmentQueue';
 import type { LotVehicle } from '../game/Inventory';
 import type { PeopleDepartmentId, PeopleRoleOption } from '../ui/PeopleTab';
@@ -776,6 +777,51 @@ export function buildCoverageGap(
     stockCount: stockedByCategory[category] ?? 0,
   };
 }
+
+/**
+ * The trailing observed-arrival mix, as the demand readout renders it (#198 /
+ * #278). One builder because two callers need the same read: the Growth console
+ * and the spine's "is there a coverage gap right now?" question — and a second
+ * mapping would be a second answer to what the crowd has been shopping for.
+ */
+export function buildDemandEntries(world: World): DemandReadoutEntry[] {
+  return world.demandShaper.getObservedMix().map((e) => ({
+    segment: e.segment,
+    label: SEGMENT_LABELS[e.segment] ?? e.segment,
+    share: e.share,
+    count: e.count,
+    trend: e.trend,
+  }));
+}
+
+/**
+ * The live reading the "What should I do?" ladder is resolved against (#213).
+ * Three facts off the World's own getters — nothing here decides anything, and
+ * the ordering between them lives in `spine.ts` where it can be read as a
+ * ladder rather than as a chain of ifs across a screen.
+ */
+export function buildSpineReading(
+  world: World,
+  lotVehicles: readonly LotVehicle[],
+): SpineReading {
+  return {
+    cashLow: world.bankruptcyMonitor.isCashLow,
+    coverageGap: buildCoverageGap(buildDemandEntries(world), lotVehicles) !== null,
+    lotHasRoom: world.inventory.getLotOccupancy().spacesOpen > 0,
+  };
+}
+
+/**
+ * The reading for a screen with no live World behind it. The menu is only
+ * reachable in-game, so this is a belt — but a belt that answers "run the day"
+ * rather than throwing, because the menu entry's whole promise is that it always
+ * says something.
+ */
+export const NO_SPINE_READING: SpineReading = {
+  cashLow: false,
+  coverageGap: false,
+  lotHasRoom: false,
+};
 
 // Plain-language names for the four Service job/parts categories (#308). Used by
 // the Service page demand-heat + coverage rows.

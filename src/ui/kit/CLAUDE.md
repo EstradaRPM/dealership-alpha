@@ -54,6 +54,8 @@ tile holding an `Icon`; `solid`·`soft`, rounded·circle) · `ProgressBar` ·
 `Meter` (labeled gauge, optional `caption` under the bar) · `StatCard` (value·label·trend delta, optional leading
 `icon`) · `SectionHeader` · `Collapsible` (headed panel that opens and shuts) ·
 `HintLine` (one muted consequence hint under a control) ·
+`Coachmark` (one numbered step of the first-run spine, drawn in the region it is
+about) ·
 `EmptyState` (a region with nothing in it yet, as a contained note) ·
 the chart primitives below.
 
@@ -75,6 +77,17 @@ looking different about the same fact. A region with nothing in it is what a
 brand-new career meets first, so the note is a **contained** card rather than a
 bare grey line: an un-contained sentence in a stack of cards reads as an
 unfinished wireframe even when the copy is honest.
+
+`Coachmark` (#213) is the third surface of the same teaching cell and follows
+both rules above: it takes a resolved `CoachmarkModel` (numbering, two sentences,
+one acknowledgment), mints `coachmark-<id>` / `coachmark-<id>-done` from the
+catalog id, and its copy lives in `data/spine-steps.json` with
+`tests/Onboarding.test.tsx` failing the build over a literal under `src/`.
+The one thing that separates it from `HintLine`: **it is anchored by
+composition, never floated.** The surface that owns the region renders it, so a
+step whose region is not mounted produces nothing at all — there is no overlay to
+position and nothing to skip. A future session reaching for measurement and an
+absolute-positioned spotlight is rebuilding the failure mode this shape avoids.
 
 `HintLine` takes `{ id, text }` and **mints its own testID** — `hint-<id>` with the
 underscores spelled as dashes (#388). There is no `testID` prop: twenty-odd

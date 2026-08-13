@@ -15,7 +15,16 @@ import { emptyState } from '../copy';
 // Every dollar in this room is **exact** (issue 387): an asking price, a
 // wholesale offer, what the store has in a car and what a day on the lot costs
 // are all figures the player either sets or presses a button to accept.
-import { Surface, SectionHeader, Badge, Button, HintLine, money } from '../kit';
+import {
+  Surface,
+  SectionHeader,
+  Badge,
+  Button,
+  HintLine,
+  Coachmark,
+  money,
+  type CoachmarkModel,
+} from '../kit';
 import { ChipRow } from '../DeptControls';
 // The app chrome's floating bottom band is the shell's to describe; a pushed
 // room clears the same band rather than guessing at a second number.
@@ -90,6 +99,11 @@ export interface LotRoomProps {
   autoPricingActive: boolean;
   /** Sourcing: the auction lives in this room, not in Prep (locked IA §4). */
   onOpenAuction: () => void;
+  /**
+   * The first-run spine's stock-to-match step (#213), drawn inside the sourcing
+   * block it points at. Null/absent ⇒ not the step the player owes.
+   */
+  sourcingCoachmark?: CoachmarkModel | null;
   /**
    * Wholesale the unit out (#362) — the release valve. Fired only after the
    * player confirms against the stated proceeds and loss.
@@ -294,6 +308,7 @@ export function LotRoom({
   wholesaleHint,
   autoPricingActive,
   onOpenAuction,
+  sourcingCoachmark,
   onWholesale,
   onClose,
 }: LotRoomProps) {
@@ -405,6 +420,7 @@ export function LotRoom({
                 testID="lot-auction-button"
               />
             </View>
+            {sourcingCoachmark && <Coachmark model={sourcingCoachmark} />}
           </Surface>
         </View>
       </ScrollView>

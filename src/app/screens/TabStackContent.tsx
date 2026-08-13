@@ -26,6 +26,7 @@ import {
 } from '../config';
 import type { Levers } from '../useLevers';
 import type { Hints } from '../useHints';
+import type { Spine } from '../useSpine';
 
 export interface TabStackContentProps {
   tabs: TabStacks<ShellTabKey>;
@@ -34,6 +35,8 @@ export interface TabStackContentProps {
   levers: Levers;
   /** The teaching cluster (#386) — which consequence hints are still owed. */
   hints: Hints;
+  /** The first-run spine (#213) — which region owes the next coachmark. */
+  spine: Spine;
   lotVehicles: readonly LotVehicle[];
   cash: number;
   persistCurrentSave: () => void;
@@ -57,6 +60,7 @@ export function TabStackContent({
   bus,
   levers,
   hints,
+  spine,
   lotVehicles,
   cash,
   persistCurrentSave,
@@ -105,6 +109,7 @@ export function TabStackContent({
         pricingStrategyId={levers.pricingStrategyId}
         onSelectPricingStrategy={levers.handleSelectPricingStrategy}
         hints={hints}
+        spine={spine}
         persistCurrentSave={persistCurrentSave}
         setLotVehicles={setLotVehicles}
       />

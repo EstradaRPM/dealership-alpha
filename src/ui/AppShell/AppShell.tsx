@@ -20,6 +20,8 @@ import {
   Gradient,
   Pill,
   HintLine,
+  Coachmark,
+  type CoachmarkModel,
   type IconName,
   type BadgeTone,
 } from '../kit';
@@ -114,6 +116,12 @@ export interface AppShellProps {
      * day. Resolved copy from `data/hints.json` — the shell never words it.
      */
     hint?: string | null;
+    /**
+     * The first-run spine's run-the-day step (#213), drawn in the footer above
+     * the CTA. Null ⇒ not the step the player owes. The footer is on every tab,
+     * so this step is reachable from wherever they finished the last one.
+     */
+    coachmark?: CoachmarkModel | null;
   };
   /**
    * Optional persistent status strip pinned above the primary-action footer,
@@ -708,6 +716,11 @@ export function AppShell({
 
       {primaryAction && (
         <View style={footer} testID="app-shell-action-footer">
+          {/* #213: the spine's step draws ABOVE the ladder and the verb — the
+              instruction comes before the control it is about. */}
+          {primaryAction.coachmark && (
+            <Coachmark model={primaryAction.coachmark} />
+          )}
           {primaryAction.picker}
           {/* Mockup's START DAY face: start flag on the left rim, the verb
               centered, the onward arrow on the right rim. The arrow is a

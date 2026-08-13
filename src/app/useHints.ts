@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MultiSlotSaveStore } from '../game/SaveStore';
 import { loadHints, type HintId, type HintsConfig } from './hints';
+import type { SpineStepId } from './spine';
 import type { TeachingBeatId } from '../ui/copy';
+
+/**
+ * Everything a career can be TAUGHT that has no control to press: the one-shot
+ * beats (#394) and the first-run spine's steps (#213). One id space, because it
+ * is one per-slot cell — two unions over two methods would be two copies of the
+ * question "has this player seen it yet?".
+ */
+export type TaughtId = TeachingBeatId | SpineStepId;
 
 export interface HintsDeps {
   slotStore: MultiSlotSaveStore;
@@ -15,13 +24,13 @@ export interface Hints {
   /** The player used the control this hint sits under — retire it, for good. */
   markUsed: (id: HintId) => void;
   /**
-   * Has this one-shot teaching beat already been shown in the active slot
-   * (#394)? A beat has no control to press, so "used" is not the question —
+   * Has this beat or spine step already been shown in the active slot (#394,
+   * #213)? Neither has a control to press, so "used" is not the question —
    * "shown" is.
    */
-  hasTaught: (id: TeachingBeatId) => boolean;
-  /** The beat was shown — retire it for this career. */
-  markTaught: (id: TeachingBeatId) => void;
+  hasTaught: (id: TaughtId) => boolean;
+  /** It was shown — retire it for this career. */
+  markTaught: (id: TaughtId) => void;
   /** "Show hints again": re-arm every hint AND every beat for the active slot. */
   resetHints: () => void;
   /** Re-read the active slot's teaching cell (a slot was loaded or created). */
@@ -84,9 +93,9 @@ export function useHints({ slotStore, config = loadHints() }: HintsDeps): Hints 
 
   // A beat's answer is read at the moment it would fire — inside a day-close
   // handler, not during render — so it reads the ref rather than the state.
-  const hasTaught = (id: TeachingBeatId): boolean => taughtRef.current.has(id);
+  const hasTaught = (id: TaughtId): boolean => taughtRef.current.has(id);
 
-  const markTaught = (id: TeachingBeatId) => retire(id);
+  const markTaught = (id: TaughtId) => retire(id);
 
   const resetHints = () => {
     apply(new Set());

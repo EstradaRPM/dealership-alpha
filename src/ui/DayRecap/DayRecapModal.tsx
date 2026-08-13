@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Modal, ScrollView, StyleSheet, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme';
-import { Button } from '../kit';
+import { Button, Coachmark, type CoachmarkModel } from '../kit';
 import { DayRecap, type DayRecapModel } from './DayRecap';
 
 /**
@@ -15,11 +15,17 @@ import { DayRecap, type DayRecapModel } from './DayRecap';
 export function DayRecapModal({
   visible,
   model,
+  coachmark,
   onDismiss,
 }: {
   visible: boolean;
   /** The just-closed (or last-persisted) day's recap; null ⇒ nothing to show. */
   model: DayRecapModel | null;
+  /**
+   * The first-run spine's closing step (#213), drawn under the card it is about.
+   * Null/absent ⇒ not the step the player owes.
+   */
+  coachmark?: CoachmarkModel | null;
   onDismiss: () => void;
 }) {
   const t = useTheme();
@@ -56,6 +62,7 @@ export function DayRecapModal({
             showsVerticalScrollIndicator={false}
           >
             <DayRecap model={model} />
+            {coachmark && <Coachmark model={coachmark} />}
           </ScrollView>
           <View style={{ marginTop: t.spacing.sm }}>
             <Button label="Done" onPress={onDismiss} />

@@ -249,8 +249,13 @@ describe('#349 the Growth tab is mounted on the live world', () => {
     // Growth is no longer the null that falls back to the placeholder card.
     expect(src).toMatch(/growth: \(\s*<GrowthTabContainer/);
     expect(src).not.toMatch(/growth: null/);
-    // Home's glance routes into it (locked IA rule 4).
-    expect(src).toMatch(/onOpenGrowth=\{\(\) => tabs\.setActiveTab\('growth'\)\}/);
+    // Home's glance routes into it (locked IA rule 4). The press became a
+    // named handler in #213 — it also finishes the spine's read-the-market
+    // step — so the guard is the handler AND the route it still performs.
+    expect(src).toMatch(/onOpenGrowth=\{openGrowth\}/);
+    expect(src).toMatch(
+      /const openGrowth = \(\) => \{[\s\S]*?tabs\.setActiveTab\('growth'\);/,
+    );
     expect(src).toMatch(/marketGlance=\{buildMarketGlance\(demandReadout\)\}/);
   });
 });
