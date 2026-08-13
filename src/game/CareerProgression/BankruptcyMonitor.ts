@@ -21,6 +21,24 @@ export interface BankruptcyMonitor {
   readonly insolventDayCount: number;
   readonly outstandingDebt: number;
   readonly isTerminal: boolean;
+  /**
+   * Is the store's cash low enough to be worth warning about (#394)? A live
+   * read of `cash < warningCashFloor`, not a latch — the failure model owns
+   * both the threshold and the comparison, so no surface re-derives either.
+   *
+   * Deliberately NOT the insolvency test: this is the level at which there is
+   * still something to do, which is a different question from the level that
+   * ends a career. Whether the player has been *told* is teaching state and
+   * belongs nowhere near this module.
+   */
+  readonly isCashLow: boolean;
+  /**
+   * How many consecutive nights below the failure floor end a Tier 1 career —
+   * the same `consecutiveDaysToTrigger` this monitor acts on, exposed so the
+   * sentence that states the rule to the player quotes the rule rather than
+   * repeating a number that could drift out from under it.
+   */
+  readonly daysBelowFloorToFail: number;
   getSerializableState(): BankruptcyMonitorState;
   restoreState(state: BankruptcyMonitorState): void;
 }
@@ -109,6 +127,8 @@ export function createBankruptcyMonitor(
     get insolventDayCount() { return insolventDayCount; },
     get outstandingDebt() { return outstandingDebt; },
     get isTerminal() { return isTerminal; },
+    get isCashLow() { return economy.cash < config.warningCashFloor; },
+    get daysBelowFloorToFail() { return config.consecutiveDaysToTrigger; },
 
     getSerializableState() {
       return { insolventDayCount, outstandingDebt, isTerminal };

@@ -180,6 +180,10 @@ const COPY_CATALOGS = [
   // states about each pick lives beside the lever it describes.
   'backstories.json',
   'empty-states.json',
+  // #394 — the one-shot teaching beats. Allowed to quote money (its `{slot}`
+  // fills are ONE store's own figures at the moment the beat fires), and held
+  // to the same plain-language rule as every other thing the player reads.
+  'teaching-beats.json',
   'pricing-strategies.json',
   'nav-tabs.json',
   'career-endings.json',

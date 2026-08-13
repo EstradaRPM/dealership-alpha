@@ -23,7 +23,11 @@ import { TradeEscalationModal } from '../../ui/TradeEscalationModal';
 import { DiscountEscalationModal } from '../../ui/DiscountEscalationModal';
 import { DayRecapModal } from '../../ui/DayRecap';
 import { MonthCloseInterstitial } from '../../ui/MonthCloseInterstitial';
-import { ChapterCard, RecoveryBeatCard } from '../../ui/NarrativeBeat';
+import {
+  ChapterCard,
+  RecoveryBeatCard,
+  StakesBeatCard,
+} from '../../ui/NarrativeBeat';
 import { AdminConsole } from '../../ui/AdminConsole';
 import type { Modals } from '../useModals';
 import type { DayLoop } from '../useDayLoop';
@@ -81,6 +85,8 @@ export function AppOverlays({
     setChapterQueue,
     recoveryQueue,
     setRecoveryQueue,
+    stakesBeat,
+    setStakesBeat,
     endCard,
   } = dayLoop;
 
@@ -302,6 +308,18 @@ export function AppOverlays({
           visible
           beat={recoveryQueue[0]}
           onConfirm={() => setRecoveryQueue((q) => q.slice(1))}
+        />
+      )}
+      {endCard == null && world != null && stakesBeat != null && (
+        // The failure-stakes beat (#394): the one time the game states how a
+        // career ends, while there is still something to do about it. Fires at
+        // most once per career, so this is a single slot rather than a queue —
+        // and it sits BELOW the recovery card in the same overlay stack, since
+        // a hit that already landed outranks a warning about one that has not.
+        <StakesBeatCard
+          visible
+          beat={stakesBeat}
+          onConfirm={() => setStakesBeat(null)}
         />
       )}
       {__DEV__ && world && (

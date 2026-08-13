@@ -86,6 +86,34 @@ Player tier (currently 1 → 3) + backstory-driven Day 1 modifiers + branding re
   the periodic `career:pe_offer_made`. Until #272 it was a composition orphan, so
   no win condition could fire — a run could only end via a terminal failure.
 
+## The warning floor — how low is "low"? (#394)
+
+`data/failure-tunables.json` carries **two** cash levels and they answer
+different questions. `cashFloor` (0) is the level sustained insolvency is
+measured against — below it for `consecutiveDaysToTrigger` (7) nights ends a
+Tier 1 career. **`warningCashFloor` (12,500) is the level at which there is
+still something to do**, and `BankruptcyMonitor.isCashLow` is the live read of
+it. The schema refuses a file where the warning does not sit above the failure
+floor: a warning with no runway is not a warning.
+
+`daysBelowFloorToFail` is on the same read so the sentence that states the rule
+to the player quotes the rule rather than repeating a number that could drift.
+Neither getter is state — nothing is latched and nothing is persisted; **whether
+the player has been *told* is teaching state and lives in the per-slot
+`teaching:<id>` cell (#386), nowhere near this module.**
+
+Calibrated over a 100-seed naive-policy cohort (360 days): 62 of 100 careers
+ever cross 12,500, median first crossing day 198, median **35 days of runway**
+between that crossing and the bad end, and 8 of those 62 recovered and finished
+the full 360 days. $10,000 crosses on the same 62 careers and buys only 30 days,
+so the extra $2,500 costs no additional warnings and returns five days.
+
+`loadFailureTunables` and `loadIndictmentTunables` go through `parseData` as of
+#394 — the file used to load as a raw cast, where a mistyped key produced
+`cash < undefined` (always false) and the failure model would simply never fire.
+The top-level schema is not `.strict()` because the `regulatory` block in the
+same file belongs to `Reputation/regulatoryData.ts`.
+
 ## Events
 - **Emits:** `career:tier_up`, `career:bankruptcy_*`, `career:debt_payment_made`, `career:indictment_*`, `career:retired`, `career:pe_offer_made`, `career:pe_sellout`, `career:family_handoff`.
 - **Consumes:** `tierGate:month_verdict` (TierManager advancement streak, #250), `clock:overnight_payroll` (failure monitors), `customer:resolved`, `regulatory:lemon_law_incident`, `regulatory:audit_failure`, `deal:fraud_flag`. The failure monitors read `Economy` for their thresholds; TierManager no longer reads `Economy`/`Reputation`.

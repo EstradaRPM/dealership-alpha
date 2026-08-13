@@ -13,6 +13,10 @@ export function stubHints(overrides: Partial<Hints> = {}): Hints {
   return {
     hintFor: () => null,
     markUsed: () => {},
+    // "Taught nothing" for beats too (#394) — a stub that claimed a beat had
+    // already fired would silence the thing the test is about.
+    hasTaught: () => false,
+    markTaught: () => {},
     resetHints: () => {},
     refresh: () => {},
     ...overrides,

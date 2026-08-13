@@ -14,3 +14,6 @@ export type {
   RecoveryBannerModel,
   RecoveryMonitorSnapshot,
 } from './recoveryBeat';
+export { StakesBeatCard } from './StakesBeatCard';
+export { buildStakesBeat } from './stakesBeat';
+export type { StakesBeat, StakesBeatInput } from './stakesBeat';

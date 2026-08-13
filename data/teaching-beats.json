@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "_doc": "One-shot teaching BEATS (#394). A hint (data/hints.json) is a muted line under a control the player is about to press, retired when they press it. A beat is the other half of the same teaching cell: a moment the game stops and states something the player has no control to press and no other way to learn. Both retire off the per-slot `teaching:<id>` cell #386 minted, and 'Show hints again' re-arms both.",
+  "_copyDoc": "Four sentences per beat, in the order the card renders them: title (what is happening), cause (the reading that raised it), cost (the consequence, stated plainly), path (what the player can do about it). Every string is a sentence and must end in . ! or ?.",
+  "_slotDoc": "{slot} fills are the STORE'S OWN figures, resolved at the moment the beat fires. This is the one copy catalog allowed to quote money, and the reason is #387's rule rather than an exception to it: a hint is written once against every store, so a dollar figure in one is a claim the player can check and find wrong — a beat is fired against ONE store's actual position and the player is about to act on it, so the figure is exact and true. Formatted through the kit's `money`, never in this file.",
+  "_reachDoc": "`reach` is the optional clause appended to `path` when the store has money it has not drawn (#392's facility). Omitted from a beat that has no such clause, and omitted at render time for a store with no headroom — never rendered as a zero.",
+  "beats": [
+    {
+      "id": "failure_stakes",
+      "surface": "Day close, the first time cash falls below the warning floor",
+      "title": "Your cash is running low.",
+      "cause": "The store has {cash} on hand. Payroll and overhead come out every day the doors are open, whether or not a car sells.",
+      "cost": "If the store runs out of money and stays out for {days} days running, it closes and the career is over. The run goes into your legacy record and the save is cleared — you would be starting again from a new career.",
+      "path": "Turn stock back into cash: cut the asking price on whatever has sat longest, or wholesale an aged unit for what it will bring today.",
+      "reach": "You also have {reach} you have not drawn on your line of credit. The Finance tab is where you draw it."
+    }
+  ]
+}

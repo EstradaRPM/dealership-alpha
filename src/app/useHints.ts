@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MultiSlotSaveStore } from '../game/SaveStore';
 import { loadHints, type HintId, type HintsConfig } from './hints';
+import type { TeachingBeatId } from '../ui/copy';
 
 export interface HintsDeps {
   slotStore: MultiSlotSaveStore;
@@ -13,7 +14,15 @@ export interface Hints {
   hintFor: (id: HintId) => string | null;
   /** The player used the control this hint sits under — retire it, for good. */
   markUsed: (id: HintId) => void;
-  /** "Show hints again": re-arm every hint for the active slot. */
+  /**
+   * Has this one-shot teaching beat already been shown in the active slot
+   * (#394)? A beat has no control to press, so "used" is not the question —
+   * "shown" is.
+   */
+  hasTaught: (id: TeachingBeatId) => boolean;
+  /** The beat was shown — retire it for this career. */
+  markTaught: (id: TeachingBeatId) => void;
+  /** "Show hints again": re-arm every hint AND every beat for the active slot. */
   resetHints: () => void;
   /** Re-read the active slot's teaching cell (a slot was loaded or created). */
   refresh: () => void;
@@ -58,7 +67,11 @@ export function useHints({ slotStore, config = loadHints() }: HintsDeps): Hints 
     return config.hints.find((h) => h.id === id)?.text ?? null;
   };
 
-  const markUsed = (id: HintId) => {
+  // One cell, one owner. A hint retiring and a beat retiring are the same write
+  // to the same per-slot key space (#386) — a second in-memory set beside this
+  // one would be a second copy of one fact, and "Show hints again" would clear
+  // only whichever half remembered to listen.
+  const retire = (id: string) => {
     if (taughtRef.current.has(id)) return;
     apply(new Set([...taughtRef.current, id]));
     void (async () => {
@@ -66,6 +79,14 @@ export function useHints({ slotStore, config = loadHints() }: HintsDeps): Hints 
       await store?.markTaught(id);
     })();
   };
+
+  const markUsed = (id: HintId) => retire(id);
+
+  // A beat's answer is read at the moment it would fire — inside a day-close
+  // handler, not during render — so it reads the ref rather than the state.
+  const hasTaught = (id: TeachingBeatId): boolean => taughtRef.current.has(id);
+
+  const markTaught = (id: TeachingBeatId) => retire(id);
 
   const resetHints = () => {
     apply(new Set());
@@ -75,5 +96,5 @@ export function useHints({ slotStore, config = loadHints() }: HintsDeps): Hints 
     })();
   };
 
-  return { hintFor, markUsed, resetHints, refresh };
+  return { hintFor, markUsed, hasTaught, markTaught, resetHints, refresh };
 }

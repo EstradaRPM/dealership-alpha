@@ -155,6 +155,11 @@ export function DealershipApp({
     // #388: the clock's two controls retire their hints from the handler, the
     // same seam `useLevers` uses for the dials — never from the footer button.
     onControlUsed: hints.markUsed,
+    // #394: the one-shot teaching beats, off the SAME cell the hints retire
+    // into — so "Show hints again" re-arms the stakes warning with everything
+    // else, and a career is never warned twice.
+    hasTaught: hints.hasTaught,
+    markTaught: hints.markTaught,
   });
 
   // The live clock (#121). Drives the owned FloorSim's step() at a tunable

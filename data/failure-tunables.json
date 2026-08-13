@@ -1,5 +1,7 @@
 {
+  "_warningDoc": "warningCashFloor is the WARNING floor, not the failure floor. Cash below it is 'running low'; cash below cashFloor for consecutiveDaysToTrigger nights is what actually ends a Tier 1 career. Calibrated 2026-08-13 over a 100-seed naive-policy cohort (360 days): 62 of 100 careers ever cross $12,500, median first crossing day 198, median 35 days of runway between that crossing and the bad end, and 8 of those 62 went on to finish the full 360 days. $10,000 crosses on exactly the same 62 careers but buys only 30 days — the extra $2,500 costs no additional warnings and returns five days.",
   "cashFloor": 0,
+  "warningCashFloor": 12500,
   "consecutiveDaysToTrigger": 7,
   "tier2": {
     "debtPrincipal": 50000,

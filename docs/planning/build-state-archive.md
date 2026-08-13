@@ -6,6 +6,48 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-13 — **BUILT #391** (F2-R1 — `grudgesFlag` becomes a starting reputation deficit). The
+  Inheritor's town is now a mechanic instead of a paragraph: the store opens **10 points below**
+  the standing a stranger gets, on both `customerSatisfaction` and `reviewScore`.
+  **One new tunable and one pure function, and Reputation never learns why.**
+  `reputation.startingStandingPenalty` in `data/tunables.json`, and
+  `withOpeningPenalty(config)` on the Reputation barrel — a config in, a config out. `createWorld`
+  is the only place that decides it applies (`day1.grudgesFlag ? withOpeningPenalty(base) :
+  base`), which is the #390 rule held: the modifier is resolved at the composition root and every
+  module below it takes plain numbers. The leak scan still passes with `grudgesFlag` in its
+  pattern.
+  **Both scalars, not just the review — and that is the difference between a mechanic and a
+  fortnight's inconvenience.** `reviewDriftRate` is 0.1, so a review-only deficit is handed back
+  inside two weeks with nothing asked of the player. With satisfaction moved too, the gap decays
+  on `satisfactionDriftRate` 0.02 and the review chases it: **10.0 → 9.7 (day 7) → 6.7 (day 30) →
+  2.0 (day 90)**.
+  **The magnitude has a reading, not a vibe.** `getDailyDemand`'s `repMult` is `1 + (review − 50)
+  × 0.015`, so the default 60 is a 1.15 on arrivals and the grudged 50 is a flat **1.00** — the
+  town gives you no benefit of the doubt where a stranger gets some. That is **13% fewer walk-ins
+  on day 1, 8.8% down at the end of month 1, ~2.7% by month 3.** C2 retunes against that reading
+  rather than nudging the number.
+  **A starting position, not a permanent drag, asserted as such.** `tests/BackstoryModifiers.test.ts`
+  runs a real T1 month — eight closes, two walks a day, thirty nights of drift — through a clean
+  store and a grudged one and pins that each day moves both by the *identical* amount and the gap
+  only ever closes. Deliberately not thirty straight closes: at +1 review a close, the clean store
+  hits the 100 ceiling and the assertion would be watching `Math.min` instead of the mechanic.
+  **Nothing persisted, nothing calibrated moved.** It is an opening value, so `ReputationSnapshot`
+  is untouched, a save restores its stored standing verbatim and `WORLD_SNAPSHOT_VERSION` stays
+  21. The harness founder declares `grudgesFlag: false` (as #390 left it), so the pacing bands
+  cannot have moved.
+  **The card was rewritten to state it**: *"You open with $25,000 more cash than anyone else, but
+  the town remembers your father, so fewer people walk in until you have won them back."* — the
+  old sentence said the town "has an opinion" without saying what it costs. No temperature word
+  (`tests/PlainLanguage.test.tsx` scans `backstories.json`) and no figure for the deficit itself:
+  a standing is not a number the player can check against a screen.
+  `npm run typecheck` clean, `npm test` **274 suites / 5523 tests** green.
+  **Web drive (new game → Inheritor → Day 1):** the card renders the new sentence and Home opens
+  on **Reputation 50 / 100 · Fair** beside **$74.9k Cash on Hand** — the two Inheritor levers on
+  one screen, one of them a handicap. A stranger's 60 is asserted in-test (`a clean backstory
+  opens neutral`, a real `createWorld`) rather than by burning a second save slot.
+  Next: **BUILD #392** (F2-R1 — `startingCreditLine` becomes a real borrowing facility,
+  `src/game/CreditFacility/`, bumps `WORLD_SNAPSHOT_VERSION` 21 → 22).
+
 - 2026-08-13 — **BUILT #390** (F2-R1 — the two Day 1 levers that had an engine home, and the card
   that states what a pick does). The finding the issue was filed on held exactly: `day1Modifier`
   was read by **nothing** in `src/`, so all three backstories were mechanically identical and the

@@ -8,6 +8,7 @@ import type { TierManager } from '../src/game/CareerProgression';
 
 const TUNABLES: FailureTunables = {
   cashFloor: 0,
+  warningCashFloor: 5000,
   consecutiveDaysToTrigger: 3,
   tier2: { debtPrincipal: 50000, weeklyDebtPayment: 2000 },
   tier3Plus: { complianceCost: 30000, reputationHit: -15 },
