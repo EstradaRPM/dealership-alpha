@@ -1583,11 +1583,14 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   not assumed:** the live `#180` read is byte-identical at 35.8% / 54.3%, closes=274,
   `costOverAsk` 1.026.
   `npm run typecheck` clean, `npm test` **274 suites / 5519 tests** green.
-  **Web drive: the card itself was NOT reached.** The composed new-game path opens the slot list,
-  and all three of the director's save slots are full (`[DEV] Tier 2` ×3), so character creation
-  sits behind deleting one of them — which a build session does not do to a director's saves. The
-  card render is covered by `tests/CharacterCreation.test.tsx` driving the real component tree,
-  and the two levers by `tests/BackstoryModifiers.test.ts` driving real `createWorld` worlds.
+  **Web drive (new game → Inheritor → Day 1):** all three effect lines render under their flavor
+  on the card — *"You read a car better than the people you buy from…"*, *"A $50,000 line of
+  credit stands behind the store…"*, *"You open with $25,000 more cash than anyone else…"* — and
+  the career opens on **$74.9k Cash on Hand** (`Avg $74.9k vs $60k` on the gate strip). That is
+  50k + 25k less the one prep-day of floorplan carry the #296 seed units accrue at construction,
+  which is the same reason the test asserts a delta rather than a round 75,000. **The DEV `[DEV]
+  Tier 2` slots are recreatable in two clicks from the start menu** — a full slot list is not a
+  reason to leave a drivable surface undriven.
   Next: **BUILD #391** (F2-R1 — `grudgesFlag` becomes a starting reputation deficit); its dep
   #390 is now met.
 
