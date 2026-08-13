@@ -1,6 +1,7 @@
 import type { DayRange, KPIDayTotals, KPISnapshot } from '../../game/KPIDashboard';
 import { PROFIT_CENTER_LABELS } from '../../game/Economy';
 import type { DepartmentPnLSummary, LedgerEntry, PnLSummary } from '../../game/Economy';
+import { CREDIT_INTEREST_LABEL } from '../../game/CreditFacility';
 import { compactMoney, domainFraction, money, signedDomain } from '../kit';
 import type { BarDatum, DonutDatum, LineSeries, TrendDirection } from '../kit';
 import { emptyState } from '../copy';
@@ -401,6 +402,19 @@ export function normalizeSeries(values: readonly number[]): readonly number[] {
  */
 const MAX_EXPENSE_BARS = 5;
 
+/**
+ * Labels the tail fold may never swallow (#393).
+ *
+ * Every other cost on this chart is the price of running the store, and folding
+ * the small ones into "Other" is the chart naming what actually moved the
+ * period. Credit-line interest is different in kind: it is the price of a
+ * standing decision the player can end with a button **on this same screen**,
+ * and a cost you are asked to act on cannot be a cost the chart hides. On a
+ * $50,000 line it is a couple of dollars a day against a payroll of hundreds, so
+ * without this it would be folded away in every window that mattered.
+ */
+const PINNED_EXPENSE_LABELS: readonly string[] = [CREDIT_INTEREST_LABEL];
+
 export function groupExpenses(
   entries: readonly LedgerEntry[],
 ): readonly { label: string; amount: number }[] {
@@ -413,10 +427,18 @@ export function groupExpenses(
     .map(([label, amount]) => ({ label, amount }))
     .sort((a, b) => b.amount - a.amount);
   if (sorted.length <= MAX_EXPENSE_BARS) return sorted;
-  const head = sorted.slice(0, MAX_EXPENSE_BARS);
-  const tail = sorted.slice(MAX_EXPENSE_BARS);
+
+  const pinned = sorted.filter((e) => PINNED_EXPENSE_LABELS.includes(e.label));
+  const rest = sorted.filter((e) => !PINNED_EXPENSE_LABELS.includes(e.label));
+  // The pinned lines take their slots first; what is left of the budget goes to
+  // the biggest of the rest, and the named set is re-sorted by size so the chart
+  // still reads largest-first however a line earned its place.
+  const head = rest.slice(0, Math.max(0, MAX_EXPENSE_BARS - pinned.length));
+  const tail = rest.slice(head.length);
+  const named = [...pinned, ...head].sort((a, b) => b.amount - a.amount);
+  if (tail.length === 0) return named;
   return [
-    ...head,
+    ...named,
     { label: 'Other', amount: tail.reduce((s, e) => s + e.amount, 0) },
   ];
 }

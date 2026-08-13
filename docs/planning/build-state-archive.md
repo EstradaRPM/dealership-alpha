@@ -6,6 +6,62 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-13 — **BUILT #390** (F2-R1 — the two Day 1 levers that had an engine home, and the card
+  that states what a pick does). The finding the issue was filed on held exactly: `day1Modifier`
+  was read by **nothing** in `src/`, so all three backstories were mechanically identical and the
+  character card offered three flavor paragraphs and no claim. Two levers are now live.
+  **`startingCapitalBonus` lands in `createEconomy`** — the Inheritor opens $25,000 ahead of an
+  otherwise identical store, asserted as a delta between two same-seed worlds rather than against
+  a round 75,000, because `createWorld` plays the cold-start prep tick and a fresh store has
+  already carried a day of floorplan on its #296 seed units.
+  **`reconJudgmentBonus` is a plain number all the way down.** `MarketEconomy.applyReconJudgment`
+  (`min(1, reliability + bonus)`) is the one rule, and it is applied at **three** call sites, not
+  one: `Inventory.buildAcquiredVehicle` (so an auction buy and a customer trade get the same owner
+  looking at the car), `rollListingRealizedRecon` (the paid inspection shares `deriveReconSeed`
+  with the buy, so an un-lifted inspection would have reported an honest read of a car this owner
+  never gets), and `createWorld`'s `realizedReconFor` — the #163 UCM condition read, whose entire
+  job is to target the truth the player realizes on purchase. Leaving that third one out would
+  have had the desk reading a different car than the one that lands on the lot.
+  **A lift with a ceiling, not a `Math.max` floor**, and the difference is not cosmetic: every
+  configured auction source already sits above 0.15, so a floor at the bonus would have been
+  inert. The effect is **banded** — `sourceReliabilityFactors` is keyed low/mid/high at 0.50 and
+  0.70 — so the lever bites when it carries a source across a boundary (a repo lane at 0.40 goes
+  low→mid: minor factor 2.0 → 1.0, catastrophic 2.5 → 1.0) and does nothing inside one. That is a
+  property of #162's model and it is why the lever is worth 0.15.
+  **Applied to the roll's input, never to its seed** — the same seed and the same founder produce
+  the same board and the same rolls, which is what keeps the balance harness comparable across
+  runs. `tests/BackstoryModifiers.test.ts` proves it directly: every unit that did not change
+  bucket realized the identical cost.
+  **The card is DATA.** `data/backstories.json` is schemaVersion **2**, each entry carrying
+  `effect` beside the modifier it describes so the two cannot drift; the schema requires it to end
+  in a sentence, and `tests/CharacterCreation.test.tsx` derives the dollar figures from the lever
+  rather than quoting them. The Ex-Banker's `$50,000` credit line and the Inheritor's town with an
+  opinion are stated now and become true in **#392** and **#391** — the flavor paragraph already
+  promised both before this slice, so those two are what make the card honest rather than what
+  adds the claim.
+  **The `as CharacterProfile` fixtures were lying, and the lever made them say so.** Two
+  reachability tests declared `day1Modifier: {}` behind a cast; harmless while nothing read it,
+  `50_000 + undefined` afterwards. Both now declare the modifier in full — a new world fixture
+  that omits it produces a NaN opening balance rather than failing loudly.
+  **The harness founder is now zero on every lever, on purpose.** `scripts/balance-harness/
+  runner.ts`, `MarketEconomy.calibration` and `MarketEconomy.earlyGameFloor` each called
+  themselves "balance-neutral founder" while declaring the ex-mechanic's real 0.15 — neutral by
+  accident. The harness measures the *store*; a founder's edge measured as the engine's is how a
+  backstory retune silently moves a pacing band. **Nothing calibrated moved and it was checked,
+  not assumed:** the live `#180` read is byte-identical at 35.8% / 54.3%, closes=274,
+  `costOverAsk` 1.026.
+  `npm run typecheck` clean, `npm test` **274 suites / 5519 tests** green.
+  **Web drive (new game → Inheritor → Day 1):** all three effect lines render under their flavor
+  on the card — *"You read a car better than the people you buy from…"*, *"A $50,000 line of
+  credit stands behind the store…"*, *"You open with $25,000 more cash than anyone else…"* — and
+  the career opens on **$74.9k Cash on Hand** (`Avg $74.9k vs $60k` on the gate strip). That is
+  50k + 25k less the one prep-day of floorplan carry the #296 seed units accrue at construction,
+  which is the same reason the test asserts a delta rather than a round 75,000. **The DEV `[DEV]
+  Tier 2` slots are recreatable in two clicks from the start menu** — a full slot list is not a
+  reason to leave a drivable surface undriven.
+  Next: **BUILD #391** (F2-R1 — `grudgesFlag` becomes a starting reputation deficit); its dep
+  #390 is now met.
+
 - 2026-08-13 — **BUILT #389** (D3 — plain-language labels + every empty state written). The
   casual-player pass over every live surface, and the third of phase 12's four teaching slices.
   **Every empty-state string in the game is now one catalog entry.** `data/empty-states.json` (53

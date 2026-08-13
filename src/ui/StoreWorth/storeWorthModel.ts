@@ -11,7 +11,14 @@
 
 import { compactMoney } from '../kit';
 
-/** The engine's `StoreWorth`, restated with no game-logic import. */
+/**
+ * The engine's `StoreWorth`, restated with no game-logic import.
+ *
+ * `debt` is deliberately not restated here: `total` already nets it (#393) and
+ * this model renders no figure for it — the caption names the term and the
+ * Finance room's credit panel states the balance. A field nothing formats would
+ * be dead weight on every call site that builds one.
+ */
 export interface StoreWorthInputs {
   readonly cash: number;
   readonly stockValue: number;
@@ -42,8 +49,15 @@ const WORTH_LABEL = 'What the Store Is Worth';
  * page. A caption reading "plus the cars on your lot" would invite the player to
  * check the addition against that other number and find it does not work. #380's
  * own rule is that the figure is labeled for exactly what it sums.
+ *
+ * The third clause is the credit line (#393), and it is stated **always** rather
+ * than only while a balance is standing. One sentence that is true of every
+ * store beats two the surface picks between: a caption that appeared the first
+ * time the player borrowed would read as the rule changing, when what changed is
+ * only that a term stopped being zero.
  */
-const WORTH_CAPTION = 'Your cash plus what the cars on your lot cost you.';
+const WORTH_CAPTION =
+  'Your cash plus what the cars on your lot cost you, less what you owe on your credit line.';
 
 /**
  * Both figures are **compact** (issue 387). Cash on hand and the store's worth

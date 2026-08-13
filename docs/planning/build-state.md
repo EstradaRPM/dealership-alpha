@@ -33,16 +33,16 @@ anywhere in `src/ui/**`.
 
 **#391 is BUILT as of 2026-08-13.**
 
-**#392 is BUILT as of 2026-08-13.** The next `/next` is **BUILD #393** (deps #392, #387 — both
-met). **`WORLD_SNAPSHOT_VERSION` is now 22.**
+**#392 is BUILT as of 2026-08-13.** **`WORLD_SNAPSHOT_VERSION` is now 22.**
+
+**#393 is BUILT as of 2026-08-13 — F2-R1 is COMPLETE.** The next `/next` is **BUILD #394**
+(deps #386, #392 — both met).
 
 The one thing a future session must not re-derive: **the backstory picks WERE mechanically
-identical, and #390/#391/#392 ended all of it.** All four `day1Modifier` levers are read in
-`createWorld` and every one of them is wired to a mechanic. **The character card is now true** —
-`data/backstories.json`'s `effect` sentences all describe something the engine does. What remains
-of F2-R1 is #393, the *surface* for the facility #392 built (the Finance statement panel, and
-`getStoreWorth()` netting the drawn balance off what the store is worth) — the engine half is
-done and the money already moves.
+identical, and #390/#391/#392/#393 ended all of it.** All four `day1Modifier` levers are read in
+`createWorld`, every one is wired to a mechanic, and every one now has a surface the player can
+see it on. **The character card is now true** — `data/backstories.json`'s `effect` sentences all
+describe something the engine does. F2-R1 is closed; nothing under it is outstanding.
 
 ### Phase 12 — F1 + F2 + D3 (sliced + filed 2026-08-12)
 
@@ -55,7 +55,7 @@ done and the money already moves.
 | ~~#390~~ | ~~F2-R1 — `startingCapitalBonus` + `reconJudgmentBonus` wired in `createWorld`, each pick stated on the card~~ **BUILT 2026-08-13** | — |
 | ~~#391~~ | ~~F2-R1 — `grudgesFlag` becomes a starting reputation deficit~~ **BUILT 2026-08-13** | #390 |
 | ~~#392~~ | ~~F2-R1 — `startingCreditLine` becomes a real borrowing facility, `src/game/CreditFacility/` (**bumps `WORLD_SNAPSHOT_VERSION` 21 → 22**)~~ **BUILT 2026-08-13** | #390 |
-| #393 | F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the drawn balance | #392, #387 |
+| ~~#393~~ | ~~F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the drawn balance~~ **BUILT 2026-08-13 — F2-R1 COMPLETE** | #392, #387 |
 | #394 | F2-R2 — the failure stakes, stated once the first time cash goes low | #386, #392 |
 | #213 | F1 — the first-run spine coachmarks + the "What should I do?" InGameMenu entry **[rewritten in place]** | #386 |
 | #395 | F1 — progressive disclosure: a teaching beat fires when its mechanic first matters | #213 |
@@ -203,6 +203,46 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **The credit-line panel is a MOMENT read, and that is why it states lifetime interest rather
+  than the window's** (#393). #393's scope bullet asked for "the interest paid in the selected
+  window" and its own Notes asked for a reading of this moment that takes its own prop; those
+  contradict, and the Notes wins — it is the #380 worth-line rule, and `interestPaidToDate` is
+  what the engine exposes. What the debt cost over a *period* is the expenses-breakdown line. A
+  future session "finishing" this by feeding the panel a windowed figure makes the range chips
+  appear to move a limit and a balance, which is the exact confusion the moment/window split
+  exists to prevent.
+- **`CREDIT_INTEREST_LABEL` is the ONE pinned expense label, and the pin is not decoration**
+  (#393). `groupExpenses` folds its tail into "Other" by size; a day's interest on a $50,000 line
+  is ~$19 against a payroll of hundreds, so the label would be folded away in every window that
+  mattered. It earns the exemption because it is the only cost on that chart the player can end
+  with a button on the same screen — a cost you are asked to act on cannot be a cost the chart
+  hides. Pinning a *second* label needs that same argument; "it feels important" is not it, and
+  the fold is byte-identical for every other cost (`tests/CreditFacilityPanel.test.tsx` pins both
+  halves).
+- **The worth caption states the debt clause ALWAYS, for every store** (#393). One sentence that
+  is true of a store with no line and a store with $50k standing beats two the surface picks
+  between: a caption that appeared the first time the player borrowed would read as the rule
+  changing, when what changed is only that a term stopped being zero. `StoreWorthInputs`
+  deliberately does **not** restate `debt` — `total` already nets it and nothing formats it, so
+  the field would be dead weight on the eight call sites that build one.
+- **`drawSteps` lives on `getFacility()` and the fractions live in `data/`** (#393). A surface
+  multiplying a limit by 0.25 would be a second place deciding how coarse borrowing is, and the
+  two would drift the first time the catalog moved — the same doctrine `available` and
+  `maxRepayment` already follow. Fractions rather than dollar rungs so every founder's line is
+  offered at the same four steps whatever it is worth; the schema refuses a non-ascending list
+  or a last rung that is not the whole line. A zero rung is dropped, because an amount `draw`
+  would refuse as `invalid-amount` is not an offer.
+- **A refusal is REPORTED, never observed** (#393). `onDraw`/`onRepay` return the notice string
+  or `null` rather than being void handlers, because #392's refusals change nothing at all —
+  there is no state change for the panel to re-read, so the sentence is the only thing that
+  happened. The notice is built from the same `getFacility()` the refusal was decided from, so
+  the headroom the player is told is the one the next press is judged against. A future session
+  lifting this into container state is adding a second copy of a fact that lives for one tap.
+- **The panel is `null` for a zero limit, and that is the app's only branch on "does this store
+  have a line"** (#393). It branches on how the facility *reads*, never on how it works — the
+  engine still composes, snapshots and restores identically (#392's rule). Do not "fix" the
+  absent panel with an empty state: a mechanic the store does not have renders NOTHING (locked
+  IA rule 3).
 - **The credit facility has ONE cost rule, and the issue's Notes line describes a second one
   that was deliberately not built** (#392). The rule: every morning, the balance the day opens
   with is charged a day's interest. #392's Notes said *"a same-day draw-and-repay costs a day's
@@ -1627,6 +1667,46 @@ to jump one early); it loads the gate rather than re-deriving it.
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
 
+- 2026-08-13 — **BUILT #393** (F2-R1 — the borrowing facility on the Finance statement, and the
+  store's worth nets the debt). #392 built a facility nobody could reach; the Finance room now
+  states it and moves it. **`getStoreWorth()` subtracts the drawn balance and the caption names
+  it** — the one-line argument for the whole slice is that borrowing $50,000 must leave what the
+  store is worth *flat*, exactly as a bought car does (#380). Proved live: cash $49.9k → $99.9k,
+  worth $87.3k → **$87.3k**, Net Income unmoved at -$57 (a draw is `financing`-categorized and
+  drops whole from the P&L). The caption is **one sentence for every store, drawn or not** —
+  "…less what you owe on your credit line" — because a caption that appeared the first time you
+  borrowed would read as the rule changing, when only a term stopped being zero.
+  **The panel is a reading of THIS MOMENT and the range chips must not appear to move it**, so it
+  states `interestPaidToDate` (lifetime) rather than the window's charge. The issue's scope bullet
+  asked for "the interest paid in the selected window" and its own Notes asked for a moment read;
+  the Notes wins, and the *window* cost is the expenses-breakdown line instead. That line is now
+  **pinned**: `groupExpenses` folds its tail into "Other" by size, and a day's interest on a
+  $50,000 line is ~$19 against a payroll of hundreds, so without the pin the one cost the player
+  can end with a button on that same screen would be buried in every window that mattered. It is
+  the only pinned label and the fold is byte-identical for everything else.
+  **`drawSteps` is on `getFacility()`, not computed on the screen** — `data/credit-facility.json`
+  gains `drawFractions` `[0.25, 0.5, 0.75, 1]`, resolved against the store's own limit. Fractions
+  rather than dollars so every founder's line is offered at the same four rungs; the schema
+  refuses a non-ascending list or a last rung that is not the whole line. A surface multiplying a
+  limit by a fraction would be a second place deciding how coarse borrowing is. **A limit of zero
+  yields `drawSteps: []`** and `buildCreditFacilityPanel` returns `null` — the room omits the
+  region entirely (locked IA rule 3), which is the one place in the app that branches on whether
+  the store has a line, and it branches on how the facility *reads*, never on how it works.
+  **A refusal is reported as a sentence, not observed as a state change** (`onDraw` returns the
+  notice or `null`), because #392's refusals change nothing at all — there is no new state for the
+  panel to re-read. The notice names the bound off the same `getFacility()` the refusal was
+  decided from: drove a full $50k draw, pressed Borrow again, got *"That is more than your line
+  has left. You can borrow $0 more."* with nothing moved. **Refused whole, never clamped.**
+  One hint id, `credit_line`, over one control group (`finance-credit-controls`) covering the
+  amount chips and both buttons — borrowing and paying back are two ends of one decision, so they
+  share a lesson and retire together. `FinanceTabContainer` now takes `hints`/`bump`/`setCash`,
+  the `GrowthTabContainer` shape. Verified retiring on the drive: the line was gone after the draw.
+  **Deleted the "391 grudge" test slot to free a slot for the drive, and the user made that
+  standing: agent-created saves are free to delete, and a full slot list must never gate a
+  verification run again.**
+  Next: **BUILD #394** (F2-R2 — the failure stakes, stated once the first time cash goes low);
+  its deps #386 and #392 are met.
+
 - 2026-08-13 — **BUILT #392** (F2-R1 — `startingCreditLine` becomes a real borrowing facility).
   The Ex-Banker's $50,000 was a number in `data/backstories.json` that nothing read. It is now
   `src/game/CreditFacility/` — a limit, a drawn balance, and interest every morning on whatever
@@ -1717,59 +1797,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   opens neutral`, a real `createWorld`) rather than by burning a second save slot.
   Next: **BUILD #392** (F2-R1 — `startingCreditLine` becomes a real borrowing facility,
   `src/game/CreditFacility/`, bumps `WORLD_SNAPSHOT_VERSION` 21 → 22).
-
-- 2026-08-13 — **BUILT #390** (F2-R1 — the two Day 1 levers that had an engine home, and the card
-  that states what a pick does). The finding the issue was filed on held exactly: `day1Modifier`
-  was read by **nothing** in `src/`, so all three backstories were mechanically identical and the
-  character card offered three flavor paragraphs and no claim. Two levers are now live.
-  **`startingCapitalBonus` lands in `createEconomy`** — the Inheritor opens $25,000 ahead of an
-  otherwise identical store, asserted as a delta between two same-seed worlds rather than against
-  a round 75,000, because `createWorld` plays the cold-start prep tick and a fresh store has
-  already carried a day of floorplan on its #296 seed units.
-  **`reconJudgmentBonus` is a plain number all the way down.** `MarketEconomy.applyReconJudgment`
-  (`min(1, reliability + bonus)`) is the one rule, and it is applied at **three** call sites, not
-  one: `Inventory.buildAcquiredVehicle` (so an auction buy and a customer trade get the same owner
-  looking at the car), `rollListingRealizedRecon` (the paid inspection shares `deriveReconSeed`
-  with the buy, so an un-lifted inspection would have reported an honest read of a car this owner
-  never gets), and `createWorld`'s `realizedReconFor` — the #163 UCM condition read, whose entire
-  job is to target the truth the player realizes on purchase. Leaving that third one out would
-  have had the desk reading a different car than the one that lands on the lot.
-  **A lift with a ceiling, not a `Math.max` floor**, and the difference is not cosmetic: every
-  configured auction source already sits above 0.15, so a floor at the bonus would have been
-  inert. The effect is **banded** — `sourceReliabilityFactors` is keyed low/mid/high at 0.50 and
-  0.70 — so the lever bites when it carries a source across a boundary (a repo lane at 0.40 goes
-  low→mid: minor factor 2.0 → 1.0, catastrophic 2.5 → 1.0) and does nothing inside one. That is a
-  property of #162's model and it is why the lever is worth 0.15.
-  **Applied to the roll's input, never to its seed** — the same seed and the same founder produce
-  the same board and the same rolls, which is what keeps the balance harness comparable across
-  runs. `tests/BackstoryModifiers.test.ts` proves it directly: every unit that did not change
-  bucket realized the identical cost.
-  **The card is DATA.** `data/backstories.json` is schemaVersion **2**, each entry carrying
-  `effect` beside the modifier it describes so the two cannot drift; the schema requires it to end
-  in a sentence, and `tests/CharacterCreation.test.tsx` derives the dollar figures from the lever
-  rather than quoting them. The Ex-Banker's `$50,000` credit line and the Inheritor's town with an
-  opinion are stated now and become true in **#392** and **#391** — the flavor paragraph already
-  promised both before this slice, so those two are what make the card honest rather than what
-  adds the claim.
-  **The `as CharacterProfile` fixtures were lying, and the lever made them say so.** Two
-  reachability tests declared `day1Modifier: {}` behind a cast; harmless while nothing read it,
-  `50_000 + undefined` afterwards. Both now declare the modifier in full — a new world fixture
-  that omits it produces a NaN opening balance rather than failing loudly.
-  **The harness founder is now zero on every lever, on purpose.** `scripts/balance-harness/
-  runner.ts`, `MarketEconomy.calibration` and `MarketEconomy.earlyGameFloor` each called
-  themselves "balance-neutral founder" while declaring the ex-mechanic's real 0.15 — neutral by
-  accident. The harness measures the *store*; a founder's edge measured as the engine's is how a
-  backstory retune silently moves a pacing band. **Nothing calibrated moved and it was checked,
-  not assumed:** the live `#180` read is byte-identical at 35.8% / 54.3%, closes=274,
-  `costOverAsk` 1.026.
-  `npm run typecheck` clean, `npm test` **274 suites / 5519 tests** green.
-  **Web drive (new game → Inheritor → Day 1):** all three effect lines render under their flavor
-  on the card — *"You read a car better than the people you buy from…"*, *"A $50,000 line of
-  credit stands behind the store…"*, *"You open with $25,000 more cash than anyone else…"* — and
-  the career opens on **$74.9k Cash on Hand** (`Avg $74.9k vs $60k` on the gate strip). That is
-  50k + 25k less the one prep-day of floorplan carry the #296 seed units accrue at construction,
-  which is the same reason the test asserts a delta rather than a round 75,000. **The DEV `[DEV]
-  Tier 2` slots are recreatable in two clicks from the start menu** — a full slot list is not a
-  reason to leave a drivable surface undriven.
-  Next: **BUILD #391** (F2-R1 — `grudgesFlag` becomes a starting reputation deficit); its dep
-  #390 is now met.

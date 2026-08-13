@@ -10,6 +10,14 @@ export const CreditFacilityDataSchema = z
   .object({
     schemaVersion: z.literal(1),
     _doc: z.string(),
+    _stepsDoc: z.string(),
+    /**
+     * The rungs a draw or a repayment is offered at, as fractions of the
+     * store's limit (#393). Ascending and ending at the whole line, so the
+     * coarsest offer is always "all of it" and no rung can be quietly larger
+     * than the ceiling it is a fraction of.
+     */
+    drawFractions: z.array(z.number().positive().max(1)).nonempty(),
     /** Annual rate as a decimal. Unsecured, so dearer than the floorplan. */
     apr: z.number().nonnegative(),
     /**
@@ -19,7 +27,14 @@ export const CreditFacilityDataSchema = z
      */
     daysPerYear: z.number().int().positive(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (d) => d.drawFractions.every((f, i) => i === 0 || f > d.drawFractions[i - 1]),
+    { message: 'drawFractions must ascend' },
+  )
+  .refine((d) => d.drawFractions[d.drawFractions.length - 1] === 1, {
+    message: 'the last drawFraction must be the whole line',
+  });
 
 export type CreditFacilityDataTable = z.infer<typeof CreditFacilityDataSchema>;
 
@@ -44,4 +59,23 @@ export function dailyInterestOn(
 ): number {
   if (drawn <= 0) return 0;
   return Math.round((drawn * data.apr) / data.daysPerYear);
+}
+
+/**
+ * The whole-dollar amounts this store's facility is drawn and repaid in (#393)
+ * — the catalog's fractions resolved against its own limit, ascending.
+ *
+ * Resolved in the engine rather than on the screen for the same reason
+ * `maxRepayment` is: a surface that multiplied the limit by a fraction would be
+ * a second place that decides how coarse borrowing is, and the two would drift
+ * the first time the catalog moved. Duplicates collapse (a small line can round
+ * two fractions to the same dollar) and a zero rung is dropped — an amount that
+ * would be refused `invalid-amount` is not an offer.
+ */
+export function drawStepsFor(
+  limit: number,
+  data: CreditFacilityDataTable,
+): readonly number[] {
+  const amounts = data.drawFractions.map((f) => Math.round(limit * f));
+  return [...new Set(amounts)].filter((a) => a > 0).sort((a, b) => a - b);
 }

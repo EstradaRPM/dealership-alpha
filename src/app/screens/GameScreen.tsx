@@ -463,7 +463,15 @@ export function GameScreen({
     // the hero trend, the two breakdowns and the deal-KPI block — plus the two
     // records (deal history, month-close results) that used to be full-screen
     // routes behind the in-game menu.
-    finance: <FinanceTabContainer world={world} tabs={tabs} />,
+    finance: (
+      <FinanceTabContainer
+        world={world}
+        tabs={tabs}
+        hints={hints}
+        bump={bump}
+        setCash={setCash}
+      />
+    ),
     // The compounding tab (#349): the demand console (readout + campaign lever +
     // the market reads) over the tier-gate detail board. Both were homeless —
     // the console rendered on Home against its glances-only charter, and the

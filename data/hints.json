@@ -64,6 +64,11 @@
       "text": "Paying it keeps them and raises your payroll for good. Turning it down saves the money and they may leave for whoever asked."
     },
     {
+      "id": "credit_line",
+      "places": [{ "surface": "finance", "control": "finance-credit-controls" }],
+      "text": "Borrowing puts the money in the bank today and charges you interest every morning it is still out, so what the store is worth does not move until you spend it. Paying it back stops the charge and takes the cash out again."
+    },
+    {
       "id": "advertising_campaign",
       "places": [{ "surface": "growth", "control": "demand-advertising" }],
       "text": "A campaign bills you every day it runs, whether or not anyone buys, and changes both how many shoppers come and what they are shopping for."

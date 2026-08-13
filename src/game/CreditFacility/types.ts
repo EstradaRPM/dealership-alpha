@@ -55,6 +55,14 @@ export interface CreditFacilityState {
   readonly dailyInterest: number;
   /** The annual rate the facility is priced at, as a decimal. */
   readonly apr: number;
+  /**
+   * The whole-dollar amounts this facility is drawn and repaid in, ascending,
+   * the largest being the whole line (#393). Stated here for the same reason
+   * `available` and `maxRepayment` are: a surface offers amounts the engine
+   * named, and never multiplies a limit by a fraction of its own. Empty for a
+   * facility that cannot be drawn.
+   */
+  readonly drawSteps: readonly number[];
 }
 
 /**

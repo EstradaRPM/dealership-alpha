@@ -2,6 +2,7 @@ import type { EventBus } from '../EventBus';
 import type { PostTag } from '../Economy';
 import {
   dailyInterestOn,
+  drawStepsFor,
   loadCreditFacilityData,
   type CreditFacilityDataTable,
 } from './creditFacilityData';
@@ -118,6 +119,7 @@ export function createCreditFacility(deps: CreditFacilityDeps): CreditFacility {
         interestPaidToDate,
         dailyInterest: dailyInterestOn(drawn, data),
         apr: data.apr,
+        drawSteps: drawStepsFor(limit, data),
       };
     },
 

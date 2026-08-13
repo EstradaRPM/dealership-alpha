@@ -37,6 +37,8 @@ export const HINT_IDS = [
   'hire_candidate',
   'staff_moves',
   'raise_answer',
+  // Finance — the one lever in a room of readings (#393)
+  'credit_line',
   // Growth
   'advertising_campaign',
   'wire_subscription',

@@ -187,7 +187,13 @@ export interface StoreWorth {
   readonly cash: number;
   /** What the lot cost: every owned unit's `purchasePrice + reconCost`. */
   readonly stockValue: number;
-  /** `cash + stockValue`. */
+  /**
+   * What the store owes on its credit line right now (#393) — the facility's
+   * standing drawn balance. Zero for a store that has not borrowed, and for a
+   * founder whose line is worth nothing.
+   */
+  readonly debt: number;
+  /** `cash + stockValue - debt`. */
   readonly total: number;
 }
 
@@ -259,18 +265,26 @@ export interface World {
    */
   getFniStructuringSkill(): number | null;
   /**
-   * What the store has, right now: the cash in the bank and the cars on the lot
-   * (#380). A **position**, not a period reading — nothing here is windowed.
+   * What the store has, right now: the cash in the bank and the cars on the lot,
+   * less what it owes on its credit line (#380, #393). A **position**, not a
+   * period reading — nothing here is windowed.
    *
-   * Composed here because this is the only place that sees both halves, and it
-   * is one getter rather than two reads so no surface adds up its own total. The
-   * Home HUD and the Finance room state the same pair off this call; two sums
-   * would be two answers to "am I going backwards".
+   * Composed here because this is the only place that sees all three terms, and
+   * it is one getter rather than three reads so no surface adds up its own
+   * total. The Home HUD and the Finance room state the same pair off this call;
+   * two sums would be two answers to "am I going backwards".
    *
-   * The rule is deliberately two terms and no more. Facility has no dollar
-   * value in the engine (#358 counts built spaces), and floorplan is modeled as
-   * a daily carrying cost rather than a debt balance — including either would be
-   * a number the player cannot check by adding two figures the game shows them.
+   * **The debt term is what makes a draw a move rather than a windfall** (#393).
+   * A borrowed $50,000 raises `cash` and `debt` by the same number and leaves
+   * `total` still — the identical rule a bought car obeys. Without it, pressing
+   * Draw would report the store as $50k richer for having taken on a loan, which
+   * breaks all three of #380's checkable rules at once.
+   *
+   * Facility is still absent and still deliberately so: it has no dollar value
+   * in the engine (#358 counts built spaces), and floorplan stays a daily
+   * carrying cost rather than a debt balance. What earned the credit line its
+   * place is that it IS a balance — a number the player reads on the Finance
+   * panel and can subtract for themselves.
    */
   getStoreWorth(): StoreWorth;
   /**
@@ -1057,7 +1071,8 @@ export function createWorld(deps: {
   const getStoreWorth = (): StoreWorth => {
     const cash = economy.cash;
     const stockValue = inventory.getStockValue();
-    return { cash, stockValue, total: cash + stockValue };
+    const debt = creditFacility.getFacility().drawn;
+    return { cash, stockValue, debt, total: cash + stockValue - debt };
   };
 
   /**

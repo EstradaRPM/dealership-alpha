@@ -5,7 +5,7 @@ describe('#202/#351 KPI dashboard reachability', () => {
     const src = readAppCompositionSource();
 
     // The tab is wired into the shell's per-tab content record.
-    expect(src).toMatch(/finance: <FinanceTabContainer/);
+    expect(src).toMatch(/finance: \(\s*<FinanceTabContainer/);
     // The block reads a WINDOWED snapshot — the range chips are real, not a
     // lifetime number relabelled.
     expect(src).toMatch(/world\.kpiDashboard\.getSnapshot\(window\)/);

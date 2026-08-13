@@ -5,6 +5,9 @@ import type { ShellTabKey } from '../../ui/AppShell';
 import {
   FinanceTab,
   buildFinanceDashboard,
+  buildCreditFacilityPanel,
+  creditDrawNotice,
+  creditRepayNotice,
   financeRangeWindow,
   financePriorWindow,
   financeHasPriorWindow,
@@ -12,11 +15,22 @@ import {
 } from '../../ui/FinanceTab';
 import { buildStoreWorth } from '../../ui/StoreWorth';
 import { buildMarketState } from '../config';
+import type { Hints } from '../useHints';
 
 export interface FinanceTabContainerProps {
   world: World;
   /** Per-tab stacks (#348) — the two sibling screens push onto Finance's own. */
   tabs: TabStacks<ShellTabKey>;
+  /** The teaching cluster (#386/#388) — resolved here, marked on each write. */
+  hints: Hints;
+  /** Force a re-render after a world write the EventBus doesn't announce. */
+  bump: () => void;
+  /**
+   * Sync the shell's cash mirror after a world write that moves money (#393) —
+   * the same prop `GrowthTabContainer` takes for a build, and for the same
+   * reason: a draw lands cash the HUD would otherwise keep the old figure for.
+   */
+  setCash: (n: number) => void;
 }
 
 /**
@@ -31,7 +45,13 @@ export interface FinanceTabContainerProps {
  * `kpiDashboard.getDailyTotals(window)` and `economy.getPnL(from, to)` — so the
  * dashboard never re-derives a number the modules already compute.
  */
-export function FinanceTabContainer({ world, tabs }: FinanceTabContainerProps) {
+export function FinanceTabContainer({
+  world,
+  tabs,
+  hints,
+  bump,
+  setCash,
+}: FinanceTabContainerProps) {
   const [rangeId, setRangeId] = useState<FinanceRangeId>('today');
   const currentDay = world.clock.currentDay;
   const window = financeRangeWindow(rangeId, currentDay);
@@ -63,6 +83,37 @@ export function FinanceTabContainer({ world, tabs }: FinanceTabContainerProps) {
       // same call the Home HUD's headline pair is built from, so the two rooms
       // can never state two totals.
       storeWorth={buildStoreWorth(world.getStoreWorth())}
+      // #393: the facility, read the same way — a position, off the module's
+      // one `getFacility()`. `null` for a store whose line is worth nothing, and
+      // the room simply draws no panel.
+      creditFacility={buildCreditFacilityPanel(world.creditFacility.getFacility())}
+      onDrawCredit={(amount) => {
+        // The engine owns every rule the button could get wrong — the ceiling,
+        // the affordability, what a refusal costs (nothing) — so this commits
+        // and reports back rather than guarding first, the #359 shape. The
+        // notice is built against the state the refusal was decided from, so
+        // the headroom the player is told is the one the next press is judged
+        // against.
+        const result = world.creditFacility.draw(amount);
+        if (!result.ok) {
+          return creditDrawNotice(result.reason, world.creditFacility.getFacility());
+        }
+        hints.markUsed('credit_line');
+        setCash(world.economy.cash);
+        bump();
+        return null;
+      }}
+      onRepayCredit={(amount) => {
+        const result = world.creditFacility.repay(amount);
+        if (!result.ok) {
+          return creditRepayNotice(result.reason, world.creditFacility.getFacility());
+        }
+        hints.markUsed('credit_line');
+        setCash(world.economy.cash);
+        bump();
+        return null;
+      }}
+      creditHint={hints.hintFor('credit_line')}
       marketState={buildMarketState(world)}
       onSelectRange={setRangeId}
       onOpenHistory={() => tabs.navigate('dealHistory')}

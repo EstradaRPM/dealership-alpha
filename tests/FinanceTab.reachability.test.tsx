@@ -8,6 +8,7 @@ import type { TabStacks } from '../src/ui/Navigator';
 import type { ShellTabKey } from '../src/ui/AppShell';
 import { readAppCompositionSource } from './helpers/appComposition';
 import { emptyState } from '../src/ui/copy';
+import { stubHints } from './helpers/hints';
 
 // Anti-orphan (#351): Finance was one of the two placeholder tabs, and the KPI
 // readout + history log were full-screen routes behind the in-game menu that
@@ -31,6 +32,15 @@ const PROFILE: CharacterProfile = {
 
 function freshWorld(masterSeed = 351): World {
   return createWorld({ bus: createEventBus(), masterSeed, characterProfile: PROFILE });
+}
+
+/**
+ * The three composition deps the room takes beyond the world (#393): the
+ * teaching cluster and the two write-echoes the credit controls need. Every
+ * test in this file is about a *reading*, so all three are inert here.
+ */
+function deps() {
+  return { hints: stubHints(), bump: () => {}, setCash: () => {} };
 }
 
 /** A minimal stack stand-in — the tab's two siblings only ever push. */
@@ -64,7 +74,7 @@ function closeDeal(bus: EventBus, frontGross: number) {
 describe('#351 the Finance tab is mounted on the live world', () => {
   it('renders every region of the dashboard off a real createWorld', () => {
     const { getByTestId } = render(
-      <FinanceTabContainer world={freshWorld()} tabs={stubTabs()} />,
+      <FinanceTabContainer world={freshWorld()} tabs={stubTabs()} {...deps()} />,
     );
     for (const region of [
       'finance-region-range',
@@ -92,7 +102,7 @@ describe('#351 the Finance tab is mounted on the live world', () => {
 
   it('renders no placeholder or coming-later copy', () => {
     const { queryByText, queryByTestId } = render(
-      <FinanceTabContainer world={freshWorld()} tabs={stubTabs()} />,
+      <FinanceTabContainer world={freshWorld()} tabs={stubTabs()} {...deps()} />,
     );
     expect(queryByText(/coming in a later slice/i)).toBeNull();
     expect(queryByTestId('strategic-tab-finance')).toBeNull();
@@ -100,7 +110,7 @@ describe('#351 the Finance tab is mounted on the live world', () => {
 
   it('shows each stat card empty on a day-1 world rather than a zero that reads as a result', () => {
     const { getByTestId, queryByTestId } = render(
-      <FinanceTabContainer world={freshWorld()} tabs={stubTabs()} />,
+      <FinanceTabContainer world={freshWorld()} tabs={stubTabs()} {...deps()} />,
     );
     for (const id of ['units', 'gross', 'net', 'pvr']) {
       expect(getByTestId(`finance-stat-${id}`)).toBeTruthy();
@@ -128,7 +138,7 @@ describe('#351 the Finance tab is mounted on the live world', () => {
     world.clock.restore({ schemaVersion: 1, day: 3 });
 
     const { getByText, getByTestId, queryByTestId } = render(
-      <FinanceTabContainer world={world} tabs={stubTabs()} />,
+      <FinanceTabContainer world={world} tabs={stubTabs()} {...deps()} />,
     );
     // "Today" is day 3 — nothing traded, so the card is empty, not a zero.
     expect(
@@ -149,7 +159,7 @@ describe('#351 the Finance tab is mounted on the live world', () => {
   it('reaches deal history and month-close results from inside the tab', () => {
     const tabs = stubTabs();
     const { getByTestId } = render(
-      <FinanceTabContainer world={freshWorld()} tabs={tabs} />,
+      <FinanceTabContainer world={freshWorld()} tabs={tabs} {...deps()} />,
     );
     fireEvent.press(getByTestId('finance-open-history'));
     fireEvent.press(getByTestId('finance-open-month-results'));
@@ -159,7 +169,7 @@ describe('#351 the Finance tab is mounted on the live world', () => {
 
   it('is wired into the composition root, with both siblings as tab routes', () => {
     const src = readAppCompositionSource();
-    expect(src).toMatch(/finance: <FinanceTabContainer/);
+    expect(src).toMatch(/finance: \(\s*<FinanceTabContainer/);
     expect(src).toMatch(/screen === 'dealHistory'/);
     expect(src).toMatch(/screen === 'monthResults'/);
     expect(src).toMatch(/world\.tierGate\.getMonthVerdicts\(\)/);

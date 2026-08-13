@@ -48,10 +48,15 @@ converted into stock" to "a balance-sheet movement" — see `Economy/CLAUDE.md`.
 
 - `createCreditFacility({ bus, economy, limit, getCurrentDay, data? })`.
 - `getFacility()` → the ONE read: `limit`, `drawn`, `available`,
-  `maxRepayment`, `interestPaidToDate`, `dailyInterest`, `apr`. A surface
-  re-derives none of these — `maxRepayment` (`min(cash, drawn)`) and
-  `dailyInterest` are stated here precisely so a screen never computes a rule
-  the engine also computes.
+  `maxRepayment`, `interestPaidToDate`, `dailyInterest`, `apr`, `drawSteps`. A
+  surface re-derives none of these — `maxRepayment` (`min(cash, drawn)`),
+  `dailyInterest` and `drawSteps` are stated here precisely so a screen never
+  computes a rule the engine also computes.
+- **`drawSteps` is what the line is offered in** (#393): `data/credit-facility.json`'s
+  `drawFractions` resolved against this store's own limit, ascending, the largest
+  being the whole line. Fractions rather than dollars so every founder's line is
+  offered at the same rungs whatever it is worth; a zero rung is dropped, because
+  an amount `draw` would refuse is not an offer. Empty for a zero limit.
 - `draw(amount)` / `repay(amount)` → `{ ok: true, amount } | { ok: false, reason }`,
   the `Facility.build` idiom. **A refusal changes nothing at all** — every check
   runs before anything moves.
@@ -107,5 +112,20 @@ branch.
   methods) — this module moves cash and never reads the ledger back.
 - `GameClock`, through the injected `getCurrentDay` closure and the
   `clock:day_started` subscription. Never a module reference.
-- The Finance statement (#393) is the surface half: the facility's own panel,
-  and `getStoreWorth()` netting the drawn balance off what the store is worth.
+- The Finance statement (#393) is the surface half, and it is built: the room's
+  `finance-region-credit` panel (`src/ui/FinanceTab/CreditFacilityPanel.tsx`)
+  states the five figures and carries the draw/repay controls, and
+  `World.getStoreWorth()` subtracts `drawn` so a $50k draw leaves what the store
+  is worth **flat** — the identical rule a bought car obeys (#380). The worth
+  caption says "less what you owe on your credit line" for every store, drawn or
+  not: one sentence that is always true beats two the surface picks between.
+- **A limit of zero renders NOTHING**, not a block of zeros (locked IA rule 3).
+  `buildCreditFacilityPanel` returns `null` on the limit and the room omits the
+  region — the only place in the app that branches on whether the store has a
+  line, and it branches on how the facility *reads*, never on how it works.
+- **The morning interest is pinned in the Finance expenses breakdown** (#393).
+  `groupExpenses` folds its long tail into "Other" by size, and a day's interest
+  on a $50,000 line is a few dollars against a payroll of hundreds — so it would
+  be hidden in every window that mattered. It is the one cost the player can end
+  with a button on that same screen, and a cost you are asked to act on cannot
+  be a cost the chart buries.

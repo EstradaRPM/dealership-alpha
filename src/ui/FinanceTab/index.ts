@@ -5,6 +5,17 @@
  */
 export { FinanceTab } from './FinanceTab';
 export type { FinanceTabProps } from './FinanceTab';
+export { CreditFacilityPanel } from './CreditFacilityPanel';
+export type { CreditFacilityPanelProps } from './CreditFacilityPanel';
+export {
+  buildCreditFacilityPanel,
+  creditDrawNotice,
+  creditRepayNotice,
+} from './creditFacilityModel';
+export type {
+  CreditAmountOption,
+  CreditFacilityPanelModel,
+} from './creditFacilityModel';
 export { MonthResultsScreen } from './MonthResultsScreen';
 export type { MonthResultsScreenProps } from './MonthResultsScreen';
 export {

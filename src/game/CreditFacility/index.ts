@@ -9,6 +9,7 @@ export {
 } from './CreditFacility';
 export {
   dailyInterestOn,
+  drawStepsFor,
   loadCreditFacilityData,
   CreditFacilityDataSchema,
   type CreditFacilityDataTable,

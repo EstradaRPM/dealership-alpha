@@ -304,6 +304,11 @@ describe('CreditFacility — a limit of zero (#392)', () => {
       interestPaidToDate: 0,
       dailyInterest: 0,
       apr: DATA.apr,
+      // #393: no amount is on offer, because every fraction of nothing rounds
+      // to a draw the module would refuse as `invalid-amount`. The Finance room
+      // never reaches this — it omits the panel on the limit — but the state is
+      // still the one code path, not an absent facility.
+      drawSteps: [],
     });
 
     // Every door is shut by the SAME rule that governs a banker's facility —

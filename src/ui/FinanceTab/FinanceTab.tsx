@@ -19,6 +19,8 @@ import { KPIDashboard } from '../KPIDashboard';
 import type { MarketStateModel } from '../KPIDashboard';
 import { StoreWorthPair } from '../StoreWorth';
 import type { StoreWorthModel } from '../StoreWorth';
+import { CreditFacilityPanel } from './CreditFacilityPanel';
+import type { CreditFacilityPanelModel } from './creditFacilityModel';
 import type {
   FinanceDashboardModel,
   FinanceRangeId,
@@ -41,6 +43,20 @@ export interface FinanceTabProps {
    * has; that block moved out of a dead menu screen and into this tab.
    */
   marketState?: MarketStateModel;
+  /**
+   * The borrowing facility (#393), or `null`/absent for a store whose line is
+   * worth nothing — in which case the room draws no panel at all rather than a
+   * block of zeros (locked IA rule 3). Its own prop for the same reason
+   * `storeWorth` is: it is a reading of this *moment*, and the range chips must
+   * not appear to move it.
+   */
+  creditFacility?: CreditFacilityPanelModel | null;
+  /** Commit a draw; returns the refusal notice, or null when it went through. */
+  onDrawCredit?: (amount: number) => string | null;
+  /** Commit a repayment. Same contract as `onDrawCredit`. */
+  onRepayCredit?: (amount: number) => string | null;
+  /** What borrowing costs the store (#388), null once the control is used. */
+  creditHint?: string | null;
   onSelectRange: (id: FinanceRangeId) => void;
   /** Open the deal-history sibling screen. */
   onOpenHistory: () => void;
@@ -68,6 +84,10 @@ export function FinanceTab({
   model,
   storeWorth,
   marketState,
+  creditFacility,
+  onDrawCredit,
+  onRepayCredit,
+  creditHint,
   onSelectRange,
   onOpenHistory,
   onOpenMonthResults,
@@ -94,6 +114,22 @@ export function FinanceTab({
           </Surface>
         </View>
       </View>
+
+      {/* #393: the credit line sits directly under the position it is netted
+          out of. The worth caption a few lines above says "less what you owe";
+          this is where the player reads that number and can move it. A store
+          with no line renders nothing here — not an empty state, because it is
+          not a mechanic the store has. */}
+      {creditFacility ? (
+        <View style={region} testID="finance-region-credit">
+          <CreditFacilityPanel
+            model={creditFacility}
+            {...(onDrawCredit ? { onDraw: onDrawCredit } : {})}
+            {...(onRepayCredit ? { onRepay: onRepayCredit } : {})}
+            {...(creditHint ? { hint: creditHint } : {})}
+          />
+        </View>
+      ) : null}
 
       <View style={region} testID="finance-region-range">
         <SectionHeader title="Results" />
