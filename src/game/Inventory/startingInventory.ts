@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { parseData } from '../data';
 import { createRng, deriveSeed } from '../Rng';
+import { brandLabel } from '../Brands';
 import {
   loadVehicleData,
   reconEstimateFor,
@@ -165,7 +166,7 @@ export function generateStartingInventory(
       const cand: SeedCandidateVehicle = {
         templateId: template.id,
         brand: template.brand,
-        make: template.make,
+        make: brandLabel(template.brand),
         model: template.model,
         trim: template.trim,
         year,

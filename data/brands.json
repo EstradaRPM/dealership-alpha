@@ -1,72 +1,105 @@
 {
-  "corden": {
-    "segment_affinity": { "truck": 0.90, "midline": 0.50, "economy": 0.30, "luxury": 0.10 },
-    "market_draw": 0.18,
-    "spaced_lean": { "safety": 0.75, "performance": 0.55, "appearance": 0.40, "comfort": 0.55, "economy": 0.35, "dependability": 0.80 }
-  },
-  "chevreau": {
-    "segment_affinity": { "truck": 0.85, "midline": 0.55, "economy": 0.35, "luxury": 0.10 },
-    "market_draw": 0.16,
-    "spaced_lean": { "safety": 0.70, "performance": 0.60, "appearance": 0.45, "comfort": 0.60, "economy": 0.40, "dependability": 0.75 }
-  },
-  "toraya": {
-    "segment_affinity": { "truck": 0.60, "midline": 0.85, "economy": 0.50, "luxury": 0.20 },
-    "market_draw": 0.15,
-    "spaced_lean": { "safety": 0.70, "performance": 0.60, "appearance": 0.55, "comfort": 0.70, "economy": 0.60, "dependability": 0.80 }
-  },
-  "vanda": {
-    "segment_affinity": { "truck": 0.25, "midline": 0.85, "economy": 0.60, "luxury": 0.15 },
-    "market_draw": 0.12,
-    "spaced_lean": { "safety": 0.60, "performance": 0.55, "appearance": 0.55, "comfort": 0.65, "economy": 0.65, "dependability": 0.70 }
-  },
-  "ravon": {
-    "segment_affinity": { "truck": 0.95, "midline": 0.30, "economy": 0.20, "luxury": 0.05 },
-    "market_draw": 0.10,
-    "spaced_lean": { "safety": 0.85, "performance": 0.55, "appearance": 0.25, "comfort": 0.40, "economy": 0.30, "dependability": 0.90 }
-  },
-  "vyndai": {
-    "segment_affinity": { "truck": 0.15, "midline": 0.60, "economy": 0.80, "luxury": 0.10 },
-    "market_draw": 0.09,
-    "spaced_lean": { "safety": 0.55, "performance": 0.40, "appearance": 0.45, "comfort": 0.55, "economy": 0.85, "dependability": 0.65 }
-  },
-  "kaivo": {
-    "segment_affinity": { "truck": 0.10, "midline": 0.55, "economy": 0.85, "luxury": 0.10 },
-    "market_draw": 0.08,
-    "spaced_lean": { "safety": 0.50, "performance": 0.35, "appearance": 0.40, "comfort": 0.50, "economy": 0.90, "dependability": 0.60 }
-  },
-  "messan": {
-    "segment_affinity": { "truck": 0.40, "midline": 0.70, "economy": 0.55, "luxury": 0.15 },
-    "market_draw": 0.08,
-    "spaced_lean": { "safety": 0.65, "performance": 0.60, "appearance": 0.60, "comfort": 0.70, "economy": 0.55, "dependability": 0.70 }
-  },
-  "kemco": {
-    "segment_affinity": { "truck": 0.80, "midline": 0.50, "economy": 0.20, "luxury": 0.25 },
-    "market_draw": 0.07,
-    "spaced_lean": { "safety": 0.75, "performance": 0.65, "appearance": 0.55, "comfort": 0.60, "economy": 0.30, "dependability": 0.80 }
-  },
-  "sabaro": {
-    "segment_affinity": { "truck": 0.25, "midline": 0.80, "economy": 0.40, "luxury": 0.20 },
-    "market_draw": 0.06,
-    "spaced_lean": { "safety": 0.80, "performance": 0.60, "appearance": 0.55, "comfort": 0.65, "economy": 0.50, "dependability": 0.75 }
-  },
-  "castillac": {
-    "segment_affinity": { "truck": 0.10, "midline": 0.30, "economy": 0.05, "luxury": 0.95 },
-    "market_draw": 0.04,
-    "spaced_lean": { "safety": 0.60, "performance": 0.90, "appearance": 0.95, "comfort": 0.85, "economy": 0.10, "dependability": 0.55 }
-  },
-  "lancroft": {
-    "segment_affinity": { "truck": 0.10, "midline": 0.25, "economy": 0.05, "luxury": 0.90 },
-    "market_draw": 0.03,
-    "spaced_lean": { "safety": 0.55, "performance": 0.80, "appearance": 0.90, "comfort": 0.85, "economy": 0.15, "dependability": 0.50 }
-  },
-  "bavron": {
-    "segment_affinity": { "truck": 0.05, "midline": 0.70, "economy": 0.15, "luxury": 0.85 },
-    "market_draw": 0.04,
-    "spaced_lean": { "safety": 0.50, "performance": 0.95, "appearance": 0.85, "comfort": 0.75, "economy": 0.10, "dependability": 0.50 }
-  },
-  "meridas": {
-    "segment_affinity": { "truck": 0.08, "midline": 0.60, "economy": 0.10, "luxury": 0.95 },
-    "market_draw": 0.04,
-    "spaced_lean": { "safety": 0.60, "performance": 0.90, "appearance": 0.95, "comfort": 0.90, "economy": 0.05, "dependability": 0.55 }
-  }
+  "schemaVersion": 2,
+  "_doc": "The canonical Brand entity (#246). One entry per brand, keyed by an OPAQUE `id` that is the join key every other file uses (vehicles.json, customer-current-vehicle.json, brand-tiers.json, brand-market-share.json, competitors.json, competitor-archetypes.json) and that the engine persists in saves. `label` is the DISPLAY NAME and is the only brand string a player ever reads — it is a property of the brand, never a key, so relabelling a brand touches this file and nothing else. No vehicle template carries a brand name of its own: the label is resolved from here at construction, so there is exactly one place a brand is named.",
+  "_v2Doc": "v1 was a bare record keyed by the brand id with no display name at all, and the name a player saw came from a parallel `make` field on every vehicle template — which is where the real trademarks lived. v2 is the array-of-{id,label,...} idiom data/auction-sources.json already uses. The ids did NOT change, deliberately: they are already opaque join keys (#224), they are persisted inside the inventory / competitorMarket / reputation blobs, and renaming them would be a three-module save migration bought for no player-visible gain.",
+  "brands": [
+    {
+      "id": "corden",
+      "label": "Corden",
+      "segment_affinity": { "truck": 0.9, "midline": 0.5, "economy": 0.3, "luxury": 0.1 },
+      "market_draw": 0.18,
+      "spaced_lean": { "safety": 0.75, "performance": 0.55, "appearance": 0.4, "comfort": 0.55, "economy": 0.35, "dependability": 0.8 }
+    },
+    {
+      "id": "chevreau",
+      "label": "Chevreau",
+      "segment_affinity": { "truck": 0.85, "midline": 0.55, "economy": 0.35, "luxury": 0.1 },
+      "market_draw": 0.16,
+      "spaced_lean": { "safety": 0.7, "performance": 0.6, "appearance": 0.45, "comfort": 0.6, "economy": 0.4, "dependability": 0.75 }
+    },
+    {
+      "id": "toraya",
+      "label": "Toraya",
+      "segment_affinity": { "truck": 0.6, "midline": 0.85, "economy": 0.5, "luxury": 0.2 },
+      "market_draw": 0.15,
+      "spaced_lean": { "safety": 0.7, "performance": 0.6, "appearance": 0.55, "comfort": 0.7, "economy": 0.6, "dependability": 0.8 }
+    },
+    {
+      "id": "vanda",
+      "label": "Vanda",
+      "segment_affinity": { "truck": 0.25, "midline": 0.85, "economy": 0.6, "luxury": 0.15 },
+      "market_draw": 0.12,
+      "spaced_lean": { "safety": 0.6, "performance": 0.55, "appearance": 0.55, "comfort": 0.65, "economy": 0.65, "dependability": 0.7 }
+    },
+    {
+      "id": "ravon",
+      "label": "Ravon",
+      "segment_affinity": { "truck": 0.95, "midline": 0.3, "economy": 0.2, "luxury": 0.05 },
+      "market_draw": 0.1,
+      "spaced_lean": { "safety": 0.85, "performance": 0.55, "appearance": 0.25, "comfort": 0.4, "economy": 0.3, "dependability": 0.9 }
+    },
+    {
+      "id": "vyndai",
+      "label": "Vyndai",
+      "segment_affinity": { "truck": 0.15, "midline": 0.6, "economy": 0.8, "luxury": 0.1 },
+      "market_draw": 0.09,
+      "spaced_lean": { "safety": 0.55, "performance": 0.4, "appearance": 0.45, "comfort": 0.55, "economy": 0.85, "dependability": 0.65 }
+    },
+    {
+      "id": "kaivo",
+      "label": "Kaivo",
+      "segment_affinity": { "truck": 0.1, "midline": 0.55, "economy": 0.85, "luxury": 0.1 },
+      "market_draw": 0.08,
+      "spaced_lean": { "safety": 0.5, "performance": 0.35, "appearance": 0.4, "comfort": 0.5, "economy": 0.9, "dependability": 0.6 }
+    },
+    {
+      "id": "messan",
+      "label": "Messan",
+      "segment_affinity": { "truck": 0.4, "midline": 0.7, "economy": 0.55, "luxury": 0.15 },
+      "market_draw": 0.08,
+      "spaced_lean": { "safety": 0.65, "performance": 0.6, "appearance": 0.6, "comfort": 0.7, "economy": 0.55, "dependability": 0.7 }
+    },
+    {
+      "id": "kemco",
+      "label": "Kemco",
+      "segment_affinity": { "truck": 0.8, "midline": 0.5, "economy": 0.2, "luxury": 0.25 },
+      "market_draw": 0.07,
+      "spaced_lean": { "safety": 0.75, "performance": 0.65, "appearance": 0.55, "comfort": 0.6, "economy": 0.3, "dependability": 0.8 }
+    },
+    {
+      "id": "sabaro",
+      "label": "Sabaro",
+      "segment_affinity": { "truck": 0.25, "midline": 0.8, "economy": 0.4, "luxury": 0.2 },
+      "market_draw": 0.06,
+      "spaced_lean": { "safety": 0.8, "performance": 0.6, "appearance": 0.55, "comfort": 0.65, "economy": 0.5, "dependability": 0.75 }
+    },
+    {
+      "id": "castillac",
+      "label": "Castillac",
+      "segment_affinity": { "truck": 0.1, "midline": 0.3, "economy": 0.05, "luxury": 0.95 },
+      "market_draw": 0.04,
+      "spaced_lean": { "safety": 0.6, "performance": 0.9, "appearance": 0.95, "comfort": 0.85, "economy": 0.1, "dependability": 0.55 }
+    },
+    {
+      "id": "lancroft",
+      "label": "Lancroft",
+      "segment_affinity": { "truck": 0.1, "midline": 0.25, "economy": 0.05, "luxury": 0.9 },
+      "market_draw": 0.03,
+      "spaced_lean": { "safety": 0.55, "performance": 0.8, "appearance": 0.9, "comfort": 0.85, "economy": 0.15, "dependability": 0.5 }
+    },
+    {
+      "id": "bavron",
+      "label": "Bavron",
+      "segment_affinity": { "truck": 0.05, "midline": 0.7, "economy": 0.15, "luxury": 0.85 },
+      "market_draw": 0.04,
+      "spaced_lean": { "safety": 0.5, "performance": 0.95, "appearance": 0.85, "comfort": 0.75, "economy": 0.1, "dependability": 0.5 }
+    },
+    {
+      "id": "meridas",
+      "label": "Meridas",
+      "segment_affinity": { "truck": 0.08, "midline": 0.6, "economy": 0.1, "luxury": 0.95 },
+      "market_draw": 0.04,
+      "spaced_lean": { "safety": 0.6, "performance": 0.9, "appearance": 0.95, "comfort": 0.9, "economy": 0.05, "dependability": 0.55 }
+    }
+  ]
 }

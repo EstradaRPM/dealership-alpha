@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "_doc": "Auction source catalog (slice #160). Each save rolls a hidden reliability per source from the band — different per save. Reliable sources cluster listings tightly around honest book (motivated-seller multiplier stdev ≈ stdevHonest); unreliable sources widen the distribution (longer bargain + overpriced tails). reliabilityBand is [min, max] for the per-save draw; bands cover the spectrum from clean national wholesale to fringe repo lanes.",
+  "_doc": "Auction source catalog (slice #160). Each save rolls a hidden reliability per source from the band — different per save. Reliable sources cluster listings tightly around honest book (motivated-seller multiplier stdev ≈ stdevHonest); unreliable sources widen the distribution (longer bargain + overpriced tails). reliabilityBand is [min, max] for the per-save draw; bands cover the spectrum from clean national wholesale to fringe repo lanes. Every source is FICTIONAL (#246): the two national lanes carried real auction-house trademarks until this file was swept alongside the vehicle brands, and the same rule applies here — `label` is the only string a player reads and is now fictional. The two `id`s still echo the old names and must NOT be renamed casually: `rollAuctionSourceReliability` seeds each source’s hidden per-save reliability from `deriveSeed(masterSeed, ..., { sourceId })`, so renaming an id re-rolls every listing’s price spread and moves the #180 calibration band (measured: costOverAsk 1.026 → 1.103, apathetic 54.3% → 60.7%). That rename is a C2 re-measure, not a copy edit.",
   "sources": [
     {
       "id": "manheim_digital",
-      "label": "Manheim Digital",
+      "label": "Keystone Digital",
       "reliabilityBand": [0.75, 0.95]
     },
     {
       "id": "adesa_regional",
-      "label": "ADESA Regional",
+      "label": "Crossroads Regional",
       "reliabilityBand": [0.60, 0.85]
     },
     {

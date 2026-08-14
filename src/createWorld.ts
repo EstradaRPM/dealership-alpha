@@ -154,9 +154,9 @@ import {
   createCompetitorMarket,
   loadCompetitors,
   loadPersonalityDrift,
-  loadBrands,
   type CompetitorMarket,
 } from './game/CompetitorMarket';
+import { loadBrands } from './game/Brands';
 import { deriveSeed, createRng } from './game/Rng';
 import {
   createDemandShaper,

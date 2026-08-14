@@ -1,9 +1,6 @@
 import { aggregateShare, scoreCompetitor } from '../src/game/CompetitorMarket';
-import type {
-  BrandCatalog,
-  Competitor,
-  CompetitorCatalog,
-} from '../src/game/CompetitorMarket';
+import type { Competitor, CompetitorCatalog } from '../src/game/CompetitorMarket';
+import type { BrandCatalog } from '../src/game/Brands';
 import type { SalesVisit } from '../src/game/NPC';
 
 const LUXURY_LEAN = {
@@ -20,9 +17,9 @@ const ECONOMY_LEAN = {
 };
 
 const brands: BrandCatalog = {
-  castillac: { segment_affinity: { luxury: 0.95 }, market_draw: 0.04, spaced_lean: LUXURY_LEAN },
-  corden: { segment_affinity: { truck: 0.9 }, market_draw: 0.18, spaced_lean: TRUCK_LEAN },
-  kaivo: { segment_affinity: { economy: 0.85 }, market_draw: 0.08, spaced_lean: ECONOMY_LEAN },
+  castillac: { id: 'castillac', label: 'Castillac', segment_affinity: { luxury: 0.95 }, market_draw: 0.04, spaced_lean: LUXURY_LEAN },
+  corden: { id: 'corden', label: 'Corden', segment_affinity: { truck: 0.9 }, market_draw: 0.18, spaced_lean: TRUCK_LEAN },
+  kaivo: { id: 'kaivo', label: 'Kaivo', segment_affinity: { economy: 0.85 }, market_draw: 0.08, spaced_lean: ECONOMY_LEAN },
 };
 
 function visit(tag: string, prefs: SalesVisit['preferences']): SalesVisit {

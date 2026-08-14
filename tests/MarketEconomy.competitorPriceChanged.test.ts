@@ -1,11 +1,11 @@
 import { createEventBus, type EventBus } from '../src/game/EventBus';
 import {
   createCompetitorMarket,
-  loadBrands,
   loadCompetitors,
   loadPersonalityDrift,
 } from '../src/game/CompetitorMarket';
 import { createMarketEconomy } from '../src/game/MarketEconomy';
+import { loadBrands } from '../src/game/Brands';
 import { loadTunables, type Tunables } from '../src/game/data';
 
 /**

@@ -2,7 +2,7 @@ import type { EventBus } from '../EventBus';
 import { loadTunables, type Tunables } from '../data';
 import type { Competitor, CompetitorCatalog } from './Competitor';
 import type { PersonalityDriftCatalog } from './PersonalityDrift';
-import type { BrandCatalog } from './schemas/brand';
+import type { BrandCatalog } from '../Brands';
 
 /**
  * Persisted drift state (#191, parent #186). The live competitor stats *and*

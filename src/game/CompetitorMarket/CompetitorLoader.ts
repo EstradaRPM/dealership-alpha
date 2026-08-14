@@ -1,6 +1,6 @@
 import { parseData, DataValidationError } from '../data';
 import { CompetitorCatalogSchema, type CompetitorCatalog } from './Competitor';
-import { loadBrands } from './BrandLoader';
+import { loadBrands } from '../Brands';
 
 export function loadCompetitors(): CompetitorCatalog {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

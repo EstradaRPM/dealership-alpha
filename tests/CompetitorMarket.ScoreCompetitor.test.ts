@@ -1,6 +1,6 @@
 import { scoreCompetitor } from '../src/game/CompetitorMarket';
 import type { Competitor } from '../src/game/CompetitorMarket';
-import type { BrandCatalog } from '../src/game/CompetitorMarket';
+import type { BrandCatalog } from '../src/game/Brands';
 import type { SalesVisit } from '../src/game/NPC';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -15,8 +15,8 @@ const TRUCK_LEAN = {
 };
 
 const brands: BrandCatalog = {
-  castillac: { segment_affinity: { luxury: 0.95 }, market_draw: 0.04, spaced_lean: LUXURY_LEAN },
-  corden:    { segment_affinity: { truck: 0.90 },  market_draw: 0.18, spaced_lean: TRUCK_LEAN },
+  castillac: { id: 'castillac', label: 'Castillac', segment_affinity: { luxury: 0.95 }, market_draw: 0.04, spaced_lean: LUXURY_LEAN },
+  corden:    { id: 'corden', label: 'Corden', segment_affinity: { truck: 0.90 },  market_draw: 0.18, spaced_lean: TRUCK_LEAN },
 };
 
 function makeVisit(prefs: SalesVisit['preferences']): SalesVisit {

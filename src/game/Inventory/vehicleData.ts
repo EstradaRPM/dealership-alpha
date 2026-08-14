@@ -1,14 +1,19 @@
 import { z } from 'zod';
 import { parseData } from '../data';
+import { assertKnownBrands } from '../Brands';
 
 const VehicleTemplateSchema = z.object({
   id: z.string(),
   /**
    * Opaque canonical brand id (join key into brands.json / brand-tiers.json).
-   * Never a display string — `make`/`model` carry the human-readable name.
+   *
+   * A template declares NO brand name of its own (#246). The display name is
+   * the brand's `label`, resolved from `data/brands.json` when the vehicle is
+   * built, so a brand is named in exactly one place and a relabel reaches every
+   * screen. `model`/`trim` are this template's own names and are fictional for
+   * the same reason the labels are.
    */
   brand: z.string(),
-  make: z.string(),
   model: z.string(),
   trim: z.string(),
   yearRange: z.tuple([z.number().int(), z.number().int()]),
@@ -76,5 +81,14 @@ export type VehicleData = z.infer<typeof VehicleDataSchema>;
 export function loadVehicleData(): VehicleData {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw: unknown = require('../../../data/vehicles.json');
-  return parseData(raw, VehicleDataSchema, 'data/vehicles.json');
+  const data = parseData(raw, VehicleDataSchema, 'data/vehicles.json');
+  // Referential integrity (#246). A template pointing at a brand nobody
+  // declares used to be silent: it took the `?? 'mainstream'` tier default and,
+  // once the display name came from the catalog, would have printed its own
+  // opaque id as the car's name. Now it fails at load with the id named.
+  assertKnownBrands(
+    data.templates.map((t) => t.brand),
+    'data/vehicles.json',
+  );
+  return data;
 }

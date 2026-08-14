@@ -1,114 +1,195 @@
 {
   "schemaVersion": 1,
+  "_brandDoc": "A template names no brand of its own (#246). `brand` is the opaque id and the display name is resolved from data/brands.json when the vehicle is built, so a brand is named in exactly one place. `model` and `trim` are fictional for the same reason `label` is: a real model name is as much a trademark as a real make.",
   "templates": [
     {
       "id": "vanda_sedan",
       "brand": "vanda",
-      "make": "Honda",
-      "model": "Civic",
-      "trim": "LX",
-      "yearRange": [2018, 2023],
-      "basePriceRange": [9000, 16000],
-      "mileageRange": [20000, 85000],
+      "model": "Aria",
+      "trim": "SE",
+      "yearRange": [
+        2018,
+        2023
+      ],
+      "basePriceRange": [
+        9000,
+        16000
+      ],
+      "mileageRange": [
+        20000,
+        85000
+      ],
       "category": "sedan"
     },
     {
       "id": "toraya_sedan",
       "brand": "toraya",
-      "make": "Toyota",
-      "model": "Camry",
-      "trim": "LE",
-      "yearRange": [2017, 2022],
-      "basePriceRange": [11000, 19000],
-      "mileageRange": [25000, 90000],
+      "model": "Solenne",
+      "trim": "SE",
+      "yearRange": [
+        2017,
+        2022
+      ],
+      "basePriceRange": [
+        11000,
+        19000
+      ],
+      "mileageRange": [
+        25000,
+        90000
+      ],
       "category": "sedan"
     },
     {
       "id": "corden_truck",
       "brand": "corden",
-      "make": "Ford",
-      "model": "F-150",
-      "trim": "XL",
-      "yearRange": [2016, 2022],
-      "basePriceRange": [15000, 28000],
-      "mileageRange": [30000, 110000],
+      "model": "Vanguard 150",
+      "trim": "Work",
+      "yearRange": [
+        2016,
+        2022
+      ],
+      "basePriceRange": [
+        15000,
+        28000
+      ],
+      "mileageRange": [
+        30000,
+        110000
+      ],
       "category": "truck"
     },
     {
       "id": "chevreau_truck",
       "brand": "chevreau",
-      "make": "Chevrolet",
-      "model": "Silverado 1500",
-      "trim": "WT",
-      "yearRange": [2017, 2022],
-      "basePriceRange": [14000, 26000],
-      "mileageRange": [35000, 120000],
+      "model": "Ridgeway 1500",
+      "trim": "Work",
+      "yearRange": [
+        2017,
+        2022
+      ],
+      "basePriceRange": [
+        14000,
+        26000
+      ],
+      "mileageRange": [
+        35000,
+        120000
+      ],
       "category": "truck"
     },
     {
       "id": "toraya_suv",
       "brand": "toraya",
-      "make": "Toyota",
-      "model": "RAV4",
-      "trim": "LE",
-      "yearRange": [2018, 2023],
-      "basePriceRange": [14000, 24000],
-      "mileageRange": [20000, 75000],
+      "model": "Solenne Cross",
+      "trim": "SE",
+      "yearRange": [
+        2018,
+        2023
+      ],
+      "basePriceRange": [
+        14000,
+        24000
+      ],
+      "mileageRange": [
+        20000,
+        75000
+      ],
       "category": "suv"
     },
     {
       "id": "vanda_suv",
       "brand": "vanda",
-      "make": "Honda",
-      "model": "CR-V",
-      "trim": "LX",
-      "yearRange": [2017, 2022],
-      "basePriceRange": [12000, 21000],
-      "mileageRange": [25000, 80000],
+      "model": "Aria Cross",
+      "trim": "SE",
+      "yearRange": [
+        2017,
+        2022
+      ],
+      "basePriceRange": [
+        12000,
+        21000
+      ],
+      "mileageRange": [
+        25000,
+        80000
+      ],
       "category": "suv"
     },
     {
       "id": "corden_suv",
       "brand": "corden",
-      "make": "Ford",
-      "model": "Escape",
-      "trim": "S",
-      "yearRange": [2017, 2022],
-      "basePriceRange": [9000, 17000],
-      "mileageRange": [30000, 90000],
+      "model": "Trailhand",
+      "trim": "Base",
+      "yearRange": [
+        2017,
+        2022
+      ],
+      "basePriceRange": [
+        9000,
+        17000
+      ],
+      "mileageRange": [
+        30000,
+        90000
+      ],
       "category": "suv"
     },
     {
       "id": "chevreau_suv",
       "brand": "chevreau",
-      "make": "Chevrolet",
-      "model": "Equinox",
-      "trim": "LS",
-      "yearRange": [2018, 2023],
-      "basePriceRange": [10000, 18000],
-      "mileageRange": [25000, 85000],
+      "model": "Meadow",
+      "trim": "Base",
+      "yearRange": [
+        2018,
+        2023
+      ],
+      "basePriceRange": [
+        10000,
+        18000
+      ],
+      "mileageRange": [
+        25000,
+        85000
+      ],
       "category": "suv"
     },
     {
       "id": "messan_sedan",
       "brand": "messan",
-      "make": "Nissan",
-      "model": "Altima",
-      "trim": "S",
-      "yearRange": [2017, 2022],
-      "basePriceRange": [8500, 15000],
-      "mileageRange": [30000, 95000],
+      "model": "Marisol",
+      "trim": "Base",
+      "yearRange": [
+        2017,
+        2022
+      ],
+      "basePriceRange": [
+        8500,
+        15000
+      ],
+      "mileageRange": [
+        30000,
+        95000
+      ],
       "category": "sedan"
     },
     {
       "id": "sabaro_suv",
       "brand": "sabaro",
-      "make": "Jeep",
-      "model": "Cherokee",
+      "model": "Highland",
       "trim": "Sport",
-      "yearRange": [2017, 2022],
-      "basePriceRange": [11000, 20000],
-      "mileageRange": [30000, 95000],
+      "yearRange": [
+        2017,
+        2022
+      ],
+      "basePriceRange": [
+        11000,
+        20000
+      ],
+      "mileageRange": [
+        30000,
+        95000
+      ],
       "category": "suv"
     }
   ],

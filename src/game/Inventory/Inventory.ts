@@ -1,5 +1,6 @@
 import type { EventBus } from '../EventBus';
 import type { Economy } from '../Economy';
+import { brandLabel } from '../Brands';
 import {
   rollRecon,
   applyReconJudgment,
@@ -1038,13 +1039,23 @@ export function createInventory(deps: InventoryDeps): Inventory {
     restore(snap) {
       currentDay = snap.currentDay;
       lastPreparedDay = snap.lastPreparedDay;
-      auctionListings = [...snap.auctionListings];
+      // #246: the brand's display name is RE-RESOLVED from the catalog on every
+      // restore rather than trusted from the blob. `brand` is the opaque id and
+      // is the durable fact; `make` is a name, so the catalog is authoritative
+      // and a relabel reaches saves that were written before it. It is also
+      // what guarantees no save can carry a retired name forward — the units in
+      // a career saved before this slice were stamped with real trademarks.
+      const renamed = <T extends { readonly brand: string; readonly make: string }>(
+        v: T,
+      ): T => ({ ...v, make: brandLabel(v.brand) });
+      auctionListings = snap.auctionListings.map(renamed);
       pendingInspections.clear();
       for (const listing of snap.pendingInspections) {
-        pendingInspections.set(listing.id, listing);
+        pendingInspections.set(listing.id, renamed(listing));
       }
       lotVehicles.clear();
-      for (const vehicle of snap.lotVehicles) {
+      for (const raw of snap.lotVehicles) {
+        const vehicle = renamed(raw);
         // #295 migration: pre-frontline-hold saves carry no `frontlineDay`.
         // Those units were already sellable, so default to `arrivalDay` (no
         // retroactive hold) rather than leaving it undefined (which the

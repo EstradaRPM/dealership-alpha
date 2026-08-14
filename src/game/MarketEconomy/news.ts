@@ -1,5 +1,6 @@
 import type { EventBus } from '../EventBus';
 import { createRng, deriveSeed } from '../Rng';
+import { brandLabel } from '../Brands';
 import { loadTunables, type Tunables } from '../data';
 import {
   loadNewsTemplatesConfig,
@@ -377,7 +378,9 @@ export function createMarketNews(deps: MarketNewsDeps): MarketNews {
       segment: dominantAffinity(e.segmentAffinity),
       direction: up ? 'up' : 'down',
       slots: {
-        brand: e.brand,
+        // #246: the wire is player-facing copy, so the slot takes the brand's
+        // LABEL. It used to substitute the opaque id straight into a headline.
+        brand: brandLabel(e.brand),
         // A pricing lean is a position on a ±spread band around market, so a
         // lean move of Δ is an asking-price move of Δ × 2 × spread.
         pct: pct((e.newPricing - e.oldPricing) * 2 * competitorSpread),

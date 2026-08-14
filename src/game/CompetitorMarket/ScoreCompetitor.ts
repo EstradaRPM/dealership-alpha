@@ -1,6 +1,6 @@
 import type { SalesVisit } from '../NPC';
 import type { Competitor } from './Competitor';
-import type { BrandCatalog } from './schemas/brand';
+import type { BrandCatalog } from '../Brands';
 
 const SPACED_KEYS = [
   'safety',

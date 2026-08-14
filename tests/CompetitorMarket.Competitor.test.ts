@@ -104,7 +104,7 @@ describe('loadCompetitors', () => {
   });
 
   it('all brand FKs reference known brands', () => {
-    const { loadBrands } = require('../src/game/CompetitorMarket');
+    const { loadBrands } = require('../src/game/Brands');
     const knownBrands = new Set(Object.keys(loadBrands()));
     const competitors = loadCompetitors();
     for (const c of competitors) {

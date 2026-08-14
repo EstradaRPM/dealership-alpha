@@ -1,4 +1,5 @@
 import type { EventBus, EventName, EventMap } from '../EventBus';
+import { brandLabel } from '../Brands';
 
 /**
  * Player-facing history log (#208).
@@ -129,7 +130,10 @@ export function createHistoryLog(deps: { bus: EventBus }): HistoryLog {
   // discrete retrospective log.
   bus.subscribe('competitor:price_changed', (p: EventMap['competitor:price_changed']) => {
     const direction = p.newPricing > p.oldPricing ? 'raised' : 'cut';
-    append(p.day, 'market', `Rival ${p.brand} ${direction} prices.`);
+    // #246: the event carries the opaque brand ID; the log is read by a
+    // player, so it prints the brand's LABEL. This line used to render the id
+    // verbatim ("Rival corden raised prices.").
+    append(p.day, 'market', `Rival ${brandLabel(p.brand)} ${direction} prices.`);
   });
 
   bus.subscribe('career:tier_up', (p: EventMap['career:tier_up']) => {

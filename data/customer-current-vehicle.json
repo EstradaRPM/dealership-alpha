@@ -1,113 +1,347 @@
 {
   "schemaVersion": 1,
   "referenceYear": 2024,
-  "yearBounds": [2008, 2024],
+  "yearBounds": [
+    2008,
+    2024
+  ],
   "mileagePerYear": 12000,
-
   "financing": {
     "_doc": "Loan-payoff model (#282). payoff = currentBook × (ltvAtOrigination × remainingPrincipal ÷ depreciation). Tier-keyed: sub-prime borrows more, stretches the term, pays a higher APR. deepTailWeight is the negative-equity tail knob (calibration S14).",
     "ltvAtOrigination": {
-      "A": { "mu": 0.90, "sigma": 0.09 },
-      "B": { "mu": 1.00, "sigma": 0.11 },
-      "C": { "mu": 1.10, "sigma": 0.13 },
-      "D": { "mu": 1.20, "sigma": 0.16 }
+      "A": {
+        "mu": 0.9,
+        "sigma": 0.09
+      },
+      "B": {
+        "mu": 1.0,
+        "sigma": 0.11
+      },
+      "C": {
+        "mu": 1.1,
+        "sigma": 0.13
+      },
+      "D": {
+        "mu": 1.2,
+        "sigma": 0.16
+      }
     },
-    "ltvClamp": [0.50, 1.70],
-    "termMonths": { "A": 60, "B": 66, "C": 72, "D": 75 },
-    "aprAnnual": { "A": 0.05, "B": 0.08, "C": 0.12, "D": 0.16 },
+    "ltvClamp": [
+      0.5,
+      1.7
+    ],
+    "termMonths": {
+      "A": 60,
+      "B": 66,
+      "C": 72,
+      "D": 75
+    },
+    "aprAnnual": {
+      "A": 0.05,
+      "B": 0.08,
+      "C": 0.12,
+      "D": 0.16
+    },
     "annualDepreciation": 0.15,
-    "deepTailWeight": 0.20,
+    "deepTailWeight": 0.2,
     "freshCutoff": 0.28,
-    "ratioClamp": [0.0, 2.5]
+    "ratioClamp": [
+      0.0,
+      2.5
+    ]
   },
-
   "templates": {
-    "vanda_sedan":     { "brand": "vanda",    "make": "Honda",     "model": "Civic",          "category": "sedan" },
-    "toraya_sedan":    { "brand": "toraya",   "make": "Toyota",    "model": "Camry",          "category": "sedan" },
-    "messan_sedan":    { "brand": "messan",   "make": "Nissan",    "model": "Altima",         "category": "sedan" },
-    "corden_sedan":    { "brand": "corden",   "make": "Ford",      "model": "Focus",          "category": "sedan" },
-    "vyndai_sedan":    { "brand": "vyndai",   "make": "Hyundai",   "model": "Sonata",         "category": "sedan" },
-    "bavron_sedan":    { "brand": "bavron",   "make": "BMW",       "model": "3 Series",       "category": "sedan" },
-    "meridas_sedan":   { "brand": "meridas",  "make": "Lexus",     "model": "ES",             "category": "sedan" },
-
-    "corden_truck":    { "brand": "corden",   "make": "Ford",      "model": "F-150",          "category": "truck" },
-    "chevreau_truck":  { "brand": "chevreau", "make": "Chevrolet", "model": "Silverado 1500", "category": "truck" },
-    "ravon_truck":     { "brand": "ravon",    "make": "Ram",       "model": "1500",           "category": "truck" },
-    "toraya_truck":    { "brand": "toraya",   "make": "Toyota",    "model": "Tacoma",         "category": "truck" },
-
-    "toraya_suv":      { "brand": "toraya",   "make": "Toyota",    "model": "RAV4",           "category": "suv" },
-    "vanda_suv":       { "brand": "vanda",    "make": "Honda",     "model": "CR-V",           "category": "suv" },
-    "corden_suv":      { "brand": "corden",   "make": "Ford",      "model": "Escape",         "category": "suv" },
-    "chevreau_suv":    { "brand": "chevreau", "make": "Chevrolet", "model": "Equinox",        "category": "suv" },
-    "sabaro_suv":      { "brand": "sabaro",   "make": "Jeep",      "model": "Cherokee",       "category": "suv" },
-    "meridas_suv":     { "brand": "meridas",  "make": "Lexus",     "model": "RX",             "category": "suv" },
-    "lancroft_suv":    { "brand": "lancroft", "make": "Acura",     "model": "MDX",            "category": "suv" }
+    "vanda_sedan": {
+      "brand": "vanda",
+      "model": "Aria",
+      "category": "sedan"
+    },
+    "toraya_sedan": {
+      "brand": "toraya",
+      "model": "Solenne",
+      "category": "sedan"
+    },
+    "messan_sedan": {
+      "brand": "messan",
+      "model": "Marisol",
+      "category": "sedan"
+    },
+    "corden_sedan": {
+      "brand": "corden",
+      "model": "Ember",
+      "category": "sedan"
+    },
+    "vyndai_sedan": {
+      "brand": "vyndai",
+      "model": "Lyric",
+      "category": "sedan"
+    },
+    "bavron_sedan": {
+      "brand": "bavron",
+      "model": "Axiom",
+      "category": "sedan"
+    },
+    "meridas_sedan": {
+      "brand": "meridas",
+      "model": "Estelle",
+      "category": "sedan"
+    },
+    "corden_truck": {
+      "brand": "corden",
+      "model": "Vanguard 150",
+      "category": "truck"
+    },
+    "chevreau_truck": {
+      "brand": "chevreau",
+      "model": "Ridgeway 1500",
+      "category": "truck"
+    },
+    "ravon_truck": {
+      "brand": "ravon",
+      "model": "Ironhorn 1500",
+      "category": "truck"
+    },
+    "toraya_truck": {
+      "brand": "toraya",
+      "model": "Kestrel",
+      "category": "truck"
+    },
+    "toraya_suv": {
+      "brand": "toraya",
+      "model": "Solenne Cross",
+      "category": "suv"
+    },
+    "vanda_suv": {
+      "brand": "vanda",
+      "model": "Aria Cross",
+      "category": "suv"
+    },
+    "corden_suv": {
+      "brand": "corden",
+      "model": "Trailhand",
+      "category": "suv"
+    },
+    "chevreau_suv": {
+      "brand": "chevreau",
+      "model": "Meadow",
+      "category": "suv"
+    },
+    "sabaro_suv": {
+      "brand": "sabaro",
+      "model": "Highland",
+      "category": "suv"
+    },
+    "meridas_suv": {
+      "brand": "meridas",
+      "model": "Estelle Cross",
+      "category": "suv"
+    },
+    "lancroft_suv": {
+      "brand": "lancroft",
+      "model": "Monarch",
+      "category": "suv"
+    }
   },
-
   "archetypes": {
     "young_family": {
-      "categoryWeights": { "sedan": 0.35, "suv": 0.55, "truck": 0.10 },
-      "templatePool": {
-        "sedan": ["vanda_sedan", "toraya_sedan", "messan_sedan", "corden_sedan", "vyndai_sedan"],
-        "suv":   ["toraya_suv", "vanda_suv", "corden_suv", "chevreau_suv", "sabaro_suv"],
-        "truck": ["corden_truck", "chevreau_truck", "toraya_truck"]
+      "categoryWeights": {
+        "sedan": 0.35,
+        "suv": 0.55,
+        "truck": 0.1
       },
-      "ageOffset":         { "mu": 6.0, "sigma": 2.5 },
-      "mileageMultiplier": { "mu": 1.05, "sigma": 0.25 },
-      "conditionWeights":  { "clean": 0.20, "average": 0.55, "rough": 0.25 },
+      "templatePool": {
+        "sedan": [
+          "vanda_sedan",
+          "toraya_sedan",
+          "messan_sedan",
+          "corden_sedan",
+          "vyndai_sedan"
+        ],
+        "suv": [
+          "toraya_suv",
+          "vanda_suv",
+          "corden_suv",
+          "chevreau_suv",
+          "sabaro_suv"
+        ],
+        "truck": [
+          "corden_truck",
+          "chevreau_truck",
+          "toraya_truck"
+        ]
+      },
+      "ageOffset": {
+        "mu": 6.0,
+        "sigma": 2.5
+      },
+      "mileageMultiplier": {
+        "mu": 1.05,
+        "sigma": 0.25
+      },
+      "conditionWeights": {
+        "clean": 0.2,
+        "average": 0.55,
+        "rough": 0.25
+      },
       "financeProbability": 0.75
     },
-
     "enthusiast": {
-      "categoryWeights": { "sedan": 0.55, "suv": 0.35, "truck": 0.10 },
-      "templatePool": {
-        "sedan": ["bavron_sedan", "meridas_sedan", "vanda_sedan", "toraya_sedan", "messan_sedan"],
-        "suv":   ["meridas_suv", "lancroft_suv", "toraya_suv", "sabaro_suv"],
-        "truck": ["toraya_truck", "corden_truck"]
+      "categoryWeights": {
+        "sedan": 0.55,
+        "suv": 0.35,
+        "truck": 0.1
       },
-      "ageOffset":         { "mu": 3.0, "sigma": 1.8 },
-      "mileageMultiplier": { "mu": 0.80, "sigma": 0.20 },
-      "conditionWeights":  { "clean": 0.55, "average": 0.35, "rough": 0.10 },
+      "templatePool": {
+        "sedan": [
+          "bavron_sedan",
+          "meridas_sedan",
+          "vanda_sedan",
+          "toraya_sedan",
+          "messan_sedan"
+        ],
+        "suv": [
+          "meridas_suv",
+          "lancroft_suv",
+          "toraya_suv",
+          "sabaro_suv"
+        ],
+        "truck": [
+          "toraya_truck",
+          "corden_truck"
+        ]
+      },
+      "ageOffset": {
+        "mu": 3.0,
+        "sigma": 1.8
+      },
+      "mileageMultiplier": {
+        "mu": 0.8,
+        "sigma": 0.2
+      },
+      "conditionWeights": {
+        "clean": 0.55,
+        "average": 0.35,
+        "rough": 0.1
+      },
       "financeProbability": 0.65
     },
-
     "commuter": {
-      "categoryWeights": { "sedan": 0.65, "suv": 0.25, "truck": 0.10 },
-      "templatePool": {
-        "sedan": ["vanda_sedan", "toraya_sedan", "messan_sedan", "corden_sedan", "vyndai_sedan"],
-        "suv":   ["vanda_suv", "toraya_suv", "corden_suv", "chevreau_suv"],
-        "truck": ["toraya_truck", "corden_truck"]
+      "categoryWeights": {
+        "sedan": 0.65,
+        "suv": 0.25,
+        "truck": 0.1
       },
-      "ageOffset":         { "mu": 7.5, "sigma": 2.5 },
-      "mileageMultiplier": { "mu": 1.20, "sigma": 0.25 },
-      "conditionWeights":  { "clean": 0.15, "average": 0.55, "rough": 0.30 },
+      "templatePool": {
+        "sedan": [
+          "vanda_sedan",
+          "toraya_sedan",
+          "messan_sedan",
+          "corden_sedan",
+          "vyndai_sedan"
+        ],
+        "suv": [
+          "vanda_suv",
+          "toraya_suv",
+          "corden_suv",
+          "chevreau_suv"
+        ],
+        "truck": [
+          "toraya_truck",
+          "corden_truck"
+        ]
+      },
+      "ageOffset": {
+        "mu": 7.5,
+        "sigma": 2.5
+      },
+      "mileageMultiplier": {
+        "mu": 1.2,
+        "sigma": 0.25
+      },
+      "conditionWeights": {
+        "clean": 0.15,
+        "average": 0.55,
+        "rough": 0.3
+      },
       "financeProbability": 0.65
     },
-
     "retiree": {
-      "categoryWeights": { "sedan": 0.55, "suv": 0.40, "truck": 0.05 },
-      "templatePool": {
-        "sedan": ["toraya_sedan", "meridas_sedan", "vanda_sedan", "vyndai_sedan"],
-        "suv":   ["meridas_suv", "lancroft_suv", "vanda_suv", "toraya_suv"],
-        "truck": ["corden_truck", "toraya_truck"]
+      "categoryWeights": {
+        "sedan": 0.55,
+        "suv": 0.4,
+        "truck": 0.05
       },
-      "ageOffset":         { "mu": 5.5, "sigma": 2.0 },
-      "mileageMultiplier": { "mu": 0.70, "sigma": 0.20 },
-      "conditionWeights":  { "clean": 0.55, "average": 0.35, "rough": 0.10 },
-      "financeProbability": 0.30
+      "templatePool": {
+        "sedan": [
+          "toraya_sedan",
+          "meridas_sedan",
+          "vanda_sedan",
+          "vyndai_sedan"
+        ],
+        "suv": [
+          "meridas_suv",
+          "lancroft_suv",
+          "vanda_suv",
+          "toraya_suv"
+        ],
+        "truck": [
+          "corden_truck",
+          "toraya_truck"
+        ]
+      },
+      "ageOffset": {
+        "mu": 5.5,
+        "sigma": 2.0
+      },
+      "mileageMultiplier": {
+        "mu": 0.7,
+        "sigma": 0.2
+      },
+      "conditionWeights": {
+        "clean": 0.55,
+        "average": 0.35,
+        "rough": 0.1
+      },
+      "financeProbability": 0.3
     },
-
     "tradesperson": {
-      "categoryWeights": { "sedan": 0.10, "suv": 0.20, "truck": 0.70 },
-      "templatePool": {
-        "sedan": ["messan_sedan", "corden_sedan", "vanda_sedan"],
-        "suv":   ["sabaro_suv", "chevreau_suv", "corden_suv"],
-        "truck": ["corden_truck", "chevreau_truck", "ravon_truck", "toraya_truck"]
+      "categoryWeights": {
+        "sedan": 0.1,
+        "suv": 0.2,
+        "truck": 0.7
       },
-      "ageOffset":         { "mu": 8.5, "sigma": 3.0 },
-      "mileageMultiplier": { "mu": 1.35, "sigma": 0.30 },
-      "conditionWeights":  { "clean": 0.10, "average": 0.45, "rough": 0.45 },
-      "financeProbability": 0.70
+      "templatePool": {
+        "sedan": [
+          "messan_sedan",
+          "corden_sedan",
+          "vanda_sedan"
+        ],
+        "suv": [
+          "sabaro_suv",
+          "chevreau_suv",
+          "corden_suv"
+        ],
+        "truck": [
+          "corden_truck",
+          "chevreau_truck",
+          "ravon_truck",
+          "toraya_truck"
+        ]
+      },
+      "ageOffset": {
+        "mu": 8.5,
+        "sigma": 3.0
+      },
+      "mileageMultiplier": {
+        "mu": 1.35,
+        "sigma": 0.3
+      },
+      "conditionWeights": {
+        "clean": 0.1,
+        "average": 0.45,
+        "rough": 0.45
+      },
+      "financeProbability": 0.7
     }
   }
 }

@@ -1,6 +1,6 @@
 import type { SalesVisit } from '../NPC';
 import type { Competitor, CompetitorCatalog } from './Competitor';
-import type { BrandCatalog } from './schemas/brand';
+import type { BrandCatalog } from '../Brands';
 import { scoreCompetitor } from './ScoreCompetitor';
 
 /**

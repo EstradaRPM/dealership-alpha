@@ -1,4 +1,5 @@
 import { createRng, deriveSeed } from '../Rng';
+import { brandLabel } from '../Brands';
 import {
   loadMileageDistributionConfig,
   loadAuctionSourcesConfig,
@@ -133,7 +134,7 @@ function buildListing(args: BuildListingArgs): AuctionListing {
     templateId: template.id,
     brand: template.brand,
     year,
-    make: template.make,
+    make: brandLabel(template.brand),
     model: template.model,
     trim: template.trim,
     mileage: baseMileage,

@@ -22,8 +22,8 @@
             "templateId": "sabaro_suv",
             "brand": "sabaro",
             "year": 2017,
-            "make": "Jeep",
-            "model": "Cherokee",
+            "make": "Sabaro",
+            "model": "Highland",
             "trim": "Sport",
             "mileage": 82500,
             "condition": "average",
@@ -39,9 +39,9 @@
             "templateId": "vanda_suv",
             "brand": "vanda",
             "year": 2018,
-            "make": "Honda",
-            "model": "CR-V",
-            "trim": "LX",
+            "make": "Vanda",
+            "model": "Aria Cross",
+            "trim": "SE",
             "mileage": 119000,
             "condition": "average",
             "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
@@ -56,9 +56,9 @@
             "templateId": "chevreau_suv",
             "brand": "chevreau",
             "year": 2018,
-            "make": "Chevrolet",
-            "model": "Equinox",
-            "trim": "LS",
+            "make": "Chevreau",
+            "model": "Meadow",
+            "trim": "Base",
             "mileage": 93500,
             "condition": "clean",
             "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
@@ -73,9 +73,9 @@
             "templateId": "toraya_sedan",
             "brand": "toraya",
             "year": 2018,
-            "make": "Toyota",
-            "model": "Camry",
-            "trim": "LE",
+            "make": "Toraya",
+            "model": "Solenne",
+            "trim": "SE",
             "mileage": 83000,
             "condition": "clean",
             "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
@@ -90,9 +90,9 @@
             "templateId": "vanda_sedan",
             "brand": "vanda",
             "year": 2020,
-            "make": "Honda",
-            "model": "Civic",
-            "trim": "LX",
+            "make": "Vanda",
+            "model": "Aria",
+            "trim": "SE",
             "mileage": 48000,
             "condition": "clean",
             "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
@@ -107,9 +107,9 @@
             "templateId": "chevreau_truck",
             "brand": "chevreau",
             "year": 2018,
-            "make": "Chevrolet",
-            "model": "Silverado 1500",
-            "trim": "WT",
+            "make": "Chevreau",
+            "model": "Ridgeway 1500",
+            "trim": "Work",
             "mileage": 86500,
             "condition": "clean",
             "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
@@ -124,9 +124,9 @@
             "templateId": "corden_suv",
             "brand": "corden",
             "year": 2018,
-            "make": "Ford",
-            "model": "Escape",
-            "trim": "S",
+            "make": "Corden",
+            "model": "Trailhand",
+            "trim": "Base",
             "mileage": 100500,
             "condition": "average",
             "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
@@ -141,9 +141,9 @@
             "templateId": "messan_sedan",
             "brand": "messan",
             "year": 2018,
-            "make": "Nissan",
-            "model": "Altima",
-            "trim": "S",
+            "make": "Messan",
+            "model": "Marisol",
+            "trim": "Base",
             "mileage": 90000,
             "condition": "average",
             "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
@@ -161,9 +161,9 @@
             "templateId": "toraya_suv",
             "brand": "toraya",
             "year": 2019,
-            "make": "Toyota",
-            "model": "RAV4",
-            "trim": "LE",
+            "make": "Toraya",
+            "model": "Solenne Cross",
+            "trim": "SE",
             "mileage": 74000,
             "condition": "average",
             "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
@@ -190,9 +190,9 @@
             "templateId": "vanda_suv",
             "brand": "vanda",
             "year": 2019,
-            "make": "Honda",
-            "model": "CR-V",
-            "trim": "LX",
+            "make": "Vanda",
+            "model": "Aria Cross",
+            "trim": "SE",
             "mileage": 49500,
             "condition": "clean",
             "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
@@ -219,9 +219,9 @@
             "templateId": "chevreau_suv",
             "brand": "chevreau",
             "year": 2019,
-            "make": "Chevrolet",
-            "model": "Equinox",
-            "trim": "LS",
+            "make": "Chevreau",
+            "model": "Meadow",
+            "trim": "Base",
             "mileage": 68000,
             "condition": "clean",
             "conditionReport": "No major defects. Passes safety inspection. Recent oil change.",
@@ -248,9 +248,9 @@
             "templateId": "chevreau_suv",
             "brand": "chevreau",
             "year": 2018,
-            "make": "Chevrolet",
-            "model": "Equinox",
-            "trim": "LS",
+            "make": "Chevreau",
+            "model": "Meadow",
+            "trim": "Base",
             "mileage": 83500,
             "condition": "average",
             "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
@@ -277,9 +277,9 @@
             "templateId": "chevreau_suv",
             "brand": "chevreau",
             "year": 2019,
-            "make": "Chevrolet",
-            "model": "Equinox",
-            "trim": "LS",
+            "make": "Chevreau",
+            "model": "Meadow",
+            "trim": "Base",
             "mileage": 77500,
             "condition": "average",
             "conditionReport": "Normal wear for mileage. Minor cosmetic blemishes. Ready to recon.",
@@ -1457,7 +1457,8 @@
                 "lo": 0.45,
                 "hi": 0.75
               }
-            }
+            },
+            "make": "Corden"
           },
           {
             "id": "sunrise-toraya",
@@ -1481,7 +1482,8 @@
                 "lo": 0.4,
                 "hi": 0.7
               }
-            }
+            },
+            "make": "Toraya"
           },
           {
             "id": "metro-vanda",
@@ -1505,7 +1507,8 @@
                 "lo": 0.35,
                 "hi": 0.65
               }
-            }
+            },
+            "make": "Vanda"
           },
           {
             "id": "desert-ravon",
@@ -1529,7 +1532,8 @@
                 "lo": 0.55,
                 "hi": 0.85
               }
-            }
+            },
+            "make": "Ravon"
           },
           {
             "id": "lakeview-chevreau",
@@ -1553,7 +1557,8 @@
                 "lo": 0.5,
                 "hi": 0.8
               }
-            }
+            },
+            "make": "Chevreau"
           },
           {
             "id": "southside-vyndai",
@@ -1577,7 +1582,8 @@
                 "lo": 0.25,
                 "hi": 0.55
               }
-            }
+            },
+            "make": "Vyndai"
           },
           {
             "id": "eastside-kaivo",
@@ -1601,7 +1607,8 @@
                 "lo": 0.23,
                 "hi": 0.53
               }
-            }
+            },
+            "make": "Kaivo"
           },
           {
             "id": "riverside-messan",
@@ -1625,7 +1632,8 @@
                 "lo": 0.33,
                 "hi": 0.63
               }
-            }
+            },
+            "make": "Messan"
           }
         ],
         "rngState": 2875972544

@@ -43,8 +43,16 @@ anywhere in `src/ui/**`.
 **#213 is BUILT as of 2026-08-13.** `WORLD_SNAPSHOT_VERSION` stays 22: the spine writes into the
 per-slot `teaching:<id>` cell and nothing else.
 
-**#395 is BUILT as of 2026-08-13 — PHASE 12 IS COMPLETE.** Nothing under it is outstanding. The
-next `/next` advances the pointer to phase 13. `WORLD_SNAPSHOT_VERSION` stays 22.
+**#395 is BUILT as of 2026-08-14 — PHASE 12 IS COMPLETE.** Nothing under it is outstanding.
+`WORLD_SNAPSHOT_VERSION` stays 22.
+
+## Phase 13 — H1 fictional brands (#246) — COMPLETE as of 2026-08-14
+
+The pointer advanced when phase 12 closed. `path-to-finished-product.md` §12 row 13: **H1
+fictional brands, before the brand system grows in E1.** One filed issue, **#246**, deps met and
+no slicing needed — it carries its own acceptance criteria. **#246 is BUILT — the gate is closed.** `tests/Brands.test.ts` now scans every JSON under `data/`
+for 40 marques and model names, so it stays closed. It filed **#398 out of phase** — the two
+auction-source *ids* still echo real houses, and renaming them re-rolls the #180 band.
 
 The one thing a future session must not re-derive: **the backstory picks WERE mechanically
 identical, and #390/#391/#392/#393 ended all of it.** All four `day1Modifier` levers are read in
@@ -1824,6 +1832,51 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+- 2026-08-14 — **BUILT #246** (H1 — the fictional-brand release gate). **PHASE 13 IS COMPLETE.**
+  The repo turned out to be half-migrated: #224 had already made `brand` an opaque join key every
+  file agrees on. What was missing was a **display name**. There was none anywhere, so the name a
+  player read came from a parallel `make` field copied onto every vehicle template — which is
+  exactly where the real trademarks lived, one copy per car.
+  **`data/brands.json` is schemaVersion 2 and the Brand is now one entity**: `{ id, label,
+  segment_affinity, market_draw, spaced_lean }`, the array-of-objects idiom
+  `data/auction-sources.json` already used. `id` is the opaque join key and what saves persist;
+  `label` is the only brand string a player ever reads. **The ids did NOT change, deliberately** —
+  they are persisted inside the `inventory`, `competitorMarket` and `reputation` blobs, so
+  renaming them is a three-module save migration bought for no player-visible gain.
+  **`src/game/Brands/` is a new library module** (no EventBus, the `Rng`/`data` shape). The catalog
+  left `CompetitorMarket` because a brand is not a rival-dealer concern: Inventory names the cars
+  on the lot from it, SalesProcess reads its tier, NPC its market share, MarketEconomy its price
+  anchor, the wire its label. Any of those importing `CompetitorMarket` to learn what a car is
+  called would be a dependency nobody could justify from the domain.
+  **`make` is gone from both template catalogs and `model`/`trim` are fictional.** The label is
+  resolved from the catalog when the vehicle is built, so a brand is named in exactly one place.
+  `Inventory.restore()` **re-resolves** it from the brand id rather than trusting the blob — which
+  is what guarantees a career saved before this slice cannot carry a trademark forward.
+  **Two latent bugs fell out.** `HistoryLog` printed *"Rival corden raised prices."* and the
+  industry wire substituted the raw opaque id into a headline. Both take the label now.
+  `assertKnownBrands` runs at load on both template catalogs: an undeclared brand used to take the
+  `?? 'mainstream'` tier default silently and would have rendered its own id as a car's name.
+  **The auction houses were swept too, and stopping at the label was NOT timidity — it was a
+  measured calibration finding.** `rollAuctionSourceReliability` seeds each source's hidden
+  per-save reliability from `deriveSeed(masterSeed, ..., { sourceId: src.id })`
+  (`auctionSources.ts:34`), so renaming `manheim_digital` re-rolls every source's reliability and
+  with it every listing's motivated-seller spread. Renaming both ids moved the #180 live band to
+  **positive 30.7% / apathetic 60.7% (max 59) / closes 236 / costOverAsk 1.103** against HEAD's
+  **35.8% / 54.3% / 274 / 1.026**. Same model, different draw — a calibration event, not a copy
+  edit. Labels are fictional ("Keystone Digital", "Crossroads Regional"); the ids stay and the
+  rename is filed as **#398** with the measured table. `tests/Brands.test.ts` scans the
+  auction-house *labels* only, with that reason written beside it.
+  **Finding that cost four bisection runs, and each elimination is worth keeping**: the
+  `loadBrands` memo, the `model`/`trim` strings, the `make` *value* (probed by mapping the labels
+  back to the real marques) and the entire NPC half all produce **identically drifted** numbers.
+  That is positive proof the display layer is inert, which is the design working — and it is why
+  the culprit could only be a seed. A future session chasing a calibration move should reach for
+  "what re-seeded?" before "what number changed?".
+  **`tests/Brands.test.ts` is the gate itself** — a scan of every JSON under `data/` for 40 marques
+  and model names, so the next hand-written catalog cannot put one back. The customer-vehicle
+  template schema is `.strict()`, so a re-added `make` is a load-time failure there as well.
+  Fixture re-stamped in place (46 display fields re-derived). Full suite green: 279 suites, 6204
+  tests, and the #180 live read is byte-identical to HEAD down to `vehicle_sold_to_other:1`.
 - 2026-08-14 — **BUILT #395** (F1 — progressive disclosure: a teaching beat fires when its
   mechanic first matters). **PHASE 12 IS COMPLETE.** #213 taught the store's opening moves on day
   one; everything the game grew after that spine was written — the service annuity, the morning
@@ -1950,58 +2003,4 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   3-of-6 lot. Two nav guards (`NavGating`, `InTabNavigation`) were updated from the literal
   `onTabChange={tabs.setActiveTab}` to the named handler plus its delegation; the contract they
   guard — the shell reports the tap, `tabs` owns the state — is unchanged.
-
-- 2026-08-13 — **BUILT #394** (F2-R2 — the tier-1 failure stakes, stated once the first time cash
-  goes low). A new player used to learn the failure model from the EndCard: the first time they
-  heard that running out of money ends the career was when it already had. The store now says it
-  while there is still something to do about it.
-  **The threshold is a measured number, not a guess.** `data/failure-tunables.json` gains
-  `warningCashFloor: 12500`, calibrated over a 100-seed naive-policy cohort (360 days): 62 of 100
-  careers ever cross it, median first crossing **day 198**, median **35 days of runway** to the bad
-  end, and 8 of those 62 recovered and finished the full run. $10,000 crosses on *exactly the same
-  62 careers* and buys only 30 days — the extra $2,500 costs no additional warnings and returns
-  five days, which is why it is not the rounder number.
-  **Two cash levels, two questions, one owner.** `cashFloor` (0) is what sustained insolvency is
-  measured against; `warningCashFloor` is the level at which the player can still act.
-  `BankruptcyMonitor.isCashLow` and `.daysBelowFloorToFail` are live reads on the module that owns
-  both, so no surface re-derives a threshold and the sentence quotes the rule rather than repeating
-  a number that could drift. Neither is latched, neither is persisted, `WORLD_SNAPSHOT_VERSION`
-  stays 22.
-  **Tier 1 ONLY, and that is what makes the sentence true.** Running out at T1 ends the career; at
-  T2 it contracts you back a tier and at T3+ it buys a compliance bill — both already stated by the
-  #326 recovery beat when they land. Telling a T2 owner their career is about to end would be a
-  claim the engine contradicts, so the gate is honesty, not narrowing. Found by reaching for the T2
-  dev fixture to drive it.
-  **A beat is the other half of the teaching cell, not a second progress store.** `data/hints.json`
-  could not carry this: `HINT_IDS` is closed and every entry must map to a control some surface
-  renders (`tests/HintCopy.test.ts`), and a stakes warning has nothing to press. So
-  `data/teaching-beats.json` + `src/ui/copy/teachingBeats.ts` — the `emptyStates` shape exactly —
-  and retirement goes into the **same** `teaching:<id>` cell #386 minted. `useHints` grew
-  `hasTaught`/`markTaught` beside `hintFor`/`markUsed` over **one** in-memory set, because two sets
-  over one cell is two copies of one fact and "Show hints again" would clear only whichever half
-  remembered to listen.
-  **This is the one copy catalog allowed to quote money, and that follows #387 rather than excepting
-  it.** A hint is written once against every store, so a dollar figure in one is a claim the player
-  can check and find wrong. A beat is fired against ONE store's position and the player is about to
-  act on it — so `{cash}` and `{reach}` are exact, through the kit's `money`. The reach clause is
-  omitted **whole** for a store with no headroom rather than stated about $0, and it reads
-  `getFacility().available`, never a backstory id.
-  **Raised BEFORE the bite early-return, and it does not halt the run.** A warning a multi-day bite
-  could skip is a warning the player who most needs it never gets. It does not stop the clock
-  because #384's rule is that a moment halts a run when it puts a *decision* in front of the owner;
-  this one reports, and the card is waiting when the run ends MANAGERIAL.
-  **Fixed a rules violation in the file the number went into:** `loadFailureTunables` /
-  `loadIndictmentTunables` were `rawConfig as T`, so a mistyped key produced `cash < undefined` —
-  always false — and the failure model would have failed silently, forever. Both go through
-  `parseData` now, with a refine that refuses a `warningCashFloor` at or below `cashFloor`.
-  `npm run typecheck` clean, **278 suites / 6064 tests** green.
-  **Web drive (ex-banker T1 career, DEV console → cash $8,000 → close the day):** the card renders
-  *"Your cash is running low."* with the store's own **$8,000**, the consequence carrying the rule's
-  own **7** days, and — because this founder has a line — *"You also have $50,000 you have not
-  drawn on your line of credit."* off the live facility read. "Got it" dismissed it; the next day
-  closed at **$526**, far deeper than the first dip, and said **nothing**. Once per career, proved
-  on the running app.
-  Filed out of phase: **#397** — four more `data/` loaders still load as raw casts.
-  Next: **BUILD #213** (F1 — the first-run spine coachmarks + the "What should I do?" InGameMenu
-  entry); its dep #386 is met.
 

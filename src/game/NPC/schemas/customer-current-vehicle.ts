@@ -34,9 +34,14 @@ const TierKeyedRateSchema = z
 
 const TemplateDefSchema = z
   .object({
-    /** Opaque canonical brand id (join key); never a display string. */
+    /**
+     * Opaque canonical brand id (join key); never a display string.
+     *
+     * A template declares no brand NAME (#246) — the display name is the
+     * brand's `label` from `data/brands.json`, resolved when the car is
+     * generated, so a brand is named in exactly one place.
+     */
     brand: z.string().min(1),
-    make: z.string().min(1),
     model: z.string().min(1),
     category: VehicleCategorySchema,
   })
@@ -149,6 +154,7 @@ export const CurrentVehicleSchema = z
     templateId: z.string().min(1),
     /** Opaque canonical brand id (join key); never a display string. */
     brand: z.string().min(1),
+    /** The brand's display name, resolved from the catalog at generation. */
     make: z.string().min(1),
     model: z.string().min(1),
     year: z.number().int(),

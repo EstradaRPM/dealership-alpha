@@ -1,5 +1,6 @@
 import { createRng, deriveSeed, type SeedContext } from '../../Rng';
 import { parseData } from '../../data';
+import { assertKnownBrands, brandLabel } from '../../Brands';
 import {
   CustomerCurrentVehicleConfigSchema,
   CurrentVehicleSchema,
@@ -12,11 +13,19 @@ export const CURRENT_VEHICLE_NAMESPACE = 'npc.customer.currentVehicle';
 export function loadCustomerCurrentVehicleConfig(): CustomerCurrentVehicleConfig {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const raw: unknown = require('../../../../data/customer-current-vehicle.json');
-  return parseData(
+  const config = parseData(
     raw,
     CustomerCurrentVehicleConfigSchema,
     'data/customer-current-vehicle.json',
   );
+  // Referential integrity (#246) — the same check `data/vehicles.json` gets.
+  // These templates are declared here rather than imported from Inventory (see
+  // this module's CLAUDE.md), so they need the check in their own right.
+  assertKnownBrands(
+    Object.values(config.templates).map((t) => t.brand),
+    'data/customer-current-vehicle.json',
+  );
+  return config;
 }
 
 export interface RollCurrentVehicleContext extends SeedContext {
@@ -171,7 +180,7 @@ export function rollCurrentVehicle(
   const vehicleBase: CurrentVehicle = {
     templateId,
     brand: template.brand,
-    make: template.make,
+    make: brandLabel(template.brand),
     model: template.model,
     year,
     mileage,
