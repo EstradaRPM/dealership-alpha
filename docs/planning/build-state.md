@@ -50,7 +50,33 @@ per-slot `teaching:<id>` cell and nothing else.
 
 The pointer advanced when phase 12 closed. `path-to-finished-product.md` §12 row 13: **H1
 fictional brands, before the brand system grows in E1.** One filed issue, **#246**, deps met and
-no slicing needed — it carries its own acceptance criteria. **#246 is BUILT — the gate is closed.** `tests/Brands.test.ts` now scans every JSON under `data/`
+no slicing needed — it carries its own acceptance criteria. **#246 is BUILT — the gate is closed.**
+
+## Phase 14 — E1 Tier 4, the OEM Relationship engine — ACTIVE as of 2026-08-14
+
+The pointer advanced when phase 13 closed. **The unit is SLICE, not a grill and not a build.**
+`path-to-finished-product.md` §7 E1 is tagged `[LOCKED design record #223 + macro-spine §6–7]`, so
+the design is settled — `gates.md` lists no open gate for this phase and nothing here is to be
+re-grilled. No issue covers the phase: #223 is the design-record meta-issue the workflow says to
+ignore as a work item, and the open queue (#74, #252, #268, #396, #397, #398) belongs to other
+phases.
+
+**What the slicing session needs to read, and nothing else:** design record #223 (`gh issue view
+223`), `docs/planning/macro-loop-spine.md` §6–7, and §7 E1 of `path-to-finished-product.md`. The
+four slice families are named there: courtship / brand application (the T3 `dossierReady` hook
+already arms it), brand archetypes, NCM + the new-car channel, and keeping the used desk alive as
+a department. Plus E1's own Reveal grain, gate faces and pacing.
+
+**One dependency is now discharged:** E1's brand archetypes were to "fold into the #246
+fictional-brand entity work — one Brand entity serves both the legal swap and the archetype
+system." #246 landed on 2026-08-14 and `src/game/Brands/` is that entity, so the archetype axes
+hang off `BrandEntry` rather than needing a second brand model.
+
+**Why this session stopped here rather than slicing:** it had already landed #395 and #246 and was
+out of context to file ten-plus issues with EARS criteria. A half-filed slice is worse than none —
+"lowest-numbered open issue whose deps are met" silently becomes the wrong instruction. No work is
+blocked; the next `/next` runs `/to-issues` scoped to phase 14 from a clean start.
+ `tests/Brands.test.ts` now scans every JSON under `data/`
 for 40 marques and model names, so it stays closed. It filed **#398 out of phase** — the two
 auction-source *ids* still echo real houses, and renaming them re-rolls the #180 band.
 
