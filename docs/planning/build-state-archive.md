@@ -6,6 +6,46 @@ session start — open it on demand when a past slice's rationale needs recoveri
 
 ## Log
 
+- 2026-08-13 — **BUILT #393** (F2-R1 — the borrowing facility on the Finance statement, and the
+  store's worth nets the debt). #392 built a facility nobody could reach; the Finance room now
+  states it and moves it. **`getStoreWorth()` subtracts the drawn balance and the caption names
+  it** — the one-line argument for the whole slice is that borrowing $50,000 must leave what the
+  store is worth *flat*, exactly as a bought car does (#380). Proved live: cash $49.9k → $99.9k,
+  worth $87.3k → **$87.3k**, Net Income unmoved at -$57 (a draw is `financing`-categorized and
+  drops whole from the P&L). The caption is **one sentence for every store, drawn or not** —
+  "…less what you owe on your credit line" — because a caption that appeared the first time you
+  borrowed would read as the rule changing, when only a term stopped being zero.
+  **The panel is a reading of THIS MOMENT and the range chips must not appear to move it**, so it
+  states `interestPaidToDate` (lifetime) rather than the window's charge. The issue's scope bullet
+  asked for "the interest paid in the selected window" and its own Notes asked for a moment read;
+  the Notes wins, and the *window* cost is the expenses-breakdown line instead. That line is now
+  **pinned**: `groupExpenses` folds its tail into "Other" by size, and a day's interest on a
+  $50,000 line is ~$19 against a payroll of hundreds, so without the pin the one cost the player
+  can end with a button on that same screen would be buried in every window that mattered. It is
+  the only pinned label and the fold is byte-identical for everything else.
+  **`drawSteps` is on `getFacility()`, not computed on the screen** — `data/credit-facility.json`
+  gains `drawFractions` `[0.25, 0.5, 0.75, 1]`, resolved against the store's own limit. Fractions
+  rather than dollars so every founder's line is offered at the same four rungs; the schema
+  refuses a non-ascending list or a last rung that is not the whole line. A surface multiplying a
+  limit by a fraction would be a second place deciding how coarse borrowing is. **A limit of zero
+  yields `drawSteps: []`** and `buildCreditFacilityPanel` returns `null` — the room omits the
+  region entirely (locked IA rule 3), which is the one place in the app that branches on whether
+  the store has a line, and it branches on how the facility *reads*, never on how it works.
+  **A refusal is reported as a sentence, not observed as a state change** (`onDraw` returns the
+  notice or `null`), because #392's refusals change nothing at all — there is no new state for the
+  panel to re-read. The notice names the bound off the same `getFacility()` the refusal was
+  decided from: drove a full $50k draw, pressed Borrow again, got *"That is more than your line
+  has left. You can borrow $0 more."* with nothing moved. **Refused whole, never clamped.**
+  One hint id, `credit_line`, over one control group (`finance-credit-controls`) covering the
+  amount chips and both buttons — borrowing and paying back are two ends of one decision, so they
+  share a lesson and retire together. `FinanceTabContainer` now takes `hints`/`bump`/`setCash`,
+  the `GrowthTabContainer` shape. Verified retiring on the drive: the line was gone after the draw.
+  **Deleted the "391 grudge" test slot to free a slot for the drive, and the user made that
+  standing: agent-created saves are free to delete, and a full slot list must never gate a
+  verification run again.**
+  Next: **BUILD #394** (F2-R2 — the failure stakes, stated once the first time cash goes low);
+  its deps #386 and #392 are met.
+
 - 2026-08-13 — **BUILT #392** (F2-R1 — `startingCreditLine` becomes a real borrowing facility).
   The Ex-Banker's $50,000 was a number in `data/backstories.json` that nothing read. It is now
   `src/game/CreditFacility/` — a limit, a drawn balance, and interest every morning on whatever

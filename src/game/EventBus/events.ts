@@ -1224,3 +1224,129 @@ export interface EventMap {
 export type EventName = keyof EventMap;
 export type EventPayload<K extends EventName> = EventMap[K];
 export type EventListener<K extends EventName> = (payload: EventPayload<K>) => void;
+
+/**
+ * The catalog as a **runtime** value (#395).
+ *
+ * `EventMap` is an interface, so `EventName` is erased at build time and a data
+ * file that declares an event name has nothing to check itself against. Any
+ * catalog under `data/` that names an event — `data/teaching-beats.json` is the
+ * first — validates against this list at load, so a typo'd or renamed event is a
+ * load-time failure rather than a subscription that silently never fires.
+ *
+ * It cannot drift: `_EVENT_NAMES_ARE_EXHAUSTIVE` below fails `tsc` if this list
+ * and `EventMap` disagree in **either** direction, so adding an event to the map
+ * without adding it here does not compile.
+ */
+export const EVENT_NAMES = [
+  'bus:ready',
+  'clock:day_ended',
+  'clock:overnight_payroll',
+  'clock:overnight_inventory_arrival',
+  'clock:overnight_reputation_drift',
+  'clock:overnight_followup_decay',
+  'clock:day_started',
+  'clock:managerial_prep',
+  'clock:week_ended',
+  'clock:month_ended',
+  'tierGate:month_verdict',
+  'records:broken',
+  'floor:tick',
+  'floor:customer_walked',
+  'floor:day_complete',
+  'market:competitive_pressure',
+  'competitor:price_changed',
+  'customer:arrived',
+  'customer:state_changed',
+  'customer:gate_evaluated',
+  'customer:resolved',
+  'market:shock_started',
+  'market:shock_resolved',
+  'market:segment_heat_updated',
+  'news:headline_published',
+  'market:weekly_report_published',
+  'inventory:vehicle_purchased',
+  'inventory:vehicle_acquired_via_trade',
+  'inventory:recon_surprise',
+  'inventory:recon_completed',
+  'economy:revenue_posted',
+  'economy:expense_posted',
+  'economy:carrying_cost_posted',
+  'inventory:vehicle_sold',
+  'inventory:vehicle_wholesaled',
+  'followup:customer_archived',
+  'followup:bdc_tasks_ready',
+  'bdc:callback_succeeded',
+  'deal:closed',
+  'trade:resolved',
+  'trade:escalated',
+  'discount:escalated',
+  'staff:hired',
+  'staff:fired',
+  'staff:promoted',
+  'staff:raise_requested',
+  'staff:raise_answered',
+  'staff:auto_resolved',
+  'staff:quit',
+  'capacity:customer_admitted',
+  'capacity:missed_opportunity',
+  'reputation:satisfaction_hit',
+  'career:tier_up',
+  'facility:capacity_built',
+  'credit:drawn',
+  'credit:repaid',
+  'career:bankruptcy_terminal',
+  'career:bankruptcy_contraction',
+  'career:bankruptcy_compliance',
+  'career:debt_payment_made',
+  'regulatory:ag_complaint_terminal',
+  'regulatory:ag_complaint_contraction',
+  'regulatory:ag_complaint_consent_decree',
+  'regulatory:suspension_lifted',
+  'regulatory:lemon_law_incident',
+  'regulatory:audit_failure',
+  'deal:fraud_flag',
+  'career:indictment_terminal',
+  'career:indictment_contraction',
+  'career:indictment_legal_defense',
+  'installedBase:repeat_buyer_ready',
+  'installedBase:returns_ready',
+  'installedBase:owner_defected',
+  'serviceDemand:intake_ready',
+  'service:intake_ready',
+  'bodyshop:demand_ready',
+  'bodyshop:intake_ready',
+  'career:game_over',
+  'career:retired',
+  'career:pe_offer_made',
+  'career:pe_sellout',
+  'career:family_handoff',
+  'service:ticket_closed',
+  'service:parts_consumed',
+  'service:job_missed',
+  'service:job_rushed',
+  'service:job_unserved',
+  'bodyshop:ticket_closed',
+  'bodyshop:parts_consumed',
+  'bodyshop:job_missed',
+  'bodyshop:job_rushed',
+  'bodyshop:job_unserved',
+] as const;
+
+/**
+ * Compile-time proof that `EVENT_NAMES` and `EventMap` name the same set. Both
+ * directions: a member here that is not a key of the map, or a key of the map
+ * missing from here, makes this declaration fail to typecheck.
+ */
+type MissingFromList = Exclude<EventName, (typeof EVENT_NAMES)[number]>;
+type NotAnEvent = Exclude<(typeof EVENT_NAMES)[number], EventName>;
+type EventNamesAreExhaustive = [MissingFromList | NotAnEvent] extends [never]
+  ? true
+  : never;
+
+/**
+ * The assertion itself. It resolves to `never` — and so refuses the `= true` —
+ * the moment an event is added to `EventMap` without being added to
+ * `EVENT_NAMES`, or vice versa. Exported only so it is a used declaration.
+ */
+export const EVENT_NAMES_ARE_EXHAUSTIVE: EventNamesAreExhaustive = true;

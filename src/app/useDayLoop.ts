@@ -26,11 +26,16 @@ import type { FniMonthVerdict } from '../game/DealEngine';
 import type { CashDeltaSplit } from '../ui/HomeTab';
 import {
   buildRecoveryBeat,
-  buildStakesBeat,
+  buildTeachingBeat,
   type RecoveryBeat,
-  type StakesBeat,
+  type TeachingBeatModel,
 } from '../ui/NarrativeBeat';
-import type { TeachingBeatId } from '../ui/copy';
+import { loadTeachingBeats, type TeachingBeatId } from '../ui/copy';
+import {
+  BEAT_CONDITIONS,
+  createTeachingBeatChannel,
+  createTeachingBeatContext,
+} from './teachingBeats';
 import type { SaveState } from '../game/SaveStore';
 import { snapshotWorld, type WorldSnapshot } from '../worldSnapshot';
 import type { AppServices } from './services';
@@ -74,13 +79,13 @@ export interface DayLoopDeps {
    */
   onControlUsed?: (id: 'run_day' | 'run_bite') => void;
   /**
-   * The one-shot teaching beats (#394), off the SAME per-slot cell the hints
-   * retire into. Read at the day close that could raise one, so a beat fires
-   * once per career and "Show hints again" re-arms it with everything else.
+   * The one-shot teaching beats (#394/#395), off the SAME per-slot cell the
+   * hints retire into, so a beat fires once per career and "Show hints again"
+   * re-arms it with everything else.
    *
    * Omitted ⇒ no beat ever fires. That is the right default for a harness with
    * no teaching cell to write to: a beat that could not be retired would fire
-   * on every low-cash day forever.
+   * on every tick of its condition forever.
    */
   hasTaught?: (id: TeachingBeatId) => boolean;
   markTaught?: (id: TeachingBeatId) => void;
@@ -107,12 +112,15 @@ export interface DayLoop {
   recoveryQueue: readonly RecoveryBeat[];
   setRecoveryQueue: React.Dispatch<React.SetStateAction<readonly RecoveryBeat[]>>;
   /**
-   * The failure-stakes beat (#394), raised at the day close where cash first
-   * reads low. Not a queue: it fires once per career, so there is never a
-   * second one waiting behind it.
+   * The teaching beats that have come due (#394/#395), drained one at a time.
+   *
+   * A queue rather than a slot: two mechanics can start mattering on the same
+   * day, and the rule is that they are presented one after another in
+   * declaration order — never stacked. Each beat fires once per career, so the
+   * queue only ever holds beats the player has not seen.
    */
-  stakesBeat: StakesBeat | null;
-  setStakesBeat: (b: StakesBeat | null) => void;
+  beatQueue: readonly TeachingBeatModel[];
+  setBeatQueue: React.Dispatch<React.SetStateAction<readonly TeachingBeatModel[]>>;
   endCard: EndCardData | null;
   setEndCard: (d: EndCardData | null) => void;
   handleNextDay: () => void;
@@ -217,12 +225,11 @@ export function useDayLoop({
   // FLOOR_OPEN and drain as sequential full-bleed acknowledge-cards at the
   // MANAGERIAL boundary, FIFO by emission order.
   const [chapterQueue, setChapterQueue] = useState<readonly TierUpEvent[]>([]);
-  // The failure-stakes beat (#394). Not a queue — it fires once per career, so
-  // there is never a second one waiting behind it. It rides its own slot rather
-  // than the recovery queue because nothing has HAPPENED: no hit landed and no
-  // tier was lost. It is a reading of where the store stands, which is a
+  // The teaching beats (#394/#395). Its own queue rather than the recovery one
+  // because nothing has HAPPENED: no hit landed and no tier was lost. A beat is
+  // a reading of what the store can now do — or now stands to lose — which is a
   // different kind of moment and gets a different card.
-  const [stakesBeat, setStakesBeat] = useState<StakesBeat | null>(null);
+  const [beatQueue, setBeatQueue] = useState<readonly TeachingBeatModel[]>([]);
   // Non-terminal recovery beats (#326). The four survivable hits — bankruptcy /
   // indictment / AG contractions and the Tier 3+ consent decree — enqueue here
   // when they fire and drain as sequential full-bleed acknowledge-cards, the
@@ -396,7 +403,7 @@ export function useDayLoop({
     setMonthClose(null);
     setChapterQueue([]);
     setRecoveryQueue([]);
-    setStakesBeat(null);
+    setBeatQueue([]);
     setEndCard(null);
   };
 
@@ -427,41 +434,15 @@ export function useDayLoop({
         }
         prevDayCashRef.current = closingCash;
         prevDayAcquisitionSpendRef.current = acquisitionSpend;
-        // The failure-stakes beat (#394). Raised BEFORE the bite early-return
-        // below, so a week that burns the store down still states the stakes on
-        // the day cash first reads low — a warning a multi-day run could skip
-        // is a warning the player who most needs it never gets.
+        // NOTE: the teaching beats (#394/#395) are NOT raised here. They ride
+        // their own bus subscriptions (`createTeachingBeatChannel` below), so a
+        // beat cannot be stepped over by the bite early-return further down —
+        // a warning a multi-day run could skip is a warning the player who most
+        // needs it never gets. A beat does not halt the run either: #384's rule
+        // is that a moment stops a run when it puts a DECISION in front of the
+        // owner, and a beat reports, so the card is waiting when the run ends
+        // MANAGERIAL.
         //
-        // It does NOT halt the bite. #384's rule is that a moment stops a run
-        // when it puts a DECISION in front of the owner; this one reports, and
-        // the card is waiting when the run ends MANAGERIAL.
-        //
-        // Whether the store's cash is low is the failure model's question and
-        // is asked of the monitor that owns the threshold; whether the player
-        // has been told is teaching state and is asked of the hint cell.
-        //
-        // Tier 1 ONLY, and that is what makes the sentence true rather than a
-        // narrowing. Running out at Tier 1 ends the career; at Tier 2 it
-        // contracts you back a tier, and at Tier 3+ it buys a compliance bill —
-        // both of which the #326 recovery beat already states when they land.
-        // Telling a Tier 2 owner their career is about to end would be a claim
-        // the engine contradicts.
-        if (
-          hasTaught &&
-          markTaught &&
-          w.tierManager.currentTier === 1 &&
-          w.bankruptcyMonitor.isCashLow &&
-          !hasTaught('failure_stakes')
-        ) {
-          markTaught('failure_stakes');
-          setStakesBeat(
-            buildStakesBeat({
-              cash: closingCash,
-              daysToFail: w.bankruptcyMonitor.daysBelowFloorToFail,
-              creditAvailable: w.creditFacility.getFacility().available,
-            }),
-          );
-        }
         // Inside a bite (#381) the day's beats are captured here — as the day
         // closes, while its refs still stand — and pooled into ONE Reveal when
         // the run ends. The per-day modal and the per-day autosave are the two
@@ -668,7 +649,7 @@ export function useDayLoop({
       setChapterQueue([]);
       setRecoveryQueue([]);
       // A warning about what could happen is moot once it has (#394).
-      setStakesBeat(null);
+      setBeatQueue([]);
       setEndCard(data);
       nav.reset('end-card');
     };
@@ -762,6 +743,30 @@ export function useDayLoop({
           ?.name ?? null,
     });
 
+    // The progressive-disclosure channel (#395). Bound to whatever
+    // `data/teaching-beats.json` declares — this hook names no beat and no
+    // mechanic, which is why a beat added later needs no edit here.
+    //
+    // With no teaching cell to write to (`hasTaught`/`markTaught` omitted) the
+    // channel is not built at all: a beat that could never be retired would
+    // fire on every tick of its condition forever, which is the wrong default
+    // for a harness and the right one for the app.
+    const beats =
+      hasTaught && markTaught
+        ? createTeachingBeatChannel<TeachingBeatId>(
+            bus,
+            ({ id, slots }) =>
+              setBeatQueue((q) => [...q, buildTeachingBeat({ id, slots })]),
+            {
+              decls: loadTeachingBeats().beats,
+              conditions: BEAT_CONDITIONS,
+              ctx: createTeachingBeatContext(() => worldRef.current),
+              hasTaught,
+              markTaught,
+            },
+          )
+        : null;
+
     bus.subscribe('floor:day_complete', onDayComplete);
     bus.subscribe('trade:escalated', onTradeEscalated);
     bus.subscribe('discount:escalated', onDiscountEscalated);
@@ -796,6 +801,7 @@ export function useDayLoop({
       bus.unsubscribe('staff:auto_resolved', onAutoResolved);
       bus.unsubscribe('records:broken', onRecordBroken);
       interrupts.dispose();
+      beats?.dispose();
     };
   }, []);
 
@@ -816,8 +822,8 @@ export function useDayLoop({
     setChapterQueue,
     recoveryQueue,
     setRecoveryQueue,
-    stakesBeat,
-    setStakesBeat,
+    beatQueue,
+    setBeatQueue,
     endCard,
     setEndCard,
     handleNextDay,

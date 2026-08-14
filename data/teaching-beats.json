@@ -1,18 +1,97 @@
 {
-  "schemaVersion": 1,
-  "_doc": "One-shot teaching BEATS (#394). A hint (data/hints.json) is a muted line under a control the player is about to press, retired when they press it. A beat is the other half of the same teaching cell: a moment the game stops and states something the player has no control to press and no other way to learn. Both retire off the per-slot `teaching:<id>` cell #386 minted, and 'Show hints again' re-arms both.",
-  "_copyDoc": "Four sentences per beat, in the order the card renders them: title (what is happening), cause (the reading that raised it), cost (the consequence, stated plainly), path (what the player can do about it). Every string is a sentence and must end in . ! or ?.",
+  "schemaVersion": 2,
+  "_doc": "One-shot teaching BEATS (#394, generalized by #395). A hint (data/hints.json) is a muted line under a control the player is about to press, retired when they press it. A beat is the other half of the same teaching cell: a moment the game stops and states something the player has no control to press and no other way to learn. Both retire off the per-slot `teaching:<id>` cell #386 minted, and 'Show hints again' re-arms both.",
+  "_disclosureDoc": "#395 — a beat fires when its mechanic FIRST MATTERS, never as a front-loaded tour. `events` names the published events that make the game re-ask the question, and `when` names the condition that has to be true for the answer to be yes. Both are REGISTRATION, not enumeration: the runner in `src/app/teachingBeats.ts` reads this catalog and knows no mechanic by name. A beat added next year needs an entry here, a copy block, and (only if its condition is genuinely new) one predicate in the condition registry — never a runner edit.",
+  "_eventsDoc": "Every string in `events` must be a key of `EventMap` — the schema checks it against the runtime `EVENT_NAMES` catalog, so a renamed or typo'd event is a load-time failure rather than a subscription that silently never fires. An array rather than a single name because one mechanic can start mattering by more than one route: a service advisor arrives by hire OR by promotion, and a part can be missing on either department's line.",
+  "_orderDoc": "Declaration order IS presentation order. Two beats that become eligible on the same day are presented one at a time, top of this list first — never stacked.",
+  "_copyDoc": "Four sentences per beat, in the order the card renders them: title (what is happening), cause (the reading that raised it), cost (the consequence, stated plainly), path (what the player can do about it). `badge` is the chip above the title and `tone` its color role. Every string is a sentence and must end in . ! or ?.",
   "_slotDoc": "{slot} fills are the STORE'S OWN figures, resolved at the moment the beat fires. This is the one copy catalog allowed to quote money, and the reason is #387's rule rather than an exception to it: a hint is written once against every store, so a dollar figure in one is a claim the player can check and find wrong — a beat is fired against ONE store's actual position and the player is about to act on it, so the figure is exact and true. Formatted through the kit's `money`, never in this file.",
   "_reachDoc": "`reach` is the optional clause appended to `path` when the store has money it has not drawn (#392's facility). Omitted from a beat that has no such clause, and omitted at render time for a store with no headroom — never rendered as a zero.",
   "beats": [
     {
       "id": "failure_stakes",
       "surface": "Day close, the first time cash falls below the warning floor",
+      "events": ["floor:day_complete"],
+      "when": "cash_first_low",
+      "badge": "Heads up",
+      "tone": "danger",
       "title": "Your cash is running low.",
       "cause": "The store has {cash} on hand. Payroll and overhead come out every day the doors are open, whether or not a car sells.",
       "cost": "If the store runs out of money and stays out for {days} days running, it closes and the career is over. The run goes into your legacy record and the save is cleared — you would be starting again from a new career.",
       "path": "Turn stock back into cash: cut the asking price on whatever has sat longest, or wholesale an aged unit for what it will bring today.",
       "reach": "You also have {reach} you have not drawn on your line of credit. The Finance tab is where you draw it."
+    },
+    {
+      "id": "morning_bet",
+      "surface": "The first morning after the opening day, when the lot is one the player has had a night to change",
+      "events": ["clock:day_started"],
+      "when": "prep_bet_offered",
+      "badge": "New",
+      "tone": "info",
+      "title": "What you stocked is a bet on today's crowd.",
+      "cause": "Before the doors opened, the game read the cars on your lot against what the town is shopping for, and wrote down the wager you just made.",
+      "cost": "Stock what the crowd wants and more of the people who walk in find something they will buy. Stock against it and they leave — the traffic was there and the right car was not.",
+      "path": "Read the demand board before you buy, then check the day's summary to see whether the bet paid."
+    },
+    {
+      "id": "service_annuity",
+      "surface": "The first time a service advisor joins the store, by hire or by promotion",
+      "events": ["staff:hired", "staff:promoted"],
+      "when": "service_advisor_on_staff",
+      "badge": "New",
+      "tone": "info",
+      "title": "Service pays you back long after the sale.",
+      "cause": "You now have a service advisor, so the cars you sell can come back through your own drive for their oil changes, brakes and tires.",
+      "cost": "A buyer you treated well is worth more over the years in service work than the profit you made selling them the car. A buyer you rushed is worth nothing after the day they drive off.",
+      "path": "Keep the bays staffed and keep an eye on how satisfied your buyers are — that number decides how many of them come back."
+    },
+    {
+      "id": "fni_posture",
+      "surface": "The first deal the store finances",
+      "events": ["deal:closed"],
+      "when": "deal_financed",
+      "badge": "New",
+      "tone": "info",
+      "title": "There is a second profit on every financed car.",
+      "cause": "That buyer financed. The store earns on the loan itself and on the products sold alongside it, on top of what it made on the price of the car.",
+      "cost": "Push that second profit hard and some buyers walk away or send the contract back. Leave it alone and you hand money back on every loan you write.",
+      "path": "Set how hard the finance desk pushes on the prep screen in Operations, then watch what it does to the deals that stick."
+    },
+    {
+      "id": "parts_pars",
+      "surface": "The first job either department turns away for want of a part",
+      "events": ["service:job_missed", "bodyshop:job_missed"],
+      "when": "job_turned_away",
+      "badge": "Heads up",
+      "tone": "danger",
+      "title": "You just turned work away for a missing part.",
+      "cause": "A customer brought in a job your shop could have done, and the part it needed was not on the shelf.",
+      "cost": "A missed job is money you never bill and a customer who leaves unhappy. Parts sitting on the shelf are cash you have already spent, so stocking everything is not the answer either.",
+      "path": "Set how deep each category is stocked on the department screen — deeper for the work you see most, thinner for the rest."
+    },
+    {
+      "id": "channel_posture",
+      "surface": "The first body-shop intake, once the body shop is open",
+      "events": ["bodyshop:intake_ready"],
+      "when": "body_shop_open",
+      "badge": "New",
+      "tone": "info",
+      "title": "Your body shop is fed by two different customers.",
+      "cause": "Cars arrive in the collision bays from insurance companies sending claims, and from owners paying for the repair themselves.",
+      "cost": "Insurance work is steady and pays the rate the carrier will pay. Retail work pays better per car and you have to go and find each one. Which way you lean decides both how full the bays are and what the hours are worth.",
+      "path": "Set that lean on the Body Shop screen, and move it when the bays are either standing empty or backed up for days."
+    },
+    {
+      "id": "bite_ladder",
+      "surface": "The first morning a run longer than one day is unlocked",
+      "events": ["clock:day_started"],
+      "when": "bite_unlocked_above_day",
+      "badge": "New",
+      "tone": "info",
+      "title": "You can now run more than one day at a time.",
+      "cause": "The store has the people in place to keep trading without you standing on the floor, so a longer run has opened up beside the day.",
+      "cost": "A longer run plays itself out and hands you one summary at the end, instead of the day-by-day floor you would have watched. It stops early on anything that needs your answer.",
+      "path": "Pick the length beside the button that runs the day. Run a single day by hand when you want to watch the floor, and take the longer run when you only want the result."
     }
   ]
 }

@@ -21,6 +21,7 @@ export {
 export type { EmptyStateId, EmptyStatesConfig } from './emptyStates';
 export {
   TEACHING_BEAT_IDS,
+  BEAT_CONDITION_IDS,
   TeachingBeatsConfigSchema,
   loadTeachingBeats,
   teachingBeat,
@@ -28,6 +29,7 @@ export {
 } from './teachingBeats';
 export type {
   TeachingBeatId,
+  BeatConditionId,
   TeachingBeatsConfig,
   TeachingBeatEntry,
 } from './teachingBeats';

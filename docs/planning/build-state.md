@@ -40,9 +40,11 @@ anywhere in `src/ui/**`.
 **#394 is BUILT as of 2026-08-13 — F2 is COMPLETE.** It also filed **#397 out of phase** — four
 `data/` loaders still load as raw casts, the defect #394 fixed in `failureData.ts`.
 
-**#213 is BUILT as of 2026-08-13.** The next `/next` is **BUILD #395** (dep #213, met) — the last
-slice in phase 12. `WORLD_SNAPSHOT_VERSION` stays 22: the spine writes into the per-slot
-`teaching:<id>` cell and nothing else.
+**#213 is BUILT as of 2026-08-13.** `WORLD_SNAPSHOT_VERSION` stays 22: the spine writes into the
+per-slot `teaching:<id>` cell and nothing else.
+
+**#395 is BUILT as of 2026-08-13 — PHASE 12 IS COMPLETE.** Nothing under it is outstanding. The
+next `/next` advances the pointer to phase 13. `WORLD_SNAPSHOT_VERSION` stays 22.
 
 The one thing a future session must not re-derive: **the backstory picks WERE mechanically
 identical, and #390/#391/#392/#393 ended all of it.** All four `day1Modifier` levers are read in
@@ -64,7 +66,7 @@ describe something the engine does. F2-R1 is closed; nothing under it is outstan
 | ~~#393~~ | ~~F2-R1 — the facility on the Finance statement; `getStoreWorth()` nets the drawn balance~~ **BUILT 2026-08-13 — F2-R1 COMPLETE** | #392, #387 |
 | ~~#394~~ | ~~F2-R2 — the failure stakes, stated once the first time cash goes low~~ **BUILT 2026-08-13 — F2 COMPLETE** | #386, #392 |
 | ~~#213~~ | ~~F1 — the first-run spine coachmarks + the "What should I do?" InGameMenu entry **[rewritten in place]**~~ **BUILT 2026-08-13** | #386 |
-| #395 | F1 — progressive disclosure: a teaching beat fires when its mechanic first matters | #213 |
+| ~~#395~~ | ~~F1 — progressive disclosure: a teaching beat fires when its mechanic first matters~~ **BUILT 2026-08-13 — phase 12 COMPLETE** | #213 |
 
 **Phase 11 — B4 drive-the-clock — is COMPLETE as of 2026-08-12: #381–#385 all built** (table
 below), and its bite-unlock gate was RULED 2026-08-11 (`engagement-spine.md` + `gates.md`
@@ -209,6 +211,78 @@ B2 scope, EARS criteria and corrected deps. Do not file duplicates of them.)
 
 ## Blockers
 
+- **A condition is asked on EVERY tick of its events until it is taught, so it must be cheap**
+  (#395). `bite_ladder` rides `clock:day_started` and stays untaught for a whole Tier 1 career, so
+  its predicate runs once per game-day forever. The first version called `availableBites(coverage)`
+  — whose **default argument** is `loadClockBites()`, a `require` plus a full Zod parse of
+  `data/clock-bites.json` — and that parse-per-day pushed four live-app drive suites
+  (`FniPosture.reachability`, `Hints.coverage`, `App.saveFlow`, `InTabNavigation.reachability`)
+  from ~13s to 29–37s and over their 30s timeout. The catalog is now parsed **once** in
+  `createTeachingBeatContext` and passed in. A future condition that loads a data file, walks the
+  roster deeply, or derives the lot must do the same: the context is built once, so anything
+  expensive belongs in the factory rather than in the predicate.
+- **A beat's TRIGGER is data and its CONDITION is code, and the split is the whole design**
+  (#395). `data/teaching-beats.json` declares `events` (when to re-ask) and `when` (a condition
+  id); `BEAT_CONDITIONS` in `src/app/teachingBeats.ts` holds the predicates, total over the
+  `BEAT_CONDITION_IDS` union so a condition the catalog names but nobody answers does not compile.
+  "When does this matter" is a design fact somebody should read in one file; "is it true of this
+  store right now" is a live World read and only the composition root may make one. A beat for an
+  existing condition therefore needs **no code at all**. A future session moving the event names
+  into the registry is collapsing that back into one place and losing the readable half.
+- **`EVENT_NAMES` is a runtime catalog with a compile-time proof, and adding an event now means
+  TWO lines** (#395). `EventMap` is an interface, so `EventName` is erased and a JSON file naming
+  an event had nothing to check itself against — a typo'd or renamed event was a subscription that
+  silently never fired, the one failure mode of a registration table you cannot find by playing.
+  `EVENT_NAMES_ARE_EXHAUSTIVE` at the foot of `events.ts` resolves to `never` (and so fails `tsc`)
+  the moment the list and the map disagree in **either** direction, so the two cannot drift. It
+  found five events on its first run — the ones whose names my `domain:verb` grep missed.
+- **`failure_stakes` was FOLDED INTO the channel, and #394's ordering rule is now structural**
+  (#395). Its raise left `useDayLoop`'s `onDayComplete` and became a declaration
+  (`floor:day_complete` + `cash_first_low`). #394's rule was "raised BEFORE the bite early-return",
+  pinned by comparing source positions; the beat now rides its own bus subscription, so there is no
+  early return above it to step over and the source-position test was replaced by one asserting the
+  handler contains **no** raise at all. Two mechanisms for one kind of moment would have been the
+  alternative, and the one-at-a-time rule needs a single queue anyway.
+- **`events` is an ARRAY, deliberately wider than the issue's `event`** (#395). One mechanic can
+  start mattering by more than one route: a service advisor arrives by hire **or** by promotion,
+  and a part can be missing on either department's line. A single name would have taught the
+  annuity to the player who hired and not to the player who promoted.
+- **The condition reads the ROSTER, never the payload's `roleId`** (#395), which is what makes that
+  array work — one predicate answers for both routes without knowing either payload shape.
+  `deal_financed` is the **one** condition that reads its payload, because whether a closed deal
+  was financed is a fact about that deal and not about the store afterwards; it goes through
+  `payloadField`, a structural read, rather than a cast.
+- **`job_turned_away` returns `{}` unconditionally, and that is an answer rather than a gap**
+  (#395). A job the shop could have done and did not IS the whole condition — there is nothing
+  further to ask of the store. Inventing an always-true World read to make it look like the others
+  would be ceremony. `{}` (a yes with nothing to fill) is deliberately distinct from `null` (not
+  yet), and the runner branches on that difference.
+- **A beat is marked taught at RAISE, not at dismissal** (#395). `isCashLow` is true every day
+  once it is true at all; a mark deferred to the "Got it" press would re-raise the beat on every
+  tick until the player got round to it. The cost is that a beat raised and then abandoned (app
+  closed with the card up) is spent — the right trade for a teaching surface, whose failure mode is
+  showing the player too much.
+- **The queue is FIFO and beats never stack** (#395). Two mechanics can come due on the same day;
+  they are reported in **declaration order** (the `TEACHING_BEAT_IDS` union order, which the loader
+  refines the JSON against) and drained one card at a time from `beatQueue`. Order is stated once,
+  in the union — not once in the union and again in the file.
+- **The runner names no beat, no mechanic and no event, and a test proves it** (#395).
+  `createTeachingBeatChannel` is generic over the id type, so the shipped catalog and a test's
+  synthetic beats run identical code; `tests/TeachingBeats.test.tsx` scans the runner's source for
+  every `TEACHING_BEAT_ID` and every `EVENT_NAME` and requires none of them. That is what "adding a
+  beat needs no runner edit" means as a check rather than as a claim.
+- **One card, three generic section headers, chip and accent from data** (#395). "What's
+  happening / Why it matters / What you can do" are the same three questions of every beat, so a
+  new beat needs four sentences and no layout. `badge` + `tone` carry the difference between a
+  warning (`danger`) and a mechanic coming into reach (`info`); `tone` is bound to the kit's
+  `BadgeTone` with `satisfies` at the catalog boundary, so the card never casts. Per-beat headers
+  would be three more strings to review for a distinction the player never makes.
+- **Nothing about #395 is persisted** (#395). The taught marks are the per-slot `teaching:<id>`
+  cell #386 minted — the player's progress, not the store's — so "Show hints again" re-arms the
+  beats with the hints and the spine, and `WORLD_SNAPSHOT_VERSION` stays 22. The channel is not
+  built at all when `hasTaught`/`markTaught` are omitted: a beat that could never be retired would
+  fire on every tick of its condition forever, which is the wrong default for a harness and the
+  right one for the app.
 - **A coachmark is anchored by COMPOSITION and there is no measurement code — do not add any**
   (#213). The surface that owns a region renders `spine.coachmarkFor(anchor)`'s model, so a step
   whose region is not mounted draws nothing. That is not a shortcut standing in for a "real"
@@ -1750,6 +1824,82 @@ to jump one early); it loads the gate rather than re-deriving it.
 ## Log
 
 Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
+- 2026-08-14 — **BUILT #395** (F1 — progressive disclosure: a teaching beat fires when its
+  mechanic first matters). **PHASE 12 IS COMPLETE.** #213 taught the store's opening moves on day
+  one; everything the game grew after that spine was written — the service annuity, the morning
+  bet, parts levels, the body shop's two customers, the finance desk's second profit, runs longer
+  than a day — had no teacher at all. A front-loaded tour of all seven on day one is seven things
+  forgotten by the time any of them is reachable, so each is stated at the moment it starts
+  mattering. Seven beats: `failure_stakes` (folded in from #394), `morning_bet`,
+  `service_annuity`, `fni_posture`, `parts_pars`, `channel_posture`, `bite_ladder`.
+  **The trigger is DATA and the condition is CODE, and that split is the design.**
+  `data/teaching-beats.json` (schemaVersion **2**) declares `events` — the published events that
+  make the game re-ask a beat's question — and `when`, a condition id. `BEAT_CONDITIONS` in
+  `src/app/teachingBeats.ts` holds the predicates, and TypeScript requires that record to be total
+  over `BEAT_CONDITION_IDS`, so a condition the catalog names but nobody answers does not compile.
+  "When does this matter" is a design fact somebody should read in one file; "is it true of this
+  store right now" is a live World read, and only the composition root may make one. A beat for a
+  condition that already exists needs **no code at all**.
+  **The runner names no beat, no mechanic and no event — and that is checked, not claimed.**
+  `createTeachingBeatChannel` is generic over the id type, so the shipped catalog and a test's
+  synthetic beats run byte-identical code; `tests/TeachingBeats.test.tsx` scans the runner's source
+  for every `TEACHING_BEAT_ID` and every `EVENT_NAME` and requires none of them to appear.
+  **`EVENT_NAMES` is new, and adding an event now means two lines.** `EventMap` is an interface, so
+  `EventName` is erased at build time and a JSON catalog naming an event had nothing to validate
+  against — a typo'd or renamed event would be a subscription that silently never fires, the one
+  failure mode of a registration table you cannot find by playing the game. `events.ts` now exports
+  the catalog as a runtime tuple with `EVENT_NAMES_ARE_EXHAUSTIVE` beneath it: a mutual-`Exclude`
+  check that resolves to `never` — and so refuses its `= true` — the moment the list and the map
+  disagree in either direction. It earned itself on the first run by naming five events my
+  `domain:verb` grep had missed (`tierGate:month_verdict`, the three `installedBase:*`,
+  `serviceDemand:intake_ready`).
+  **#394's beat was folded in, and its ordering rule became structural.** The raise left
+  `useDayLoop`'s `onDayComplete` and became a declaration (`floor:day_complete` + `cash_first_low`).
+  #394 pinned "raised BEFORE the bite early-return" by comparing source positions; a beat now rides
+  its own bus subscription, so there is no early return above it to step over, and the test asserts
+  the handler contains **no** raise at all. Two mechanisms for one kind of moment was the
+  alternative, and the one-at-a-time rule needs a single queue regardless — `stakesBeat` became
+  `beatQueue`, drained FIFO, `StakesBeatCard` became `TeachingBeatCard`.
+  **`events` is an ARRAY, wider than the issue's `event`, because one mechanic starts mattering by
+  more than one route** — a service advisor arrives by hire **or** promotion, a part can be missing
+  on either department's line. The conditions read the **roster**, never the payload's `roleId`,
+  which is what lets one predicate answer for both routes without knowing two payload shapes.
+  `deal_financed` is the single payload read, through a structural `payloadField` rather than a
+  cast, because whether a closed deal financed is a fact about that deal and not about the store
+  afterwards.
+  **The web drive found the one condition that was wrong, and it was wrong in an instructive way.**
+  `prep_bet_offered` first read "the store has spent on stock" (`inventoryAcquisitionSpend > 0`).
+  That is **true on day 1**: reconditioning the #296 seed lot posts `inventoryAcquisition` before
+  the player has bought anything (the Home card reads `-$7.4k into stock` on the opening day). So
+  the beat fired against a lot the store came with, telling the player about a wager they had not
+  made — and landing on top of the #213 spine's fourth step. It now reads `currentDay() > 1`:
+  `nextDay()` skips its advance on the cold start, so day 2 is the first morning the player has had
+  a night to change the lot. Driven live: day 1 opens with the spine coachmark and no card, day 2's
+  `clock:day_started` raises the beat, and `bite_ladder` stays silent at Tier 1 with no cover.
+  **The full suite caught a cost the unit tests could not: a condition asked once per game-day
+  must be cheap.** `bite_ladder` rides `clock:day_started` and stays untaught for a whole Tier 1
+  career, and its first version called `availableBites(coverage)` — whose default argument is
+  `loadClockBites()`, a `require` plus a full Zod parse. A parse per game-day took four live-app
+  drive suites from ~13s to 29–37s and over their 30s timeout. The catalog is parsed once in
+  `createTeachingBeatContext` now. Anything expensive belongs in the context factory, which is
+  built once, never in a predicate.
+  **The seven live-app drive suites flake on THIS MACHINE, and that was attributed rather than
+  assumed.** Under full-suite parallelism a rotating subset of `Onboarding`, `Hints.reachability`,
+  `Hints.coverage`, `App.saveFlow`, `App.recapPersistence`, `InTabNavigation.reachability` and
+  `FniPosture.reachability` blows a 30s timeout on its FIRST test; each passes standalone in
+  11–17s. Running the full suite with this slice **stashed** fails **six** of the same suites on
+  plain HEAD, so it is machine contention on the heaviest mounts and not something #395 introduced.
+  A future session seeing this should re-run the suite alone before chasing it, and should not
+  "fix" it by widening timeouts blind.
+  **One card, three generic section headers, chip and accent from data.** "What's happening / Why it
+  matters / What you can do" are the same three questions of every beat, so a new beat needs four
+  sentences and no layout. `badge` + `tone` carry warning-vs-new; `tone` is bound to the kit's
+  `BadgeTone` with `satisfies` at the catalog boundary, so the card never casts.
+  **Marked taught at RAISE, not at dismissal** — `isCashLow` is true every day once it is true at
+  all, so a mark deferred to the "Got it" press would re-raise on every tick. Nothing is persisted
+  beyond the per-slot `teaching:<id>` cell #386 minted, so "Show hints again" re-arms the beats with
+  the hints and the spine, and `WORLD_SNAPSHOT_VERSION` stays **22**. Full suite green; the `#180`
+  live calibration is byte-identical at `costOverAsk` 1.026.
 - 2026-08-13 — **BUILT #213** (F1 — the first-run spine: five numbered coachmarks that teach one
   day of this game). A new career opened on a full console with no idea which of five tabs mattered
   first. It now opens on *"Step 1 of 5 — start by reading the market"*, and walks: read the market →
@@ -1855,42 +2005,3 @@ Newest 3 only. Older entries: `docs/planning/build-state-archive.md`.
   Next: **BUILD #213** (F1 — the first-run spine coachmarks + the "What should I do?" InGameMenu
   entry); its dep #386 is met.
 
-- 2026-08-13 — **BUILT #393** (F2-R1 — the borrowing facility on the Finance statement, and the
-  store's worth nets the debt). #392 built a facility nobody could reach; the Finance room now
-  states it and moves it. **`getStoreWorth()` subtracts the drawn balance and the caption names
-  it** — the one-line argument for the whole slice is that borrowing $50,000 must leave what the
-  store is worth *flat*, exactly as a bought car does (#380). Proved live: cash $49.9k → $99.9k,
-  worth $87.3k → **$87.3k**, Net Income unmoved at -$57 (a draw is `financing`-categorized and
-  drops whole from the P&L). The caption is **one sentence for every store, drawn or not** —
-  "…less what you owe on your credit line" — because a caption that appeared the first time you
-  borrowed would read as the rule changing, when only a term stopped being zero.
-  **The panel is a reading of THIS MOMENT and the range chips must not appear to move it**, so it
-  states `interestPaidToDate` (lifetime) rather than the window's charge. The issue's scope bullet
-  asked for "the interest paid in the selected window" and its own Notes asked for a moment read;
-  the Notes wins, and the *window* cost is the expenses-breakdown line instead. That line is now
-  **pinned**: `groupExpenses` folds its tail into "Other" by size, and a day's interest on a
-  $50,000 line is ~$19 against a payroll of hundreds, so without the pin the one cost the player
-  can end with a button on that same screen would be buried in every window that mattered. It is
-  the only pinned label and the fold is byte-identical for everything else.
-  **`drawSteps` is on `getFacility()`, not computed on the screen** — `data/credit-facility.json`
-  gains `drawFractions` `[0.25, 0.5, 0.75, 1]`, resolved against the store's own limit. Fractions
-  rather than dollars so every founder's line is offered at the same four rungs; the schema
-  refuses a non-ascending list or a last rung that is not the whole line. A surface multiplying a
-  limit by a fraction would be a second place deciding how coarse borrowing is. **A limit of zero
-  yields `drawSteps: []`** and `buildCreditFacilityPanel` returns `null` — the room omits the
-  region entirely (locked IA rule 3), which is the one place in the app that branches on whether
-  the store has a line, and it branches on how the facility *reads*, never on how it works.
-  **A refusal is reported as a sentence, not observed as a state change** (`onDraw` returns the
-  notice or `null`), because #392's refusals change nothing at all — there is no new state for the
-  panel to re-read. The notice names the bound off the same `getFacility()` the refusal was
-  decided from: drove a full $50k draw, pressed Borrow again, got *"That is more than your line
-  has left. You can borrow $0 more."* with nothing moved. **Refused whole, never clamped.**
-  One hint id, `credit_line`, over one control group (`finance-credit-controls`) covering the
-  amount chips and both buttons — borrowing and paying back are two ends of one decision, so they
-  share a lesson and retire together. `FinanceTabContainer` now takes `hints`/`bump`/`setCash`,
-  the `GrowthTabContainer` shape. Verified retiring on the drive: the line was gone after the draw.
-  **Deleted the "391 grudge" test slot to free a slot for the drive, and the user made that
-  standing: agent-created saves are free to delete, and a full slot list must never gate a
-  verification run again.**
-  Next: **BUILD #394** (F2-R2 — the failure stakes, stated once the first time cash goes low);
-  its deps #386 and #392 are met.

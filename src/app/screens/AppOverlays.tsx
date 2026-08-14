@@ -26,7 +26,7 @@ import { MonthCloseInterstitial } from '../../ui/MonthCloseInterstitial';
 import {
   ChapterCard,
   RecoveryBeatCard,
-  StakesBeatCard,
+  TeachingBeatCard,
 } from '../../ui/NarrativeBeat';
 import { AdminConsole } from '../../ui/AdminConsole';
 import type { Modals } from '../useModals';
@@ -89,8 +89,8 @@ export function AppOverlays({
     setChapterQueue,
     recoveryQueue,
     setRecoveryQueue,
-    stakesBeat,
-    setStakesBeat,
+    beatQueue,
+    setBeatQueue,
     endCard,
   } = dayLoop;
 
@@ -320,16 +320,17 @@ export function AppOverlays({
           onConfirm={() => setRecoveryQueue((q) => q.slice(1))}
         />
       )}
-      {endCard == null && world != null && stakesBeat != null && (
-        // The failure-stakes beat (#394): the one time the game states how a
-        // career ends, while there is still something to do about it. Fires at
-        // most once per career, so this is a single slot rather than a queue —
-        // and it sits BELOW the recovery card in the same overlay stack, since
-        // a hit that already landed outranks a warning about one that has not.
-        <StakesBeatCard
+      {endCard == null && world != null && beatQueue.length > 0 && (
+        // The teaching beats (#394/#395): each mechanic stated once, at the
+        // moment it first matters and while there is still something to do
+        // about it. Drained FIFO one at a time — two mechanics can come due on
+        // the same day and they are never stacked. It sits BELOW the recovery
+        // card in the same overlay stack, since a hit that already landed
+        // outranks a lesson about one that has not.
+        <TeachingBeatCard
           visible
-          beat={stakesBeat}
-          onConfirm={() => setStakesBeat(null)}
+          beat={beatQueue[0]}
+          onConfirm={() => setBeatQueue((q) => q.slice(1))}
         />
       )}
       {__DEV__ && world && (

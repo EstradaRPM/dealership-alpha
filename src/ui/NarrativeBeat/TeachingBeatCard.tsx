@@ -2,42 +2,48 @@ import React from 'react';
 import { View, Text, Modal, ScrollView, StyleSheet } from 'react-native';
 import { useTheme } from '../theme';
 import { Button, Badge } from '../kit';
-import type { StakesBeat } from './stakesBeat';
+import type { TeachingBeatModel } from './teachingBeat';
 
 interface Props {
   visible: boolean;
-  beat: StakesBeat;
+  beat: TeachingBeatModel;
   onConfirm: () => void;
 }
 
 /**
- * The failure-stakes card (#394). Same full-bleed acknowledge grammar as
- * `RecoveryBeatCard`, deliberately NOT the same card: a recovery beat is what
- * the store lost, and this is what it still stands to lose. So the chip reads
- * "Heads up" rather than "Setback", the sections are a warning's three
- * questions rather than a post-mortem's, and the action is an acknowledgement
- * ("Got it") rather than the recovery card's "Keep going".
+ * The teaching-beat card (#394, generalized by #395). Same full-bleed
+ * acknowledge grammar as `RecoveryBeatCard`, deliberately NOT the same card: a
+ * recovery beat is what the store lost, and a teaching beat is what the store
+ * is now able to lose — or earn. So the action is an acknowledgement ("Got it")
+ * rather than the recovery card's "Keep going".
  *
- * The danger accent is the honest one here — unlike a recovery beat, nothing
- * has been survived yet.
+ * **One card, one grammar, every beat.** The chip and its accent come from the
+ * catalog (a warning is `danger`, a mechanic coming into reach is `info`) and
+ * the three section headers are generic on purpose: they are the same three
+ * questions of every beat — what is happening, why it matters, what you can do
+ * — so a beat added next year needs four sentences and no layout. Per-beat
+ * headers would be three more strings to review for a distinction the player
+ * never makes.
  */
-export function StakesBeatCard({ visible, beat, onConfirm }: Props) {
+export function TeachingBeatCard({ visible, beat, onConfirm }: Props) {
   const t = useTheme();
-  const s = styles(t);
+  const s = styles(t, beat.tone === 'danger' ? t.colors.danger : t.colors.accent);
 
   return (
     <Modal visible={visible} animationType="fade" transparent>
       <View style={s.overlay}>
-        <ScrollView contentContainerStyle={s.card} testID="stakes-beat-card">
-          <Badge label="Heads up" tone="danger" variant="soft" />
-          <Text style={s.title}>{beat.title}</Text>
+        <ScrollView contentContainerStyle={s.card} testID="teaching-beat-card">
+          <Badge label={beat.badge} tone={beat.tone} variant="soft" />
+          <Text style={s.title} testID="teaching-beat-title">
+            {beat.title}
+          </Text>
 
           <View style={s.divider} />
 
-          <Text style={s.sectionLabel}>Where you stand</Text>
+          <Text style={s.sectionLabel}>What&apos;s happening</Text>
           <Text style={s.body}>{beat.cause}</Text>
 
-          <Text style={s.sectionLabel}>What happens if it runs out</Text>
+          <Text style={s.sectionLabel}>Why it matters</Text>
           <Text style={s.body}>{beat.cost}</Text>
 
           <Text style={s.sectionLabel}>What you can do</Text>
@@ -52,7 +58,7 @@ export function StakesBeatCard({ visible, beat, onConfirm }: Props) {
   );
 }
 
-const styles = (t: ReturnType<typeof useTheme>) =>
+const styles = (t: ReturnType<typeof useTheme>, accent: string) =>
   StyleSheet.create({
     overlay: {
       flex: 1,
@@ -65,7 +71,7 @@ const styles = (t: ReturnType<typeof useTheme>) =>
       backgroundColor: t.colors.surface,
       borderRadius: t.radius.lg,
       borderTopWidth: 3,
-      borderTopColor: t.colors.danger,
+      borderTopColor: accent,
       padding: t.spacing.xxl,
       width: 340,
       maxWidth: '100%',

@@ -14,6 +14,6 @@ export type {
   RecoveryBannerModel,
   RecoveryMonitorSnapshot,
 } from './recoveryBeat';
-export { StakesBeatCard } from './StakesBeatCard';
-export { buildStakesBeat } from './stakesBeat';
-export type { StakesBeat, StakesBeatInput } from './stakesBeat';
+export { TeachingBeatCard } from './TeachingBeatCard';
+export { buildTeachingBeat } from './teachingBeat';
+export type { TeachingBeatModel, TeachingBeatInput } from './teachingBeat';
